@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646">
-<title>Zombie Haven V0.7</title>
+<title>Zombie Haven V1.1</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#10212a;font-family:Arial,Helvetica,sans-serif}
@@ -19,18 +19,33 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.build{background:#214d61;border:2px solid #4b8298;color:#fff;padding:7px;text-align:left;font-weight:900;font-size:10px;border-radius:5px}.build small{display:block;color:#bfe3e9;margin-top:2px}
 #bottom{position:absolute;z-index:9;bottom:0;left:0;right:0;height:94px;background:linear-gradient(#17394a,#0d2633);border-top:3px solid #071a23;padding:5px 5px calc(5px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .menu{background:linear-gradient(#24536a,#16384a);border:2px solid #4d849c;border-radius:6px;color:#fff;font-weight:900;font-size:9px;text-shadow:1px 1px #000}.menu:first-child{border-color:#f1c84d}.ico{display:block;font-size:18px}
+
+#confirmBar{display:none;position:absolute;z-index:14;left:50%;transform:translateX(-50%);bottom:101px;width:min(92%,430px);background:#102b3bf2;border:3px solid #071a23;border-radius:8px;padding:7px;color:#fff}
+#confirmName{font-size:11px;font-weight:900;margin-bottom:5px;text-align:center}
+#confirmBtns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#confirmBtns button{padding:9px;border-radius:5px;font-weight:900;color:#fff;border:2px solid #081c25}
+#yesBuild{background:#3f8f4f}#noBuild{background:#a74b45}
+
+.fxLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.toast{position:absolute;left:50%;top:22%;transform:translate(-50%,-50%);font:900 14px Arial;color:#fff7c7;text-shadow:2px 2px #182018;background:#26372cdd;border:2px solid #a5bd73;border-radius:7px;padding:7px 12px;animation:toastUp 1.45s forwards;white-space:nowrap}
+@keyframes toastUp{0%{opacity:0;transform:translate(-50%,5px) scale(.8)}20%{opacity:1;transform:translate(-50%,-8px) scale(1.08)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-38px)}}
+.renFlash{animation:renPulse .55s}
+@keyframes renPulse{50%{transform:scale(1.22);filter:brightness(1.6)}}
+.request{position:absolute;left:8%;right:8%;bottom:116px;background:#17251ff2;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:12;box-shadow:0 5px 0 #0a100d}
+.request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px}
 </style></head><body><div id="app">
-<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V0.7</span></div><div class="chip">★ <span id="ren">0</span></div></div>
-<div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span></div></div>
+<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div>
+<div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
 <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt">Build a Water Collector</span></div>
 <div id="zoom">DRAG · PINCH <span id="zv">100%</span></div>
 <div id="world"><canvas id="game"></canvas></div><div class="toast" id="toast"></div>
 <div class="panel" id="buildPanel"><button class="x" onclick="closeP()">X</button><h3>BUILD FACILITY</h3><div class="grid" id="buildGrid"></div></div>
 <div class="panel" id="infoPanel"><button class="x" onclick="closeP()">X</button><h3 id="it">INFO</h3><div id="ib" style="font-size:10px;line-height:1.55"></div></div>
+<div id="confirmBar"><div id="confirmName">PLACE BUILDING?</div><div id="confirmBtns"><button id="noBuild" onclick="cancelPreview()">CANCEL</button><button id="yesBuild" onclick="confirmPreview()">CONFIRM</button></div></div>
 <div id="bottom"><button class="menu" onclick="showBuild()"><span class="ico">🔨</span>BUILD</button><button class="menu" onclick="showSurvivors()"><span class="ico">👥</span>SURVIVORS</button><button class="menu" onclick="showItems()"><span class="ico">🎒</span>ITEMS</button><button class="menu" onclick="showGuide()"><span class="ico">?</span>GUIDE</button></div>
 </div><script>
 const c=document.getElementById("game"),g=c.getContext("2d");g.imageSmoothingEnabled=false;
-let W,H,DPR,tick=0,sel=null,TW=42,TH=21;
+let W,H,DPR,tick=0,sel=null,preview=null,TW=42,TH=17;
 const COLS=16,ROWS=20,BUILD={x0:2,y0:6,x1:13,y1:17};
 const cam={x:0,y:-25,z:1}; let pointers=new Map(), gesture=null, tapStart=null;
 const defs={
@@ -59,8 +74,45 @@ const facilityRules={
  water:{need:"thirst",use:100,price:4,sat:1,benefit:28,label:"Drinking"},
  farm:{need:"hunger",use:100,price:6,sat:1,benefit:16,label:"Getting food"}
 };
-const S={money:1800,food:12,water:12,mat:24,ren:0,day:1,hour:8,kills:0,stage:0,b:[],sv:[],z:[]},floats=[];
-function resize(){let r=world.getBoundingClientRect();DPR=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;c.width=W*DPR;c.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0);TW=Math.max(38,Math.min(46,W/9.2));TH=TW/2;if(!cam.inited){cam.x=0;cam.y=-35;cam.z=Math.min(1.08,W/390);cam.inited=1}} addEventListener("resize",resize);resize();
+const AI={
+ FREE:"free", GO_FACILITY:"goFacility", USE_FACILITY:"useFacility",
+ PATROL:"patrol", CHASE:"chase", ATTACK:"attack", RECOVER:"recover",
+ POST_COMBAT:"postCombat", DOWN:"down", RESCUE_TO:"rescueTo",
+ RESCUE_CARRY:"rescueCarry", HOSPITAL:"hospital", HOME:"home"
+};
+const jobAI={
+ Civilian:{aggro:70,rescue:5,town:1.35},
+ Guard:{aggro:145,rescue:7,town:.65},
+ Medic:{aggro:80,rescue:10,town:1.1},
+ Scavenger:{aggro:105,rescue:6,town:.8},
+ "Police Officer":{aggro:165,rescue:8,town:.55}
+};
+
+const zombieTypes={
+ walker:{name:"Walker",hp:30,atk:4,spd:.075,aggro:52,reward:18,ren:1,weight:60},
+ crawler:{name:"Crawler",hp:22,atk:3,spd:.105,aggro:46,reward:16,ren:1,weight:22},
+ runner:{name:"Runner",hp:25,atk:5,spd:.16,aggro:72,reward:25,ren:2,weight:13},
+ bloated:{name:"Bloated",hp:58,atk:7,spd:.055,aggro:48,reward:38,ren:3,weight:5}
+};
+const rankRules=[
+ {rank:1,ren:0,income:0,residents:0,facilities:0},
+ {rank:2,ren:20,income:250,residents:1,facilities:4},
+ {rank:3,ren:60,income:700,residents:2,facilities:6},
+ {rank:4,ren:140,income:1500,residents:3,facilities:8}
+];
+
+const progressionFx=[];
+function screenToast(txt){
+ let d=document.createElement("div");d.className="toast";d.textContent=txt;fx.appendChild(d);setTimeout(()=>d.remove(),1500)
+}
+function renownGain(n,reason=""){
+ S.ren+=n; progressionFx.push({kind:"ren",n,reason,t:80});
+ let el=document.getElementById("ren"); if(el){el.parentElement.classList.remove("renFlash");void el.offsetWidth;el.parentElement.classList.add("renFlash")}
+ screenToast(`★ RENOWN +${n}${reason?" · "+reason:""}`); ui()
+}
+function moneyGain(n,reason=""){S.money+=n;S.earned+=Math.max(0,n);progressionFx.push({kind:"money",n,reason,t:65});if(n>=20)screenToast(`$${n} ${reason}`)}
+const S={money:1800,earned:0,food:12,water:12,mat:24,ren:0,rank:1,threat:1,day:1,hour:8,kills:0,stage:0,b:[],sv:[],z:[],spawnClock:0,eventClock:0,arrivalClock:0,requests:[]},floats=[];
+function resize(){let r=world.getBoundingClientRect();DPR=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;c.width=W*DPR;c.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0);TW=Math.max(38,Math.min(46,W/9.2));TH=TW*.40;if(!cam.inited){cam.x=0;cam.y=-35;cam.z=Math.min(1.08,W/390);cam.inited=1}} addEventListener("resize",resize);resize();
 function baseIso(x,y){return{x:(x-y)*TW/2,y:(x+y)*TH/2}}
 function center(){return{x:W/2,y:45}}
 function iso(x,y){let b=baseIso(x,y),cc=center();return{x:cc.x+cam.x+b.x*cam.z,y:cc.y+cam.y+b.y*cam.z}}
@@ -74,8 +126,8 @@ function tileCenter(x,y){return worldPoint(x+.5,y+.5)}
 function buildCenter(b){return worldPoint(b.x+b.w/2,b.y+b.h/2)}
 function tileOccupied(x,y){return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h)}
 function hospital(){let b=S.b.find(b=>b.type==="medic");return b?buildCenter(b):tileCenter(3,10)}
-function collapsed(){return S.sv.filter(s=>s.mode==="collapsed"&&!s.rescuer)}
-function idleForRescue(s){return ["wander","postkill"].includes(s.mode)&&s.hp>0&&!s.rescuing}
+function collapsed(){return S.sv.filter(s=>s.mode===AI.DOWN&&!s.rescuer)}
+function idleForRescue(s){return [AI.FREE,AI.POST_COMBAT].includes(s.mode)&&s.hp>0&&!s.rescuing}
 function tree(x,y){let p=iso(x,y),z=cam.z;pxrect(p.x-2*z,p.y-13*z,4*z,13*z,"#6a4a2d","#332719");pxrect(p.x-9*z,p.y-23*z,18*z,9*z,"#2e7c3c","#174e2a");pxrect(p.x-6*z,p.y-29*z,12*z,9*z,"#49a64c","#174e2a")}
 function crateAt(x,y){let p=iso(x,y),z=cam.z;pxrect(p.x-6*z,p.y-8*z,12*z,9*z,"#a46a31","#4a301c")}
 function building(b,ghost=false,ok=true){
@@ -101,13 +153,14 @@ function building(b,ghost=false,ok=true){
    pxrect(p.x-4*z,p.y-10*z,8*z,10*z,"#573522","#2a2119");pxrect(p.x-15*z,p.y-14*z,7*z,6*z,"#8ed1df","#3b5360");
    if(b.type==="medic"){pxrect(p.x-3*z,p.y-h-7*z,6*z,14*z,"#d94b48","#762c2a");pxrect(p.x-7*z,p.y-h-3*z,14*z,6*z,"#d94b48","#762c2a")}
  }
+ if(ghost){g.fillStyle=ok?"#d7ffff":"#ffd0cc";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText(ok?"PREVIEW":"BLOCKED",p.x,p.y+17*z)}
  if(!ghost){g.fillStyle="#fff3b3";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.textAlign="center";g.fillText(name.toUpperCase(),p.x,p.y+15*z)}
  g.restore()
 }
 function bar(x,y,r,col,z=cam.z){g.fillStyle="#1a1715";g.fillRect(x-10*z,y,20*z,4*z);g.fillStyle=col;g.fillRect(x-9*z,y+z,18*z*Math.max(0,r),2*z)}
 function human(s){
  let p=scr(s.w),z=cam.z;
- if(s.mode==="collapsed"){
+ if(s.mode===AI.DOWN){
    g.save();g.translate(p.x,p.y);g.rotate(-.22);pxrect(-9*z,-4*z,18*z,7*z,s.i===1?"#d05d6f":s.i===0?"#3678a4":"#d79b37","#252525");pxrect(7*z,-5*z,7*z,7*z,"#bd865e","#3a2921");g.restore();
    g.fillStyle="#ffdf73";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText("DOWN",p.x,p.y-12*z);return;
  }
@@ -118,19 +171,40 @@ function human(s){
  pxrect(x-4*z,y-15*z,8*z,7*z,skin,"#3a2921");pxrect(x-5*z,y-8*z,10*z,10*z,shirt,"#28302d");
  pxrect(x-5*z,y+2*z+step,4*z,7*z,"#34424c","#222");pxrect(x+1*z,y+2*z-step,4*z,7*z,"#34424c","#222");
  if(s.i===0)pxrect(x-5*z,y-17*z,10*z,3*z,"#294e68");
- if(s.mode==="windup"||s.mode==="recover")pxrect(x+5*z,y-6*z,10*z,2*z,"#d7c26f","#433");
+ if(s.mode===AI.ATTACK||s.mode===AI.RECOVER)pxrect(x+5*z,y-6*z,10*z,2*z,"#d7c26f","#433");
  bar(x,y-20*z,s.hp/s.max,"#71c75b",z);g.fillStyle="#fff5bd";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText(s.name,x,y+19*z);if(s.activity){g.fillStyle="#eaf8ff";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.fillText(s.activity+"…",x,y+28*z)}
 }
 function zombie(zm){
- let p=scr(zm.w),z=cam.z,bob=Math.sin((tick+zm.phase)/11)*1.2*z,x=p.x,y=p.y+bob;
- g.fillStyle="#22291e";g.fillRect(x-6*z,y+7*z,12*z,3*z);pxrect(x-4*z,y-15*z,8*z,7*z,"#829766","#35432e");pxrect(x-5*z,y-8*z,10*z,10*z,"#69534a","#2e2925");pxrect(x-5*z,y+2*z,4*z,7*z,"#3a3b34");pxrect(x+1*z,y+2*z,4*z,7*z,"#3a3b34");bar(x,y-20*z,zm.hp/zm.max,"#d64f48",z)
+ let p=scr(zm.w),z=cam.z,bob=Math.sin((tick+zm.phase)/11)*1.2*z,x=p.x,y=p.y+bob,d=zombieTypes[zm.type]||zombieTypes.walker;
+ if(zm.mode==="appear"){g.globalAlpha=Math.min(1,(70-zm.stateTicks)/25+.25)}
+ g.fillStyle="#22291e";g.fillRect(x-6*z,y+7*z,12*z,3*z);
+ let skin=zm.type==="bloated"?"#78935b":zm.type==="runner"?"#93a66c":"#829766";
+ let body=zm.type==="crawler"?"#69534a":zm.type==="runner"?"#74494a":zm.type==="bloated"?"#6b604d":"#69534a";
+ let scale=zm.type==="bloated"?1.25:zm.type==="crawler"?.82:1;
+ pxrect(x-4*z*scale,y-15*z*scale,8*z*scale,7*z*scale,skin,"#35432e");pxrect(x-5*z*scale,y-8*z*scale,10*z*scale,10*z*scale,body,"#2e2925");
+ pxrect(x-5*z,y+2*z,4*z,7*z,"#3a3b34");pxrect(x+1*z,y+2*z,4*z,7*z,"#3a3b34");bar(x,y-20*z,d?zm.hp/zm.max:1,"#d64f48",z);
+ g.fillStyle="#e8d8a4";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.textAlign="center";g.fillText(d.name,x,y+18*z);g.globalAlpha=1
 }
-function mk(name,job,l,x,y,i){return{name,job,l,mastery:0,w:tileCenter(x,y),hp:58+l*8,max:58+l*8,money:140,weapon:weapons[0],mode:"wander",target:null,cool:20+i*23,sat:8+i*3,resident:false,i,phase:i*37,dest:null,moving:false,hunger:15+i*8,thirst:10+i*6,fatigue:8+i*5,activity:null,facility:null}}
-function spawn(x=null,y=null){let choices=[[2,2],[6,2],[10,2],[13,3],[1,5]];let a=choices[Math.floor(Math.random()*choices.length)];S.z.push({w:tileCenter(x??a[0],y??a[1]),hp:30,max:30,cool:35+Math.random()*40,phase:Math.random()*100,dest:null})}
+function mk(name,job,l,x,y,i){return{name,job,l,mastery:0,w:tileCenter(x,y),hp:58+l*8,max:58+l*8,money:140,weapon:weapons[0],mode:AI.FREE,target:null,cool:20+i*23,stateTicks:30+i*11,sat:8+i*3,resident:false,i,phase:i*37,dest:null,moving:false,hunger:15+i*8,thirst:10+i*6,fatigue:8+i*5,activity:null,facility:null,rescuer:null,rescuing:null,carrying:null,lastFacility:null}}
+function weightedZombie(){
+ let pool=Object.entries(zombieTypes).filter(([k,v])=>k==="walker"||S.rank>=2||k==="crawler").filter(([k,v])=>k!=="bloated"||S.rank>=3).filter(([k,v])=>k!=="runner"||S.rank>=2);
+ let total=pool.reduce((a,[k,v])=>a+v.weight,0),r=Math.random()*total;
+ for(let [k,v] of pool){r-=v.weight;if(r<=0)return k}return "walker"
+}
+function spawn(x=null,y=null,type=null,quest=false){
+ let edge=[[1,2],[4,2],[8,2],[12,2],[14,4],[1,5]],a=edge[Math.floor(Math.random()*edge.length)],kind=type||weightedZombie(),d=zombieTypes[kind];
+ S.z.push({type:kind,w:tileCenter(x??a[0],y??a[1]),hp:d.hp,max:d.hp,cool:35+Math.random()*40,phase:Math.random()*100,dest:null,mode:"appear",stateTicks:45+Math.random()*30,target:null,quest});
+}
+function activeZombieCount(){return S.z.filter(z=>z.hp>0).length}
+function monsterGeneration(){
+ S.spawnClock++;
+ let desired=Math.min(2+S.rank+Math.floor(S.threat/2),7);
+ if(activeZombieCount()<desired&&S.spawnClock>150-Math.min(70,S.threat*8)){spawn();S.spawnClock=0}
+}
 function moveW(o,t,s){let dx=t.x-o.w.x,dy=t.y-o.w.y,d=Math.hypot(dx,dy);o.moving=d>1;if(d<s){o.w.x=t.x;o.w.y=t.y;o.moving=false;return true}o.w.x+=dx/d*s;o.w.y+=dy/d*s;return false}
 function nearestZombie(s){let live=S.z.filter(z=>z.hp>0);if(!live.length)return null;live.sort((a,b)=>Math.hypot(s.w.x-a.w.x,s.w.y-a.w.y)-Math.hypot(s.w.x-b.w.x,s.w.y-b.w.y));let top=live.slice(0,Math.min(3,live.length));return top[(s.i+Math.floor(tick/150))%top.length]}
 function facilityCapacity(b){return b.type==="canteen"?2:b.type==="house"?1:b.type==="medic"?2:1}
-function facilityUsers(b){return S.sv.filter(s=>s.facility===b&&["toFacility","usingFacility"].includes(s.mode)).length}
+function facilityUsers(b){return S.sv.filter(s=>s.facility===b&&[AI.GO_FACILITY,AI.USE_FACILITY].includes(s.mode)).length}
 function needScore(s,b){
  let r=facilityRules[b.type];if(!r||facilityUsers(b)>=facilityCapacity(b))return -999;
  let n=r.need==="injury"?(1-s.hp/s.max)*100:(s[r.need]||0);
@@ -143,72 +217,137 @@ function chooseFacility(s){
  return options.length?options[0].b:null
 }
 function finishFacility(s){
- let b=s.facility,r=facilityRules[b.type];if(!r){s.facility=null;s.mode="wander";return}
- let pay=Math.min(s.money,r.price);s.money-=pay;S.money+=pay;s.sat+=r.sat;
+ let b=s.facility,r=facilityRules[b.type];if(!r){s.facility=null;s.mode=AI.FREE;return}
+ let pay=Math.min(s.money,r.price);s.money-=pay;moneyGain(pay,s.facility.type);s.sat+=r.sat;floats.push({w:{...s.w},t:"♥+"+r.sat,col:"#ff9fbd",a:70});
  if(r.need==="hunger")s.hunger=Math.max(0,s.hunger-r.benefit);
  if(r.need==="thirst")s.thirst=Math.max(0,s.thirst-r.benefit);
  if(r.need==="fatigue")s.fatigue=Math.max(0,s.fatigue-r.benefit);
  if(r.need==="injury")s.hp=Math.min(s.max,s.hp+r.benefit);
  if(b.type==="armory"){
    let choices=weapons.filter(w=>w[1]>=s.weapon[1]*1.15&&w[2]<=s.money).sort((a,b)=>b[1]-a[1]);
-   if(choices.length){let w=choices[0];s.money-=w[2];S.money+=w[2];s.weapon=w;s.sat+=2;say(s.name+" bought a "+w[0]+".")}
+   if(choices.length){let w=choices[0];s.money-=w[2];moneyGain(w[2],"Armory");s.weapon=w;screenToast(s.name+" equipped "+w[0]);s.sat+=2;say(s.name+" bought a "+w[0]+".")}
  }
  s.mastery+=1+(professions[s.job]?.facility||0)*.1;
  if(!s.resident&&s.sat>=35){s.resident=true;S.ren+=5;say(s.name+" wants to make the Haven home!")}
- s.facility=null;s.activity=null;s.mode="postActivity";s.cool=45+s.i*13;ui()
+ s.facility=null;s.activity=null;s.mode=AI.FREE;s.stateTicks=45+s.i*13;s.cool=0;ui()
 }
 function roamDest(s){let x=BUILD.x0+1+Math.random()*(BUILD.x1-BUILD.x0-2),y=BUILD.y0+1+Math.random()*(BUILD.y1-BUILD.y0-2);return tileCenter(x,y)}
+function downedUnassigned(){return S.sv.filter(q=>q.mode===AI.DOWN&&!q.rescuer)}
+function rescueScore(r,q){let ja=jobAI[r.job]||jobAI.Civilian;return ja.rescue*25-Math.hypot(r.w.x-q.w.x,r.w.y-q.w.y)}
 function assignRescue(){
- let casualty=collapsed()[0];if(!casualty)return false;
- let candidates=S.sv.filter(idleForRescue).sort((a,b)=>Math.hypot(a.w.x-casualty.w.x,a.w.y-casualty.w.y)-Math.hypot(b.w.x-casualty.w.x,b.w.y-casualty.w.y));
- let r=candidates[0];if(!r)return false;
- casualty.rescuer=r;r.rescuing=casualty;r.target=null;r.dest=null;r.mode="rescueTo";r.cool=0;say(r.name+" is going to rescue "+casualty.name+".");return true
+ let downs=downedUnassigned();if(!downs.length)return false;
+ let free=S.sv.filter(r=>r.hp>0&&[AI.FREE,AI.POST_COMBAT].includes(r.mode)&&!r.rescuing);
+ if(!free.length)return false;
+ let best=null,bestScore=-1e9;
+ for(let q of downs)for(let r of free){let sc=rescueScore(r,q);if(sc>bestScore){bestScore=sc;best={r,q}}}
+ if(!best)return false;
+ best.q.rescuer=best.r;best.r.rescuing=best.q;best.r.target=null;best.r.facility=null;best.r.dest=null;
+ best.r.mode=AI.RESCUE_TO;best.r.stateTicks=9999;say(best.r.name+" is rescuing "+best.q.name+".");return true
+}
+function enterFree(s,delay=35){s.mode=AI.FREE;s.target=null;s.activity=null;s.stateTicks=delay;s.dest=null;s.moving=false}
+function enterPostCombat(s){s.mode=AI.POST_COMBAT;s.target=null;s.stateTicks=75+s.i*18;s.moving=false}
+function acquireEnemy(s){
+ let z=nearestZombie(s);if(!z)return false;
+ let d=Math.hypot(s.w.x-z.w.x,s.w.y-z.w.y),cfg=jobAI[s.job]||jobAI.Civilian;
+ if(d<=cfg.aggro){s.target=z;s.mode=AI.CHASE;s.stateTicks=9999;s.dest=null;return true}
+ return false
+}
+function chooseTownAction(s){
+ let b=chooseFacility(s);
+ if(b&&b!==s.lastFacility){s.facility=b;s.mode=AI.GO_FACILITY;s.stateTicks=9999;s.dest=null;return true}
+ return false
 }
 function ai(s){
- if(s.cool>0)s.cool--;
- // Slow-changing personal needs drive autonomous town behavior.
- if(tick%90===s.i*17%90&&!["collapsed","hospital"].includes(s.mode)){s.hunger=Math.min(100,s.hunger+1.5);s.thirst=Math.min(100,s.thirst+1.8);s.fatigue=Math.min(100,s.fatigue+1)}
- if(s.hp<=0&&s.mode!=="collapsed"){s.hp=0;s.mode="collapsed";s.target=null;s.dest=null;s.moving=false;s.rescuer=null;s.rescuing=null;s.carrying=null;s.facility=null;say(s.name+" collapsed!");return}
- if(s.mode==="collapsed"){s.moving=false;return}
- if(s.mode==="hospital"){s.moving=false;if(s.cool<=0){s.hp=Math.round(s.max*.65);s.fatigue=Math.max(0,s.fatigue-30);s.mode="wander";s.dest=null;s.target=null;say(s.name+" recovered enough to return.")}return}
- if(s.mode==="rescueTo"){let q=s.rescuing;if(!q||q.mode!=="collapsed"){s.rescuing=null;s.mode="postkill";s.cool=50;return}if(moveW(s,q.w,.38)){s.carrying=q;q.w={...s.w};s.mode="rescueBack";say(s.name+" picked up "+q.name+".")}return}
- if(s.mode==="rescueBack"){let q=s.carrying;if(!q){s.mode="postkill";s.cool=50;return}let h=hospital();if(moveW(s,h,.30)){q.w={...h};q.mode="hospital";q.hp=1;q.cool=220;q.rescuer=null;s.carrying=null;s.rescuing=null;s.mode="postkill";s.cool=85;say(q.name+" reached the Medic Tent.")}else q.w={x:s.w.x-5,y:s.w.y-2};return}
- if(s.mode==="usingFacility"){s.moving=false;if(s.cool<=0)finishFacility(s);return}
- if(s.mode==="toFacility"){
-   if(!s.facility||facilityUsers(s.facility)>facilityCapacity(s.facility)){s.facility=null;s.mode="wander";return}
-   if(moveW(s,buildCenter(s.facility),.32)){let r=facilityRules[s.facility.type];s.mode="usingFacility";s.activity=r.label;s.cool=r.use;say(s.name+": "+r.label+"…")}return
+ if(s.cool>0)s.cool--; if(s.stateTicks>0)s.stateTicks--;
+ if(tick%90===s.i*17%90&&![AI.DOWN,AI.HOSPITAL].includes(s.mode)){s.hunger=Math.min(100,s.hunger+1.5);s.thirst=Math.min(100,s.thirst+1.8);s.fatigue=Math.min(100,s.fatigue+1)}
+ if(s.hp<=0&&s.mode!==AI.DOWN){s.hp=0;s.mode=AI.DOWN;s.target=null;s.dest=null;s.facility=null;s.activity=null;s.moving=false;s.rescuer=null;s.rescuing=null;s.carrying=null;say(s.name+" collapsed!");return}
+ if(s.mode===AI.DOWN){s.moving=false;return}
+ if(s.mode===AI.HOSPITAL){s.moving=false;if(s.stateTicks<=0){s.hp=Math.round(s.max*.70);s.fatigue=Math.max(0,s.fatigue-35);enterFree(s,60);say(s.name+" recovered and returned.")}return}
+
+ // A rescuer commits to the rescue until delivery.
+ if(s.mode===AI.RESCUE_TO){
+   let q=s.rescuing;if(!q||q.mode!==AI.DOWN){s.rescuing=null;enterPostCombat(s);return}
+   if(moveW(s,q.w,.38)){s.carrying=q;q.w={...s.w};s.mode=AI.RESCUE_CARRY;say(s.name+" picked up "+q.name+".")}return
  }
- if(s.mode==="postActivity"){s.moving=false;if(collapsed().length&&assignRescue())return;if(s.cool<=0){s.mode="wander";s.dest=null}s.target=null;return}
- if(s.mode==="postkill"){s.moving=false;if(collapsed().length&&assignRescue())return;if(s.cool<=0){s.mode="wander";s.dest=null;s.cool=30+Math.random()*35}return}
- if(s.mode==="wander"){
-   // A free survivor checks casualties before every other activity.
-   if(collapsed().length&&assignRescue())return;
-   // Town life is checked before voluntarily acquiring a new enemy.
-   if(s.cool<=0||Math.random()<.008){let b=chooseFacility(s);if(b){s.facility=b;s.dest=null;s.mode="toFacility";return}}
-   if(!s.dest||s.cool<=0){s.dest=roamDest(s);s.cool=90+Math.random()*130}
-   if(s.dest&&moveW(s,s.dest,.34)){s.dest=null;s.cool=22+Math.random()*50}
-   let z=nearestZombie(s),d=z?Math.hypot(s.w.x-z.w.x,s.w.y-z.w.y):999;
-   // Guards are more willing to engage; civilians prioritize town life.
-   let aggro=professions[s.job]?.combat||0;
-   if(z&&(d<95+aggro*12||Math.random()<.0015+aggro*.0005)){s.target=z;s.facility=null;s.mode="chase";s.cool=0}
+ if(s.mode===AI.RESCUE_CARRY){
+   let q=s.carrying;if(!q){enterPostCombat(s);return}
+   let h=hospital();if(moveW(s,h,.30)){q.w={...h};q.mode=AI.HOSPITAL;q.hp=1;q.stateTicks=230;q.rescuer=null;s.carrying=null;s.rescuing=null;enterPostCombat(s);say(q.name+" reached the Medic Tent.")}else q.w={x:s.w.x-5,y:s.w.y-2};return
+ }
+
+ // Facility states are committed; no enemy retargeting while using a facility.
+ if(s.mode===AI.GO_FACILITY){
+   if(!s.facility||facilityUsers(s.facility)>facilityCapacity(s.facility)){s.facility=null;enterFree(s,25);return}
+   if(routeMove(s,buildCenter(s.facility),.32)){let r=facilityRules[s.facility.type];s.mode=AI.USE_FACILITY;s.activity=r.label;s.stateTicks=r.use;say(s.name+": "+r.label+"…")}return
+ }
+ if(s.mode===AI.USE_FACILITY){s.moving=false;if(s.stateTicks<=0){s.lastFacility=s.facility;finishFacility(s);s.stateTicks=50+s.i*9}return}
+
+ // Combat states are committed to one target.
+ if([AI.CHASE,AI.ATTACK,AI.RECOVER].includes(s.mode)){
+   if(!s.target||s.target.hp<=0){enterPostCombat(s);return}
+   if(s.mode===AI.CHASE){let d=Math.hypot(s.w.x-s.target.w.x,s.w.y-s.target.w.y);if(d>20)moveW(s,s.target.w,.48);else{s.moving=false;s.mode=AI.ATTACK;s.stateTicks=32+s.i*8}return}
+   if(s.mode===AI.ATTACK){s.moving=false;if(s.stateTicks<=0){let z=s.target,bonus=professions[s.job]?.combat||0,dmg=Math.round(6+s.weapon[1]*.55+bonus);z.hp-=dmg;floats.push({w:{...z.w},t:"-"+dmg,col:"#ffe06b",a:55});s.mastery+=.5;
+     if(z.hp<=0){S.kills++;let zd=zombieTypes[z.type]||zombieTypes.walker;s.money+=zd.reward+bonus;S.money+=4;S.earned+=4;renownGain(zd.ren,zd.name+" defeated");say(s.name+" defeated a Walker!");if(S.stage===1&&S.kills>=3){S.stage=2;renownGain(10,"Goal complete");say("Goal complete!")}enterPostCombat(s);return}
+     s.mode=AI.RECOVER;s.stateTicks=48+s.i*9}return}
+   if(s.mode===AI.RECOVER){s.moving=false;if(s.stateTicks<=0)s.mode=AI.CHASE;return}
+ }
+
+ // Post-combat deliberately pauses, then checks rescue BEFORE a new target.
+ if(s.mode===AI.POST_COMBAT){
+   s.moving=false;
+   if(downedUnassigned().length){assignRescue();if(s.mode===AI.RESCUE_TO)return}
+   if(s.stateTicks<=0)enterFree(s,20);return
+ }
+
+ // FREE is the only decision state. Decisions are not reconsidered every frame.
+ if(s.mode===AI.FREE){
+   if(s.stateTicks>0){if(!s.dest)s.dest=roamDest(s);if(s.dest&&routeMove(s,s.dest,.28))s.dest=null;return}
+   if(downedUnassigned().length){assignRescue();if(s.mode===AI.RESCUE_TO)return}
+   let cfg=jobAI[s.job]||jobAI.Civilian;
+   if(Math.random()<Math.min(.9,.45*cfg.town)&&chooseTownAction(s))return;
+   if(acquireEnemy(s))return;
+   if(chooseTownAction(s))return;
+   s.lastFacility=null;s.dest=roamDest(s);s.stateTicks=55+Math.random()*80;routeMove(s,s.dest,.28);return
+ }
+}
+function zai(z){
+ let d=zombieTypes[z.type]||zombieTypes.walker;if(z.cool>0)z.cool--;if(z.stateTicks>0)z.stateTicks--;
+ if(z.mode==="appear"){z.moving=false;if(z.stateTicks<=0){z.mode="idle";z.stateTicks=35+Math.random()*70}return}
+ if(z.mode==="idle"){
+   if(!z.dest||z.stateTicks<=0){z.dest={x:z.w.x+(Math.random()-.5)*34,y:z.w.y+(Math.random()-.5)*18};z.stateTicks=35+Math.random()*80}
+   if(z.dest)moveW(z,z.dest,d.spd);
+   let candidates=S.sv.filter(s=>s.hp>0&&![AI.DOWN,AI.HOSPITAL].includes(s.mode)).sort((a,b)=>Math.hypot(a.w.x-z.w.x,a.w.y-z.w.y)-Math.hypot(b.w.x-z.w.x,b.w.y-z.w.y));
+   if(candidates.length&&Math.hypot(candidates[0].w.x-z.w.x,candidates[0].w.y-z.w.y)<d.aggro){z.target=candidates[0];z.mode="zchase"}
    return
  }
- // Once combat starts, the target remains locked until that exact zombie dies.
- if(["chase","windup","recover"].includes(s.mode)&&(!s.target||s.target.hp<=0)){s.target=null;s.mode="postkill";s.cool=80+s.i*20;return}
- if(s.mode==="chase"){let d=Math.hypot(s.w.x-s.target.w.x,s.w.y-s.target.w.y);if(d>20)moveW(s,s.target.w,.48);else{s.moving=false;s.mode="windup";s.cool=32+s.i*8}return}
- if(s.mode==="windup"){s.moving=false;if(s.cool<=0){let z=s.target;if(z&&z.hp>0){let bonus=professions[s.job]?.combat||0,dmg=Math.round(6+s.weapon[1]*.55+bonus);z.hp-=dmg;floats.push({w:{...z.w},t:"-"+dmg,col:"#ffe06b",a:55});s.mastery+=.5;
-   if(z.hp<=0){S.kills++;s.money+=18+bonus;S.money+=4;S.ren++;say(s.name+" defeated a Walker!");if(S.stage===1&&S.kills>=3){S.stage=2;S.ren+=10;say("Goal complete! Renown +10")}s.target=null;s.mode="postkill";s.cool=95+s.i*22;return}}
-   s.mode="recover";s.cool=48+s.i*9}return}
- if(s.mode==="recover"){if(s.cool<=0)s.mode="chase";return}
+ if(z.mode==="zchase"){
+   if(!z.target||z.target.hp<=0||[AI.DOWN,AI.HOSPITAL].includes(z.target.mode)){z.target=null;z.mode="idle";z.stateTicks=40;return}
+   let dist=Math.hypot(z.target.w.x-z.w.x,z.target.w.y-z.w.y);
+   if(dist>115&&!z.quest){z.target=null;z.mode="idle";z.stateTicks=60;return}
+   if(dist>19)moveW(z,z.target.w,d.spd*2.2);else{z.mode="zattack";z.stateTicks=26}
+   return
+ }
+ if(z.mode==="zattack"){z.moving=false;if(z.stateTicks<=0){if(z.target&&z.target.hp>0){z.target.hp-=d.atk;floats.push({w:{...z.target.w},t:"-"+d.atk,col:"#ff6e62",a:55})}z.mode="zrecover";z.stateTicks=58+Math.random()*22}return}
+ if(z.mode==="zrecover"){if(z.stateTicks<=0)z.mode=z.target&&z.target.hp>0?"zchase":"idle";return}
 }
-function zai(z){z.cool=Math.max(0,z.cool-1);if(!z.dest||Math.random()<.006)z.dest={x:z.w.x+(Math.random()-.5)*28,y:z.w.y+(Math.random()-.5)*14};if(z.dest)moveW(z,z.dest,.07);let near=S.sv.filter(s=>s.hp>0&&!["collapsed","hospital"].includes(s.mode)&&Math.hypot(s.w.x-z.w.x,s.w.y-z.w.y)<22);if(near.length&&z.cool<=0){let s=near[Math.floor(Math.random()*near.length)];s.hp-=4;floats.push({w:{...s.w},t:"-4",col:"#ff6e62",a:55});z.cool=70}}
 function init(){
  S.b=[{type:"medic",x:3,y:9,w:2,h:2,q:10,a:10},{type:"canteen",x:6,y:9,w:2,h:2,q:10,a:10},{type:"house",x:10,y:12,w:2,h:2,q:10,a:8}];
  S.sv=[mk("Marcus","Guard",3,6,12,0),mk("Amy","Medic",2,9,13,1),mk("Lena","Scavenger",2,4,14,2)];
- spawn(5,3);spawn(9,3);spawn(12,4);
- Object.entries(defs).forEach(([k,d])=>{let b=document.createElement("button");b.className="build";b.innerHTML=`${d.name} · ${d.w}×${d.h}<small>$${d.cost} · PARTS ${d.mat}</small>`;b.onclick=()=>{sel=k;closeP();say("Build Mode: tap a grid tile")};buildGrid.appendChild(b)});ui()
+ spawn(5,3,"walker");spawn(9,3,"crawler");spawn(12,4,"walker");
+ Object.entries(defs).forEach(([k,d])=>{let b=document.createElement("button");b.className="build";b.innerHTML=`${d.name} · ${d.w}×${d.h}<small>$${d.cost} · PARTS ${d.mat}</small>`;b.onclick=()=>{sel=k;preview=null;confirmBar.style.display="none";closeP();say("Move the preview, then confirm placement.")};buildGrid.appendChild(b)});ui()
 }
-function closeP(){buildPanel.style.display=infoPanel.style.display="none"}function showBuild(){closeP();buildPanel.style.display="block"}function say(t){toast.textContent=t;toast.style.opacity=1;clearTimeout(window.to);window.to=setTimeout(()=>toast.style.opacity=0,1500)}
+function closeP(){buildPanel.style.display=infoPanel.style.display="none"}
+function cancelPreview(){preview=null;sel=null;confirmBar.style.display="none";say("Placement cancelled.")}
+function confirmPreview(){
+ if(!preview||!sel)return;
+ let d=defs[sel];
+ if(!footprintFree(preview.x,preview.y,d)){say("Placement is blocked.");return}
+ if(S.money<d.cost||S.mat<d.mat){say("Not enough resources.");return}
+ S.money-=d.cost;S.mat-=d.mat;
+ S.b.push({type:sel,x:preview.x,y:preview.y,w:d.w,h:d.h,q:d.q,a:d.a});
+ if(sel==="water"&&S.stage===0){S.stage=1;S.ren+=5}
+ say(d.name+" constructed!");
+ preview=null;sel=null;confirmBar.style.display="none";ui()
+}function showBuild(){closeP();buildPanel.style.display="block"}function say(t){toast.textContent=t;toast.style.opacity=1;clearTimeout(window.to);window.to=setTimeout(()=>toast.style.opacity=0,1500)}
 function local(e){let r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 c.addEventListener("pointerdown",e=>{c.setPointerCapture(e.pointerId);let p=local(e);pointers.set(e.pointerId,p);if(pointers.size===1){tapStart={...p,id:e.pointerId,cx:cam.x,cy:cam.y,moved:false}}else if(pointers.size===2){let a=[...pointers.values()],dx=a[1].x-a[0].x,dy=a[1].y-a[0].y;gesture={dist:Math.hypot(dx,dy),z:cam.z,mid:{x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},cx:cam.x,cy:cam.y};tapStart=null}})
 c.addEventListener("pointermove",e=>{if(!pointers.has(e.pointerId))return;let p=local(e);pointers.set(e.pointerId,p);
@@ -217,12 +356,78 @@ c.addEventListener("pointermove",e=>{if(!pointers.has(e.pointerId))return;let p=
 })
 function pointerEnd(e){let p=local(e),wasTap=tapStart&&tapStart.id===e.pointerId&&!tapStart.moved&&pointers.size===1;pointers.delete(e.pointerId);if(pointers.size<2)gesture=null;if(wasTap)tapAt(p.x,p.y);tapStart=null}
 c.addEventListener("pointerup",pointerEnd);c.addEventListener("pointercancel",pointerEnd);
-function tapAt(x,y){let t=inv(x,y);if(sel){let d=defs[sel];if(!footprintFree(t.x,t.y,d)){say("Those tiles are blocked or outside the Haven.");return}if(S.money<d.cost||S.mat<d.mat){say("Not enough resources.");return}S.money-=d.cost;S.mat-=d.mat;S.b.push({type:sel,x:t.x,y:t.y,w:d.w,h:d.h,q:d.q,a:d.a});if(sel==="water"&&S.stage===0){S.stage=1;S.ren+=5}say(d.name+" constructed!");sel=null;ui();return}
- let b=S.b.find(b=>t.x>=b.x&&t.x<b.x+b.w&&t.y>=b.y&&t.y<b.y+b.h);if(b){it.textContent=defs[b.type].name.toUpperCase();let r=facilityRules[b.type];ib.innerHTML=`Footprint: <b>${b.w}×${b.h} tiles</b><br>Price: <b>$${r?r.price:0}</b><br>Quality: <b>${b.q}</b><br>Appeal: <b>${b.a}</b><br>Capacity: <b>${facilityCapacity(b)}</b><br>Current visitors: <b>${facilityUsers(b)}</b><br><br>This facility is snapped to the Haven grid.`;infoPanel.style.display="block"}}
-function showSurvivors(){closeP();it.textContent="SURVIVORS";ib.innerHTML=S.sv.map(s=>`<b>${s.name}</b> · ${s.job} Lv.${s.l} ${s.resident?"🏠":""}<br>HP ${Math.ceil(s.hp)}/${s.max} · $${s.money} · SAT ♥${Math.floor(s.sat)}<br>${s.weapon[0]} · Mastery ${Math.floor(s.mastery)} · ${s.activity||s.mode.toUpperCase()}`).join("<hr>");infoPanel.style.display="block"}
+function tapAt(x,y){let t=inv(x,y);if(sel){
+ let d=defs[sel];
+ // Clamp nothing: the player sees exactly whether the selected footprint fits.
+ preview={type:sel,x:t.x,y:t.y,w:d.w,h:d.h,q:d.q,a:d.a,ok:footprintFree(t.x,t.y,d)};
+ confirmName.textContent=`${d.name.toUpperCase()} · ${d.w}×${d.h} · $${d.cost} · PARTS ${d.mat}`+(preview.ok?"":" · BLOCKED");
+ yesBuild.disabled=!preview.ok;yesBuild.style.opacity=preview.ok?"1":".45";
+ confirmBar.style.display="block";
+ if(!preview.ok)say("Red footprint = invalid. Tap another tile.");
+ return
+} let b=S.b.find(b=>t.x>=b.x&&t.x<b.x+b.w&&t.y>=b.y&&t.y<b.y+b.h);if(b){it.textContent=defs[b.type].name.toUpperCase();let r=facilityRules[b.type];ib.innerHTML=`Footprint: <b>${b.w}×${b.h} tiles</b><br>Price: <b>$${r?r.price:0}</b><br>Quality: <b>${b.q}</b><br>Appeal: <b>${b.a}</b><br>Capacity: <b>${facilityCapacity(b)}</b><br>Current visitors: <b>${facilityUsers(b)}</b><br>Role: <b>${r?r.label:"Facility"}</b><br><br>This facility is snapped to the Haven grid.`;infoPanel.style.display="block"}}
+function showSurvivors(){closeP();it.textContent="SURVIVORS";ib.innerHTML=S.sv.map(s=>`<b>${s.name}</b> · ${s.job} Lv.${s.l} ${s.resident?"🏠 RESIDENT":""}<br>HP ${Math.ceil(s.hp)}/${s.max} · $${s.money} · SAT ♥${Math.floor(s.sat)}<br>Weapon: ${s.weapon[0]} · Mastery ${Math.floor(s.mastery)}<br>Status: <b>${s.activity||s.mode}</b> · Hunger ${Math.round(s.hunger)} · Thirst ${Math.round(s.thirst)} · Fatigue ${Math.round(s.fatigue)}<br>Career: ${(professions[s.job]?.next||[]).join(" / ")||"Master tier"}`).join("<hr>");infoPanel.style.display="block"}
 function showItems(){closeP();it.textContent="ITEMS";ib.innerHTML="Equipment and facility investment items expand after the core town controls are locked.";infoPanel.style.display="block"}
-function showGuide(){closeP();it.textContent="V0.5 CONTROLS";ib.innerHTML="<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles; red diamonds are occupied. The complete footprint must fit inside the blue Haven boundary.<br><br>Survivors live autonomously: needs make them choose facilities, spend personal money, gain Satisfaction, roam, rescue casualties, and fight. Once combat starts they keep the same target until it is defeated.";infoPanel.style.display="block"}
-function ui(){money.textContent=S.money;food.textContent=S.food;water.textContent=S.water;mat.textContent=S.mat;ren.textContent=S.ren;clock.textContent=`DAY ${S.day} · ${String(S.hour).padStart(2,"0")}:00`;qt.textContent=S.stage===0?"Build a Water Collector":S.stage===1?`Defeat 3 Walkers (${Math.min(S.kills,3)}/3)`:"Goal complete — grow the Haven!"}
+function showGuide(){closeP();it.textContent="V0.5 CONTROLS";ib.innerHTML="<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint. Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. V0.9 introduced committed AI states. Survivors decide while FREE, then finish the chosen activity instead of changing their mind every frame. Rescue is checked before new combat. Combat locks one target through CHASE → ATTACK → RECOVER until that target is defeated. After combat, survivors pause before deciding again.";infoPanel.style.display="block"}
+
+function queueResidentRequest(s){
+ S.requests.push({type:"resident",s});showNextRequest()
+}
+function showNextRequest(){
+ let box=document.getElementById("requestBox"); if(!box||box.innerHTML||!S.requests.length)return;
+ let q=S.requests[0],s=q.s;
+ box.innerHTML=`<div class="request"><b>🏠 MOVE-IN REQUEST</b><br>${s.name} wants to make Zombie Haven home.<br>Satisfaction ♥${Math.floor(s.sat)}<br><button id="acceptReq">ACCEPT</button><button id="declineReq">NOT YET</button></div>`;
+ document.getElementById("acceptReq").onclick=()=>{s.resident=true;renownGain(4,"New resident");say(s.name+" became a resident!");S.requests.shift();box.innerHTML="";showNextRequest();ui()};
+ document.getElementById("declineReq").onclick=()=>{s.requested=false;s.sat=Math.max(20,s.sat-5);S.requests.shift();box.innerHTML="";showNextRequest();ui()}
+}
+function visitorArrival(){
+ S.arrivalClock++;if(S.arrivalClock<2200||S.sv.length>=7)return;S.arrivalClock=0;
+ let names=["Noah","Maya","Eli","June","Rosa","Theo"],jobs=["Civilian","Scavenger","Guard","Medic"];
+ let name=names.find(n=>!S.sv.some(s=>s.name===n))||("Survivor "+(S.sv.length+1));
+ let job=jobs[Math.floor(Math.random()*jobs.length)],v=mk(name,job,1,1,7,S.sv.length);
+ v.sat=3;v.money=80+Math.floor(Math.random()*80);v.stateTicks=80;S.sv.push(v);screenToast("NEW SURVIVOR · "+name);say(name+" arrived at the Haven.");ui()
+}
+// Grid-route layer. Characters still render in world pixels, but destinations are routed
+// through walkable tile centers so buildings/occupied tiles can become real obstacles.
+function worldToTile(w){
+ let a=w.x/(TW/2),b=w.y/(TH/2);return{x:Math.round((a+b)/2-.5),y:Math.round((b-a)/2-.5)}
+}
+function occupiedTile(x,y){
+ return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h)
+}
+function walkable(x,y){return x>=0&&y>=0&&x<GW&&y<GH&&!occupiedTile(x,y)}
+function findRoute(from,to){
+ let a=worldToTile(from),b=worldToTile(to);if(!walkable(b.x,b.y))return [to];
+ let key=(x,y)=>x+","+y,q=[[a.x,a.y]],prev=new Map([[key(a.x,a.y),null]]),dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+ while(q.length){
+  let [x,y]=q.shift();if(x===b.x&&y===b.y)break;
+  for(let [dx,dy] of dirs){let nx=x+dx,ny=y+dy,k=key(nx,ny);if(walkable(nx,ny)&&!prev.has(k)){prev.set(k,[x,y]);q.push([nx,ny])}}
+ }
+ let bk=key(b.x,b.y);if(!prev.has(bk))return [to];let cells=[],cur=[b.x,b.y];
+ while(cur){cells.push(tileCenter(cur[0],cur[1]));cur=prev.get(key(cur[0],cur[1]))}
+ cells.reverse();cells.push(to);return cells.slice(1)
+}
+function routeMove(s,dest,spd){
+ if(!s.route||s.routeGoal!==dest){s.route=findRoute(s.w,dest);s.routeGoal=dest}
+ if(!s.route.length){s.route=null;s.routeGoal=null;return true}
+ let p=s.route[0];if(moveW(s,p,spd)){s.route.shift();if(!s.route.length){s.route=null;s.routeGoal=null;return true}}return false
+}
+function residents(){return S.sv.filter(s=>s.resident).length}
+function checkRank(){
+ let next=rankRules[S.rank];if(!next)return;
+ if(S.ren>=next.ren&&S.earned>=next.income&&residents()>=next.residents&&S.b.length>=next.facilities){
+   S.rank++;S.threat++;S.money+=250*S.rank;S.mat+=3;renownGain(5,"Haven Rank "+S.rank);screenToast("★ HAVEN RANK "+S.rank+" ★");say("HAVEN RANK "+S.rank+"! New threats and opportunities.");ui()
+ }
+}
+function rankText(){return "★".repeat(S.rank)}
+function triggerWorldEvent(){
+ S.eventClock++;if(S.eventClock<1500)return;S.eventClock=0;
+ let r=Math.random();
+ if(r<.35){S.threat=Math.min(8,S.threat+1);say("Zombie activity is rising outside the Haven.")}
+ else if(r<.65){S.money+=80;S.earned+=80;say("A survivor caravan traded with the Haven. +$80")}
+ else {S.mat+=2;say("Scavengers recovered spare parts. +2 PARTS")}
+}
+function ui(){money.textContent=S.money;food.textContent=S.food;water.textContent=S.water;mat.textContent=S.mat;ren.textContent=S.ren;rank.textContent=rankText();threat.textContent=S.threat;clock.textContent=`DAY ${S.day} · ${String(S.hour).padStart(2,"0")}:00`;qt.textContent=S.stage===0?"Build a Water Collector":S.stage===1?`Defeat 3 Walkers (${Math.min(S.kills,3)}/3)`:"Goal complete — grow the Haven!"}
 function draw(){
  g.clearRect(0,0,W,H);g.fillStyle="#15332d";g.fillRect(0,0,W,H);
  // full world tiles
@@ -241,9 +446,18 @@ function draw(){
  [[1,3],[14,3],[1,9],[14,9],[2,18],[13,18],[3,4],[12,5],[2,14],[14,15],[7,18]].forEach(a=>tree(...a));
  [[3,8],[11,15],[6,16],[12,9]].forEach(a=>crateAt(...a));
  // Build grid is shown tile-by-tile only in build mode
- if(sel){for(let y=BUILD.y0;y<=BUILD.y1;y++)for(let x=BUILD.x0;x<=BUILD.x1;x++){let occ=tileOccupied(x,y);diamond(x,y,occ?"#c45a55":"#6fcf6a",occ?"#ff9a8f":"#d8f17a")}}
- // preview footprint under current last touch isn't necessary; tapping snaps.
+ if(sel){
+   for(let y=BUILD.y0;y<=BUILD.y1;y++)for(let x=BUILD.x0;x<=BUILD.x1;x++){
+     let occ=tileOccupied(x,y);diamond(x,y,occ?"#b75a55":"#5fae61",occ?"#e58a83":"#9bdc85")
+   }
+   if(preview){
+     let d=defs[sel],ok=footprintFree(preview.x,preview.y,d);preview.ok=ok;
+     // Exact tiles the facility will occupy.
+     for(let yy=0;yy<d.h;yy++)for(let xx=0;xx<d.w;xx++)diamond(preview.x+xx,preview.y+yy,ok?"#72d9df":"#e25b55",ok?"#d7ffff":"#ffb0a8");
+   }
+ }
  let things=[];
+ if(preview&&sel)things.push({y:scr(buildCenter(preview)).y+.01,fn:()=>building(preview,true,preview.ok)});
  S.b.forEach(b=>things.push({y:scr(buildCenter(b)).y,fn:()=>building(b)}));
  S.z.filter(z=>z.hp>0).forEach(z=>things.push({y:scr(z.w).y,fn:()=>zombie(z)}));
  S.sv.forEach(s=>things.push({y:scr(s.w).y,fn:()=>human(s)}));
@@ -251,6 +465,6 @@ function draw(){
  for(let f of floats){let p=scr(f.w);g.globalAlpha=Math.min(1,f.a/15);g.fillStyle=f.col;g.font=`bold ${Math.max(9,10*cam.z)}px Arial`;g.textAlign="center";g.fillText(f.t,p.x,p.y-22*cam.z-(55-f.a)*.2);g.globalAlpha=1}
  for(let i=floats.length-1;i>=0;i--)if(--floats[i].a<=0)floats.splice(i,1)
 }
-function loop(){tick++;S.sv.forEach(ai);S.z.forEach(zai);S.z=S.z.filter(z=>z.hp>0);if(S.z.length<3&&tick%180===0)spawn();if(tick%1000===0){S.hour++;if(S.hour>=24){S.hour=0;S.day++;S.b.forEach(b=>{if(b.type==="farm")S.food+=3;if(b.type==="water")S.water+=4});S.food=Math.max(0,S.food-S.sv.length);S.water=Math.max(0,S.water-S.sv.length)}ui()}draw();requestAnimationFrame(loop)}
+function loop(){tick++;S.sv.forEach(ai);S.z.forEach(zai);S.z=S.z.filter(z=>z.hp>0);monsterGeneration();triggerWorldEvent();visitorArrival();if(tick%240===0)checkRank();if(tick%1000===0){S.hour++;if(S.hour>=24){S.hour=0;S.day++;S.b.forEach(b=>{if(b.type==="farm")S.food+=3;if(b.type==="water")S.water+=4});S.food=Math.max(0,S.food-S.sv.length);S.water=Math.max(0,S.water-S.sv.length)}ui()}draw();requestAnimationFrame(loop)}
 init();requestAnimationFrame(loop);
 </script></body></html>
