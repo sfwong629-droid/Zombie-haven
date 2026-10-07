@@ -1,0 +1,8 @@
+{
+  "name": "Zombie Haven V2.3.2",
+  "short_name": "Zombie Haven",
+  "start_url": "./?v=2.3.2",
+  "display": "standalone",
+  "background_color": "#071b29",
+  "theme_color": "#0d3b52"
+}
