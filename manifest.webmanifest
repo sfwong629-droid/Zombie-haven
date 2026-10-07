@@ -1,7 +1,7 @@
 {
-  "name": "Zombie Haven V1.1.2",
+  "name": "Zombie Haven V1.1.3",
   "short_name": "Zombie Haven",
-  "start_url": "./?v=1.1.2",
+  "start_url": "./?v=1.1.3",
   "display": "standalone",
   "background_color": "#10212a",
   "theme_color": "#183646"
