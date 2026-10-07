@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
-<title>Zombie Haven V1.1.1</title>
+<title>Zombie Haven V1.1.2</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#10212a;font-family:Arial,Helvetica,sans-serif}
@@ -34,11 +34,11 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 .request{position:absolute;left:8%;right:8%;bottom:116px;background:#17251ff2;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:12;box-shadow:0 5px 0 #0a100d}
 .request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px}
 </style></head><body><div id="app">
-<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1.1 HOTFIX</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div>
+<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1.2 FIXED</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div>
 <div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
 <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt">Build a Water Collector</span></div>
 <div id="zoom">DRAG · PINCH <span id="zv">100%</span></div>
-<div id="world"><canvas id="game"></canvas></div><div class="toast" id="toast"></div>
+<div id="world"><canvas id="game"></canvas></div><div id="fx" class="fxLayer"></div><div id="requestBox"></div><div class="toast" id="toast"></div>
 <div class="panel" id="buildPanel"><button class="x" onclick="closeP()">X</button><h3>BUILD FACILITY</h3><div class="grid" id="buildGrid"></div></div>
 <div class="panel" id="infoPanel"><button class="x" onclick="closeP()">X</button><h3 id="it">INFO</h3><div id="ib" style="font-size:10px;line-height:1.55"></div></div>
 <div id="confirmBar"><div id="confirmName">PLACE BUILDING?</div><div id="confirmBtns"><button id="noBuild" onclick="cancelPreview()">CANCEL</button><button id="yesBuild" onclick="confirmPreview()">CONFIRM</button></div></div>
@@ -103,7 +103,7 @@ const rankRules=[
 
 const progressionFx=[];
 function screenToast(txt){
- let d=document.createElement("div");d.className="toast";d.textContent=txt;fx.appendChild(d);setTimeout(()=>d.remove(),1500)
+ let d=document.createElement("div");d.className="toast";d.textContent=txt;document.getElementById("fx").appendChild(d);setTimeout(()=>d.remove(),1500)
 }
 function renownGain(n,reason=""){
  S.ren+=n; progressionFx.push({kind:"ren",n,reason,t:80});
@@ -228,7 +228,7 @@ function finishFacility(s){
    if(choices.length){let w=choices[0];s.money-=w[2];moneyGain(w[2],"Armory");s.weapon=w;screenToast(s.name+" equipped "+w[0]);s.sat+=2;say(s.name+" bought a "+w[0]+".")}
  }
  s.mastery+=1+(professions[s.job]?.facility||0)*.1;
- if(!s.resident&&s.sat>=35){s.resident=true;S.ren+=5;say(s.name+" wants to make the Haven home!")}
+ if(!s.resident&&s.sat>=35&&!s.requested){s.requested=true;queueResidentRequest(s)}
  s.facility=null;s.activity=null;s.mode=AI.FREE;s.stateTicks=45+s.i*13;s.cool=0;ui()
 }
 function roamDest(s){let x=BUILD.x0+1+Math.random()*(BUILD.x1-BUILD.x0-2),y=BUILD.y0+1+Math.random()*(BUILD.y1-BUILD.y0-2);return tileCenter(x,y)}
@@ -343,8 +343,8 @@ function confirmPreview(){
  if(!footprintFree(preview.x,preview.y,d)){say("Placement is blocked.");return}
  if(S.money<d.cost||S.mat<d.mat){say("Not enough resources.");return}
  S.money-=d.cost;S.mat-=d.mat;
- S.b.push({type:sel,x:preview.x,y:preview.y,w:d.w,h:d.h,q:d.q,a:d.a});
- if(sel==="water"&&S.stage===0){S.stage=1;S.ren+=5}
+ S.b.push({type:sel,x:preview.x,y:preview.y,w:d.w,h:d.h,q:d.q,a:d.a});screenToast("🔨 "+d.name.toUpperCase()+" BUILT");renownGain(1,"Construction");
+ if(sel==="water"&&S.stage===0){S.stage=1;renownGain(5,"Water secured")}
  say(d.name+" constructed!");
  preview=null;sel=null;confirmBar.style.display="none";ui()
 }function showBuild(){closeP();buildPanel.style.display="block"}function say(t){toast.textContent=t;toast.style.opacity=1;clearTimeout(window.to);window.to=setTimeout(()=>toast.style.opacity=0,1500)}
@@ -368,7 +368,7 @@ function tapAt(x,y){let t=inv(x,y);if(sel){
 } let b=S.b.find(b=>t.x>=b.x&&t.x<b.x+b.w&&t.y>=b.y&&t.y<b.y+b.h);if(b){it.textContent=defs[b.type].name.toUpperCase();let r=facilityRules[b.type];ib.innerHTML=`Footprint: <b>${b.w}×${b.h} tiles</b><br>Price: <b>$${r?r.price:0}</b><br>Quality: <b>${b.q}</b><br>Appeal: <b>${b.a}</b><br>Capacity: <b>${facilityCapacity(b)}</b><br>Current visitors: <b>${facilityUsers(b)}</b><br>Role: <b>${r?r.label:"Facility"}</b><br><br>This facility is snapped to the Haven grid.`;infoPanel.style.display="block"}}
 function showSurvivors(){closeP();it.textContent="SURVIVORS";ib.innerHTML=S.sv.map(s=>`<b>${s.name}</b> · ${s.job} Lv.${s.l} ${s.resident?"🏠 RESIDENT":""}<br>HP ${Math.ceil(s.hp)}/${s.max} · $${s.money} · SAT ♥${Math.floor(s.sat)}<br>Weapon: ${s.weapon[0]} · Mastery ${Math.floor(s.mastery)}<br>Status: <b>${s.activity||s.mode}</b> · Hunger ${Math.round(s.hunger)} · Thirst ${Math.round(s.thirst)} · Fatigue ${Math.round(s.fatigue)}<br>Career: ${(professions[s.job]?.next||[]).join(" / ")||"Master tier"}`).join("<hr>");infoPanel.style.display="block"}
 function showItems(){closeP();it.textContent="ITEMS";ib.innerHTML="Equipment and facility investment items expand after the core town controls are locked.";infoPanel.style.display="block"}
-function showGuide(){closeP();it.textContent="V0.5 CONTROLS";ib.innerHTML="<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint. Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. V0.9 introduced committed AI states. Survivors decide while FREE, then finish the chosen activity instead of changing their mind every frame. Rescue is checked before new combat. Combat locks one target through CHASE → ATTACK → RECOVER until that target is defeated. After combat, survivors pause before deciding again.";infoPanel.style.display="block"}
+function showGuide(){closeP();it.textContent="V1.1.2 CONTROLS";ib.innerHTML=`<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint.<br>Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. Survivors commit to activities, rescue casualties before taking new fights, and keep a combat target through CHASE → ATTACK → RECOVER.`;infoPanel.style.display="block"}
 
 function queueResidentRequest(s){
  S.requests.push({type:"resident",s});showNextRequest()

@@ -1,6 +1,8 @@
-Zombie Haven V1.1.1 HOTFIX
-Fixes a V1.1 runtime crash in tile pathfinding:
-- walkable() incorrectly referenced GW/GH, which do not exist.
-- corrected to COLS/ROWS.
-That exception happened during the first survivor AI frame, before draw(), producing a blank world while the HTML HUD remained visible.
-Also adds a visible V1.1.1 HOTFIX build stamp and cache-control hints.
+Zombie Haven V1.1.2
+Critical fixes:
+1. Fixed fatal JavaScript parse error caused by a multiline Guide string.
+2. Added the missing FX overlay and resident-request container to the actual page markup.
+3. Fixed the residency request code path that V1.1 had failed to replace.
+4. Added construction/Renown feedback to the actual confirm-build code path.
+5. Retains the COLS/ROWS pathfinding correction from V1.1.1.
+6. JavaScript was validated with `node --check` before packaging.
