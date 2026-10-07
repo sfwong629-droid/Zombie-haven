@@ -1,0 +1,9 @@
+{
+  "name": "Zombie Haven V0.4",
+  "short_name": "Zombie Haven",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#263225",
+  "theme_color": "#263225"
+}
