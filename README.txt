@@ -1,12 +1,20 @@
-Zombie Haven V1.1.3 VERIFIED
-Critical root cause fixed:
-- The HUD's first .row div was never closed before the second row began.
-- This accidentally nested #world inside the fixed-height #hud.
-- Because #world uses top:76px and bottom:94px, its computed height became invalid/zero, producing the blank game area even when JavaScript was valid.
+Zombie Haven V1.2 — Visual Overhaul Phase 1
+Based on the user-approved original Zombie Haven asset board, using DV2 only as a scale/readability/system reference.
 
-Additional hardening:
-- Explicit DOM references replace implicit ID globals for iOS/Safari reliability.
-- Visible runtime crash reporter added.
-- Previous JavaScript parse, COLS/ROWS, FX layer and residency fixes retained.
+Implemented:
+- New darker pixel-management HUD and Renown progress bar.
+- Reworked terrain palette, roads, debris, props and ground shadows.
+- Detailed original facility renderers with post-apocalyptic dressing.
+- Survivor sprites redesigned around profession silhouettes.
+- Four-frame procedural walking motion.
+- Attack/recoil/muzzle-flash presentation.
+- Downed/carrying visual states retained and improved.
+- Walker, Crawler, Runner and Bloated receive distinct silhouettes and movement.
+- Zombie chase/attack movement animation.
+- Building preview gets clearer valid/blocked presentation.
+- Stable V1.1.3 gameplay foundation retained.
+- Runtime crash reporter retained.
+
+Validation:
 - JavaScript passes node --check.
-- HTML nesting sanity check passes.
+- HTML nesting passes structural sanity check.

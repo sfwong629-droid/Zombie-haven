@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
-<title>Zombie Haven V1.1.3</title>
+<title>Zombie Haven V1.2</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#10212a;font-family:Arial,Helvetica,sans-serif}
@@ -33,8 +33,23 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 @keyframes renPulse{50%{transform:scale(1.22);filter:brightness(1.6)}}
 .request{position:absolute;left:8%;right:8%;bottom:116px;background:#17251ff2;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:12;box-shadow:0 5px 0 #0a100d}
 .request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px}
+
+/* V1.2 approved visual language */
+:root{--ink:#09131a;--panel:#102c3b;--panel2:#17465a;--line:#4f9ab4;--gold:#ffd33d;--cream:#fff0b0}
+#hud{background:linear-gradient(#0d2633,#123849);border-bottom:3px solid #07151d;box-shadow:0 3px 0 #32687d}
+.title{font-size:14px;color:#fff4bf;text-shadow:2px 2px #07131a;letter-spacing:.4px}
+.lv{color:#ffd33d;background:#213c43;border:1px solid #78965f;padding:2px 4px}
+.chip{background:#0b2230;border:2px solid #397e98;box-shadow:inset 0 0 0 1px #07151d;color:#fff1bd}
+#renBar{height:8px;width:88px;background:#07151d;border:1px solid #5a7780;display:inline-block;vertical-align:middle;margin:0 4px;position:relative}
+#renFill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#e49d21,#ffe34d)}
+#bottom{background:linear-gradient(#12384a,#0a202c);border-top:3px solid #376e83}
+#bottom button{background:linear-gradient(#1c5268,#123b4e);border:2px solid #4d91aa;box-shadow:inset 0 0 0 1px #07141c,0 2px 0 #061016;color:#fff5c4;text-shadow:1px 1px #061016}
+#bottom button:active{transform:translateY(2px);box-shadow:inset 0 0 0 1px #07141c}
+#quest{background:#102b39e8;border:2px solid #4c91aa;box-shadow:0 2px 0 #07141c;color:#fff3bd}
+.panel{background:#102a38f5;border:3px solid #4c91aa;box-shadow:0 4px 0 #07141c}
+.pixelTag{font:bold 9px monospace;color:#fff3bd;background:#0b202b;border:1px solid #477c8e;padding:2px 4px}
 </style></head><body><div id="app">
-<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1.3 VERIFIED</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
+<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.2 VISUAL</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span><span id="renBar"><span id="renFill"></span></span></div></div>
 <div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
 <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt">Build a Water Collector</span></div>
 <div id="zoom">DRAG · PINCH <span id="zv">100%</span></div>
@@ -45,7 +60,7 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 <div id="bottom"><button class="menu" onclick="showBuild()"><span class="ico">🔨</span>BUILD</button><button class="menu" onclick="showSurvivors()"><span class="ico">👥</span>SURVIVORS</button><button class="menu" onclick="showItems()"><span class="ico">🎒</span>ITEMS</button><button class="menu" onclick="showGuide()"><span class="ico">?</span>GUIDE</button></div>
 </div><script>
 const c=document.getElementById("game"),g=c.getContext("2d");g.imageSmoothingEnabled=false;
-const world=document.getElementById("world"),buildPanel=document.getElementById("buildPanel"),infoPanel=document.getElementById("infoPanel"),buildGrid=document.getElementById("buildGrid"),confirmBar=document.getElementById("confirmBar"),confirmName=document.getElementById("confirmName"),yesBuild=document.getElementById("yesBuild"),toast=document.getElementById("toast"),it=document.getElementById("it"),ib=document.getElementById("ib"),money=document.getElementById("money"),food=document.getElementById("food"),water=document.getElementById("water"),mat=document.getElementById("mat"),ren=document.getElementById("ren"),rank=document.getElementById("rank"),threat=document.getElementById("threat"),clock=document.getElementById("clock"),qt=document.getElementById("qt"),zv=document.getElementById("zv");
+const world=document.getElementById("world"),buildPanel=document.getElementById("buildPanel"),infoPanel=document.getElementById("infoPanel"),buildGrid=document.getElementById("buildGrid"),confirmBar=document.getElementById("confirmBar"),confirmName=document.getElementById("confirmName"),yesBuild=document.getElementById("yesBuild"),toast=document.getElementById("toast"),it=document.getElementById("it"),ib=document.getElementById("ib"),money=document.getElementById("money"),food=document.getElementById("food"),water=document.getElementById("water"),mat=document.getElementById("mat"),ren=document.getElementById("ren"),rank=document.getElementById("rank"),threat=document.getElementById("threat"),renFill=document.getElementById("renFill"),clock=document.getElementById("clock"),qt=document.getElementById("qt"),zv=document.getElementById("zv");
 window.addEventListener("error",e=>{let b=document.getElementById("crash");b.style.display="block";b.textContent="GAME ERROR: "+e.message+" @ line "+e.lineno});
 window.addEventListener("unhandledrejection",e=>{let b=document.getElementById("crash");b.style.display="block";b.textContent="GAME ERROR: "+(e.reason?.message||e.reason)});
 
@@ -132,62 +147,89 @@ function tileOccupied(x,y){return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b
 function hospital(){let b=S.b.find(b=>b.type==="medic");return b?buildCenter(b):tileCenter(3,10)}
 function collapsed(){return S.sv.filter(s=>s.mode===AI.DOWN&&!s.rescuer)}
 function idleForRescue(s){return [AI.FREE,AI.POST_COMBAT].includes(s.mode)&&s.hp>0&&!s.rescuing}
-function tree(x,y){let p=iso(x,y),z=cam.z;pxrect(p.x-2*z,p.y-13*z,4*z,13*z,"#6a4a2d","#332719");pxrect(p.x-9*z,p.y-23*z,18*z,9*z,"#2e7c3c","#174e2a");pxrect(p.x-6*z,p.y-29*z,12*z,9*z,"#49a64c","#174e2a")}
-function crateAt(x,y){let p=iso(x,y),z=cam.z;pxrect(p.x-6*z,p.y-8*z,12*z,9*z,"#a46a31","#4a301c")}
+function tree(x,y){let p=iso(x,y),z=cam.z;g.fillStyle="#14261d";g.fillRect(p.x-8*z,p.y-2*z,16*z,4*z);pxrect(p.x-2*z,p.y-16*z,4*z,16*z,"#654629","#2a2118");pxrect(p.x-10*z,p.y-27*z,20*z,9*z,"#245b36","#143b27");pxrect(p.x-7*z,p.y-34*z,14*z,10*z,"#3d8244","#173f29");pxrect(p.x-3*z,p.y-38*z,7*z,6*z,"#57964b","#173f29")}
+function crateAt(x,y){let p=iso(x,y),z=cam.z;g.fillStyle="#18231d";g.fillRect(p.x-8*z,p.y+1*z,16*z,3*z);pxrect(p.x-7*z,p.y-10*z,14*z,11*z,"#9b6332","#432b1c");pxrect(p.x-5*z,p.y-8*z,10*z,2*z,"#c18a49");pxrect(p.x-1*z,p.y-10*z,2*z,11*z,"#5c3a24")}
+function debris(x,y){let p=iso(x,y),z=cam.z;pxrect(p.x-8*z,p.y-4*z,6*z,4*z,"#77736a","#363631");pxrect(p.x+1*z,p.y-6*z,8*z,5*z,"#555b59","#2d302f");pxrect(p.x-2*z,p.y-9*z,3*z,8*z,"#9a5938","#4a2c20")}
 function building(b,ghost=false,ok=true){
- let p=scr(buildCenter(b)),z=cam.z, w=Math.max(28,(b.w+b.h)*13)*z, h=(24+(b.w+b.h-2)*3)*z;
- g.save();if(ghost)g.globalAlpha=.68;
- // IMPORTANT: the visual base is the exact same tiles used by placement/collision.
- for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++){
-   diamond(b.x+xx,b.y+yy,ghost?(ok?"#67cc69":"#d45450"):"#aa9462","#665333");
- }
- let roof="#c35b32",front="#d99b58",side="#9d623e",name=defs[b.type].name;
- if(b.type==="water"){roof="#5b93ad";front="#4f7585";side="#395966"}
- if(b.type==="armory"){roof="#586a70";front="#687b78";side="#45585a"}
- if(b.type==="canteen"){roof="#c67a3a";front="#d69b55";side="#9c6339"}
- if(b.type==="medic"){roof="#e6e2cf";front="#d6cba9";side="#aa9d7d"}
+ let p=scr(buildCenter(b)),z=cam.z,name=defs[b.type].name;
+ g.save();if(ghost)g.globalAlpha=.62;
+ for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++)diamond(b.x+xx,b.y+yy,ghost?(ok?"#4cb9a4":"#bd4b4b"):"#807650","#463f31");
+ let shadowW=(b.w+b.h)*10*z;g.fillStyle="#10201899";g.beginPath();g.ellipse(p.x,p.y+3*z,shadowW,6*z,0,0,Math.PI*2);g.fill();
  if(b.type==="farm"){
-   for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++){let q=iso(b.x+xx+.5,b.y+yy+.5);pxrect(q.x-7*z,q.y-2*z,14*z,5*z,"#6e8e3c");pxrect(q.x-4*z,q.y-7*z,3*z,6*z,"#4cad45");pxrect(q.x+2*z,q.y-6*z,3*z,5*z,"#75bd46")}
+   for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++){let q=iso(b.x+xx+.5,b.y+yy+.5);pxrect(q.x-10*z,q.y-4*z,20*z,6*z,"#5d6333","#35351f");for(let k=-7;k<=7;k+=7){pxrect(q.x+k*z,q.y-10*z,2*z,7*z,"#4e9b42");pxrect(q.x+(k-2)*z,q.y-8*z,5*z,2*z,"#77b64c")}}
+   pxrect(p.x-18*z,p.y-24*z,3*z,22*z,"#6d4a29");pxrect(p.x+15*z,p.y-24*z,3*z,22*z,"#6d4a29");pxrect(p.x-18*z,p.y-24*z,36*z,3*z,"#8b5f31");
  } else if(b.type==="water"){
-   pxrect(p.x-11*z,p.y-34*z,22*z,25*z,front,"#263d43");pxrect(p.x-8*z,p.y-30*z,16*z,4*z,"#8bc1ce");pxrect(p.x-9*z,p.y-8*z,3*z,15*z,"#463b2b");pxrect(p.x+6*z,p.y-8*z,3*z,15*z,"#463b2b")
+   pxrect(p.x-17*z,p.y-34*z,34*z,27*z,"#43545a","#1d292d");pxrect(p.x-14*z,p.y-31*z,12*z,20*z,"#3b86a0","#1b4454");pxrect(p.x+3*z,p.y-31*z,11*z,20*z,"#367994","#1b4454");
+   pxrect(p.x-12*z,p.y-27*z,8*z,3*z,"#71c4d4");pxrect(p.x+5*z,p.y-27*z,7*z,3*z,"#71c4d4");pxrect(p.x-20*z,p.y-9*z,40*z,4*z,"#6d4d30","#34271c");
  } else {
-   g.fillStyle=front;g.beginPath();g.moveTo(p.x-w/2,p.y-h);g.lineTo(p.x,p.y-h+w*.22);g.lineTo(p.x,p.y);g.lineTo(p.x-w/2,p.y-w*.22);g.closePath();g.fill();
-   g.fillStyle=side;g.beginPath();g.moveTo(p.x+w/2,p.y-h);g.lineTo(p.x,p.y-h+w*.22);g.lineTo(p.x,p.y);g.lineTo(p.x+w/2,p.y-w*.22);g.closePath();g.fill();
-   g.fillStyle=roof;g.beginPath();g.moveTo(p.x,p.y-h-w*.22);g.lineTo(p.x+w/2,p.y-h);g.lineTo(p.x,p.y-h+w*.22);g.lineTo(p.x-w/2,p.y-h);g.closePath();g.fill();g.strokeStyle="#54321f";g.stroke();
-   pxrect(p.x-4*z,p.y-10*z,8*z,10*z,"#573522","#2a2119");pxrect(p.x-15*z,p.y-14*z,7*z,6*z,"#8ed1df","#3b5360");
-   if(b.type==="medic"){pxrect(p.x-3*z,p.y-h-7*z,6*z,14*z,"#d94b48","#762c2a");pxrect(p.x-7*z,p.y-h-3*z,14*z,6*z,"#d94b48","#762c2a")}
+   let roof=b.type==="canteen"?"#596b3d":b.type==="armory"?"#3d4d56":b.type==="medic"?"#ded8c5":b.type==="house"?"#8d4f37":"#685d4b";
+   let front=b.type==="canteen"?"#8c5c3e":b.type==="armory"?"#53636a":b.type==="medic"?"#c8c0a9":b.type==="house"?"#ad7045":"#776a55";
+   let side=b.type==="canteen"?"#594533":b.type==="armory"?"#37464c":b.type==="medic"?"#938c79":b.type==="house"?"#744a36":"#51493d";
+   let w=42*z,h=30*z;
+   // wall block
+   g.fillStyle=front;g.beginPath();g.moveTo(p.x-w/2,p.y-h);g.lineTo(p.x,p.y-h+8*z);g.lineTo(p.x,p.y);g.lineTo(p.x-w/2,p.y-8*z);g.closePath();g.fill();
+   g.fillStyle=side;g.beginPath();g.moveTo(p.x+w/2,p.y-h);g.lineTo(p.x,p.y-h+8*z);g.lineTo(p.x,p.y);g.lineTo(p.x+w/2,p.y-8*z);g.closePath();g.fill();
+   // broad weathered roof
+   g.fillStyle=roof;g.beginPath();g.moveTo(p.x,p.y-h-12*z);g.lineTo(p.x+w/2+5*z,p.y-h-1*z);g.lineTo(p.x,p.y-h+10*z);g.lineTo(p.x-w/2-5*z,p.y-h-1*z);g.closePath();g.fill();g.strokeStyle="#2a2824";g.lineWidth=2*z;g.stroke();
+   pxrect(p.x-5*z,p.y-12*z,10*z,12*z,"#382c25","#171717");pxrect(p.x-17*z,p.y-17*z,8*z,7*z,"#76b6c4","#243b43");
+   // post-apoc dressing
+   pxrect(p.x+10*z,p.y-18*z,9*z,3*z,"#a77b3f");pxrect(p.x+13*z,p.y-22*z,3*z,8*z,"#a77b3f");
+   if(b.type==="medic"){pxrect(p.x-3*z,p.y-h-11*z,6*z,14*z,"#c94c47","#722d2a");pxrect(p.x-7*z,p.y-h-7*z,14*z,6*z,"#c94c47","#722d2a")}
+   if(b.type==="armory"){pxrect(p.x-16*z,p.y-h-7*z,12*z,3*z,"#c1a33e","#55471d");pxrect(p.x-12*z,p.y-h-11*z,3*z,10*z,"#c1a33e")}
+   if(b.type==="canteen"){pxrect(p.x-18*z,p.y-h+4*z,15*z,4*z,"#b94036","#5d211f");pxrect(p.x-15*z,p.y-h+1*z,9*z,2*z,"#e1c36b")}
+   if(b.type==="house"){pxrect(p.x+8*z,p.y-h-17*z,5*z,12*z,"#50483e","#292622")}
  }
- if(ghost){g.fillStyle=ok?"#d7ffff":"#ffd0cc";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText(ok?"PREVIEW":"BLOCKED",p.x,p.y+17*z)}
- if(!ghost){g.fillStyle="#fff3b3";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.textAlign="center";g.fillText(name.toUpperCase(),p.x,p.y+15*z)}
+ if(ghost){g.fillStyle=ok?"#baffef":"#ffd0cc";g.font=`bold ${Math.max(8,9*z)}px monospace`;g.textAlign="center";g.fillText(ok?"✓ PLACE":"✕ BLOCKED",p.x,p.y+18*z)}
+ else {g.fillStyle="#fff0a8";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText(name.toUpperCase(),p.x,p.y+17*z)}
  g.restore()
 }
 function bar(x,y,r,col,z=cam.z){g.fillStyle="#1a1715";g.fillRect(x-10*z,y,20*z,4*z);g.fillStyle=col;g.fillRect(x-9*z,y+z,18*z*Math.max(0,r),2*z)}
 function human(s){
- let p=scr(s.w),z=cam.z;
- if(s.mode===AI.DOWN){
-   g.save();g.translate(p.x,p.y);g.rotate(-.22);pxrect(-9*z,-4*z,18*z,7*z,s.i===1?"#d05d6f":s.i===0?"#3678a4":"#d79b37","#252525");pxrect(7*z,-5*z,7*z,7*z,"#bd865e","#3a2921");g.restore();
-   g.fillStyle="#ffdf73";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText("DOWN",p.x,p.y-12*z);return;
- }
- let bob=Math.sin((tick+s.phase)/13)*1.1*z,step=s.moving?Math.sin((tick+s.phase)/4)*2*z:0,x=p.x,y=p.y+bob;
- if(s.carrying){g.fillStyle="#d9c79b";g.fillRect(x-9*z,y-13*z,18*z,4*z);g.fillStyle="#b45c54";g.fillRect(x-7*z,y-18*z,14*z,5*z)}
- g.fillStyle="#26301f";g.fillRect(x-6*z,y+7*z,12*z,3*z);
- let skin=s.i===1?"#e3a47c":"#bd865e", shirt=s.i===0?"#3678a4":s.i===1?"#d05d6f":"#d79b37";
- pxrect(x-4*z,y-15*z,8*z,7*z,skin,"#3a2921");pxrect(x-5*z,y-8*z,10*z,10*z,shirt,"#28302d");
- pxrect(x-5*z,y+2*z+step,4*z,7*z,"#34424c","#222");pxrect(x+1*z,y+2*z-step,4*z,7*z,"#34424c","#222");
- if(s.i===0)pxrect(x-5*z,y-17*z,10*z,3*z,"#294e68");
- if(s.mode===AI.ATTACK||s.mode===AI.RECOVER)pxrect(x+5*z,y-6*z,10*z,2*z,"#d7c26f","#433");
- bar(x,y-20*z,s.hp/s.max,"#71c75b",z);g.fillStyle="#fff5bd";g.font=`bold ${Math.max(7,8*z)}px Arial`;g.textAlign="center";g.fillText(s.name,x,y+19*z);if(s.activity){g.fillStyle="#eaf8ff";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.fillText(s.activity+"…",x,y+28*z)}
+ let p=scr(s.w),z=cam.z,walk=s.moving?Math.floor((tick+s.phase)/6)%4:0,step=s.moving?[-1,1,2,0][walk]*z:0;
+ if(s.mode===AI.DOWN){g.save();g.translate(p.x,p.y);pxrect(-11*z,-4*z,20*z,7*z,"#314451","#172127");pxrect(7*z,-6*z,7*z,7*z,"#c18c67","#3a2921");g.restore();g.fillStyle="#ffca5b";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText("DOWN!",p.x,p.y-12*z);return}
+ let x=p.x,y=p.y+(s.moving?Math.abs(Math.sin((tick+s.phase)/5))*-2*z:0),job=s.job;
+ let shirt=job==="Medic"?"#e7ded0":job==="Guard"||job==="Police Officer"?"#304b61":job==="Scavenger"?"#6b613f":"#a86737";
+ let accent=job==="Medic"?"#d74b46":job==="Guard"||job==="Police Officer"?"#d1b346":job==="Scavenger"?"#4d7b4a":"#d3a346";
+ let skin=s.i%3===1?"#e0a17c":"#bd865e",hair=s.i%3===0?"#28231f":s.i%3===1?"#6b4028":"#342b24";
+ g.fillStyle="#101b19aa";g.beginPath();g.ellipse(x,y+8*z,8*z,3*z,0,0,Math.PI*2);g.fill();
+ // legs animate
+ pxrect(x-5*z,y+1*z+step,4*z,8*z,"#293943","#151b1e");pxrect(x+1*z,y+1*z-step,4*z,8*z,"#293943","#151b1e");
+ // torso + arms
+ pxrect(x-6*z,y-10*z,12*z,12*z,shirt,"#202727");pxrect(x-8*z,y-8*z,3*z,8*z,skin,"#3a2921");pxrect(x+5*z,y-8*z,3*z,8*z,skin,"#3a2921");
+ // head/hair
+ pxrect(x-5*z,y-19*z,10*z,9*z,skin,"#3a2921");pxrect(x-5*z,y-21*z,10*z,4*z,hair,"#201a17");pxrect(x-6*z,y-19*z,2*z,5*z,hair);
+ // profession cues
+ if(job==="Medic"){pxrect(x-2*z,y-8*z,4*z,2*z,accent);pxrect(x-1*z,y-9*z,2*z,4*z,accent)}
+ if(job==="Guard"||job==="Police Officer"){pxrect(x-6*z,y-22*z,12*z,3*z,"#263d50","#17242d")}
+ if(job==="Scavenger"){pxrect(x-7*z,y-22*z,14*z,3*z,"#77623e","#392f20")}
+ if(s.carrying){pxrect(x-12*z,y-15*z,22*z,5*z,"#8f5d4d","#382822")}
+ // weapon/action
+ if(s.mode===AI.ATTACK||s.mode===AI.RECOVER){let recoil=s.mode===AI.ATTACK?2*z:0;pxrect(x+6*z-recoil,y-8*z,13*z,3*z,"#b8a86c","#302d25");if(s.mode===AI.ATTACK&&s.stateTicks<8){pxrect(x+19*z,y-9*z,5*z,5*z,"#ffd44d");pxrect(x+23*z,y-8*z,3*z,3*z,"#fff1a0")}}
+ bar(x,y-25*z,s.hp/s.max,"#67c75a",z);
+ g.fillStyle="#fff0b0";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText(s.name,x,y+20*z);
+ if(s.activity){g.fillStyle="#d9f3ff";g.font=`bold ${Math.max(6,7*z)}px monospace`;g.fillText("● "+s.activity,x,y+29*z)}
 }
 function zombie(zm){
- let p=scr(zm.w),z=cam.z,bob=Math.sin((tick+zm.phase)/11)*1.2*z,x=p.x,y=p.y+bob,d=zombieTypes[zm.type]||zombieTypes.walker;
- if(zm.mode==="appear"){g.globalAlpha=Math.min(1,(70-zm.stateTicks)/25+.25)}
- g.fillStyle="#22291e";g.fillRect(x-6*z,y+7*z,12*z,3*z);
- let skin=zm.type==="bloated"?"#78935b":zm.type==="runner"?"#93a66c":"#829766";
- let body=zm.type==="crawler"?"#69534a":zm.type==="runner"?"#74494a":zm.type==="bloated"?"#6b604d":"#69534a";
- let scale=zm.type==="bloated"?1.25:zm.type==="crawler"?.82:1;
- pxrect(x-4*z*scale,y-15*z*scale,8*z*scale,7*z*scale,skin,"#35432e");pxrect(x-5*z*scale,y-8*z*scale,10*z*scale,10*z*scale,body,"#2e2925");
- pxrect(x-5*z,y+2*z,4*z,7*z,"#3a3b34");pxrect(x+1*z,y+2*z,4*z,7*z,"#3a3b34");bar(x,y-20*z,d?zm.hp/zm.max:1,"#d64f48",z);
- g.fillStyle="#e8d8a4";g.font=`bold ${Math.max(6,7*z)}px Arial`;g.textAlign="center";g.fillText(d.name,x,y+18*z);g.globalAlpha=1
+ let p=scr(zm.w),z=cam.z,d=zombieTypes[zm.type]||zombieTypes.walker,walk=Math.floor((tick+zm.phase)/7)%4;
+ let bob=zm.mode==="idle"?Math.sin((tick+zm.phase)/13)*z:(walk%2)*-1.5*z,x=p.x,y=p.y+bob;
+ if(zm.mode==="appear")g.globalAlpha=Math.min(1,(70-zm.stateTicks)/25+.25);
+ let scale=zm.type==="bloated"?1.35:zm.type==="crawler"?.78:zm.type==="runner"?.92:1;
+ g.fillStyle="#101b17aa";g.beginPath();g.ellipse(x,y+8*z,9*z*scale,3*z,0,0,Math.PI*2);g.fill();
+ let skin=zm.type==="bloated"?"#82956a":zm.type==="runner"?"#a1a878":zm.type==="crawler"?"#87946b":"#8f9c72";
+ let body=zm.type==="runner"?"#7b403d":zm.type==="bloated"?"#6c5849":"#604a43";
+ if(zm.type==="crawler"){
+   pxrect(x-10*z,y-5*z,13*z,7*z,body,"#292622");pxrect(x+1*z,y-8*z,8*z,7*z,skin,"#35432e");pxrect(x-12*z,y+1*z,8*z,3*z,"#4c423b");
+ }else{
+   let stride=zm.mode==="zchase"?[-2,2,3,0][walk]*z:0;
+   pxrect(x-5*z*scale,y+1*z+stride,4*z,8*z,"#383b36","#20221f");pxrect(x+1*z*scale,y+1*z-stride,4*z,8*z,"#383b36","#20221f");
+   pxrect(x-6*z*scale,y-11*z*scale,12*z*scale,13*z*scale,body,"#2a2925");
+   pxrect(x-5*z*scale,y-20*z*scale,10*z*scale,9*z*scale,skin,"#35432e");
+   pxrect(x-4*z*scale,y-18*z*scale,2*z,2*z,"#e24e45");pxrect(x+2*z*scale,y-18*z*scale,2*z,2*z,"#e24e45");
+   if(zm.type==="bloated"){pxrect(x-9*z,y-8*z,18*z,10*z,"#79604d","#322c27")}
+   if(zm.mode==="zattack"){pxrect(x+6*z,y-9*z,7*z,3*z,skin,"#35432e")}
+ }
+ bar(x,y-26*z*scale,zm.hp/zm.max,"#d84d48",z);
+ g.fillStyle="#e8d59c";g.font=`bold ${Math.max(6,7*z)}px monospace`;g.textAlign="center";g.fillText(d.name.toUpperCase(),x,y+19*z);g.globalAlpha=1
 }
 function mk(name,job,l,x,y,i){return{name,job,l,mastery:0,w:tileCenter(x,y),hp:58+l*8,max:58+l*8,money:140,weapon:weapons[0],mode:AI.FREE,target:null,cool:20+i*23,stateTicks:30+i*11,sat:8+i*3,resident:false,i,phase:i*37,dest:null,moving:false,hunger:15+i*8,thirst:10+i*6,fatigue:8+i*5,activity:null,facility:null,rescuer:null,rescuing:null,carrying:null,lastFacility:null}}
 function weightedZombie(){
@@ -372,7 +414,7 @@ function tapAt(x,y){let t=inv(x,y);if(sel){
 } let b=S.b.find(b=>t.x>=b.x&&t.x<b.x+b.w&&t.y>=b.y&&t.y<b.y+b.h);if(b){it.textContent=defs[b.type].name.toUpperCase();let r=facilityRules[b.type];ib.innerHTML=`Footprint: <b>${b.w}×${b.h} tiles</b><br>Price: <b>$${r?r.price:0}</b><br>Quality: <b>${b.q}</b><br>Appeal: <b>${b.a}</b><br>Capacity: <b>${facilityCapacity(b)}</b><br>Current visitors: <b>${facilityUsers(b)}</b><br>Role: <b>${r?r.label:"Facility"}</b><br><br>This facility is snapped to the Haven grid.`;infoPanel.style.display="block"}}
 function showSurvivors(){closeP();it.textContent="SURVIVORS";ib.innerHTML=S.sv.map(s=>`<b>${s.name}</b> · ${s.job} Lv.${s.l} ${s.resident?"🏠 RESIDENT":""}<br>HP ${Math.ceil(s.hp)}/${s.max} · $${s.money} · SAT ♥${Math.floor(s.sat)}<br>Weapon: ${s.weapon[0]} · Mastery ${Math.floor(s.mastery)}<br>Status: <b>${s.activity||s.mode}</b> · Hunger ${Math.round(s.hunger)} · Thirst ${Math.round(s.thirst)} · Fatigue ${Math.round(s.fatigue)}<br>Career: ${(professions[s.job]?.next||[]).join(" / ")||"Master tier"}`).join("<hr>");infoPanel.style.display="block"}
 function showItems(){closeP();it.textContent="ITEMS";ib.innerHTML="Equipment and facility investment items expand after the core town controls are locked.";infoPanel.style.display="block"}
-function showGuide(){closeP();it.textContent="V1.1.3 CONTROLS";ib.innerHTML=`<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint.<br>Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. Survivors commit to activities, rescue casualties before taking new fights, and keep a combat target through CHASE → ATTACK → RECOVER.`;infoPanel.style.display="block"}
+function showGuide(){closeP();it.textContent="V1.2 CONTROLS";ib.innerHTML=`<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint.<br>Nothing is built or paid for until you press CONFIRM.<br><br>V1.2 introduces the approved original pixel-art visual overhaul. V1.1 added tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. Survivors commit to activities, rescue casualties before taking new fights, and keep a combat target through CHASE → ATTACK → RECOVER.`;infoPanel.style.display="block"}
 
 function queueResidentRequest(s){
  S.requests.push({type:"resident",s});showNextRequest()
@@ -431,24 +473,24 @@ function triggerWorldEvent(){
  else if(r<.65){S.money+=80;S.earned+=80;say("A survivor caravan traded with the Haven. +$80")}
  else {S.mat+=2;say("Scavengers recovered spare parts. +2 PARTS")}
 }
-function ui(){money.textContent=S.money;food.textContent=S.food;water.textContent=S.water;mat.textContent=S.mat;ren.textContent=S.ren;rank.textContent=rankText();threat.textContent=S.threat;clock.textContent=`DAY ${S.day} · ${String(S.hour).padStart(2,"0")}:00`;qt.textContent=S.stage===0?"Build a Water Collector":S.stage===1?`Defeat 3 Walkers (${Math.min(S.kills,3)}/3)`:"Goal complete — grow the Haven!"}
+function ui(){let rr=rankRules[S.rank]||rankRules[rankRules.length-1],next=Math.max(1,rr.ren||20);renFill.style.width=Math.min(100,S.ren/next*100)+"%";money.textContent=S.money;food.textContent=S.food;water.textContent=S.water;mat.textContent=S.mat;ren.textContent=S.ren;rank.textContent=rankText();threat.textContent=S.threat;clock.textContent=`DAY ${S.day} · ${String(S.hour).padStart(2,"0")}:00`;qt.textContent=S.stage===0?"Build a Water Collector":S.stage===1?`Defeat 3 Walkers (${Math.min(S.kills,3)}/3)`:"Goal complete — grow the Haven!"}
 function draw(){
- g.clearRect(0,0,W,H);g.fillStyle="#15332d";g.fillRect(0,0,W,H);
+ g.clearRect(0,0,W,H);g.fillStyle="#0e2423";g.fillRect(0,0,W,H);
  // full world tiles
  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
    let inH=x>=BUILD.x0&&x<=BUILD.x1&&y>=BUILD.y0&&y<=BUILD.y1;
    let outside=y<5||!inH;
-   diamond(x,y,outside?((x+y)%2?"#367446":"#3f8050"):((x+y)%2?"#65a64f":"#70b255"),outside?"#285d39":"#568c47")
+   diamond(x,y,outside?((x+y)%2?"#355f3e":"#3c6943"):((x+y)%2?"#5b8447":"#648d4c"),outside?"#285d39":"#568c47")
  }
  // roads
- for(let y=7;y<=16;y+=3)for(let x=BUILD.x0;x<=BUILD.x1;x++)diamond(x,y,"#c6aa70","#a48a59");
- for(let x=4;x<=12;x+=4)for(let y=BUILD.y0;y<=BUILD.y1;y++)diamond(x,y,"#c6aa70","#a48a59");
+ for(let y=7;y<=16;y+=3)for(let x=BUILD.x0;x<=BUILD.x1;x++)diamond(x,y,"#77756a","#55564f");
+ for(let x=4;x<=12;x+=4)for(let y=BUILD.y0;y<=BUILD.y1;y++)diamond(x,y,"#77756a","#55564f");
  // build boundary
  let corners=[[BUILD.x0,BUILD.y0],[BUILD.x1+1,BUILD.y0],[BUILD.x1+1,BUILD.y1+1],[BUILD.x0,BUILD.y1+1]].map(a=>iso(...a));
  g.beginPath();g.moveTo(corners[0].x,corners[0].y);corners.slice(1).forEach(p=>g.lineTo(p.x,p.y));g.closePath();g.strokeStyle="#8bd5e7";g.lineWidth=2;g.stroke();
  // scenery outside / inside
  [[1,3],[14,3],[1,9],[14,9],[2,18],[13,18],[3,4],[12,5],[2,14],[14,15],[7,18]].forEach(a=>tree(...a));
- [[3,8],[11,15],[6,16],[12,9]].forEach(a=>crateAt(...a));
+ [[3,8],[11,15],[6,16],[12,9]].forEach(a=>crateAt(...a));[[5,5],[10,4],[1,12],[14,12],[8,18]].forEach(a=>debris(...a));
  // Build grid is shown tile-by-tile only in build mode
  if(sel){
    for(let y=BUILD.y0;y<=BUILD.y1;y++)for(let x=BUILD.x0;x<=BUILD.x1;x++){
