@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
-<title>Zombie Haven V1.5.4</title>
+<title>Zombie Haven V1.6.0</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#10212a;font-family:Arial,Helvetica,sans-serif}
@@ -33,8 +33,8 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 @keyframes renPulse{50%{transform:scale(1.22);filter:brightness(1.6)}}
 .request{position:absolute;left:8%;right:8%;bottom:116px;background:#17251ff2;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:12;box-shadow:0 5px 0 #0a100d}
 .request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px}
-#hud{background:linear-gradient(#092334,#0d3b52);border-bottom:3px solid #07131c}.title{color:#fff0a5;text-shadow:2px 2px #081018}.chip{border-color:#3985a7;background:#0b2939;color:#fff1b0}.lv{background:#173745;color:#ffe145}.panel{border-color:#3486aa;background:#0c2939f2}#bottom button{border-color:#3985a7;background:linear-gradient(#154a63,#0d3042);color:#fff2b5}.ico img{width:31px;height:31px;image-rendering:pixelated;object-fit:contain;display:block;margin:auto}.ico{height:34px;display:block}</style><script src="assets_bundle.js?v=1.5.4"></script></head><body><div id="app">
-<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.5.4 APPROVED ART</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
+#hud{background:linear-gradient(#092334,#0d3b52);border-bottom:3px solid #07131c}.title{color:#fff0a5;text-shadow:2px 2px #081018}.chip{border-color:#3985a7;background:#0b2939;color:#fff1b0}.lv{background:#173745;color:#ffe145}.panel{border-color:#3486aa;background:#0c2939f2}#bottom button{border-color:#3985a7;background:linear-gradient(#154a63,#0d3042);color:#fff2b5}.ico img{width:31px;height:31px;image-rendering:pixelated;object-fit:contain;display:block;margin:auto}.ico{height:34px;display:block}</style><script src="assets_bundle.js?v=1.6.0"></script></head><body><div id="app">
+<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.6.0 ROAD TOWN</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
 <div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
 <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt">Build a Water Collector</span></div>
 <div id="zoom">DRAG · PINCH <span id="zv">100%</span></div>
@@ -46,13 +46,25 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 </div><script>
 const c=document.getElementById("game"),g=c.getContext("2d");g.imageSmoothingEnabled=false;
 const world=document.getElementById("world"),buildPanel=document.getElementById("buildPanel"),infoPanel=document.getElementById("infoPanel"),buildGrid=document.getElementById("buildGrid"),confirmBar=document.getElementById("confirmBar"),confirmName=document.getElementById("confirmName"),yesBuild=document.getElementById("yesBuild"),toast=document.getElementById("toast"),it=document.getElementById("it"),ib=document.getElementById("ib"),money=document.getElementById("money"),food=document.getElementById("food"),water=document.getElementById("water"),mat=document.getElementById("mat"),ren=document.getElementById("ren"),rank=document.getElementById("rank"),threat=document.getElementById("threat"),clock=document.getElementById("clock"),qt=document.getElementById("qt"),zv=document.getElementById("zv");
-function setBundledUiIcons(){const b=window.ZH_ASSET_BUNDLE||{};const m=[["uiBuildIcon","assets/ui/build.png"],["uiSurvivorsIcon","assets/ui/survivors.png"],["uiItemsIcon","assets/ui/items.png"]];for(const [id,p] of m){const e=document.getElementById(id);if(e)e.src=b[p]||p+"?v=1.5.4"}}setBundledUiIcons();
-const ASSET_PATHS={chars:{Civilian:"assets/characters/civilian.png",Guard:"assets/characters/guard.png",Medic:"assets/characters/medic.png",Scavenger:"assets/characters/scavenger.png","Police Officer":"assets/characters/police_officer.png",Engineer:"assets/characters/engineer.png",Cook:"assets/characters/cook.png",Farmer:"assets/characters/farmer.png"},zombies:{walker:"assets/zombies/walker.png",crawler:"assets/zombies/crawler.png",runner:"assets/zombies/runner.png",bloated:"assets/zombies/bloated.png",spitter:"assets/zombies/spitter.png",brute:"assets/zombies/brute.png",boss_mutant:"assets/zombies/boss_mutant.png"},buildings:{medic:"assets/buildings/medical_tent.png",canteen:"assets/buildings/canteen.png",armory:"assets/buildings/armory.png",house:"assets/buildings/house_lv1.png",farm:"assets/buildings/farm.png",water:"assets/buildings/water_collector.png",headquarters:"assets/buildings/headquarters.png",workshop:"assets/buildings/workshop.png",storage:"assets/buildings/storage.png",house_lv2:"assets/buildings/house_lv2.png",generator:"assets/buildings/generator.png",barracks:"assets/buildings/barracks.png"},props:{tree:"assets/terrain/tree.png",crate:"assets/props/crate.png",debris:"assets/terrain/debris.png"},terrain:{grass:"assets/terrain/grass.png",grass_detail:"assets/terrain/grass_detail.png",road:"assets/terrain/road.png",dirt:"assets/terrain/dirt.png"}};const ASSETS={};function loadAsset(k,p){let im=new Image();im.src=(window.ZH_ASSET_BUNDLE&&window.ZH_ASSET_BUNDLE[p])||p+"?v=1.5.4";ASSETS[k]=im}Object.entries(ASSET_PATHS.chars).forEach(([k,v])=>loadAsset("char:"+k,v));Object.entries(ASSET_PATHS.zombies).forEach(([k,v])=>loadAsset("zombie:"+k,v));Object.entries(ASSET_PATHS.buildings).forEach(([k,v])=>loadAsset("building:"+k,v));Object.entries(ASSET_PATHS.props).forEach(([k,v])=>loadAsset("prop:"+k,v));Object.entries(ASSET_PATHS.terrain).forEach(([k,v])=>loadAsset("terrain:"+k,v));function spriteReady(im){return im&&im.complete&&im.naturalWidth>0}
+function setBundledUiIcons(){const b=window.ZH_ASSET_BUNDLE||{};for(const [id,p] of [["uiBuildIcon","assets/ui/build.png"],["uiSurvivorsIcon","assets/ui/survivors.png"],["uiItemsIcon","assets/ui/items.png"]]){const e=document.getElementById(id);if(e)e.src=b[p]||p+"?v=1.6.0"}}setBundledUiIcons();
+const ASSET_PATHS={chars:{Civilian:"assets/characters/civilian.png",Guard:"assets/characters/guard.png",Medic:"assets/characters/medic.png",Scavenger:"assets/characters/scavenger.png","Police Officer":"assets/characters/police_officer.png",Engineer:"assets/characters/engineer.png",Cook:"assets/characters/cook.png",Farmer:"assets/characters/farmer.png"},zombies:{walker:"assets/zombies/walker.png",crawler:"assets/zombies/crawler.png",runner:"assets/zombies/runner.png",bloated:"assets/zombies/bloated.png",spitter:"assets/zombies/spitter.png",brute:"assets/zombies/brute.png",boss_mutant:"assets/zombies/boss_mutant.png"},buildings:{medic:"assets/buildings/medical_tent.png",canteen:"assets/buildings/canteen.png",armory:"assets/buildings/armory.png",house:"assets/buildings/house_lv1.png",farm:"assets/buildings/farm.png",water:"assets/buildings/water_collector.png",headquarters:"assets/buildings/headquarters.png",workshop:"assets/buildings/workshop.png",storage:"assets/buildings/storage.png",house_lv2:"assets/buildings/house_lv2.png",generator:"assets/buildings/generator.png",barracks:"assets/buildings/barracks.png"},props:{tree:"assets/terrain/tree.png",crate:"assets/props/crate.png",debris:"assets/terrain/debris.png"},terrain:{grass:"assets/terrain/grass.png",grass_detail:"assets/terrain/grass_detail.png",road:"assets/terrain/road.png",dirt:"assets/terrain/dirt.png"}};const ASSETS={};function loadAsset(k,p){let im=new Image();im.src=(window.ZH_ASSET_BUNDLE&&window.ZH_ASSET_BUNDLE[p])||p+"?v=1.6.0";ASSETS[k]=im}Object.entries(ASSET_PATHS.chars).forEach(([k,v])=>loadAsset("char:"+k,v));Object.entries(ASSET_PATHS.zombies).forEach(([k,v])=>loadAsset("zombie:"+k,v));Object.entries(ASSET_PATHS.buildings).forEach(([k,v])=>loadAsset("building:"+k,v));Object.entries(ASSET_PATHS.props).forEach(([k,v])=>loadAsset("prop:"+k,v));Object.entries(ASSET_PATHS.terrain).forEach(([k,v])=>loadAsset("terrain:"+k,v));function spriteReady(im){return im&&im.complete&&im.naturalWidth>0}
 window.addEventListener("error",e=>{let b=document.getElementById("crash");b.style.display="block";b.textContent="GAME ERROR: "+e.message+" @ line "+e.lineno});
 window.addEventListener("unhandledrejection",e=>{let b=document.getElementById("crash");b.style.display="block";b.textContent="GAME ERROR: "+(e.reason?.message||e.reason)});
 
 let W,H,DPR,tick=0,sel=null,preview=null,TW=42,TH=17;
 const COLS=16,ROWS=20,BUILD={x0:2,y0:6,x1:13,y1:17};
+// Original Zombie Haven layout using the compact road-centered town format we like from DV2.
+// Roads form a main street, a cross street and short branches; facilities sit on roadside plots.
+const ROAD_COORDS=[
+ [2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],
+ [7,6],[7,7],[7,8],[7,9],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],
+ [3,14],[4,14],[5,14],[6,14],[8,14],[9,14],[10,14],[11,14],[12,14],
+ [4,8],[5,8],[6,8],[8,8],[9,8],[10,8],[11,8],
+ [4,11],[4,12],[4,13],[10,11],[10,12],[10,13]
+];
+const ROAD_SET=new Set(ROAD_COORDS.map(([x,y])=>x+","+y));
+function isRoadTile(x,y){return ROAD_SET.has(x+","+y)}
+function inTownTile(x,y){return x>=BUILD.x0&&x<=BUILD.x1&&y>=BUILD.y0&&y<=BUILD.y1}
 const cam={x:0,y:-25,z:1}; let pointers=new Map(), gesture=null, tapStart=null;
 const defs={
  farm:{name:"Farm",cost:300,mat:4,w:2,h:2,q:10,a:5},
@@ -127,7 +139,11 @@ function scr(w){let cc=center();return{x:cc.x+cam.x+w.x*cam.z,y:cc.y+cam.y+w.y*c
 function inv(px,py){let cc=center();let wx=(px-cc.x-cam.x)/cam.z,wy=(py-cc.y-cam.y)/cam.z;let a=wx/(TW/2),b=wy/(TH/2);return{x:Math.floor((a+b)/2),y:Math.floor((b-a)/2)}}
 function diamond(x,y,fill,edge="#365536"){let p=iso(x,y),hw=TW/2*cam.z,hh=TH/2*cam.z;g.beginPath();g.moveTo(p.x,p.y);g.lineTo(p.x+hw,p.y+hh);g.lineTo(p.x,p.y+2*hh);g.lineTo(p.x-hw,p.y+hh);g.closePath();g.fillStyle=fill;g.fill();g.strokeStyle=edge;g.lineWidth=Math.max(1,cam.z);g.stroke()}
 function pxrect(x,y,w,h,col,edge){x=Math.round(x);y=Math.round(y);w=Math.round(w);h=Math.round(h);if(edge){g.fillStyle=edge;g.fillRect(x-1,y-1,w+2,h+2)}g.fillStyle=col;g.fillRect(x,y,w,h)}
-function footprintFree(x,y,d,ignore=null){if(x<BUILD.x0||y<BUILD.y0||x+d.w-1>BUILD.x1||y+d.h-1>BUILD.y1)return false;return !S.b.some(b=>b!==ignore&&x<b.x+b.w&&x+d.w>b.x&&y<b.y+b.h&&y+d.h>b.y)}
+function footprintFree(x,y,d,ignore=null){
+ if(x<BUILD.x0||y<BUILD.y0||x+d.w-1>BUILD.x1||y+d.h-1>BUILD.y1)return false;
+ for(let yy=0;yy<d.h;yy++)for(let xx=0;xx<d.w;xx++)if(isRoadTile(x+xx,y+yy))return false;
+ return !S.b.some(b=>b!==ignore&&x<b.x+b.w&&x+d.w>b.x&&y<b.y+b.h&&y+d.h>b.y)
+}
 function tileCenter(x,y){return worldPoint(x+.5,y+.5)}
 function buildCenter(b){return worldPoint(b.x+b.w/2,b.y+b.h/2)}
 function tileOccupied(x,y){return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h)}
@@ -135,13 +151,26 @@ function hospital(){let b=S.b.find(b=>b.type==="medic");return b?buildCenter(b):
 function collapsed(){return S.sv.filter(s=>s.mode===AI.DOWN&&!s.rescuer)}
 function idleForRescue(s){return [AI.FREE,AI.POST_COMBAT].includes(s.mode)&&s.hp>0&&!s.rescuing}
 function drawAssetCentered(key,p,w,h){let im=ASSETS[key];if(spriteReady(im))g.drawImage(im,p.x-w*cam.z/2,p.y-h*cam.z,w*cam.z,h*cam.z)}
-function drawTileAsset(key,x,y){let im=ASSETS["terrain:"+key],p=iso(x,y),z=cam.z;if(spriteReady(im)){let w=TW*z*1.16,h=TH*z*1.95;g.drawImage(im,p.x-w/2,p.y-h*.25,w,h);return true}return false}
+function drawTileAsset(key,x,y){
+ let im=ASSETS["terrain:"+key];if(!spriteReady(im))return false;
+ let a=iso(x,y),b=iso(x+1,y),c=iso(x+1,y+1),d=iso(x,y+1);
+ let minX=Math.min(a.x,b.x,c.x,d.x),maxX=Math.max(a.x,b.x,c.x,d.x),minY=Math.min(a.y,b.y,c.y,d.y),maxY=Math.max(a.y,b.y,c.y,d.y);
+ g.save();g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.lineTo(c.x,c.y);g.lineTo(d.x,d.y);g.closePath();g.clip();
+ g.drawImage(im,minX,minY,maxX-minX,maxY-minY);g.restore();return true;
+}
 function tree(x,y){drawAssetCentered("prop:tree",iso(x,y),58,58)}
 function crateAt(x,y){drawAssetCentered("prop:crate",iso(x,y),30,30)}
 function debris(x,y){drawAssetCentered("prop:debris",iso(x,y),34,34)}
-function building(b,ghost=false,ok=true){let p=scr(buildCenter(b)),z=cam.z,im=ASSETS["building:"+b.type];for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++)diamond(b.x+xx,b.y+yy,ghost?(ok?"#4cb9a4":"#bd4b4b"):"#756e50","#463f31");g.save();if(ghost)g.globalAlpha=.55;if(spriteReady(im)){let size=106*z;g.drawImage(im,p.x-size/2,p.y-size*.72,size,size)}g.restore();g.fillStyle=ghost?(ok?"#cffff0":"#ffd0cc"):"#fff0a8";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText(ghost?(ok?"✓ PLACE":"✕ BLOCKED"):defs[b.type].name.toUpperCase(),p.x,p.y+18*z)}
+function building(b,ghost=false,ok=true){
+ let p=scr(buildCenter(b)),z=cam.z,im=ASSETS["building:"+b.type];
+ if(ghost)for(let yy=0;yy<b.h;yy++)for(let xx=0;xx<b.w;xx++)diamond(b.x+xx,b.y+yy,ok?"#4cb9a4":"#bd4b4b",ok?"#b8fff1":"#ffaaa4");
+ g.save();if(ghost)g.globalAlpha=.58;
+ if(spriteReady(im)){let size=(b.w>=3||b.h>=3?126:112)*z;g.drawImage(im,p.x-size/2,p.y-size*.79,size,size)}
+ g.restore();g.fillStyle=ghost?(ok?"#cffff0":"#ffd0cc"):"#fff0a8";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";
+ g.fillText(ghost?(ok?"✓ PLACE":"✕ BLOCKED"):defs[b.type].name.toUpperCase(),p.x,p.y+19*z);
+}
 function bar(x,y,r,col,z=cam.z){g.fillStyle="#1a1715";g.fillRect(x-10*z,y,20*z,4*z);g.fillStyle=col;g.fillRect(x-9*z,y+z,18*z*Math.max(0,r),2*z)}
-function human(s){let p=scr(s.w),z=cam.z,im=ASSETS["char:"+s.job],f=0;if(s.mode===AI.DOWN)f=8;else if(s.carrying)f=7;else if(s.mode===AI.ATTACK||s.mode===AI.RECOVER)f=5;else if(s.activity)f=6;else if(s.moving)f=1+(Math.floor((tick+s.phase)/6)%4);if(spriteReady(im)){let dw=50*z,dh=62*z;g.drawImage(im,f*128,0,128,160,p.x-dw/2,p.y-dh*.78,dw,dh)}bar(p.x,p.y-29*z,s.hp/s.max,"#67c75a",z);g.fillStyle="#fff0b0";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText(s.name,p.x,p.y+19*z)}
+function human(s){let p=scr(s.w),z=cam.z,im=ASSETS["char:"+s.job],f=0;if(s.mode===AI.DOWN)f=8;else if(s.carrying)f=7;else if(s.mode===AI.ATTACK||s.mode===AI.RECOVER)f=1+(Math.floor((tick+s.phase)/5)%4);else if(s.activity)f=6;else if(s.moving)f=1+(Math.floor((tick+s.phase)/6)%4);if(spriteReady(im)){let dw=50*z,dh=62*z;g.drawImage(im,f*128,0,128,160,p.x-dw/2,p.y-dh*.78,dw,dh)}bar(p.x,p.y-29*z,s.hp/s.max,"#67c75a",z);g.fillStyle="#fff0b0";g.font=`bold ${Math.max(7,8*z)}px monospace`;g.textAlign="center";g.fillText(s.name,p.x,p.y+19*z)}
 function zombie(zm){let p=scr(zm.w),z=cam.z,d=zombieTypes[zm.type]||zombieTypes.walker,im=ASSETS["zombie:"+zm.type],f=0;if(zm.mode==="zattack")f=6;else if(zm.mode==="zchase")f=1+(Math.floor((tick+zm.phase)/6)%4);else if(zm.mode==="idle")f=Math.floor((tick+zm.phase)/18)%2?1:0;if(spriteReady(im)){let sc=zm.type==="bloated"?1.2:1,dw=50*z*sc,dh=62*z*sc;g.drawImage(im,f*128,0,128,160,p.x-dw/2,p.y-dh*.78,dw,dh)}bar(p.x,p.y-29*z,zm.hp/zm.max,"#d84d48",z);g.fillStyle="#e8d59c";g.font=`bold ${Math.max(6,7*z)}px monospace`;g.textAlign="center";g.fillText(d.name.toUpperCase(),p.x,p.y+18*z)}
 function mk(name,job,l,x,y,i){return{name,job,l,mastery:0,w:tileCenter(x,y),hp:58+l*8,max:58+l*8,money:140,weapon:weapons[0],mode:AI.FREE,target:null,cool:20+i*23,stateTicks:30+i*11,sat:8+i*3,resident:false,i,phase:i*37,dest:null,moving:false,hunger:15+i*8,thirst:10+i*6,fatigue:8+i*5,activity:null,facility:null,rescuer:null,rescuing:null,carrying:null,lastFacility:null}}
 function weightedZombie(){
@@ -189,7 +218,12 @@ function finishFacility(s){
  if(!s.resident&&s.sat>=35&&!s.requested){s.requested=true;queueResidentRequest(s)}
  s.facility=null;s.activity=null;s.mode=AI.FREE;s.stateTicks=45+s.i*13;s.cool=0;ui()
 }
-function roamDest(s){let x=BUILD.x0+1+Math.random()*(BUILD.x1-BUILD.x0-2),y=BUILD.y0+1+Math.random()*(BUILD.y1-BUILD.y0-2);return tileCenter(x,y)}
+function roamDest(s){
+ // Town life happens on streets: pick another road node instead of cutting across lots.
+ let open=ROAD_COORDS.filter(([x,y])=>!tileOccupied(x,y));
+ let [x,y]=open[Math.floor(Math.random()*open.length)]||[7,10];
+ return tileCenter(x,y)
+}
 function downedUnassigned(){return S.sv.filter(q=>q.mode===AI.DOWN&&!q.rescuer)}
 function rescueScore(r,q){let ja=jobAI[r.job]||jobAI.Civilian;return ja.rescue*25-Math.hypot(r.w.x-q.w.x,r.w.y-q.w.y)}
 function assignRescue(){
@@ -288,8 +322,12 @@ function zai(z){
  if(z.mode==="zrecover"){if(z.stateTicks<=0)z.mode=z.target&&z.target.hp>0?"zchase":"idle";return}
 }
 function init(){
- S.b=[{type:"medic",x:3,y:9,w:2,h:2,q:10,a:10},{type:"canteen",x:6,y:9,w:2,h:2,q:10,a:10},{type:"house",x:10,y:12,w:2,h:2,q:10,a:8}];
- S.sv=[mk("Marcus","Guard",3,6,12,0),mk("Amy","Medic",2,9,13,1),mk("Lena","Scavenger",2,4,14,2)];
+ S.b=[
+   {type:"medic",x:2,y:7,w:2,h:2,q:10,a:10},
+   {type:"canteen",x:8,y:6,w:2,h:2,q:10,a:10},
+   {type:"house",x:11,y:11,w:2,h:2,q:10,a:8}
+ ];
+ S.sv=[mk("Marcus","Guard",3,7,12,0),mk("Amy","Medic",2,5,10,1),mk("Lena","Scavenger",2,9,14,2)];
  spawn(5,3,"walker");spawn(9,3,"crawler");spawn(12,4,"walker");
  Object.entries(defs).forEach(([k,d])=>{let b=document.createElement("button");b.className="build";b.innerHTML=`${d.name} · ${d.w}×${d.h}<small>$${d.cost} · PARTS ${d.mat}</small>`;b.onclick=()=>{sel=k;preview=null;confirmBar.style.display="none";closeP();say("Move the preview, then confirm placement.")};buildGrid.appendChild(b)});ui()
 }
@@ -326,7 +364,7 @@ function tapAt(x,y){let t=inv(x,y);if(sel){
 } let b=S.b.find(b=>t.x>=b.x&&t.x<b.x+b.w&&t.y>=b.y&&t.y<b.y+b.h);if(b){it.textContent=defs[b.type].name.toUpperCase();let r=facilityRules[b.type];ib.innerHTML=`Footprint: <b>${b.w}×${b.h} tiles</b><br>Price: <b>$${r?r.price:0}</b><br>Quality: <b>${b.q}</b><br>Appeal: <b>${b.a}</b><br>Capacity: <b>${facilityCapacity(b)}</b><br>Current visitors: <b>${facilityUsers(b)}</b><br>Role: <b>${r?r.label:"Facility"}</b><br><br>This facility is snapped to the Haven grid.`;infoPanel.style.display="block"}}
 function showSurvivors(){closeP();it.textContent="SURVIVORS";ib.innerHTML=S.sv.map(s=>`<b>${s.name}</b> · ${s.job} Lv.${s.l} ${s.resident?"🏠 RESIDENT":""}<br>HP ${Math.ceil(s.hp)}/${s.max} · $${s.money} · SAT ♥${Math.floor(s.sat)}<br>Weapon: ${s.weapon[0]} · Mastery ${Math.floor(s.mastery)}<br>Status: <b>${s.activity||s.mode}</b> · Hunger ${Math.round(s.hunger)} · Thirst ${Math.round(s.thirst)} · Fatigue ${Math.round(s.fatigue)}<br>Career: ${(professions[s.job]?.next||[]).join(" / ")||"Master tier"}`).join("<hr>");infoPanel.style.display="block"}
 function showItems(){closeP();it.textContent="ITEMS";ib.innerHTML="Equipment and facility investment items expand after the core town controls are locked.";infoPanel.style.display="block"}
-function showGuide(){closeP();it.textContent="V1.5.4 APPROVED ART";ib.innerHTML=`<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint.<br>Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. Survivors commit to activities, rescue casualties before taking new fights, and keep a combat target through CHASE → ATTACK → RECOVER.`;infoPanel.style.display="block"}
+function showGuide(){closeP();it.textContent="V1.6.0 ROAD TOWN";ib.innerHTML=`<b>One finger:</b> drag to pan.<br><b>Two fingers:</b> pinch to zoom.<br><b>Haven Rank:</b> grows from Renown, earned income, residents and facilities. Higher ranks expand the ambient zombie pool and threat.<br><b>Build:</b> choose a facility, then tap its anchor tile. Green diamonds are free tiles and red diamonds are occupied. Tap a tile to position a translucent preview. Cyan shows the exact footprint.<br>Nothing is built or paid for until you press CONFIRM.<br><br>V1.1 adds tile-routed town movement, active Renown/economy feedback, survivor arrivals and move-in requests. Survivors commit to activities, rescue casualties before taking new fights, and keep a combat target through CHASE → ATTACK → RECOVER.`;infoPanel.style.display="block"}
 
 function queueResidentRequest(s){
  S.requests.push({type:"resident",s});showNextRequest()
@@ -354,16 +392,38 @@ function occupiedTile(x,y){
  return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h)
 }
 function walkable(x,y){return x>=0&&y>=0&&x<COLS&&y<ROWS&&!occupiedTile(x,y)}
+function nearestWalkableApproach(tx,ty){
+ let candidates=[[tx,ty],[tx+1,ty],[tx-1,ty],[tx,ty+1],[tx,ty-1],[tx+1,ty+1],[tx-1,ty-1],[tx+1,ty-1],[tx-1,ty+1]]
+   .filter(([x,y])=>walkable(x,y));
+ if(!candidates.length)return null;
+ // Prefer a road-side entrance when entering a facility.
+ candidates.sort((a,b)=>(isRoadTile(b[0],b[1])-isRoadTile(a[0],a[1]))||
+   (Math.abs(a[0]-tx)+Math.abs(a[1]-ty))-(Math.abs(b[0]-tx)+Math.abs(b[1]-ty)));
+ return candidates[0]
+}
 function findRoute(from,to){
- let a=worldToTile(from),b=worldToTile(to);if(!walkable(b.x,b.y))return [to];
- let key=(x,y)=>x+","+y,q=[[a.x,a.y]],prev=new Map([[key(a.x,a.y),null]]),dirs=[[1,0],[-1,0],[0,1],[0,-1]];
- while(q.length){
-  let [x,y]=q.shift();if(x===b.x&&y===b.y)break;
-  for(let [dx,dy] of dirs){let nx=x+dx,ny=y+dy,k=key(nx,ny);if(walkable(nx,ny)&&!prev.has(k)){prev.set(k,[x,y]);q.push([nx,ny])}}
+ let a=worldToTile(from),raw=worldToTile(to),approach=nearestWalkableApproach(raw.x,raw.y);
+ if(!approach)return [to];
+ let [bx,by]=approach,key=(x,y)=>x+","+y,dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+ // Dijkstra: roads are strongly preferred for normal town travel, while non-road tiles remain
+ // available for the short connection between a street and a building entrance.
+ let open=[{x:a.x,y:a.y,c:0}],best=new Map([[key(a.x,a.y),0]]),prev=new Map([[key(a.x,a.y),null]]);
+ while(open.length){
+   open.sort((u,v)=>u.c-v.c);let cur=open.shift(),x=cur.x,y=cur.y;
+   if(x===bx&&y===by)break;
+   for(let [dx,dy] of dirs){
+     let nx=x+dx,ny=y+dy,k=key(nx,ny);if(!walkable(nx,ny))continue;
+     let town=inTownTile(nx,ny),step=town?(isRoadTile(nx,ny)?1:5):2.2;
+     let nc=cur.c+step;
+     if(!best.has(k)||nc<best.get(k)){best.set(k,nc);prev.set(k,[x,y]);open.push({x:nx,y:ny,c:nc})}
+   }
  }
- let bk=key(b.x,b.y);if(!prev.has(bk))return [to];let cells=[],cur=[b.x,b.y];
+ let destKey=key(bx,by);if(!prev.has(destKey))return [to];
+ let cells=[],cur=[bx,by];
  while(cur){cells.push(tileCenter(cur[0],cur[1]));cur=prev.get(key(cur[0],cur[1]))}
- cells.reverse();cells.push(to);return cells.slice(1)
+ cells.reverse();
+ // Only the final tiny movement from the nearest walkable roadside tile enters the facility/target.
+ cells.push(to);return cells.slice(1)
 }
 function routeMove(s,dest,spd){
  if(!s.route||s.routeGoal!==dest){s.route=findRoute(s.w,dest);s.routeGoal=dest}
@@ -386,7 +446,14 @@ function triggerWorldEvent(){
  else {S.mat+=2;say("Scavengers recovered spare parts. +2 PARTS")}
 }
 function ui(){money.textContent=S.money;food.textContent=S.food;water.textContent=S.water;mat.textContent=S.mat;ren.textContent=S.ren;rank.textContent=rankText();threat.textContent=S.threat;clock.textContent=`DAY ${S.day} · ${String(S.hour).padStart(2,"0")}:00`;qt.textContent=S.stage===0?"Build a Water Collector":S.stage===1?`Defeat 3 Walkers (${Math.min(S.kills,3)}/3)`:"Goal complete — grow the Haven!"}
+// Isometric painter-order helpers.
+// Buildings sort by the FRONT-MOST point of their occupied footprint, not their visual center.
+// Characters/zombies/props sort by their feet / ground-contact position.
+function buildingDepth(b){return iso(b.x+b.w,b.y+b.h).y}
+function worldDepth(w){return scr(w).y}
+function tileObjectDepth(x,y){return iso(x+1,y+1).y}
 function draw(){
+
  g.clearRect(0,0,W,H);g.fillStyle="#15332d";g.fillRect(0,0,W,H);
  // full world tiles
  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
@@ -395,18 +462,18 @@ function draw(){
    if(!drawTileAsset(outside?"grass":"grass_detail",x,y))diamond(x,y,outside?"#3f8050":"#70b255",outside?"#285d39":"#568c47")
  }
  // roads
- for(let y=7;y<=16;y+=3)for(let x=BUILD.x0;x<=BUILD.x1;x++){if(!drawTileAsset("road",x,y))diamond(x,y,"#77756a","#55564f")};
- for(let x=4;x<=12;x+=4)for(let y=BUILD.y0;y<=BUILD.y1;y++){if(!drawTileAsset("road",x,y))diamond(x,y,"#77756a","#55564f")};
+ for(const [x,y] of ROAD_COORDS){if(!drawTileAsset("road",x,y))diamond(x,y,"#77756a","#55564f")};
+ 
  // build boundary
  let corners=[[BUILD.x0,BUILD.y0],[BUILD.x1+1,BUILD.y0],[BUILD.x1+1,BUILD.y1+1],[BUILD.x0,BUILD.y1+1]].map(a=>iso(...a));
  g.beginPath();g.moveTo(corners[0].x,corners[0].y);corners.slice(1).forEach(p=>g.lineTo(p.x,p.y));g.closePath();g.strokeStyle="#8bd5e7";g.lineWidth=2;g.stroke();
- // scenery outside / inside
- [[1,3],[14,3],[1,9],[14,9],[2,18],[13,18],[3,4],[12,5],[2,14],[14,15],[7,18]].forEach(a=>tree(...a));
- [[3,8],[11,15],[6,16],[12,9]].forEach(a=>crateAt(...a));
+ // scenery is depth-sorted with buildings and moving units below.
+ const TREE_SPOTS=[[1,3],[14,3],[1,9],[14,9],[2,18],[13,18],[3,4],[12,5],[2,14],[14,15],[7,18]];
+ const CRATE_SPOTS=[[3,8],[11,15],[6,16],[12,9]];
  // Build grid is shown tile-by-tile only in build mode
  if(sel){
    for(let y=BUILD.y0;y<=BUILD.y1;y++)for(let x=BUILD.x0;x<=BUILD.x1;x++){
-     let occ=tileOccupied(x,y);diamond(x,y,occ?"#b75a55":"#5fae61",occ?"#e58a83":"#9bdc85")
+     let occ=tileOccupied(x,y),road=isRoadTile(x,y);diamond(x,y,road?"#71818a":(occ?"#b75a55":"#5fae61"),road?"#b4c2c8":(occ?"#e58a83":"#9bdc85"))
    }
    if(preview){
      let d=defs[sel],ok=footprintFree(preview.x,preview.y,d);preview.ok=ok;
@@ -414,12 +481,18 @@ function draw(){
      for(let yy=0;yy<d.h;yy++)for(let xx=0;xx<d.w;xx++)diamond(preview.x+xx,preview.y+yy,ok?"#72d9df":"#e25b55",ok?"#d7ffff":"#ffb0a8");
    }
  }
- let things=[];
- if(preview&&sel)things.push({y:scr(buildCenter(preview)).y+.01,fn:()=>building(preview,true,preview.ok)});
- S.b.forEach(b=>things.push({y:scr(buildCenter(b)).y,fn:()=>building(b)}));
- S.z.filter(z=>z.hp>0).forEach(z=>things.push({y:scr(z.w).y,fn:()=>zombie(z)}));
- S.sv.forEach(s=>things.push({y:scr(s.w).y,fn:()=>human(s)}));
- things.sort((a,b)=>a.y-b.y).forEach(o=>o.fn());
+ let things=[],seq=0;
+ // Static props participate in the exact same painter-order as people and buildings.
+ TREE_SPOTS.forEach(([x,y])=>things.push({depth:tileObjectDepth(x,y),seq:seq++,kind:"prop",fn:()=>tree(x,y)}));
+ CRATE_SPOTS.forEach(([x,y])=>things.push({depth:tileObjectDepth(x,y),seq:seq++,kind:"prop",fn:()=>crateAt(x,y)}));
+ // A building's depth is its footprint's front corner. This is what creates natural occlusion:
+ // survivor behind building -> survivor drawn first; survivor in front -> survivor drawn later.
+ if(preview&&sel)things.push({depth:buildingDepth(preview)+.01,seq:seq++,kind:"building",fn:()=>building(preview,true,preview.ok)});
+ S.b.forEach(b=>things.push({depth:buildingDepth(b),seq:seq++,kind:"building",fn:()=>building(b)}));
+ S.z.filter(z=>z.hp>0).forEach(z=>things.push({depth:worldDepth(z.w),seq:seq++,kind:"unit",fn:()=>zombie(z)}));
+ S.sv.forEach(s=>things.push({depth:worldDepth(s.w),seq:seq++,kind:"unit",fn:()=>human(s)}));
+ // Stable tie-breaker prevents flicker when two feet have the same screen Y.
+ things.sort((a,b)=>(a.depth-b.depth)||(a.seq-b.seq)).forEach(o=>o.fn());
  for(let f of floats){let p=scr(f.w);g.globalAlpha=Math.min(1,f.a/15);g.fillStyle=f.col;g.font=`bold ${Math.max(9,10*cam.z)}px Arial`;g.textAlign="center";g.fillText(f.t,p.x,p.y-22*cam.z-(55-f.a)*.2);g.globalAlpha=1}
  for(let i=floats.length-1;i>=0;i--)if(--floats[i].a<=0)floats.splice(i,1)
 }
