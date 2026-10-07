@@ -1,8 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646">
-<title>Zombie Haven V1.1</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#183646"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<title>Zombie Haven V1.1.1</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#10212a;font-family:Arial,Helvetica,sans-serif}
@@ -34,7 +34,7 @@ canvas{width:100%;height:100%;display:block;image-rendering:pixelated;touch-acti
 .request{position:absolute;left:8%;right:8%;bottom:116px;background:#17251ff2;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:12;box-shadow:0 5px 0 #0a100d}
 .request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px}
 </style></head><body><div id="app">
-<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div>
+<div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V1.1.1 HOTFIX</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div>
 <div class="row chips"><span class="chip">$ <span id="money">1800</span></span><span class="chip">FOOD <span id="food">12</span></span><span class="chip">WATER <span id="water">12</span></span><span class="chip">PARTS <span id="mat">24</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
 <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt">Build a Water Collector</span></div>
 <div id="zoom">DRAG · PINCH <span id="zv">100%</span></div>
@@ -395,7 +395,7 @@ function worldToTile(w){
 function occupiedTile(x,y){
  return S.b.some(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h)
 }
-function walkable(x,y){return x>=0&&y>=0&&x<GW&&y<GH&&!occupiedTile(x,y)}
+function walkable(x,y){return x>=0&&y>=0&&x<COLS&&y<ROWS&&!occupiedTile(x,y)}
 function findRoute(from,to){
  let a=worldToTile(from),b=worldToTile(to);if(!walkable(b.x,b.y))return [to];
  let key=(x,y)=>x+","+y,q=[[a.x,a.y]],prev=new Map([[key(a.x,a.y),null]]),dirs=[[1,0],[-1,0],[0,1],[0,-1]];
