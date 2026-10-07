@@ -1,0 +1,67 @@
+{
+  "version": "1.3",
+  "characters": {
+    "civilian": "assets/characters/civilian.png",
+    "guard": "assets/characters/guard.png",
+    "medic": "assets/characters/medic.png",
+    "scavenger": "assets/characters/scavenger.png",
+    "police_officer": "assets/characters/police_officer.png"
+  },
+  "character_frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "attack",
+    "use",
+    "carry",
+    "down",
+    "celebrate"
+  ],
+  "zombies": {
+    "walker": "assets/zombies/walker.png",
+    "crawler": "assets/zombies/crawler.png",
+    "runner": "assets/zombies/runner.png",
+    "bloated": "assets/zombies/bloated.png"
+  },
+  "zombie_frames": [
+    "idle",
+    "walk_1",
+    "walk_2",
+    "walk_3",
+    "walk_4",
+    "chase",
+    "attack",
+    "hit",
+    "die"
+  ],
+  "buildings": {
+    "medic": "assets/buildings/medic_tent.png",
+    "canteen": "assets/buildings/canteen.png",
+    "armory": "assets/buildings/armory.png",
+    "house": "assets/buildings/house_lv1.png",
+    "farm": "assets/buildings/farm.png",
+    "water": "assets/buildings/water_collector.png"
+  },
+  "terrain": {
+    "grass": "assets/terrain/grass.png",
+    "grass_dark": "assets/terrain/grass_dark.png",
+    "dirt": "assets/terrain/dirt.png",
+    "road": "assets/terrain/road.png",
+    "concrete": "assets/terrain/concrete.png"
+  },
+  "props": {
+    "tree": "assets/props/tree.png",
+    "crate": "assets/props/crate.png",
+    "debris": "assets/props/debris.png",
+    "fence": "assets/props/fence.png"
+  },
+  "ui": {
+    "build": "assets/ui/build.png",
+    "survivors": "assets/ui/survivors.png",
+    "items": "assets/ui/items.png",
+    "guide": "assets/ui/guide.png",
+    "renown": "assets/ui/renown.png"
+  }
+}
