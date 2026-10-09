@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#183646">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Zombie Haven V2.7</title>
+<title>Zombie Haven V2.8</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#0c1b22;font-family:-apple-system,Arial,Helvetica,sans-serif;overscroll-behavior:none}
@@ -27,7 +27,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .build{background:#214d61;border:2px solid #4b8298;color:#fff;padding:6px;text-align:left;font-weight:900;font-size:10px;border-radius:5px;display:flex;gap:6px;align-items:center;min-height:52px}
 .build img{width:40px;height:40px;object-fit:contain;flex:0 0 auto}.build small{display:block;color:#bfe3e9;margin-top:2px;font-weight:700}
 .act{background:#2d6f84;border:2px solid #7cc4d6;color:#fff;border-radius:5px;padding:8px 10px;font-weight:900;margin:6px 6px 0 0;font-size:11px}.act.danger{background:#9a3d38;border-color:#e58a83}
-#bottom{flex:0 0 auto;position:relative;z-index:9;height:calc(78px + env(safe-area-inset-bottom));background:linear-gradient(#17394a,#0d2633);border-top:3px solid #071a23;padding:5px 5px calc(5px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+#bottom{flex:0 0 auto;position:relative;z-index:9;height:calc(78px + env(safe-area-inset-bottom));background:linear-gradient(#17394a,#0d2633);border-top:3px solid #071a23;padding:5px 5px calc(5px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
 .menu{background:linear-gradient(#154a63,#0d3042);border:2px solid #3985a7;border-radius:6px;color:#fff2b5;font-weight:900;font-size:9px;text-shadow:1px 1px #000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .menu:first-child{border-color:#f1c84d}.menu img{width:30px;height:30px;object-fit:contain}.menu .e{font-size:22px;line-height:30px}
 #confirmBar{display:none;position:absolute;z-index:14;left:50%;transform:translateX(-50%);bottom:6px;width:min(94%,470px);background:#102b3bf5;border:3px solid #071a23;border-radius:8px;padding:7px;color:#fff}
@@ -42,15 +42,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 @keyframes toastUp{0%{opacity:0;transform:translate(-50%,5px) scale(.8)}20%{opacity:1;transform:translate(-50%,-8px) scale(1.06)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
 .renFlash{animation:renPulse .55s}@keyframes renPulse{50%{transform:scale(1.22);filter:brightness(1.6)}}
 #say{position:absolute;z-index:13;left:50%;top:44px;transform:translateX(-50%);background:#10222fee;color:#fff;border:2px solid #f1c84d;border-radius:6px;padding:6px 10px;font-size:10px;text-align:center;max-width:88%;opacity:0;pointer-events:none;transition:opacity .2s}
-.evBox{position:absolute;left:8%;right:8%;top:28%;background:#17251ffa;border:3px solid #d2bd76;border-radius:10px;padding:14px;z-index:40;color:#fff;font:700 13px Arial;text-align:center;box-shadow:0 0 0 9999px #0008}.evTitle{font:900 17px Arial;color:#ffe38a;margin-bottom:8px}.evText{margin-bottom:8px;line-height:1.35}.evGain{color:#9fe58a;font:900 13px Arial;margin-bottom:10px}.evBox button{padding:9px 28px;font:900 14px Arial;border-radius:6px;border:2px solid #081c25;background:#3f8f4f;color:#fff}#eventModal{position:absolute;inset:0;pointer-events:none}#eventModal .evBox{pointer-events:auto}.request{position:absolute;left:6%;right:6%;bottom:90px;background:#17251ff5;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:15;color:#fff;font-size:11px}
+.evBox{max-height:62%;overflow:auto;position:absolute;left:8%;right:8%;top:28%;background:#17251ffa;border:3px solid #d2bd76;border-radius:10px;padding:14px;z-index:40;color:#fff;font:700 13px Arial;text-align:center;box-shadow:0 0 0 9999px #0008}.evTitle{font:900 17px Arial;color:#ffe38a;margin-bottom:8px}.evText{margin-bottom:8px;line-height:1.35}.evGain{color:#9fe58a;font:900 13px Arial;margin-bottom:10px}.evBox button{padding:9px 28px;font:900 14px Arial;border-radius:6px;border:2px solid #081c25;background:#3f8f4f;color:#fff}#eventModal{position:absolute;inset:0;pointer-events:none}#eventModal .evBox{pointer-events:auto}.request{position:absolute;left:6%;right:6%;bottom:90px;background:#17251ff5;border:3px solid #d2bd76;border-radius:9px;padding:10px;z-index:15;color:#fff;font-size:11px}
 .request b{color:#ffe38a}.request button{margin-top:7px;margin-right:6px;padding:7px 10px;font-weight:900;border-radius:5px;border:2px solid #081c25}
 #crash{display:none;position:absolute;z-index:99;left:6px;right:6px;top:82px;background:#651f1f;color:#fff;border:2px solid #ff9b8e;padding:8px;font:11px monospace}
 #loading{position:absolute;inset:0;z-index:50;background:#0c1b22;color:#ffe38a;display:flex;align-items:center;justify-content:center;font-weight:900}
 .bar{height:6px;background:#1a3342;border-radius:3px;overflow:hidden;margin:2px 0 4px}.bar i{display:block;height:100%;background:#67c75a}
 </style></head><body>
 <div id="app">
- <div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V2.7</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
- <div class="row chips"><span class="chip">FOOD <span id="food">0</span></span><span class="chip">WATER <span id="water">0</span></span><span class="chip">PARTS <span id="mat">0</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
+ <div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V2.8</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
+ <div class="row chips"><span class="chip" id="tripChip" style="display:none;cursor:pointer">🧭 <span id="tripTime">0:00</span></span><span class="chip">FOOD <span id="food">0</span></span><span class="chip">WATER <span id="water">0</span></span><span class="chip">PARTS <span id="mat">0</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
  <div id="world"><canvas id="game"></canvas>
   <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt"></span></div>
   <div id="side"><div id="zoom">PINCH <span id="zv">100%</span></div><button id="btnCenter" title="Recenter">⌖</button><button id="btnSpeed" title="Speed">1×</button><button id="btnDebug" title="Geometry debug overlay">🐞</button></div>
@@ -61,10 +61,10 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
   <div id="confirmBar"><div id="confirmName">PLACE?</div><div id="confirmRow"><button id="noBuild">CANCEL</button><div id="nudge"><button data-d="-1,0" title="up-left">↖</button><button data-d="0,-1" title="up-right">↗</button><button data-d="0,1" title="down-left">↙</button><button data-d="1,0" title="down-right">↘</button></div><button id="yesBuild">CONFIRM</button></div></div>
   <div id="crash"></div>
  </div>
- <div id="bottom"><button class="menu" id="mBuild"><img id="uiBuildIcon" alt="">BUILD</button><button class="menu" id="mSurv"><img id="uiSurvivorsIcon" alt="">SURVIVORS</button><button class="menu" id="mTown"><img id="uiItemsIcon" alt="">TOWN</button><button class="menu" id="mGuide"><span class="e">?</span>GUIDE</button></div>
+ <div id="bottom"><button class="menu" id="mBuild"><img id="uiBuildIcon" alt="">BUILD</button><button class="menu" id="mSurv"><img id="uiSurvivorsIcon" alt="">SURVIVORS</button><button class="menu" id="mTown"><img id="uiItemsIcon" alt="">TOWN</button><button class="menu" id="mExp"><span class="e">🧭</span>EXPEDITION</button><button class="menu" id="mGuide"><span class="e">?</span>GUIDE</button></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.7.1"></script>
-<script src="js/world.js?v=2.7.1"></script>
-<script src="js/game.js?v=2.7.1"></script>
+<script src="js/iso.js?v=2.8.0"></script>
+<script src="js/world.js?v=2.8.0"></script>
+<script src="js/game.js?v=2.8.0"></script>
 </body></html>
