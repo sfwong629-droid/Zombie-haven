@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.6.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.6.2', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -60,7 +60,7 @@ async function loadAll() {
 
 /* ---------------- state ---------------- */
 const world = Wd.createWorld();
-const S = { produced: 0, food: 14, water: 14, mat: 30, med: 8, ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
+const S = { produced: 0, food: 14, water: 14, mat: 30, ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
 const floats = [];
 let sel = null;            // active build tool: {kind:'building',type} | {kind:'road'}
 let preview = null;        // {x,y,w,h,type,ok,why}
@@ -385,10 +385,7 @@ function finishFacility(s) {
   if (r.need === 'hunger') { if (S.food >= .5) s.hunger = Math.max(0, s.hunger - r.benefit); else floats.push({ w: { ...s.w }, t: 'NO FOOD', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'thirst') { if (S.water >= .5) s.thirst = Math.max(0, s.thirst - r.benefit); else floats.push({ w: { ...s.w }, t: 'NO WATER', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'fatigue') s.fatigue = Math.max(0, s.fatigue - r.benefit);
-  if (r.need === 'injury') {            // medicine is its own supply: full care with a dose, half without
-    if (S.med >= 1) { S.med -= 1; s.hp = Math.min(s.max, s.hp + r.benefit); floats.push({ w: { ...s.w }, t: '-1 MED', col: '#9fe0ff', a: 70 }); }
-    else { s.hp = Math.min(s.max, s.hp + Math.round(r.benefit * .5)); floats.push({ w: { ...s.w }, t: 'NO MEDICINE', col: '#ff8a7a', a: 70 }); }
-  }
+  if (r.need === 'injury') { s.hp = Math.min(s.max, s.hp + r.benefit); }   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (b.type === 'armory') { const ch = weapons.filter((w) => w[1] >= s.weapon[1] * 1.15 && weaponCost(w) + 6 <= S.mat).sort((a, c) => c[1] - a[1]); if (ch.length) { const w = ch[0]; S.mat -= weaponCost(w); s.weapon = w; screenToast(s.name + ' equipped ' + w[0] + ' · -' + weaponCost(w) + ' PARTS'); s.sat += 2; say(s.name + ' took a ' + w[0] + ' from the Armory.'); } }
   s.mastery += 1 + (professions[s.job]?.facility || 0) * .1; masteryCheck(s);
   if (!s.resident && s.sat >= 35 && !s.requested) { s.requested = true; queueResidentRequest(s); }
@@ -399,7 +396,7 @@ function ai(s) {
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + 1.5); s.thirst = Math.min(100, s.thirst + 1.8); s.fatigue = Math.min(100, s.fatigue + 1); }
   if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; say(s.name + ' collapsed!'); return; }
   if (s.mode === 'down') { s.moving = false; return; }
-  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { const dose = S.med >= 1; if (dose) S.med -= 1; s.hp = Math.round(s.max * (dose ? (bOf('hospital').length ? 1 : .7) : .4)); if (!dose) say('No medicine: ' + s.name + ' recovered only partly.'); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 60); s.why = 'Recovered'; say(s.name + ' recovered and returned.'); } return; }
+  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { s.hp = Math.round(s.max * (bOf('hospital').length ? 1 : bOf('clinic').length ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; say(s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
     const r = followPath(s, q.w, .02); if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.why = `Carrying ${q.name} to ${medSite() ? DEFS[medSite().type].name : 'safety'}`; say(`${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
@@ -407,7 +404,7 @@ function ai(s) {
   if (s.mode === 'rescueCarry') {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     const r = followPath(s, sitePoint(), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
-    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; q.mode = 'hospital'; q.hp = 1; q.stateTicks = 230; q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); say(q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; q.mode = 'hospital'; q.hp = 1; q.stateTicks = bOf('hospital').length ? 700 : bOf('clinic').length ? 1100 : 1500; q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); say(q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
   }
   if (s.mode === 'goWork') {
     if (!s.post || !world.buildings.includes(s.post) || s.post.staff !== s) { s.post = null; enterFree(s, 30); return; }
@@ -425,7 +422,7 @@ function ai(s) {
   if (s.mode === 'goFacility') {
     if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; enterFree(s, 25); return; }
     const r = followPath(s, Wd.doorPoint(s.facility), WALK * 1.15);
-    if (r === 'arrived') { const ru = facilityRules[s.facility.type]; s.mode = 'useFacility'; s.activity = ru.label; s.stateTicks = ru.use; s.path = null; s.why = ru.label + ' at ' + DEFS[s.facility.type].name; }
+    if (r === 'arrived') { const ru = facilityRules[s.facility.type]; s.mode = 'useFacility'; s.activity = ru.label; s.stateTicks = ru.use + (ru.need === 'injury' ? Math.round(900 * (1 - s.hp / s.max)) : 0); s.path = null; s.why = ru.label + ' at ' + DEFS[s.facility.type].name; }
     else if (r === 'fail') { s.facility = null; enterFree(s, 90); s.why = "Couldn't reach it — trying later"; } return;
   }
   if (s.mode === 'useFacility') { s.moving = false; if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; s.activity = null; enterFree(s, 40); return; } if (s.stateTicks <= 0) { finishFacility(s); s.stateTicks = 50 + s.i * 9; } return; }
@@ -454,8 +451,7 @@ function ai(s) {
 function lootFind(s) {
   const r = rnd(), bonus = professions[s.job]?.scav > 2 ? 1 : 0, f = (t, col) => floats.push({ w: { ...s.w }, t, col, a: 70 });
   if (r < .42) { const n = 1 + bonus; S.mat += n; f('+' + n + ' PARTS', '#9fe0ff'); }
-  else if (r < .49) { S.med += 1; f('+1 MEDICINE', '#c5f0a0'); say(s.name + ' found medicine while scavenging.'); }
-  else if (r < .75) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' FOOD', '#ffe06b'); }
+  else if (r < .71) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' FOOD', '#ffe06b'); }
   else { const n = 1 + bonus; S.water += n; S.produced += n; f('+' + n + ' WATER', '#8fd8ff'); }
 }
 function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s.mode = 'walk'; s.purpose = 'scav-back'; s.dest = tc(7, 9); s.why = 'Returning with supplies'; s.stateTicks = 900; } }
@@ -469,7 +465,7 @@ function spawn(x = null, y = null, type = null) {
   const edge = [[1, 2], [4, 2], [8, 2], [12, 2], [14, 4], [1, 5]], a = edge[Math.floor(rnd() * edge.length)], kind = type || weightedZombie(), d = zombieTypes[kind];
   S.z.push({ type: kind, w: tc(x ?? a[0], y ?? a[1]), hp: d.hp, max: d.hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null });
 }
-function monsterGeneration() { S.spawnClock++; const desired = Math.min(2 + S.rank + Math.floor(S.threat / 2), 7); if (activeZ() < desired && S.spawnClock > 150 - Math.min(70, S.threat * 8)) { spawn(); S.spawnClock = 0; } }
+function monsterGeneration() { S.spawnClock++; const desired = Math.min(4 + S.rank + Math.floor(S.threat / 2), 10); if (activeZ() < desired && S.spawnClock > 110 - Math.min(50, S.threat * 6)) { spawn(); S.spawnClock = 0; } }
 function zai(z) {
   const d = zombieTypes[z.type] || zombieTypes.walker; if (z.cool > 0) z.cool--; if (z.stateTicks > 0) z.stateTicks--;
   if (z.mode === 'appear') { z.moving = false; if (z.stateTicks <= 0) { z.mode = 'idle'; z.stateTicks = 35 + rnd() * 70; } return; }
@@ -528,7 +524,6 @@ function endOfDay() {            // rations: every survivor eats half food, half
   dayLog.foodIn = dayLog.waterIn = 0;
   if (ff < 1) screenToast('⚠ OUT OF FOOD'); else if (S.food < nf) screenToast('⚠ FOOD: under 1 day left');
   if (fw < 1) screenToast('⚠ OUT OF WATER'); else if (S.water < nw) screenToast('⚠ WATER: under 1 day left');
-  if (S.med < 2) screenToast('⚠ MEDICINE LOW');
 }
 function releasePost(b) { if (b.staff) { if (b.staff.post === b) b.staff.post = null; b.staff = null; } }
 function autoStaff() {           // one slot per building; a matching profession is assigned automatically, the best level first
@@ -565,7 +560,7 @@ function visitorArrival() {
   S.arrivalClock++; if (S.arrivalClock < 2200 || S.sv.length >= 8) return; S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Mechanic'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], v = mk(name, job, 1, 7, 6, S.sv.length);
-  v.sat = 3; v.stateTicks = 80; S.sv.push(v); screenToast('NEW SURVIVOR · ' + name); say(name + ' arrived at the Haven.'); ui();
+  v.sat = 3; v.stateTicks = 80; S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.1' }); say(name + ' arrived at the Haven.'); ui();
 }
 function beginMission(id = null) { const d = id ? MISSION_DEFS.find((m) => m.id === id) : MISSION_DEFS[Math.floor(rnd() * MISSION_DEFS.length)]; S.mission = { ...d, progress: 0 }; S.missionStart = { kills: S.kills, produced: S.produced, built: S.builtCount }; say('Mission: ' + d.name); ui(); }
 function missionProgress() {
@@ -574,14 +569,21 @@ function missionProgress() {
   m.progress = Math.max(0, Math.min(m.goal, p));
   if (m.progress >= m.goal) { S.mat += m.rewardParts; screenToast('+' + m.rewardParts + ' PARTS · mission reward'); renownGain(m.rewardRen, m.name); screenToast('MISSION COMPLETE · ' + m.name); S.mission = null; setTimeout(() => beginMission(), 1200); }
 }
-function triggerTownEvent() { const e = TOWN_EVENT_DEFS[Math.floor(rnd() * TOWN_EVENT_DEFS.length)]; if (e.food) S.food += e.food; if (e.water) S.water += e.water; if (e.med) S.med += e.med; if (e.mat) S.mat += e.mat; if (e.ren) renownGain(e.ren, e.name); screenToast(e.name.toUpperCase()); say(e.text); ui(); }
+const eventQueue = []; let modalOpen = false;
+function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
+function nextEventPopup() {
+  const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length) return; const e = eventQueue.shift(); modalOpen = true;
+  m.innerHTML = `<div class="evBox"><div class="evTitle">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}<button id="eventOk">OK</button></div>`;
+  $('eventOk').onclick = () => { m.innerHTML = ''; modalOpen = false; nextEventPopup(); };
+}
+function triggerTownEvent() { const e = TOWN_EVENT_DEFS[Math.floor(rnd() * TOWN_EVENT_DEFS.length)]; if (e.food) S.food += e.food; if (e.water) S.water += e.water; if (e.mat) S.mat += e.mat; if (e.ren) renownGain(e.ren, e.name); const g = []; if (e.food) g.push('+' + e.food + ' food'); if (e.water) g.push('+' + e.water + ' water'); if (e.mat) g.push('+' + e.mat + ' parts'); if (e.ren) g.push('+' + e.ren + ' renown'); showEventPopup({ title: e.name.toUpperCase(), text: e.text, gains: g.join(' · ') }); ui(); }
 const residents = () => S.sv.filter((s) => s.resident).length;
 function checkRank() {
   const n = rankRules[S.rank]; if (!n) return;
-  if (S.ren >= n.ren && S.produced >= n.income && residents() >= n.residents && world.buildings.length >= n.facilities) { S.rank++; S.threat++; S.mat += 4 + S.rank; S.med += 1; renownGain(5, 'Haven Rank ' + S.rank); screenToast('★ HAVEN RANK ' + S.rank + ' ★'); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); ui(); }
+  if (S.ren >= n.ren && S.produced >= n.income && residents() >= n.residents && world.buildings.length >= n.facilities) { S.rank++; S.threat++; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); ui(); }
 }
 function ui() {
-  $('meds').textContent = Math.floor(S.med); $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
+  $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
@@ -610,10 +612,10 @@ function loadGame() {
     } else { Object.assign(S, d.S); S.sv = d.sv || []; }
     if (legacy || prev) {   // V2.5 / V2.4 -> V2.6: money no longer exists. Leftover money becomes parts (capped), income becomes supplies produced, missions reset.
       const m = Number(d.S.money) || 0; S.mat = (Number(S.mat) || 0) + Math.min(40, Math.floor(m / 60)); S.produced = Math.floor((Number(d.S.earned) || 0) / 10);
-      if (S.med === undefined) S.med = 8; S.food = Number(S.food) || 0; S.water = Number(S.water) || 0; S.mission = null; S.missionStart = { kills: S.kills || 0, produced: S.produced, built: S.builtCount || 0 };
+      delete S.med; S.food = Number(S.food) || 0; S.water = Number(S.water) || 0; S.mission = null; S.missionStart = { kills: S.kills || 0, produced: S.produced, built: S.builtCount || 0 };
       delete S.money; delete S.earned; S.sv.forEach((q) => { delete q.money; });
     }
-    if (S.produced === undefined) S.produced = 0; if (S.med === undefined) S.med = 8;
+    if (S.produced === undefined) S.produced = 0; delete S.med;
     if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, w: DEFS[b.type].w, h: DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, staff: null, _staffId: b.staffId || null }));
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor);
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
@@ -684,7 +686,7 @@ function showTown() {
   endBuildMode(true); closeP(); $('it').textContent = 'TOWN'; const nx = rankRules[S.rank], st = supplyStats();
   const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days left`);
   $('ib').innerHTML = `<b>Haven rank ${S.rank}</b> · ${S.sv.length} survivors (${residents()} residents) · ${world.buildings.length} buildings<br>
-   <b>Supplies</b> (cap ${supplyCap()}): Food ${Math.floor(S.food)} · Water ${Math.floor(S.water)} · Parts ${Math.floor(S.mat)} · Medicine ${Math.floor(S.med)}<br>
+   <b>Supplies</b> (cap ${supplyCap()}): Food ${Math.floor(S.food)} · Water ${Math.floor(S.water)} · Parts ${Math.floor(S.mat)}<br>
    Rations eaten per day: <b>${st.need.toFixed(1)}</b> (half food, half water)<br>
    Food ${net(st.fNet)}/day · ${days(st.fDays)} · Water ${net(st.wNet)}/day · ${days(st.wDays)}<br>
    ${nx ? `Next rank needs: Renown ${S.ren}/${nx.ren} · Supplies produced ${Math.floor(S.produced)}/${nx.income} · Residents ${residents()}/${nx.residents} · Buildings ${world.buildings.length}/${nx.facilities}` : 'Max rank reached.'}<br>${S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : ''}
@@ -755,7 +757,7 @@ function simTick() {
   if (tick % 1000 === 0) { S.hour++; hourlyProduction(); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
-function frame(t) { if (!last) last = t; acc += Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; draw(); requestAnimationFrame(frame); }
+function frame(t) { if (!last) last = t; acc += modalOpen ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; draw(); requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); else last = 0; }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
