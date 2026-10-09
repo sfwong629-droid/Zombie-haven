@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.7.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.7.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -383,6 +383,12 @@ function chooseFacility(s) {
 }
 const NEEDTXT = { hunger: 'Hungry', thirst: 'Thirsty', fatigue: 'Tired', injury: 'Hurt', gear: 'Wants better gear' };
 function chooseTownAction(s) { const b = chooseFacility(s); if (b && b !== s.lastFacility) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${NEEDTXT[facilityRules[b.type].need]} → ${DEFS[b.type].name}`; return true; } return false; }
+// A zombie that is attacking this survivor (or about to) interrupts whatever they were doing — eating, drinking, working, strolling.
+function threatOf(s) {
+  let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear') continue; const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if ((atkMe && d < 3.2) || d < 1.7) { if (d < bd) { bd = d; best = z; } } }
+  return best;
+}
+function engage(s, z) { s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.moving = false; s.why = `Fighting a ${zombieTypes[z.type].name}`; }
 function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (z.hp > 0) { const d = dist(s.w, z.w); if (d < bd) { bd = d; best = z; } } return best; }
 function acquireEnemy(s) { const z = nearestZombie(s), cfg = jobAI[s.job] || jobAI.Civilian, rng = S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro; if (z && dist(s.w, z.w) <= rng) { s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.path = null; s.why = `Fighting a ${zombieTypes[z.type].name}`; return true; } return false; }
 function assignRescue() {
@@ -396,8 +402,9 @@ const s_dummy = { x: 7, y: 10 };
 function chooseLifePurpose(s) {
   if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
   const cfg = jobAI[s.job] || jobAI.Civilian;
+  if (acquireEnemy(s)) return;   // a zombie in sight comes before any errand
   if (rnd() < Math.min(.94, .58 * cfg.town) && chooseTownAction(s)) return;
-  if (acquireEnemy(s)) return; if (chooseTownAction(s)) return;
+  if (chooseTownAction(s)) return;
   if (s.post && s.post.staff === s && S.hour >= 6 && S.hour < 20 && rnd() < .85) { s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = 'Heading to work at ' + DEFS[s.post.type].name; return; }
   const r = rnd();
   if ((s.job === 'Guard' || s.job === 'Police Officer') && r < .35) { s.dest = patrolDest(); s.mode = 'walk'; s.purpose = 'patrol'; s.why = 'Patrolling the north road'; s.stateTicks = 700; return; }
@@ -423,6 +430,7 @@ function ai(s) {
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + 1.5); s.thirst = Math.min(100, s.thirst + 1.8); s.fatigue = Math.min(100, s.fatigue + 1); }
   if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; say(s.name + ' collapsed!'); return; }
   if (s.mode === 'down') { s.moving = false; return; }
+  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free'].includes(s.mode) && tick % 6 === s.i % 6) { const th = threatOf(s); if (th) { engage(s, th); return; } }   // being attacked beats lunch
   if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { s.hp = Math.round(s.max * (bOf('hospital').length ? 1 : bOf('clinic').length ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; say(s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
@@ -529,7 +537,10 @@ function zai(z) {
 const wallAtTile = (x, y) => world.walls.get(x + ',' + y) || null;
 function siegeGoal(z) {
   const d = zombieTypes[z.type] || zombieTypes.walker, elite = z.type === 'spitter' || z.type === 'brute';
-  if (elite && world.walls.size) { let best = null, bs = 1e9; for (const wl of world.walls.values()) { const sc = wl.hp + dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) * 6; if (sc < bs) { bs = sc; best = wl; } } return { x: best.x + .5, y: best.y + .5 }; }
+  if (elite && world.walls.size) {   // elites are smarter: they go for the gate; with no gate they pick the weakest segment
+    let best = null, bs = 1e9; for (const wl of world.walls.values()) if (wl.type === 'gate') { const sc = dist(z.w, { x: wl.x + .5, y: wl.y + .5 }); if (sc < bs) { bs = sc; best = wl; } }
+    if (!best) for (const wl of world.walls.values()) { const sc = wl.hp + dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) * 6; if (sc < bs) { bs = sc; best = wl; } }
+    return { x: best.x + .5, y: best.y + .5 }; }
   let g = null, gd = 1e9; for (const s of S.sv) if (s.hp > 0) { const dd = dist(s.w, z.w); if (dd < gd) { gd = dd; g = s.w; } }
   for (const b of world.buildings) { const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 }, dd = dist(c, z.w); if (dd < gd) { gd = dd; g = c; } }
   return g ? { x: g.x, y: g.y } : tc(7, 11);
