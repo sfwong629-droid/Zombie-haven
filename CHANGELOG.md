@@ -1,5 +1,12 @@
 # Changelog
 
+## V2.9.5
+- Back view: survivors walking up the screen now show their back (new sheet
+  `assets/characters/v4/Base_back.png`: idle + 4 walk frames, facing up-left; mirrored for up-right).
+  Working, carrying and down poses still use the front view.
+- ChatGPT drew the back view about 35 px tall; 2–4 near-duplicate rows were removed per frame so it
+  matches the 32 px front view (no resampling, still true pixel art).
+
 ## V2.9.4
 - Fix: characters changed size relative to the map when zooming (0.53–0.80 tile, measured), because
   V2.9.2 rounded their scale to whole pixels. They now scale smoothly with the zoom (0.70 tile at

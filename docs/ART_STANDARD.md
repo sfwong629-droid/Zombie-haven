@@ -33,5 +33,8 @@ One rule keeps everything consistent: **one art pixel is the same size on screen
 - Don't round the sprite scale to whole pixels: that makes characters jump in size as you zoom.
 
 ## Sheet layout (assets/characters/v4)
-- 10 frames, each 32×36 px, feet on row 34: 0 idle, 1–4 walk (also attack), 5 idle, 6 working,
-  7 carrying, 8 down, 9 idle.
+- `Base.png` (front, facing down-left): 10 frames, each 32×36 px, feet on row 34: 0 idle,
+  1–4 walk (also attack), 5 idle, 6 working, 7 carrying, 8 down, 9 idle.
+- `Base_back.png` (back, facing up-left): 5 frames, same size and baseline: 0 idle, 1–4 walk.
+- Right-facing views are the left-facing art mirrored by the game, so only left-facing art is drawn.
+- If a generated sprite is a few px too tall, remove near-duplicate rows (never resample).
