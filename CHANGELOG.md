@@ -1,5 +1,10 @@
 # Changelog
 
+## V2.9.3
+- Survivors face the way they walk: moving left on screen shows the sprite as drawn, moving right shows
+  it mirrored. While chasing or attacking they face their target. Facing isn't saved (it re-derives on load).
+- Zombies don't turn yet (their art is still the old style).
+
 ## V2.9.2
 - Characters redrawn as chunky pixel art: about 30 art px tall instead of about 80, so each pixel is
   visible on a phone. On-screen character size is unchanged (0.70 tile).

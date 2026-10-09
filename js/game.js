@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.9.2', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.9.3', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -136,12 +136,15 @@ function drawProp(kind, tx, ty) {
   const s = cfg.k * tw / cfg.cw, w = im.width * s, h = im.height * s; const sc = scaled('p:' + kind, im, w, h);
   ctx.imageSmoothingEnabled = true; ctx.drawImage(sc, p.x - cfg.ax * s, p.y - cfg.ay * s, w, h);
 }
-function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false) {   // hScale = content height in tile widths; content = figure height in source px
+function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .26 * tw * Math.max(1, hScale / CHAR_H), .09 * tw, 0, 0, 7); ctx.fill();
   if (crisp) {   // pixel art: whole device pixels per art pixel, snapped to the device-pixel grid, so every art pixel is an even square block
     const k = Math.max(1, Math.round(sc * DPR)) / DPR, snap = (v) => Math.round(v * DPR) / DPR;
-    ctx.imageSmoothingEnabled = false; ctx.drawImage(img, frame * fw, 0, fw, fh, snap(p.x - fw * k / 2), snap(p.y - (footY + 1) * k), fw * k, fh * k); ctx.imageSmoothingEnabled = true; return; }
+    ctx.imageSmoothingEnabled = false;
+    if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(img, frame * fw, 0, fw, fh, -fw * k / 2, snap(p.y - (footY + 1) * k), fw * k, fh * k); ctx.restore(); }   // art faces left; mirrored = facing right
+    else ctx.drawImage(img, frame * fw, 0, fw, fh, snap(p.x - fw * k / 2), snap(p.y - (footY + 1) * k), fw * k, fh * k);
+    ctx.imageSmoothingEnabled = true; return; }
   ctx.imageSmoothingEnabled = true;
   if (sc >= .75) { ctx.drawImage(img, frame * fw, 0, fw, fh, p.x - fw * sc / 2, p.y - footY * sc, fw * sc, fh * sc); return; }
   const k = Math.max(.05, Math.round(sc * 32) / 32), sheet = scaled(key + 's', img, Math.round(img.width * k), Math.round(img.height * k));
@@ -149,11 +152,19 @@ function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, cri
 }
 const EMOJI = { Eating: '🍖', Drinking: '💧', Resting: '💤', Treatment: '💊', Shopping: '🛒', 'Getting food': '🥫', Working: '🔧' };
 function bubble(p, txt) { ctx.font = `${Math.max(11, 13 * cam.z)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(txt, p.x, p.y); }
+const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right }
+function facingRight(o) {   // screen-space facing from movement (or from the target while fighting)
+  let st = FACE.get(o); if (!st) { st = { lx: o.w.x, ly: o.w.y, right: false }; FACE.set(o, st); }
+  const t = (o.mode === 'attack' || o.mode === 'chase') && o.target && o.target.w;
+  const sx = t ? (t.x - t.y) - (o.w.x - o.w.y) : (o.w.x - o.w.y) - (st.lx - st.ly);   // screen x grows with (wx - wy)
+  if (Math.abs(sx) > 0.004) st.right = sx > 0;
+  st.lx = o.w.x; st.ly = o.w.y; return st.right;
+}
 function drawHuman(s) {
   const p = project(s.w.x, s.w.y); let f = 0;
   if (s.mode === 'down') f = 8; else if (s.carrying) f = 7; else if (s.mode === 'attack' || s.mode === 'recover') f = 1 + (Math.floor((tick + s.phase) / 5) % 4); else if (s.activity) f = 6; else if (s.moving) f = 1 + (Math.floor((tick + s.phase) / 6) % 4);
   const c4 = IMG['char4'];
-  if (c4 && okImg(c4)) drawSheet('c4', c4, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
+  if (c4 && okImg(c4)) drawSheet('c4', c4, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, facingRight(s)); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
   if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
