@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.6.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.6.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -273,8 +273,8 @@ const MISSION_DEFS = [
   { id: 'build', name: 'Expand the Haven', desc: 'Construct 1 new facility', goal: 1, rewardParts: 3, rewardRen: 5 },
 ];
 const TOWN_EVENT_DEFS = [
-  { id: 'caravan', name: 'Trader Caravan', text: 'A caravan leaves food and water.', food: 4, water: 4, ren: 2 },
-  { id: 'supplies', name: 'Supply Cache', text: 'Scavengers uncover useful parts and medicine.', mat: 3, med: 1, ren: 1 },
+  { id: 'caravan', name: 'Trader Caravan', text: 'A caravan leaves food and water.', food: 3, water: 3, ren: 2 },
+  { id: 'supplies', name: 'Supply Cache', text: 'Scavengers uncover some useful parts.', mat: 2, ren: 1 },
   { id: 'rumor', name: 'Safe Haven Rumor', text: 'Word of the Haven spreads.', ren: 4 },
 ];
 const rankRules = [{ rank: 1, ren: 0, income: 0, residents: 0, facilities: 0 }, { rank: 2, ren: 25, income: 24, residents: 1, facilities: 4 }, { rank: 3, ren: 70, income: 70, residents: 2, facilities: 6 }, { rank: 4, ren: 150, income: 160, residents: 3, facilities: 8 }, { rank: 5, ren: 280, income: 320, residents: 4, facilities: 10 }];   // income = supplies produced
@@ -433,7 +433,7 @@ function ai(s) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > .9) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
     if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, bonus = professions[s.job]?.combat || 0, dmg = Math.round(6 + s.weapon[1] * .55 + bonus); z.hp -= dmg; floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); s.mastery += .5; masteryCheck(s);
-      if (z.hp <= 0) { S.kills++; const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .18) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); if (S.stage === 1 && S.kills >= 3) { S.stage = 2; renownGain(10, 'Goal complete'); say('Goal complete!'); } enterPost(s); return; }
+      if (z.hp <= 0) { S.kills++; const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .25) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); if (S.stage === 1 && S.kills >= 3) { S.stage = 2; renownGain(10, 'Goal complete'); say('Goal complete!'); } enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = 48 + s.i * 9; } return; }
     if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) s.mode = 'chase'; } return;
   }
@@ -453,10 +453,10 @@ function ai(s) {
 // scavenger leaves 'wait' after searching → head home
 function lootFind(s) {
   const r = rnd(), bonus = professions[s.job]?.scav > 2 ? 1 : 0, f = (t, col) => floats.push({ w: { ...s.w }, t, col, a: 70 });
-  if (r < .40) { const n = 1 + bonus; S.mat += n; f('+' + n + ' PARTS', '#9fe0ff'); }
-  else if (r < .55) { S.med += 1; f('+1 MEDICINE', '#c5f0a0'); }
-  else if (r < .80) { const n = 2 + bonus; S.food += n; S.produced += n; f('+' + n + ' FOOD', '#ffe06b'); }
-  else { const n = 2 + bonus; S.water += n; S.produced += n; f('+' + n + ' WATER', '#8fd8ff'); }
+  if (r < .42) { const n = 1 + bonus; S.mat += n; f('+' + n + ' PARTS', '#9fe0ff'); }
+  else if (r < .49) { S.med += 1; f('+1 MEDICINE', '#c5f0a0'); say(s.name + ' found medicine while scavenging.'); }
+  else if (r < .75) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' FOOD', '#ffe06b'); }
+  else { const n = 1 + bonus; S.water += n; S.produced += n; f('+' + n + ' WATER', '#8fd8ff'); }
 }
 function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s.mode = 'walk'; s.purpose = 'scav-back'; s.dest = tc(7, 9); s.why = 'Returning with supplies'; s.stateTicks = 900; } }
 
@@ -750,7 +750,7 @@ $('ib').addEventListener('click', (e) => { const r = e.target.closest('[data-sv]
 /* ---------------- loop ---------------- */
 function simTick() {
   tick++; S.sv.forEach(ai); S.z.forEach(zai); S.z = S.z.filter((z) => z.hp > 0); monsterGeneration(); visitorArrival();
-  if (tick % 120 === 0) missionProgress(); if (tick % 240 === 0) checkRank(); if (tick % 1600 === 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
+  if (tick % 120 === 0) missionProgress(); if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) autoStaff();
   if (tick % 1000 === 0) { S.hour++; hourlyProduction(); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
