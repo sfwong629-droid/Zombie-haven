@@ -29,6 +29,13 @@
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
   const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'] };
   const ROAD_COST = 1;  // parts per road tile
+  // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
+  const WALL_DEFS = {
+    wood:  { name: 'Wood Barricade', mat: 1, hp: 80,  rank: 1 },
+    metal: { name: 'Metal Wall',     mat: 3, hp: 220, rank: 2 },
+    gate:  { name: 'Gate',           mat: 4, hp: 140, rank: 1 },
+  };
+  const WALLZONE = { x0: 1, y0: 5, x1: 14, y1: 18 };   // build zone grown by one tile so a ring can enclose it
   const ROAD_COORDS = [
     [2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],
     [7,6],[7,7],[7,8],[7,9],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],
@@ -38,13 +45,16 @@
   ];
 
   const key = (x, y) => x + ',' + y;
-  function createWorld() { return { roads: new Set(ROAD_COORDS.map(([x, y]) => key(x, y))), buildings: [], ver: 0 }; }
+  function createWorld() { return { roads: new Set(ROAD_COORDS.map(([x, y]) => key(x, y))), buildings: [], walls: new Map(), ver: 0 }; }
   const bump = (w) => { w.ver++; };
   const isRoad = (w, x, y) => w.roads.has(key(x, y));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
   const inTown = (x, y) => x >= BUILD.x0 && x <= BUILD.x1 && y >= BUILD.y0 && y <= BUILD.y1;
   function buildingAt(w, x, y) { for (const b of w.buildings) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; return null; }
-  const walkable = (w, x, y) => inMap(x, y) && !buildingAt(w, x, y);
+  const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
+  const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
+  // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
+  const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || (!z && wl.type === 'gate'); };
 
   // door: world point just outside the entrance; the routing goal is its tile.
   function doorPoint(b) { const d = DEFS[b.type] || { door: [b.w / 2, b.h + .35] }; return { x: b.x + d.door[0], y: b.y + d.door[1] }; }
@@ -79,14 +89,14 @@
     get size() { return this.a.length; }
   }
   const stepCost = (w, x, y) => isRoad(w, x, y) ? 1 : (inTown(x, y) ? 2.2 : 2.8);
-  function nearestWalkable(w, gx, gy) {
-    if (walkable(w, gx, gy)) return { x: gx, y: gy };
-    for (let r = 1; r < 5; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walkable(w, gx + dx, gy + dy)) return { x: gx + dx, y: gy + dy };
+  function nearestWalkable(w, gx, gy, z = false) {
+    if (walkable(w, gx, gy, z)) return { x: gx, y: gy };
+    for (let r = 1; r < 5; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walkable(w, gx + dx, gy + dy, z)) return { x: gx + dx, y: gy + dy };
     return null;
   }
   // tiles AFTER start up to the goal (inclusive); [] if already there; null if unreachable
-  function findPath(w, from, to) {
-    const g = nearestWalkable(w, to.x, to.y), s = nearestWalkable(w, from.x, from.y); if (!g || !s) return null;
+  function findPath(w, from, to, z = false) {
+    const g = nearestWalkable(w, to.x, to.y, z), s = nearestWalkable(w, from.x, from.y, z); if (!g || !s) return null;
     if (s.x === g.x && s.y === g.y) return [];
     const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap();
     heap.push({ x: s.x, y: s.y, g: 0, f: Math.abs(s.x - g.x) + Math.abs(s.y - g.y) });
@@ -95,7 +105,7 @@
       const c = heap.pop(); if (c.g > (best.get(key(c.x, c.y)) ?? 1e9)) continue;
       if (c.x === g.x && c.y === g.y) { const out = []; let k = key(c.x, c.y); while (prev.has(k)) { const [px, py] = k.split(',').map(Number); out.push({ x: px, y: py }); k = prev.get(k); } return out.reverse(); }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = c.x + dx, ny = c.y + dy; if (!walkable(w, nx, ny)) continue;
+        const nx = c.x + dx, ny = c.y + dy; if (!walkable(w, nx, ny, z)) continue;
         const ng = c.g + stepCost(w, nx, ny), k = key(nx, ny);
         if (ng < (best.get(k) ?? 1e9)) { best.set(k, ng); prev.set(k, key(c.x, c.y)); heap.push({ x: nx, y: ny, g: ng, f: ng + Math.abs(nx - g.x) + Math.abs(ny - g.y) }); }
       }
@@ -103,5 +113,14 @@
     return null;
   }
 
-  return { COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  // Perimeter check: flood-fill from the town centre treating walls (gate included) and buildings as solid, the way zombies see them.
+  function perimeter(w) {
+    let weakest = null, n = 0, gates = 0; for (const wl of w.walls.values()) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
+    const seed = nearestWalkable(w, 7, 10, true); if (!seed) return { sealed: false, walls: n, gates, weakest, area: 0 };
+    const seen = new Set([key(seed.x, seed.y)]), q = [seed]; let open = false;
+    while (q.length) { const c = q.pop(); if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) open = true;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
+    return { sealed: !open, walls: n, gates, weakest, area: seen.size };
+  }
+  return { WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });
