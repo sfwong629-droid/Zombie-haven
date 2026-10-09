@@ -9,7 +9,7 @@
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
   // fam/tier/next = building family ladder (footprint fixed per family, so upgrades happen in place). slot = one staff slot (auto-staffed).
-  const D = (o) => Object.assign({ w: 2, h: 2, q: 10, a: 8, rank: 1, cap: 1, door: [1, 2.35] }, o);
+  const D = (o) => Object.assign({ w: 2, h: 2, q: 10, a: 8, rank: 1, cap: 1, door: [1, 1.6] }, o);
   const DEFS = {
     water:    D({ name: 'Rain Collector', mat: 4,  a: 4,  role: 'water',   fam: 'water',   tier: 1, next: 'well',     sprite: 'grid', slot: true, out: 4 }),
     well:     D({ name: 'Well',           mat: 14, a: 6,  q: 12, role: 'water', fam: 'water', tier: 2, rank: 2, slot: true, out: 8, hidden: true }),
@@ -17,13 +17,13 @@
     field:    D({ name: 'Farm',           mat: 17, a: 7,  q: 12, role: 'food', fam: 'farm', tier: 2, rank: 2, slot: true, out: 8, waterUse: 3, hidden: true }),
     medic:    D({ name: 'Medical Tent',   mat: 6,  a: 10, role: 'medical', fam: 'medical', tier: 1, next: 'clinic',   sprite: 'grid', slot: true, cap: 2 }),
     clinic:   D({ name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, next: 'hospital', slot: true, cap: 3, hidden: true }),
-    hospital: D({ name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 2.35], sprite: 'grid', slot: true, cap: 3, hidden: true }),
+    hospital: D({ name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 1.6], sprite: 'grid', slot: true, cap: 3, hidden: true }),
     canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2 }),
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
     workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', rank: 2 }),
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
-    barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 3, h: 2, door: [1.5, 2.35] }),
+    barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 3, h: 2, door: [1.5, 1.6] }),
   };
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
@@ -56,21 +56,25 @@
   // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
   const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || (!z && wl.type === 'gate'); };
 
-  // door: world point just outside the entrance; the routing goal is its tile.
-  function doorPoint(b) { const d = DEFS[b.type] || { door: [b.w / 2, b.h + .35] }; return { x: b.x + d.door[0], y: b.y + d.door[1] }; }
+  // door: world point just INSIDE the entrance (front-left wall), so the door tile is part of the footprint.
+  // approach: the tile just outside that wall, which survivors walk to before stepping in.
+  const doorOf = (type, w, h) => (DEFS[type] && DEFS[type].door) || [w / 2, h - .4];
+  function doorPoint(b) { const d = doorOf(b.type, b.w, b.h); return { x: b.x + d[0], y: b.y + d[1] }; }
   function doorTile(b) { const p = doorPoint(b); return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
+  function approachTile(b) { const d = doorOf(b.type, b.w, b.h); return { x: Math.floor(b.x + d[0]), y: b.y + b.h }; }
+  function approachPoint(b) { const d = doorOf(b.type, b.w, b.h); return { x: b.x + d[0], y: b.y + b.h + .35 }; }
 
   function footprintCheck(w, x, y, def, ignore = null) {
     if (x < BUILD.x0 || y < BUILD.y0 || x + def.w - 1 > BUILD.x1 || y + def.h - 1 > BUILD.y1) return { ok: false, why: 'Outside the build zone' };
     for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (isRoad(w, x + xx, y + yy)) return { ok: false, why: 'Blocked by road' };
     const cand = { x, y, w: def.w, h: def.h };
     if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
-    const dp = { x: x + def.door[0], y: y + def.door[1] }, dt = { x: Math.floor(dp.x), y: Math.floor(dp.y) };
+    const dt = { x: Math.floor(x + def.door[0]), y: y + def.h };   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
     return { ok: true, why: '' };
   }
   function entranceReachable(w, x, y, def) {
-    const dt = { x: Math.floor(x + def.door[0]), y: Math.floor(y + def.door[1]) };
+    const dt = { x: Math.floor(x + def.door[0]), y: y + def.h };
     const tmp = { type: '_probe', x, y, w: def.w, h: def.h };
     w.buildings.push(tmp);
     const p = findPath(w, { x: 7, y: 10 }, dt); w.buildings.pop();
@@ -96,7 +100,9 @@
   }
   // tiles AFTER start up to the goal (inclusive); [] if already there; null if unreachable
   function findPath(w, from, to, z = false) {
-    const g = nearestWalkable(w, to.x, to.y, z), s = nearestWalkable(w, from.x, from.y, z); if (!g || !s) return null;
+    const tb = buildingAt(w, to.x, to.y), gt = tb && !z ? approachTile(tb) : to;   // a goal inside a building = its approach tile
+    const fb = buildingAt(w, from.x, from.y), ft = fb && !z ? approachTile(fb) : from;   // leaving a building = start from its approach tile
+    const g = nearestWalkable(w, gt.x, gt.y, z), s = nearestWalkable(w, ft.x, ft.y, z); if (!g || !s) return null;
     if (s.x === g.x && s.y === g.y) return [];
     const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap();
     heap.push({ x: s.x, y: s.y, g: 0, f: Math.abs(s.x - g.x) + Math.abs(s.y - g.y) });
@@ -122,5 +128,5 @@
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
-  return { WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.10.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.10.2', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -218,7 +218,15 @@ function facing(o) {   // screen-space facing from movement (or from the target 
   if (Math.abs(sy) > 0.004) st.up = sy < 0;
   st.lx = o.w.x; st.ly = o.w.y; return st;
 }
+const OPEN_AIR = new Set(['water', 'well', 'farm', 'field']);   // outdoor structures: survivors stay visible while using them
+function insideBuilding(s) {   // working, using a facility or in care, standing at an enclosed building's door point = inside
+  if (!['work', 'useFacility', 'hospital'].includes(s.mode)) return null;
+  const b = s.mode === 'work' ? s.post : s.mode === 'useFacility' ? s.facility : world.buildings.find((q) => Iso.footprintContains(q, s.w.x, s.w.y));
+  if (!b || OPEN_AIR.has(b.type) || !world.buildings.includes(b)) return null;
+  const d = Wd.doorPoint(b); return Math.hypot(s.w.x - d.x, s.w.y - d.y) < .3 ? b : null;
+}
 function drawHuman(s) {
+  if (insideBuilding(s)) return;   // hidden while inside
   const p = project(s.w.x, s.w.y); let f = 0;
   if (s.mode === 'down') f = 8; else if (s.carrying) f = 7; else if (s.mode === 'attack' || s.mode === 'recover') f = 1 + (Math.floor((tick + s.phase) / 5) % 4); else if (s.activity) f = 6; else if (s.moving) f = 1 + (Math.floor((tick + s.phase) / 6) % 4);
   const c4 = IMG['char4'], c4b = IMG['char4b'], fc = facing(s), back = fc.up && f <= 4 && c4b && okImg(c4b);   // back view only for idle/walk/attack frames
@@ -591,7 +599,7 @@ function zai(z) {
   if (z.mode === 'appear') { z.moving = false; if (z.stateTicks <= 0) { z.mode = 'idle'; z.stateTicks = 35 + rnd() * 70; } return; }
   if (z.mode === 'idle' && z.siege) { z.mode = 'zmarch'; z.goalT = 0; }
   if (z.mode === 'zmarch') {            // mobs head for the nearest survivor or building; elites aim for the weakest wall segment or the gate
-    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; z.blocked = 0; return; }
     if (--z.goalT <= 0) { z.goal = siegeGoal(z); z.goalT = 90; }
     zWalk(z, z.goal, d.chase * .8); return;
@@ -601,13 +609,13 @@ function zai(z) {
     if (!wl || world.walls.get(wl.x + ',' + wl.y) !== wl) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
     if (z.stateTicks <= 0) { const dmg = d.atk * (z.type === 'brute' ? 2.5 : 1); wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
       if (wl.hp <= 0) wallBroken(wl); }
-    let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
   }
   if (z.mode === 'idle') {
     if (!z.dest || z.stateTicks <= 0) { z.dest = { x: z.w.x + (rnd() - .5) * 3, y: z.w.y + (rnd() - .5) * 3 }; z.stateTicks = 60 + rnd() * 100; }
     if (z.dest) moveSlide(z, z.dest, d.chase * .35);
-    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; } return;
   }
   if (z.mode === 'zchase') {
@@ -626,7 +634,7 @@ function siegeGoal(z) {
     let best = null, bs = 1e9; for (const wl of world.walls.values()) if (wl.type === 'gate') { const sc = dist(z.w, { x: wl.x + .5, y: wl.y + .5 }); if (sc < bs) { bs = sc; best = wl; } }
     if (!best) for (const wl of world.walls.values()) { const sc = wl.hp + dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) * 6; if (sc < bs) { bs = sc; best = wl; } }
     return { x: best.x + .5, y: best.y + .5 }; }
-  let g = null, gd = 1e9; for (const s of S.sv) if (s.hp > 0) { const dd = dist(s.w, z.w); if (dd < gd) { gd = dd; g = s.w; } }
+  let g = null, gd = 1e9; for (const s of S.sv) if (s.hp > 0 && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < gd) { gd = dd; g = s.w; } }
   for (const b of world.buildings) { const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 }, dd = dist(c, z.w); if (dd < gd) { gd = dd; g = c; } }
   return g ? { x: g.x, y: g.y } : tc(7, 11);
 }
@@ -988,7 +996,7 @@ function updatePreview(x, y) {
   const go = chk.ok && afford; $('yesBuild').disabled = !go; $('yesBuild').style.opacity = go ? 1 : .45; $('confirmBar').style.display = 'block';
 }
 function pushUnitsOut(b) {
-  const dp = Wd.doorPoint(b);
+  const dp = Wd.approachPoint(b);
   for (const u of [...S.sv, ...S.z]) if (Iso.footprintContains(b, u.w.x, u.w.y)) { u.w = { x: dp.x + (rnd() - .5) * .3, y: dp.y }; u.path = null; }
 }
 function confirmPreview() {
@@ -1102,7 +1110,7 @@ function hitBuilding(px, py) {   // pixel-accurate against the sprite alpha, top
   const t = unproject(px, py); return Wd.buildingAt(world, Math.floor(t.x), Math.floor(t.y));
 }
 function hitUnit(px, py) {
-  let best = null, bd = 1e9; for (const s of S.sv) { const p = project(s.w.x, s.w.y), cy = p.y - CHAR_H * TWs() * .5, d = Math.hypot(px - p.x, py - cy); if (d < Math.max(22, .4 * TWs()) && d < bd) { bd = d; best = s; } } return best;
+  let best = null, bd = 1e9; for (const s of S.sv) { if (insideBuilding(s)) continue; const p = project(s.w.x, s.w.y), cy = p.y - CHAR_H * TWs() * .5, d = Math.hypot(px - p.x, py - cy); if (d < Math.max(22, .4 * TWs()) && d < bd) { bd = d; best = s; } } return best;
 }
 function tapAt(px, py) {
   if (sel) {
@@ -1149,6 +1157,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, tapAt, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

@@ -1,5 +1,13 @@
 # Changelog
 
+## V2.10.2 (work in progress, branch wip-pixel-buildings)
+- Entrances are now inside each building's own footprint (the front-row tile by the front-left wall)
+  instead of on an extra tile in front of it. Survivors walk to the tile in front, then step in.
+  Placement still needs that front tile to be free.
+- Survivors are hidden while inside an enclosed building (working, using it, or in care) and can't be
+  tapped or targeted by zombies there. Open-air structures (rain collector, well, garden plot, farm)
+  keep them visible.
+
 ## V2.10.1 (work in progress, branch wip-pixel-buildings)
 - Pixel-art House (`assets/buildings/v4/house.png`, 87×82 art px) drawn on the shared 42-px tile
   grid with the same sharp-bilinear path as characters; tap hit-testing uses the new image.
