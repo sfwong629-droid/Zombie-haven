@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.8.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.9.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -60,7 +60,7 @@ async function loadAll() {
 
 /* ---------------- state ---------------- */
 const world = Wd.createWorld();
-const S = { produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
+const S = { produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
 const floats = [];
 let sel = null;            // active build tool: {kind:'building',type} | {kind:'road'}
 let preview = null;        // {x,y,w,h,type,ok,why}
@@ -150,6 +150,7 @@ function drawHuman(s) {
   drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
+  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   if (ic) bubble({ x: p.x, y: top - 3 }, ic);
   if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff0b0'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(s.name, p.x, p.y + .32 * tw); }
@@ -385,12 +386,13 @@ const NEEDTXT = { hunger: 'Hungry', thirst: 'Thirsty', fatigue: 'Tired', injury:
 function chooseTownAction(s) { const b = chooseFacility(s); if (b && b !== s.lastFacility) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${NEEDTXT[facilityRules[b.type].need]} → ${DEFS[b.type].name}`; return true; } return false; }
 // A zombie that is attacking this survivor (or about to) interrupts whatever they were doing — eating, drinking, working, strolling.
 function threatOf(s) {
+  if (s.fleeT > 0) return null;
   let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear') continue; const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if ((atkMe && d < 3.2) || d < 1.7) { if (d < bd) { bd = d; best = z; } } }
   return best;
 }
 function engage(s, z) { s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.moving = false; s.why = `Fighting a ${zombieTypes[z.type].name}`; }
 function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (z.hp > 0) { const d = dist(s.w, z.w); if (d < bd) { bd = d; best = z; } } return best; }
-function acquireEnemy(s) { const z = nearestZombie(s), cfg = jobAI[s.job] || jobAI.Civilian, rng = S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro; if (z && dist(s.w, z.w) <= rng) { s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.path = null; s.why = `Fighting a ${zombieTypes[z.type].name}`; return true; } return false; }
+function acquireEnemy(s) { if (s.fleeT > 0) return false; const z = nearestZombie(s), cfg = jobAI[s.job] || jobAI.Civilian, rng = S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro; if (z && dist(s.w, z.w) <= rng) { s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.path = null; s.why = `Fighting a ${zombieTypes[z.type].name}`; return true; } return false; }
 function assignRescue() {
   const downs = downedUnassigned(); if (!downs.length) return false; const free = S.sv.filter((r) => r.hp > 0 && ['free', 'postCombat', 'wait', 'work', 'goWork'].includes(r.mode) && !r.rescuing); if (!free.length) return false;
   let best = null, bs = -1e9; for (const q of downs) for (const r of free) { const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 - dist(r.w, q.w); if (sc > bs) { bs = sc; best = { r, q }; } }
@@ -427,9 +429,10 @@ function finishFacility(s) {
 }
 function ai(s) {
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--;
-  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + 1.5); s.thirst = Math.min(100, s.thirst + 1.8); s.fatigue = Math.min(100, s.fatigue + 1); }
-  if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; say(s.name + ' collapsed!'); return; }
-  if (s.mode === 'down') { s.moving = false; return; }
+  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + 1.5); s.thirst = Math.min(100, s.thirst + 1.8); s.fatigue = Math.min(100, s.fatigue + 1); starve(s); }
+  if (s.fleeT > 0) s.fleeT--;
+  if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.bleed = bleedMax(); s.warned = false; say(s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.'); return; }
+  if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
   if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free'].includes(s.mode) && tick % 6 === s.i % 6) { const th = threatOf(s); if (th) { engage(s, th); return; } }   // being attacked beats lunch
   if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { s.hp = Math.round(s.max * (bOf('hospital').length ? 1 : bOf('clinic').length ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; say(s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
@@ -439,7 +442,7 @@ function ai(s) {
   if (s.mode === 'rescueCarry') {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     const r = followPath(s, sitePoint(), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
-    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; q.mode = 'hospital'; q.hp = 1; q.stateTicks = bOf('hospital').length ? 700 : bOf('clinic').length ? 1100 : 1500; q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); say(q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.stateTicks = careTicks(); q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); say(q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
   }
   if (s.mode === 'goWork') {
     if (!s.post || !world.buildings.includes(s.post) || s.post.staff !== s) { s.post = null; enterFree(s, 30); return; }
@@ -463,6 +466,7 @@ function ai(s) {
   if (s.mode === 'useFacility') { s.moving = false; if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; s.activity = null; enterFree(s, 40); return; } if (s.stateTicks <= 0) { finishFacility(s); s.stateTicks = 50 + s.i * 9; } return; }
   if (['chase', 'attack', 'recover'].includes(s.mode)) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
+    if (retreatCheck(s)) return;
     if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > .9) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
     if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, bonus = professions[s.job]?.combat || 0, dmg = Math.round(6 + s.weapon[1] * .55 + bonus); z.hp -= dmg; floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); s.mastery += .5; masteryCheck(s);
       if (z.hp <= 0) { S.kills++; const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .25) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); if (S.stage === 1 && S.kills >= 3) { S.stage = 2; renownGain(10, 'Goal complete'); say('Goal complete!'); } enterPost(s); return; }
@@ -641,7 +645,7 @@ function visitorArrival() {
   S.arrivalClock++; if (S.arrivalClock < 2200 || S.sv.length + (S.trip ? S.trip.members.length : 0) >= 8) return; S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Mechanic'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], v = mk(name, job, 1, 7, 6, S.sv.length);
-  v.sat = 3; v.stateTicks = 80; S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.1' }); say(name + ' arrived at the Haven.'); ui();
+  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.1' }); say(name + ' arrived at the Haven.'); ui();
 }
 function beginMission(id = null) { const d = id ? MISSION_DEFS.find((m) => m.id === id) : MISSION_DEFS[Math.floor(rnd() * MISSION_DEFS.length)]; S.mission = { ...d, progress: 0 }; S.missionStart = { kills: S.kills, produced: S.produced, built: S.builtCount }; say('Mission: ' + d.name); ui(); }
 function missionProgress() {
@@ -831,6 +835,55 @@ function showExpedition() {
   }
   $('infoPanel').style.display = 'block';
 }
+/* V2.9 death and recovery model */
+const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 };
+const CARE_TICKS = { medic: 3600, clinic: 2700, hospital: 1800 };
+const BANDAGE_COST = 2, BANDAGE_TICKS = 3600;
+function medTier() { const m = medSite(); return m ? m.type : 'none'; }
+function bleedMax() { return BLEED_TICKS[medTier()]; }
+function careTicks() { const t = medTier(); return CARE_TICKS[t] || CARE_TICKS.medic; }
+function beingCarried(s) { const r = s.rescuer; return !!(r && r.carrying === s && r.mode === 'rescueCarry'); }
+function bleedTick(s) {
+  if (s.bleed == null) { s.bleed = bleedMax(); s.warned = false; }
+  if (beingCarried(s)) return;
+  s.bleed--;
+  if (!s.warned && s.bleed <= 1800) { s.warned = true; say(s.name + ' is bleeding out! Get them to care.'); }
+  if (s.bleed <= 0) killSurvivor(s, 'bled out');
+}
+function killSurvivor(s, cause) {
+  if (!S.sv.includes(s)) return;
+  S.sv = S.sv.filter((q) => q !== s);
+  for (const q of S.sv) { if (q.rescuing === s) { q.rescuing = null; if (['rescueTo', 'rescueCarry'].includes(q.mode)) { q.carrying = null; enterFree(q, 60); } } if (q.target === s) q.target = null; }
+  for (const b of world.buildings) if (b.staff === s) b.staff = null;
+  if (selected && selected.ref === s) { selected = null; closeP(); }
+  if (s.weapon && s.weapon !== weapons[0] && s.weapon[0] !== weapons[0][0]) { S.spare = S.spare || []; S.spare.push(s.weapon); }
+  let near = 0;
+  for (const q of S.sv) { const close = dist(q.w, s.w) < 6 || (q.job === s.job); const d = close ? 6 : 2; q.sat = Math.max(0, q.sat - d); if (close) near++; }
+  S.fallen = S.fallen || []; S.fallen.push({ name: s.name, job: s.job, l: s.l, day: S.day, cause });
+  autoStaff();
+  showEventPopup({ title: 'LOST: ' + s.name.toUpperCase(), text: `${s.name}, a level ${s.l} ${s.job}, ${cause}. ${near ? near + ' survivors are shaken.' : ''} Their name is added to the memorial in the Town panel.`, gains: S.sv.length + ' survivors remain' });
+  ui();
+}
+function giveSpare(v) {
+  const sp = S.spare || []; if (!sp.length) return;
+  sp.sort((a, b) => b[1] - a[1]); if (sp[0][1] > v.weapon[1]) { v.weapon = sp.shift(); }
+}
+function starve(s) {
+  if (s.hunger >= 100 || s.thirst >= 100) {
+    s.hp -= 2; s.why = (s.thirst >= 100 ? 'Dying of thirst' : 'Starving'); floats.push({ w: { ...s.w }, t: '-2', col: '#ff8a4b', a: 55 });
+    if (!s.starveWarn) { s.starveWarn = true; say(s.name + ' is ' + (s.thirst >= 100 ? 'dying of thirst' : 'starving') + '!'); }
+  } else s.starveWarn = false;
+}
+function useBandage(s) {
+  if (s.mode !== 'down') return false;
+  if (S.mat < BANDAGE_COST) { say('Need ' + BANDAGE_COST + ' parts for a bandage.'); return false; }
+  S.mat -= BANDAGE_COST; if (s.bleed == null) s.bleed = bleedMax(); s.bleed = Math.min(s.bleed + BANDAGE_TICKS, bleedMax() + BANDAGE_TICKS); s.warned = false; say('Bandaged ' + s.name + ' · +60 s'); ui(); return true;
+}
+function retreatCheck(s) {
+  if (s.fleeT > 0) return false;
+  if (s.hp < s.max * (S.retreat ?? 35) / 100) { s.fleeT = 1500; s.target = null; s.path = null; s.mode = 'free'; s.stateTicks = 30; s.why = 'Retreating, badly hurt'; return true; }
+  return false;
+}
 
 /* ---------------- build / move / demolish ---------------- */
 let moving = null;   // building being moved (removed from world while placing)
@@ -923,11 +976,14 @@ function showTown() {
   $('ib').innerHTML = `<b>Haven rank ${S.rank}</b> · ${S.sv.length} survivors (${residents()} residents) · ${world.buildings.length} buildings<br>
    <b>Supplies</b> (cap ${supplyCap()}): Food ${Math.floor(S.food)} · Water ${Math.floor(S.water)} · Parts ${Math.floor(S.mat)}<br>
    <b>Perimeter:</b> ${perimText()}<br>
+   <b>Retreat at:</b> <input type="range" id="retreatR" min="15" max="60" step="5" value="${S.retreat}"> <span id="retreatV">${S.retreat}%</span> HP<br>
+   <b>Memorial:</b> ${S.fallen.length ? S.fallen.map((f) => esc(f.name) + ' (' + f.job + ', day ' + f.day + ')').join(', ') : 'none yet'}<br>
    Rations eaten per day: <b>${st.need.toFixed(1)}</b> (half food, half water)<br>
    Food ${net(st.fNet)}/day · ${days(st.fDays)} · Water ${net(st.wNet)}/day · ${days(st.wDays)}<br>
    ${nx ? `Next rank needs: Renown ${S.ren}/${nx.ren} · Supplies produced ${Math.floor(S.produced)}/${nx.income} · Residents ${residents()}/${nx.residents} · Buildings ${world.buildings.length}/${nx.facilities}` : 'Max rank reached.'}<br>${S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : ''}
    <br><br><button class="act" id="tSave">Save now</button><button class="act danger" id="tReset">New game…</button>`;
   $('infoPanel').style.display = 'block';
+  $('retreatR').oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
   $('tSave').onclick = () => { saveGame(); say('Saved.'); };
   $('tReset').onclick = () => { if (confirm('Erase this town and start over?')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) {} location.reload(); } };
 }
@@ -973,7 +1029,7 @@ function tapAt(px, py) {
     if (sel.kind === 'wall') { tryWall(tx, ty, sel.wtype); return; }
     const d = DEFS[sel.type], o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
-  const u = hitUnit(px, py); if (u) { selected = { kind: 'unit', ref: u }; closeP(); $('it').textContent = u.name.toUpperCase(); $('ib').innerHTML = `${u.job} Lv.${u.l} · HP ${Math.ceil(u.hp)}/${u.max} · ration ${ration(u).toFixed(2)}/day${u.post ? ' · works at ' + DEFS[u.post.type].name : ''}<br><b>${esc(u.why)}</b><br>Hunger ${Math.round(u.hunger)} · Thirst ${Math.round(u.thirst)} · Fatigue ${Math.round(u.fatigue)}`; $('infoPanel').style.display = 'block'; return; }
+  const u = hitUnit(px, py); if (u) { selected = { kind: 'unit', ref: u }; closeP(); $('it').textContent = u.name.toUpperCase(); $('ib').innerHTML = `${u.job} Lv.${u.l} · HP ${Math.ceil(u.hp)}/${u.max} · ration ${ration(u).toFixed(2)}/day${u.post ? ' · works at ' + DEFS[u.post.type].name : ''}<br><b>${esc(u.why)}</b><br>Hunger ${Math.round(u.hunger)} · Thirst ${Math.round(u.thirst)} · Fatigue ${Math.round(u.fatigue)}` + (u.mode === 'down' ? `<br><b style="color:#ff8a7a">Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><br><button class="act" id="bandage">Bandage +60 s (${BANDAGE_COST} parts)</button>` : ''); $('infoPanel').style.display = 'block'; const bd = $('bandage'); if (bd) bd.onclick = () => { if (useBandage(u)) tapAt(px, py); }; return; }
   const b = hitBuilding(px, py); if (b) { showBuildingInfo(b); return; }
   { const t = unproject(px, py), wl = Wd.wallAt(world, Math.floor(t.x), Math.floor(t.y)); if (wl) { say(`${Wd.WALL_DEFS[wl.type].name} · ${Math.ceil(wl.hp)}/${wl.max} HP`); return; } }
   selected = null; closeP();
@@ -1011,6 +1067,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, tapAt, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, tapAt, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();
