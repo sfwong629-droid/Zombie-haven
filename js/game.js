@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.9.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.9.2', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -15,7 +15,7 @@ window.addEventListener('unhandledrejection', (e) => { const b = $('crash'); b.s
 
 /* ---------------- assets ---------------- */
 const IMG = {}, SPR = {};   // SPR[type] = {img,w,h,ax,ay,grid,tileW}
-const CHAR3 = { Civilian: { fw: 224, fh: 224, foot: 214, content: 160 }, Guard: { fw: 224, fh: 224, foot: 214, content: 160 }, Medic: { fw: 224, fh: 224, foot: 214, content: 160 }, Scavenger: { fw: 224, fh: 224, foot: 214, content: 160 }, Engineer: { fw: 224, fh: 224, foot: 214, content: 160 }, Cook: { fw: 224, fh: 224, foot: 214, content: 160 }, Farmer: { fw: 224, fh: 224, foot: 214, content: 160 }, 'Police Officer': { fw: 224, fh: 224, foot: 214, content: 160 } };   // pixel-art sheets (v3): 112x112 native frames at 2x; same px-to-screen scale for every job (taller bodies are taller)
+const CHAR4 = { fw: 32, fh: 36, foot: 34, content: 30, file: 'assets/characters/v4/Base.png' };   // v4 chunky pixel art: native 1 art px = 1 image px, 30 px tall body (see docs/ART_STANDARD.md)
 const CHAR_FILES = { Civilian: 'civilian', Guard: 'guard', Medic: 'medic', Scavenger: 'scavenger', 'Police Officer': 'police_officer', Engineer: 'engineer', Cook: 'cook', Farmer: 'farmer' };
 const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute'];
 function loadImg(key, src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(); im.onerror = () => { console.warn('missing asset', src); res(); }; im.src = src + '?v=' + VERSION; IMG[key] = im; }); }
@@ -39,7 +39,7 @@ function alphaMask(type) {                    // per-sprite alpha for pixel-accu
 async function loadAll() {
   const jobs = [];
   for (const [k, f] of Object.entries(CHAR_FILES)) jobs.push(loadImg('char:' + k, `assets/characters/${f}.png`));
-  for (const k of Object.keys(CHAR3)) jobs.push(loadImg('char3:' + k, `assets/characters/v3/${k}.png`));
+  jobs.push(loadImg('char4', CHAR4.file));
   ZOMBIE_FILES.forEach((z) => jobs.push(loadImg('zombie:' + z, `assets/zombies/${z}.png`)));
   ['tree', 'crate', 'debris'].forEach((p) => jobs.push(loadImg('prop:' + p, `assets/props/${p}.png`)));
   jobs.push(loadImg('grass_a', 'assets/terrain/grass_a.png'), loadImg('grass_b', 'assets/terrain/grass_b.png'));
@@ -139,7 +139,9 @@ function drawProp(kind, tx, ty) {
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .26 * tw * Math.max(1, hScale / CHAR_H), .09 * tw, 0, 0, 7); ctx.fill();
-  if (crisp) { ctx.imageSmoothingEnabled = false; ctx.drawImage(img, frame * fw, 0, fw, fh, Math.round(p.x - fw * sc / 2), Math.round(p.y - footY * sc), fw * sc, fh * sc); ctx.imageSmoothingEnabled = true; return; }
+  if (crisp) {   // pixel art: whole device pixels per art pixel, snapped to the device-pixel grid, so every art pixel is an even square block
+    const k = Math.max(1, Math.round(sc * DPR)) / DPR, snap = (v) => Math.round(v * DPR) / DPR;
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(img, frame * fw, 0, fw, fh, snap(p.x - fw * k / 2), snap(p.y - (footY + 1) * k), fw * k, fh * k); ctx.imageSmoothingEnabled = true; return; }
   ctx.imageSmoothingEnabled = true;
   if (sc >= .75) { ctx.drawImage(img, frame * fw, 0, fw, fh, p.x - fw * sc / 2, p.y - footY * sc, fw * sc, fh * sc); return; }
   const k = Math.max(.05, Math.round(sc * 32) / 32), sheet = scaled(key + 's', img, Math.round(img.width * k), Math.round(img.height * k));
@@ -150,8 +152,8 @@ function bubble(p, txt) { ctx.font = `${Math.max(11, 13 * cam.z)}px sans-serif`;
 function drawHuman(s) {
   const p = project(s.w.x, s.w.y); let f = 0;
   if (s.mode === 'down') f = 8; else if (s.carrying) f = 7; else if (s.mode === 'attack' || s.mode === 'recover') f = 1 + (Math.floor((tick + s.phase) / 5) % 4); else if (s.activity) f = 6; else if (s.moving) f = 1 + (Math.floor((tick + s.phase) / 6) % 4);
-  const c3 = CHAR3[s.job] && IMG['char3:' + s.job];
-  if (c3 && okImg(c3)) drawSheet('c3' + s.job, c3, f, CHAR3[s.job].fw, CHAR3[s.job].fh, p, CHAR_H, CHAR3[s.job].foot, CHAR3[s.job].content, true); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
+  const c4 = IMG['char4'];
+  if (c4 && okImg(c4)) drawSheet('c4', c4, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
   if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
