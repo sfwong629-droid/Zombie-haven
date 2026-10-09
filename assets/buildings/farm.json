@@ -1,0 +1,94 @@
+{
+  "name": "farm",
+  "version": "grid-first-tier1-placeholder",
+  "rotation_supported": false,
+  "footprint_tiles": [
+    2,
+    2
+  ],
+  "tile_px": [
+    192,
+    128
+  ],
+  "master_ratio": [
+    3,
+    2
+  ],
+  "tile_angle_degrees": 33.6901,
+  "vertical_px_per_world_unit": 101.193,
+  "canvas_px": [
+    448,
+    560
+  ],
+  "anchor_px": [
+    224,
+    536
+  ],
+  "anchor_definition": "south-most ground-contact corner of the 2x2 footprint = projection of world (2,2,0)",
+  "footprint_corners_px": {
+    "north": [
+      224,
+      280
+    ],
+    "east": [
+      416,
+      408
+    ],
+    "south": [
+      224,
+      536
+    ],
+    "west": [
+      32,
+      408
+    ]
+  },
+  "architectural_contact_corners_world": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      0,
+      2
+    ]
+  ],
+  "model_bounds_world": {
+    "x": [
+      0.0,
+      2.0
+    ],
+    "y": [
+      0.0,
+      2.0
+    ],
+    "z": [
+      0.0,
+      0.78
+    ]
+  },
+  "alpha_bbox_px": [
+    31,
+    227,
+    417,
+    537
+  ],
+  "entrance": {
+    "face": "south-west (+y)",
+    "stand_point_local": [
+      1.0,
+      2.35
+    ]
+  },
+  "art_status": "PLACEHOLDER (programmatic, not approved art)",
+  "source": "tools/build_tier1.py",
+  "label": "Garden Plot (tier 1 food)"
+}

@@ -1,0 +1,122 @@
+{
+ "armory": {
+  "file": "assets/buildings/armory.png",
+  "w": 290,
+  "h": 294,
+  "anchor": [
+   118,
+   293
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "barracks": {
+  "file": "assets/buildings/barracks.png",
+  "w": 285,
+  "h": 279,
+  "anchor": [
+   166,
+   278
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "canteen": {
+  "file": "assets/buildings/canteen.png",
+  "w": 296,
+  "h": 288,
+  "anchor": [
+   131,
+   287
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "generator": {
+  "file": "assets/buildings/generator.png",
+  "w": 305,
+  "h": 297,
+  "anchor": [
+   153,
+   296
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "headquarters": {
+  "file": "assets/buildings/headquarters.png",
+  "w": 318,
+  "h": 297,
+  "anchor": [
+   163,
+   296
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "house": {
+  "file": "assets/buildings/house.png",
+  "w": 238,
+  "h": 271,
+  "anchor": [
+   76,
+   270
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "house_lv2": {
+  "file": "assets/buildings/house_lv2.png",
+  "w": 241,
+  "h": 285,
+  "anchor": [
+   64,
+   284
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "storage": {
+  "file": "assets/buildings/storage.png",
+  "w": 330,
+  "h": 289,
+  "anchor": [
+   122,
+   288
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "workshop": {
+  "file": "assets/buildings/workshop.png",
+  "w": 308,
+  "h": 300,
+  "anchor": [
+   107,
+   299
+  ],
+  "status": "legacy-approximate (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "well": {
+  "file": "assets/buildings/well.png",
+  "w": 290,
+  "h": 276,
+  "anchor": [
+   117,
+   275
+  ],
+  "status": "legacy-approximate tier-2 art (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "field": {
+  "file": "assets/buildings/field.png",
+  "w": 327,
+  "h": 295,
+  "anchor": [
+   136,
+   294
+  ],
+  "status": "legacy-approximate tier-2 art (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "clinic": {
+  "file": "assets/buildings/clinic.png",
+  "w": 290,
+  "h": 268,
+  "anchor": [
+   120,
+   267
+  ],
+  "status": "legacy-approximate tier-2 art (anchored by silhouette bottom; base geometry NOT certified)"
+ }
+}
