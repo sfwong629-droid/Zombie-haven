@@ -2,10 +2,10 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.9.5', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.10.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
-const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
@@ -18,6 +18,13 @@ const IMG = {}, SPR = {};   // SPR[type] = {img,w,h,ax,ay,grid,tileW}
 const CHAR4 = { fw: 32, fh: 36, foot: 34, content: 30, file: 'assets/characters/v4/Base.png', back: 'assets/characters/v4/Base_back.png' };   // back sheet: 0 idle, 1-4 walk (facing up-left)   // v4 chunky pixel art: native 1 art px = 1 image px, 30 px tall body (see docs/ART_STANDARD.md)
 const CHAR_FILES = { Civilian: 'civilian', Guard: 'guard', Medic: 'medic', Scavenger: 'scavenger', 'Police Officer': 'police_officer', Engineer: 'engineer', Cook: 'cook', Farmer: 'farmer' };
 const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute'];
+// v4 pixel zombies (docs/ART_STANDARD.md): front sheet 0 idle, 1-4 walk, 5 attack (faces down-left); back sheet 0 idle, 1-4 walk (faces up-left).
+// fw/fh = frame box, foot = feet row, h = body height in art px. Types without v4 art fall back to the old sheets.
+const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
+const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
+  walker: { fw: 35, fh: 35, foot: 33, h: 32 }, crawler: { fw: 32, fh: 25, foot: 23, h: 22 }, runner: { fw: 40, fh: 34, foot: 32, h: 31 },
+  spitter: { fw: 42, fh: 33, foot: 31, h: 30 }, bloated: { fw: 38, fh: 43, foot: 41, h: 40 }, brute: { fw: 42, fh: 55, foot: 53, h: 42 },
+};
 function loadImg(key, src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(); im.onerror = () => { console.warn('missing asset', src); res(); }; im.src = src + '?v=' + VERSION; IMG[key] = im; }); }
 const okImg = (im) => im && im.complete && im.naturalWidth > 0;
 const scaledCache = new Map();
@@ -47,6 +54,7 @@ async function loadAll() {
   for (const [k, f] of Object.entries(CHAR_FILES)) jobs.push(loadImg('char:' + k, `assets/characters/${f}.png`));
   jobs.push(loadImg('char4', CHAR4.file)); jobs.push(loadImg('char4b', CHAR4.back));
   ZOMBIE_FILES.forEach((z) => jobs.push(loadImg('zombie:' + z, `assets/zombies/${z}.png`)));
+  Object.keys(Z4_DEFS).forEach((z) => { jobs.push(loadImg('z4:' + z, `assets/zombies/v4/${z}.png`)); jobs.push(loadImg('z4b:' + z, `assets/zombies/v4/${z}_back.png`)); });
   ['tree', 'crate', 'debris'].forEach((p) => jobs.push(loadImg('prop:' + p, `assets/props/${p}.png`)));
   jobs.push(loadImg('grass_a', 'assets/terrain/grass_a.png'), loadImg('grass_b', 'assets/terrain/grass_b.png'));
   [['uiBuildIcon', 'build'], ['uiSurvivorsIcon', 'survivors'], ['uiItemsIcon', 'items']].forEach(([id, f]) => { $(id).src = `assets/ui/${f}.png?v=${VERSION}`; });
@@ -93,24 +101,52 @@ function resize() {
 }
 window.addEventListener('resize', () => { resize(); });
 
-/* ---------------- ground layer (pre-rendered once from the approved grass master tile) ---------------- */
-const GS = 2; let groundCv = null; const GOX = ROWS * BASE_TW / 2 * GS;
+/* ---------------- ground layer: true pixel art, one art pixel = one character pixel (docs/ART_STANDARD.md) ----------------
+   Tile = APX x APY art px (42 x 28, the 2:3 projection). Grass and roads are generated pixel by pixel into one native-size
+   canvas, rebuilt whenever the world changes, then drawn with the same sharp-bilinear scaling as the sprites. */
+const APX = 42, APY = 28, GOXA = ROWS * APX / 2;   // tile size in art px; x of tile (0,0)'s north corner
+let groundCv = null, groundKey = '';
+const hash2 = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, s = (t) => t * t * (3 - 2 * t);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1); return a + (b - a) * s(xf) + (c - a) * s(yf) + (a - b - c + d) * s(xf) * s(yf); }
+const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const GRASS = ['#3d6e2f', '#4a7f35', '#56903b', '#63a043', '#74b04d'].map(hex), GRASS_OUT = ['#2c4f2a', '#355d2f', '#3e6a33', '#477637', '#53833d'].map(hex);
+const ROADC = { base: hex('#76736a'), dark: hex('#69665e'), light: hex('#827f75'), curb: hex('#4c4943'), lip: hex('#8f8b7e'), dash: hex('#d9d1ac') };
 function buildGround() {
-  const w = Math.ceil((COLS + ROWS) * BASE_TW / 2 * GS), h = Math.ceil((COLS + ROWS) * BASE_TH / 2 * GS);
-  groundCv = document.createElement('canvas'); groundCv.width = w; groundCv.height = h; const g = groundCv.getContext('2d'); g.imageSmoothingQuality = 'high';
-  const tw = BASE_TW * GS, th = BASE_TH * GS; const A = scaled('ga', IMG.grass_a, tw + 2, th + 1.4), B = scaled('gb', IMG.grass_b, tw + 2, th + 1.4);
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-    const cx = GOX + (x - y) * tw / 2, top = (x + y) * th / 2;
-    g.save(); g.beginPath(); g.moveTo(cx, top - .5); g.lineTo(cx + tw / 2 + .5, top + th / 2); g.lineTo(cx, top + th + .5); g.lineTo(cx - tw / 2 - .5, top + th / 2); g.closePath(); g.clip();
-    const im = (x * 7 + y * 13) % 3 === 0 ? B : A; if (okImg(IMG.grass_a)) g.drawImage(im, cx - tw / 2 - 1, top - .7); else { g.fillStyle = '#6aa84f'; g.fillRect(cx - tw / 2, top, tw, th); }
-    if (!Wd.inTown(x, y)) { g.fillStyle = 'rgba(8,38,24,.30)'; g.fillRect(cx - tw / 2 - 1, top - 1, tw + 2, th + 2); }
-    g.restore();
+  const W = (COLS + ROWS) * APX / 2, H = (COLS + ROWS) * APY / 2;
+  if (!groundCv) { groundCv = document.createElement('canvas'); groundCv.width = W; groundCv.height = H; }
+  const g = groundCv.getContext('2d'), id = g.createImageData(W, H), d = id.data;
+  const road = (x, y) => Wd.isRoad(world, x, y);
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    const A = (px + .5 - GOXA) / (APX / 2), B = (py + .5) / (APY / 2), wx = (A + B) / 2, wy = (B - A) / 2;
+    if (wx < 0 || wy < 0 || wx >= COLS || wy >= ROWS) continue;
+    const tx = Math.floor(wx), ty = Math.floor(wy), u = wx - tx, v = wy - ty; let c;
+    if (road(tx, ty)) {
+      const e = 0.075, n = road(tx, ty - 1), ea = road(tx + 1, ty), so = road(tx, ty + 1), we = road(tx - 1, ty);
+      const edge = (!n && v < e) || (!so && v > 1 - e) || (!we && u < e) || (!ea && u > 1 - e);
+      const lip = !edge && ((!n && v < 2 * e) || (!so && v > 1 - 2 * e) || (!we && u < 2 * e) || (!ea && u > 1 - 2 * e));
+      const onX = Math.abs(v - .5) < .045 && ((ea && u >= .5) || (we && u <= .5)), onY = Math.abs(u - .5) < .045 && ((so && v >= .5) || (n && v <= .5));
+      const dash = (onX && Math.floor(wx * 6) % 2 === 0) || (onY && Math.floor(wy * 6) % 2 === 0);
+      const r = hash2(px, py);
+      c = edge ? ROADC.curb : lip ? ROADC.lip : dash ? ROADC.dash : r < .08 ? ROADC.dark : r > .95 ? ROADC.light : ROADC.base;
+    } else {
+      const pal = Wd.inTown(tx, ty) ? GRASS : GRASS_OUT;
+      let k = vnoise(wx * 2.2, wy * 2.2) * 0.65 + vnoise(px / 3.1, py / 2.3) * 0.35;   // clumps + fine texture
+      let i = k < .34 ? 0 : k < .46 ? 1 : k < .58 ? 2 : k < .7 ? 3 : 4;
+      const r = hash2(px * 3 + 1, py * 5 + 2);
+      if (r < .035 && i > 0) i -= 1; else if (r > .975 && i < 4) i += 1;            // single-pixel tufts
+      if (hash2(px, py * 7) > .985 && hash2(py, px) > .5 && i >= 2) c = hex('#e7d77a'); else c = pal[i];   // rare flowers
+    }
+    const j = (py * W + px) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255;
   }
+  g.putImageData(id, 0, 0); pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) pixelCache.delete(k); });
 }
 function drawGround() {
-  if (!groundCv) return; const z = cam.z / GS, o = project(0, 0);
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(groundCv, o.x - GOX * z, o.y, groundCv.width * z, groundCv.height * z);
+  const key = [...world.roads].join('|');   // ground depends only on the road layout
+  if (!groundCv || key !== groundKey) { groundKey = key; buildGround(); }
+  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m = Math.min(4, Math.max(1, Math.ceil(want - 0.02))), big = pixelUp('ground', groundCv, m);
+  ctx.imageSmoothingEnabled = Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(big, o.x - GOXA * s, o.y, groundCv.width * s, groundCv.height * s); ctx.imageSmoothingEnabled = true;
 }
 function tilePath(x, y, grow = 0) { const n = project(x, y), e = project(x + 1, y), s = project(x + 1, y + 1), w = project(x, y + 1); ctx.beginPath(); ctx.moveTo(n.x, n.y - grow); ctx.lineTo(e.x + grow, e.y); ctx.lineTo(s.x, s.y + grow); ctx.lineTo(w.x - grow, w.y); ctx.closePath(); }
 function diamond(x, y, fill, edge) { tilePath(x, y); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, cam.z); ctx.stroke(); } }
@@ -186,6 +222,13 @@ const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9 };
 function drawZombie(zm) {
   const p = project(zm.w.x, zm.w.y); let f = 0;
   if (zm.mode === 'zattack') f = 6; else if (zm.mode === 'zchase') f = 1 + (Math.floor((tick + zm.phase) / 6) % 4); else if (zm.mode === 'idle') f = Math.floor((tick + zm.phase) / 18) % 2 ? 1 : 0;
+  const z4 = Z4_DEFS[zm.type], zf = IMG['z4:' + zm.type], zb = IMG['z4b:' + zm.type];
+  if (z4 && zf && okImg(zf)) {   // pixel art: one art px = one map px; bigger zombies are drawn with more pixels, never scaled up
+    const fc = facing(zm), back = fc.up && f <= 4 && zb && okImg(zb), f4 = zm.mode === 'zattack' ? 5 : f;
+    drawSheet(back ? 'z4b' + zm.type : 'z4' + zm.type, back ? zb : zf, back ? f : f4, z4.fw, z4.fh, p, 1, z4.foot, APX, true, fc.right);
+    const tw = TWs(), top = p.y - z4.h * tw / APX - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
+    return;
+  }
   const sc = ZSCALE[zm.type] || 1; drawSheet('z' + zm.type, IMG['zombie:' + zm.type], f, 128, 160, p, CHAR_H * sc, 147);
   const tw = TWs(), top = p.y - CHAR_H * sc * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
 }
@@ -197,7 +240,6 @@ const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17],
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH);
   drawGround();
-  for (const k of world.roads) { const [x, y] = k.split(',').map(Number); drawRoadTile(x, y); }
   {
     const c = [[Wd.BUILD.x0, Wd.BUILD.y0], [Wd.BUILD.x1 + 1, Wd.BUILD.y0], [Wd.BUILD.x1 + 1, Wd.BUILD.y1 + 1], [Wd.BUILD.x0, Wd.BUILD.y1 + 1]].map(([x, y]) => project(x, y));
     ctx.beginPath(); ctx.moveTo(c[0].x, c[0].y); c.slice(1).forEach((p) => ctx.lineTo(p.x, p.y)); ctx.closePath(); ctx.strokeStyle = 'rgba(214,235,178,.28)'; ctx.lineWidth = Math.max(1, cam.z); ctx.stroke();
@@ -1083,7 +1125,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveG
 
 /* ---------------- init ---------------- */
 async function init() {
-  await loadAll(); resize(); buildGround();
+  await loadAll(); resize();
   const restored = loadGame();
   if (!restored) {
     world.buildings = [{ type: 'medic', x: 2, y: 7, w: 2, h: 2, q: 10, a: 10 }, { type: 'canteen', x: 8, y: 6, w: 2, h: 2, q: 10, a: 10 }, { type: 'house', x: 11, y: 11, w: 2, h: 2, q: 10, a: 8 }]; Wd.bump(world);

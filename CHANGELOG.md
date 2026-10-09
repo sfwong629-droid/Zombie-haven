@@ -1,5 +1,16 @@
 # Changelog
 
+## V2.10.0
+- Map tiles are now true pixel art on a 42 × 28 art-pixel grid: grass (with clumps, tufts and the
+  odd flower) and roads (curbs, edge lips, dashed centre lines) are generated pixel by pixel and
+  share one pixel size with every sprite. Characters are 30/42 of a tile tall (was 0.70).
+- All six zombie types redrawn as pixel art at the same pixel size: walker, crawler, runner, spitter,
+  bloated and brute, each with front and back walk cycles plus an attack frame. Bigger zombies use
+  more pixels, not bigger ones. Zombies now turn to face where they walk, like survivors.
+- Not done yet: buildings, props (trees, crates, debris) and walls are still the old art; the
+  unused boss art was not redrawn.
+- Added `tools/pixel/` (browser extractor + sheet builder with per-chunk hash checks).
+
 ## V2.9.5
 - Back view: survivors walking up the screen now show their back (new sheet
   `assets/characters/v4/Base_back.png`: idle + 4 walk frames, facing up-left; mirrored for up-right).
