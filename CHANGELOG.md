@@ -1,6 +1,17 @@
 # Changelog
 
-## V2.10.2 (work in progress, branch wip-pixel-buildings)
+## V2.11.0
+- Pixel-art versions of the six starting buildings, on the shared 42-px tile grid:
+  House (87×82), Rain Collector (72×76), Garden Plot (87×61), Medical Tent (86×66),
+  Canteen (83×80), Armory (84×81). Generated in ChatGPT and snapped to a pixel grid.
+- Canteen, House and Rain Collector were snapped at ChatGPT's own block size. Garden Plot,
+  Medical Tent and Armory were drawn too wide (94–107 px), so they were snapped at a larger block
+  size to fit the 84 px footprint (some fine detail merged).
+- Measured fit: bases sit within about 6–16 px of the tile diamond (steps, crates, sandbags stick
+  out a little); the Armory spills ~6 px past its footprint on the left.
+- Not yet redrawn: Workshop, Storage, Barracks, Well, Farm, Clinic, Hospital; trees, crates, debris.
+
+## V2.10.2
 - Entrances are now inside each building's own footprint (the front-row tile by the front-left wall)
   instead of on an extra tile in front of it. Survivors walk to the tile in front, then step in.
   Placement still needs that front tile to be free.
@@ -8,7 +19,7 @@
   tapped or targeted by zombies there. Open-air structures (rain collector, well, garden plot, farm)
   keep them visible.
 
-## V2.10.1 (work in progress, branch wip-pixel-buildings)
+## V2.10.1
 - Pixel-art House (`assets/buildings/v4/house.png`, 87×82 art px) drawn on the shared 42-px tile
   grid with the same sharp-bilinear path as characters; tap hit-testing uses the new image.
 - Measured fit: front corner within 1–2 px of the 2×2 footprint; side base corners 4–6 px low;

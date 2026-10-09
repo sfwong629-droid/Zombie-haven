@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.10.2', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.11.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -23,6 +23,11 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
 const B4_DEFS = {   // pixel-art buildings (assets/buildings/v4/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width
   house: { ax: 45, ay: 81 },
+  water: { ax: 44, ay: 75 },
+  farm: { ax: 48, ay: 60 },
+  medic: { ax: 46, ay: 65 },
+  canteen: { ax: 44, ay: 79 },
+  armory: { ax: 50, ay: 80 },
 };
 const ART_TILE = 42;
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
