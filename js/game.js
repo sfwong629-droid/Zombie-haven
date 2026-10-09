@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.10.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.10.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -21,6 +21,10 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 // v4 pixel zombies (docs/ART_STANDARD.md): front sheet 0 idle, 1-4 walk, 5 attack (faces down-left); back sheet 0 idle, 1-4 walk (faces up-left).
 // fw/fh = frame box, foot = feet row, h = body height in art px. Types without v4 art fall back to the old sheets.
 const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
+const B4_DEFS = {   // pixel-art buildings (assets/buildings/v4/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width
+  house: { ax: 45, ay: 81 },
+};
+const ART_TILE = 42;
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
   walker: { fw: 35, fh: 35, foot: 33, h: 32 }, crawler: { fw: 32, fh: 25, foot: 23, h: 22 }, runner: { fw: 40, fh: 34, foot: 32, h: 31 },
   spitter: { fw: 42, fh: 33, foot: 31, h: 30 }, bloated: { fw: 38, fh: 43, foot: 41, h: 40 }, brute: { fw: 42, fh: 55, foot: 53, h: 42 },
@@ -46,7 +50,7 @@ function scaled(key, img, tw, th) {           // high-quality downscale by repea
 const alphaMasks = {};
 function alphaMask(type) {                    // per-sprite alpha for pixel-accurate tapping
   if (type in alphaMasks) return alphaMasks[type];
-  let m = null; try { const im = SPR[type].img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
+  let m = null; try { const im4 = IMG['b4:' + type], im = B4_DEFS[type] && okImg(im4) ? im4 : SPR[type].img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
   return (alphaMasks[type] = m);
 }
 async function loadAll() {
@@ -71,6 +75,7 @@ async function loadAll() {
       jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
     }
   }
+  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v4/${t}.png`)));
   await Promise.all(jobs);
 }
 
@@ -166,8 +171,16 @@ function drawRoadTile(x, y) {
 }
 
 /* ---------------- sprites ---------------- */
-function spriteRect(b) { const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - sp.ax * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
+function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; return d && okImg(im) ? { d, im } : null; }
+function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - p4.d.ax * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }
+  const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - sp.ax * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
 function drawBuilding(b, ghost, ok) {
+  const p4 = b4(b);
+  if (p4) {   // pixel art: same sharp-bilinear path as characters, one shared art-pixel size
+    const r = spriteRect(b), m = Math.max(1, Math.ceil(r.s * DPR - 0.02)), big = pixelUp('b4' + b.type, p4.im, m);
+    ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = Math.abs(r.s * DPR - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(big, r.x, r.y, r.w, r.h); ctx.restore(); return;
+  }
   const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + b.type, sp.img, r.w, r.h);   // anchor = SOUTH corner
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; if (ghost) ctx.globalAlpha = ok ? .7 : .45;
   ctx.drawImage(img, r.x, r.y, r.w, r.h); ctx.restore();

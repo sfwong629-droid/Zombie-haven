@@ -1,5 +1,12 @@
 # Changelog
 
+## V2.10.1 (work in progress, branch wip-pixel-buildings)
+- Pixel-art House (`assets/buildings/v4/house.png`, 87×82 art px) drawn on the shared 42-px tile
+  grid with the same sharp-bilinear path as characters; tap hit-testing uses the new image.
+- Measured fit: front corner within 1–2 px of the 2×2 footprint; side base corners 4–6 px low;
+  porch step overhangs the front tile by up to ~12 px. Gameplay uses the grid, so this is visual only.
+- Other buildings still use the old art.
+
 ## V2.10.0
 - Map tiles are now true pixel art on a 42 × 28 art-pixel grid: grass (with clumps, tufts and the
   odd flower) and roads (curbs, edge lips, dashed centre lines) are generated pixel by pixel and
