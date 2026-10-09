@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.9.3', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.9.4', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 0.70;                                         // character content height in tile-widths (chibi, tunable)
@@ -21,6 +21,12 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 function loadImg(key, src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(); im.onerror = () => { console.warn('missing asset', src); res(); }; im.src = src + '?v=' + VERSION; IMG[key] = im; }); }
 const okImg = (im) => im && im.complete && im.naturalWidth > 0;
 const scaledCache = new Map();
+const pixelCache = new Map();
+function pixelUp(key, img, m) {   // whole-number nearest-neighbour enlargement of a pixel-art sheet, cached per factor
+  const k = key + '#' + m; let c = pixelCache.get(k); if (c) return c;
+  c = document.createElement('canvas'); c.width = img.width * m; c.height = img.height * m; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, c.width, c.height);
+  if (pixelCache.size > 24) pixelCache.clear(); pixelCache.set(k, c); return c;
+}
 function scaled(key, img, tw, th) {           // high-quality downscale by repeated halving, cached
   tw = Math.max(1, Math.round(tw)); th = Math.max(1, Math.round(th));
   if (tw >= img.width * 0.75) return img;
@@ -139,11 +145,12 @@ function drawProp(kind, tx, ty) {
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .26 * tw * Math.max(1, hScale / CHAR_H), .09 * tw, 0, 0, 7); ctx.fill();
-  if (crisp) {   // pixel art: whole device pixels per art pixel, snapped to the device-pixel grid, so every art pixel is an even square block
-    const k = Math.max(1, Math.round(sc * DPR)) / DPR, snap = (v) => Math.round(v * DPR) / DPR;
-    ctx.imageSmoothingEnabled = false;
-    if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(img, frame * fw, 0, fw, fh, -fw * k / 2, snap(p.y - (footY + 1) * k), fw * k, fh * k); ctx.restore(); }   // art faces left; mirrored = facing right
-    else ctx.drawImage(img, frame * fw, 0, fw, fh, snap(p.x - fw * k / 2), snap(p.y - (footY + 1) * k), fw * k, fh * k);
+  if (crisp) {   // pixel art, "sharp bilinear": exact size (tracks zoom smoothly), nearest-neighbour pre-scale keeps pixels square and sharp
+    const want = sc * DPR, m = Math.max(1, Math.ceil(want - 0.02)), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR;
+    const w = fw * sc, h = fh * sc, y = snap(p.y - (footY + 1) * sc);
+    ctx.imageSmoothingEnabled = Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+    if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, -w / 2, y, w, h); ctx.restore(); }   // art faces left; mirrored = facing right
+    else ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, snap(p.x - w / 2), y, w, h);
     ctx.imageSmoothingEnabled = true; return; }
   ctx.imageSmoothingEnabled = true;
   if (sc >= .75) { ctx.drawImage(img, frame * fw, 0, fw, fh, p.x - fw * sc / 2, p.y - footY * sc, fw * sc, fh * sc); return; }

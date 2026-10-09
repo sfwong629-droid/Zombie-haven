@@ -1,5 +1,11 @@
 # Changelog
 
+## V2.9.4
+- Fix: characters changed size relative to the map when zooming (0.53–0.80 tile, measured), because
+  V2.9.2 rounded their scale to whole pixels. They now scale smoothly with the zoom (0.70 tile at
+  every zoom, measured from 0.5x to 1.9x), using a whole-number nearest-neighbour enlargement followed
+  by a smooth final resize, so pixels stay square and sharp.
+
 ## V2.9.3
 - Survivors face the way they walk: moving left on screen shows the sprite as drawn, moving right shows
   it mirrored. While chasing or attacking they face their target. Facing isn't saved (it re-derives on load).

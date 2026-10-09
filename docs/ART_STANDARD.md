@@ -27,8 +27,10 @@ One rule keeps everything consistent: **one art pixel is the same size on screen
 
 ## Rendering
 - Sprites are stored at native size (1 art px = 1 image px).
-- The game draws them with smoothing off, at a scale snapped to whole device pixels, so every
-  art pixel is an even square block at every zoom level.
+- The game enlarges a sheet by a whole number with nearest-neighbour, then resizes it smoothly to the
+  exact size for the current zoom ("sharp bilinear"). Sprites keep their size relative to the map at
+  every zoom, and pixels stay square with at most a soft 1-device-pixel edge.
+- Don't round the sprite scale to whole pixels: that makes characters jump in size as you zoom.
 
 ## Sheet layout (assets/characters/v4)
 - 10 frames, each 32×36 px, feet on row 34: 0 idle, 1–4 walk (also attack), 5 idle, 6 working,
