@@ -31,6 +31,13 @@
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
     workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', rank: 2 }),
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
+    // V2.14 training buildings: each raises one survivor stat when visited (placeholder art for now)
+    gym:      D({ name: 'Gym',            mat: 9,  a: 9,  role: 'train', cap: 2, train: 'str' }),
+    library:  D({ name: 'Library',        mat: 9,  a: 9,  role: 'train', cap: 2, train: 'int' }),
+    lounge:   D({ name: 'Lounge',         mat: 8,  a: 10, role: 'train', cap: 3, train: 'cha' }),
+    range:    D({ name: 'Shooting Range', mat: 12, a: 8,  role: 'train', cap: 2, train: 'per', rank: 2 }),
+    track:    D({ name: 'Obstacle Course', mat: 11, a: 8, role: 'train', cap: 2, train: 'agi', rank: 2 }),
+    sparring: D({ name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
     barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 3, h: 2, door: [1.5, 1.6] }),
   };
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }

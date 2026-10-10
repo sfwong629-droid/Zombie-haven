@@ -118,5 +118,65 @@
    267
   ],
   "status": "legacy-approximate tier-2 art (anchored by silhouette bottom; base geometry NOT certified)"
+ },
+ "gym": {
+  "file": "assets/buildings/gym.png",
+  "w": 285,
+  "h": 279,
+  "anchor": [
+   166,
+   278
+  ],
+  "status": "placeholder art (copy of barracks)"
+ },
+ "library": {
+  "file": "assets/buildings/library.png",
+  "w": 318,
+  "h": 297,
+  "anchor": [
+   163,
+   296
+  ],
+  "status": "placeholder art (copy of headquarters)"
+ },
+ "lounge": {
+  "file": "assets/buildings/lounge.png",
+  "w": 241,
+  "h": 285,
+  "anchor": [
+   64,
+   284
+  ],
+  "status": "placeholder art (copy of house_lv2)"
+ },
+ "range": {
+  "file": "assets/buildings/range.png",
+  "w": 290,
+  "h": 294,
+  "anchor": [
+   118,
+   293
+  ],
+  "status": "placeholder art (copy of armory)"
+ },
+ "track": {
+  "file": "assets/buildings/track.png",
+  "w": 330,
+  "h": 289,
+  "anchor": [
+   122,
+   288
+  ],
+  "status": "placeholder art (copy of storage)"
+ },
+ "sparring": {
+  "file": "assets/buildings/sparring.png",
+  "w": 305,
+  "h": 297,
+  "anchor": [
+   153,
+   296
+  ],
+  "status": "placeholder art (copy of generator)"
  }
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## V2.14.0 — Phase A: survivor stats, equipment, training buildings (see docs/DESIGN_V3.md)
+- **6 stats** per survivor (Strength, Endurance, Agility, Perception, Intelligence, Charisma; 1–20):
+  damage, HP and damage reduction, speed and attack speed, ranged damage and spotting raiders,
+  XP/medical/research, satisfaction and meals. Each profession has 2 main stats that grow +1 on
+  every level-up. Production uses the staff member's stat (farm STR, water PER, medical INT, canteen CHA).
+- **Equipment slots (DV2-style):** Weapon, Armor, Accessory, from a town stash. 18 items: melee and
+  ranged weapons (ranged attack from ~2.4 tiles), armor (damage reduction, some cost Agility),
+  stat accessories. The Armory sells basic weapons/armor for parts; expeditions find better gear.
+  Tap a survivor → Equipment → Change.
+- **Training buildings:** Gym (STR), Library (INT), Lounge (CHA) from rank 1; Shooting Range (PER),
+  Obstacle Course (AGI), Sparring Ring (END) from rank 2. Survivors train in their free time,
+  favouring their job's stats; 100% training = +1 permanent point. Placeholder art (old-style copies).
+- Survivor panel: stats with training bars, hit damage, damage reduction and speed; gear slots.
+- Old saves: weapons move into the new slots, spare weapons into the stash, stats are rolled from
+  profession and level. Max HP now includes Endurance, so it may shift by a few points.
+
 ## V2.13.0
 - **Territory expansion:** the map grew from 16×20 to 28×30 tiles (east and south, so saves keep
   their layout). Town → Expand territory unlocks 3 more tiers (Renown 60/160/320 + 15/30/50 parts).
