@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.23.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.24.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -812,10 +812,13 @@ function spawn(x = null, y = null, type = null) {
   const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind];
   S.z.push({ type: kind, w: tc(x ?? a[0], y ?? a[1]), hp: d.hp, max: d.hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null, siege: rnd() < Math.min(.85, .08 + .12 * (S.rank - 1) + (world.walls.size ? .15 : 0) + (isNight() ? .25 : 0) + .05 * (S.terr || 0)), blocked: 0, goal: null, goalT: 0, wallT: null });
 }
+const nowD = () => S.day + S.hour / 24;
+const graceOn = () => (S.graceUntil || 0) > nowD();   /* V2.24 mourning: the horde pulls back after heavy losses */
+const avgLevel = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.l || 1), 0) / S.sv.length : 1);
 const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, quieter days */
 function monsterGeneration() {
   S.spawnClock++; const tr = S.terr || 0, base = 4 + S.rank + Math.floor(S.threat / 2) + 2 * tr, night = isNight();
-  const desired = night ? Math.min(Math.round(base * 1.35), 12 + 3 * tr) : Math.max(2, Math.min(Math.round(base * .6), 8 + 2 * tr)), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 12 + 3 * tr) : Math.max(2, Math.min(Math.round(base * .6), 8 + 2 * tr))) * (graceOn() ? .55 : 1)), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
   if (activeZ() < desired && S.spawnClock > gap) { spawn(); S.spawnClock = 0; }
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -863,15 +866,16 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
 function spawnBoss() {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0;
-  const bhp = 260 + 70 * Math.max(0, S.rank - 1) + 60 * tr;
+  const L = avgLevel(), bhp = Math.round(220 + 35 * L + 60 * tr);   /* V2.24: scales with the survivors' levels, not the Haven rank */
   S.z.push({ type: 'boss', boss: true, w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   S.z[S.z.length - 1].max = S.z[S.z.length - 1].hp;
-  const mob = 3 + S.rank + 2 * tr; for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
+  const mob = 2 + Math.round(L * .7) + 2 * tr; for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
   screenToast('☠ A BOSS ATTACKS WITH ITS HORDE'); SFX('boss'); say(`A Mutant Boss is leading ${mob} zombies against the Haven!`); S.alert = 2400;
 }
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24;
-  if (S.day >= 3 && now >= S.nextRaid) { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; }
+  if (S.day >= 3 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; } }
+  if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; say('The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.'); }
   if (S.day === S.nextBoss && S.hour === 18) { screenToast('☠ SOMETHING BIG IS COMING TONIGHT'); say('Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.'); }
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
   incidentRoll();
@@ -1371,7 +1375,7 @@ function showNextRequest() {
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
 function visitorArrival() {
-  S.arrivalClock++; if (S.arrivalClock < 2200 || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
+  S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
   v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.' + lv }); say(name + ' arrived at the Haven.'); ui();
@@ -1697,6 +1701,8 @@ function bleedTick(s) {
 function killSurvivor(s, cause) {
   if (!S.sv.includes(s)) return;
   S.sv = S.sv.filter((q) => q !== s); bondsOnDeath(s);
+  S.deaths = (S.deaths || []).filter((d) => d > nowD() - 1); S.deaths.push(nowD());
+  if (S.deaths.length >= 2 && !graceOn()) { S.graceUntil = nowD() + 1.5; screenToast('🕯 THE HAVEN MOURNS'); say('After so many losses the survivors hold a vigil. The horde pulls back for a while — rebuild your defences.'); }
   for (const q of S.sv) { if (q.rescuing === s) { q.rescuing = null; if (['rescueTo', 'rescueCarry'].includes(q.mode)) { q.carrying = null; enterFree(q, 60); } } if (q.target === s) q.target = null; }
   for (const b of world.buildings) if (b.staff === s) b.staff = null;
   if (selected && selected.ref === s) { selected = null; closeP(); }
@@ -2014,6 +2020,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

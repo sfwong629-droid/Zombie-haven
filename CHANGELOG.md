@@ -1,5 +1,18 @@
 # Changelog
 
+## V2.24.0 — Comeback help
+Some towns used to snowball: a boss night killed veterans, newcomers arrived at low levels, and
+each following boss (scaled by Haven rank) killed more — up to 37–44 deaths in 45 days.
+- **The boss scales with the survivors' average level** (and territory), not the Haven rank:
+  HP 220 + 35 × average level + 60 × territory tier; horde 2 + 0.7 × average level + 2 × tier.
+  A strong late town meets about the same boss as before; a town that lost its veterans meets a
+  weaker one.
+- **Mourning:** when 2 survivors die within a day, the horde pulls back for about 1.5 days
+  (45% fewer zombies, raids wait, the boss comes a day later).
+- **Recruits arrive twice as fast** while the population is below 60% of the cap.
+- Simulated 45 days on 8 towns: 0–6 deaths each (was 0–44 with 1 in 4 snowballing). Without
+  walls: 0–17. The game is now on the forgiving side; a harder difficulty can be added later.
+
 ## V2.23.0 — Missions and story events
 - **10 mission types** (was 3), picked from what makes sense for the town and never the same twice
   in a row: Clear the Perimeter, Keep the Town Supplied, Expand the Haven, Push the Science,
