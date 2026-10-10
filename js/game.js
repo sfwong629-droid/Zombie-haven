@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.18.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.19.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -87,7 +87,7 @@ async function loadAll() {
 
 /* ---------------- state ---------------- */
 const world = Wd.createWorld();
-const S = { pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 2.6, nextBoss: 3, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
+const S = { guide: 0, log: [], expCount: 0, pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 2.6, nextBoss: 3, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
 const floats = [];
 let sel = null;            // active build tool: {kind:'building',type} | {kind:'road'}
 let preview = null;        // {x,y,w,h,type,ok,why}
@@ -545,8 +545,8 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const tileOf = (w) => ({ x: Math.max(0, Math.min(COLS - 1, Math.floor(w.x))), y: Math.max(0, Math.min(ROWS - 1, Math.floor(w.y))) });
 const tc = (x, y) => ({ x: x + .5, y: y + .5 });
 const rnd = () => Math.random();
-function say(t) { const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
-function screenToast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; const n = $('fx').querySelectorAll('.toast').length; if (n) d.style.top = `calc(18% + ${Math.min(n, 4) * 38}px)`; $('fx').appendChild(d); setTimeout(() => d.remove(), 1500); }
+function say(t) { logEvent(t); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
+function screenToast(t) { logEvent(t); const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; const n = $('fx').querySelectorAll('.toast').length; if (n) d.style.top = `calc(18% + ${Math.min(n, 4) * 38}px)`; $('fx').appendChild(d); setTimeout(() => d.remove(), 1500); }
 function renownGain(n, why = '') { S.ren += n; const el = $('ren'); if (el) { el.parentElement.classList.remove('renFlash'); void el.offsetWidth; el.parentElement.classList.add('renFlash'); } screenToast(`★ RENOWN +${n}${why ? ' · ' + why : ''}`); ui(); }
 function bOf(type) { return world.buildings.filter((b) => b.type === type); }
 
@@ -769,7 +769,7 @@ function ai(s) {
     if (retreatCheck(s)) return;
     if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > (weaponOf(s).ranged ? 2.4 : .9)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
     if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1)); z.hp -= dmg; floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5);
-      if (z.hp <= 0) { S.kills++; gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); } const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .25) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); if (S.stage === 1 && S.kills >= 3) { S.stage = 2; renownGain(10, 'Goal complete'); say('Goal complete!'); } enterPost(s); return; }
+      if (z.hp <= 0) { S.kills++; gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); } const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .25) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); stageCheck(); enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02)); } return; }
     if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) s.mode = 'chase'; } return;
   }
@@ -1316,7 +1316,47 @@ function visitorArrival() {
   v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.' + lv }); say(name + ' arrived at the Haven.'); ui();
 }
 function beginMission(id = null) { const d = id ? MISSION_DEFS.find((m) => m.id === id) : MISSION_DEFS[Math.floor(rnd() * MISSION_DEFS.length)]; S.mission = { ...d, progress: 0 }; S.missionStart = { kills: S.kills, produced: S.produced, built: S.builtCount }; say('Mission: ' + d.name); ui(); }
+/* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */
+const GUIDE = [
+  { name: 'Grow Food', desc: 'Build a Garden Plot', hint: 'Build → Garden Plot. Every survivor eats a daily ration of food and water. A Farmer staffs it automatically (green dot) and makes it produce more.', done: () => bOf('farm').length + bOf('field').length > 0, parts: 3, ren: 4 },
+  { name: 'A Place to Rest', desc: 'Build a second House', hint: 'Tired survivors rest in Houses. More homes also make the Haven a place people want to live in.', done: () => bOf('house').length >= 2, parts: 3, ren: 4 },
+  { name: 'Make It Home', desc: 'Accept a move-in request', hint: 'Happy survivors (♥ 35 or more) ask to move in. Tap ACCEPT when the request appears. Residents count toward the next Haven rank.', done: () => residents() >= 1, parts: 4, ren: 5 },
+  { name: 'Scrap Economy', desc: 'Build a Scrapyard', hint: 'Every building costs a little upkeep in parts each day (a building that can\'t be paid runs at half output). A Scrapyard staffed by a Scavenger or Engineer makes parts. Kills, missions and expeditions also bring parts.', done: () => bOf('scrapyard').length > 0, parts: 4, ren: 5 },
+  { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare parts. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
+  { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
+  { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workshop and tap it. An Engineer, Mechanic or Medic working there makes research points faster. Research unlocks the Well, Farm, Clinic, Hospital, gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
+  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Barricade or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with parts.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
+  { name: 'Go Out There', desc: 'Send an expedition', hint: 'EXPEDITION → pick a place, a risk level and a squad. Trips run in real time, even while the game is closed, and bring back supplies, parts and sometimes gear or new survivors.', done: () => !!S.trip || (S.expCount || 0) > 0, parts: 5, ren: 6 },
+  { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown and parts). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
+];
+const guideActive = () => S.stage >= 2 && (S.guide || 0) < GUIDE.length;
+function guideIntro() { const g = GUIDE[S.guide]; if (g) showEventPopup({ title: 'NEXT GOAL · ' + g.name.toUpperCase(), text: g.hint, gains: g.desc + ` · reward +${g.parts} parts, +${g.ren} Renown` }); }
+function guideProgress() {
+  const g = GUIDE[S.guide || 0]; if (!g || !g.done()) return;
+  S.mat += g.parts; renownGain(g.ren, g.name); screenToast('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); say(`Goal complete: ${g.name} (+${g.parts} parts).`);
+  S.guide = (S.guide || 0) + 1; if (S.guide < GUIDE.length && !GUIDE[S.guide].done()) guideIntro(); else if (S.guide >= GUIDE.length) { say('All guide goals done — missions from here on.'); beginMission(); }
+  ui();
+}
+function guideSkipDone() { if (S.guide === undefined) S.guide = 0; while (S.stage >= 2 && S.guide < GUIDE.length && GUIDE[S.guide].done()) S.guide++; }   /* old saves: no rewards for goals already met */
+function showGoals() {
+  endBuildMode(true); closeP(); $('it').textContent = 'GOALS'; const gi = S.guide || 0;
+  const first = [['Water', 'Build a Rain Collector', S.stage >= 1], ['First Blood', 'Defeat 3 Walkers', S.stage >= 2]];
+  const rows = first.map(([n, d, ok]) => `<div style="opacity:${ok ? .6 : 1}">${ok ? '✔' : '▶'} <b>${n}</b> — ${d}</div>`).join('')
+    + GUIDE.map((g, i) => { const done = S.stage >= 2 && i < gi, cur = S.stage >= 2 && i === gi; return `<div style="opacity:${done ? .6 : cur ? 1 : .45};${cur ? 'border:1px solid #ffe38a;border-radius:4px;padding:3px;margin:2px 0' : ''}">${done ? '✔' : cur ? '▶' : '·'} <b>${g.name}</b> — ${g.desc}${cur ? `<br><small>${g.hint}</small><br><small>Reward: +${g.parts} parts, +${g.ren} Renown</small>` : ''}</div>`; }).join('');
+  $('ib').innerHTML = rows + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
+  $('infoPanel').style.display = 'block'; $('gLog').onclick = showLog;
+}
+function logEvent(t) { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ PARTS · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t) }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
+function showLog() {
+  endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
+  const L = (S.log || []).slice().reverse();
+  $('ib').innerHTML = L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #2c627a"><small style="color:#9fd3e8">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> ${esc(e.t)}</div>`).join('') : '<small>Nothing yet.</small>';
+  $('infoPanel').style.display = 'block';
+}
+function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
 function missionProgress() {
+  stageCheck(); if (S.stage < 2) return;
+  if (guideActive()) { guideProgress(); return; }
   if (!S.mission) { beginMission(); return; } const m = S.mission; let p = 0;
   if (m.id === 'clear') p = S.kills - S.missionStart.kills; if (m.id === 'produce') p = S.produced - S.missionStart.produced; if (m.id === 'build') p = S.builtCount - S.missionStart.built;
   m.progress = Math.max(0, Math.min(m.goal, p));
@@ -1339,7 +1379,7 @@ function checkRank() {
 function ui() {
   $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
-  $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
+  $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].name}: ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 
 /* ---------------- save / load / migration ---------------- */
@@ -1374,9 +1414,9 @@ function loadGame() {
     if (S.produced === undefined) S.produced = 0; delete S.med;
     if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, w: DEFS[b.type].w, h: DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
-    S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; }
+    S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.log = S.log || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; }
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
-    Wd.bump(world); return d;
+    Wd.bump(world); guideSkipDone(); return d;
   } catch (e) { console.warn('load failed', e); return false; }
 }
 
@@ -1466,7 +1506,7 @@ function expRecall() {
   t.phase = 'back'; t.backAt = now + back; t.log.push(`Recalled during stage ${t.stage + 1}. Loot from finished stages is kept; walking home.`); say('The squad is on its way home.'); saveGame(); ui(); return true;
 }
 function expFinish(recalled) {
-  const t = S.trip; if (!t) return; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
+  const t = S.trip; if (!t) return; S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
   if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); t.log.push(`${m.name} fell on the way home.`); }
   (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = Math.min(cap, S.food + t.loot.food); S.water = Math.min(cap, S.water + t.loot.water); S.mat += t.loot.mat; S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y <= 6) return tc(w.x, w.y + 1); return tc(7, 7); })();
@@ -1730,7 +1770,7 @@ function showTown() {
 }
 function showGuide() {
   endBuildMode(true); closeP(); $('it').textContent = 'GUIDE';
-  $('ib').innerHTML = `<b>Drag</b> to pan, <b>pinch</b> to zoom, <b>⌖</b> recenters, <b>1×/2×/3×</b> changes speed, <b>🐞</b> shows the geometry overlay.<br><b>Walls:</b> Build → Wood Barricade / Metal Wall / Gate, then tap tiles around the town (tap again to remove; Metal over Wood upgrades). Zombies attack the nearest wall; elites (Spitters, Brutes) go for the weakest segment. Guards leave through the Gate to fight. Broken segments are repaired automatically with parts (faster with an Engineer or Mechanic). Town shows if the perimeter is SEALED.<br><b>Expedition:</b> EXPEDITION button → pick a destination, a risk level and a squad (auto-picked: one guard, one medic, one scavenger). The squad leaves the map and the trip runs in real time, even while the game is closed. After each of 3 stages something may happen; you can RECALL (keeps loot from finished stages). Losses are permanent.<br><b>Build:</b> choose a building, tap the tile for its <b>south corner</b> (the front tip of the footprint), nudge with the arrows, then CONFIRM. Buildings can't rotate. Buildings cost <b>parts</b>; there is no money.<br><b>Supplies:</b> every survivor eats a daily ration (half food, half water); heavier jobs and higher levels eat more. Rain collectors make water, garden plots make food (and use some water). Medicine heals; without it care is half as effective.<br><b>Staffing is automatic:</b> a survivor with the matching profession (Farmer, Engineer/Mechanic, Medic) takes the building's one slot and boosts it (+50%, +10% per level). A green dot on the building means it is staffed.<br><b>Upgrade</b> a building from its panel: it keeps its footprint and keeps working.<br><b>Incidents:</b> now and then a building catches fire or a zombie breaks in. Survivors nearby fight fires (using a little water); a building that burns down must be repaired from its panel.<br><b>Rush</b> a production building from its panel for 4 hours of output now — with a chance of fire (lower with a skilled worker on shift).<br><b>Trader &amp; pets:</b> a wandering trader visits every few days (tap them, or Town → Trade). Dogs and cats give stat bonuses; give one to a survivor from their panel.<br><b>Roads:</b> the Road tool adds or removes single tiles (1 part each).<br><b>Tap a survivor</b> to see what they are doing and why.<br><b>Renown</b> raises your Haven rank; higher ranks bring tougher zombies.<br><small>V${VERSION} · geometry: tile ratio 3:2 (33.69°), anchor = south corner.</small>`;
+  $('ib').innerHTML = `<b>Drag</b> to pan, <b>pinch</b> to zoom, <b>⌖</b> recenters, <b>1×/2×/3×</b> changes speed, <b>🐞</b> shows the geometry overlay.<br><b>Walls:</b> Build → Wood Barricade / Metal Wall / Gate, then tap tiles around the town (tap again to remove; Metal over Wood upgrades). Zombies attack the nearest wall; elites (Spitters, Brutes) go for the weakest segment. Guards leave through the Gate to fight. Broken segments are repaired automatically with parts (faster with an Engineer or Mechanic). Town shows if the perimeter is SEALED.<br><b>Expedition:</b> EXPEDITION button → pick a destination, a risk level and a squad (auto-picked: one guard, one medic, one scavenger). The squad leaves the map and the trip runs in real time, even while the game is closed. After each of 3 stages something may happen; you can RECALL (keeps loot from finished stages). Losses are permanent.<br><b>Build:</b> choose a building, tap the tile for its <b>south corner</b> (the front tip of the footprint), nudge with the arrows, then CONFIRM. Buildings can't rotate. Buildings cost <b>parts</b>; there is no money.<br><b>Supplies:</b> every survivor eats a daily ration (half food, half water); heavier jobs and higher levels eat more. Rain collectors make water, garden plots make food (and use some water). Medicine heals; without it care is half as effective.<br><b>Staffing is automatic:</b> a survivor with the matching profession (Farmer, Engineer/Mechanic, Medic) takes the building's one slot and boosts it (+50%, +10% per level). A green dot on the building means it is staffed.<br><b>No upgrades — build more:</b> want more water? Build another Rain Collector. Related buildings next to each other give neighbour bonuses (the placement bar shows them). Every building costs a little upkeep in parts each day.<br><b>Goals:</b> tap the goal box (top left) for your current goal and hints; <b>📜</b> shows the event log.<br><b>Incidents:</b> now and then a building catches fire or a zombie breaks in. Survivors nearby fight fires (using a little water); a building that burns down must be repaired from its panel.<br><b>Rush</b> a production building from its panel for 4 hours of output now — with a chance of fire (lower with a skilled worker on shift).<br><b>Trader &amp; pets:</b> a wandering trader visits every few days (tap them, or Town → Trade). Dogs and cats give stat bonuses; give one to a survivor from their panel.<br><b>Roads:</b> the Road tool adds or removes single tiles (1 part each).<br><b>Tap a survivor</b> to see what they are doing and why.<br><b>Renown</b> raises your Haven rank; higher ranks bring tougher zombies.<br><small>V${VERSION} · geometry: tile ratio 3:2 (33.69°), anchor = south corner.</small>`;
   $('infoPanel').style.display = 'block';
 }
 function showBuildingInfo(b) {
@@ -1799,6 +1839,7 @@ $('mBuild').onclick = showBuild; $('mSurv').onclick = showSurvivors; $('mTown').
 $('closeBuild').onclick = closeP; $('closeInfo').onclick = closeP;
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
+$('btnLog').onclick = showLog; $('quest').onclick = showGoals;
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
 $('ib').addEventListener('click', (e) => { const r = e.target.closest('[data-sv]'); if (!r) return; const s = S.sv.find((q) => q.id === +r.dataset.sv); if (s) { selected = { kind: 'unit', ref: s }; closeP(); centerOn(s.w.x, s.w.y); } });
 
@@ -1826,6 +1867,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

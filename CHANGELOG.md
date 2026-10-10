@@ -1,5 +1,20 @@
 # Changelog
 
+## V2.19.0 — Guided goals and event log
+- **Guided goals:** after "Build a Rain Collector" and "Defeat 3 Walkers", 10 goals introduce one
+  system at a time — Grow Food, A Place to Rest, Make It Home (residents), Scrap Economy (upkeep),
+  Gear Up, Train Up, Research, Hold the Line (walls and rubble repair), Go Out There (expeditions),
+  More Land (territory). Each opens a short explainer and pays a small reward (+3–6 parts, +4–8
+  Renown); then random missions take over as before. Old saves skip goals they've already met.
+- **Tap the goal box** (top left) for the full goal list with the current hint.
+- **Event log (📜):** the last 60 messages with day and hour, so nothing is missed when a message
+  fades (Renown pop-ups are left out).
+- The Guide screen no longer talks about upgrading buildings (removed in V2.15); it explains
+  building more instead, neighbour bonuses and upkeep.
+- Tested at iPhone size: every goal fires in order with its popup and reward, the goals panel and
+  log render, an old stage-2 save resumes at the right goal; 30-day simulations show no errors
+  and the same death spread as before the change.
+
 ## V2.18.1 — Performance (late-game town: 25–30 buildings, 50–100 walls, boss horde)
 Profiled at iPhone size (390×844, 3× pixels) in headless Chrome, which draws on the CPU, so the
 numbers there are only a guide to the hot spots, not to how an iPhone with a GPU runs:
