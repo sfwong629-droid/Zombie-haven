@@ -20,30 +20,30 @@
   const D = (o) => Object.assign({ w: 2, h: 2, q: 10, a: 8, rank: 1, cap: 1, door: [1, 1.6] }, o);
   const DEFS = {
     water:    D({ name: 'Rain Collector', mat: 4,  a: 4,  role: 'water',   fam: 'water',   tier: 1, sprite: 'grid', slot: true, out: 5 }),
-    well:     D({ name: 'Well',           mat: 14, a: 6,  q: 12, role: 'water', fam: 'water', tier: 2, rank: 2, slot: true, out: 9 }),
+    well:     D({ res: 'deepWells', name: 'Well',           mat: 14, a: 6,  q: 12, role: 'water', fam: 'water', tier: 2, rank: 2, slot: true, out: 9 }),
     farm:     D({ name: 'Garden Plot',    mat: 5,  a: 5,  role: 'food',    fam: 'farm',    tier: 1, sprite: 'grid', slot: true, out: 4, waterUse: 2 }),
-    field:    D({ name: 'Farm',           mat: 17, a: 7,  q: 12, role: 'food', fam: 'farm', tier: 2, rank: 2, slot: true, out: 8, waterUse: 3 }),
+    field:    D({ res: 'irrigation', name: 'Farm',           mat: 17, a: 7,  q: 12, role: 'food', fam: 'farm', tier: 2, rank: 2, slot: true, out: 8, waterUse: 3 }),
     medic:    D({ name: 'Medical Tent',   mat: 6,  a: 10, role: 'medical', fam: 'medical', tier: 1, sprite: 'grid', slot: true, cap: 2 }),
-    clinic:   D({ name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, slot: true, cap: 3 }),
-    hospital: D({ name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 1.6], sprite: 'grid', slot: true, cap: 3 }),
+    clinic:   D({ res: 'fieldSurgery', name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, slot: true, cap: 3 }),
+    hospital: D({ res: 'traumaCare', name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 1.6], sprite: 'grid', slot: true, cap: 3 }),
     canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
-    workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', rank: 2 }),
+    workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 10 }),   // V2.16: staffed → research points; crafting
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
     scrapyard: D({ name: 'Scrapyard',     mat: 10, a: 4,  q: 8, role: 'parts', fam: 'scrap', slot: true, out: 3 }),   // V2.15: staffed salvage → parts
     // V2.14 training buildings: each raises one survivor stat when visited (placeholder art for now)
     gym:      D({ name: 'Gym',            mat: 9,  a: 9,  role: 'train', cap: 2, train: 'str' }),
     library:  D({ name: 'Library',        mat: 9,  a: 9,  role: 'train', cap: 2, train: 'int' }),
     lounge:   D({ name: 'Lounge',         mat: 8,  a: 10, role: 'train', cap: 3, train: 'cha' }),
-    range:    D({ name: 'Shooting Range', mat: 12, a: 8,  role: 'train', cap: 2, train: 'per', rank: 2 }),
-    track:    D({ name: 'Obstacle Course', mat: 11, a: 8, role: 'train', cap: 2, train: 'agi', rank: 2 }),
-    sparring: D({ name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
+    range:    D({ res: 'fitness', name: 'Shooting Range', mat: 12, a: 8,  role: 'train', cap: 2, train: 'per', rank: 2 }),
+    track:    D({ res: 'fitness', name: 'Obstacle Course', mat: 11, a: 8, role: 'train', cap: 2, train: 'agi', rank: 2 }),
+    sparring: D({ res: 'fitness', name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
     barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 3, h: 2, door: [1.5, 1.6] }),
   };
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'] };
+  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'] };
   const ROAD_COST = 1;  // parts per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {

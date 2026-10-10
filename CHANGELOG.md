@@ -1,5 +1,22 @@
 # Changelog
 
+## V2.16.0 — Phase C: research, crafting, job Lv.10, weekly Haven Review
+- **Workshop research:** a staffed Workshop makes 10 research points (RP) a day (2 unstaffed;
+  Engineer, Mechanic or Medic). 13 projects cost RP + parts: Deep Wells, Irrigation, Field Surgery →
+  Trauma Care unlock the Well, Farm, Clinic and Hospital; Fitness Program unlocks the Range, Obstacle
+  Course and Sparring Ring; plus Salvage Methods, Reinforced Walls, Bigger Stockpiles, Field Medicine,
+  and 4 gear recipe projects. Locked buildings are hidden from the build menu until researched.
+- **Crafting** at the Workshop: researched recipes turn parts into gear (about 1.3× shop price);
+  crafted items go to the stash. Tap a Workshop to research and craft.
+- **Job levels to 10:** XP needed rises steeply after Lv.5; every profession gets a Lv.10 mastery
+  skill (e.g. Marksman, Miracle Worker, Master Builder, Head Chef). Skills stay when changing job.
+- **Weekly Haven Review** every 7 days: Population, Defense, Supplies, Buildings, Happiness and
+  Research (20 pts each) → grade S/A/B/C/D with Renown, parts, an item on S/A, and a town title.
+  The Town panel shows research and the last review.
+- Tested headless at iPhone size: Workshop panel research (RP and parts deducted, recipe unlocked)
+  and crafting (parts deducted, item in stash, HUD updates); 15-day simulations on 2 seeds:
+  4 research projects done, reviews B 61 → B 74 and B 61 → B 68, no errors.
+
 ## V2.15.0 — Phase B: duplicate buildings, upkeep, Scrapyard, neighbour bonuses
 - **No more in-place upgrades:** Well, Farm, Clinic and Hospital are separate buildings with their
   own footprint; build as many of anything as your land allows (existing ones stay as they are).
