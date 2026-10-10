@@ -1,5 +1,25 @@
 # Changelog
 
+## V2.18.1 — Performance (late-game town: 25–30 buildings, 50–100 walls, boss horde)
+Profiled at iPhone size (390×844, 3× pixels) in headless Chrome, which draws on the CPU, so the
+numbers there are only a guide to the hot spots, not to how an iPhone with a GPU runs:
+- The build-zone outline was stroked every frame (about half of all drawing time in the profile):
+  it's now baked into the cached ground image.
+- Walls: each segment shape is drawn once into a small cached image (per type, joins, damage,
+  ~2% zoom step) and stamped, instead of ~5 path strokes per segment per frame.
+- Text and emoji (floating numbers, icons) are rasterised once and stamped; floating numbers are
+  capped at 80 at a time.
+- Trees, crates, debris and old-style buildings were scaled to CSS pixels and then stretched 3×
+  on iPhone screens (slow and slightly blurry): they're now cached at exact device pixels.
+- The sprite enlargement cache dropped everything once it held 24 sheets; a late-game town needs
+  more (all zombie types, raiders, boss, trader, pets), so it could rebuild sheets every frame.
+  It now drops only the oldest. The ground image is enlarged at most 3× (the 4× copy was ~63 MB,
+  close to iPhone Safari's canvas limit).
+- Measured: game logic 0.1–0.2 ms per tick (fine at 3× speed); saving 0.3 ms; the live loop ran
+  ~57 fps in the headless browser both before and after (it's capped there), worst frame
+  700 → 433 ms (that's a one-off when the zoom crosses a step and the ground image is rebuilt).
+  Not yet measured on an actual iPhone.
+
 ## V2.18.0 — Balance pass (45-day auto-played games)
 Tested with a new simulator (`tools/balance`) that plays the real game for 45 game days the way a
 sensible player would. Before the changes, towns stalled at ~14 buildings, Haven rank either never

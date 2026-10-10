@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.18.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.18.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -39,9 +39,10 @@ const okImg = (im) => im && im.complete && im.naturalWidth > 0;
 const scaledCache = new Map();
 const pixelCache = new Map();
 function pixelUp(key, img, m) {   // whole-number nearest-neighbour enlargement of a pixel-art sheet, cached per factor
-  const k = key + '#' + m; let c = pixelCache.get(k); if (c) return c;
+  const k = key + '#' + m; let c = pixelCache.get(k); if (c) { pixelCache.delete(k); pixelCache.set(k, c); return c; }
   c = document.createElement('canvas'); c.width = img.width * m; c.height = img.height * m; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, c.width, c.height);
-  if (pixelCache.size > 24) pixelCache.clear(); pixelCache.set(k, c); return c;
+  while (pixelCache.size > 48) pixelCache.delete(pixelCache.keys().next().value);   /* V2.18: drop the oldest instead of wiping everything (a late-game town needs more than 24 sheets, so it rebuilt them every frame) */
+  pixelCache.set(k, c); return c;
 }
 function scaled(key, img, tw, th) {           // high-quality downscale by repeated halving, cached
   tw = Math.max(1, Math.round(tw)); th = Math.max(1, Math.round(th));
@@ -149,12 +150,15 @@ function buildGround() {
     }
     const j = (py * W + px) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255;
   }
-  g.putImageData(id, 0, 0); pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) pixelCache.delete(k); });
+  g.putImageData(id, 0, 0);
+  { const A = (x, y) => [GOXA + (x - y) * APX / 2, (x + y) * APY / 2], B = Wd.BUILD, c = [A(B.x0, B.y0), A(B.x1 + 1, B.y0), A(B.x1 + 1, B.y1 + 1), A(B.x0, B.y1 + 1)];   /* build-zone outline */
+    g.beginPath(); g.moveTo(...c[0]); c.slice(1).forEach((q) => g.lineTo(...q)); g.closePath(); g.strokeStyle = 'rgba(214,235,178,.35)'; g.lineWidth = 1; g.stroke(); }
+  pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) pixelCache.delete(k); });
 }
 function drawGround() {
   const key = [...world.roads].join('|') + '#' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + ',' + Wd.BUILD.y0;   // ground depends on roads and the territory
   if (!groundCv || key !== groundKey) { groundKey = key; buildGround(); }
-  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m = Math.min(4, Math.max(1, Math.ceil(want - 0.02))), big = pixelUp('ground', groundCv, m);
+  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m = Math.min(3, Math.max(1, Math.ceil(want - 0.02))), big = pixelUp('ground', groundCv, m);   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
   ctx.imageSmoothingEnabled = Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(big, o.x - GOXA * s, o.y, groundCv.width * s, groundCv.height * s); ctx.imageSmoothingEnabled = true;
 }
@@ -186,15 +190,17 @@ function drawBuilding(b, ghost, ok) {
     ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = Math.abs(r.s * DPR - m) > 0.02; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(big, r.x, r.y, r.w, r.h); ctx.restore(); return;
   }
-  const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + b.type, sp.img, r.w, r.h);   // anchor = SOUTH corner
+  const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + b.type, sp.img, r.w * DPR, r.h * DPR);   // anchor = SOUTH corner; V2.18: scaled to device pixels (was CSS pixels: blurry and slow on 3× screens)
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; if (ghost) ctx.globalAlpha = ok ? .7 : .45;
   ctx.drawImage(img, r.x, r.y, r.w, r.h); ctx.restore();
 }
+const propCache = new Map();
 function drawProp(kind, tx, ty) {
   const im = IMG['prop:' + kind]; if (!okImg(im)) return; const p = project(tx + .5, ty + .5), tw = TWs();
   const cfg = { tree: { cw: 106, ax: 128, ay: 150, k: 1.0 }, crate: { cw: 215, ax: 128, ay: 246, k: .5 }, debris: { cw: 134, ax: 128, ay: 150, k: .75 } }[kind];
-  const s = cfg.k * tw / cfg.cw, w = im.width * s, h = im.height * s; const sc = scaled('p:' + kind, im, w, h);
-  ctx.imageSmoothingEnabled = true; ctx.drawImage(sc, p.x - cfg.ax * s, p.y - cfg.ay * s, w, h);
+  const s = cfg.k * tw / cfg.cw, w = im.width * s, h = im.height * s; const dw = Math.max(1, Math.round(w * DPR)), dh = Math.max(1, Math.round(h * DPR)), k = kind + dw + 'x' + dh;   /* V2.18: exact device-pixel copy, so each frame is a plain 1:1 blit */
+  let sc = propCache.get(k); if (!sc) { const src = scaled('p:' + kind, im, dw, dh); sc = document.createElement('canvas'); sc.width = dw; sc.height = dh; const g = sc.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, dw, dh); if (propCache.size > 30) propCache.clear(); propCache.set(k, sc); }
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(sc, Math.round((p.x - cfg.ax * s) * DPR) / DPR, Math.round((p.y - cfg.ay * s) * DPR) / DPR, dw / DPR, dh / DPR); ctx.imageSmoothingEnabled = true;
 }
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
@@ -212,7 +218,15 @@ function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, cri
   ctx.drawImage(sheet, Math.round(frame * fw * k), 0, Math.round(fw * k), sheet.height, p.x - fw * k / 2, p.y - footY * k, Math.round(fw * k), sheet.height);
 }
 const EMOJI = { Eating: '🍖', Drinking: '💧', Resting: '💤', Treatment: '💊', Shopping: '🛒', 'Getting food': '🥫', Working: '🔧', Firefighting: '🧯' };
-function bubble(p, txt) { ctx.fillStyle = '#fff'; ctx.font = `${Math.max(11, 13 * cam.z)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(txt, p.x, p.y); }
+const textCache = new Map();
+function textImg(txt, font, col) {   /* V2.18: text and emoji are rasterised once and stamped (fillText was ~16% of frame time) */
+  const key = txt + '|' + font + '|' + col + '|' + DPR; let c = textCache.get(key); if (c) return c;
+  const m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 4, px = parseFloat(font.match(/(\d+(\.\d+)?)px/)[1]), h = Math.ceil(px * 1.4) + 4;
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR); g.font = font; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText(txt, w / 2, px * 1.1 + 2);
+  if (textCache.size > 300) textCache.clear(); c = { cv, w, h, base: px * 1.1 + 2 }; textCache.set(key, c); return c;
+}
+function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.base) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true; }
+function bubble(p, txt) { stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
 const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right, up }
 function facing(o) {   // screen-space facing from movement (or from the target while fighting)
   let st = FACE.get(o); if (!st) { st = { lx: o.w.x, ly: o.w.y, right: false, up: false }; FACE.set(o, st); }
@@ -289,11 +303,7 @@ const CRATE_SPOTS = [[1, 6], [14, 13], [2, 19], [13, 5], [0, 12]];
 const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17], [5, 18], [11, 18], [15, 6], [15, 18]];
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH);
-  drawGround();
-  {
-    const c = [[Wd.BUILD.x0, Wd.BUILD.y0], [Wd.BUILD.x1 + 1, Wd.BUILD.y0], [Wd.BUILD.x1 + 1, Wd.BUILD.y1 + 1], [Wd.BUILD.x0, Wd.BUILD.y1 + 1]].map(([x, y]) => project(x, y));
-    ctx.beginPath(); ctx.moveTo(c[0].x, c[0].y); c.slice(1).forEach((p) => ctx.lineTo(p.x, p.y)); ctx.closePath(); ctx.strokeStyle = 'rgba(214,235,178,.28)'; ctx.lineWidth = Math.max(1, cam.z); ctx.stroke();
-  }
+  drawGround();   /* V2.18: the build-zone outline is baked into the ground image (stroking it every frame was ~half the frame time) */
   if (sel && sel.kind === 'wall') {
     for (let y = Wd.WALLZONE.y0; y <= Wd.WALLZONE.y1; y++) for (let x = Wd.WALLZONE.x0; x <= Wd.WALLZONE.x1; x++) {
       const occ = Wd.buildingAt(world, x, y), road = Wd.isRoad(world, x, y), wl = Wd.wallAt(world, x, y);
@@ -320,28 +330,40 @@ function draw() {
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
-  for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); ctx.fillStyle = f.col; ctx.font = `bold ${Math.max(10, 11 * cam.z)}px Arial`; ctx.textAlign = 'center'; ctx.fillText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25); ctx.globalAlpha = 1; }
+  for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `bold ${Math.round(Math.max(10, 11 * cam.z))}px Arial`, f.col); ctx.globalAlpha = 1; }
+  if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
   if (debug) drawDebug();
 }
 /* walls: procedural placeholder art (no sprite sheet yet) — single-tile blocks that join their neighbours */
 const WALL_COL = { wood: ['#b98f58', '#8d6a3e', '#6f512f'], metal: ['#aeb7bd', '#7f8b93', '#5f6b73'], gate: ['#c9a05c', '#9a7440', '#775629'] };
-function drawWall(wl) {
-  const def = Wd.WALL_DEFS[wl.type], col = wl.broken ? ['#8c8173', '#6b6157', '#4f4740'] : WALL_COL[wl.type], hgt = (wl.broken ? .14 : wl.type === 'metal' ? .78 : wl.type === 'gate' ? .62 : .55) * .527, f = wl.hp / wl.max, tw = TWs();
+const wallCache = new Map();
+function drawWall(wl) {   /* V2.18: each segment shape is drawn once per zoom into a small cached image, then stamped (was ~5 path strokes per segment per frame) */
+  const col = wl.broken ? ['#8c8173', '#6b6157', '#4f4740'] : WALL_COL[wl.type], hgt = (wl.broken ? .14 : wl.type === 'metal' ? .78 : wl.type === 'gate' ? .62 : .55) * .527, f = wl.hp / wl.max, twR = TWs(), tw = Math.pow(2, Math.round(Math.log2(twR) * 36) / 36), sk = twR / tw;   /* cached at ~2% zoom steps so pinching reuses images */
   const has = (dx, dy) => { const o = Wd.wallAt(world, wl.x + dx, wl.y + dy); return !!o && !o.broken && !wl.broken; }, m = wl.broken ? .22 : .14;
-  const x0 = wl.x + (has(-1, 0) ? 0 : m), x1 = wl.x + 1 - (has(1, 0) ? 0 : m), y0 = wl.y + (has(0, -1) ? 0 : m), y1 = wl.y + 1 - (has(0, 1) ? 0 : m);
-  const P = (x, y, z) => { const p = project(x, y); return { x: p.x, y: p.y - z * tw }; };
-  const shade = (c) => (wl.hit > 0 ? '#ffffff' : c), poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach((q) => ctx.lineTo(q.x, q.y)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = 'rgba(20,14,8,.55)'; ctx.lineWidth = Math.max(1, cam.z * .8); ctx.stroke(); };
-  if (wl.hit > 0) wl.hit--;
-  // faces: south-west (left), south-east (right), top
-  poly([P(x0, y1, 0), P(x1, y1, 0), P(x1, y1, hgt), P(x0, y1, hgt)], shade(col[1]));
-  poly([P(x1, y1, 0), P(x1, y0, 0), P(x1, y0, hgt), P(x1, y1, hgt)], shade(col[2]));
-  poly([P(x0, y0, hgt), P(x1, y0, hgt), P(x1, y1, hgt), P(x0, y1, hgt)], shade(col[0]));
-  ctx.strokeStyle = 'rgba(30,20,10,.45)'; ctx.lineWidth = Math.max(1, cam.z * .7);
-  for (const z of wl.type === 'metal' ? [hgt * .33, hgt * .66] : [hgt * .5]) { ctx.beginPath(); const a = P(x0, y1, z), b = P(x1, y1, z), c = P(x1, y0, z); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.stroke(); }
-  if (wl.type === 'gate' && !wl.broken) { const a = P(x0 + .5 * (x1 - x0), y1, 0), b = P(x0 + .5 * (x1 - x0), y1, hgt); ctx.strokeStyle = '#f3d27a'; ctx.lineWidth = Math.max(2, cam.z * 2); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
-  if (f < .6 && !wl.broken) { ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = Math.max(1, cam.z); const c1 = P(x0 + .3 * (x1 - x0), y1, hgt * .85), c2 = P(x0 + .5 * (x1 - x0), y1, hgt * .35), c3 = P(x0 + .7 * (x1 - x0), y1, hgt * .7); ctx.beginPath(); ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y); ctx.stroke(); }
-  if (f < 1) { const p = P(wl.x + .5, wl.y + .5, hgt + .1); ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 10 * cam.z, p.y - 2 * cam.z, 20 * cam.z, 4 * cam.z); ctx.fillStyle = f > .5 ? '#67c75a' : f > .25 ? '#e0b43c' : '#d84d48'; ctx.fillRect(p.x - 9 * cam.z, p.y - cam.z, 18 * cam.z * Math.max(0, f), 2 * cam.z); }
+  const hit = wl.hit > 0; if (wl.hit > 0) wl.hit--;
+  const mask = '' + +has(-1, 0) + +has(1, 0) + +has(0, -1) + +has(0, 1), crack = f < .6 && !wl.broken;
+  const key = wl.type + (wl.broken ? 'B' : '') + mask + (crack ? 'c' : '') + (hit ? 'h' : '') + tw.toFixed(2) + '/' + DPR;
+  const O = project(wl.x, wl.y);
+  let c = wallCache.get(key);
+  if (!c) {
+    const o0 = project(0, 0), R = (x, y, z) => { const q = project(x, y); return { x: (q.x - o0.x) / sk, y: (q.y - o0.y) / sk - z * tw }; };
+    const x0 = has(-1, 0) ? 0 : m, x1 = 1 - (has(1, 0) ? 0 : m), y0 = has(0, -1) ? 0 : m, y1 = 1 - (has(0, 1) ? 0 : m);
+    const pts = [R(x0, y0, hgt), R(x1, y0, hgt), R(x1, y1, hgt), R(x0, y1, hgt), R(x0, y1, 0), R(x1, y1, 0), R(x1, y0, 0)], pad = 3;
+    const minX = Math.min(...pts.map((q) => q.x)) - pad, minY = Math.min(...pts.map((q) => q.y)) - pad, w = Math.max(...pts.map((q) => q.x)) + pad - minX, h = Math.max(...pts.map((q) => q.y)) + pad - minY;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, -minX * DPR, -minY * DPR);
+    const shade = (cc) => (hit ? '#ffffff' : cc), poly = (ps, fill) => { g.beginPath(); g.moveTo(ps[0].x, ps[0].y); ps.slice(1).forEach((q) => g.lineTo(q.x, q.y)); g.closePath(); g.fillStyle = fill; g.fill(); g.strokeStyle = 'rgba(20,14,8,.55)'; g.lineWidth = Math.max(1, cam.z * .8); g.stroke(); };
+    poly([R(x0, y1, 0), R(x1, y1, 0), R(x1, y1, hgt), R(x0, y1, hgt)], shade(col[1]));
+    poly([R(x1, y1, 0), R(x1, y0, 0), R(x1, y0, hgt), R(x1, y1, hgt)], shade(col[2]));
+    poly([R(x0, y0, hgt), R(x1, y0, hgt), R(x1, y1, hgt), R(x0, y1, hgt)], shade(col[0]));
+    g.strokeStyle = 'rgba(30,20,10,.45)'; g.lineWidth = Math.max(1, cam.z * .7);
+    for (const z of wl.type === 'metal' ? [hgt * .33, hgt * .66] : [hgt * .5]) { g.beginPath(); const a = R(x0, y1, z), b = R(x1, y1, z), cc = R(x1, y0, z); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.lineTo(cc.x, cc.y); g.stroke(); }
+    if (wl.type === 'gate' && !wl.broken) { const a = R(x0 + .5 * (x1 - x0), y1, 0), b = R(x0 + .5 * (x1 - x0), y1, hgt); g.strokeStyle = '#f3d27a'; g.lineWidth = Math.max(2, cam.z * 2); g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); }
+    if (crack) { g.strokeStyle = '#2a1a10'; g.lineWidth = Math.max(1, cam.z); const c1 = R(x0 + .3 * (x1 - x0), y1, hgt * .85), c2 = R(x0 + .5 * (x1 - x0), y1, hgt * .35), c3 = R(x0 + .7 * (x1 - x0), y1, hgt * .7); g.beginPath(); g.moveTo(c1.x, c1.y); g.lineTo(c2.x, c2.y); g.lineTo(c3.x, c3.y); g.stroke(); }
+    if (wallCache.size > 400) wallCache.clear(); c = { cv, minX, minY, w, h }; wallCache.set(key, c);
+  }
+  const exact = Math.abs(sk - 1) < .002; ctx.imageSmoothingEnabled = !exact; ctx.drawImage(c.cv, Math.round((O.x + c.minX * sk) * DPR) / DPR, Math.round((O.y + c.minY * sk) * DPR) / DPR, c.cv.width / DPR * sk, c.cv.height / DPR * sk); ctx.imageSmoothingEnabled = true;
+  if (f < 1) { const q = project(wl.x + .5, wl.y + .5), py = q.y - (hgt + .1) * twR; ctx.fillStyle = '#1a1715'; ctx.fillRect(q.x - 10 * cam.z, py - 2 * cam.z, 20 * cam.z, 4 * cam.z); ctx.fillStyle = f > .5 ? '#67c75a' : f > .25 ? '#e0b43c' : '#d84d48'; ctx.fillRect(q.x - 9 * cam.z, py - cam.z, 18 * cam.z * Math.max(0, f), 2 * cam.z); }
 }
 function drawStaffBadge(b) {            // small status dot: green = staffed (boosted when the worker is on site), amber = open slot
   const d = DEFS[b.type]; if (!d || !d.slot) return; const r = spriteRect(b); if (!r) return;
