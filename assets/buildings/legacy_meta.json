@@ -178,5 +178,15 @@
    296
   ],
   "status": "placeholder art (copy of generator)"
+ },
+ "scrapyard": {
+  "file": "assets/buildings/scrapyard.png",
+  "w": 308,
+  "h": 300,
+  "anchor": [
+   107,
+   299
+  ],
+  "status": "placeholder art (rust-tinted workshop)"
  }
 }

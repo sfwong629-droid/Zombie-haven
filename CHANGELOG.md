@@ -1,5 +1,21 @@
 # Changelog
 
+## V2.15.0 — Phase B: duplicate buildings, upkeep, Scrapyard, neighbour bonuses
+- **No more in-place upgrades:** Well, Farm, Clinic and Hospital are separate buildings with their
+  own footprint; build as many of anything as your land allows (existing ones stay as they are).
+- **Upkeep:** every building costs 0.2–1.1 parts a day, paid at midnight (water, food and medical
+  first). A building that can't be paid runs at half output (and half service) the next day.
+- **Scrapyard** (new, staffed by a Scavenger or Engineer, Strength-based): about 3 parts a day.
+- **Neighbour bonuses** (buildings touching or 1 tile apart): District (same production type,
+  +10%/+20% output), Farm to table (Canteen + food: +20% meals, +5% food), Recovery ward (medical +
+  House: patients heal 15% faster), Fitness block (two different training buildings: +15% training),
+  Neighbourhood (Lounge/Canteen + House: +1 ♥), Salvage line (Scrapyard + Workshop: +15% parts),
+  Arsenal (Armory + Barracks/Range: gear 1 part cheaper). The placement bar shows bonuses a spot would form.
+- Balance: the Armory keeps a reserve (10 parts + 2 days of upkeep) when survivors buy gear; Rain
+  Collector 4→5 water/day, Well 8→9 (water ran dry in every 8-survivor simulation).
+- Simulated 7 days: upkeep always paid (2.0–2.8/day), parts hold at ~13–16, one Rain Collector
+  slowly loses water, two build a surplus.
+
 ## V2.14.0 — Phase A: survivor stats, equipment, training buildings (see docs/DESIGN_V3.md)
 - **6 stats** per survivor (Strength, Endurance, Agility, Perception, Intelligence, Charisma; 1–20):
   damage, HP and damage reduction, speed and attack speed, ranged damage and spotting raiders,
