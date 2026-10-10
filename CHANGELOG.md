@@ -1,5 +1,25 @@
 # Changelog
 
+## V2.17.0 — Phase D: incidents, rush production, pets, wandering trader
+- **Incidents** (from day 2, about one every 2 days): a **fire** in a building or a **zombie
+  break-in**. Fire stops the building and spreads if it reaches 100%; up to 3 nearby survivors run
+  over and put it out (uses a little water, faster with high Endurance; +2 Renown). A building that
+  burns down goes dark, may set touching buildings alight, and must be repaired from its panel
+  (40% of its build cost). A break-in throws everyone out of the building and sounds the alarm.
+- **Rush:** water, farm, scrapyard and workshop panels have a Rush button: 4 hours of output now,
+  with a 30% fire risk (lower with a skilled worker on shift, +10% for each recent rush, 6 h cooldown).
+- **Pets:** dogs (+2 PER, +1 END, bark when raiders sneak close, sometimes dig up parts or food)
+  and cats (+2 CHA, +1 INT, +♥ daily, sometimes catch food). True pixel-art sprites that follow
+  their owner. Give or take back a pet from the survivor panel; a fallen survivor's pet stays in town.
+- **Wandering trader** every 3–4 days (09:00–19:00): sells 3 pieces of gear, a pet and research
+  notes, and exchanges food/water/parts. Your best Charisma gives up to 30% off. Tap the trader or
+  Town → Trade. (Placeholder art: the survivor body in a teal coat.)
+- Toasts that pop at the same time now stack instead of overlapping; map icons draw fully opaque.
+- Tested headless at iPhone size: rush success and failure, firefighting (3 survivors, out in about
+  half a game hour, 2.5 water), burn-down + spread + repair, break-in, trader walk-in/buy/exchange/
+  leave, pet stat bonus, save/load of the new fields and of a V2.16 save. 15-day simulations on 2
+  seeds: 5–11 incidents, nothing burned down, no deaths, 4 trader visits, reviews B 60–79.
+
 ## V2.16.0 — Phase C: research, crafting, job Lv.10, weekly Haven Review
 - **Workshop research:** a staffed Workshop makes 10 research points (RP) a day (2 unstaffed;
   Engineer, Mechanic or Medic). 13 projects cost RP + parts: Deep Wells, Irrigation, Field Surgery →
