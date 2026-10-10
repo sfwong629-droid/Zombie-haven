@@ -1,5 +1,15 @@
 # Changelog
 
+## V2.11.1
+- Fix: nobody could be sent on an expedition. Hunger and thirst rose ~17 and ~20 per game hour,
+  so every survivor sat at 75–100 (too hungry/thirsty to go) and then lost HP from starving even
+  with food and water in stock. They now rise ~3.3 and ~4 per game hour, and a fully met daily
+  ration lowers both by 35 (a shortfall still raises them).
+- Expedition squad buttons now say why someone can't go: hurt, fighting, rescuing, hungry,
+  thirsty or busy (was always "busy/hurt").
+- Tested over 4 simulated days with a rain collector and garden plot: someone was always free
+  (2–6 of 8); before the fix, nobody was free in 283 of 300 checks.
+
 ## V2.11.0
 - Pixel-art versions of the six starting buildings, on the shared 42-px tile grid:
   House (87×82), Rain Collector (72×76), Garden Plot (87×61), Medical Tent (86×66),

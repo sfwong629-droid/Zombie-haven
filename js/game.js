@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
-const VERSION = '2.11.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.11.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -523,7 +523,7 @@ function finishFacility(s) {
 }
 function ai(s) {
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--;
-  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + 1.5); s.thirst = Math.min(100, s.thirst + 1.8); s.fatigue = Math.min(100, s.fatigue + 1); starve(s); }
+  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { s.hunger = Math.min(100, s.hunger + .3); s.thirst = Math.min(100, s.thirst + .36); /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ s.fatigue = Math.min(100, s.fatigue + 1); starve(s); }
   if (s.fleeT > 0) s.fleeT--;
   if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.bleed = bleedMax(); s.warned = false; say(s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.'); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
@@ -696,7 +696,7 @@ function endOfDay() {            // rations: every survivor eats half food, half
   let nf = 0, nw = 0; for (const q of S.sv) { nf += ration(q) / 2; nw += ration(q) / 2; }
   const ef = Math.min(S.food, nf), ew = Math.min(S.water, nw); S.food -= ef; S.water -= ew;
   const ff = nf ? ef / nf : 1, fw = nw ? ew / nw : 1;
-  for (const q of S.sv) { q.hunger = Math.min(100, q.hunger + (ff < 1 ? 28 * (1 - ff) : 0)); q.thirst = Math.min(100, q.thirst + (fw < 1 ? 28 * (1 - fw) : 0)); }
+  for (const q of S.sv) { q.hunger = ff < 1 ? Math.min(100, q.hunger + 28 * (1 - ff)) : Math.max(0, q.hunger - 35); q.thirst = fw < 1 ? Math.min(100, q.thirst + 28 * (1 - fw)) : Math.max(0, q.thirst - 35); } /* a full ration relieves the meters; a shortfall raises them */
   const open = world.buildings.filter((b) => DEFS[b.type].slot && !b.staff).map((b) => DEFS[b.type].name);
   const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
   say(`Day ${S.day - 1} · Food +${f1(dayLog.foodIn)} −${f1(ef)} · Water +${f1(dayLog.waterIn)} −${f1(ew)}` + (open.length ? ` · Open staff slot: ${[...new Set(open)].join(', ')}` : ''));
@@ -814,6 +814,14 @@ const EXP_DEFS = {
 const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: .005, hurt: .10 }, medium: { label: 'Medium', min: 15, mult: 2.5, death: .017, hurt: .22 }, high: { label: 'High', min: 30, mult: 5, death: .04, hurt: .38 } };
 const EXP_STAGES = 3, EXP_MAX_SQUAD = 4, EXP_HOME_MIN = 2, EXP_COST = { low: 1, medium: 2, high: 4 }, EXP_BACK_DEATH = .003;
 const expKind = (s) => (['Guard', 'Police Officer', 'SWAT'].includes(s.job) ? 'guard' : ['Medic', 'Paramedic'].includes(s.job) ? 'medic' : s.job === 'Scavenger' ? 'scav' : 'other');
+function expBlock(s) {   // why a survivor can't go on an expedition (null = free to go)
+  if (s.hp <= 0 || ['down', 'hospital'].includes(s.mode)) return 'hurt'; if (s.hp < s.max * .6) return 'hurt';
+  if (s.rescuing || s.carrying || ['rescueTo', 'rescueCarry'].includes(s.mode)) return 'rescuing';
+  if (['chase', 'attack', 'recover'].includes(s.mode)) return 'fighting';
+  if (s.hunger >= 75) return 'hungry'; if (s.thirst >= 75) return 'thirsty';
+  if (!['free', 'wait', 'postCombat', 'work', 'goWork', 'walk', 'goFacility', 'useFacility'].includes(s.mode)) return 'busy';
+  return null;
+}
 const expEligible = (s) => s.hp > 0 && s.hp >= s.max * .6 && s.hunger < 75 && s.thirst < 75 && !s.rescuing && !s.carrying && ['free', 'wait', 'postCombat', 'work', 'goWork', 'walk', 'goFacility', 'useFacility'].includes(s.mode);
 const expFit = (s) => (s.hp / s.max) * (1 - Math.max(s.hunger, s.thirst) / 200) * (1 + .1 * (s.l || 1));
 function expAutoSquad(size = 3) {   // a balanced squad of healthy, fed, idle people: one guard, one medic, one scavenger, then the fittest
@@ -919,7 +927,7 @@ function showExpedition() {
     const ready = S.sv.filter(expEligible);
     $('ib').innerHTML = `<b>Destination</b><br>${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<button class="act" data-d="${k}" style="${expSel.dest === k ? 'outline:2px solid #ffe38a' : ''}${lk ? ';opacity:.5' : ''}">${v.icon} ${v.name}${lk ? ' · 🔒 ' + lk : ''}</button>`; }).join('')}<br><small>${d.desc}</small><br>
       <b>Risk</b><br>${d.risks.map((r) => `<button class="act" data-r="${r}" style="${expSel.risk === r ? 'outline:2px solid #ffe38a' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min} min · ×${EXP_RISK[r].mult}</button>`).join('')}<br>
-      <b>Squad</b> (tap to swap, 1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)<br>${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<button class="act" data-s="${q.id}" style="${on ? 'outline:2px solid #9fe58a' : ''}${ok || on ? '' : ';opacity:.4'}">${esc(q.name)} · ${q.job} Lv.${q.l}${ok ? '' : ' · busy/hurt'}</button>`; }).join('')}<br>
+      <b>Squad</b> (tap to swap, 1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)<br>${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<button class="act" data-s="${q.id}" style="${on ? 'outline:2px solid #9fe58a' : ''}${ok || on ? '' : ';opacity:.4'}">${esc(q.name)} · ${q.job} Lv.${q.l}${ok ? '' : ' · ' + (expBlock(q) || 'busy')}</button>`; }).join('')}<br>
       <small>Cost: ${pv.need} food + ${pv.need} water${pv.short ? ' — <b style="color:#ff8a7a">not enough in stock, riskier</b>' : ''}. Loot ×${pv.mult.toFixed(1)}. Per stage per person: about ${(pv.hurtPerStage * 100).toFixed(0)}% hurt, ${(pv.deathPerStage * 100).toFixed(1)}% lost (permanent).<br>${ready.length ? '' : 'Nobody is healthy and free right now.'}</small><br>
       <button class="act" id="expGo" style="background:#3f8f4f;color:#fff">SEND SQUAD · ${rk.min} min</button>`;
     $('ib').querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { if (expLocked(b.dataset.d)) { say(expLocked(b.dataset.d)); return; } expSel.dest = b.dataset.d; showExpedition(); }; });
