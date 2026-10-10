@@ -62,6 +62,8 @@
     // keep at least 2 fighters: retrain the best unassigned survivor as a Guard
     const FIGHT = ['Guard', 'Police Officer', 'Scavenger', 'SWAT'];
     if (S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
+    // give civilians (grown-up children, newcomers) a useful job
+    if (S.hour === 9) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
     // research
     for (const k of RES) if (!Z.researched(k)) { if (Z.doResearch(k)) AP.events.push('res ' + k + '@d' + S.day); break; }
     // food / water emergencies first
@@ -95,6 +97,7 @@
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),
       lvl: +(sv.reduce((a, q) => a + q.l, 0) / Math.max(1, sv.length)).toFixed(1), sat: Math.round(sv.reduce((a, q) => a + (q.sat || 0), 0) / Math.max(1, sv.length)),
       hpAvg: Math.round(100 * sv.reduce((a, q) => a + q.hp / q.max, 0) / Math.max(1, sv.length)), z: S.z.filter((z) => z.hp > 0).length, res: Object.keys(S.res || {}).length,
-      grade: S.lastReview ? S.lastReview.grade + S.lastReview.total : '' };
+      grade: S.lastReview ? S.lastReview.grade + S.lastReview.total : '',
+      friends: (() => { let f = 0, c = 0; for (const a of sv) for (const [id, v] of Object.entries(a.rel || {})) if (+id > a.id) { if (v >= 80) c++; else if (v >= 50) f++; } return f + '/' + c; })(), couples: sv.filter((q) => q.partner).length / 2 | 0, kids: (S.kids || []).length, born: S.born || 0, pop: sv.length + (S.kids || []).length + '/' + Z.popCap() };
   };
 })();

@@ -1,5 +1,22 @@
 # Changelog
 
+## V2.22.0 — Bonds, couples and children
+- **Bonds** between survivors grow with time spent together (nearby, eating/resting/training at
+  the same building, fighting the same enemy, being rescued) and fade slowly if not kept up;
+  Charisma speeds them up. Levels: Acquaintance (20), Friend (50), Close friend (80).
+- **Friends fight 10% harder** side by side (close friends 15%); each friendship adds a little ♥
+  every day. When someone dies, friends and especially a partner grieve (♥ drops).
+- **Couples:** two residents who are close friends may become a couple (no genders in the game,
+  so any two residents can).
+- **Children:** a happy couple may have a baby when there's room. Children live in the Houses,
+  eat half a ration, and grow up in 5 days into a resident Civilian with the parents' stats.
+- **Population cap grows with Houses:** 8 with one House, up to 16 (6 + 2 per House). Newcomers
+  leave room for couples who are waiting to start a family.
+- UI: survivor panel **Bonds** tab (partner, children, bond meters with labels), 💑 in the
+  survivor list, Town panel shows population/cap, children and couples.
+- Tested: couple → baby → grown-up resident, grief on death, every tab; 45-day simulations on
+  4 seeds: first couple day 16–23, first baby day 20–34, 2–4 births per 45 days, no errors.
+
 ## V2.21.0 — Sound effects and music
 - **All sound is synthesised in the browser** (Web Audio API, `js/sound.js`): no audio files, all
   original. 17 effects: hits, getting hurt, kills, zombie groans when a zombie spots someone, a
