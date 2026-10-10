@@ -1,5 +1,20 @@
 # Changelog
 
+## V2.21.0 — Sound effects and music
+- **All sound is synthesised in the browser** (Web Audio API, `js/sound.js`): no audio files, all
+  original. 17 effects: hits, getting hurt, kills, zombie groans when a zombie spots someone, a
+  survivor collapsing, building, button clicks, research chime, rewards, coins (crafting, trader,
+  rush), a dog's bark, wall breach, alarm (raids, fires, break-ins), the boss's roar, fire
+  crackle, nightfall and dawn stingers.
+- **Ambient music:** a slow minor-pentatonic pluck over a soft pad (66 bpm) that turns lower and
+  darker at night.
+- **🔊 button** (right column): effects + music → effects only → off; remembered per device.
+- iPhone starts audio on the first tap (iOS requires one); audio pauses when the app is hidden.
+- Effects are rate-limited so 3× speed battles don't turn into noise.
+- Tested headless: every effect and both music moods rendered offline (no silence, no clipping,
+  peaks 0.1–0.7), effects fire during a raid and a boss night, the toggle cycles and is saved.
+  Not yet heard on an iPhone speaker.
+
 ## V2.20.0 — Tabbed panels
 - **Building panel:** Overview (output, staff, neighbour bonuses, fire/burnt status, Rush, Move,
   Demolish) and Details (upkeep, capacity and who is using it, quality, footprint, bonuses). The
