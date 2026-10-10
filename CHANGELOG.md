@@ -1,5 +1,17 @@
 # Changelog
 
+## V2.20.0 — Tabbed panels
+- **Building panel:** Overview (output, staff, neighbour bonuses, fire/burnt status, Rush, Move,
+  Demolish) and Details (upkeep, capacity and who is using it, quality, footprint, bonuses). The
+  Workshop adds Research and Craft tabs. Production text now also covers the Workshop (RP/day) and
+  includes Salvage Methods on Scrapyards.
+- **Survivor panel:** the short header (job, HP, what they're doing, needs, bandage) stays on top,
+  with Stats, Gear & Pet, and Job & Skills tabs (profession change lives on Job & Skills).
+- The last tab is remembered: researching keeps you on Research, equipping keeps you on Gear.
+- Tabs stick to the top of the panel when scrolling; buttons are 36 pt tall for thumbs.
+- Tested at iPhone size by tapping: every tab, researching, crafting, equipping armor, adopting a
+  pet and changing profession, no errors.
+
 ## V2.19.0 — Guided goals and event log
 - **Guided goals:** after "Build a Rain Collector" and "Defeat 3 Walkers", 10 goals introduce one
   system at a time — Grow Food, A Place to Rest, Make It Home (residents), Scrap Economy (upkeep),

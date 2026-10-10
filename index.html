@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#183646">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Zombie Haven V2.19.0</title>
+<title>Zombie Haven V2.20.0</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#0c1b22;font-family:-apple-system,Arial,Helvetica,sans-serif;overscroll-behavior:none}
@@ -26,6 +26,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .build{background:#214d61;border:2px solid #4b8298;color:#fff;padding:6px;text-align:left;font-weight:900;font-size:10px;border-radius:5px;display:flex;gap:6px;align-items:center;min-height:52px}
 .build img{width:40px;height:40px;object-fit:contain;flex:0 0 auto}.build small{display:block;color:#bfe3e9;margin-top:2px;font-weight:700}
+.tabs{display:flex;gap:4px;margin:2px 0 7px;position:sticky;top:-8px;z-index:2;background:#0c2939;padding:4px 0}.tabs button{flex:1;background:#173d50;color:#bfe0ee;border:2px solid #2c627a;border-radius:6px;font-weight:900;font-size:12px;padding:8px 2px;min-height:36px}.tabs button.on{background:#3f8f4f;color:#fff;border-color:#b8fff1}
 .act{background:#2d6f84;border:2px solid #7cc4d6;color:#fff;border-radius:5px;padding:8px 10px;font-weight:900;margin:6px 6px 0 0;font-size:11px}.act.danger{background:#9a3d38;border-color:#e58a83}
 #bottom{flex:0 0 auto;position:relative;z-index:9;height:calc(78px + env(safe-area-inset-bottom));background:linear-gradient(#17394a,#0d2633);border-top:3px solid #071a23;padding:5px 5px calc(5px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
 .menu{background:linear-gradient(#154a63,#0d3042);border:2px solid #3985a7;border-radius:6px;color:#fff2b5;font-weight:900;font-size:9px;text-shadow:1px 1px #000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
@@ -49,7 +50,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .bar{height:6px;background:#1a3342;border-radius:3px;overflow:hidden;margin:2px 0 4px}.bar i{display:block;height:100%;background:#67c75a}
 </style></head><body>
 <div id="app">
- <div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V2.19.0</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
+ <div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V2.20.0</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
  <div class="row chips"><span class="chip" id="tripChip" style="display:none;cursor:pointer">🧭 <span id="tripTime">0:00</span></span><span class="chip">FOOD <span id="food">0</span></span><span class="chip">WATER <span id="water">0</span></span><span class="chip">PARTS <span id="mat">0</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
  <div id="world"><canvas id="game"></canvas>
   <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt"></span></div>
@@ -64,7 +65,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="bottom"><button class="menu" id="mBuild"><img id="uiBuildIcon" alt="">BUILD</button><button class="menu" id="mSurv"><img id="uiSurvivorsIcon" alt="">SURVIVORS</button><button class="menu" id="mTown"><img id="uiItemsIcon" alt="">TOWN</button><button class="menu" id="mExp"><span class="e">🧭</span>EXPEDITION</button><button class="menu" id="mGuide"><span class="e">?</span>GUIDE</button></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.19.0"></script>
-<script src="js/world.js?v=2.19.0"></script>
-<script src="js/game.js?v=2.19.0"></script>
+<script src="js/iso.js?v=2.20.0"></script>
+<script src="js/world.js?v=2.20.0"></script>
+<script src="js/game.js?v=2.20.0"></script>
 </body></html>
