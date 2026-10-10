@@ -1,5 +1,9 @@
 # Changelog
 
+## V2.26.0 — DV2-style building art (all 20)
+- Every building now has hand-generated, true pixel-art sprites in a darker DV2-like style (assets/buildings/v5/): gym, library, lounge, scrapyard, range, track, sparring, barracks and farm field added; house, well and farm anchors re-fitted.
+- Sizes follow the small DV2 scale: 1×1, 2×1 and 2×2 footprints with the sprite anchored to the footprint's south corner.
+
 ## V2.25.0 — DV2-style layout, 2:1 map, small buildings, darker look
 - **Map angle is now the standard 2:1 pixel-art isometric** (was 3:2), the angle ChatGPT/PixelLab
   draw buildings at. One tile = 42 × 21 art px; characters keep their size.

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.25.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.26.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -23,6 +23,11 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 // fw/fh = frame box, foot = feet row, h = body height in art px. Types without v4 art fall back to the old sheets.
 const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
 const B4_DEFS = {   // V2.25: 2:1 pixel-art buildings (assets/buildings/v5/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width. Empty until the new art is made; ZHProc draws the rest.
+  house: { ax: 20, ay: 46 }, water: { ax: 16, ay: 50 }, well: { ax: 20, ay: 55 }, farm: { ax: 20, ay: 41 },
+  medic: { ax: 20, ay: 36 }, storage: { ax: 20, ay: 32 }, gym: { ax: 20, ay: 33 }, library: { ax: 20, ay: 36 }, lounge: { ax: 20, ay: 34 },
+  clinic: { ax: 41, ay: 49 }, canteen: { ax: 41, ay: 49 }, armory: { ax: 41, ay: 46 }, workshop: { ax: 41, ay: 51 }, scrapyard: { ax: 41, ay: 49 },
+  range: { ax: 41, ay: 41 }, track: { ax: 41, ay: 42 }, sparring: { ax: 41, ay: 43 },
+  hospital: { ax: 41, ay: 66 }, barracks: { ax: 41, ay: 78 }, field: { ax: 41, ay: 55 },
 };
 const ART_TILE = 42;
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
