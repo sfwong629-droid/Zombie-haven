@@ -11,8 +11,8 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.ZHIso = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
-  const MASTER = { w: 1440, h: 960 };
-  const RATIO = MASTER.h / MASTER.w; // 2/3
+  const MASTER = { w: 1440, h: 720 };   // V2.25: standard 2:1 pixel-art isometric (was 3:2)
+  const RATIO = MASTER.h / MASTER.w; // 1/2
   const ANGLE_DEG = Math.atan(RATIO) * 180 / Math.PI; // 33.690...
 
   function make(TW) {

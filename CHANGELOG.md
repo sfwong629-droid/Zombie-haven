@@ -1,5 +1,23 @@
 # Changelog
 
+## V2.25.0 — DV2-style layout, 2:1 map, small buildings, darker look
+- **Map angle is now the standard 2:1 pixel-art isometric** (was 3:2), the angle ChatGPT/PixelLab
+  draw buildings at. One tile = 42 × 21 art px; characters keep their size.
+- **Small buildings like DV2:** 1×1 House, Rain Collector, Well, Garden Plot, Medical Tent,
+  Storage, Gym, Library, Lounge; 2×1 Workshop, Canteen, Armory, Clinic, Scrapyard, Range, Obstacle
+  Course, Sparring Ring; 2×2 Hospital, Farm, Barracks. Old saves keep their positions (buildings
+  shrink in place).
+- **Darker look:** muted grass, packed-dirt roads, and every building drawn in true pixel art by
+  code at the new angle (placeholder until the drawn art arrives) — gable roofs, siding, lit
+  windows, emblems; tents, tanks, wells, crop plots, fenced yards. Trees, dead trees, rocks,
+  crates and rubble are pixel art in the same pixel size.
+- **New HUD, laid out like DV2:** a wooden plaque top-left (food, water, parts, day, goal), a
+  column of big buttons on the left (Build, Expedition, Survivors, Town, Guide), a Renown wheel
+  bottom-right (rank, threat, progress to the next rank) and a stone bar at the bottom (Save,
+  speed, sound, log, recenter). Pixel font (Pixelify Sans).
+- **Status tags** above survivors ("Working", "Resting", "Fighting", "Patrol"…) instead of emoji.
+- Tests: all 14 pass; 45-day simulations on 4 seeds, no errors.
+
 ## Tests (no game change)
 - **`python3 tests/run_tests.py`** runs 14 end-to-end tests (70 checks) in headless Chromium at
   iPhone size in about 25 s: boot, save/load round trip, old-save upgrade, guided goals, fire and

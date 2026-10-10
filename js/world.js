@@ -17,7 +17,7 @@
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
   // fam/tier/next = building family ladder (footprint fixed per family, so upgrades happen in place). slot = one staff slot (auto-staffed).
-  const D = (o) => Object.assign({ w: 2, h: 2, q: 10, a: 8, rank: 1, cap: 1, door: [1, 1.6] }, o);
+  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
   const DEFS = {
     water:    D({ name: 'Rain Collector', mat: 4,  a: 4,  role: 'water',   fam: 'water',   tier: 1, sprite: 'grid', slot: true, out: 5 }),
     well:     D({ res: 'deepWells', name: 'Well',           mat: 14, a: 6,  q: 12, role: 'water', fam: 'water', tier: 2, rank: 2, slot: true, out: 9 }),
@@ -25,7 +25,7 @@
     field:    D({ res: 'irrigation', name: 'Farm',           mat: 17, a: 7,  q: 12, role: 'food', fam: 'farm', tier: 2, rank: 2, slot: true, out: 8, waterUse: 3 }),
     medic:    D({ name: 'Medical Tent',   mat: 6,  a: 10, role: 'medical', fam: 'medical', tier: 1, sprite: 'grid', slot: true, cap: 2 }),
     clinic:   D({ res: 'fieldSurgery', name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, slot: true, cap: 3 }),
-    hospital: D({ res: 'traumaCare', name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 1.6], sprite: 'grid', slot: true, cap: 3 }),
+    hospital: D({ res: 'traumaCare', name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, w: 2, h: 2, sprite: 'grid', slot: true, cap: 3 }),
     canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
@@ -39,8 +39,10 @@
     range:    D({ res: 'fitness', name: 'Shooting Range', mat: 12, a: 8,  role: 'train', cap: 2, train: 'per', rank: 2 }),
     track:    D({ res: 'fitness', name: 'Obstacle Course', mat: 11, a: 8, role: 'train', cap: 2, train: 'agi', rank: 2 }),
     sparring: D({ res: 'fitness', name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
-    barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 3, h: 2, door: [1.5, 1.6] }),
+    barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 2, h: 2 }),
   };
+  for (const k of ['clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring']) DEFS[k].w = 2;   /* 2x1 */
+  DEFS.field.w = 2; DEFS.field.h = 2;
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
   const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'] };
@@ -79,7 +81,7 @@
 
   // door: world point just INSIDE the entrance (front-left wall), so the door tile is part of the footprint.
   // approach: the tile just outside that wall, which survivors walk to before stepping in.
-  const doorOf = (type, w, h) => (DEFS[type] && DEFS[type].door) || [w / 2, h - .4];
+  const doorOf = (type, w, h) => (DEFS[type] && DEFS[type].door) || [w / 2, h - .35];
   function doorPoint(b) { const d = doorOf(b.type, b.w, b.h); return { x: b.x + d[0], y: b.y + d[1] }; }
   function doorTile(b) { const p = doorPoint(b); return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
   function approachTile(b) { const d = doorOf(b.type, b.w, b.h); return { x: Math.floor(b.x + d[0]), y: b.y + b.h }; }
@@ -90,12 +92,12 @@
     for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (isRoad(w, x + xx, y + yy)) return { ok: false, why: 'Blocked by road' };
     const cand = { x, y, w: def.w, h: def.h };
     if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
-    const dt = { x: Math.floor(x + def.door[0]), y: y + def.h };   // the approach tile in front of the door must stay free
+    const dt = { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h };   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
     return { ok: true, why: '' };
   }
   function entranceReachable(w, x, y, def) {
-    const dt = { x: Math.floor(x + def.door[0]), y: y + def.h };
+    const dt = { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h };
     const tmp = { type: '_probe', x, y, w: def.w, h: def.h };
     w.buildings.push(tmp);
     const p = findPath(w, { x: 7, y: 10 }, dt); w.buildings.pop();

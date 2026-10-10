@@ -48,8 +48,9 @@ async def close_popups(pg):
 # ---------------------------------------------------------------- tests
 async def t_boot(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'boot')
-    v = await pg.evaluate("()=>({title:document.title,lv:document.querySelector('.lv').textContent,sv:ZH.S.sv.length,b:ZH.world.buildings.length})")
-    t.ok(v['title'].startswith('Zombie Haven V') and v['lv'] in v['title'], f"title/version match: {v['title']} / {v['lv']}")
+    v = await pg.evaluate("()=>({title:document.title,sv:ZH.S.sv.length,b:ZH.world.buildings.length,menu:['mBuild','mExp','mSurv','mTown','mGuide','btnSave','btnSpeed','btnSound','btnLog','btnCenter','food','water','mat','ren','rank','threat','clock','qt','renBar'].filter(id=>!document.getElementById(id))})")
+    t.ok(v['title'].startswith('Zombie Haven V'), f"title has the version: {v['title']}")
+    t.ok(not v['menu'], f"every HUD element exists (missing: {v['menu']})")
     t.ok(v['sv'] >= 4 and v['b'] >= 3, f"new game has {v['sv']} survivors, {v['b']} buildings")
     await pg.evaluate("()=>{ZH.step(3000);ZH.draw()}")
     t.ok(not errs, f'no page errors after 3000 ticks and a draw {errs[:1]}'); await ctx.close()

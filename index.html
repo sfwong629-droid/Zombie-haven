@@ -2,9 +2,10 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#183646">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Zombie Haven V2.24.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Zombie Haven V2.25.0</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#0c1b22;font-family:-apple-system,Arial,Helvetica,sans-serif;overscroll-behavior:none}
@@ -48,13 +49,40 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #crash{display:none;position:absolute;z-index:99;left:6px;right:6px;top:82px;background:#651f1f;color:#fff;border:2px solid #ff9b8e;padding:8px;font:11px monospace}
 #loading{position:absolute;inset:0;z-index:50;background:#0c1b22;color:#ffe38a;display:flex;align-items:center;justify-content:center;font-weight:900}
 .bar{height:6px;background:#1a3342;border-radius:3px;overflow:hidden;margin:2px 0 4px}.bar i{display:block;height:100%;background:#67c75a}
+
+/* V2.25 DV2-style HUD in a darker post-apocalyptic tone */
+body,button,.panel,.evBox{font-family:'Pixelify Sans',-apple-system,Arial,sans-serif}
+#plaque{position:absolute;z-index:8;top:6px;left:6px;min-width:178px;max-width:66%;background:linear-gradient(#3a2e22,#2b2219);border:3px solid #6e5638;box-shadow:inset 0 0 0 2px #1a140e,3px 3px 0 #0009;border-radius:6px;padding:5px 8px 6px;color:#f3e2b8;text-shadow:1px 1px #000}
+#plaque .res{display:flex;gap:9px;font-size:15px;align-items:center;white-space:nowrap}#plaque .res b{margin-left:2px;color:#ffe9a8;font-weight:700}
+#plaque .trip{cursor:pointer;color:#9fe0ff}
+#quest{position:static;background:none;border:0;padding:0;margin-top:3px;font-size:11px;max-width:none;color:#d8c9a6;cursor:pointer}#quest b{display:block;font-size:11px;color:#c8b48a;font-weight:600}#quest span{display:block;color:#fff1c4}
+#lmenu{position:absolute;z-index:8;left:4px;top:96px;display:flex;flex-direction:column;gap:7px}
+.lm{width:74px;height:66px;background:linear-gradient(#2f3d45,#1d272d);border:3px solid #7d6a4c;border-radius:8px;box-shadow:inset 0 0 0 2px #10171b,3px 3px 0 #0009;color:#f3e2b8;font-size:12px;font-weight:700;text-shadow:1px 1px #000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0}
+.lm i{font-style:normal;font-size:26px;line-height:30px;filter:saturate(.75) brightness(.95)}.lm:active{transform:translateY(2px);filter:brightness(1.2)}
+#gauge{position:absolute;z-index:8;right:0;bottom:0;width:150px;height:96px;pointer-events:none;color:#f3e2b8;text-shadow:1px 1px #000;overflow:hidden}
+#gauge .wheel{position:absolute;right:-74px;bottom:-74px;width:200px;height:200px;border-radius:50%;background:repeating-conic-gradient(#5a4430 0 6deg,#4a3826 6deg 30deg);border:6px solid #6e5638;box-shadow:inset 0 0 0 4px #2b2219,inset 0 0 0 26px #3a2e22}
+#gauge .glabel{position:absolute;right:52px;bottom:58px;font-size:17px;color:#e8a34a;font-weight:700}
+#gauge .gval{position:absolute;right:8px;bottom:36px;font-size:20px;color:#fff1c4;font-weight:700;background:#1d272dcc;border:2px solid #7d6a4c;border-radius:5px;padding:0 6px}
+#gauge .grank{position:absolute;right:8px;bottom:20px;font-size:11px;color:#d8c9a6}
+#gauge .gbar{position:absolute;right:8px;bottom:8px;width:118px;height:9px;background:#1a140e;border:2px solid #7d6a4c;border-radius:3px;overflow:hidden}#gauge .gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9a23a,#e8603a)}
+#bottom{display:flex!important;align-items:center;gap:6px;height:calc(58px + env(safe-area-inset-bottom))!important;padding:6px 8px calc(6px + env(safe-area-inset-bottom))!important;background:repeating-linear-gradient(0deg,#3a3430 0 12px,#2a2522 12px 14px),#3a3430!important;border-top:3px solid #6e5638!important}
+.bb{flex:0 0 auto;height:40px;min-width:46px;padding:0 10px;background:linear-gradient(#6a5844,#4e4032);border:3px solid #2a2118;border-radius:8px;box-shadow:inset 0 0 0 2px #8a7458;color:#fff1c4;font-size:16px;font-weight:700;text-shadow:1px 1px #000}
+#btnSave{min-width:96px;margin-right:auto}.bb.on{background:linear-gradient(#4f7a44,#36552f)}
+.panel{background:#1e2124f7!important;border-color:#6e5638!important}.panel h3{color:#e8c46a!important;font-weight:700}
+.tabs{background:#1e2124!important}.tabs button{background:#2c2f33!important;border-color:#55493a!important;color:#d8c9a6!important}.tabs button.on{background:#4f6b3a!important;color:#fff!important;border-color:#a8c88a!important}
+.act{background:#4a4034!important;border-color:#8a7458!important}.act.danger{background:#7a3328!important;border-color:#c0705e!important}
+.build{background:#2c2f33!important;border-color:#55493a!important}.x{background:#7a3328!important}
+.evBox{background:#1e2124fa!important;border-color:#8a7458!important}
+#say{top:auto!important;bottom:10px!important;border-color:#8a7458!important;background:#1e2124ee!important;font-size:12px!important}
+#confirmBar{background:#1e2124f5!important;border-color:#6e5638!important}#nudge button{background:#4a4034!important;border-color:#8a7458!important}#yesBuild{background:#4f6b3a!important}#noBuild{background:#7a3328!important}
 </style></head><body>
 <div id="app">
- <div id="hud"><div class="row"><div class="title">🧟 ZOMBIE HAVEN <span class="lv">V2.24.0</span></div><div class="chip">HAVEN <span id="rank">★</span></div><div class="chip">RENOWN <span id="ren">0</span></div></div>
- <div class="row chips"><span class="chip" id="tripChip" style="display:none;cursor:pointer">🧭 <span id="tripTime">0:00</span></span><span class="chip">FOOD <span id="food">0</span></span><span class="chip">WATER <span id="water">0</span></span><span class="chip">PARTS <span id="mat">0</span></span><span class="chip">THREAT <span id="threat">1</span></span></div></div>
  <div id="world"><canvas id="game"></canvas>
-  <div id="quest"><b id="clock">DAY 1 · 08:00</b><br><span id="qt"></span></div>
-  <div id="side"><div id="zoom">PINCH <span id="zv">100%</span></div><button id="btnCenter" title="Recenter">⌖</button><button id="btnSpeed" title="Speed">1×</button><button id="btnSound" title="Sound: all / effects only / off">🔊</button><button id="btnLog" title="Event log">📜</button><button id="btnDebug" title="Geometry debug overlay">🐞</button></div>
+  <div id="plaque"><div class="res"><span>🍖<b id="food">0</b></span><span>💧<b id="water">0</b></span><span>⚙<b id="mat">0</b></span><span class="trip" id="tripChip" style="display:none">🧭<b id="tripTime">0:00</b></span></div>
+   <div id="quest"><b id="clock">DAY 1 · 08:00</b><span id="qt"></span></div></div>
+  <div id="lmenu"><button class="lm" id="mBuild"><i>🔨</i>Build</button><button class="lm" id="mExp"><i>🧭</i>Expedition</button><button class="lm" id="mSurv"><i>👥</i>Survivors</button><button class="lm" id="mTown"><i>🏚</i>Town</button><button class="lm" id="mGuide"><i>📖</i>Guide</button></div>
+  <div id="gauge"><div class="wheel"></div><div class="glabel">Renown</div><div class="gval"><span id="ren">0</span></div><div class="grank">HAVEN <span id="rank">★</span> · ☠<span id="threat">1</span></div><div class="gbar"><i id="renBar"></i></div></div>
+  <div id="zoom" style="display:none"><span id="zv">100%</span></div>
   <div id="fx" class="fxLayer"></div><div id="say"></div>
   <div id="requestBox"></div><div id="eventModal"></div>
   <div class="panel" id="buildPanel"><button class="x" id="closeBuild">X</button><h3>BUILD</h3><div class="grid" id="buildGrid"></div></div>
@@ -62,11 +90,12 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
   <div id="confirmBar"><div id="confirmName">PLACE?</div><div id="confirmRow"><button id="noBuild">CANCEL</button><div id="nudge"><button data-d="-1,0" title="up-left">↖</button><button data-d="0,-1" title="up-right">↗</button><button data-d="0,1" title="down-left">↙</button><button data-d="1,0" title="down-right">↘</button></div><button id="yesBuild">CONFIRM</button></div></div>
   <div id="crash"></div>
  </div>
- <div id="bottom"><button class="menu" id="mBuild"><img id="uiBuildIcon" alt="">BUILD</button><button class="menu" id="mSurv"><img id="uiSurvivorsIcon" alt="">SURVIVORS</button><button class="menu" id="mTown"><img id="uiItemsIcon" alt="">TOWN</button><button class="menu" id="mExp"><span class="e">🧭</span>EXPEDITION</button><button class="menu" id="mGuide"><span class="e">?</span>GUIDE</button></div>
+ <div id="bottom"><button class="bb" id="btnSave">Save</button><button class="bb sm" id="btnSpeed" title="Speed">1×</button><button class="bb sm" id="btnSound" title="Sound">🔊</button><button class="bb sm" id="btnLog" title="Event log">📜</button><button class="bb sm" id="btnCenter" title="Recenter">⌖</button><button class="bb sm" id="btnDebug" title="Geometry overlay" style="display:none">🐞</button></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.24.0"></script>
-<script src="js/world.js?v=2.24.0"></script>
-<script src="js/sound.js?v=2.24.0"></script>
-<script src="js/game.js?v=2.24.0"></script>
+<script src="js/iso.js?v=2.25.0"></script>
+<script src="js/world.js?v=2.25.0"></script>
+<script src="js/procart.js?v=2.25.0"></script>
+<script src="js/sound.js?v=2.25.0"></script>
+<script src="js/game.js?v=2.25.0"></script>
 </body></html>

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.24.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.25.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -22,13 +22,7 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 // v4 pixel zombies (docs/ART_STANDARD.md): front sheet 0 idle, 1-4 walk, 5 attack (faces down-left); back sheet 0 idle, 1-4 walk (faces up-left).
 // fw/fh = frame box, foot = feet row, h = body height in art px. Types without v4 art fall back to the old sheets.
 const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
-const B4_DEFS = {   // pixel-art buildings (assets/buildings/v4/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width
-  house: { ax: 45, ay: 81 },
-  water: { ax: 44, ay: 75 },
-  farm: { ax: 48, ay: 60 },
-  medic: { ax: 46, ay: 65 },
-  canteen: { ax: 44, ay: 79 },
-  armory: { ax: 50, ay: 80 },
+const B4_DEFS = {   // V2.25: 2:1 pixel-art buildings (assets/buildings/v5/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width. Empty until the new art is made; ZHProc draws the rest.
 };
 const ART_TILE = 42;
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
@@ -57,7 +51,7 @@ function scaled(key, img, tw, th) {           // high-quality downscale by repea
 const alphaMasks = {};
 function alphaMask(type) {                    // per-sprite alpha for pixel-accurate tapping
   if (type in alphaMasks) return alphaMasks[type];
-  let m = null; try { const im4 = IMG['b4:' + type], im = B4_DEFS[type] && okImg(im4) ? im4 : SPR[type].img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
+  let m = null; try { const pa = b4({ type }), im = pa ? pa.im : SPR[type].img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
   return (alphaMasks[type] = m);
 }
 async function loadAll() {
@@ -68,7 +62,7 @@ async function loadAll() {
   Object.keys(Z4_DEFS).forEach((z) => { jobs.push(loadImg('z4:' + z, `assets/zombies/v4/${z}.png`)); jobs.push(loadImg('z4b:' + z, `assets/zombies/v4/${z}_back.png`)); });
   ['tree', 'crate', 'debris'].forEach((p) => jobs.push(loadImg('prop:' + p, `assets/props/${p}.png`)));
   jobs.push(loadImg('grass_a', 'assets/terrain/grass_a.png'), loadImg('grass_b', 'assets/terrain/grass_b.png'));
-  [['uiBuildIcon', 'build'], ['uiSurvivorsIcon', 'survivors'], ['uiItemsIcon', 'items']].forEach(([id, f]) => { $(id).src = `assets/ui/${f}.png?v=${VERSION}`; });
+  [['uiBuildIcon', 'build'], ['uiSurvivorsIcon', 'survivors'], ['uiItemsIcon', 'items']].forEach(([id, f]) => { if ($(id)) $(id).src = `assets/ui/${f}.png?v=${VERSION}`; });
   let legacy = {};
   try { legacy = await (await fetch('assets/buildings/legacy_meta.json?v=' + VERSION)).json(); } catch (e) { console.warn('legacy meta unavailable', e); }
   for (const type of Object.keys(DEFS)) {
@@ -82,7 +76,7 @@ async function loadAll() {
       jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
     }
   }
-  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v4/${t}.png`)));
+  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v5/${t}.png`)));
   await Promise.all(jobs);
 }
 
@@ -116,14 +110,14 @@ window.addEventListener('resize', () => { resize(); });
 /* ---------------- ground layer: true pixel art, one art pixel = one character pixel (docs/ART_STANDARD.md) ----------------
    Tile = APX x APY art px (42 x 28, the 2:3 projection). Grass and roads are generated pixel by pixel into one native-size
    canvas, rebuilt whenever the world changes, then drawn with the same sharp-bilinear scaling as the sprites. */
-const APX = 42, APY = 28, GOXA = ROWS * APX / 2;   // tile size in art px; x of tile (0,0)'s north corner
+const APX = 42, APY = 21, GOXA = ROWS * APX / 2;   // tile size in art px; x of tile (0,0)'s north corner
 let groundCv = null, groundKey = '';
 const hash2 = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, s = (t) => t * t * (3 - 2 * t);
   const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1); return a + (b - a) * s(xf) + (c - a) * s(yf) + (a - b - c + d) * s(xf) * s(yf); }
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const GRASS = ['#3d6e2f', '#4a7f35', '#56903b', '#63a043', '#74b04d'].map(hex), GRASS_OUT = ['#2c4f2a', '#355d2f', '#3e6a33', '#477637', '#53833d'].map(hex);
-const ROADC = { base: hex('#76736a'), dark: hex('#69665e'), light: hex('#827f75'), curb: hex('#4c4943'), lip: hex('#8f8b7e'), dash: hex('#d9d1ac') };
+const GRASS = ['#33452a', '#3a4f2e', '#425a33', '#4a6438', '#556f3e'].map(hex), GRASS_OUT = ['#262e22', '#2b3526', '#313c2a', '#37432e', '#3e4b33'].map(hex);   /* V2.25: darker, muted */
+const ROADC = { base: hex('#6a5a45'), dark: hex('#5d4f3c'), light: hex('#76654e'), curb: hex('#4a3f31'), lip: hex('#7c6b53'), dash: hex('#6a5a45') };   /* V2.25: packed-dirt roads */
 function buildGround() {
   const W = (COLS + ROWS) * APX / 2, H = (COLS + ROWS) * APY / 2;
   if (!groundCv) { groundCv = document.createElement('canvas'); groundCv.width = W; groundCv.height = H; }
@@ -181,7 +175,8 @@ function drawRoadTile(x, y) {
 }
 
 /* ---------------- sprites ---------------- */
-function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; return d && okImg(im) ? { d, im } : null; }
+function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v5/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
+function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; if (d && okImg(im)) return { d, im }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
 function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - p4.d.ax * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }
   const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - sp.ax * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
 function drawBuilding(b, ghost, ok) {
@@ -196,12 +191,10 @@ function drawBuilding(b, ghost, ok) {
   ctx.drawImage(img, r.x, r.y, r.w, r.h); ctx.restore();
 }
 const propCache = new Map();
-function drawProp(kind, tx, ty) {
-  const im = IMG['prop:' + kind]; if (!okImg(im)) return; const p = project(tx + .5, ty + .5), tw = TWs();
-  const cfg = { tree: { cw: 106, ax: 128, ay: 150, k: 1.0 }, crate: { cw: 215, ax: 128, ay: 246, k: .5 }, debris: { cw: 134, ax: 128, ay: 150, k: .75 } }[kind];
-  const s = cfg.k * tw / cfg.cw, w = im.width * s, h = im.height * s; const dw = Math.max(1, Math.round(w * DPR)), dh = Math.max(1, Math.round(h * DPR)), k = kind + dw + 'x' + dh;   /* V2.18: exact device-pixel copy, so each frame is a plain 1:1 blit */
-  let sc = propCache.get(k); if (!sc) { const src = scaled('p:' + kind, im, dw, dh); sc = document.createElement('canvas'); sc.width = dw; sc.height = dh; const g = sc.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, dw, dh); if (propCache.size > 30) propCache.clear(); propCache.set(k, sc); }
-  ctx.imageSmoothingEnabled = false; ctx.drawImage(sc, Math.round((p.x - cfg.ax * s) * DPR) / DPR, Math.round((p.y - cfg.ay * s) * DPR) / DPR, dw / DPR, dh / DPR); ctx.imageSmoothingEnabled = true;
+function drawProp(kind, tx, ty) {   /* V2.25: procedural pixel props, same art-pixel size as everything else */
+  const k = kind === 'tree' ? (((tx * 7 + ty * 13) % 5) === 0 ? 'deadtree' : 'tree') : kind === 'debris' ? (((tx + ty) % 2) ? 'rubble' : 'rock') : 'crate';
+  const pa = window.ZHProc && ZHProc.prop(k, 1 + ((tx * 31 + ty * 17) % 4)); if (!pa) return; const p = project(tx + .5, ty + .5), s = TWs() / APX;
+  drawPix('prop' + k + ((tx * 31 + ty * 17) % 4), pa.im, 0, pa.im.width, pa.im.height, { x: p.x + (pa.im.width / 2 - pa.ax) * s, y: p.y + (pa.im.height - pa.ay) * s }, false, true);
 }
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
@@ -227,6 +220,16 @@ function textImg(txt, font, col) {   /* V2.18: text and emoji are rasterised onc
   if (textCache.size > 300) textCache.clear(); c = { cv, w, h, base: px * 1.1 + 2 }; textCache.set(key, c); return c;
 }
 function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.base) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true; }
+const TAGTXT = { Eating: 'Eating', Drinking: 'Drinking', Resting: 'Resting', Treatment: 'Treatment', Shopping: 'Shopping', 'Getting food': 'Foraging', Working: 'Working', Firefighting: 'Firefighting' };
+const tagCache = new Map();
+function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a character */
+  const fs = Math.round(Math.max(9, 9.5 * cam.z)), key = txt + col + fs + DPR; let c = tagCache.get(key);
+  if (!c) { const font = `700 ${fs}px 'Pixelify Sans', Arial, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR);
+    g.fillStyle = '#1b2016e6'; g.fillRect(0, 0, w, h); g.strokeStyle = '#6e5638'; g.lineWidth = 1.5; g.strokeRect(.75, .75, w - 1.5, h - 1.5); g.font = font; g.fillStyle = '#000'; g.textAlign = 'center'; g.fillText(txt, w / 2 + 1, fs + 1.5); g.fillStyle = col; g.fillText(txt, w / 2, fs + .5);
+    if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.h) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true;
+}
 function bubble(p, txt) { stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
 const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right, up }
 function facing(o) {   // screen-space facing from movement (or from the target while fighting)
@@ -256,7 +259,9 @@ function drawHuman(s) {
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
   if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
-  if (ic) bubble({ x: p.x, y: top - 3 }, ic);
+  const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
+  if (tagT) statusTag(p.x, top - 2, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
+  else if (ic && s.mode !== 'down') bubble({ x: p.x, y: top - 3 }, ic);
   if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff0b0'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(s.name, p.x, p.y + .32 * tw); }
 }
 const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9 };
@@ -1183,9 +1188,9 @@ function petPos(s) {   /* trails a little behind its owner */
   const dx = tx - p.w.x, dy = ty - p.w.y, d = Math.hypot(dx, dy); if (d > 3) { p.w.x = tx; p.w.y = ty; } else if (d > .05) { const k = Math.min(1, .06 + d * .05); p.w.x += dx * k; p.w.y += dy * k; }
   p.moving = d > .08; return p;
 }
-function drawPix(key, img, frame, fw, fh, p, flip) {   /* same sharp-bilinear path as drawSheet, with a pet-sized shadow */
+function drawPix(key, img, frame, fw, fh, p, flip, noShadow = false) {   /* same sharp-bilinear path as drawSheet, with a pet-sized shadow */
   const tw = TWs(), sc = tw / APX, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR, w = fw * sc, h = fh * sc, y = snap(p.y - fh * sc);
-  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .45, .05 * tw, 0, 0, 7); ctx.fill();
+  if (!noShadow) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .45, .05 * tw, 0, 0, 7); ctx.fill(); }
   ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high';
   if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, -w / 2, y, w, h); ctx.restore(); }
   else ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, snap(p.x - w / 2), y, w, h);
@@ -1505,7 +1510,7 @@ function checkRank() {
   if (S.ren >= n.ren && S.produced >= n.income && residents() >= n.residents && world.buildings.length >= n.facilities) { S.rank++; S.threat++; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); ui(); }
 }
 function ui() {
-  $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].name}: ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
@@ -1809,7 +1814,7 @@ function showBuild() {
   const rb = document.createElement('button'); rb.className = 'build'; rb.innerHTML = `<span style="font-size:26px;width:40px;text-align:center">🛣️</span><span>Road<small>${Wd.ROAD_COST} part per tile</small></span>`; rb.onclick = () => startTool({ kind: 'road' }); grid.appendChild(rb);
   for (const [wt, wd] of Object.entries(Wd.WALL_DEFS)) { if (S.rank < wd.rank) continue; const wb = document.createElement('button'); wb.className = 'build'; wb.innerHTML = `<span style="font-size:26px;width:40px;text-align:center">${wt === 'gate' ? '🚪' : wt === 'metal' ? '🧱' : '🪵'}</span><span>${wd.name}<small>${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · ${wd.hp} HP</small></span>`; wb.onclick = () => startTool({ kind: 'wall', wtype: wt }); grid.appendChild(wb); }
   Object.entries(DEFS).filter(([, d]) => S.rank >= d.rank && !d.hidden && researched(d.res)).forEach(([k, d]) => {   // upgrade-only tiers (hidden) are reached from the building panel
-    const b = document.createElement('button'); b.className = 'build'; b.innerHTML = `<img src="assets/buildings/${B4_DEFS[k] ? 'v4/' : ''}${k}.png?v=${VERSION}" alt="" style="image-rendering:pixelated"><span>${d.name} · ${d.w}×${d.h}<small>PARTS ${d.mat} · upkeep ${(UPKEEP[k] ?? .3).toFixed(1)}/day${d.train ? ' · trains ' + STAT_NAME[d.train] : ''}</small></span>`;
+    const b = document.createElement('button'); b.className = 'build'; b.innerHTML = `<img src="${buildIcon(k)}" alt="" style="image-rendering:pixelated"><span>${d.name} · ${d.w}×${d.h}<small>PARTS ${d.mat} · upkeep ${(UPKEEP[k] ?? .3).toFixed(1)}/day${d.train ? ' · trains ' + STAT_NAME[d.train] : ''}</small></span>`;
     b.onclick = () => startTool({ kind: 'building', type: k }); grid.appendChild(b);
   });
   $('buildPanel').style.display = 'block';
@@ -1989,7 +1994,7 @@ $('mBuild').onclick = showBuild; $('mSurv').onclick = showSurvivors; $('mTown').
 $('closeBuild').onclick = closeP; $('closeInfo').onclick = closeP;
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
-$('btnLog').onclick = showLog;
+$('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { saveGame(); say('Saved.'); screenToast('💾 SAVED'); }; }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('quest').onclick = showGoals;
