@@ -1,5 +1,25 @@
 # Changelog
 
+## V2.12.0
+- **Per-profession levels (DV2-style):** every survivor keeps a separate level in each profession.
+  Lv.3 and Lv.5 in a profession teach a skill that stays for good, whatever job they do later
+  (16 skills, see docs/PROFESSIONS.md). Old saves: each survivor's current level counts for their
+  current job and any skills already earned are granted.
+- **Change profession:** tap a survivor → Change profession. The panel also shows skills and levels.
+- **XP for non-fighters:** staffed workers earn XP every hour on shift and for every survivor they
+  serve; medics for every patient; everyone for rescues and expeditions.
+- **New profession: Cook** — staffs the Canteen; a Cook on shift makes meals 50% more filling.
+- **Survivor AI:** non-fighters hide inside the nearest building when zombies come close (hidden
+  survivors are safe); fighters defend others first and focus the same zombie; hurt fighters stop
+  starting fights and fall back to medical care when outnumbered; badly hurt survivors go to medical care.
+- **Zombie AI:** nights (20:00–06:00) bring ~35% more zombies (max 12) that march on the town;
+  days are quieter. Zombies near one that spots a survivor join the chase. Zombies give up on
+  survivors who get inside.
+- Simulated 5 days × 3 seeds against V2.11.1: non-fighters hurt 1.6% of the time (was 3.4%) with no
+  collapses (was 4); overall injuries about the same (21.6% vs 20.8% of the time) and slightly fewer
+  collapses (15 vs 16 per run) despite 7 zombies at night vs 5; fighters carry more of the fighting
+  (hurt 50% vs 44%).
+
 ## V2.11.1
 - Fix: nobody could be sent on an expedition. Hunger and thirst rose ~17 and ~20 per game hour,
   so every survivor sat at 75–100 (too hungry/thirsty to go) and then lost HP from starving even

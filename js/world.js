@@ -18,7 +18,7 @@
     medic:    D({ name: 'Medical Tent',   mat: 6,  a: 10, role: 'medical', fam: 'medical', tier: 1, next: 'clinic',   sprite: 'grid', slot: true, cap: 2 }),
     clinic:   D({ name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, next: 'hospital', slot: true, cap: 3, hidden: true }),
     hospital: D({ name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, door: [0.83, 1.6], sprite: 'grid', slot: true, cap: 3, hidden: true }),
-    canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2 }),
+    canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
     workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', rank: 2 }),
@@ -27,7 +27,7 @@
   };
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'] };
+  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'] };
   const ROAD_COST = 1;  // parts per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {
