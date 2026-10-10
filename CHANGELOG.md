@@ -1,5 +1,29 @@
 # Changelog
 
+## V2.18.0 — Balance pass (45-day auto-played games)
+Tested with a new simulator (`tools/balance`) that plays the real game for 45 game days the way a
+sensible player would. Before the changes, towns stalled at ~14 buildings, Haven rank either never
+rose or shot to 5 by day 23, zombies piled up to 40–80, and towns lost 25–85 survivors.
+- **Haven rank follows real growth:** rank 2 needs 6 buildings + 2 residents, rank 3 10 + 3,
+  rank 4 15 + 5, rank 5 20 + 7 (with Renown 60/200/450/900 and supplies produced 40/160/400/800).
+- **Newcomers** arrive at a level that suits the town's rank (Lv.1 at rank 1, up to Lv.5).
+- **Zombies thin out by day:** surplus zombies (night spawns, boss hordes) that aren't chasing
+  anyone drift away instead of staying forever.
+- **Broken walls become rubble** that anyone can cross; the repair crew rebuilds it automatically.
+  Repairs now cost 60% of a new segment (a full wood repair cost 5 parts, more than a new one).
+  The repair crew no longer stops when a zombie stands in one gap; it works on another segment.
+- **Hiding survivors** eat, drink and rest a little from the town stores and call the guards
+  (non-fighters used to hide for days and collapse from thirst).
+- **Fighters** react when attacked while catching their breath after a fight (they used to stand
+  still), and go for treatment first if below 50% HP.
+- **Fires:** accidents about every 3 days (was 2), slower growth, a fire spreads to at most one
+  neighbour, a repaired building can't catch fire for a day, repair costs 25% of the build cost.
+- **Research:** Workshop 12 RP/day staffed (was 10), 4 unstaffed (was 2); each Library study
+  session adds 1 RP.
+- Results on 8 fresh 45-day games: 3–15 deaths (median 8.5), rank 4 by day 13–21, rank 5 on day
+  26–40 in 6 of 8, territory tier 1 by day 6–9, food and water healthy, no burnt buildings left,
+  7–11 of 13 research projects, weekly grades mostly A/B. Without walls: 5–22 deaths.
+
 ## V2.17.0 — Phase D: incidents, rush production, pets, wandering trader
 - **Incidents** (from day 2, about one every 2 days): a **fire** in a building or a **zombie
   break-in**. Fire stops the building and spreads if it reaches 100%; up to 3 nearby survivors run

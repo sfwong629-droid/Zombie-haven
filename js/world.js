@@ -29,7 +29,7 @@
     canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
-    workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 10 }),   // V2.16: staffed → research points; crafting
+    workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 12 }),   // V2.16: staffed → research points; crafting
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
     scrapyard: D({ name: 'Scrapyard',     mat: 10, a: 4,  q: 8, role: 'parts', fam: 'scrap', slot: true, out: 3 }),   // V2.15: staffed salvage → parts
     // V2.14 training buildings: each raises one survivor stat when visited (placeholder art for now)
@@ -75,7 +75,7 @@
   const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
   const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
   // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
-  const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || (!z && wl.type === 'gate'); };
+  const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || wl.broken || (!z && wl.type === 'gate'); };   // V2.18: a broken segment is rubble anyone can cross until it is repaired
 
   // door: world point just INSIDE the entrance (front-left wall), so the door tile is part of the footprint.
   // approach: the tile just outside that wall, which survivors walk to before stepping in.
