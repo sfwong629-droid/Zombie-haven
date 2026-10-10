@@ -3,7 +3,15 @@
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./iso.js'));
   else root.ZHWorld = factory(root.ZHIso);
 })(typeof self !== 'undefined' ? self : this, function (Iso) {
-  const COLS = 16, ROWS = 20;
+  // V2.13: the map grew east and south (16x20 -> 28x30) so old saves keep their coordinates.
+  // The town's TERRITORY starts as the old build zone and grows in tiers bought with Renown + parts.
+  const COLS = 28, ROWS = 30;
+  const TERRITORY = [
+    { x0: 2, y0: 6, x1: 13, y1: 17, ren: 0, mat: 0 },
+    { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 15 },
+    { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 30 },
+    { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 50 },
+  ];
   const BUILD = { x0: 2, y0: 6, x1: 13, y1: 17 };
 
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
@@ -36,6 +44,11 @@
     gate:  { name: 'Gate',           mat: 4, hp: 140, rank: 1 },
   };
   const WALLZONE = { x0: 1, y0: 5, x1: 14, y1: 18 };   // build zone grown by one tile so a ring can enclose it
+  function setTerritory(tier) {   // mutates BUILD and WALLZONE in place (everything reads them live)
+    const t = TERRITORY[Math.max(0, Math.min(TERRITORY.length - 1, tier | 0))];
+    Object.assign(BUILD, { x0: t.x0, y0: t.y0, x1: t.x1, y1: t.y1 });
+    Object.assign(WALLZONE, { x0: Math.max(1, t.x0 - 1), y0: Math.max(1, t.y0 - 1), x1: Math.min(COLS - 2, t.x1 + 1), y1: Math.min(ROWS - 2, t.y1 + 1) });
+  }
   const ROAD_COORDS = [
     [2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],
     [7,6],[7,7],[7,8],[7,9],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],
@@ -128,5 +141,5 @@
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
-  return { WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

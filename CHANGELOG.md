@@ -1,5 +1,20 @@
 # Changelog
 
+## V2.13.0
+- **Territory expansion:** the map grew from 16×20 to 28×30 tiles (east and south, so saves keep
+  their layout). Town → Expand territory unlocks 3 more tiers (Renown 60/160/320 + 15/30/50 parts).
+  Each tier: more land to build and wall in, +2 zombies by day and +3 at night, more siege zombies,
+  and zombies start arriving from the east and south too.
+- **Raiders:** from day 3, every ~2–3.5 days a group of 2–5 humans sneaks in. They steer around
+  zombies and fighters, slip through the gate, steal up to 4 supplies each from a building, fight
+  anyone who catches them, and run when hurt. Killing a raider recovers what they carried. Guards
+  only spot a sneaking raider within 2.5 tiles. Walls with no gate keep them out.
+- **Boss:** every 3rd day a Mutant Boss attacks at 21:00 with a mob (warning at 18:00). It scales
+  with rank and territory, breaks walls fast, and retreats at dawn if not killed (+25 Renown,
+  +15 parts when killed). Placeholder art: recoloured Brute; raiders use the survivor body in red.
+- Simulated 9 days: start territory 0 deaths, 5–10 collapses, 3/3 bosses killed, 1–2 raiders
+  escaped with 1–2 items; fully expanded (tier 3) 0 deaths, 29 collapses, peak 29 zombies.
+
 ## V2.12.0
 - **Per-profession levels (DV2-style):** every survivor keeps a separate level in each profession.
   Lv.3 and Lv.5 in a profession teach a skill that stays for good, whatever job they do later
