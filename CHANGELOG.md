@@ -1,5 +1,21 @@
 # Changelog
 
+## V2.23.0 — Missions and story events
+- **10 mission types** (was 3), picked from what makes sense for the town and never the same twice
+  in a row: Clear the Perimeter, Keep the Town Supplied, Expand the Haven, Push the Science,
+  Training Regime, Bandit Hunt, Into the Wasteland, Community Spirit, Full Pantry, Close the Gaps.
+  Goals and rewards grow with Haven rank.
+- **Story events with choices** (about one a day, replacing the old gift popups):
+  - 📻 *Radio Signal* → *The Bunker* → *A Gift from the Bunker* (a 3-part chain: new survivors or
+    parts, then gear and Renown — or an ambush).
+  - 🏴 *Ironfield Riders*: pay tribute (no raids for 4 days, then a trade gift) or refuse (two raids
+    at once, then Renown if you stand your ground).
+  - 🤒 A sick survivor, 🧒 a lost child (may join as a child), 📦 a supply drop that draws
+    zombies, 🐕 a stray dog, 🩺 a wandering medic, ⛈ a storm (water, maybe lightning), 🎉 a feast
+    (happiness and bonds for food and water), plus the old small gifts.
+- Tested: every event with each choice, chains continuing on later days, every mission type;
+  45-day simulations with random choices on 4 seeds, no errors.
+
 ## V2.22.0 — Bonds, couples and children
 - **Bonds** between survivors grow with time spent together (nearby, eating/resting/training at
   the same building, fighting the same enemy, being rescued) and fade slowly if not kept up;
