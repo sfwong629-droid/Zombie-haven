@@ -1,5 +1,13 @@
 # Changelog
 
+## Tests (no game change)
+- **`python3 tests/run_tests.py`** runs 14 end-to-end tests (70 checks) in headless Chromium at
+  iPhone size in about 25 s: boot, save/load round trip, old-save upgrade, guided goals, fire and
+  repair, rush, trader, rubble walls and repair, research and crafting, couple → baby → grown-up
+  and grief, every story event and choice plus every mission type, every panel tab, every sound
+  effect, and a 12-day auto-played town. Add words to run only some: `run_tests.py fire tabs`.
+  Checked that it catches breakage (broke wall repair and couples on purpose: both tests failed).
+
 ## V2.24.0 — Comeback help
 Some towns used to snowball: a boss night killed veterans, newcomers arrived at low levels, and
 each following boss (scaled by Haven rank) killed more — up to 37–44 deaths in 45 days.
