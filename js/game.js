@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.26.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.27.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -228,8 +228,8 @@ function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ct
 const TAGTXT = { Eating: 'Eating', Drinking: 'Drinking', Resting: 'Resting', Treatment: 'Treatment', Shopping: 'Shopping', 'Getting food': 'Foraging', Working: 'Working', Firefighting: 'Firefighting' };
 const tagCache = new Map();
 function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a character */
-  const fs = Math.round(Math.max(9, 9.5 * cam.z)), key = txt + col + fs + DPR; let c = tagCache.get(key);
-  if (!c) { const font = `700 ${fs}px 'Pixelify Sans', Arial, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
+  const fs = Math.round(Math.max(13, 13 * cam.z)), key = txt + col + fs + DPR; let c = tagCache.get(key);
+  if (!c) { const font = `${fs}px 'Jersey 15', Arial, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
     const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR);
     g.fillStyle = '#1b2016e6'; g.fillRect(0, 0, w, h); g.strokeStyle = '#6e5638'; g.lineWidth = 1.5; g.strokeRect(.75, .75, w - 1.5, h - 1.5); g.font = font; g.fillStyle = '#000'; g.textAlign = 'center'; g.fillText(txt, w / 2 + 1, fs + 1.5); g.fillStyle = col; g.fillText(txt, w / 2, fs + .5);
     if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
@@ -262,12 +262,12 @@ function drawHuman(s) {
   else if (c4 && okImg(c4)) drawSheet('c4', c4, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
-  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
+  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
   if (tagT) statusTag(p.x, top - 2, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
   else if (ic && s.mode !== 'down') bubble({ x: p.x, y: top - 3 }, ic);
-  if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff0b0'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText(s.name, p.x, p.y + .32 * tw); }
+  if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
 }
 const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9 };
 const tintCache = {};
@@ -286,7 +286,7 @@ function drawZombie(zm) {
     const back = fc.up && fr <= 4, src = back ? tinted('rb', IMG['char4b'], RAIDER_TINT) : tinted('rf', IMG['char4'], RAIDER_TINT);
     if (src) drawSheet(back ? 'rb' : 'rf', src, fr, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right);
     const tw = TWs(), top = p.y - CHAR_H * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
-    if (zm.carried) { ctx.fillStyle = '#ffe06b'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText('$' + zm.carried, p.x, top - 3); }
+    if (zm.carried) { ctx.fillStyle = '#ffe06b'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('$' + zm.carried, p.x, top - 3); }
     return;
   }
   if (zm.type === 'boss') {   /* placeholder art: the Brute in boss colours, with a big health bar */
@@ -294,7 +294,7 @@ function drawZombie(zm) {
     const b = Z4_DEFS.brute, fc = facing(zm), back = fc.up && f <= 4, src = back ? tinted('bossb', IMG['z4b:brute'], BOSS_TINT) : tinted('bossf', IMG['z4:brute'], BOSS_TINT);
     if (src) drawSheet(back ? 'bossb' : 'bossf', src, f, b.fw, b.fh, p, 1, b.foot, APX, true, fc.right);
     const tw = TWs(), top = p.y - b.h * tw / APX - 8; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 26 * cam.z, top, 52 * cam.z, 6 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 25 * cam.z, top + cam.z, 50 * cam.z * Math.max(0, zm.hp / zm.max), 4 * cam.z);
-    ctx.fillStyle = '#f2c8ff'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText('BOSS', p.x, top - 3); return;
+    ctx.fillStyle = '#f2c8ff'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('BOSS', p.x, top - 3); return;
   }
   if (zm.mode === 'zattack') f = 6; else if (zm.mode === 'zchase') f = 1 + (Math.floor((tick + zm.phase) / 6) % 4); else if (zm.mode === 'idle') f = Math.floor((tick + zm.phase) / 18) % 2 ? 1 : 0;
   const z4 = Z4_DEFS[zm.type], zf = IMG['z4:' + zm.type], zb = IMG['z4b:' + zm.type];
@@ -341,7 +341,7 @@ function draw() {
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
-  for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `bold ${Math.round(Math.max(10, 11 * cam.z))}px Arial`, f.col); ctx.globalAlpha = 1; }
+  for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
   if (debug) drawDebug();
@@ -1248,7 +1248,7 @@ function showTrader() {
   $('ib').innerHTML = `Leaves at 19:00. Prices ${disc ? `<b>−${disc}%</b> (your best Charisma)` : 'are full price — a survivor with high Charisma gets a discount'}.<br><b>For sale</b><br>`
     + T.stock.map((o, i) => o.sold ? `<div><small>✔ sold: ${o.k === 'item' ? ITEMS[o.id].name : o.k === 'pet' ? PETS[o.id].name : 'Research notes'}</small></div>` : `<button class="act" data-buy="${i}" ${canPay(priced(o.cost)) ? '' : 'style="opacity:.45"'}>${offer(o)} · ${costText(priced(o.cost))}</button>`).join('')
     + '<br><b>Exchange</b> <small>(3 times each per visit)</small><br>' + TRADES.map((t, i) => { const c = i < 2 ? t.give : priced(t.give); return `<button class="act" data-trade="${i}" ${T.ex[i] < 3 && canPay(c) ? '' : 'style="opacity:.45"'}>${costText(c)} → ${costText(t.get)} <small>(${3 - T.ex[i]} left)</small></button>`; }).join('');
-  $('infoPanel').style.display = 'block';
+  showPanel();
   $('ib').querySelectorAll('[data-buy]').forEach((x) => { x.onclick = () => { if (traderBuy(+x.dataset.buy)) showTrader(); }; });
   $('ib').querySelectorAll('[data-trade]').forEach((x) => { x.onclick = () => { if (traderTrade(+x.dataset.trade)) showTrader(); }; });
 }
@@ -1256,7 +1256,7 @@ function drawTrader() {
   const T = S.trader, p = project(T.w.x, T.w.y), fc = facing(T), fr = T.moving ? 1 + (Math.floor(tick / 6) % 4) : 0, back = fc.up && fr <= 4;
   const src = back ? tinted('tb', IMG['char4b'], TRADER_TINT) : tinted('tf', IMG['char4'], TRADER_TINT);
   if (src) drawSheet(back ? 'tb' : 'tf', src, fr, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right);
-  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); ctx.fillStyle = '#9fffe0'; ctx.font = `bold ${Math.max(9, 10 * cam.z)}px monospace`; ctx.textAlign = 'center'; ctx.fillText('TRADER', p.x, p.y + .3 * TWs());
+  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); ctx.fillStyle = '#9fffe0'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('TRADER', p.x, p.y + .3 * TWs());
 }
 function hitTrader(px, py) { const T = S.trader; if (!T) return false; const p = project(T.w.x, T.w.y), d = Math.hypot(px - p.x, py - (p.y - CHAR_H * TWs() * .5)); return d < Math.max(24, .45 * TWs()); }
 function drawFire(b) {   /* pixel flames on a burning building, smoke over a burnt one */
@@ -1380,7 +1380,7 @@ function upgradeBuilding(b) {    // in place: same footprint, same anchor; the b
 function queueResidentRequest(s) { S.requests.push({ type: 'resident', s }); showNextRequest(); }
 function showNextRequest() {
   const box = $('requestBox'); if (!box || box.innerHTML || !S.requests.length) return; const q = S.requests[0], s = q.s;
-  box.innerHTML = `<div class="request"><b>🏠 MOVE-IN REQUEST</b><br>${s.name} wants to make Zombie Haven home.<br>Satisfaction ♥${Math.floor(s.sat)}<br><button id="acceptReq" style="background:#3f8f4f;color:#fff">ACCEPT</button><button id="declineReq" style="background:#a74b45;color:#fff">NOT YET</button></div>`;
+  box.innerHTML = `<div class="request frame"><b class="out">🏠 Move-in request</b><br>${s.name} wants to make the Haven home. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act danger out" id="declineReq">Not yet</button></div>`;
   $('acceptReq').onclick = () => { s.resident = true; renownGain(4, 'New resident'); say(s.name + ' became a resident!'); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
@@ -1418,14 +1418,14 @@ function showGoals() {
   const rows = first.map(([n, d, ok]) => `<div style="opacity:${ok ? .6 : 1}">${ok ? '✔' : '▶'} <b>${n}</b> — ${d}</div>`).join('')
     + GUIDE.map((g, i) => { const done = S.stage >= 2 && i < gi, cur = S.stage >= 2 && i === gi; return `<div style="opacity:${done ? .6 : cur ? 1 : .45};${cur ? 'border:1px solid #ffe38a;border-radius:4px;padding:3px;margin:2px 0' : ''}">${done ? '✔' : cur ? '▶' : '·'} <b>${g.name}</b> — ${g.desc}${cur ? `<br><small>${g.hint}</small><br><small>Reward: +${g.parts} parts, +${g.ren} Renown</small>` : ''}</div>`; }).join('');
   $('ib').innerHTML = rows + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
-  $('infoPanel').style.display = 'block'; $('gLog').onclick = showLog;
+  showPanel(); $('gLog').onclick = showLog;
 }
 function logEvent(t) { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ PARTS · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t) }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
 function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
   const L = (S.log || []).slice().reverse();
-  $('ib').innerHTML = L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #2c627a"><small style="color:#9fd3e8">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> ${esc(e.t)}</div>`).join('') : '<small>Nothing yet.</small>';
-  $('infoPanel').style.display = 'block';
+  $('ib').innerHTML = L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> ${esc(e.t)}</div>`).join('') : '<small>Nothing yet.</small>';
+  showPanel();
 }
 function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
 /* ---------------- V2.23 missions (10 kinds, scaled by rank) and story events with choices ---------------- */
@@ -1506,7 +1506,7 @@ function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
 function nextEventPopup() {
   const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length) return; const e = eventQueue.shift(); modalOpen = true;
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
-  m.innerHTML = `<div class="evBox"><div class="evTitle">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button data-i="${i}"${i === 0 ? ' id="eventOk"' : ''} style="margin:0 4px">${b.label}</button>`).join('')}</div>`;
+  m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}>${b.label}</button>`).join('')}</div>`;
   m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
@@ -1517,7 +1517,7 @@ function checkRank() {
 function ui() {
   { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
-  $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].name}: ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
+  $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 
 /* ---------------- save / load / migration ---------------- */
@@ -1667,7 +1667,7 @@ function expTick() {   // called every second: chip on the HUD and the live numb
   if (expOpen && t && $('expTime')) { $('expTime').textContent = mmss(expTripLeft(t)); const st = $('expStage'); if (st) st.textContent = t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`; }
 }
 function showExpedition() {
-  endBuildMode(true); closeP(); expOpen = true; $('it').textContent = 'EXPEDITION'; const t = S.trip;
+  endBuildMode(true); closeP(); expOpen = true; $('it').textContent = 'Explore'; const t = S.trip;
   if (t) {
     const d = EXP_DEFS[t.dest];
     $('ib').innerHTML = `<b>${d.icon} ${d.name}</b> · ${EXP_RISK[t.risk].label} risk<br><span id="expStage">${t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`}</span> · <b id="expTime">${mmss(expTripLeft(t))}</b> left<br>
@@ -1681,17 +1681,17 @@ function showExpedition() {
     let ids = (expSel.ids || []).filter((id) => S.sv.some((q) => q.id === id && expEligible(q))); if (!ids.length) ids = expAutoSquad().map((q) => q.id); expSel.ids = ids;
     const members = ids.map((id) => S.sv.find((q) => q.id === id)).filter(Boolean), pv = expPreview(expSel.dest, expSel.risk, members), rk = EXP_RISK[expSel.risk];
     const ready = S.sv.filter(expEligible);
-    $('ib').innerHTML = `<b>Destination</b><br>${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<button class="act" data-d="${k}" style="${expSel.dest === k ? 'outline:2px solid #ffe38a' : ''}${lk ? ';opacity:.5' : ''}">${v.icon} ${v.name}${lk ? ' · 🔒 ' + lk : ''}</button>`; }).join('')}<br><small>${d.desc}</small><br>
-      <b>Risk</b><br>${d.risks.map((r) => `<button class="act" data-r="${r}" style="${expSel.risk === r ? 'outline:2px solid #ffe38a' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min} min · ×${EXP_RISK[r].mult}</button>`).join('')}<br>
-      <b>Squad</b> (tap to swap, 1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)<br>${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<button class="act" data-s="${q.id}" style="${on ? 'outline:2px solid #9fe58a' : ''}${ok || on ? '' : ';opacity:.4'}">${esc(q.name)} · ${q.job} Lv.${q.l}${ok ? '' : ' · ' + (expBlock(q) || 'busy')}</button>`; }).join('')}<br>
-      <small>Cost: ${pv.need} food + ${pv.need} water${pv.short ? ' — <b style="color:#ff8a7a">not enough in stock, riskier</b>' : ''}. Loot ×${pv.mult.toFixed(1)}. Per stage per person: about ${(pv.hurtPerStage * 100).toFixed(0)}% hurt, ${(pv.deathPerStage * 100).toFixed(1)}% lost (permanent).<br>${ready.length ? '' : 'Nobody is healthy and free right now.'}</small><br>
-      <button class="act" id="expGo" style="background:#3f8f4f;color:#fff">SEND SQUAD · ${rk.min} min</button>`;
+    $('ib').innerHTML = `<div class="sm">Where to?</div><div class="lst">${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<div class="card" data-d="${k}" style="${expSel.dest === k ? 'border-color:var(--gold)' : ''}${lk ? ';opacity:.5' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp">${v.name}<div class="sm">${lk ? '🔒 ' + lk : expSel.dest === k ? d.desc : ''}</div></div>${expSel.dest === k ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>
+      <div class="sm">Risk</div><div class="tabs" style="position:static">${d.risks.map((r) => `<button data-r="${r}" class="${expSel.risk === r ? 'on' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min}m</button>`).join('')}</div>
+      <div class="sm">Squad (1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>
+      <div class="card"><div>Cost: 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''} · Loot ×${pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}</div>
+      <button class="act go" id="expGo" style="width:100%">Send squad · ${rk.min} min</button>`;
     $('ib').querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { if (expLocked(b.dataset.d)) { say(expLocked(b.dataset.d)); return; } expSel.dest = b.dataset.d; showExpedition(); }; });
     $('ib').querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { expSel.risk = b.dataset.r; showExpedition(); }; });
     $('ib').querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => { const id = +b.dataset.s, q = S.sv.find((x) => x.id === id); if (ids.includes(id)) expSel.ids = ids.filter((x) => x !== id); else if (q && expEligible(q) && ids.length < EXP_MAX_SQUAD) expSel.ids = [...ids, id]; else say('That survivor can’t go right now.'); showExpedition(); }; });
     $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { say(r.why); return; } expSel.ids = null; showExpedition(); };
   }
-  $('infoPanel').style.display = 'block';
+  showPanel();
 }
 /* V2.9 death and recovery model */
 const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 };
@@ -1754,7 +1754,7 @@ function retreatCheck2(s) {
 
 /* ---------------- build / move / demolish ---------------- */
 let moving = null;   // building being moved (removed from world while placing)
-function closeP() { $('buildPanel').style.display = $('infoPanel').style.display = 'none'; expOpen = false; }
+function closeP() { $('infoPanel').classList.remove('show'); expOpen = false; panelBack = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
   moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none';
@@ -1813,53 +1813,122 @@ function checkPerimeter() {
 function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`); saveGame(); ui(); }
 function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
-/* ---------------- panels ---------------- */
+/* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
+let panelBack = null;
+function showPanel(title, back) {
+  if (title) $('it').textContent = title; panelBack = back || null; $('pBack').style.display = panelBack ? 'block' : 'none';
+  $('infoPanel').classList.add('show'); $('ib').scrollTop = 0;
+}
+const BDESC = {
+  house: 'A place to sleep. Every House makes room for 2 more people.',
+  water: 'Catches rainwater. An Engineer or Mechanic makes it collect more.',
+  well: 'Draws groundwater: almost twice a Rain Collector.',
+  farm: 'A small vegetable patch. Drinks a little water. A Farmer boosts it.',
+  field: 'A big crop field: twice the food of a Garden Plot.',
+  medic: 'Patches up the wounded with medicine. A Medic boosts it.',
+  clinic: 'Faster healing and longer survival for the badly hurt.',
+  hospital: 'The best care: fastest healing, the most time to save the dying.',
+  canteen: 'Survivors eat here. A Cook makes every meal more filling.',
+  armory: 'Survivors buy basic weapons and armor here with spare parts.',
+  workshop: 'Research new tech and craft gear. Engineers work fastest.',
+  storage: 'Raises how much food, water and parts you can stockpile.',
+  scrapyard: 'Turns junk into parts. A Scavenger or Engineer boosts it.',
+  gym: 'Free-time training for Strength.', library: 'Study for Intelligence. Every visit adds research.', lounge: 'Relax for Charisma and a happier mood.',
+  range: 'Target practice for Perception (better with guns and bows).', track: 'Obstacle runs for Agility (speed and dodging).', sparring: 'Bouts in the ring for Endurance (more HP).',
+  barracks: 'Fighters rest and gear up here. Next to an Armory, gear gets cheaper.',
+};
+const BCAT = [['live', 'Living', ['house', 'water', 'well', 'farm', 'field', 'canteen', 'storage', 'scrapyard', 'workshop']], ['care', 'Care', ['medic', 'clinic', 'hospital']],
+  ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:metal', 'wall:gate', 'armory', 'barracks']]];
+let bCat = 'live';
+function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
+  const im = IMG['b4:' + k]; let w = im && im.naturalWidth, h = im && im.naturalHeight; if (!w) { try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); w = pa.im.width; h = pa.im.height; } catch (e) { w = 42; h = 42; } }
+  const sc = Math.max(1, Math.floor(Math.min(bw / w, bh / h) * 4) / 4); return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
+}
+function buildLock(k) { const d = DEFS[k]; if (S.rank < d.rank) return `Rank ${d.rank}`; if (!researched(d.res)) return 'Research: ' + (RESEARCH[d.res] ? RESEARCH[d.res].name : d.res); return ''; }
+function wallIcon(t) { return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
 function showBuild() {
-  endBuildMode(true); closeP(); const grid = $('buildGrid'); grid.innerHTML = '';
-  const rb = document.createElement('button'); rb.className = 'build'; rb.innerHTML = `<span style="font-size:26px;width:40px;text-align:center">🛣️</span><span>Road<small>${Wd.ROAD_COST} part per tile</small></span>`; rb.onclick = () => startTool({ kind: 'road' }); grid.appendChild(rb);
-  for (const [wt, wd] of Object.entries(Wd.WALL_DEFS)) { if (S.rank < wd.rank) continue; const wb = document.createElement('button'); wb.className = 'build'; wb.innerHTML = `<span style="font-size:26px;width:40px;text-align:center">${wt === 'gate' ? '🚪' : wt === 'metal' ? '🧱' : '🪵'}</span><span>${wd.name}<small>${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · ${wd.hp} HP</small></span>`; wb.onclick = () => startTool({ kind: 'wall', wtype: wt }); grid.appendChild(wb); }
-  Object.entries(DEFS).filter(([, d]) => S.rank >= d.rank && !d.hidden && researched(d.res)).forEach(([k, d]) => {   // upgrade-only tiers (hidden) are reached from the building panel
-    const b = document.createElement('button'); b.className = 'build'; b.innerHTML = `<img src="${buildIcon(k)}" alt="" style="image-rendering:pixelated"><span>${d.name} · ${d.w}×${d.h}<small>PARTS ${d.mat} · upkeep ${(UPKEEP[k] ?? .3).toFixed(1)}/day${d.train ? ' · trains ' + STAT_NAME[d.train] : ''}</small></span>`;
-    b.onclick = () => startTool({ kind: 'building', type: k }); grid.appendChild(b);
-  });
-  $('buildPanel').style.display = 'block';
+  endBuildMode(true); closeP(); const cat = BCAT.find((c) => c[0] === bCat) || BCAT[0];
+  const cards = cat[2].map((k) => {
+    if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">🛣️</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
+    if (k.startsWith('wall:')) { const t = k.slice(5), wd = Wd.WALL_DEFS[t], lk = S.rank < wd.rank; return `<button class="bcard${lk ? ' lock' : ''}" data-wall="${t}"><div class="im" style="font-size:46px">${wallIcon(t)}</div><div class="nm">${wd.name}</div><div class="co">${lk ? '🔒 Rank ' + wd.rank : '⚙ ' + wd.mat}</div></button>`; }
+    const d = DEFS[k]; if (!d || d.hidden) return ''; const lk = buildLock(k);
+    return `<button class="bcard${lk ? ' lock' : ''}" data-b="${k}"><div class="im">${bImg(k, 104, 78)}</div><div class="nm">${d.name}</div><div class="co">${lk ? '🔒 ' + lk.replace('Research: ', '') : '⚙ ' + d.mat}</div></button>`;
+  }).join('');
+  $('ib').innerHTML = tabBar(BCAT.map((c) => [c[0], c[1]]), bCat) + `<div class="bgrid">${cards}</div>`;
+  showPanel('Build');
+  $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { bCat = b.dataset.tab; showBuild(); }; });
+  $('ib').querySelectorAll('[data-b]').forEach((b) => { b.onclick = () => buildDetail(b.dataset.b); });
+  $('ib').querySelectorAll('[data-wall]').forEach((b) => { b.onclick = () => { const t = b.dataset.wall; if (S.rank < Wd.WALL_DEFS[t].rank) { say(`${Wd.WALL_DEFS[t].name} needs Haven rank ${Wd.WALL_DEFS[t].rank}.`); return; } startTool({ kind: 'wall', wtype: t }); }; });
+  $('ib').querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => startTool({ kind: 'road' }); });
+}
+function buildDetail(k) {
+  const d = DEFS[k], lk = buildLock(k), have = bOf(k).length, afford = S.mat >= d.mat, size = d.w === 1 && d.h === 1 ? 'Small 1×1' : d.w * d.h === 4 ? 'Large 2×2' : 'Medium 2×1';
+  const fx = [];
+  if (d.out && d.fam === 'water') fx.push(`💧 +${d.out} water / day`); if (d.out && d.fam === 'farm') fx.push(`🍖 +${d.out} food / day · 💧 −${d.waterUse}`);
+  if (d.fam === 'scrap') fx.push(`⚙ +${d.out} parts / day`); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
+  if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) fx.push('👷 1 worker: ' + (STAFF_JOBS[d.fam] || []).join(' / '));
+  $('ib').innerHTML = `<div class="bdetail"><div class="big">${bImg(k, 300, 140)}</div>
+    <div class="row" style="justify-content:center;gap:14px;font-size:21px"><span>⚙ <b>${d.mat}</b></span><span>${size}</span><span class="sm">upkeep ${(UPKEEP[k] ?? .3).toFixed(1)}/day</span></div>
+    <p class="desc">${BDESC[k] || ''}</p><div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
+    <div class="desc sm" style="margin-top:6px">Quality ${d.q} · Appeal ${d.a}${have ? ` · you have ${have}` : ''}</div>
+    ${lk ? `<p style="color:var(--bad)">🔒 Needs ${lk}</p>` : `<button class="act go" id="bdGo" style="width:70%;margin-top:10px" ${afford ? '' : 'disabled'}>${afford ? 'Build' : 'Not enough parts'}</button>`}</div>`;
+  showPanel(d.name, showBuild);
+  const g = $('bdGo'); if (g) g.onclick = () => startTool({ kind: 'building', type: k });
 }
 const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const meter = (v, cls = '') => `<div class="bar ${cls}"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></div>`;
+const SLOT_EMOJI = { weapon: '🗡️', armor: '🦺', acc: '💍' };
+function itemIcon(id, slot) { const it = ITEMS[id]; const src = it && window.ZHItems && ZHItems.icon(id); return `<div class="icon">${src ? `<img class="pix" src="${src}" alt="">` : `<span style="font-size:24px">${SLOT_EMOJI[slot || (it && it.slot)] || '❔'}</span>`}</div>`; }
+function portrait(s) { const u = window.ZHChars && ZHChars.portrait(s); return `<div class="portrait">${u ? `<img class="pix" src="${u}" alt="">` : '<span style="font-size:30px">🧑</span>'}</div>`; }
+function activityText(u) { return u.mode === 'down' ? 'Bleeding out!' : u.mode === 'hospital' ? 'In care' : u.mode === 'away' ? 'On expedition' : u.why || u.mode; }
 function unitPanel(u) {
-  selected = { kind: 'unit', ref: u }; closeP(); $('it').textContent = u.name.toUpperCase(); $('ib').innerHTML = `${u.job} Lv.${u.l} · HP ${Math.ceil(u.hp)}/${u.max} · ration ${ration(u).toFixed(2)}/day${u.post ? ' · works at ' + DEFS[u.post.type].name : ''}<br><b>${esc(u.why)}</b><br>Hunger ${Math.round(u.hunger)} · Thirst ${Math.round(u.thirst)} · Fatigue ${Math.round(u.fatigue)}` + (u.mode === 'down' ? `<br><b style="color:#ff8a7a">Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><br><button class="act" id="bandage">Bandage +60 s (${BANDAGE_COST} parts)</button>` : ''); $('infoPanel').style.display = 'block'; const bd = $('bandage'); if (bd) bd.onclick = () => { if (useBandage(u)) unitPanel(u); }; unitExtra(u);
+  selected = { kind: 'unit', ref: u }; closeP();
+  $('ib').innerHTML = `<div class="card row">${portrait(u)}<div class="sp"><div style="font-size:24px;line-height:22px">${esc(u.name)} ${u.resident ? '🏠' : ''}${u.partner ? '💑' : ''}</div><div class="sm">${u.job} · Lv.${u.l}</div>
+    <div class="row"><span class="sm">HP</span><div class="sp">${meter(u.hp / u.max * 100, 'hp')}</div><span class="sm">${Math.ceil(u.hp)}/${u.max}</span></div></div></div>
+    <div style="margin:-2px 0 6px">${esc(activityText(u))}</div>`
+    + (u.mode === 'down' ? `<div class="card"><b style="color:var(--bad)">Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><br><button class="act go" id="bandage">Bandage +60 s (⚙ ${BANDAGE_COST})</button></div>` : '');
+  showPanel(u.name.toUpperCase()); const bd = $('bandage'); if (bd) bd.onclick = () => { if (useBandage(u)) unitPanel(u); }; unitExtra(u);
 }
 function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
   const c = (s.cls && s.cls[job]) || { l: 1 }; const nx = Object.values(SKILLS).filter((k) => k.from === job && k.at > c.l).sort((a, b) => a.at - b.at)[0];
-  return nx ? `next: ${nx.name} at Lv.${nx.at}` : 'all skills learned';
+  return nx ? `Next skill: ${nx.name} at Lv.${nx.at}` : 'All skills learned';
 }
-const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' ranged' : ''}` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
-function statsHtml(u) {   /* V2.14 character sheet: base stat, gear bonus, training bar */
-  const rows = STATS.map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), tp = Math.floor((u.tp && u.tp[k]) || 0), main = (JOB_STATS[u.job] || []).includes(k);
-    return `<div style="display:flex;align-items:center;gap:6px"><span style="width:92px">${main ? '<b>' : ''}${STAT_NAME[k]}${main ? '</b>' : ''}</span><b style="width:22px;text-align:right">${tot}</b><small style="width:44px">${tot !== base ? `(${base}${tot > base ? '+' : ''}${tot - base})` : ''}</small><span style="flex:1">${meter(base / STAT_CAP * 100)}</span><small style="width:34px;text-align:right">${base >= STAT_CAP ? 'max' : tp + '%'}</small></div>`; }).join('');
+const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
+const STAT_SHORT = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
+function statsHtml(u) {
+  const needs = [['Hunger', u.hunger], ['Thirst', u.thirst], ['Tired', u.fatigue]].map(([n, v]) => `<div><span class="sm">${n}</span>${meter(v, v > 60 ? 'hp' : '')}</div>`).join('');
+  const rows = STATS.map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);
+    return `<div><span${main ? ' style="color:var(--gold)"' : ''}>${STAT_SHORT[k]}</span><span>${tot}${tot !== base ? `<small> (${tot > base ? '+' : ''}${tot - base})</small>` : ''}</span></div>`; }).join('');
   const w = weaponOf(u), dmg = Math.round(4 + w.atk * .55 + (w.ranged ? stat(u, 'per') : stat(u, 'str')) * .6 + (professions[u.job]?.combat || 0) + skillDmg(u));
-  return `<b>Stats</b> <small>(bold = ${u.job} main stats; % = training toward +1)</small>${rows}<small>Hit ${dmg}${w.ranged ? ' at range' : ''} · damage taken −${Math.round(dmgReduce(u) * 100)}% · speed ${Math.round(sMod(u, 'agi', .02) * 100)}%</small>`;
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">${needs}</div><div class="kv card">${rows}</div>
+    <div class="row" style="gap:16px"><span>⚔ Damage <b>${dmg}</b></span><span>🛡 Armor <b>${Math.round(dmgReduce(u) * 100)}%</b></span></div><div class="sm">Gold = ${u.job} main stats. Training buildings raise stats.</div>`;
 }
 function gearHtml(u, picking) {
-  let h = '<br><b>Equipment</b>' + SLOTS.map((sl) => { const it = itemOf(u, sl); return `<div>${SLOT_NAME[sl]}: <b>${it ? it.name : 'none'}</b> <small>${itemText(it)}</small> <button class="act" data-slot="${sl}" style="padding:2px 8px">Change</button></div>`; }).join('');
-  if (picking) { const ids = Object.keys(S.inv || {}).filter((id) => ITEMS[id] && ITEMS[id].slot === picking);
-    h += `<div style="border:1px solid #2c627a;padding:4px;margin-top:4px"><b>${SLOT_NAME[picking]} in the stash</b><br>` + (ids.length ? ids.map((id) => `<button class="act" data-equip="${id}">${ITEMS[id].name} ×${S.inv[id]}<small> · ${itemText(ITEMS[id])}</small></button>`).join('') : '<small>nothing in the stash for this slot — the Armory sells basics, expeditions and crafting find more</small><br>')
-      + `${itemOf(u, picking) && u.eq[picking] !== 'pipe' ? '<button class="act" data-unequip="1">Unequip</button>' : ''}<button class="act" data-gearcancel="1">Close</button></div>`; }
-  return h;
+  if (picking) {
+    const ids = Object.keys(S.inv || {}).filter((id) => ITEMS[id] && ITEMS[id].slot === picking);
+    return `<div class="lst">${ids.length ? ids.map((id) => `<div class="card" data-equip="${id}">${itemIcon(id)}<div class="sp">${ITEMS[id].name} <span class="sm">×${S.inv[id]}</span><div class="sm">${itemText(ITEMS[id])}</div></div></div>`).join('') : '<p class="sm">Nothing for this slot in the stash. The Armory sells basics; expeditions and crafting find more.</p>'}</div>`
+      + `${itemOf(u, picking) && u.eq[picking] !== 'pipe' ? '<button class="act" data-unequip="1">Take off</button>' : ''}<button class="act" data-gearcancel="1">Back</button>`;
+  }
+  return '<div class="lst">' + SLOTS.map((sl) => { const it = itemOf(u, sl), id = u.eq && u.eq[sl]; return `<div class="card" data-slot="${sl}">${it ? itemIcon(id, sl) : itemIcon(null, sl)}<div class="sp"><span class="sm">${SLOT_NAME[sl]}</span><div>${it ? it.name : 'Empty'}</div><div class="sm">${it ? itemText(it) : 'Tap to equip'}</div></div><span class="sm">›</span></div>`; }).join('') + '</div>';
 }
 let uTab = 'stats';
-function unitExtra(u, picking = false, gearPick = null, tab = null) {   /* V2.12: skills, per-profession levels and profession change in the survivor panel; V2.20: tabs */
+function unitExtra(u, picking = false, gearPick = null, tab = null) {
   syncClass(u); const box = document.createElement('div'); box.id = 'unitExtra';
   if (tab) uTab = tab; if (picking) uTab = 'skills'; if (gearPick) uTab = 'gear';
-  const sk = (u.skills || []).map((k) => `<span title="${esc(SKILLS[k].desc)}">${SKILLS[k].name}</span> <small>(${esc(SKILLS[k].desc)})</small>`).join('<br>') || '<small>none yet — reach Lv.3 in any profession</small>';
-  const lv = CLASS_LIST.filter((j) => u.cls[j]).map((j) => `${j} Lv.${u.cls[j].l}`).join(' · ');
-  const xpNeedU = xpNeed(u);
-  const petH = '<br><b>Pet</b>: ' + (u.pet ? `<b>${esc(u.pet.name)}</b> the ${PETS[u.pet.kind].name} <small>${PETS[u.pet.kind].desc}</small> <button class="act" data-petoff="1" style="padding:2px 8px">Leave in town</button>` : ((S.pets || []).length ? (S.pets || []).map((p, i) => `<button class="act" data-pet="${i}">Adopt ${esc(p.name)} (${PETS[p.kind].name})<small> · ${PETS[p.kind].desc}</small></button>`).join('') : '<small>none — the wandering trader sometimes brings dogs and cats</small>'));
-  const busy = ['down', 'hospital'].includes(u.mode) || u.hp <= 0;
-  box.innerHTML = tabBar([['stats', 'Stats'], ['gear', 'Gear'], ['bonds', 'Bonds'], ['skills', 'Job']], uTab)
-    + (uTab === 'stats' ? statsHtml(u) : uTab === 'bonds' ? bondsHtml(u) : uTab === 'gear' ? gearHtml(u, gearPick).replace(/^<br>/, '') + petH : `<b>${u.job} Lv.${u.l}</b> · XP ${Math.floor(u.mastery)}/${xpNeedU}${u.l >= LEVEL_CAP ? ' (max)' : ''} · ${nextSkillText(u, u.job)}<br><b>Skills</b> (kept in every profession):<br>${sk}<br><b>Levels:</b> ${lv}`);
-  if (uTab !== 'skills') { /* profession change lives on the Job & Skills tab */ } else if (!picking) box.innerHTML += `<br><button class="act" id="chgJob" ${busy ? 'disabled style="opacity:.45"' : ''}>Change profession${busy ? ' (not while hurt)' : ''}</button>`;
-  else if (uTab === 'skills') box.innerHTML += '<br><b>Pick a profession</b> (levels and skills are kept):<br>' + CLASS_LIST.map((j) => { const c = u.cls[j]; return `<button class="act" data-job="${j}" ${j === u.job ? 'disabled style="opacity:.45"' : ''}>${j} · Lv.${c ? c.l : 1}<small> · ${isFighter({ job: j }) ? 'fighter' : 'hides from zombies'} · ${nextSkillText(u, j)}</small></button>`; }).join('') + '<button class="act" id="chgCancel">Cancel</button>';
+  const busy = ['down', 'hospital'].includes(u.mode) || u.hp <= 0, xpNeedU = xpNeed(u);
+  let body = '';
+  if (uTab === 'stats') body = statsHtml(u);
+  else if (uTab === 'bonds') body = bondsHtml(u);
+  else if (uTab === 'gear') {
+    body = gearHtml(u, gearPick);
+    if (!gearPick) body += `<div class="card"><span class="sm">Pet</span><br>` + (u.pet ? `${esc(u.pet.name)} the ${PETS[u.pet.kind].name} <span class="sm">${PETS[u.pet.kind].desc}</span><br><button class="act" data-petoff="1">Leave in town</button>` : ((S.pets || []).length ? (S.pets || []).map((p, i) => `<button class="act" data-pet="${i}">Adopt ${esc(p.name)} (${PETS[p.kind].name})</button>`).join('') : '<span class="sm">None. The trader sometimes brings dogs and cats.</span>')) + '</div>';
+  } else if (!picking) {
+    const sk = (u.skills || []).map((k) => `<div class="card"><b>${SKILLS[k].name}</b><div class="sm">${esc(SKILLS[k].desc)}</div></div>`).join('') || '<p class="sm">No skills yet: reach Lv.3 in any job.</p>';
+    body = `<div>${u.job} Lv.${u.l}${u.l >= LEVEL_CAP ? ' (max)' : ''}</div>${meter(u.l >= LEVEL_CAP ? 100 : u.mastery / xpNeedU * 100, 'xp')}<div class="sm">${nextSkillText(u, u.job)}</div>
+      <div style="margin-top:6px">${sk}</div><button class="act" id="chgJob" ${busy ? 'disabled' : ''}>Change job${busy ? ' (not while hurt)' : ''}</button>
+      <div class="sm" style="margin-top:6px">Other jobs: ${CLASS_LIST.filter((j) => u.cls[j] && j !== u.job).map((j) => `${j} Lv.${u.cls[j].l}`).join(' · ') || 'none yet'}</div>`;
+  } else body = '<div class="sm">Levels and skills are kept when switching.</div><div class="lst">' + CLASS_LIST.map((j) => { const c = u.cls[j]; return `<div class="card" data-job="${j}" style="${j === u.job ? 'opacity:.45' : ''}"><div class="sp">${j} <span class="sm">Lv.${c ? c.l : 1}</span><div class="sm">${isFighter({ job: j }) ? '⚔ fights zombies' : '🏃 hides from zombies'}</div></div></div>`; }).join('') + '</div><button class="act" id="chgCancel">Back</button>';
+  box.innerHTML = tabBar([['stats', 'Status'], ['gear', 'Gear'], ['skills', 'Job'], ['bonds', 'Bonds']], uTab) + body;
   const old = $('unitExtra'); if (old) old.remove(); $('ib').appendChild(box);
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => unitExtra(u, false, null, b.dataset.tab); });
   const cj = $('chgJob'); if (cj && !busy) cj.onclick = () => unitExtra(u, true);
@@ -1870,87 +1939,115 @@ function unitExtra(u, picking = false, gearPick = null, tab = null) {   /* V2.12
   box.querySelectorAll('[data-petoff]').forEach((b) => { b.onclick = () => { if (takePet(u)) { saveGame(); unitPanel(u); } }; });
   box.querySelectorAll('[data-gearcancel]').forEach((b) => { b.onclick = () => unitExtra(u, false); });
   const cc = $('chgCancel'); if (cc) cc.onclick = () => unitExtra(u, false);
-  box.querySelectorAll('[data-job]').forEach((b) => { b.onclick = () => { if (changeProfession(u, b.dataset.job)) { ui(); saveGame(); unitPanel(u); } }; });
+  box.querySelectorAll('[data-job]').forEach((b) => { b.onclick = () => { if (b.dataset.job !== u.job && changeProfession(u, b.dataset.job)) { ui(); saveGame(); unitPanel(u); } }; });
 }
 function showSurvivors() {
-  endBuildMode(true); closeP(); $('it').textContent = 'SURVIVORS';
-  $('ib').innerHTML = S.sv.map((s) => `<div data-sv="${s.id}" style="padding:4px 0;border-bottom:1px solid #2c627a"><b>${esc(s.name)}</b> · ${s.job} Lv.${s.l}${(s.skills || []).length ? ' · ' + s.skills.length + ' skill' + (s.skills.length > 1 ? 's' : '') : ''} ${s.resident ? '🏠' : ''}${s.partner ? '💑' : ''} <span style="float:right;color:#ffe38a">${esc(s.why || s.mode)}</span>
-   HP ${Math.ceil(s.hp)}/${s.max} · ♥${Math.floor(s.sat)} · ${weaponOf(s).name}${itemOf(s, 'armor') ? ' + ' + itemOf(s, 'armor').name : ''} · ration ${ration(s).toFixed(2)}/day${s.post ? ' · works at ' + DEFS[s.post.type].name : ''}${meter(s.hp / s.max * 100)}<small>Hunger ${Math.round(s.hunger)} · Thirst ${Math.round(s.thirst)} · Fatigue ${Math.round(s.fatigue)} · XP ${Math.floor(s.mastery)}/${professions[s.job]?.master || 0}</small></div>`).join('') + '<small>Tap a survivor to follow them.</small>';
-  $('infoPanel').style.display = 'block';
+  endBuildMode(true); closeP();
+  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">${S.sv.length} people · room for ${popCap()}</div><div class="lst">` + S.sv.map((s) => `<div class="card" data-sv="${s.id}">${portrait(s)}<div class="sp"><div>${esc(s.name)} <span class="sm">${s.job} Lv.${s.l}</span></div>${meter(s.hp / s.max * 100, 'hp')}<div class="sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${esc(activityText(s))}</div></div><span class="sm">›</span></div>`).join('') + '</div>';
+  showPanel('People');
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((q) => q.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
 }
 function perimText() {
-  const p = Wd.perimeter(world); if (!p.walls) return 'no walls yet — zombies walk straight in';
-  const wk = p.weakest ? ` · weakest segment ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP at (${p.weakest.x}, ${p.weakest.y})` : '';
-  return `${p.walls} segments, ${p.gates} gate${p.gates === 1 ? '' : 's'} — ` + (p.sealed ? '<b style="color:#9fe58a">SEALED</b>' : '<b style="color:#ff8a7a">OPEN</b> (zombies can walk in; close every gap)') + wk;
+  const p = Wd.perimeter(world); if (!p.walls) return 'No walls yet: zombies walk straight in.';
+  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b> <span class="sm">(close every gap)</span>') + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
 }
 function expandInfo() { const n = Wd.TERRITORY[(S.terr || 0) + 1]; return n ? { n, ok: S.ren >= n.ren && S.mat >= n.mat } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
   const e = expandInfo(); if (!e || !e.ok) return false; S.mat -= e.n.mat; S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = '';
   S.threat++; screenToast('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
-function showTown() {
-  endBuildMode(true); closeP(); $('it').textContent = 'TOWN'; const nx = rankRules[S.rank], st = supplyStats();
-  const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days left`);
-  $('ib').innerHTML = `<b>Haven rank ${S.rank}</b> · ${S.sv.length} survivors (${residents()} residents) · ${world.buildings.length} buildings<br>
-   <b>Supplies</b> (cap ${supplyCap()}): Food ${Math.floor(S.food)} · Water ${Math.floor(S.water)} · Parts ${Math.floor(S.mat)}<br>
-   <b>Perimeter:</b> ${perimText()}<br>
-   <b>Retreat at:</b> <input type="range" id="retreatR" min="15" max="60" step="5" value="${S.retreat}"> <span id="retreatV">${S.retreat}%</span> HP<br>
-   <b>Research:</b> ${Math.floor(S.rp || 0)} RP · ${Object.keys(S.res || {}).length}/${Object.keys(RESEARCH).length} done${bOf('workshop').length ? '' : ' · build a Workshop to research'}<br>
-   <b>Haven Review:</b> ${S.lastReview ? `week ${S.lastReview.week} grade <b>${S.lastReview.grade}</b> (${S.lastReview.total}/120)` : 'first review on day 8'} · next on day ${Math.floor((S.day - 1) / 7) * 7 + 8}${(S.titles || []).length ? ' · titles: ' + S.titles.join(', ') : ''}<br>
-   ${S.trader ? `<b>Trader:</b> in town until 19:00 <button class="act" id="tTrade" style="padding:2px 8px">Trade</button><br>` : `<b>Trader:</b> next visit around day ${S.nextTrader || 2}<br>`}<b>Population:</b> ${popNow()}/${popCap()} <small>(more Houses = more room)</small>${(S.kids || []).length ? ' · 👶 ' + S.kids.map((k) => esc(k.name) + ' (' + (5 - k.age) + 'd)').join(', ') : ''} · 💑 ${S.sv.filter((q) => q.partner).length / 2 | 0} couple(s)<br><b>Pets:</b> ${S.sv.filter((q) => q.pet).map((q) => esc(q.pet.name) + ' (' + esc(q.name) + ')').join(', ') || 'none'}${(S.pets || []).length ? ' · ' + S.pets.length + ' waiting for an owner' : ''} · <b>Incidents:</b> ${S.incidents || 0}${world.buildings.some((b) => b.burnt) ? ' · <b style="color:#ff8a7a">' + world.buildings.filter((b) => b.burnt).length + ' burnt building(s)</b>' : ''}<br>
-   <b>Memorial:</b> ${S.fallen.length ? S.fallen.map((f) => esc(f.name) + ' (' + f.job + ', day ' + f.day + ')').join(', ') : 'none yet'}<br>
-   Rations eaten per day: <b>${st.need.toFixed(1)}</b> (half food, half water)<br>
-   Parts: upkeep <b>−${upkeepTotal().toFixed(1)}</b>/day · Scrapyards <b>+${world.buildings.filter((b) => DEFS[b.type].fam === 'scrap').reduce((a, b) => a + DEFS[b.type].out * prodMult(b), 0).toFixed(1)}</b>/day${world.buildings.some((b) => b.unpaid) ? ' · <b style="color:#ff8a7a">' + world.buildings.filter((b) => b.unpaid).length + ' unpaid</b>' : ''}<br>
-   Food ${net(st.fNet)}/day · ${days(st.fDays)} · Water ${net(st.wNet)}/day · ${days(st.wDays)}<br>
-   ${nx ? `Next rank needs: Renown ${S.ren}/${nx.ren} · Supplies produced ${Math.floor(S.produced)}/${nx.income} · Residents ${residents()}/${nx.residents} · Buildings ${world.buildings.length}/${nx.facilities}` : 'Max rank reached.'}<br>${S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : ''}
-   <br><b>Territory:</b> tier ${S.terr || 0}/${Wd.TERRITORY.length - 1}${(() => { const e = expandInfo(); return e ? ` · next needs Renown ${S.ren}/${e.n.ren} and ${e.n.mat} parts<br><button class="act" id="tExpand" ${e.ok ? '' : 'disabled style="opacity:.45"'}>Expand territory (more land, more zombies)</button>` : ' · fully expanded'; })()}
-   <br><br><button class="act" id="tSave">Save now</button><button class="act danger" id="tReset">New game…</button>`;
-  $('infoPanel').style.display = 'block';
-  $('retreatR').oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
-  $('tSave').onclick = () => { saveGame(); say('Saved.'); };
+let tTab = 'overview';
+const progRow = (label, have, need) => `<div class="row"><span style="width:96px">${label}</span><div class="sp">${meter(have / Math.max(1, need) * 100, have >= need ? '' : 'xp')}</div><span class="sm" style="width:74px;text-align:right">${Math.floor(have)}/${need}</span></div>`;
+function showTown(tab) {
+  endBuildMode(true); closeP(); if (tab) tTab = tab; const nx = rankRules[S.rank], st = supplyStats();
+  const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days`);
+  let h = tabBar([['overview', 'Haven'], ['defense', 'Defense'], ['people', 'People'], ['more', 'More']], tTab);
+  if (tTab === 'overview') {
+    h += `<div class="card"><div style="font-size:23px">Rank ${'★'.repeat(S.rank)} <span class="sm">· threat ☠${S.threat}</span></div>`
+      + (nx ? `<div class="sm">To reach the next rank:</div>${progRow('Renown', S.ren, nx.ren)}${progRow('Produced', S.produced, nx.income)}${progRow('Residents', residents(), nx.residents)}${progRow('Buildings', world.buildings.length, nx.facilities)}` : '<div>Max rank reached.</div>') + '</div>'
+      + `<div class="card"><div class="kv"><div><span>🍖 Food</span><span style="color:${st.fNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.fNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.fDays)}</span></div>
+         <div><span>💧 Water</span><span style="color:${st.wNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.wNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.wDays)}</span></div>
+         <div><span>⚙ Upkeep</span><span>−${upkeepTotal().toFixed(1)}/day</span></div><div><span class="sm">storage cap</span><span>${supplyCap()}</span></div></div>
+         ${world.buildings.some((b) => b.unpaid) ? `<div style="color:var(--bad)">${world.buildings.filter((b) => b.unpaid).length} building(s) unpaid: half output</div>` : ''}</div>`
+      + (S.mission ? `<div class="card"><b>${S.mission.name}</b><div class="sm">${S.mission.desc}</div>${progRow('Progress', S.mission.progress, S.mission.goal)}</div>` : '');
+  } else if (tTab === 'defense') {
+    const e = expandInfo();
+    h += `<div class="card"><b>Walls</b><div>${perimText()}</div></div>
+      <div class="card"><b>Retreat</b><div class="row"><span class="sm">Fighters fall back at</span><input class="sp" type="range" id="retreatR" min="15" max="60" step="5" value="${S.retreat}"><span id="retreatV">${S.retreat}%</span></div></div>
+      <div class="card"><b>Territory</b> <span class="sm">tier ${S.terr || 0}/${Wd.TERRITORY.length - 1}</span>${e ? `${progRow('Renown', S.ren, e.n.ren)}${progRow('Parts', S.mat, e.n.mat)}<button class="act${e.ok ? ' go' : ''}" id="tExpand" ${e.ok ? '' : 'disabled'}>Expand (more land, more zombies)</button>` : '<div class="sm">Fully expanded.</div>'}</div>
+      <div class="card"><span class="sm">Next raid ≈ day ${Math.ceil(S.nextRaid || 0)} · next boss ≈ day ${Math.ceil(S.nextBoss || 0)}</span></div>`;
+  } else if (tTab === 'people') {
+    h += `<div class="card"><div class="kv"><div><span>People</span><span>${popNow()}/${popCap()}</span></div><div><span>Residents</span><span>${residents()}</span></div>
+      <div><span>Couples</span><span>${S.sv.filter((q) => q.partner).length / 2 | 0}</span></div><div><span>Children</span><span>${(S.kids || []).length}</span></div></div>
+      <div class="sm">More Houses = more room.</div></div>`
+      + `<div class="card"><b>Pets</b><div>${S.sv.filter((q) => q.pet).map((q) => esc(q.pet.name) + ' <span class="sm">(' + esc(q.name) + ')</span>').join(', ') || '<span class="sm">none</span>'}${(S.pets || []).length ? ` · ${S.pets.length} waiting` : ''}</div></div>`
+      + `<div class="card"><b>Memorial</b><div>${S.fallen.length ? S.fallen.map((f) => `${esc(f.name)} <span class="sm">${f.job}, day ${f.day}</span>`).join('<br>') : '<span class="sm">No one lost yet.</span>'}</div></div>`;
+  } else {
+    h += `<div class="card"><b>Research</b><div>${Math.floor(S.rp || 0)} RP · ${Object.keys(S.res || {}).length}/${Object.keys(RESEARCH).length} done</div><div class="sm">${bOf('workshop').length ? 'Tap a Workshop to research.' : 'Build a Workshop to research.'}</div></div>
+      <div class="card"><b>Weekly Review</b><div>${S.lastReview ? `Week ${S.lastReview.week}: grade <b>${S.lastReview.grade}</b>` : 'First review on day 8'}</div>${(S.titles || []).length ? `<div class="sm">Titles: ${S.titles.join(', ')}</div>` : ''}</div>
+      <div class="card"><b>Trader</b><div>${S.trader ? 'In town until 19:00 <button class="act go" id="tTrade">Trade</button>' : `Next visit ≈ day ${S.nextTrader || 2}`}</div></div>
+      <button class="act" id="tSave">Save now</button><button class="act" id="tLog">📜 Event log</button><button class="act danger" id="tReset">New game…</button>`;
+  }
+  $('ib').innerHTML = h; showPanel('Town');
+  $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showTown(b.dataset.tab); });
+  const rr = $('retreatR'); if (rr) rr.oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
+  const ts = $('tSave'); if (ts) ts.onclick = () => { saveGame(); say('Saved.'); };
+  const tl = $('tLog'); if (tl) tl.onclick = showLog;
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
-  $('tReset').onclick = () => { if (confirm('Erase this town and start over?')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) {} location.reload(); } };
+  const tr = $('tReset'); if (tr) tr.onclick = () => { if (confirm('Erase this town and start over?')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) {} location.reload(); } };
 }
+const GUIDE_TXT = [
+  ['Moving around', 'Drag to look around, pinch to zoom. ⌖ jumps back to the town. 1× / 2× / 3× changes the game speed.'],
+  ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, then tap Build. Buildings cost parts ⚙ and a little upkeep each day.'],
+  ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
+  ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
+  ['Walls', 'Build → Defend → Wood Barricade, Metal Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with parts.'],
+  ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time.'],
+  ['Gear', 'Tap a survivor → Gear to equip weapons, armor and accessories from the stash. The Armory, crafting, the trader and expeditions give new gear.'],
+  ['Explore', 'Send a squad out from the Explore button. Trips run in real time, even while the game is closed. Losses are permanent.'],
+  ['Renown', 'Building, goals and victories earn Renown. Renown, production, residents and buildings raise the Haven rank. Higher ranks unlock buildings, and bring tougher zombies.'],
+];
 function showGuide() {
-  endBuildMode(true); closeP(); $('it').textContent = 'GUIDE';
-  $('ib').innerHTML = `<b>Drag</b> to pan, <b>pinch</b> to zoom, <b>⌖</b> recenters, <b>1×/2×/3×</b> changes speed, <b>🐞</b> shows the geometry overlay.<br><b>Walls:</b> Build → Wood Barricade / Metal Wall / Gate, then tap tiles around the town (tap again to remove; Metal over Wood upgrades). Zombies attack the nearest wall; elites (Spitters, Brutes) go for the weakest segment. Guards leave through the Gate to fight. Broken segments are repaired automatically with parts (faster with an Engineer or Mechanic). Town shows if the perimeter is SEALED.<br><b>Expedition:</b> EXPEDITION button → pick a destination, a risk level and a squad (auto-picked: one guard, one medic, one scavenger). The squad leaves the map and the trip runs in real time, even while the game is closed. After each of 3 stages something may happen; you can RECALL (keeps loot from finished stages). Losses are permanent.<br><b>Build:</b> choose a building, tap the tile for its <b>south corner</b> (the front tip of the footprint), nudge with the arrows, then CONFIRM. Buildings can't rotate. Buildings cost <b>parts</b>; there is no money.<br><b>Supplies:</b> every survivor eats a daily ration (half food, half water); heavier jobs and higher levels eat more. Rain collectors make water, garden plots make food (and use some water). Medicine heals; without it care is half as effective.<br><b>Staffing is automatic:</b> a survivor with the matching profession (Farmer, Engineer/Mechanic, Medic) takes the building's one slot and boosts it (+50%, +10% per level). A green dot on the building means it is staffed.<br><b>No upgrades — build more:</b> want more water? Build another Rain Collector. Related buildings next to each other give neighbour bonuses (the placement bar shows them). Every building costs a little upkeep in parts each day.<br><b>Goals:</b> tap the goal box (top left) for your current goal and hints; <b>📜</b> shows the event log.<br><b>Incidents:</b> now and then a building catches fire or a zombie breaks in. Survivors nearby fight fires (using a little water); a building that burns down must be repaired from its panel.<br><b>Rush</b> a production building from its panel for 4 hours of output now — with a chance of fire (lower with a skilled worker on shift).<br><b>Trader &amp; pets:</b> a wandering trader visits every few days (tap them, or Town → Trade). Dogs and cats give stat bonuses; give one to a survivor from their panel.<br><b>Roads:</b> the Road tool adds or removes single tiles (1 part each).<br><b>Tap a survivor</b> to see what they are doing and why.<br><b>Renown</b> raises your Haven rank; higher ranks bring tougher zombies.<br><small>V${VERSION} · geometry: tile ratio 3:2 (33.69°), anchor = south corner.</small>`;
-  $('infoPanel').style.display = 'block';
+  endBuildMode(true); closeP();
+  $('ib').innerHTML = GUIDE_TXT.map(([t, x], i) => `<details class="card"${i === 0 ? ' open' : ''}><summary style="font-size:21px;color:var(--gold)">${t}</summary><div style="margin-top:4px">${x}</div></details>`).join('') + `<button class="act" id="gGoals">🎯 Goals</button><button class="act" id="gLog2">📜 Event log</button><div class="sm" style="margin-top:8px">V${VERSION}</div>`;
+  showPanel('Guide'); $('gGoals').onclick = showGoals; $('gLog2').onclick = showLog;
 }
 /* V2.20 tabbed panels */
 function tabBar(list, cur) { return `<div class="tabs">${list.map(([k, l]) => `<button data-tab="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`; }
 let bTab = 'overview', bTabRef = null;
 function showBuildingInfo(b, tab) {
-  const d = DEFS[b.type], r = facilityRules[b.type]; selected = { kind: 'building', ref: b }; closeP(); $('it').textContent = d.name.toUpperCase();
+  const d = DEFS[b.type], r = facilityRules[b.type]; selected = { kind: 'building', ref: b }; closeP();
   if (tab) bTab = tab; else if (bTabRef !== b) bTab = 'overview'; bTabRef = b;
-  const tabs = [['overview', 'Overview'], ['details', 'Details']]; if (b.type === 'workshop') tabs.push(['research', 'Research'], ['craft', 'Craft']);
+  const tabs = [['overview', 'Info'], ['details', 'Details']]; if (b.type === 'workshop') tabs.push(['research', 'Research'], ['craft', 'Craft']);
   if (!tabs.some(([k]) => k === bTab)) bTab = 'overview';
   const jobs = STAFF_JOBS[d.fam] || [], cb = combos(b);
-  const out = (d.fam === 'scrap' ? `Makes <b>${(d.out * prodMult(b) * (researched('salvage') ? 1.25 : 1)).toFixed(1)}</b> parts/day` : '') + (d.fam === 'research' ? `Makes <b>${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)}</b> RP/day${isWorking(b) ? '' : ' (unstaffed — an Engineer, Mechanic or Medic makes it 12)'}` : '') + (d.train ? `Trains <b>${STAT_NAME[d.train]}</b>` : '') + (d.fam === 'water' ? `Makes <b>${(d.out * prodMult(b)).toFixed(1)}</b> water/day` : d.fam === 'farm' ? `Makes <b>${(d.out * prodMult(b)).toFixed(1)}</b> food/day · uses ${d.waterUse} water/day` : '') + (r && !d.train ? `${d.fam === 'water' || d.fam === 'farm' ? '<br>' : ''}Service: <b>${r.label}</b>${r.need === 'injury' ? ' · uses 1 medicine' : ''}` : '');
-  const staff = d.slot ? `Staff: <b>${b.staff ? esc(b.staff.name) + ' (' + b.staff.job + ' Lv.' + b.staff.l + ')' + (isWorking(b) ? ' · boosted +' + Math.round(workBoost(b.staff) * 100) + '%' : ' · off shift') : 'open'}</b><br><small>matching: ${jobs.join(' / ') || '—'}</small>` : '';
-  let status = '';
-  if (b.fire) status += `<b style="color:#ff9a3a">🔥 ON FIRE (${Math.round(b.fire)}%)</b> — survivors are fighting it; at 100% it burns down.<br>`;
-  if (b.burnt) status += `<b style="color:#ff8a7a">🏚 BURNT — no output until repaired</b><br><button class="act" id="bRepair" ${S.mat >= repairCost(b) ? '' : 'style="opacity:.45"'}>Repair (${repairCost(b)} parts)</button><br>`;
-  if (b.unpaid) status += '<b style="color:#ff8a7a">UNPAID upkeep — half output until paid at midnight</b><br>';
+  const out = d.fam === 'scrap' ? `⚙ <b>+${(d.out * prodMult(b) * (researched('salvage') ? 1.25 : 1)).toFixed(1)}</b> parts / day` : d.fam === 'research' ? `🔬 <b>+${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)}</b> research / day` : d.train ? `📈 Trains <b>${STAT_NAME[d.train]}</b>` : d.fam === 'water' ? `💧 <b>+${(d.out * prodMult(b)).toFixed(1)}</b> water / day` : d.fam === 'farm' ? `🍖 <b>+${(d.out * prodMult(b)).toFixed(1)}</b> food / day <span class="sm">(💧 −${d.waterUse})</span>` : r ? `🛎 ${r.label}` : '';
+  const staff = d.slot ? (b.staff ? `👷 ${esc(b.staff.name)} <span class="sm">${b.staff.job} Lv.${b.staff.l} · ${isWorking(b) ? '+' + Math.round(workBoost(b.staff) * 100) + '%' : 'off shift'}</span>` : `👷 <span style="color:var(--bad)">No worker</span> <span class="sm">needs ${jobs.join(' / ')}</span>`) : '';
   let h = tabBar(tabs, bTab);
   if (bTab === 'overview') {
-    h += status + (out ? out + '<br>' : '') + (staff ? staff + '<br>' : '') + (cb.names.length ? `★ ${cb.names.join('<br>★ ')}<br>` : '');
-    if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'style="opacity:.45"'}>⚡ Rush: 4 hours of output now · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<small> ${esc(rc.why)}</small>`}<br><small>Lower risk with a skilled worker on shift; higher if you rush again soon. Cooldown 6 h.</small><br>`; }
-    h += `<button class="act" id="bMove">Move</button><button class="act danger" id="bDem">Demolish (+${Math.floor(d.mat * .5)} parts)</button>`;
+    let status = '';
+    if (b.fire) status += `<div style="color:#ff9a3a">🔥 ON FIRE (${Math.round(b.fire)}%)</div>`;
+    if (b.burnt) status += `<div style="color:var(--bad)">🏚 Burnt: no output</div><button class="act go" id="bRepair" ${S.mat >= repairCost(b) ? '' : 'disabled'}>Repair (⚙ ${repairCost(b)})</button>`;
+    if (b.unpaid) status += '<div style="color:var(--bad)">Unpaid upkeep: half output</div>';
+    h += `<div class="card row"><div style="width:84px;height:76px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 84, 76)}</div><div class="sp">${out ? `<div>${out}</div>` : ''}${staff ? `<div>${staff}</div>` : ''}${cb.names.length ? `<div class="sm">★ ${cb.names.length} neighbour bonus${cb.names.length > 1 ? 'es' : ''}</div>` : ''}</div></div>${status}`;
+    if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'disabled'}>⚡ Rush · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<div class="sm">${esc(rc.why)}</div>`}`; }
+    h += `<div><button class="act" id="bMove">Move</button><button class="act danger" id="bDem">Demolish (+${Math.floor(d.mat * .5)})</button></div>`;
   } else if (bTab === 'details') {
     const users = S.sv.filter((q) => q.facility === b && ['goFacility', 'useFacility'].includes(q.mode)).map((q) => esc(q.name));
-    h += `Upkeep <b>${upkeepOf(b).toFixed(1)}</b> parts/day${b.unpaid ? ' · <b style="color:#ff8a7a">UNPAID</b>' : ''}<br>Capacity <b>${cap(b)}</b> · in use <b>${facilityUsers(b)}</b>${users.length ? ' (' + users.join(', ') + ')' : ''}<br>Quality <b>${b.q}</b> · Appeal <b>${b.a}</b><br>Footprint <b>${b.w}×${b.h}</b> · south anchor <b>(${b.x + b.w}, ${b.y + b.h})</b><br>`
-      + (cb.names.length ? `<b>Neighbour bonuses</b><br>★ ${cb.names.join('<br>★ ')}` : '<small>No neighbour bonus — try building related buildings next to it (the placement bar shows bonuses before you confirm).</small>');
-  } else if (bTab === 'research') {   /* V2.16 research */
+    h += `<div class="sm">${BDESC[b.type] || ''}</div><div class="kv card"><div><span>Upkeep</span><span>${upkeepOf(b).toFixed(1)}/day</span></div><div><span>Capacity</span><span>${facilityUsers(b)}/${cap(b)}</span></div><div><span>Quality</span><span>${b.q}</span></div><div><span>Appeal</span><span>${b.a}</span></div></div>`
+      + (users.length ? `<div class="sm">Using it now: ${users.join(', ')}</div>` : '')
+      + (cb.names.length ? `<div class="card"><b>Neighbour bonuses</b><br>★ ${cb.names.join('<br>★ ')}</div>` : '<div class="sm">Tip: related buildings next to each other give bonuses.</div>');
+  } else if (bTab === 'research') {
     const rs = Object.entries(RESEARCH).map(([k, rr]) => { const done = researched(k), lock = !researched(rr.need), ok = !done && !lock && (S.rp || 0) >= rr.rp && S.mat >= rr.mat;
-      return done ? '' : `<button class="act" data-res="${k}" ${ok ? '' : 'style="opacity:.45"'}>${rr.name} · ${rr.rp} RP + ${rr.mat} parts<small> · ${rr.desc}${lock ? ' · needs ' + RESEARCH[rr.need].name : ''}</small></button>`; }).join('');
+      return done ? '' : `<div class="card" ${ok ? `data-res="${k}"` : ''} style="${ok ? 'cursor:pointer' : 'opacity:.5'}"><div class="row"><span class="sp">${rr.name}</span><span class="sm">🔬${rr.rp} ⚙${rr.mat}</span></div><div class="sm">${rr.desc}${lock ? ' · needs ' + RESEARCH[rr.need].name : ''}</div></div>`; }).join('');
     const doneL = Object.entries(RESEARCH).filter(([k]) => researched(k)).map(([, rr]) => rr.name);
-    h += `<b>${Math.floor(S.rp || 0)} RP</b> <small>(${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)} RP/day${isWorking(b) ? '' : ' — unstaffed'}; Library study adds 1 RP per session)</small><br>${rs || '<small>Everything is researched.</small>'}${doneL.length ? `<br><small>✔ Done: ${doneL.join(', ')}</small>` : ''}`;
+    h += `<div>🔬 <b>${Math.floor(S.rp || 0)}</b> research <span class="sm">(+${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)}/day)</span></div>${rs || '<div class="sm">Everything is researched.</div>'}${doneL.length ? `<div class="sm">✔ ${doneL.join(', ')}</div>` : ''}`;
   } else if (bTab === 'craft') {
-    const rc = Object.entries(RECIPES).filter(([k]) => researched(k)).flatMap(([, l]) => l).map((id) => `<button class="act" data-craft="${id}" ${S.mat >= craftCost(id) ? '' : 'style="opacity:.45"'}>${ITEMS[id].name} · ${craftCost(id)} parts<small> · ${itemText(ITEMS[id])}</small></button>`).join('');
-    h += `<small>Crafted gear goes to the stash (tap a survivor → Gear to equip it).</small><br>${rc || '<small>Research Bladesmithing, Firearms, Body Armor or Gadgets to unlock recipes.</small>'}`;
+    const rc = Object.entries(RECIPES).filter(([k]) => researched(k)).flatMap(([, l]) => l).map((id) => `<div class="card row" data-craft="${id}" style="${S.mat >= craftCost(id) ? 'cursor:pointer' : 'opacity:.5'}">${itemIcon(id)}<div class="sp">${ITEMS[id].name}<div class="sm">${itemText(ITEMS[id])}</div></div><span>⚙${craftCost(id)}</span></div>`).join('');
+    h += `<div class="sm">Crafted gear goes to the stash.</div>${rc || '<div class="sm">Research Bladesmithing, Firearms, Body Armor or Gadgets to unlock recipes.</div>'}`;
   }
-  $('ib').innerHTML = h; $('infoPanel').style.display = 'block'; $('infoPanel').scrollTop = 0;
+  $('ib').innerHTML = h; showPanel(d.name);
   $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showBuildingInfo(b, x.dataset.tab); });
   $('ib').querySelectorAll('[data-res]').forEach((x) => { x.onclick = () => { if (doResearch(x.dataset.res)) showBuildingInfo(b); }; });
   $('ib').querySelectorAll('[data-craft]').forEach((x) => { x.onclick = () => { if (craft(x.dataset.craft)) showBuildingInfo(b); }; });
@@ -1996,15 +2093,15 @@ function tapAt(px, py) {
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
 $('mBuild').onclick = showBuild; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
-$('closeBuild').onclick = closeP; $('closeInfo').onclick = closeP;
+$('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
 $('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { saveGame(); say('Saved.'); screenToast('💾 SAVED'); }; }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
-document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('quest').onclick = showGoals;
+document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (!e.target.closest('#tripChip')) showGoals(); };
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
-$('ib').addEventListener('click', (e) => { const r = e.target.closest('[data-sv]'); if (!r) return; const s = S.sv.find((q) => q.id === +r.dataset.sv); if (s) { selected = { kind: 'unit', ref: s }; closeP(); centerOn(s.w.x, s.w.y); } });
+
 
 /* ---------------- loop ---------------- */
 function simTick() {
@@ -2030,6 +2127,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

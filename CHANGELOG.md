@@ -1,5 +1,12 @@
 # Changelog
 
+## V2.27.0 — UI redo (DV2-style, readable on a phone)
+- New font: Jersey 15 (bundled, OFL) — clear digits (the old font drew 3 like an S); text roughly 30–40% larger everywhere.
+- Build menu: tabs (Living / Care / Train / Defend), a 3-wide grid of big building sprites with the price; tap one for a detail page (big sprite, size, cost, upkeep, what it does, Build).
+- Survivor panel: portrait card with name, job, HP bar and activity; tabs Status / Gear / Job / Bonds with far less text (stats as a 2-column grid, gear as icon rows).
+- People list, Town (Haven / Defense / People / More with progress bars), building info, Explore, Guide (collapsible sections) all simplified.
+- One wood-frame panel style with a title banner, back button and close button.
+
 ## V2.26.0 — DV2-style building art (all 20)
 - Every building now has hand-generated, true pixel-art sprites in a darker DV2-like style (assets/buildings/v5/): gym, library, lounge, scrapyard, range, track, sparring, barracks and farm field added; house, well and farm anchors re-fitted.
 - Sizes follow the small DV2 scale: 1×1, 2×1 and 2×2 footprints with the sprite anchored to the footprint's south corner.
