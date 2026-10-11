@@ -1,5 +1,15 @@
 # Changelog
 
+## V2.31.0 — New art at the approved scale
+- Locked art standard (docs/ART_STANDARD.md): 96 × 48 tiles, people 42 px tall, buildings fill their footprint (1×1 ≈ 94 px, 2×1 ≈ 142, 2×2 ≈ 190). One art pixel is the same everywhere. The camera shows tiles at 80 px (was 56), so a person is about half a house tall.
+- All people redrawn in the approved style: 12 jobs, male and female (Civilian, Guard, Police, Medic, Scavenger, Engineer, Cook, Farmer, Mechanic, Paramedic, SWAT, Raider) plus the trader. Each has idle, walk, carry, collapse, punch, blunt swing and shoot, front and back.
+- Zombies redrawn: walker, runner, crawler, bloated, spitter, brute (idle, walk, attack, death). New boss "The Colossus" (~75 px): idle, walk, ground-pound slam, roar, death.
+- All 20 buildings redrawn with their own bright colours.
+- Walls (wood, scrap metal, gate) redrawn and cut into joining pieces; cracked and rubble states.
+- Held weapons redrawn larger to match the new characters.
+- Pipeline: tools/art (ChatGPT sheet → true pixel grid → cleaned, palette-reduced sheets).
+- Still to come: map props (trees, rocks, crates, cars) at the new scale; the old ones are shown for now.
+
 ## V2.30.0 — Map art to match
 - Walls redrawn as pixel art (tools/chars/mapart.py): sharpened wooden stakes with a rope band, corrugated metal sheets with rivets and rust, a banded wooden gate; each tile is a post with arms toward its joined neighbours; cracked look below 60% HP; rubble when broken; white flash when hit.
 - New props: 3 pine sizes, 2 dead trees, bushes (some with berries), mossy rocks, crates, oil barrels, a tyre stack, rubble, burnt-out cars.

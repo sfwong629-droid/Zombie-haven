@@ -1,5 +1,5 @@
-/* Zombie Haven V3 characters + items (art from tools/chars/gen.py and tools/chars/items.py).
-   ZHChars: per-survivor recoloured sheets (skin + hair keys), animation table, hand points, portraits.
+/* Zombie Haven characters + items. V7 art: tools/art/build_chars.py (people), build_zombies.py; items: tools/chars/items.py.
+   ZHChars: per-job, per-sex sheets, animation table, per-sheet hand points, portraits.
    ZHItems: item icons (data URLs) and held-weapon overlay cells. */
 (function () {
   'use strict';
@@ -17,33 +17,21 @@
     if (!s.look) { const h = hash(s.name + (s.id || '')); s.look = { sex: FEMALE.has(s.name) ? 'f' : MALE.has(s.name) ? 'm' : (h % 2 ? 'f' : 'm'), skin: h % SKINS.length, hair: (h >> 3) % HAIRS.length }; }
     return s.look;
   }
-  function keyMap(skin, hair) {
-    const k = new Map(), S = SKINS[skin], H = HAIRS[hair];
-    [[[255, 0, 200], 1.08], [[230, 0, 180], 1], [[200, 0, 160], .86], [[170, 0, 140], .72]].forEach(([c, f]) => k.set(c.join(), sh(S, f)));
-    k.set([255, 0, 120].join(), [240, 120, 120]);
-    [[[0, 255, 200], 1.3], [[0, 220, 170], 1], [[0, 185, 140], .78], [[0, 150, 115], .6]].forEach(([c, f]) => k.set(c.join(), sh(H, f)));
-    return k;
-  }
-  function sheetKey(job, sex) { if (M.sheets[job + '|' + sex]) return job + '|' + sex; if (M.sheets[job + '|m']) return job + '|m'; return 'Civilian|' + sex; }
-  function sheet(job, sex, skin, hair) {   /* recoloured once per look, kept */
-    const sk = sheetKey(job, sex), key = sk + '|' + skin + '|' + hair; let c = cache.get(key); if (c) return c;
-    const im = raw[sk]; if (!im) return null;
-    c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
-    const d = g.getImageData(0, 0, c.width, c.height), p = d.data, km = keyMap(skin, hair);
-    for (let i = 0; i < p.length; i += 4) if (p[i + 3]) { const r = km.get(p[i] + ',' + p[i + 1] + ',' + p[i + 2]); if (r) { p[i] = r[0]; p[i + 1] = r[1]; p[i + 2] = r[2]; } }
-    g.putImageData(d, 0, 0); c.complete = true; c.naturalWidth = c.width; cache.set(key, c); return c;
-  }
-  function sheetFor(s, job) { const L = look(s); return sheet(job || s.job, L.sex, L.skin, L.hair); }
-  function portrait(s) {   /* head-and-shoulders crop of the idle frame, 3x */
-    if (!M) return null; const L = look(s), key = s.job + L.sex + L.skin + L.hair; let u = portraits.get(key); if (u) return u;
-    const sc = sheetFor(s); if (!sc) return null; const c = document.createElement('canvas'), Z = 3, x0 = 10, y0 = 7, w = 22, h = 22; c.width = w * Z; c.height = h * Z;
-    const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(sc, x0, y0, w, h, 0, 0, w * Z, h * Z); u = c.toDataURL(); portraits.set(key, u); return u;
+  /* V7 (tools/art/build_chars.py): one hand-drawn sheet per job and sex, no recolouring; 42-px people on 96-px tiles */
+  const JOBTAG = { Civilian: 'civ', Guard: 'guard', 'Police Officer': 'police', Medic: 'medic', Scavenger: 'scav', Engineer: 'eng', Cook: 'cook', Farmer: 'farm', Mechanic: 'mech', Paramedic: 'para', SWAT: 'swat', Raider: 'raider', Trader: 'trader' };
+  function sheetTag(job, sex) { const j = JOBTAG[job] || 'civ'; return [j + '_' + sex, j + '_m', j + '_f', 'civ_' + sex].find((t) => raw[t]) || null; }
+  function sheet(job, sex) { const t = sheetTag(job, sex || 'm'); return t ? raw[t] : null; }
+  function sheetFor(s, job) { const L = look(s); return sheet(job || s.job, L.sex); }
+  function portrait(s) {   /* head-and-shoulders crop of the front idle frame, 3x */
+    if (!M) return null; const L = look(s), t = sheetTag(s.job, L.sex); if (!t) return null; let u = portraits.get(t); if (u) return u;
+    const sc = raw[t], c = document.createElement('canvas'), Z = 3, x0 = 17, y0 = 12, w = 30, h = 30; c.width = w * Z; c.height = h * Z;
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(sc, x0, y0, w, h, 0, 0, w * Z, h * Z); u = c.toDataURL(); portraits.set(t, u); return u;
   }
   const Items = { meta: null, icons: {}, held: null, idx: {} }; let ZM = null; const zim = {};
   async function load() {
-    try { M = await (await fetch('assets/characters/v6/meta.json?v=' + V)).json(); } catch (e) { console.warn('char meta missing', e); return; }
-    await Promise.all(Object.entries(M.sheets).map(async ([k, f]) => { raw[k] = await img('assets/characters/v6/' + f); }));
-    try { ZM = await (await fetch('assets/zombies/v6/meta.json?v=' + V)).json(); await Promise.all(Object.keys(ZM).map(async (k) => { zim[k] = await img('assets/zombies/v6/' + k + '.png'); })); } catch (e) { console.warn('zombie art missing', e); }
+    try { M = await (await fetch('assets/characters/v7/meta.json?v=' + V)).json(); } catch (e) { console.warn('char meta missing', e); return; }
+    await Promise.all(Object.entries(M.sheets).map(async ([k, f]) => { const im = await img('assets/characters/v7/' + f); if (im) { im.zhTag = k; raw[k] = im; } }));
+    try { ZM = await (await fetch('assets/zombies/v7/meta.json?v=' + V)).json(); await Promise.all(Object.keys(ZM).map(async (k) => { zim[k] = await img('assets/zombies/v7/' + k + '.png'); })); } catch (e) { console.warn('zombie art missing', e); }
     try {
       Items.meta = await (await fetch('assets/items/items.json?v=' + V)).json(); const [ic, hd] = await Promise.all([img('assets/items/icons.png'), img('assets/items/held.png')]);
       const n = Items.meta.ic, Z = 2;
@@ -54,7 +42,7 @@
   window.ZHChars = {
     load, look, sheetFor, sheet, portrait, get meta() { return M; }, get ready() { return !!M; },
     frame(anim, i) { const a = M.frames[anim]; return a[0] + (i % a[1]); }, count(anim) { return M.frames[anim][1]; },
-    hand(view, f) { return M.hand[view][f]; }, wpose(f) { return M.wpose[f]; },
+    hand(view, f, tag) { const h = M.hands[tag] || M.hands[Object.keys(M.hands)[0]]; return h[view][f]; }, wpose(f) { return M.wpose[f]; },
     zmeta: (t) => ZM && ZM[t], zsheet: (t) => zim[t] || null,
   };
   window.ZHItems = {

@@ -3,10 +3,10 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.30.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
-const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
+const VERSION = '2.31.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
-const CHAR_H = 29 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
@@ -22,14 +22,12 @@ const ZOMBIE_FILES = ['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brut
 // v4 pixel zombies (docs/ART_STANDARD.md): front sheet 0 idle, 1-4 walk, 5 attack (faces down-left); back sheet 0 idle, 1-4 walk (faces up-left).
 // fw/fh = frame box, foot = feet row, h = body height in art px. Types without v4 art fall back to the old sheets.
 const ZOMB4 = {};   // filled from Z4_DEFS when the PNGs load
-const B4_DEFS = {   // V2.25: 2:1 pixel-art buildings (assets/buildings/v5/<type>.png): ax, ay = south ground corner in art px; 42 art px = 1 tile width. Empty until the new art is made; ZHProc draws the rest.
-  house: { ax: 20, ay: 46 }, water: { ax: 16, ay: 50 }, well: { ax: 20, ay: 55 }, farm: { ax: 20, ay: 41 },
-  medic: { ax: 20, ay: 36 }, storage: { ax: 20, ay: 32 }, gym: { ax: 20, ay: 33 }, library: { ax: 20, ay: 36 }, lounge: { ax: 20, ay: 34 },
-  clinic: { ax: 41, ay: 49 }, canteen: { ax: 41, ay: 49 }, armory: { ax: 41, ay: 46 }, workshop: { ax: 41, ay: 51 }, scrapyard: { ax: 41, ay: 49 },
-  range: { ax: 41, ay: 41 }, track: { ax: 41, ay: 42 }, sparring: { ax: 41, ay: 43 },
-  hospital: { ax: 41, ay: 66 }, barracks: { ax: 41, ay: 78 }, field: { ax: 41, ay: 55 },
+const B4_DEFS = {   // V2.31: V7 pixel-art buildings (assets/buildings/v7/<type>.png, tools/art/build_buildings.py): ax, ay = south ground corner in art px; 96 art px = 1 tile width
+  house: { ax: 48, ay: 85 }, water: { ax: 47, ay: 101 }, well: { ax: 48, ay: 101 }, farm: { ax: 47, ay: 69 }, medic: { ax: 47, ay: 89 }, storage: { ax: 47, ay: 71 }, gym: { ax: 48, ay: 87 }, library: { ax: 47, ay: 91 }, lounge: { ax: 47, ay: 87 },
+  workshop: { ax: 95, ay: 109 }, canteen: { ax: 95, ay: 102 }, armory: { ax: 95, ay: 102 }, clinic: { ax: 95, ay: 99 }, scrapyard: { ax: 95, ay: 97 }, range: { ax: 95, ay: 93 }, track: { ax: 95, ay: 94 }, sparring: { ax: 95, ay: 96 },
+  hospital: { ax: 95, ay: 140 }, field: { ax: 95, ay: 121 }, barracks: { ax: 95, ay: 124 },
 };
-const ART_TILE = 42; let MAPM = null;   /* V2.30 map art (tools/chars/mapart.py) */
+const ART_TILE = 96; let MAPM = null;   /* V2.30 map art (tools/chars/mapart.py) */
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
   walker: { fw: 35, fh: 35, foot: 33, h: 32 }, crawler: { fw: 32, fh: 25, foot: 23, h: 22 }, runner: { fw: 40, fh: 34, foot: 32, h: 31 },
   spitter: { fw: 42, fh: 33, foot: 31, h: 30 }, bloated: { fw: 38, fh: 43, foot: 41, h: 40 }, brute: { fw: 42, fh: 55, foot: 53, h: 42 },
@@ -77,8 +75,8 @@ async function loadAll() {
       jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
     }
   }
-  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v5/${t}.png`)));
-  jobs.push(loadImg('mapWalls', 'assets/map/walls.png'), loadImg('mapProps', 'assets/map/props.png'), (async () => { try { MAPM = await (await fetch('assets/map/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
+  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v7/${t}.png`)));
+  jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
   await Promise.all(jobs);
 }
 
@@ -112,7 +110,7 @@ window.addEventListener('resize', () => { resize(); });
 /* ---------------- ground layer: true pixel art, one art pixel = one character pixel (docs/ART_STANDARD.md) ----------------
    Tile = APX x APY art px (42 x 28, the 2:3 projection). Grass and roads are generated pixel by pixel into one native-size
    canvas, rebuilt whenever the world changes, then drawn with the same sharp-bilinear scaling as the sprites. */
-const APX = 42, APY = 21, GOXA = ROWS * APX / 2;   // tile size in art px; x of tile (0,0)'s north corner
+const APX = 96, APY = 48, GOXA = ROWS * APX / 2;   // tile size in art px; x of tile (0,0)'s north corner
 let groundCv = null, groundKey = '';
 const hash2 = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, s = (t) => t * t * (3 - 2 * t);
@@ -158,8 +156,8 @@ function buildGround() {
 function drawGround() {
   const key = [...world.roads].join('|') + '#' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + ',' + Wd.BUILD.y0;   // ground depends on roads and the territory
   if (!groundCv || key !== groundKey) { groundKey = key; buildGround(); }
-  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m = Math.min(3, Math.max(1, Math.ceil(want - 0.02))), big = pixelUp('ground', groundCv, m);   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
-  ctx.imageSmoothingEnabled = Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m0 = Math.min(3, Math.max(1, Math.ceil(want - 0.02))), m = groundCv.width * groundCv.height * m0 * m0 > 8e6 ? 1 : m0, big = m > 1 ? pixelUp('ground', groundCv, m) : groundCv;   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
+  ctx.imageSmoothingEnabled = m > 1 && Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(big, o.x - GOXA * s, o.y, groundCv.width * s, groundCv.height * s); ctx.imageSmoothingEnabled = true;
 }
 function tilePath(x, y, grow = 0) { const n = project(x, y), e = project(x + 1, y), s = project(x + 1, y + 1), w = project(x, y + 1); ctx.beginPath(); ctx.moveTo(n.x, n.y - grow); ctx.lineTo(e.x + grow, e.y); ctx.lineTo(s.x, s.y + grow); ctx.lineTo(w.x - grow, w.y); ctx.closePath(); }
@@ -180,7 +178,7 @@ function drawRoadTile(x, y) {
 }
 
 /* ---------------- sprites ---------------- */
-function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v5/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
+function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v7/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
 function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; if (d && okImg(im)) return { d, im }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
 function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - p4.d.ax * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }
   const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - sp.ax * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
@@ -271,7 +269,7 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   const tw = TWs(), sc = tw / ART_TILE, flip = fc.right;
   const pose = ZHChars.wpose(f), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
   const drawW = () => {
-    if (!wcell) return; const h = ZHChars.hand(view, f), hxp = flip ? CM.fw - 1 - h[0] : h[0];
+    if (!wcell) return; const h = ZHChars.hand(view, f, sheetCv.zhTag), hxp = flip ? CM.fw - 1 - h[0] : h[0];
     const big = pixelUp('held', ZHItems.held, Math.max(1, Math.ceil(sc * DPR - .02))), m = big.width / ZHItems.held.width, snap = (v) => Math.round(v * DPR) / DPR;
     const x0 = p.x - CM.fw * sc / 2 + (hxp + .5) * sc, y0 = p.y - (CM.foot + 1) * sc + (h[1] + .5) * sc, half = (wcell.s / 2 + .5) * sc;
     ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.save();
@@ -282,7 +280,7 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   if (view === 1) drawW();
   ctx.save(); ctx.translate(0, 0);
   const fr = view * 1;   // row
-  { const want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), key = 'ch' + (o.look ? o.job + o.look.sex + o.look.skin + o.look.hair : o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
+  { const want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), key = 'ch' + (sheetCv.zhTag || o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
     const w = CM.fw * sc, h = CM.fh * sc, y = snap(p.y - (CM.foot + 1) * sc);
     ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .24 * tw, .085 * tw, 0, 0, 7); ctx.fill();
     ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high';
@@ -330,7 +328,7 @@ function zFrame(zm, zmeta) {
 }
 function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
   const t = zm.type === 'raider' ? null : zm.type, zmeta = t && window.ZHChars && ZHChars.zmeta(t), sh = zmeta && ZHChars.zsheet(t); if (!sh) return null;
-  const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp('z6' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
+  const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp('z7' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
   const w = zmeta.fw * sc, h = zmeta.fh * sc, y = snap(p.y - (zmeta.foot + 1) * sc);
   if (zm.dead != null) ctx.globalAlpha = Math.max(0, Math.min(1, (120 - zm.dead) / 40));
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(.24, zmeta.fw / 160) * tw, .085 * tw * Math.max(1, zmeta.fw / 50), 0, 0, 7); ctx.fill();
@@ -345,7 +343,7 @@ function drawZombie(zm) {
   if (zm.type === 'raider') {   /* raiders: the survivor rig in raider gear, with their weapon */
     if (!zm.look) zm.look = { sex: rnd() < .3 ? 'f' : 'm', skin: Math.floor(rnd() * 4), hair: Math.floor(rnd() * 8) };
     if (!zm.wpn) zm.wpn = ['bat', 'knife', 'crowbar', 'pistol', 'machete'][Math.floor(rnd() * 5)];
-    const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Raider', zm.look.sex, zm.look.skin, zm.look.hair);
+    const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Raider', zm.look.sex);
     if (sc) drawChar(Object.assign(zm, { eq: { weapon: zm.wpn } }), sc, p, zm.wpn);
     const top = p.y - CHAR_H * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
     if (zm.carried) stampText('⚙' + zm.carried, p.x, top - 4, `${Math.round(Math.max(14, 14 * cam.z))}px 'Jersey 15', monospace`, '#ffe06b');
@@ -410,7 +408,7 @@ function drawWall(wl) {   /* V2.30: pixel-art wall pieces (post + arms toward jo
   const O = project(wl.x, wl.y), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp(hit ? 'wallsH' : 'walls', src, m), snap = (v) => Math.round(v * DPR) / DPR;
   const cx = (i % W.cols) * W.w, cy = Math.floor(i / W.cols) * W.h;
   ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, cx * m, cy * m, W.w * m, W.h * m, snap(O.x - W.ax * sc), snap(O.y - W.ay * sc), W.w * sc, W.h * sc); ctx.imageSmoothingEnabled = true;
-  if (f < 1 && !wl.broken) { const q = project(wl.x + .5, wl.y + .5), py = q.y - (wl.type === 'metal' ? 26 : 22) * sc; ctx.fillStyle = '#1a1715'; ctx.fillRect(q.x - 10 * cam.z, py - 2 * cam.z, 20 * cam.z, 4 * cam.z); ctx.fillStyle = f > .5 ? '#67c75a' : f > .25 ? '#e0b43c' : '#d84d48'; ctx.fillRect(q.x - 9 * cam.z, py - cam.z, 18 * cam.z * Math.max(0, f), 2 * cam.z); }
+  if (f < 1 && !wl.broken) { const q = project(wl.x + .5, wl.y + .5), py = q.y - ((W.hgt && W.hgt[wl.type === 'metal' ? 'metal' : 'wood']) || 28) * sc - 6 * sc; ctx.fillStyle = '#1a1715'; ctx.fillRect(q.x - 10 * cam.z, py - 2 * cam.z, 20 * cam.z, 4 * cam.z); ctx.fillStyle = f > .5 ? '#67c75a' : f > .25 ? '#e0b43c' : '#d84d48'; ctx.fillRect(q.x - 9 * cam.z, py - cam.z, 18 * cam.z * Math.max(0, f), 2 * cam.z); }
 }
 function drawStaffBadge(b) {            // small status dot: green = staffed (boosted when the worker is on site), amber = open slot
   const d = DEFS[b.type]; if (!d || !d.slot) return; const r = spriteRect(b); if (!r) return;
@@ -1304,7 +1302,7 @@ function showTrader() {
 }
 function drawTrader() {
   const T = S.trader, p = project(T.w.x, T.w.y); if (!T.look) T.look = { sex: 'm', skin: 1, hair: 5 }; T.job = 'Trader';
-  const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Trader', 'm', T.look.skin, T.look.hair); if (sc) drawChar(T, sc, p, null);
+  const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Trader', 'm'); if (sc) drawChar(T, sc, p, null);
   const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); stampText('TRADER', p.x, p.y + .36 * TWs(), `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', monospace`, '#9fffe0');
 }
 function hitTrader(px, py) { const T = S.trader; if (!T) return false; const p = project(T.w.x, T.w.y), d = Math.hypot(px - p.x, py - (p.y - CHAR_H * TWs() * .5)); return d < Math.max(24, .45 * TWs()); }

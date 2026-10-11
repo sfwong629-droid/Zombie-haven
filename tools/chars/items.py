@@ -14,7 +14,9 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.path.join(ROOT, 'assets', 'items')
-IC, HC = 18, 32
+IC, HC = 18, 44
+HK = 1.45   # held weapons are drawn 1.45x the V6 size to match the 42-px V7 characters (one art pixel = one map pixel)
+WK = 1      # width multiplier while drawing held weapons
 POSES = ['rest', 'up', 'fwd', 'down', 'aim', 'fire']
 ANG = {'rest': 225, 'up': 90, 'fwd': 180, 'down': 225, 'aim': 180, 'fire': 180}
 
@@ -29,7 +31,7 @@ def put_map(cv, rows, x0, y0, flip=False):
 def vec(a): r = math.radians(a); return (round(math.cos(r), 6), -round(math.sin(r), 6))
 
 def seg(cv, gx, gy, a, t0, t1, col, w=1, off=0):
-    dx, dy = vec(a); px, py = -dy, dx
+    dx, dy = vec(a); px, py = -dy, dx; w = max(1, round(w * WK)); off = round(off * WK)
     diag = abs(dx) > .1 and abs(dy) > .1; st = 1 / (1.4142 if diag else 1)
     t = t0
     while t <= t1 + 1e-6:
@@ -44,7 +46,7 @@ def melee(cv, kind, gx, gy, a, L):
     dx, dy = vec(a); px, py = -dy, dx
     P = lambda t, o=0: (round(gx + dx * t + px * o), round(gy + dy * t + py * o))
     def put(t, o, c):
-        x, y = P(t, o); cv.set(x, y, c, 'w')
+        x, y = P(t, round(o * WK)); cv.set(x, y, c, 'w')
     if kind == 'pipe':
         seg(cv, gx, gy, a, -1, L, C['g'], 2); seg(cv, gx, gy, a, -1, L, C['l'], 1)
     elif kind in ('bat', 'nailbat'):
@@ -104,12 +106,25 @@ def grip_of(rows):
         if x >= 0: return x, y
     return 0, len(rows) // 2
 
+def scale_map(rows, k):
+    w = max(len(r) for r in rows); rows = [r.ljust(w, '.') for r in rows]
+    W, H = math.ceil(w * k), math.ceil(len(rows) * k)
+    out = [''.join(rows[int(y / k)][int(x / k)] for x in range(W)) for y in range(H)]
+    seen = False; res = []   # keep a single grip marker
+    for r in out:
+        if '+' in r:
+            if seen: r = r.replace('+', '.')
+            else: i = r.index('+'); r = r[:i + 1] + r[i + 1:].replace('+', '.'); seen = True
+        res.append(r)
+    return res
+
 def held_cell(wid, pose):
+    global WK
     cv = Cv(HC, HC); g = HC // 2
     if wid in MELEE:
-        kind, L, _ = MELEE[wid]; melee(cv, kind, g, g, ANG[pose], L)
+        kind, L, _ = MELEE[wid]; WK = 1.5; melee(cv, kind, g, g, ANG[pose], round(L * HK)); WK = 1
     else:
-        rows = GUNS[wid]['held']; gx, gy = grip_of(rows); w = max(len(r) for r in rows)
+        rows = scale_map(GUNS[wid]['held'], HK); gx, gy = grip_of(rows); w = max(len(r) for r in rows)
         if pose in ('rest', 'up', 'down', 'fwd') and wid not in ('bow',):
             # carried pointing down along the leg: rotate the map 90 degrees clockwise (lossless), grip stays on the hand
             rr = [''.join(rows[len(rows) - 1 - y][x] if x < len(rows[len(rows) - 1 - y]) else '.' for y in range(len(rows))) for x in range(w)]
