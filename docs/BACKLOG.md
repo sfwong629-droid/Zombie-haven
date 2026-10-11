@@ -44,3 +44,15 @@ Tick an item only after it has been implemented AND checked in the game.
 - [ ] Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale (waiting on the ChatGPT image limit).
 - [ ] Medic outfits drifted from the white coat (medic_m, medic_f): regenerate.
 - [ ] Brute attack frames were rescaled and look slightly chunky: regenerate.
+
+### Economy, rank and events (11 Oct 2026, later)
+- [ ] Stop the pop-up / log message for every normal zombie killed (keep messages for bosses, raids and notable events).
+- [ ] Raise the parts drop rate from zombies: there are not enough parts right now. Re-check with the balance sim.
+- [ ] Town star-up / "Upgrade Town" screen like Dungeon Village 2 (see docs/ref/dv2_upgrade_town.png):
+      town name on a ribbon with its stars, then a "Rating Conditions" list for the next star; each row = icon,
+      condition name, required value, current value, and a check / cross. Rows for us: Renown (like DV2's Popularity),
+      daily supply flow in place of "Income" (water and ration production vs. the town's consumption),
+      Events held, and a "Build X" requirement (e.g. Build a Clinic) shown as Pending / Done.
+- [ ] Town events like DV2's "Events Held": events the player can hold (cost supplies/parts, take time)
+      that give Renown, mood and other bonuses, and count toward the star conditions.
+
