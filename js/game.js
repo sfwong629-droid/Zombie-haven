@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.28.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.29.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 29 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -858,7 +858,7 @@ function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s
 
 /* ---------------- zombies ---------------- */
 function weightedZombie() {
-  const pool = Object.entries(zombieTypes).filter(([k]) => k === 'walker' || k === 'crawler' || (k === 'runner' && S.rank >= 2) || ((k === 'bloated' || k === 'spitter') && S.rank >= 3) || (k === 'brute' && S.rank >= 4));
+  const pool = Object.entries(zombieTypes).filter(([k]) => k === 'walker' || k === 'crawler' || (k === 'runner' && S.day >= 2) || ((k === 'bloated' || k === 'spitter') && (S.rank >= 2 || S.day >= 5)) || (k === 'brute' && (S.rank >= 3 || S.day >= 8)));
   let tot = pool.reduce((a, [, v]) => a + v.weight, 0), r = rnd() * tot; for (const [k, v] of pool) { r -= v.weight; if (r <= 0) return k; } return 'walker';
 }
 function spawnPoint() {   /* a walkable tile on the map edge outside the territory; more sides open up as the territory grows */
@@ -871,17 +871,24 @@ function spawnPoint() {   /* a walkable tile on the map edge outside the territo
   }
   return [1, 2];
 }
+/* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
+let dangerT = -1, dangerV = 1;
+function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
+  if (tick - dangerT < 300 && dangerT >= 0) return dangerV; dangerT = tick;
+  let st = 0; for (const q of S.sv) if (q.hp > 0 && q.mode !== 'away') st += isFighter(q) ? 8 * (q.l || 1) + weaponOf(q).atk : 1.2 * (q.l || 1);
+  return (dangerV = Math.max(.8, Math.min(2.4, .7 + .004 * st + .02 * S.day)));
+}
 function spawn(x = null, y = null, type = null) {
-  const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind];
-  S.z.push({ type: kind, w: tc(x ?? a[0], y ?? a[1]), hp: d.hp, max: d.hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null, siege: rnd() < Math.min(.85, .08 + .12 * (S.rank - 1) + (world.walls.size ? .15 : 0) + (isNight() ? .25 : 0) + .05 * (S.terr || 0)), blocked: 0, goal: null, goalT: 0, wallT: null });
+  const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind], dm = danger(), hp = Math.round(d.hp * dm);
+  S.z.push({ type: kind, pw: 1 + (dm - 1) * .6, w: tc(x ?? a[0], y ?? a[1]), hp, max: hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null, siege: rnd() < Math.min(.85, .08 + .12 * (S.rank - 1) + (world.walls.size ? .15 : 0) + (isNight() ? .25 : 0) + .05 * (S.terr || 0)), blocked: 0, goal: null, goalT: 0, wallT: null });
 }
 const nowD = () => S.day + S.hour / 24;
 const graceOn = () => (S.graceUntil || 0) > nowD();   /* V2.24 mourning: the horde pulls back after heavy losses */
 const avgLevel = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.l || 1), 0) / S.sv.length : 1);
 const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, quieter days */
 function monsterGeneration() {
-  S.spawnClock++; const tr = S.terr || 0, base = 4 + S.rank + Math.floor(S.threat / 2) + 2 * tr, night = isNight();
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 12 + 3 * tr) : Math.max(2, Math.min(Math.round(base * .6), 8 + 2 * tr))) * (graceOn() ? .55 : 1)), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
+  S.spawnClock++; const tr = S.terr || 0, base = 5 + S.rank + Math.floor(S.threat / 2) + 2 * tr + Math.floor(S.day / 3), night = isNight();
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr))) * (graceOn() ? .75 : 1)), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
   if (activeZ() < desired && S.spawnClock > gap) { spawn(); S.spawnClock = 0; }
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -891,8 +898,8 @@ function monsterGeneration() {
 /* ---------------- V2.13 raiders: humans who dodge zombies, slip in through the gate, steal, fight, and run ---------------- */
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
 function spawnRaid() {
-  const n = Math.min(5, 2 + Math.floor(S.rank / 2) + (S.terr || 0) >> 0), a = spawnPoint();
-  for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), hp: d.hp, max: d.hp, cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); }
+  const n = Math.min(7, 3 + Math.floor(S.rank / 2) + (S.terr || 0) + Math.floor(S.day / 6)), a = spawnPoint();
+  for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); }
   screenToast('⚠ RAIDERS SPOTTED'); SFX('alarm'); say(`${n} raiders are sneaking toward the Haven. They'll steal supplies and fight anyone in the way.`); S.alert = 1200;
 }
 function raidTarget(z) { let best = null, bd = 1e9; for (const b of world.buildings) { if (!RAID_TARGETS.includes(b.type)) continue; const d = dist(z.w, Wd.doorPoint(b)); if (d < bd) { bd = d; best = b; } } return best; }
@@ -929,15 +936,15 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
 function spawnBoss() {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0;
-  const L = avgLevel(), bhp = Math.round(220 + 35 * L + 60 * tr);   /* V2.24: scales with the survivors' levels, not the Haven rank */
-  S.z.push({ type: 'boss', boss: true, w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
+  const L = avgLevel(), bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * S.day));   /* V2.24: scales with the survivors' levels, not the Haven rank */
+  S.z.push({ type: 'boss', boss: true, pw: 1.25 + .03 * S.day, w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   S.z[S.z.length - 1].max = S.z[S.z.length - 1].hp;
-  const mob = 2 + Math.round(L * .7) + 2 * tr; for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
+  const mob = 3 + Math.round(L * .8) + 3 * tr + Math.floor(S.day / 5); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
   screenToast('☠ A BOSS ATTACKS WITH ITS HORDE'); SFX('boss'); say(`A Mutant Boss is leading ${mob} zombies against the Haven!`); S.alert = 2400;
 }
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24;
-  if (S.day >= 3 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; } }
+  if (S.day >= 2 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; say('The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.'); }
   if (S.day === S.nextBoss && S.hour === 18) { screenToast('☠ SOMETHING BIG IS COMING TONIGHT'); say('Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.'); }
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
@@ -964,7 +971,7 @@ function zai(z) {
   if (z.mode === 'zbreak') {
     const wl = z.wallT; z.moving = false;
     if (!wl || wl.broken || world.walls.get(wl.x + ',' + wl.y) !== wl) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
-    if (z.stateTicks <= 0) { const dmg = d.atk * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
+    if (z.stateTicks <= 0) { const dmg = d.atk * (z.pw || 1) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
       if (wl.hp <= 0) wallBroken(wl); }
     let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
@@ -980,7 +987,7 @@ function zai(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > .8) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = 26; } return;
   }
-  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, Math.round((d.atk + (z.type === 'brute' ? 2 : 0)) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; SFX('hurt'); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, Math.round((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; SFX('hurt'); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
