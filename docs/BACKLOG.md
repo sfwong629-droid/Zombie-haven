@@ -24,6 +24,9 @@ Tick an item only after it has been implemented AND checked in the game.
 - [ ] Zombies must not stand or walk on building footprints (tiles a building occupies): they currently overlap
       buildings and look like part of them. Keep them on free tiles (path around buildings; when attacking a
       building, stand at its edge), and draw them in the right depth order in front of/behind it.
+- [ ] Walls: zombies path AROUND walls and head for an opening (gate left open, gap, broken section) if one exists.
+      Only when the town is fully closed do they attack the wall. As soon as any wall piece breaks, EVERY zombie
+      (including ones busy hitting other wall pieces) switches target and rushes in through that breach.
 
 ### World look
 - [ ] Day / night lighting change (morning, day, evening, night tint).
