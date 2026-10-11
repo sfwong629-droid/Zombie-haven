@@ -13,8 +13,11 @@ Tick an item only after it has been implemented AND checked in the game.
       moment damage lands. No looping attack animation while there is a gap between hits (idle/ready pose in between).
 - [ ] Rescue: a survivor carrying a knocked-down person must show them carrying the PERSON
       (body over the shoulder / in arms), not the carry-crate animation used for supplies.
+      Decision: carrier pose sheet (empty shoulder) + the game draws the real injured person on the shoulder.
+      Sample: tools/art/sheets/s_carrier.txt (civilian man) — awaiting approval before the other 24.
 - [ ] Eye pixels must be consistent across all characters (same eye size and shape everywhere;
-      some currently have bigger eyes than others).
+      some currently have bigger eyes than others). Decision: fix each character when it is redrawn for another
+      reason; every new prompt asks for eyes "exactly 1 big pixel wide and 2 tall, near-black" (works, see medics).
 
 ### Combat
 - [ ] Ranged weapons (guns, bows) need real range: attack from a distance instead of walking up to melee range.
@@ -30,11 +33,11 @@ Tick an item only after it has been implemented AND checked in the game.
 
 ### World look
 - [ ] Day / night lighting change (morning, day, evening, night tint).
-- [ ] Show wreckage (debris, wrecked cars, rubble, broken fences) in areas that are not unlocked yet.
+- [x] Show wreckage (debris, wrecked cars, rubble, broken fences) in areas that are not unlocked yet. (V2.32)
 
 ### Menus / UI
 - [ ] Trader menu: show the item icon next to each item.
-- [ ] Build menu: small icon on each category tab, like Dungeon Village 2
+- [x] (V2.32) Build menu: small icon on each category tab, like Dungeon Village 2
       (see docs/ref/dv2_build_menu_tabs.png — fence icon for Equipment, shop icon for Stores, food icon for Food/Drink).
 - [ ] Brighten up the menus overall.
 - [ ] Demolish gets its own button (separate from the build menu / building panel).
@@ -42,7 +45,7 @@ Tick an item only after it has been implemented AND checked in the game.
 
 ### Already known from V2.31.0
 - [ ] Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale (waiting on the ChatGPT image limit).
-- [ ] Medic outfits drifted from the white coat (medic_m, medic_f): regenerate.
+- [x] Medic outfits drifted from the white coat (medic_m, medic_f): regenerated in V2.32.
 - [ ] Brute attack frames were rescaled and look slightly chunky: regenerate.
 
 ### Economy, rank and events (11 Oct 2026, later)

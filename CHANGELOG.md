@@ -1,5 +1,11 @@
 # Changelog
 
+## V2.32.0 — Approved samples: wreckage, medics, menu icons
+- Wreckage (overturned car, burnt pickup, collapsed shack, broken fence, fallen power pole, concrete and rebar, burnt mattress, oil drums, road barricade, smouldering rubble) scattered over land that isn't unlocked yet; it clears as the territory grows.
+- Both medics redrawn with white lab coats, stethoscopes and the standard eye (all animations).
+- Build menu tabs get DV2-style icons (Living, Care, Train, Defend); building pictures in the menu now shrink to fit the cards.
+- tools/art: build_props.py (prop and wreckage strips), build_ui_icons.py (menu icons).
+
 ## V2.31.0 — New art at the approved scale
 - Locked art standard (docs/ART_STANDARD.md): 96 × 48 tiles, people 42 px tall, buildings fill their footprint (1×1 ≈ 94 px, 2×1 ≈ 142, 2×2 ≈ 190). One art pixel is the same everywhere. The camera shows tiles at 80 px (was 56), so a person is about half a house tall.
 - All people redrawn in the approved style: 12 jobs, male and female (Civilian, Guard, Police, Medic, Scavenger, Engineer, Cook, Farmer, Mechanic, Paramedic, SWAT, Raider) plus the trader. Each has idle, walk, carry, collapse, punch, blunt swing and shoot, front and back.

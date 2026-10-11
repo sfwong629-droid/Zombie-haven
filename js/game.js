@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.31.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.32.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -76,7 +76,7 @@ async function loadAll() {
     }
   }
   Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v7/${t}.png`)));
-  jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
+  jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), loadImg('mapWreck', 'assets/map/v7/wreck.png'), loadImg('uiIcons', 'assets/ui/icons.png'), (async () => { try { UIM = await (await fetch('assets/ui/icons.json?v=' + VERSION)).json(); } catch (e) { UIM = null; } })(), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
   await Promise.all(jobs);
 }
 
@@ -361,6 +361,27 @@ function drawZombie(zm) {
 const TREE_SPOTS = [[0, 2], [2, 2], [4, 3], [7, 2], [10, 3], [13, 2], [15, 4], [0, 7], [1, 11], [0, 15], [1, 18], [4, 19], [7, 19], [10, 19], [13, 18], [15, 16], [15, 11], [14, 7], [1, 4], [13, 4], [1, 17], [14, 18]];
 const CRATE_SPOTS = [[1, 6], [14, 13], [2, 19], [13, 5], [0, 12]];
 const CAR_SPOTS = [[0, 4], [10, 0]];
+/* V2.32: wreckage scattered over the land that isn't unlocked yet (assets/map/v7/wreck.png); it clears as the territory grows */
+let wreckKey = '', wreckList = [];
+function wreckSpots() {
+  const k = Wd.BUILD.x0 + ',' + Wd.BUILD.y0 + ',' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + '#' + world.roads.size; if (k === wreckKey) return wreckList;
+  const taken = new Set([...TREE_SPOTS, ...CRATE_SPOTS, ...CAR_SPOTS, ...DEBRIS_SPOTS].map(([x, y]) => x + ',' + y)); wreckKey = k; wreckList = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (Wd.inTown(x, y) || Wd.isRoad(world, x, y) || taken.has(x + ',' + y)) continue;
+    if (Wd.inTown(x - 1, y) || Wd.inTown(x + 1, y) || Wd.inTown(x, y - 1) || Wd.inTown(x, y + 1)) continue;   // keep a clear strip along the border
+    if (hash2(x * 7 + 1, y * 13 + 5) < .11) wreckList.push([x, y]);
+  }
+  return wreckList;
+}
+function drawWreck(tx, ty) {
+  const P = MAPM && MAPM.wreck, im = IMG.mapWreck; if (!P || !okImg(im)) return;
+  const pr = P[Math.floor(hash2(tx * 3 + 2, ty * 5 + 7) * P.length) % P.length], flip = hash2(ty, tx) > .5;
+  const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('mapWreck', im, m), snap = (v) => Math.round(v * DPR) / DPR;
+  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.save();
+  if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, pr.x * m, pr.y * m, pr.w * m, pr.h * m, -pr.ax * sc, snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); }
+  else ctx.drawImage(big, pr.x * m, pr.y * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc);
+  ctx.restore(); ctx.imageSmoothingEnabled = true;
+}
 const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17], [5, 18], [11, 18], [15, 6], [15, 18]];
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH);
@@ -384,6 +405,7 @@ function draw() {
   CRATE_SPOTS.forEach(([x, y]) => !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('crate', x, y) }));
   DEBRIS_SPOTS.forEach(([x, y]) => !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('debris', x, y) }));
   CAR_SPOTS.forEach(([x, y]) => !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawProp('car', x, y) }));
+  wreckSpots().forEach(([x, y]) => !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawWreck(x, y) }));
   for (const wl of world.walls.values()) items.push({ x1: wl.x, y1: wl.y, x2: wl.x + 1, y2: wl.y + 1, fn: () => drawWall(wl) });
   world.buildings.forEach((b) => items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { drawBuilding(b); if (b.fire || b.burnt) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
   if (preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
@@ -1889,7 +1911,7 @@ const BCAT = [['live', 'Living', ['house', 'water', 'well', 'farm', 'field', 'ca
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
   const im = IMG['b4:' + k]; let w = im && im.naturalWidth, h = im && im.naturalHeight; if (!w) { try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); w = pa.im.width; h = pa.im.height; } catch (e) { w = 42; h = 42; } }
-  const sc = Math.max(1, Math.floor(Math.min(bw / w, bh / h) * 4) / 4); return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
+  const f = Math.min(bw / w, bh / h), sc = f >= 1 ? Math.floor(f * 4) / 4 : f;   /* V2.32: V7 buildings are bigger than the card, so shrink to fit */ return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
 }
 function buildLock(k) { const d = DEFS[k]; if (S.rank < d.rank) return `Rank ${d.rank}`; if (!researched(d.res)) return 'Research: ' + (RESEARCH[d.res] ? RESEARCH[d.res].name : d.res); return ''; }
 function wallIcon(t) { return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
@@ -1901,7 +1923,7 @@ function showBuild() {
     const d = DEFS[k]; if (!d || d.hidden) return ''; const lk = buildLock(k);
     return `<button class="bcard${lk ? ' lock' : ''}" data-b="${k}"><div class="im">${bImg(k, 104, 78)}</div><div class="nm">${d.name}</div><div class="co">${lk ? '🔒 ' + lk.replace('Research: ', '') : '⚙ ' + d.mat}</div></button>`;
   }).join('');
-  $('ib').innerHTML = tabBar(BCAT.map((c) => [c[0], c[1]]), bCat) + `<div class="bgrid">${cards}</div>`;
+  $('ib').innerHTML = tabBar(BCAT.map((c) => [c[0], c[1], { live: 'living', care: 'care', train: 'train', defend: 'defend' }[c[0]]]), bCat) + `<div class="bgrid">${cards}</div>`;
   showPanel('Build');
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { bCat = b.dataset.tab; showBuild(); }; });
   $('ib').querySelectorAll('[data-b]').forEach((b) => { b.onclick = () => buildDetail(b.dataset.b); });
@@ -2061,7 +2083,13 @@ function showGuide() {
   showPanel('Guide'); $('gGoals').onclick = showGoals; $('gLog2').onclick = showLog;
 }
 /* V2.20 tabbed panels */
-function tabBar(list, cur) { return `<div class="tabs">${list.map(([k, l]) => `<button data-tab="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`; }
+let UIM = null; const uiIconCache = {};
+function uiIcon(name) {   /* V2.32: DV2-style menu icons (assets/ui/icons.png), 2x crisp */
+  if (uiIconCache[name] !== undefined) return uiIconCache[name]; const im = IMG.uiIcons, i = UIM ? UIM.icons.indexOf(name) : -1; if (i < 0 || !okImg(im)) return '';
+  const n = UIM.n, Z = 2, c = document.createElement('canvas'); c.width = c.height = n * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * n, 0, n, n, 0, 0, n * Z, n * Z);
+  return (uiIconCache[name] = `<img class="pix ti" src="${c.toDataURL()}" alt="">`);
+}
+function tabBar(list, cur) { return `<div class="tabs">${list.map(([k, l, ic]) => `<button data-tab="${k}" class="${k === cur ? 'on' : ''}">${ic ? uiIcon(ic) : ''}${l}</button>`).join('')}</div>`; }
 let bTab = 'overview', bTabRef = null;
 function showBuildingInfo(b, tab) {
   const d = DEFS[b.type], r = facilityRules[b.type]; selected = { kind: 'building', ref: b }; closeP();
