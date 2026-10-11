@@ -1,5 +1,11 @@
 # Changelog
 
+## V2.30.0 — Map art to match
+- Walls redrawn as pixel art (tools/chars/mapart.py): sharpened wooden stakes with a rope band, corrugated metal sheets with rivets and rust, a banded wooden gate; each tile is a post with arms toward its joined neighbours; cracked look below 60% HP; rubble when broken; white flash when hit.
+- New props: 3 pine sizes, 2 dead trees, bushes (some with berries), mossy rocks, crates, oil barrels, a tyre stack, rubble, burnt-out cars.
+- Ground: worn dirt patches with pebbles (more outside the walls), slightly brighter grass in town, flowers in two colours.
+- Messages moved above the Renown wheel so they no longer overlap it.
+
 ## V2.29.0 — Distinct buildings, harder game
 - Buildings: every type has its own colour identity (red house roof, blue water tank, teal well, white tent, yellow canteen awning, purple library, pink lounge, olive barracks…), brighter overall, walls muted to weathered wood so roofs read. tools/buildings/recolor.py (originals kept in assets/buildings/v5_src).
 - Difficulty: an adaptive "danger" level tracks the survivors' current strength (levels + weapons) plus a slow daily creep; zombie HP and damage scale with it, so a strong town never gets comfortable and a town that just lost fighters isn't crushed.
