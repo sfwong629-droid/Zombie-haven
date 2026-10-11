@@ -21,6 +21,9 @@ Tick an item only after it has been implemented AND checked in the game.
 
 ### Zombie AI
 - [ ] Zombies may wander, but should slowly drift toward the town while wandering.
+- [ ] Zombies must not stand or walk on building footprints (tiles a building occupies): they currently overlap
+      buildings and look like part of them. Keep them on free tiles (path around buildings; when attacking a
+      building, stand at its edge), and draw them in the right depth order in front of/behind it.
 
 ### World look
 - [ ] Day / night lighting change (morning, day, evening, night tint).
@@ -31,6 +34,8 @@ Tick an item only after it has been implemented AND checked in the game.
 - [ ] Build menu: small icon on each category tab, like Dungeon Village 2
       (see docs/ref/dv2_build_menu_tabs.png — fence icon for Equipment, shop icon for Stores, food icon for Food/Drink).
 - [ ] Brighten up the menus overall.
+- [ ] Demolish gets its own button (separate from the build menu / building panel).
+- [ ] Roads can be demolished too (with the same Demolish tool).
 
 ### Already known from V2.31.0
 - [ ] Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale (waiting on the ChatGPT image limit).
