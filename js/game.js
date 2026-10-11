@@ -3,10 +3,10 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.27.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.28.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 56, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
-const CHAR_H = 30 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = 29 / 42;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
@@ -60,11 +60,7 @@ function alphaMask(type) {                    // per-sprite alpha for pixel-accu
   return (alphaMasks[type] = m);
 }
 async function loadAll() {
-  const jobs = [];
-  for (const [k, f] of Object.entries(CHAR_FILES)) jobs.push(loadImg('char:' + k, `assets/characters/${f}.png`));
-  jobs.push(loadImg('char4', CHAR4.file)); jobs.push(loadImg('char4b', CHAR4.back));
-  ZOMBIE_FILES.forEach((z) => jobs.push(loadImg('zombie:' + z, `assets/zombies/${z}.png`)));
-  Object.keys(Z4_DEFS).forEach((z) => { jobs.push(loadImg('z4:' + z, `assets/zombies/v4/${z}.png`)); jobs.push(loadImg('z4b:' + z, `assets/zombies/v4/${z}_back.png`)); });
+  const jobs = []; window.ZH_VERSION = VERSION; if (window.ZHChars) jobs.push(ZHChars.load());
   ['tree', 'crate', 'debris'].forEach((p) => jobs.push(loadImg('prop:' + p, `assets/props/${p}.png`)));
   jobs.push(loadImg('grass_a', 'assets/terrain/grass_a.png'), loadImg('grass_b', 'assets/terrain/grass_b.png'));
   [['uiBuildIcon', 'build'], ['uiSurvivorsIcon', 'survivors'], ['uiItemsIcon', 'items']].forEach(([id, f]) => { if ($(id)) $(id).src = `assets/ui/${f}.png?v=${VERSION}`; });
@@ -253,16 +249,51 @@ function insideBuilding(s) {   // working, using a facility or in care, standing
   if (!b || OPEN_AIR.has(b.type) || !world.buildings.includes(b)) return null;
   const d = Wd.doorPoint(b); return Math.hypot(s.w.x - d.x, s.w.y - d.y) < .3 ? b : null;
 }
+/* V3 characters: per-job DV2-style sheets (js/chars.js), animation by state, the equipped weapon drawn in the hand */
+const ANIM_T = { idle: 30, walk: 6, carry: 7, punch: 6, blunt: 6, shoot: 6 };
+function humanAnim(o, st) {
+  const kind = o.eq && o.eq.weapon && ITEMS[o.eq.weapon] ? ITEMS[o.eq.weapon].kind : null;
+  if (o.mode === 'down' || o.mode === 'zdown') { st.downT = (st.downT || 0) + 1; return ['collapse', Math.min(3, Math.floor(st.downT / 9))]; } st.downT = 0;
+  const atk = o.mode === 'attack' || o.mode === 'recover' || o.mode === 'zattack';
+  if (atk) { const a = kind === 'gun' || kind === 'bow' ? 'shoot' : kind ? 'blunt' : 'punch'; return [a, Math.floor((tick + (o.phase || 0)) / ANIM_T[a])]; }
+  if (o.carrying || o.carriedLoot) return ['carry', o.moving === false ? 0 : Math.floor((tick + (o.phase || 0)) / ANIM_T.carry)];
+  if (o.moving || o.mode === 'walk' || o.mode === 'rsneak' || o.mode === 'rflee' || o.mode === 'zchase') return ['walk', Math.floor((tick + (o.phase || 0)) / ANIM_T.walk)];
+  return ['idle', Math.floor((tick + (o.phase || 0)) / ANIM_T.idle)];
+}
+function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head */
+  const CM = ZHChars.meta, fc = facing(o), view = fc.up ? 1 : 0, [anim, i] = humanAnim(o, fc), f = ZHChars.frame(anim, i);
+  const tw = TWs(), sc = tw / ART_TILE, flip = fc.right;
+  const pose = ZHChars.wpose(f), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
+  const drawW = () => {
+    if (!wcell) return; const h = ZHChars.hand(view, f), hxp = flip ? CM.fw - 1 - h[0] : h[0];
+    const big = pixelUp('held', ZHItems.held, Math.max(1, Math.ceil(sc * DPR - .02))), m = big.width / ZHItems.held.width, snap = (v) => Math.round(v * DPR) / DPR;
+    const x0 = p.x - CM.fw * sc / 2 + (hxp + .5) * sc, y0 = p.y - (CM.foot + 1) * sc + (h[1] + .5) * sc, half = (wcell.s / 2 + .5) * sc;
+    ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.save();
+    if (flip) { ctx.translate(snap(x0), 0); ctx.scale(-1, 1); ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, -half, snap(y0 - half), wcell.s * sc, wcell.s * sc); }
+    else ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, snap(x0 - half), snap(y0 - half), wcell.s * sc, wcell.s * sc);
+    ctx.restore(); ctx.imageSmoothingEnabled = true;
+  };
+  if (view === 1) drawW();
+  ctx.save(); ctx.translate(0, 0);
+  const fr = view * 1;   // row
+  { const want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), key = 'ch' + (o.look ? o.job + o.look.sex + o.look.skin + o.look.hair : o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
+    const w = CM.fw * sc, h = CM.fh * sc, y = snap(p.y - (CM.foot + 1) * sc);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .24 * tw, .085 * tw, 0, 0, 7); ctx.fill();
+    ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high';
+    if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, f * CM.fw * m, fr * CM.fh * m, CM.fw * m, CM.fh * m, -w / 2, y, w, h); }
+    else ctx.drawImage(big, f * CM.fw * m, fr * CM.fh * m, CM.fw * m, CM.fh * m, snap(p.x - w / 2), y, w, h);
+  }
+  ctx.restore(); ctx.imageSmoothingEnabled = true;
+  if (view === 0) drawW();
+  return p.y - CHAR_H * tw;
+}
 function drawHuman(s) {
   if (insideBuilding(s)) return;   // hidden while inside
-  const p = project(s.w.x, s.w.y); let f = 0;
-  if (s.mode === 'down') f = 8; else if (s.carrying) f = 7; else if (s.mode === 'attack' || s.mode === 'recover') f = 1 + (Math.floor((tick + s.phase) / 5) % 4); else if (s.activity) f = 6; else if (s.moving) f = 1 + (Math.floor((tick + s.phase) / 6) % 4);
-  const c4 = IMG['char4'], c4b = IMG['char4b'], fc = facing(s), back = fc.up && f <= 4 && c4b && okImg(c4b);   // back view only for idle/walk/attack frames
-  if (back) drawSheet('c4b', c4b, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right);
-  else if (c4 && okImg(c4)) drawSheet('c4', c4, f, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right); else drawSheet('c' + s.job, IMG['char:' + s.job] || IMG['char:Civilian'], f, 128, 160, p, CHAR_H, 147);
+  const p = project(s.w.x, s.w.y);
+  if (window.ZHChars && ZHChars.ready) { const sc = ZHChars.sheetFor(s); if (sc) drawChar(s, sc, p, s.eq && s.eq.weapon); }
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
-  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(s.bleed / 60), p.x, cy + 3 * cam.z); }
+  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); stampText(String(Math.ceil(s.bleed / 60)), p.x, cy + 5 * cam.z, `${Math.round(Math.max(13, 13 * cam.z))}px 'Jersey 15', monospace`, '#fff'); }
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
   if (tagT) statusTag(p.x, top - 2, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
@@ -279,33 +310,47 @@ function tinted(key, img, fn) {   /* recolour a pixel-art sheet once (keeps ever
 }
 const RAIDER_TINT = (r, g, b) => (r > 190 && g > 165 && b > 120 && r - b < 110 ? [Math.round(r * .62), Math.round(g * .2), Math.round(b * .2)] : r > 60 && r < 200 && g < r && b < g ? [Math.round(r * .55), Math.round(g * .55), Math.round(b * .6)] : [r, g, b]);   // red shirt, darker clothes
 const BOSS_TINT = (r, g, b) => [Math.min(255, Math.round(r * .9 + 40)), Math.round(g * .55), Math.min(255, Math.round(b * 1.15 + 30))];   // sickly purple
+const corpses = [];   /* short death animations (not saved) */
+function zFrame(zm, zmeta) {
+  const fr = zmeta.frames, fc = facing(zm), boss = zm.type === 'boss';
+  const A = (n, t) => fr[n][0] + (Math.floor((tick + (zm.phase || 0)) / t) % fr[n][1]);
+  let f;
+  if (zm.dead != null) f = fr.death[0] + Math.min(fr.death[1] - 1, Math.floor(zm.dead / 7));
+  else if (zm.mode === 'zattack') f = boss ? A('slam', 8) : A('attack', 7);
+  else if (boss && zm.mode === 'appear') f = A('roar', 12);
+  else if (['zchase', 'zmarch', 'zbreak', 'appear'].includes(zm.mode) || zm.moving) f = A('walk', zm.type === 'runner' ? 4 : boss ? 9 : 7);
+  else f = A('idle', 24);
+  return { f, view: fc.up ? 1 : 0, flip: fc.right };
+}
+function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
+  const t = zm.type === 'raider' ? null : zm.type, zmeta = t && window.ZHChars && ZHChars.zmeta(t), sh = zmeta && ZHChars.zsheet(t); if (!sh) return null;
+  const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp('z6' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
+  const w = zmeta.fw * sc, h = zmeta.fh * sc, y = snap(p.y - (zmeta.foot + 1) * sc);
+  if (zm.dead != null) ctx.globalAlpha = Math.max(0, Math.min(1, (120 - zm.dead) / 40));
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(.24, zmeta.fw / 160) * tw, .085 * tw * Math.max(1, zmeta.fw / 50), 0, 0, 7); ctx.fill();
+  ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high'; ctx.save();
+  if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, f * zmeta.fw * m, view * zmeta.fh * m, zmeta.fw * m, zmeta.fh * m, -w / 2, y, w, h); }
+  else ctx.drawImage(big, f * zmeta.fw * m, view * zmeta.fh * m, zmeta.fw * m, zmeta.fh * m, snap(p.x - w / 2), y, w, h);
+  ctx.restore(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1;
+  return p.y - zmeta.h * sc;
+}
 function drawZombie(zm) {
-  const p = project(zm.w.x, zm.w.y); let f = 0;
-  if (zm.type === 'raider') {   /* placeholder art: the survivor body in raider colours */
-    const fc = facing(zm), moving = ['rsneak', 'rflee', 'zchase'].includes(zm.mode) || zm.evadeT > 0; let fr = zm.mode === 'zattack' ? 1 + (Math.floor((tick + zm.phase) / 5) % 4) : moving ? 1 + (Math.floor((tick + zm.phase) / 6) % 4) : zm.mode === 'rsteal' ? 6 : 0;
-    const back = fc.up && fr <= 4, src = back ? tinted('rb', IMG['char4b'], RAIDER_TINT) : tinted('rf', IMG['char4'], RAIDER_TINT);
-    if (src) drawSheet(back ? 'rb' : 'rf', src, fr, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right);
-    const tw = TWs(), top = p.y - CHAR_H * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
-    if (zm.carried) { ctx.fillStyle = '#ffe06b'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('$' + zm.carried, p.x, top - 3); }
+  const p = project(zm.w.x, zm.w.y), tw = TWs();
+  if (zm.type === 'raider') {   /* raiders: the survivor rig in raider gear, with their weapon */
+    if (!zm.look) zm.look = { sex: rnd() < .3 ? 'f' : 'm', skin: Math.floor(rnd() * 4), hair: Math.floor(rnd() * 8) };
+    if (!zm.wpn) zm.wpn = ['bat', 'knife', 'crowbar', 'pistol', 'machete'][Math.floor(rnd() * 5)];
+    const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Raider', zm.look.sex, zm.look.skin, zm.look.hair);
+    if (sc) drawChar(Object.assign(zm, { eq: { weapon: zm.wpn } }), sc, p, zm.wpn);
+    const top = p.y - CHAR_H * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
+    if (zm.carried) stampText('⚙' + zm.carried, p.x, top - 4, `${Math.round(Math.max(14, 14 * cam.z))}px 'Jersey 15', monospace`, '#ffe06b');
     return;
   }
-  if (zm.type === 'boss') {   /* placeholder art: the Brute in boss colours, with a big health bar */
-    if (zm.mode === 'zattack') f = 5; else if (['zchase', 'zmarch'].includes(zm.mode)) f = 1 + (Math.floor((tick + zm.phase) / 7) % 4);
-    const b = Z4_DEFS.brute, fc = facing(zm), back = fc.up && f <= 4, src = back ? tinted('bossb', IMG['z4b:brute'], BOSS_TINT) : tinted('bossf', IMG['z4:brute'], BOSS_TINT);
-    if (src) drawSheet(back ? 'bossb' : 'bossf', src, f, b.fw, b.fh, p, 1, b.foot, APX, true, fc.right);
-    const tw = TWs(), top = p.y - b.h * tw / APX - 8; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 26 * cam.z, top, 52 * cam.z, 6 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 25 * cam.z, top + cam.z, 50 * cam.z * Math.max(0, zm.hp / zm.max), 4 * cam.z);
-    ctx.fillStyle = '#f2c8ff'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('BOSS', p.x, top - 3); return;
+  const top = drawZSprite(zm, p); if (top == null || zm.dead != null) return;
+  if (zm.type === 'boss') {
+    const bt = top - 10; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 28 * cam.z, bt, 56 * cam.z, 7 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 27 * cam.z, bt + cam.z, 54 * cam.z * Math.max(0, zm.hp / zm.max), 5 * cam.z);
+    stampText('BOSS', p.x, bt - 3, `${Math.round(Math.max(16, 16 * cam.z))}px 'Jersey 15', monospace`, '#f2c8ff'); return;
   }
-  if (zm.mode === 'zattack') f = 6; else if (zm.mode === 'zchase') f = 1 + (Math.floor((tick + zm.phase) / 6) % 4); else if (zm.mode === 'idle') f = Math.floor((tick + zm.phase) / 18) % 2 ? 1 : 0;
-  const z4 = Z4_DEFS[zm.type], zf = IMG['z4:' + zm.type], zb = IMG['z4b:' + zm.type];
-  if (z4 && zf && okImg(zf)) {   // pixel art: one art px = one map px; bigger zombies are drawn with more pixels, never scaled up
-    const fc = facing(zm), back = fc.up && f <= 4 && zb && okImg(zb), f4 = zm.mode === 'zattack' ? 5 : f;
-    drawSheet(back ? 'z4b' + zm.type : 'z4' + zm.type, back ? zb : zf, back ? f : f4, z4.fw, z4.fh, p, 1, z4.foot, APX, true, fc.right);
-    const tw = TWs(), top = p.y - z4.h * tw / APX - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
-    return;
-  }
-  const sc = ZSCALE[zm.type] || 1; drawSheet('z' + zm.type, IMG['zombie:' + zm.type], f, 128, 160, p, CHAR_H * sc, 147);
-  const tw = TWs(), top = p.y - CHAR_H * sc * tw - 3; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
+  const hb = top - 5; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, hb, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, hb + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
 }
 
 /* ---------------- main draw ---------------- */
@@ -337,6 +382,7 @@ function draw() {
   world.buildings.forEach((b) => items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { drawBuilding(b); if (b.fire || b.burnt) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
   if (preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
   S.z.forEach((z) => { if (z.hp > 0) items.push({ ...box(z.w.x, z.w.y, .12), fn: () => drawZombie(z) }); });
+  corpses.forEach((c) => items.push({ ...box(c.w.x, c.w.y, .12), fn: () => drawZSprite(c, project(c.w.x, c.w.y)) }));
   S.sv.forEach((s) => items.push({ ...box(s.w.x, s.w.y, .12), fn: () => drawHuman(s) }));
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
@@ -479,18 +525,25 @@ const STATS = ['str', 'end', 'agi', 'per', 'int', 'cha'];
 const STAT_NAME = { str: 'Strength', end: 'Endurance', agi: 'Agility', per: 'Perception', int: 'Intelligence', cha: 'Charisma' };
 const STAT_CAP = 20;
 const JOB_STATS = { Civilian: ['cha', 'int'], Guard: ['str', 'end'], 'Police Officer': ['per', 'end'], Medic: ['int', 'cha'], Scavenger: ['agi', 'per'], Engineer: ['int', 'str'], Cook: ['cha', 'end'], Farmer: ['str', 'end'], Mechanic: ['int', 'str'], Paramedic: ['int', 'agi'], SWAT: ['per', 'str'] };
-const ITEMS = {   // slot, attack (weapons), defence (armor), stat bonuses, parts cost (armory/crafting), ranged = attacks from ~2.4 tiles
-  pipe: { name: 'Pipe', slot: 'weapon', atk: 6, cost: 0 }, knife: { name: 'Knife', slot: 'weapon', atk: 9, cost: 2 }, bat: { name: 'Bat', slot: 'weapon', atk: 14, cost: 4 },
-  machete: { name: 'Machete', slot: 'weapon', atk: 19, cost: 6 }, axe: { name: 'Fire Axe', slot: 'weapon', atk: 25, cost: 9, st: { agi: -1 } },
-  pistol: { name: 'Pistol', slot: 'weapon', atk: 17, cost: 8, ranged: true }, rifle: { name: 'Hunting Rifle', slot: 'weapon', atk: 27, cost: 12, ranged: true },
-  jacket: { name: 'Work Jacket', slot: 'armor', def: 2, cost: 2 }, leather: { name: 'Leather Jacket', slot: 'armor', def: 4, cost: 4 },
-  riot: { name: 'Riot Vest', slot: 'armor', def: 7, cost: 8, st: { agi: -1 } }, plate: { name: 'Scrap Plate', slot: 'armor', def: 10, cost: 11, st: { agi: -2 } },
+const ITEMS = {   // slot, attack (weapons), defence (armor), stat bonuses, parts cost (armory/crafting); kind = how it is swung (blunt/blade/gun/bow); ranged = attacks from ~2.4 tiles
+  pipe: { name: 'Lead Pipe', slot: 'weapon', kind: 'blunt', atk: 6, cost: 0 }, knife: { name: 'Kitchen Knife', slot: 'weapon', kind: 'blade', atk: 9, cost: 2 }, bat: { name: 'Baseball Bat', slot: 'weapon', kind: 'blunt', atk: 14, cost: 4 },
+  crowbar: { name: 'Crowbar', slot: 'weapon', kind: 'blunt', atk: 16, cost: 5 }, nailbat: { name: 'Nail Bat', slot: 'weapon', kind: 'blunt', atk: 18, cost: 6 },
+  machete: { name: 'Machete', slot: 'weapon', kind: 'blade', atk: 19, cost: 6 }, spear: { name: 'Scrap Spear', slot: 'weapon', kind: 'blade', atk: 21, cost: 7, st: { per: 1 } },
+  axe: { name: 'Fire Axe', slot: 'weapon', kind: 'blade', atk: 25, cost: 9, st: { agi: -1 } }, sledge: { name: 'Sledgehammer', slot: 'weapon', kind: 'blunt', atk: 30, cost: 11, st: { agi: -2 } },
+  katana: { name: 'Katana', slot: 'weapon', kind: 'blade', atk: 33, cost: 15, st: { agi: 1 } },
+  pistol: { name: 'Pistol', slot: 'weapon', kind: 'gun', atk: 17, cost: 8, ranged: true }, revolver: { name: 'Revolver', slot: 'weapon', kind: 'gun', atk: 22, cost: 10, ranged: true },
+  shotgun: { name: 'Shotgun', slot: 'weapon', kind: 'gun', atk: 30, cost: 13, ranged: true, st: { agi: -1 } }, smg: { name: 'SMG', slot: 'weapon', kind: 'gun', atk: 26, cost: 13, ranged: true },
+  rifle: { name: 'Hunting Rifle', slot: 'weapon', kind: 'gun', atk: 27, cost: 12, ranged: true }, assault: { name: 'Assault Rifle', slot: 'weapon', kind: 'gun', atk: 36, cost: 18, ranged: true },
+  bow: { name: 'Hunting Bow', slot: 'weapon', kind: 'bow', atk: 18, cost: 7, ranged: true, st: { per: 1 } }, crossbow: { name: 'Crossbow', slot: 'weapon', kind: 'bow', atk: 26, cost: 11, ranged: true },
+  jacket: { name: 'Work Jacket', slot: 'armor', def: 2, cost: 2 }, leather: { name: 'Leather Jacket', slot: 'armor', def: 4, cost: 4 }, hockey: { name: 'Hockey Pads', slot: 'armor', def: 5, cost: 5 },
+  biker: { name: 'Biker Leathers', slot: 'armor', def: 6, cost: 6, st: { cha: 1 } }, riot: { name: 'Riot Vest', slot: 'armor', def: 7, cost: 8, st: { agi: -1 } },
+  kevlar: { name: 'Kevlar Vest', slot: 'armor', def: 9, cost: 10 }, military: { name: 'Military Armor', slot: 'armor', def: 11, cost: 13, st: { agi: -1 } }, plate: { name: 'Scrap Plate', slot: 'armor', def: 12, cost: 11, st: { agi: -2 } },
   gloves: { name: 'Lifting Gloves', slot: 'acc', st: { str: 2 }, cost: 3 }, belt: { name: 'Back Brace', slot: 'acc', st: { end: 2 }, cost: 3 }, shoes: { name: 'Running Shoes', slot: 'acc', st: { agi: 2 }, cost: 3 },
   goggles: { name: 'Scope Goggles', slot: 'acc', st: { per: 2 }, cost: 3 }, glasses: { name: 'Reading Glasses', slot: 'acc', st: { int: 2 }, cost: 3 }, charm: { name: 'Lucky Charm', slot: 'acc', st: { cha: 2 }, cost: 3 },
   dogtags: { name: 'Dog Tags', slot: 'acc', st: { str: 1, end: 1, per: 1 }, cost: 6 },
 };
 const SLOTS = ['weapon', 'armor', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', acc: 'Accessory' };
-const ARMORY_STOCK = { weapon: ['knife', 'bat', 'machete', 'pistol'], armor: ['jacket', 'leather', 'riot'] };   // what survivors can buy at an Armory with parts
+const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 const weaponOf = (s) => itemOf(s, 'weapon') || ITEMS.pipe;
 function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; return Math.max(1, v); }
@@ -1026,7 +1079,7 @@ const RESEARCH = {
   bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft Riot Vest and Scrap Plate' },
   gadgets: { name: 'Gadgets', rp: 30, mat: 8, desc: 'Craft stat accessories' },
 };
-const RECIPES = { blades: ['machete', 'axe'], firearms: ['pistol', 'rifle'], bodyArmor: ['riot', 'plate'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
+const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
 const researched = (k) => !k || !!(S.res && S.res[k]);
 const craftCost = (id) => Math.ceil(ITEMS[id].cost * 1.3) + 1;
 function doResearch(k) { const r = RESEARCH[k]; if (!r || researched(k) || !researched(r.need) || (S.rp || 0) < r.rp || S.mat < r.mat) return false; S.rp -= r.rp; S.mat -= r.mat; S.res = S.res || {}; S.res[k] = true; S.resWeek = (S.resWeek || 0) + 1; screenToast('🔬 RESEARCHED: ' + r.name.toUpperCase()); SFX('chime'); say(`Research complete: ${r.name} — ${r.desc}.`); saveGame(); ui(); return true; }
@@ -1253,10 +1306,9 @@ function showTrader() {
   $('ib').querySelectorAll('[data-trade]').forEach((x) => { x.onclick = () => { if (traderTrade(+x.dataset.trade)) showTrader(); }; });
 }
 function drawTrader() {
-  const T = S.trader, p = project(T.w.x, T.w.y), fc = facing(T), fr = T.moving ? 1 + (Math.floor(tick / 6) % 4) : 0, back = fc.up && fr <= 4;
-  const src = back ? tinted('tb', IMG['char4b'], TRADER_TINT) : tinted('tf', IMG['char4'], TRADER_TINT);
-  if (src) drawSheet(back ? 'tb' : 'tf', src, fr, CHAR4.fw, CHAR4.fh, p, CHAR_H, CHAR4.foot, CHAR4.content, true, fc.right);
-  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); ctx.fillStyle = '#9fffe0'; ctx.font = `${Math.max(14, 14 * cam.z)}px 'Jersey 15', monospace`; ctx.textAlign = 'center'; ctx.fillText('TRADER', p.x, p.y + .3 * TWs());
+  const T = S.trader, p = project(T.w.x, T.w.y); if (!T.look) T.look = { sex: 'm', skin: 1, hair: 5 }; T.job = 'Trader';
+  const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Trader', 'm', T.look.skin, T.look.hair); if (sc) drawChar(T, sc, p, null);
+  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); stampText('TRADER', p.x, p.y + .36 * TWs(), `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', monospace`, '#9fffe0');
 }
 function hitTrader(px, py) { const T = S.trader; if (!T) return false; const p = project(T.w.x, T.w.y), d = Math.hypot(px - p.x, py - (p.y - CHAR_H * TWs() * .5)); return d < Math.max(24, .45 * TWs()); }
 function drawFire(b) {   /* pixel flames on a burning building, smoke over a burnt one */
@@ -1619,7 +1671,7 @@ function expResolveStage(t, quiet) {
   const kinds = new Set(ms.map(expKind).filter((k) => k !== 'other')).size, avgL = ms.reduce((a, s) => a + (s.l || 1), 0) / (ms.length || 1), f = rk.mult * (1 + .12 * Math.max(0, kinds - 1)) * (1 + .04 * (avgL - 1)) * (1 + .15 * ms.filter((m) => hasSkill(m, 'lootSense')).length) * (1 + .2 * ms.filter((m) => hasSkill(m, 'treasureHunter')).length);
   const got = [], r = (a) => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
   for (const k in d.loot) { const n = Math.max(1, Math.round(r(d.loot[k]) * f)); t.loot[k] += n; got.push(`${n} ${k === 'mat' ? 'parts' : k}`); }
-  if (Math.random() < .2 * Math.sqrt(rk.mult) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'leather', 'machete', 'axe', 'riot', 'rifle', 'plate', 'dogtags'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
+  if (Math.random() < .2 * Math.sqrt(rk.mult) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
   const rm = expRiskMult(t); let trouble = [];
   for (const m of [...ms]) {
     const x = Math.random(), dead = rk.death * rm, collapse = rk.hurt * rm * .35, hurt = rk.hurt * rm;
@@ -2105,7 +2157,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 
 /* ---------------- loop ---------------- */
 function simTick() {
-  tick++; if (S.alert > 0) S.alert--; traderTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); S.z = S.z.filter((z) => z.hp > 0); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider') corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) autoStaff(); if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 1000 === 0) { S.hour++; hourlyProduction(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 20) { screenToast('🌙 NIGHT FALLS — THE DEAD ARE RESTLESS'); say('Night falls: more zombies, and they come for the town.'); } if (S.hour === 6) { screenToast('☀ DAWN — THE HORDE THINS'); say('Dawn: fewer zombies until nightfall.'); } if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
