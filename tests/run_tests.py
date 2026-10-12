@@ -396,6 +396,35 @@ async def t_saves(br, port, t):   # V2.42: slot isolation, day backup, damaged s
     sw = await pg.evaluate("()=>document.documentElement.scrollWidth"); t.ok(sw <= 320, f'Backups fit a 320 px screen ({sw})')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_traits(br, port, t):   # V2.43: survivor personalities change existing decisions and are explained
+    ctx, pg, errs = await open_game(br, port, 'traits')
+    r = await pg.evaluate("""()=>{const S=ZH.S,T=ZH.TRAITS,o={};o.all=S.sv.every(q=>T[q.trait]);o.start=S.sv.slice(0,4).map(q=>q.trait).join(',');
+      const g=S.sv.find(q=>q.job==='Guard'),keep=g.trait;g.trait=null;o.r1=ZH.traitRange(g);g.trait='brave';o.r2=ZH.traitRange(g);g.trait='cautious';o.r3=ZH.traitRange(g);g.trait=keep;
+      const a={name:'Zed',id:41},b={name:'Zed',id:41};o.stable=ZH.rollTrait(a)===ZH.rollTrait(b)&&!!T[ZH.rollTrait(a)];
+      const f=S.sv.find(q=>q.job==='Farmer');const k0=f.trait;f.trait=null;const r0=ZH.ration(f);f.trait='eater';o.eat=ZH.ration(f)/r0;f.trait=k0;
+      o.loot=ZH.expTraitLoot([{trait:'scrounger'},{trait:'loner'}]);o.loot4=ZH.expTraitLoot([{trait:'loner'},{},{},{}]);return o}""")
+    t.ok(r['all'] and r['start'] == 'brave,caring,scrounger,diligent', f"every survivor has a personality; the starters are Brave Marcus, Caring Amy, Scrounger Lena, Hard-working Ben ({r['start']})")
+    t.ok(r['r1'] == 1 and r['r2'] == 1.25 and r['r3'] == .8, f"Brave fighters engage from farther, Cautious from closer {r['r1']} {r['r2']} {r['r3']}")
+    t.ok(r['stable'], 'old saves get a stable personality (same survivor, same trait)')
+    t.ok(abs(r['eat'] - 1.3) < 1e-6, f"a Big Eater eats 30% more ({r['eat']})")
+    t.ok(abs(r['loot'] - 1.15 * 1.25) < 1e-6 and r['loot4'] == 1, f"Scrounger +15% loot, Loner +25% only in a squad of 1–2 ({r['loot']}, {r['loot4']})")
+    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Guard'),o={};S.retreat=35;S.policy='balanced';S.z.length=0;
+      const test=(tr,pct)=>{q.trait=tr;q.fleeT=0;q.hp=Math.round(q.max*pct);q.mode='chase';const r=ZH.retreatCheck(q);q.mode='free';q.facility=null;q.fleeT=0;return r};
+      o.c=test('cautious',.45);o.n=test('scrounger',.45);o.b=test('brave',.3);o.n2=test('scrounger',.3);q.hp=q.max;q.trait='brave';return o}""")
+    t.ok(r['c'] and not r['n'], f'a Cautious fighter falls back at 45% health where others keep going {r}')
+    t.ok(not r['b'] and r['n2'], f'a Brave fighter keeps fighting at 30% where others fall back {r}')
+    r = await pg.evaluate("""()=>{const S=ZH.S,o={};const b=ZH.world.buildings.find(x=>ZH.DEFS[x.type].slot);if(!b)return {skip:1};const q=S.sv.find(x=>x.job!=='Guard');const keep=b.staff;b.staff=q;const md=q.mode;q.mode='work';q.trait='scrounger';const base=ZH.prodMult(b);q.trait='diligent';const dil=ZH.prodMult(b);q.mode=md;b.staff=keep;return {base,dil}}""")
+    t.ok(r.get('skip') or r['dil'] > r['base'] + .2, f'a Hard-working worker out-produces a Scrounger at the same post {r}')
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.z.length=0;const v=S.sv.find(q=>q.job==='Farmer');v.hp=0;ZH.simTick();for(let i=0;i<2;i++){ZH.spawn(v.w.x+.4+i*.3,v.w.y,'walker');const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=99999}
+      for(const q of S.sv)if(q!==v){q.mode=['Guard','Scavenger','Police Officer'].includes(q.job)?'hiding':'free';q.rescuing=null;q.carrying=null;q.hp=q.max;q.trait='scrounger'}
+      const m=S.sv.find(q=>q.job==='Medic');v.rescuer=null;ZH.assignRescue();const plain=v.rescuer===m;if(v.rescuer){v.rescuer.rescuing=null;v.rescuer.mode='free'}v.rescuer=null;m.trait='caring';ZH.assignRescue();return {plain,caring:v.rescuer===m,why:m.why}}""")
+    t.ok(not r['plain'] and r['caring'] and 'Caring' in r['why'], f'only a Caring non-fighter runs to the downed past two zombies, and says why {r}')
+    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard'),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
+    t.ok(r['card'] and r['name'], 'the survivor panel explains the personality (upside and cost)')
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.sv.forEach(q=>q.trait='loner');const q=S.sv[0];q.trait='eater';ZH.saveGame();const d=JSON.parse(ZH.serialize());return d.sv.map(x=>x.trait)}""")
+    t.ok(r[0] == 'eater' and all(x == 'loner' for x in r[1:]), 'personalities are saved')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -521,7 +550,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

@@ -15,6 +15,6 @@ async def main():
             r=await pg.evaluate("()=>{for(let h=0;h<24;h++){for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick();}AP.hour()}return AP.snap()}")
             r['t']=round(time.time()-t0); r['err']=len(errs); f.write(json.dumps(r)+'\n'); f.flush()
             if r['sv']==0: break
-        fin=await pg.evaluate("()=>({downs:AP.downs,deaths:AP.deaths,built:AP.built,events:AP.events,ledger:Object.fromEntries(Object.entries(LEDGER).map(([k,v])=>[k,Math.round(v)]).sort((a,b)=>a[1]-b[1])),fallen:ZH.S.fallen.length,trips:ZH.S.tripLog||null,levels:ZH.S.sv.map(s=>s.name+' '+s.job+' L'+s.l)})")
+        fin=await pg.evaluate("()=>({downs:AP.downs,deaths:AP.deaths,built:AP.built,events:AP.events,ledger:Object.fromEntries(Object.entries(LEDGER).map(([k,v])=>[k,Math.round(v)]).sort((a,b)=>a[1]-b[1])),fallen:ZH.S.fallen.length,trips:ZH.S.tripLog||null,levels:ZH.S.sv.map(s=>s.name+' '+s.job+' L'+s.l),alive:ZH.S.sv.map(s=>s.trait||null)})")
         fin['errors']=errs[:5]; f.write(json.dumps({'final':fin})+'\n'); f.close(); await b.close()
 asyncio.run(main())

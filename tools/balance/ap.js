@@ -50,7 +50,7 @@
     // answer story popups with a random choice (and close plain ones)
     for (let i = 0; i < 8; i++) { const bs = [...document.querySelectorAll('#eventModal button')]; if (!bs.length) break; bs[Math.floor(Math.random() * bs.length)].click(); }
     if ((S.fallen || []).length > AP.nf) { const zs = S.z.filter((z) => z.hp > 0); const ty = {}; zs.forEach((z) => ty[z.type] = (ty[z.type] || 0) + 1);
-      for (const f of S.fallen.slice(AP.nf)) AP.deaths.push({ d: S.day, h: S.hour, who: f.job + ' L' + f.l, z: ty, broken: [...W.walls.values()].filter((w) => w.broken).length, down: S.sv.filter((q) => q.mode === 'down').length, med: S.sv.filter((q) => q.mode === 'hospital').length });
+      for (const f of S.fallen.slice(AP.nf)) AP.deaths.push({ d: S.day, h: S.hour, who: f.job + ' L' + f.l, trait: f.trait, z: ty, broken: [...W.walls.values()].filter((w) => w.broken).length, down: S.sv.filter((q) => q.mode === 'down').length, med: S.sv.filter((q) => q.mode === 'hospital').length });
       AP.nf = S.fallen.length; }
     // accept move-in requests (a player would)
     let g = 0; while (S.requests.length && document.getElementById('acceptReq') && g++ < 10) document.getElementById('acceptReq').click();

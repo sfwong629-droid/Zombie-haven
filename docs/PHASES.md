@@ -34,3 +34,14 @@
 - Food and water still reach the cap in mid-game auto-play. The Trade Caravan gives that surplus a use, but the bot uses it rarely (it needs both above 70–75% of the cap).
 - Night lights add a little draw cost; the setting can turn them off on slow phones.
 - Nothing has been tested on a real iPhone or Safari from here: headless Chromium only.
+
+## Stage 2: strategic depth (from V2.42)
+Audit before starting (V2.41): saves had slots and migration but no protection against a failed load, silent write failures or two tabs; personality existed only as job-based AI, so two Guards acted the same; expeditions had a recall choice but no branching; guards "patrol" a random point on the north road; there is one fixed start and nothing after Rank 5.
+Order agreed with the owner: 1 save reliability, 2 personalities, 3 expedition choices, 4 patrol areas and guard posts, 5 replayability (starts, difficulty, long-term goals). Impact ranking: personalities > expedition choices > replayability > patrols.
+
+- **V2.42 save reliability.** Day backup per slot, damaged saves never overwritten (copied to `_bad`, slot locked), failure and second-tab alerts, export/import backups (share sheet, download, copy; file or paste), persistent-storage request, weekly backup reminder.
+- **V2.43 personalities.** One trait per survivor (8 traits), each with an upside and a cost, wired into existing decisions only: fight range and hurt threshold (Brave, Cautious, Night Owl), retreat threshold (Brave −10%, Cautious +15%), rescue choice (Caring), break thresholds, fatigue and output (Hard-working, Scrounger, Night Owl), bedtime (Night Owl), rations and HP (Big Eater), friendships and grief (Caring, Loner), expedition loot and injuries (Scrounger, Loner, Cautious). Explained in the survivor panel; shown in People, the squad picker and arrival pop-ups.
+
+### Untested so far
+- Real iPhone / Safari: the share-sheet export (`navigator.share` with a file), file import from the Files app, and Safari's storage eviction can only be checked on a device. Headless Chromium covers download, copy, paste and file-input import.
+- V2.43 balance (16 seeds × 30 days): deaths 8.1 per run, same as V2.42; Rank 5 median day 20. In auto-play, Brave and Scrounger/Caring survivors die most often (they fight and rescue more) and Big Eaters and Loners least. A player can offset this with the retreat slider, posts and squads.

@@ -1,5 +1,26 @@
 # Changelog
 
+## V2.43.0 — Survivor personalities
+Every survivor now has one personality trait for life. Each trait changes a decision the AI already makes, and each has an upside and a cost:
+
+| Trait | Upside | Cost |
+|---|---|---|
+| 🦁 Brave | Fighters engage from 25% farther and fight on until 10% lower health; non-fighters join the militia even when hurt | Hurt and downed more often |
+| 🛡️ Cautious | Falls back 15% sooner, spots sneaking raiders sooner, 30% less likely to be hurt on expeditions | Engages from 20% closer |
+| ⚒️ Hard-working | +15% output at their post, takes breaks later | Tires 20% faster |
+| ❤️ Caring | First to run to the downed (even past two zombies); friendships grow 50% faster | Grieves harder |
+| 🐺 Loner | Hardly grieves; +25% expedition loot in a squad of 1–2 | Friendships grow at half speed |
+| 🍖 Big Eater | +12 max HP | Eats 30% more |
+| 🔍 Scrounger | Finds a spare part about every other day; +15% expedition loot | −10% output at a post |
+| 🦉 Night Owl | Stays up later; at night engages from 30% farther and spots raiders sooner | −15% output on the morning shift |
+
+- The starting four: Marcus 🦁 Brave, Amy ❤️ Caring, Lena 🔍 Scrounger, Ben ⚒️ Hard-working. Newcomers, recruits and grown-up children roll a random trait. Old saves give everyone a stable trait on load.
+- Shown in: the survivor panel (a card with the upside and the cost), the People list, the expedition squad picker (with the trip effect), and arrival pop-ups. "Why" texts name the trait when it made the call (e.g. "Rescuing Ben (Caring)", "Hurt (Cautious: falls back early)").
+- Expedition loot preview includes trait effects.
+- Balance: 16 seeds × 30 days with the auto-player. Deaths average 8.1 per run, the same as V2.42 (8.1). Rank 5 median is day 20 (was day 21). Brave was first −15% retreat, which raised deaths to about 11; it was softened to −10%.
+- People list rows no longer overflow on a 320 px screen.
+- Balance tool records each fallen survivor's trait (`tools/balance`). New test group `traits` (12 checks).
+
 ## V2.42.0 — Save reliability
 - **Damaged saves are never overwritten.** If a slot will not load, the game tries that slot's day backup; if that fails too, it tells you, keeps the file untouched and does not autosave over it (the damaged copy is also kept aside as `<slot>_bad`).
 - **Day backup per slot.** The first save of each in-game day is also stored as the slot's backup. The slot screen shows "⚠ Damaged: day backup" when it falls back.
