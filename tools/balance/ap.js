@@ -47,6 +47,11 @@
     if (Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
     if (Z.holdEvent && S.hour === 13 && S.rank >= 3 && (S.lastEventDay ?? -1) < S.day && S.food > Z.supplyCap() * .75 && S.water > Z.supplyCap() * .7) Z.holdEvent('caravan');   /* V2.38: trade a full pantry for parts */
     if (Z.upgradeTown) Z.upgradeTown();
+    // V2.45: guard posts once the town has two stars: one night watch north of the centre, one day watch south, as a player would put them by the gates
+    if (Z.tryPost && AP.posts !== false && S.rank >= 2 && S.hour === 9 && (S.posts || []).length < Math.min(2, Z.postMax()) && S.mat > 20) {
+      const B = Wd.BUILD, cx = Math.round((B.x0 + B.x1) / 2), cand = (S.posts || []).length ? [[cx, B.y1], [cx - 1, B.y1], [cx + 1, B.y1], [cx, B.y1 - 1], [cx - 2, B.y1 - 1]] : [[cx, B.y0], [cx - 1, B.y0], [cx + 1, B.y0], [cx, B.y0 + 1], [cx + 2, B.y0 + 1]];
+      for (const [x, y] of cand) { const r = Z.tryPost(x, y); if (r.ok) { if (S.posts.length === 2) r.post.sched = 'day'; AP.events.push('post ' + x + ',' + y + '@d' + S.day); break; } }
+    }
     // answer story popups with a random choice (and close plain ones)
     for (let i = 0; i < 8; i++) { const bs = [...document.querySelectorAll('#eventModal button')]; if (!bs.length) break; bs[Math.floor(Math.random() * bs.length)].click(); }
     if ((S.fallen || []).length > AP.nf) { const zs = S.z.filter((z) => z.hp > 0); const ty = {}; zs.forEach((z) => ty[z.type] = (ty[z.type] || 0) + 1);

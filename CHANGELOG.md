@@ -1,5 +1,18 @@
 # Changelog
 
+## V2.45.0 — Guard posts and patrols
+- **Guard Post** (Build → Defend, 3 parts; up to 1 + your rank). It is a sandbag ring with a flag, drawn in pixel art in code. The flag shows the watch: blue for night, gold for day, red for both. Place it anywhere in or around the town except on a building or a wall, and at least 3 tiles from another post. Tap a post to set it up; Demolish removes it (+1 part).
+- **Who holds it:** Auto (Guards and Police first), a fighter you choose, or Nobody (patrol point only). If the chosen holder is away or hurt, Auto fills in.
+- **When:** Night watch (the default), Day watch, or Day and night. With Day and night, the holder only leaves when exhausted, hungry or hurt, so they tire fast.
+- **What it does:**
+  - The holder walks to the post and stands watch. On watch they engage from 25% farther, spot sneaking raiders sooner, and take 20% less damage behind the sandbags.
+  - Zombies within 4 tiles go for the holder first, which pulls them off workers. The dashed ring shows that range when you place or select a post.
+  - Fighters without a post patrol between your posts instead of a random point on the north road.
+  - Needs, rescues and retreat still come first.
+- Posts are saved. Buildings and walls can't be placed on them. The advisor suggests one from two stars if you have none.
+- The Demolish button now says it also removes posts.
+- Balance: 16 seeds × 30 days, with the auto-player placing a north night post and a south day post at two stars. Deaths average 7.7 (median 5) against 9.1 (median 6.5) without posts. Night deaths fell from 48 to 31 across all runs. Rank 5 median unchanged (day 20). New test group `posts` (12 checks).
+
 ## V2.44.0 — Expedition choices
 - After stage 1 or 2 of a trip (55% chance each), the squad can run into a situation with 2–3 choices:
   - 🚪 Barricaded store

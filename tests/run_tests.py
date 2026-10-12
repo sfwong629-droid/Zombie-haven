@@ -465,6 +465,33 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
     t.ok(r['hint'], 'the Explore panel says that stats, gear and personalities set the odds')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_posts(br, port, t):   # V2.45: guard posts, watches, patrols, zombie lure
+    ctx, pg, errs = await open_game(br, port, 'posts')
+    r = await pg.evaluate("""()=>{const S=ZH.S,o={};S.mat=40;S.rank=1;const m0=S.mat;const a=ZH.tryPost(7,8);o.ok=a.ok;o.cost=m0-S.mat;o.close=ZH.tryPost(8,8).why;const b=ZH.tryPost(4,11);o.max=ZH.tryPost(11,8).why;
+      const bb=ZH.world.buildings[0];o.bld=ZH.tryPost(bb.x,bb.y).why;o.n=S.posts.length;o.cur=S.posts.map(p=>{const q=S.sv.find(x=>x.id===p.cur);return q&&q.job});return o}""")
+    t.ok(r['ok'] and r['cost'] == 3 and r['n'] == 2, f"a guard post costs 3 parts {r}")
+    t.ok(r['close'] == 'close' and r['max'] == 'max' and r['bld'] == 'building', f"posts must be spread out, are capped by rank and can't go on a building {r}")
+    t.ok(r['cur'][0] == 'Guard', f"auto picks a Guard first {r['cur']}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,[p1,p2]=S.posts,lena=S.sv.find(q=>q.job==='Scavenger');p2.holder=lena.id;p1.holder='auto';ZH.postsAssign();return {p1:S.sv.find(q=>q.id===p1.cur).name,p2:S.sv.find(q=>q.id===p2.cur).name}}""")
+    t.ok(r['p2'] == 'Lena' and r['p1'] == 'Marcus', f"a chosen holder takes the post and auto fills the other {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,p=S.posts[0],h=S.sv.find(q=>q.id===p.cur);S.z.length=0;S.hour=21;p.sched='night';h.hunger=h.thirst=h.fatigue=0;h.hp=h.max;h.mode='free';h.stateTicks=0;h.w={x:p.x+.5+3,y:p.y+.5+1};
+      let held=false;for(let i=0;i<1500&&!held;i++){ZH.simTick();held=!!ZH.atPost(h)}return {held,why:h.why}}""")
+    t.ok(r['held'], f"at night the holder walks to the post and stands watch {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,p=S.posts[0],h=S.sv.find(q=>q.id===p.cur);ZH.spawn(p.x+.5+3.2,p.y+.5,'walker');const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=999;
+      for(const q of S.sv)if(q!==h)q.w={x:z.w.x+.6,y:z.w.y+.3};let got=false;for(let i=0;i<30&&!got;i++){ZH.simTick();got=z.target===h}return {got,t:z.target&&z.target.name}}""")
+    t.ok(r['got'], f"a zombie inside the watch radius goes for the post holder, even with others closer {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.z.length=0;const p=S.posts[0],h=S.sv.find(q=>q.id===p.cur);const pts=[];for(let i=0;i<20;i++){const d=ZH.patrolDest();pts.push(Math.min(...S.posts.map(q=>Math.hypot(d.x-q.x-.5,d.y-q.y-.5))))}
+      S.hour=10;const off=!ZH.atPost(h);return {near:Math.max(...pts),off}}""")
+    t.ok(r['near'] < 1.2, f"fighters without a post patrol between the posts {r}")
+    t.ok(r['off'], 'a night-watch post is off duty by day')
+    r = await pg.evaluate("""()=>{const S=ZH.S,p=S.posts[0];S.mat=50;const w=ZH.Wd.wallAt(ZH.world,p.x,p.y);ZH.tryWall(p.x,p.y,'wood');const wall=!!ZH.Wd.wallAt(ZH.world,p.x,p.y);
+      const sv=JSON.parse(ZH.serialize()).S.posts;const m=S.mat;ZH.removePost(S.posts[1]);return {wall,saved:sv.length,refund:S.mat-m,left:S.posts.length}}""")
+    t.ok(not r['wall'], 'a wall cannot be built on a guard post')
+    t.ok(r['saved'] == 2 and r['refund'] == 1 and r['left'] == 1, f"posts are saved; removing one gives a part back {r}")
+    r = await pg.evaluate("""()=>{ZH.showPost(ZH.S.posts[0]);document.querySelector('[data-ps="all"]').click();const s=ZH.S.posts[0].sched;const h=document.getElementById('ib').innerHTML;ZH.closeP();return {s,txt:h.includes('25% farther')&&h.includes('Zombies within')}}""")
+    t.ok(r['s'] == 'all' and r['txt'], f"the post panel explains the effects and sets the watch {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -590,7 +617,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
