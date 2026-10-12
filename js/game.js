@@ -199,7 +199,7 @@ function drawProp(kind, tx, ty) {   /* V2.30: pixel-art props from assets/map/pr
   const pick = (names) => { const l = P.filter((q) => names.includes(q.k)); return l[h % l.length]; };
   const pr = kind === 'tree' ? (h === 3 ? pick(['deadtree']) : pick(['pine'])) : kind === 'crate' ? pick(['crate', 'barrel', 'tyres']) : kind === 'car' ? pick(['car']) : pick(h % 2 ? ['rock', 'rubble'] : ['bush', 'rock']);
   const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('mapProps', im, m), snap = (v) => Math.round(v * DPR) / DPR;
-  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, pr.x * m, 0, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, pr.x * m, (pr.y || 0) * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); ctx.imageSmoothingEnabled = true;
 }
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
