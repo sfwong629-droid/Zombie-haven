@@ -1,6 +1,7 @@
 /* Zombie Haven — isometric geometry (single source of truth).
  *
- * Master tile: approved grass diamond, 1440x960 => TH/TW = 2/3, edge angle atan(2/3) = 33.690 deg.
+ * V2.25+: standard 2:1 pixel-art isometric. Master tile 1440x720 => TH/TW = 1/2, edge angle atan(1/2) = 26.565 deg
+ * (art standard: one tile = 96x48 art pixels, docs/ART_STANDARD.md). Older notes that say 3:2 / 33.69 deg are obsolete.
  * World coordinates are TILE UNITS (floats). Tile (x,y) covers [x,x+1] x [y,y+1].
  *   north corner = (x,y)   east corner = (x+1,y)   south corner = (x+1,y+1)   west corner = (x,y+1)
  * screen = origin + ((wx-wy)*TW/2, (wx+wy)*TH/2) * zoom
@@ -13,7 +14,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   const MASTER = { w: 1440, h: 720 };   // V2.25: standard 2:1 pixel-art isometric (was 3:2)
   const RATIO = MASTER.h / MASTER.w; // 1/2
-  const ANGLE_DEG = Math.atan(RATIO) * 180 / Math.PI; // 33.690...
+  const ANGLE_DEG = Math.atan(RATIO) * 180 / Math.PI; // 26.565 (atan 1/2)
 
   function make(TW) {
     const TH = TW * RATIO;

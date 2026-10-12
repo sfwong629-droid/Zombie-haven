@@ -674,6 +674,8 @@ function followPath(o, goal, sp) {
     const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human, o.wallCost || 0); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver;
     if (!p) { o.path = null; return 'fail'; }
     o.path = p.map((q) => tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
+    const fb = o.job !== undefined || o.human ? Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y)) : null;   /* V2.34: leaving a building = step out through its entrance tile first (the path starts AFTER that tile, so people cut across the footprint) */
+    if (fb) { const at = Wd.approachTile(fb); if (!p.length || p[0].x !== at.x || p[0].y !== at.y) o.path.unshift(tc(at.x, at.y)); }
   }
   if (o.path.length > 0 && o.path.length === 1) { /* last leg handled below */ }
   const target = o.path.length ? o.path[0] : goal;
@@ -2237,6 +2239,7 @@ function showBuildingInfo(b, tab) {
     if (b.fire) status += `<div style="color:#ff9a3a">🔥 ON FIRE (${Math.round(b.fire)}%)</div>`;
     if (b.burnt) status += `<div style="color:var(--bad)">🏚 Burnt: no output</div><button class="act go" id="bRepair" ${S.mat >= repairCost(b) ? '' : 'disabled'}>Repair (⚙ ${repairCost(b)})</button>`;
     if (b.unpaid) status += '<div style="color:var(--bad)">Unpaid upkeep: half output</div>';
+    { const at = Wd.approachTile(b), blk = Wd.buildingAt(world, at.x, at.y); if (blk && blk !== b) status += `<div style="color:var(--bad)">🚪 Entrance blocked by the ${esc(DEFS[blk.type].name)}: move one of them</div>`; }   /* V2.34: older towns can still have this */
     h += `<div class="card row"><div style="width:84px;height:76px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 84, 76)}</div><div class="sp">${out ? `<div>${out}</div>` : ''}${staff ? `<div>${staff}</div>` : ''}${cb.names.length ? `<div class="sm">★ ${cb.names.length} neighbour bonus${cb.names.length > 1 ? 'es' : ''}</div>` : ''}</div></div>${status}`;
     if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'disabled'}>⚡ Rush · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<div class="sm">${esc(rc.why)}</div>`}`; }
     h += `<div><button class="act" id="bMove">Move</button></div>`;

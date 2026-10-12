@@ -94,14 +94,19 @@
     if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
     const dt = { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h };   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
+    // V2.34: nor may it sit on ANOTHER building's entrance tile (people then walked through that building)
+    for (const b of w.buildings) { if (b === ignore) continue; const at = approachTile(b); if (at.x >= x && at.x < x + def.w && at.y >= y && at.y < y + def.h) return { ok: false, why: `Blocks the ${(DEFS[b.type] && DEFS[b.type].name) || b.type} entrance` }; }
     return { ok: true, why: '' };
   }
   function entranceReachable(w, x, y, def) {
     const dt = { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h };
     const tmp = { type: '_probe', x, y, w: def.w, h: def.h };
     w.buildings.push(tmp);
-    const p = findPath(w, { x: 7, y: 10 }, dt); w.buildings.pop();
-    return !!p;
+    let ok = !!findPath(w, { x: 7, y: 10 }, dt);
+    // V2.34: every other entrance must stay reachable too (a new building must not wall another one in)
+    if (ok) for (const b of w.buildings) { if (b === tmp) continue; const at = approachTile(b); if (inMap(at.x, at.y) && !buildingAt(w, at.x, at.y) && !findPath(w, { x: 7, y: 10 }, at)) { ok = false; break; } }
+    w.buildings.pop();
+    return ok;
   }
   function placementCheck(w, x, y, def, ignore = null) {
     const f = footprintCheck(w, x, y, def, ignore); if (!f.ok) return f;

@@ -55,6 +55,44 @@ async def t_boot(br, port, t):
     await pg.evaluate("()=>{ZH.step(3000);ZH.draw()}")
     t.ok(not errs, f'no page errors after 3000 ticks and a draw {errs[:1]}'); await ctx.close()
 
+async def t_geometry(br, port, t):   # V2.34: isometric geometry, sprite anchors, hit tests, placement ghost, entrances, depth order
+    ctx, pg, errs = await open_game(br, port, 'geom')
+    r = await pg.evaluate("""()=>{const I=ZH.Iso,out={};out.ratio=I.RATIO;out.angle=I.ANGLE_DEG;out.th=ZH.BASE_TH/ZH.BASE_TW;
+      let rt=0;for(const z of [.5,.85,1.6,2.4]){ZH.cam.z=z;for(const [x,y] of [[0,0],[3.25,7.5],[11.9,2.1],[15,19]]){const p=ZH.project(x,y),q=ZH.unproject(p.x,p.y);rt=Math.max(rt,Math.abs(q.x-x),Math.abs(q.y-y))}}out.rt=rt;ZH.cam.z=1;
+      const W=ZH.world,keep=W.buildings.slice(),bad=[],hit=[];
+      for(const type of Object.keys(ZH.DEFS)){const D=ZH.DEFS[type];if(!D||!D.w)continue;const b={type,x:6,y:8,w:D.w,h:D.h,q:D.q,a:D.a,staff:null};W.buildings.length=0;W.buildings.push(b);ZH.Wd.bump(W);
+        const r=ZH.spriteRect(b);if(!r)continue;const a=ZH.project(b.x+b.w,b.y+b.h);
+        if(Math.abs(r.anchor.x-a.x)>.01||Math.abs(r.anchor.y-a.y)>.01)bad.push(type+' anchor');
+        const want=(D.w+D.h)*ZH.TWs()/2;if(Math.abs(r.w-want)>3*r.s+.5)bad.push(type+' width '+r.w.toFixed(1)+' vs '+want.toFixed(1));
+        const c=ZH.project(b.x+b.w/2,b.y+b.h/2);if(ZH.hitBuilding(c.x,c.y)!==b)hit.push(type)}
+      W.buildings.length=0;keep.forEach(b=>W.buildings.push(b));ZH.Wd.bump(W);out.bad=bad;out.hit=hit;
+      ZH.startTool({kind:'building',type:'workshop'});const tp=ZH.project(9.5,9.5);ZH.tapAt(tp.x,tp.y);const pv=ZH.preview;out.ghost=pv&&[pv.x,pv.y,pv.w,pv.h];ZH.endBuildMode(true);
+      const box=(x,y,r)=>({x1:x-r,y1:y-r,x2:x+r,y2:y+r});const bb={x1:6,y1:8,x2:8,y2:9,id:'b'};
+      const s1=I.sortDrawables([{...box(7,9.3,.12),id:'front'},bb,{...box(7,7.7,.12),id:'back'}]).map(o=>o.id).join(',');out.depth=s1;
+      return out}""")
+    t.ok(r['ratio'] == .5 and abs(r['th'] - .5) < 1e-9, f"one 2:1 projection everywhere (TH/TW = {r['th']})")
+    t.ok(abs(r['angle'] - 26.565) < .01, f"edge angle is atan(1/2) = {r['angle']:.3f} deg")
+    t.ok(r['rt'] < 1e-9, f"project/unproject round trip at 4 zoom levels (max error {r['rt']:.2e})")
+    t.ok(not r['bad'], f"every building sprite is anchored at its south corner and as wide as its footprint {r['bad']}")
+    t.ok(not r['hit'], f"tapping the middle of every building's footprint selects it {r['hit']}")
+    t.ok(r['ghost'] == [8, 9, 2, 1], f"placement ghost: tapped tile is the footprint's south tile {r['ghost']}")
+    t.ok(r['depth'] == 'back,b,front', f"depth: a person behind a building is drawn before it, in front after it ({r['depth']})")
+    r = await pg.evaluate("""()=>{const W=ZH.world,Wd=ZH.Wd,out={};const h=W.buildings.find(b=>b.type==='house'&&b.w===1)||W.buildings[0];const at=Wd.approachTile(h);
+      out.block=Wd.placementCheck(W,at.x,at.y,ZH.DEFS.storage,null);return out}""")
+    t.ok(not r['block']['ok'] and 'entrance' in r['block']['why'].lower(), f"a building cannot be placed on another building's entrance ({r['block']['why']})")
+    for k in ['water', 'farm', 'house', 'workshop', 'clinic', 'gym', 'storage', 'house', 'canteen', 'library']: await pg.evaluate(PLACE, k)
+    r = await pg.evaluate("""()=>{const W=ZH.world,S=ZH.S,Wd=ZH.Wd;S.food=S.water=200;S.mat=200;const out={sv:0,z:0,n:0,blocked:0,ex:[]};
+      for(const b of W.buildings){const at=Wd.approachTile(b);if(Wd.buildingAt(W,at.x,at.y))out.blocked++}
+      for(let i=0;i<6;i++)ZH.spawn&&ZH.spawn();
+      for(let k=0;k<15000;k++){ZH.simTick();if(k%5)continue;out.n++;
+        for(const s of S.sv){if(s.mode==='away')continue;const b=Wd.buildingAt(W,Math.floor(s.w.x),Math.floor(s.w.y));if(!b)continue;const d=Wd.doorPoint(b);if(Math.hypot(s.w.x-d.x,s.w.y-d.y)>.5){out.sv++;if(out.ex.length<3)out.ex.push([s.mode,b.type,s.w.x.toFixed(2),s.w.y.toFixed(2)])}}
+        for(const z of S.z){if(z.hp>0&&Wd.buildingAt(W,Math.floor(z.w.x),Math.floor(z.w.y)))out.z++}}
+      return out}""")
+    t.ok(r['blocked'] == 0, f"no building's entrance is covered by another building ({r['blocked']})")
+    t.ok(r['sv'] == 0, f"survivors never cut through a building (only in and out at the door) over 15000 ticks {r['ex']}")
+    t.ok(r['z'] == 0, f"zombies never stand on a building footprint over 15000 ticks ({r['z']} samples)")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -178,7 +216,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
