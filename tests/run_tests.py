@@ -93,6 +93,43 @@ async def t_geometry(br, port, t):   # V2.34: isometric geometry, sprite anchors
     t.ok(r['z'] == 0, f"zombies never stand on a building footprint over 15000 ticks ({r['z']} samples)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, emergency controls
+    ctx, pg, errs = await open_game(br, port, 'alerts')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};S.mat=80;S.z.length=0;ZH.alerts.clear();document.querySelectorAll('#fx .toast').forEach(e=>e.remove());
+      for(let x=3;x<=8;x++)ZH.tryWall(x,5,'wood');const wl=ZH.Wd.wallAt(W,5,5);
+      const n0=S.log.length;ZH.note('routine','test routine line');out.routineToast=document.querySelectorAll('#fx .toast').length;out.routineLog=S.log[S.log.length-1].l;
+      for(let i=0;i<5;i++)ZH.note('important','IMPORTANT '+i);out.toasts=document.querySelectorAll('#fx .toast').length;
+      document.getElementById('btnSpeed').click();out.sp0=ZH.simSpeed;
+      ZH.spawn(5,3,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);ZH.alertsTick();
+      out.keys=[...ZH.alerts.keys()];out.rows=document.querySelectorAll('#alerts .alert[data-k]').length;out.text=document.querySelector('#alerts .at').textContent;
+      out.btns=[...document.querySelectorAll('#alerts .aa')].map(b=>b.textContent+(b.disabled?'(off)':''));
+      ZH.centerOn(16,18);document.querySelector('#alerts .alert[data-k]').click();const p=ZH.project(5.5,5.5),c=document.getElementById('game').getBoundingClientRect();
+      out.centred=Math.abs(p.x-c.width/2)<40&&Math.abs(p.y-c.height*.46)<60;
+      const def=ZH.bestDefender({x:5.5,y:5.5});out.sent=ZH.sendDefender({x:5.5,y:5.5});out.defMode=def&&def.mode;
+      [...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Repair first').click();out.rf=ZH.repairFirst===wl;
+      wl.broken=false;wl.hp=wl.max;ZH.alertsTick();out.after=ZH.alerts.size;out.rowsAfter=document.querySelectorAll('#alerts .alert[data-k]').length;
+      return out}""")
+    t.ok(r['routineToast'] == 0 and r['routineLog'] == 'routine', 'routine news goes to the log only, no banner')
+    t.ok(r['toasts'] == 1, f"important banners never overlap ({r['toasts']} on screen after 5 at once)")
+    t.ok(r['keys'] == ['breach5,5'] and r['rows'] == 1, f"one breach alert per broken piece, not repeated {r['keys']}")
+    t.ok('breached' in r['text'] and 'zombie' in r['text'], f"breach alert says what is going on: {r['text']}")
+    t.ok('Repair first' in r['btns'][0] and 'Send defender' in r['btns'][1], f"breach actions offered {r['btns']}")
+    t.ok(r['sp0'] == 2 and r['sp1'] == 1, f"first emergency drops 2x speed to 1x ({r['sp0']} -> {r['sp1']})")
+    t.ok(r['centred'], 'tapping the alert centres the camera on the breach')
+    t.ok(r['sent'] and r['defMode'] == 'chase', 'Send defender sends a fighter at the zombie')
+    t.ok(r['rf'], 'Repair first puts the breach at the head of the repair queue')
+    t.ok(r['after'] == 0 and r['rowsAfter'] == 0, 'the alert clears itself once the wall is repaired')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};ZH.OPTS.autoSlow=false;const s=S.sv[0];s.hp=0;ZH.step(2);out.down=[...ZH.alerts.keys()].some(k=>k.startsWith('down'));out.dtext=document.querySelector('#alerts .at').textContent;
+      ZH.startTool({kind:'building',type:'house'});ZH.showEventPopup({title:'TEST',text:'x'});out.popupWhileBuilding=!!document.getElementById('eventModal').innerHTML;out.compact=document.querySelectorAll('#alerts .alert[data-k]').length;
+      ZH.endBuildMode(true);return out}""")
+    await pg.wait_for_timeout(50)
+    pop = await pg.evaluate("()=>!!document.getElementById('eventModal').innerHTML")
+    t.ok(r['down'] and 's left' in r['dtext'], f"a collapsed survivor raises an alert with the bleed-out timer: {r['dtext']}")
+    t.ok(not r['popupWhileBuilding'] and pop, 'pop-ups wait until building placement is finished')
+    t.ok(r['compact'] <= 1, 'while placing a building the alerts shrink to one row')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -216,7 +253,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

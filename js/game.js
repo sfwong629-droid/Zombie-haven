@@ -437,7 +437,7 @@ function draw() {
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
-  drawDaylight();
+  drawDaylight(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
   for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
@@ -617,7 +617,7 @@ function gainXp(s, n) { if (!s || n <= 0) return; s.mastery = (s.mastery || 0) +
 function learnSkills(s, quiet = false) {   // grant every skill this survivor has earned in any profession
   s.skills = s.skills || []; const got = [];
   for (const [k, sk] of Object.entries(SKILLS)) { const c = s.cls && s.cls[sk.from]; if (c && c.l >= sk.at && !s.skills.includes(k)) { s.skills.push(k); got.push(sk.name); } }
-  if (got.length && !quiet) { screenToast(`${s.name} learned ${got.join(', ')}`); say(`${s.name} learned ${got.join(', ')} (kept in every profession).`); }
+  if (got.length && !quiet) { note('routine', `${s.name} learned ${got.join(', ')} (kept in every profession).`, { at: s.w, float: '★ NEW SKILL', col: '#ffe38a' }); }
   return got;
 }
 function syncClass(s) { s.cls = s.cls || {}; s.cls[s.job] = { l: s.l || 1, xp: s.mastery || 0 }; }
@@ -626,7 +626,7 @@ function changeProfession(s, job) {   // keeps every class level and every learn
   if (!s || s.job === job || !professions[job]) return false;
   syncClass(s); const c = s.cls[job] || { l: 1, xp: 0 }; s.job = job; s.l = c.l; s.mastery = c.xp; s.mastered = c.l >= LEVEL_CAP;
   if (s.post && s.post.staff === s) { s.post.staff = null; } s.post = null; setMaxHp(s); syncClass(s);
-  say(`${s.name} is now a ${job} (Lv.${s.l}).`); if (typeof autoStaff === 'function') autoStaff(); return true;
+  say(`${s.name} is now a ${job} (Lv.${s.l}).`, true); if (typeof autoStaff === 'function') autoStaff(); return true;
 }
 const ration = (s) => (RATION_BASE[s.job] || 1) * (1 + .06 * (Math.min(LEVEL_CAP, s.l || 1) - 1));   // rations per day (half food, half water)
 const workBoost = (s) => .5 + .08 * (Math.min(LEVEL_CAP, s.l || 1) - 1);                            // matching-profession output boost (+50%, +10% per level above 1)
@@ -655,9 +655,100 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const tileOf = (w) => ({ x: Math.max(0, Math.min(COLS - 1, Math.floor(w.x))), y: Math.max(0, Math.min(ROWS - 1, Math.floor(w.y))) });
 const tc = (x, y) => ({ x: x + .5, y: y + .5 });
 const rnd = () => Math.random();
-function say(t) { logEvent(t); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
-function screenToast(t) { logEvent(t); const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; const n = $('fx').querySelectorAll('.toast').length; if (n) d.style.top = `calc(18% + ${Math.min(n, 4) * 38}px)`; $('fx').appendChild(d); setTimeout(() => d.remove(), 1500); }
-function renownGain(n, why = '') { S.ren += n; const el = $('ren'); if (el) { el.parentElement.classList.remove('renFlash'); void el.offsetWidth; el.parentElement.classList.add('renFlash'); } screenToast(`★ RENOWN +${n}${why ? ' · ' + why : ''}`); ui(); }
+function say(t, log = false) { if (log) logEvent(t, 'important'); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
+function screenToast(t, log) { note('important', t, log ? { log } : {}); }
+function renownGain(n, why = '') { S.ren += n; const el = $('ren'); if (el) { el.parentElement.classList.remove('renFlash'); void el.offsetWidth; el.parentElement.classList.add('renFlash'); } note(n >= 5 ? 'important' : 'routine', `★ RENOWN +${n}${why ? ' · ' + why : ''}`); ui(); }   /* V2.34: small gains only flash the Renown wheel and go to the log */
+/* ---------------- V2.34 notifications: three levels ----------------
+ * critical  : persistent alert row (top of the map), one per unresolved issue (deduplicated by key), tap = centre the camera on it,
+ *             optional action buttons, pulsing marker in the world + an arrow at the screen edge when it is off screen,
+ *             optional "drop to 1x speed" on the first emergency (Event log → settings).
+ * important : one banner at a time (queued, never overlapping), and the event log.
+ * routine   : event log only (plus floating text in the world when it has a place). */
+const alerts = new Map(); let bannerQ = [], bannerOn = false, lastSlow = -1e9; const lastBanner = new Map();
+const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); } catch (e) { /* private mode */ }
+function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
+const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
+function note(level, text, o = {}) {
+  logEvent(o.log || text, level);
+  if (level === 'routine') { const at = o.at && (typeof o.at === 'function' ? o.at() : o.at); if (at && o.float) floats.push({ w: { x: at.x, y: at.y }, t: o.float, col: o.col || '#e8e0c8', a: 70 }); return; }
+  if (level === 'important') { banner(o.banner || text); return; }
+  const key = o.key || text, a = alerts.get(key);
+  if (a) { a.text = text; if (o.at) a.at = o.at; renderAlerts(); return; }
+  const first = ![...alerts.values()].some((q) => !q.dismissed);
+  alerts.set(key, { key, text, icon: o.icon || '⚠', at: o.at || null, live: o.live || null, dyn: o.dyn || null, acts: o.acts || [], threats: !!o.threats, t0: tick, ttl: o.ttl || 0, seen: performance.now() });
+  { const a2 = alerts.get(key); if (a2.dyn) try { a2.text = a2.dyn(); } catch (e) { /* keep the first text */ } }
+  if (first && OPTS.autoSlow && simSpeed > 1 && performance.now() - lastSlow > 60000) { lastSlow = performance.now(); simSpeed = 1; $('btnSpeed').textContent = '1×'; banner('⏸ Back to 1× speed: emergency'); }
+  renderAlerts();
+}
+function banner(t) {
+  const now = performance.now(); if (now - (lastBanner.get(t) || -1e9) < 8000 || bannerQ.includes(t)) return; lastBanner.set(t, now);
+  if (lastBanner.size > 80) lastBanner.clear(); bannerQ.push(t); if (bannerQ.length > 4) bannerQ.shift(); nextBanner();
+}
+function nextBanner() {
+  const fx = $('fx'); if (bannerOn || !bannerQ.length || !fx) return; const t = bannerQ.shift(); bannerOn = true;
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; fx.appendChild(d);
+  setTimeout(() => { d.remove(); bannerOn = false; nextBanner(); }, 1700);
+}
+function alertsTick() {   // every half second of game time: drop resolved alerts, refresh live text
+  let ch = false;
+  for (const [k, a] of alerts) { if ((a.live && !a.live()) || (a.ttl && tick - a.t0 > a.ttl)) { alerts.delete(k); ch = true; continue; } if (a.dyn) { const t = a.dyn(); if (t !== a.text) { a.text = t; ch = true; } } }
+  if (ch || alerts.size) renderAlerts();
+}
+let alertsHtml = '';
+function renderAlerts() {
+  const box = $('alerts'); if (!box) return; const L = [...alerts.values()].filter((a) => !a.dismissed), max = sel ? 1 : 3;   /* while placing, only one compact row */
+  const h = L.slice(0, max).map((a) => `<div class="alert" data-k="${esc(a.key)}"><div class="arow"><span class="ai">${a.icon}</span><span class="at">${esc(a.text)}</span>${atOf(a) ? '<span class="ago">›</span>' : ''}<button class="ax" title="Hide">✕</button></div>${a.acts.length ? `<div class="aacts">${a.acts.map((c, i) => { const ok = !c.ok || c.ok(); return `<button class="aa" data-i="${i}" ${ok ? '' : 'disabled'}>${esc(typeof c.label === 'function' ? c.label() : c.label)}</button>`; }).join('')}</div>` : ''}</div>`).join('')
+    + (L.length > max ? `<div class="alert more" data-more="1">+${L.length - max} more · tap to show</div>` : '');
+  if (h === alertsHtml) return; alertsHtml = h; box.innerHTML = h;
+  box.querySelectorAll('.alert[data-k]').forEach((el) => {
+    const a = alerts.get(el.dataset.k); if (!a) return;
+    el.onclick = (e) => { e.stopPropagation(); const p = atOf(a); if (p) { centerOn(p.x, p.y); a.seen = performance.now(); } };
+    el.querySelector('.ax').onclick = (e) => { e.stopPropagation(); a.dismissed = true; renderAlerts(); };
+    el.querySelectorAll('.aa').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const c = a.acts[+b.dataset.i]; if (c && (!c.ok || c.ok())) c.fn(); alertsTick(); }; });
+  });
+  const m = box.querySelector('[data-more]'); if (m) m.onclick = (e) => { e.stopPropagation(); const first = [...alerts.values()].find((q) => !q.dismissed); if (first) { alerts.delete(first.key); alerts.set(first.key, first); renderAlerts(); } };
+}
+function rationNeed() { let f = 0; for (const q of S.sv) f += ration(q) / 2; for (const k of S.kids || []) f += .25; return { f, w: f }; }   // a day of rations: half food, half water
+function downAlert(s) {
+  note('critical', s.name + ' is down', { key: 'down' + (s.id || s.name), icon: '🩸', log: s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.', at: () => s.w, live: () => s.mode === 'down' && S.sv.includes(s),
+    dyn: () => `${s.name} is down · ${Math.max(0, Math.ceil((s.bleed || 0) / 60))} s left · ` + (s.rescuer ? (s.rescuer.carrying === s ? `${s.rescuer.name} is bringing them in` : `${s.rescuer.name} is on the way`) : 'no rescuer yet'),
+    acts: [{ label: () => 'Bandage ⚙' + BANDAGE_COST, ok: () => S.mat >= BANDAGE_COST, fn: () => useBandage(s) }] });
+}
+function raidAlert(n) {
+  const alive = () => S.z.filter((z) => z.human && z.hp > 0 && !z.escaped);
+  note('critical', `${n} raiders sneaking in`, { key: 'raid', icon: '🏴', log: `${n} raiders are sneaking toward the Haven. They'll steal supplies and fight anyone in the way.`, at: () => { const r = alive()[0]; return r ? r.w : null; }, live: () => alive().length > 0, dyn: () => { const k = alive().length; return `${k} raider${k > 1 ? 's' : ''} in the area · they steal supplies`; } });
+}
+/* wall breach: one alert per broken piece until it is repaired; "Repair first" queues it ahead of other damage (still needs parts and no zombie
+ * within reach, the normal repair rules); "Send defender" sends the best free fighter at the closest zombie */
+let repairFirst = null;
+const wallHot = (wl) => S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6);
+function bestDefender(c) {
+  let best = null, bs = -1e9; for (const q of S.sv) { if (q.hp <= q.max * .4 || q.carrying || ['down', 'away', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack'].includes(q.mode)) continue;
+    const sc = (professions[q.job]?.combat || 0) * 4 + (weaponOf(q).atk || 0) * .3 - dist(q.w, c); if (sc > bs) { bs = sc; best = q; } }
+  return best;
+}
+function sendDefender(c) { const q = bestDefender(c); let z = null, d = 6; for (const o of S.z) if (o.hp > 0 && dist(o.w, c) < d) { d = dist(o.w, c); z = o; } if (!q || !z) return false; engage(q, z); q.why = 'Defending the breach'; say(`${q.name} is heading to the breach.`); return true; }
+function breachAlert(wl) {
+  const gate = wl.type === 'gate', nm = gate ? 'Gate' : 'Wall', c = { x: wl.x + .5, y: wl.y + .5 }, near = () => S.z.filter((z) => z.hp > 0 && !z.human && dist(z.w, c) < 6).length;
+  note('critical', `${nm} breached`, { key: 'breach' + wl.x + ',' + wl.y, icon: '🧱', at: c, threats: true, log: `${gate ? 'The gate' : 'A wall section'} broke! Zombies can walk through until it is repaired (automatic, costs parts).`,
+    live: () => wl.broken && world.walls.get(Wd.key(wl.x, wl.y)) === wl,
+    dyn: () => { const n = near(); return `${nm} breached · ${n ? n + ' zombie' + (n > 1 ? 's' : '') + ' near' : 'no zombies near'} · ` + (S.mat < 1 ? 'no parts to repair' : wallHot(wl) ? 'repair waiting' : 'repairing'); },
+    acts: [{ label: 'Repair first', ok: () => S.mat >= 1 && repairFirst !== wl, fn: () => { repairFirst = wl; say('The repair crew will fix this breach first (once no zombie is close).'); } },
+      { label: 'Send defender', ok: () => near() > 0 && !!bestDefender(c), fn: () => sendDefender(c) }] });
+}
+function drawAlertMarks() {   // pulsing ring on the spot, red rings on nearby threats, an arrow at the screen edge when the spot is off screen
+  const t = performance.now() / 1000;
+  for (const a of alerts.values()) {
+    if (a.dismissed) continue; const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 6);
+    if (a.threats) for (const z of S.z) if (z.hp > 0 && dist(z.w, w) < 5) { const q = project(z.w.x, z.w.y); ctx.save(); ctx.strokeStyle = 'rgba(255,70,60,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(q.x, q.y, .22 * tw, .11 * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+    const on = p.x > 20 && p.x < VW - 20 && p.y > 20 && p.y < VH - 20;
+    if (on) { ctx.save(); ctx.strokeStyle = `rgba(255,${80 + 100 * pulse | 0},60,${.55 + .45 * pulse})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, (.38 + .14 * pulse) * tw, (.19 + .07 * pulse) * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); continue; }
+    const cx = VW / 2, cy = VH / 2, dx = p.x - cx, dy = p.y - cy, k = Math.min((VW / 2 - 30) / Math.abs(dx || 1e-6), (VH / 2 - 70) / Math.abs(dy || 1e-6)), ex = cx + dx * k, ey = cy + dy * k, ang = Math.atan2(dy, dx);
+    ctx.save(); ctx.translate(ex, ey); ctx.globalAlpha = .75 + .25 * pulse; ctx.fillStyle = '#d8352b'; ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 17, 0, 7); ctx.fill(); ctx.stroke(); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(15, -7); ctx.lineTo(15, 7); ctx.closePath(); ctx.fillStyle = '#fff3d6'; ctx.fill(); ctx.restore();
+    stampText(a.icon, ex, ey + 7, '17px sans-serif', '#fff');
+  }
+}
 function bOf(type) { return world.buildings.filter((b) => b.type === type); }
 
 /* ---------------- movement & path following (A* on the tile grid; recompute only when needed) ---------------- */
@@ -776,7 +867,7 @@ const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && 
 function assignRescue() {
   const downs = downedUnassigned(); if (!downs.length) return false; const free = S.sv.filter((r) => r.hp > 0 && ['free', 'postCombat', 'wait', 'work', 'goWork'].includes(r.mode) && !r.rescuing); if (!free.length) return false;
   let best = null, bs = -1e9; for (const q of downs) for (const r of free) { const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 - dist(r.w, q.w); if (sc > bs) { bs = sc; best = { r, q }; } }
-  best.q.rescuer = best.r; best.r.rescuing = best.q; best.r.target = null; best.r.facility = null; best.r.dest = null; best.r.path = null; best.r.mode = 'rescueTo'; best.r.why = `Rescuing ${best.q.name}`; say(`${best.r.name} is rescuing ${best.q.name}.`); return true;
+  best.q.rescuer = best.r; best.r.rescuing = best.q; best.r.target = null; best.r.facility = null; best.r.dest = null; best.r.path = null; best.r.mode = 'rescueTo'; best.r.why = `Rescuing ${best.q.name}`; note('routine', `${best.r.name} is rescuing ${best.q.name}.`); return true;
 }
 function patrolDest() { const pts = [...world.roads].map((k) => k.split(',').map(Number)).filter(([x, y]) => y <= 9); const p = pts[Math.floor(rnd() * pts.length)] || [7, 7]; return tc(p[0], p[1]); }
 function roamDest() { const here = tileOf(s_dummy), open = [...world.roads].map((k) => k.split(',').map(Number)); const p = open[Math.floor(rnd() * open.length)] || [7, 10]; return tc(p[0], p[1]); }
@@ -813,12 +904,12 @@ function finishFacility(s) {
   if (r.need === 'thirst') { if (S.water >= .5) s.thirst = Math.max(0, s.thirst - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1)); else floats.push({ w: { ...s.w }, t: 'NO WATER', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'fatigue') s.fatigue = Math.max(0, s.fatigue - r.benefit);
   if (r.need === 'injury') { s.hp = Math.min(s.max, s.hp + r.benefit); }   // no medicine stock: care is limited by the building's tier, beds and the time it takes
-  if (b.type === 'armory') { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); screenToast(s.name + ' equipped ' + ITEMS[g.id].name + (g.buy ? ' · -' + ITEMS[g.id].cost + ' PARTS' : '')); s.sat += 2; say(s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory.'); } }
+  if (b.type === 'armory') { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' parts).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
   if (r.need === 'train') {   /* each visit fills a stat's training bar; 100 = +1 permanent point */
     if (b.type === 'library') S.rp = (S.rp || 0) + 1;   /* V2.18: study sessions feed the research effort */
     s.tp = s.tp || {}; s.st = s.st || rollStats(s.job, s.l); const k = r.stat, gainT = r.benefit * (b.q || 10) / 10 * Math.max(.7, sMod(s, 'int', .02)) * (1 + combos(b).train) * (b.unpaid ? .5 : 1);
     s.tp[k] = (s.tp[k] || 0) + gainT; s.fatigue = Math.min(100, s.fatigue + 6);
-    while (s.tp[k] >= 100 && s.st[k] < STAT_CAP) { s.tp[k] -= 100; s.st[k]++; S.trainPts = (S.trainPts || 0) + 1; if (k === 'end') setMaxHp(s); screenToast(`${s.name} · ${STAT_NAME[k].toUpperCase()} ${s.st[k]}`); say(`${s.name}'s ${STAT_NAME[k]} rose to ${s.st[k]}.`); }
+    while (s.tp[k] >= 100 && s.st[k] < STAT_CAP) { s.tp[k] -= 100; s.st[k]++; S.trainPts = (S.trainPts || 0) + 1; if (k === 'end') setMaxHp(s); note('routine', `${s.name}'s ${STAT_NAME[k]} rose to ${s.st[k]}.`); }
     floats.push({ w: { ...s.w }, t: '+' + STAT_NAME[k].slice(0, 3).toUpperCase(), col: '#b6f0ff', a: 60 });
   }
   gainXp(s, .5);   /* using town buildings teaches a little */
@@ -831,7 +922,7 @@ function ai(s) {
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ s.fatigue = Math.min(100, s.fatigue + 1); starve(s); }
   if (s.fleeT > 0) s.fleeT--;
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
-  if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; say(s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.'); return; }
+  if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
   if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (isFighter(s)) engage(s, th); else startHide(s, th); return; } }
   if (s.mode === 'hide') {   /* running for cover */
@@ -844,15 +935,15 @@ function ai(s) {
       if (S.water >= .05) { S.water -= .005; s.thirst = Math.max(0, s.thirst - .7); } if (S.food >= .05) { S.food -= .005; s.hunger = Math.max(0, s.hunger - .6); } s.fatigue = Math.max(0, s.fatigue - 1.5); S.alert = Math.max(S.alert, 200); }
     if (s.stateTicks <= 0) { if (zombieNear(Wd.doorPoint(b), 3.5)) s.stateTicks = 90; else { s.hideAt = null; enterFree(s, 30); s.why = 'Coming out — area clear'; } } return;
   }   // being attacked beats lunch
-  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { s.hp = Math.round(s.max * (bOf('hospital').length ? 1 : bOf('clinic').length ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; say(s.name + ' recovered and returned.'); } return; }
+  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { s.hp = Math.round(s.max * (bOf('hospital').length ? 1 : bOf('clinic').length ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
-    const r = followPath(s, q.w, .02); if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.why = `Carrying ${q.name} to ${medSite() ? DEFS[medSite().type].name : 'safety'}`; say(`${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
+    const r = followPath(s, q.w, .02); if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.why = `Carrying ${q.name} to ${medSite() ? DEFS[medSite().type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
   }
   if (s.mode === 'rescueCarry') {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     const r = followPath(s, sitePoint(), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
-    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.stateTicks = Math.round(careTicks() * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); say(q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.stateTicks = Math.round(careTicks() * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
   }
   if (s.mode === 'goFire' || s.mode === 'fightFire') { fireAI(s); return; }
   if (s.mode === 'goWork') {
@@ -954,7 +1045,7 @@ const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'a
 function spawnRaid() {
   const n = Math.min(7, 3 + Math.floor(S.rank / 2) + (S.terr || 0) + Math.floor(S.day / 6)), a = spawnPoint();
   for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); }
-  screenToast('⚠ RAIDERS SPOTTED'); SFX('alarm'); say(`${n} raiders are sneaking toward the Haven. They'll steal supplies and fight anyone in the way.`); S.alert = 1200;
+  SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
 function raidTarget(z) { let best = null, bd = 1e9; for (const b of world.buildings) { if (!RAID_TARGETS.includes(b.type)) continue; const d = dist(z.w, Wd.doorPoint(b)); if (d < bd) { bd = d; best = b; } } return best; }
 function rai(z) {
@@ -981,7 +1072,7 @@ function rai(z) {
   }
   if (z.mode === 'rflee') {
     const r = followPath(z, z.home, d.chase * 1.1);
-    if (r === 'arrived' || r === 'fail' || dist(z.w, z.home) < .6) { if (z.carried) say(`A raider escaped with ${['food', 'water', 'mat'].filter((q) => z.loot[q]).map((q) => z.loot[q] + ' ' + (q === 'mat' ? 'parts' : q)).join(', ')}.`); z.hp = 0; z.escaped = true; }
+    if (r === 'arrived' || r === 'fail' || dist(z.w, z.home) < .6) { if (z.carried) note('important', `A raider escaped with ${['food', 'water', 'mat'].filter((q) => z.loot[q]).map((q) => z.loot[q] + ' ' + (q === 'mat' ? 'parts' : q)).join(', ')}.`); z.hp = 0; z.escaped = true; }
   }
 }
 function raiderDown(z) {   /* a beaten raider drops what they carried */
@@ -994,18 +1085,18 @@ function spawnBoss() {
   S.z.push({ type: 'boss', boss: true, pw: 1.25 + .03 * S.day, w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   S.z[S.z.length - 1].max = S.z[S.z.length - 1].hp;
   const mob = 3 + Math.round(L * .8) + 3 * tr + Math.floor(S.day / 5); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
-  screenToast('☠ A BOSS ATTACKS WITH ITS HORDE'); SFX('boss'); say(`A Mutant Boss is leading ${mob} zombies against the Haven!`); S.alert = 2400;
+  SFX('boss'); note('critical', `A Mutant Boss and ${mob} zombies attack!`, { key: 'boss', icon: '☠', log: `A Mutant Boss is leading ${mob} zombies against the Haven!`, threats: true, at: () => { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); return b ? b.w : null; }, live: () => S.z.some((z) => z.type === 'boss' && z.hp > 0) }); S.alert = 2400;
 }
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24;
   if (S.day >= 2 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; } }
-  if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; say('The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.'); }
-  if (S.day === S.nextBoss && S.hour === 18) { screenToast('☠ SOMETHING BIG IS COMING TONIGHT'); say('Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.'); }
+  if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; note('important', '☠ The horde holds back tonight', { log: 'The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.' }); }
+  if (S.day === S.nextBoss && S.hour === 18) { note('important', '☠ A BOSS ATTACKS AT 21:00', { log: 'Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.' }); }
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
-  if (S.hour === 6) { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); if (b) { b.hp = 0; b.escaped = true; screenToast('☀ THE BOSS RETREATS AT DAWN'); say('The Mutant Boss slunk back into the wasteland. It will return.'); } S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }
+  if (S.hour === 6) { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); if (b) { b.hp = 0; b.escaped = true; note('important', '☀ THE BOSS RETREATS AT DAWN', { log: 'The Mutant Boss slunk back into the wasteland. It will return.' }); } S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
@@ -1089,13 +1180,14 @@ function zWalk(z, goal, sp, viaPath = false) {   // slide toward the goal; when 
 function wallBroken(wl) {
   wl.hp = 0; wl.broken = true; Wd.bump(world); S.alert = 1800; SFX('breach'); const gate = wl.type === 'gate';
   for (const z of S.z) if (z.hp > 0 && !z.human && ['idle', 'zmarch', 'zbreak'].includes(z.mode) && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 16) { z.siege = true; z.mode = 'zmarch'; z.wallT = null; z.path = null; z.goal = null; z.goalT = 0; z.blocked = 0; }   /* V2.33: the whole horde rushes the breach */   /* V2.18: it stays as rubble and the repair crew rebuilds it */
-  screenToast('⚠ ' + (gate ? 'GATE' : 'WALL') + ' BREACHED'); say((gate ? 'The gate' : 'A wall section') + ' was broken! Zombies can walk through until it is repaired (automatic, costs parts).'); ui();
+  breachAlert(wl); ui();
 }
 let repairFrac = 0;
 function autoRepair() {   // every second: the most damaged segment that can be worked on is patched up (no zombie close by, nobody standing in a broken gap); engineers and mechanics work twice as fast; a full repair costs 60% of a new segment
   const near = (wl) => S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6), inGap = (wl) => S.z.some((z) => z.hp > 0 && Math.floor(z.w.x) === wl.x && Math.floor(z.w.y) === wl.y) || S.sv.some((q) => Math.floor(q.w.x) === wl.x && Math.floor(q.w.y) === wl.y);
   const cand = [...world.walls.values()].filter((wl) => wl.hp < wl.max).sort((a, b) => a.hp / a.max - b.hp / b.max);
-  const best = cand.find((wl) => !near(wl) && !(wl.broken && inGap(wl))); if (!best) return;
+  if (repairFirst && (repairFirst.hp >= repairFirst.max || !world.walls.has(Wd.key(repairFirst.x, repairFirst.y)))) repairFirst = null;
+  const ok = (wl) => !near(wl) && !(wl.broken && inGap(wl)), best = repairFirst && ok(repairFirst) ? repairFirst : cand.find(ok); if (!best) return;
   const fast = S.sv.some((q) => q.hp > 0 && (q.job === 'Engineer' || q.job === 'Mechanic' || hasSkill(q, 'handy'))), amt = Math.min(best.max - best.hp, fast ? 8 : 4), cost = amt / best.max * Wd.WALL_DEFS[best.type].mat * .6;
   repairFrac += cost; if (repairFrac >= 1) { if (S.mat < 1) { repairFrac = 1; return; } S.mat -= 1; repairFrac -= 1; }
   best.hp += amt; if (best.broken && best.hp >= best.max * .3) { best.broken = false; Wd.bump(world); } if (best.hp >= best.max) { best.hp = best.max; floats.push({ w: { x: best.x + .5, y: best.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); }
@@ -1105,8 +1197,8 @@ function autoRepair() {   // every second: the most damaged segment that can be 
 const xpNeed = (s) => { const p = professions[s.job]; const b = (p && p.master) || 60, l = s.l || 1; return Math.round(l < 5 ? b : b * (1 + (l - 4) * .6)); };
 function masteryCheck(s) {      // experience: each level raises the work boost and the daily ration; capped at LEVEL_CAP
   const p = professions[s.job]; if (!p || s.mastery < xpNeed(s)) return;
-  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); screenToast(`${s.name} · ${s.job.toUpperCase()} LV ${s.l}`); learnSkills(s); }
-  else if (!s.mastered) { syncClass(s); s.mastered = true; renownGain(2, s.name + ' mastered ' + s.job); screenToast(s.name + ' MASTERED ' + s.job); }
+  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); floats.push({ w: { ...s.w }, t: 'LV ' + s.l + '!', col: '#ffe38a', a: 80 }); learnSkills(s); }
+  else if (!s.mastered) { syncClass(s); s.mastered = true; renownGain(2, s.name + ' mastered ' + s.job); note('important', s.name + ' MASTERED ' + s.job); }
 }
 
 /* ---------------- supplies: production, staffing, rations, upgrades ---------------- */
@@ -1124,7 +1216,7 @@ function payUpkeep() {   /* at day end: pay in order of importance (water, food,
   const order = ['water', 'well', 'farm', 'field', 'medic', 'clinic', 'hospital', 'scrapyard', 'canteen', 'house'];
   const list = [...world.buildings].sort((a, b) => ((order.indexOf(a.type) + 1) || 99) - ((order.indexOf(b.type) + 1) || 99));
   let paid = 0, unpaid = 0; for (const b of list) { const c = upkeepOf(b); if (S.mat >= c) { S.mat -= c; paid += c; b.unpaid = false; } else { b.unpaid = true; unpaid++; } }
-  if (unpaid) { screenToast(`⚠ ${unpaid} BUILDING${unpaid > 1 ? 'S' : ''} UNPAID — HALF OUTPUT`); say(`Not enough parts for upkeep: ${unpaid} building${unpaid > 1 ? 's run' : ' runs'} at half output tomorrow. Build a Scrapyard or scavenge for parts.`); }
+  if (unpaid) { note('important', `⚠ ${unpaid} BUILDING${unpaid > 1 ? 'S' : ''} UNPAID — HALF OUTPUT`, { log: `Not enough parts for upkeep: ${unpaid} building${unpaid > 1 ? 's run' : ' runs'} at half output tomorrow. Build a Scrapyard or scavenge for parts.` }); }
   return { paid, unpaid };
 }
 /* ---------------- V2.15 neighbour bonuses (DV2 combos / Fallout merged rooms) ---------------- */
@@ -1166,8 +1258,8 @@ const RESEARCH = {
 const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
 const researched = (k) => !k || !!(S.res && S.res[k]);
 const craftCost = (id) => Math.ceil(ITEMS[id].cost * 1.3) + 1;
-function doResearch(k) { const r = RESEARCH[k]; if (!r || researched(k) || !researched(r.need) || (S.rp || 0) < r.rp || S.mat < r.mat) return false; S.rp -= r.rp; S.mat -= r.mat; S.res = S.res || {}; S.res[k] = true; S.resWeek = (S.resWeek || 0) + 1; screenToast('🔬 RESEARCHED: ' + r.name.toUpperCase()); SFX('chime'); say(`Research complete: ${r.name} — ${r.desc}.`); saveGame(); ui(); return true; }
-function craft(id) { const c = craftCost(id); if (S.mat < c || !Object.entries(RECIPES).some(([k, l]) => researched(k) && l.includes(id)) || !bOf('workshop').length) return false; S.mat -= c; stashAdd(id); SFX('coin'); screenToast('🛠 CRAFTED ' + ITEMS[id].name.toUpperCase()); say(`Crafted a ${ITEMS[id].name} (−${c} parts). It's in the stash.`); saveGame(); ui(); return true; }
+function doResearch(k) { const r = RESEARCH[k]; if (!r || researched(k) || !researched(r.need) || (S.rp || 0) < r.rp || S.mat < r.mat) return false; S.rp -= r.rp; S.mat -= r.mat; S.res = S.res || {}; S.res[k] = true; S.resWeek = (S.resWeek || 0) + 1; banner('🔬 RESEARCHED: ' + r.name.toUpperCase()); SFX('chime'); say(`Research complete: ${r.name} — ${r.desc}.`, true); saveGame(); ui(); return true; }
+function craft(id) { const c = craftCost(id); if (S.mat < c || !Object.entries(RECIPES).some(([k, l]) => researched(k) && l.includes(id)) || !bOf('workshop').length) return false; S.mat -= c; stashAdd(id); SFX('coin'); banner('🛠 CRAFTED ' + ITEMS[id].name.toUpperCase()); say(`Crafted a ${ITEMS[id].name} (−${c} parts). It's in the stash.`, true); saveGame(); ui(); return true; }
 function hourlyProduction() {   // runs every game hour
   let fi = 0, wi = 0;
   for (const b of world.buildings) {
@@ -1243,19 +1335,19 @@ function ejectFrom(b) {   /* everyone inside a building steps out of the door */
 function startFire(b, n = 30, why = '') {
   if (!world.buildings.includes(b) || b.burnt || (b.safeUntil || 0) > nowH()) return false; const was = b.fire; b.fire = Math.max(b.fire || 0, n); if (was) return true;
   ejectFrom(b); S.incidents = (S.incidents || 0) + 1;
-  screenToast('🔥 FIRE: ' + DEFS[b.type].name.toUpperCase()); SFX('alarm'); say(`${why ? why + ': ' : ''}the ${DEFS[b.type].name} is on fire! Nearby survivors will fight it (uses a little water). If it burns down it must be repaired.`);
+  SFX('alarm'); note('critical', `Fire at the ${DEFS[b.type].name}`, { key: 'fire' + b.x + ',' + b.y, icon: '🔥', log: `${why ? why + ': ' : ''}the ${DEFS[b.type].name} is on fire! Nearby survivors will fight it (uses a little water). If it burns down it must be repaired.`, at: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, live: () => !!b.fire && world.buildings.includes(b), dyn: () => `Fire at the ${DEFS[b.type].name} · ${Math.round(b.fire)}% · ${S.sv.filter((q) => q.fireAt === b).length} fighting it` });
   return true;
 }
 const gapB = (a, b) => Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
 function burnDown(b) {
   b.fire = 0; b.burnt = true; releasePost(b); Wd.bump(world);
   for (const q of S.sv) if (q.fireAt === b && ['goFire', 'fightFire'].includes(q.mode)) { q.fireAt = null; q.activity = null; enterFree(q, 30); }
-  screenToast('🏚 ' + DEFS[b.type].name.toUpperCase() + ' BURNED DOWN'); say(`The ${DEFS[b.type].name} burned down. It does nothing until repaired (tap it).`);
+  note('important', '🏚 ' + DEFS[b.type].name.toUpperCase() + ' BURNED DOWN', { log: `The ${DEFS[b.type].name} burned down. It does nothing until repaired (tap it).` });
   { const nb = world.buildings.filter((o) => o !== b && !o.burnt && !o.fire && gapB(o, b) <= 1); if (nb.length && rnd() < .35) startFire(nb[Math.floor(rnd() * nb.length)], 25, 'The fire spread'); }   /* V2.18: at most one neighbour */
 }
 function fireOut(b) {
   b.fire = 0; const crew = S.sv.filter((q) => q.fireAt === b && ['goFire', 'fightFire'].includes(q.mode)); crew.forEach((q) => { q.fireAt = null; q.activity = null; gainXp(q, 3); enterFree(q, 40); });
-  screenToast('✔ FIRE OUT'); say(`The fire at the ${DEFS[b.type].name} is out${crew.length ? ' — thanks to ' + crew.map((q) => q.name).join(', ') : ''}.`); renownGain(2, 'Fire put out');
+  note('routine', `The fire at the ${DEFS[b.type].name} is out${crew.length ? ' — thanks to ' + crew.map((q) => q.name).join(', ') : ''}.`, { at: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, float: '✔ FIRE OUT', col: '#9fe58a' }); renownGain(2, 'Fire put out');
 }
 const repairCost = (b) => Math.ceil(DEFS[b.type].mat * .25);
 function repairBurnt(b) {
@@ -1284,7 +1376,7 @@ function breakIn() {   /* a zombie gets into a building; whoever is inside is fo
   if (!pool.length) return false; const b = pool[Math.floor(rnd() * pool.length)], a = Wd.approachPoint(b);
   ejectFrom(b); spawn(0, 0, rnd() < .3 ? 'runner' : 'walker'); const z = S.z[S.z.length - 1]; z.w = { x: a.x, y: a.y }; z.mode = 'idle'; z.stateTicks = 0; z.siege = false;
   S.alert = Math.max(S.alert, 900); S.incidents = (S.incidents || 0) + 1;
-  screenToast('🧟 BREAK-IN: ' + DEFS[b.type].name.toUpperCase()); SFX('alarm'); say(`A zombie broke into the ${DEFS[b.type].name}! Fighters are on their way.`); return b;
+  SFX('alarm'); note('critical', `Zombie inside the ${DEFS[b.type].name}`, { key: 'breakin' + b.x + ',' + b.y, icon: '🧟', log: `A zombie broke into the ${DEFS[b.type].name}! Fighters are on their way.`, at: () => z.w, live: () => z.hp > 0 && S.z.includes(z), threats: true }); return b;
 }
 function incidentRoll() {   /* hourly, from day 2: about one incident every 2 days */
   if (S.day < 2 || world.buildings.some((b) => b.fire || b.burnt) || rnd() > 1 / 72) return;   /* about one every 3 days, never while a burnt building waits for repair */
@@ -1302,7 +1394,7 @@ function givePet(s, i) { const p = (S.pets || [])[i]; if (!p || s.pet) return fa
 function takePet(s) { if (!s.pet) return false; (S.pets = S.pets || []).push(s.pet); say(`${s.pet.name} stays in town for now.`); s.pet = null; return true; }
 function petTick() {   /* every 30 ticks: dogs bark at sneaking raiders near their owner */
   for (const s of S.sv) { if (!s.pet || s.pet.kind !== 'dog' || s.hp <= 0 || s.mode === 'away') continue;
-    for (const z of S.z) if (z.human && z.hp > 0 && z.mode === 'rsneak' && !z.barked && dist(z.w, s.w) < 4.5) { z.barked = true; SFX('woof'); S.alert = Math.max(S.alert, 900); floats.push({ w: { ...s.w }, t: 'WOOF!', col: '#ffe38a', a: 70 }); if ((S.barkT || 0) < tick) { S.barkT = tick + 600; say(`${s.pet.name} is barking — raiders spotted near ${s.name}!`); } } }
+    for (const z of S.z) if (z.human && z.hp > 0 && z.mode === 'rsneak' && !z.barked && dist(z.w, s.w) < 4.5) { z.barked = true; SFX('woof'); S.alert = Math.max(S.alert, 900); floats.push({ w: { ...s.w }, t: 'WOOF!', col: '#ffe38a', a: 70 }); if ((S.barkT || 0) < tick) { S.barkT = tick + 600; note('routine', `${s.pet.name} is barking — raiders spotted near ${s.name}!`); } } }
 }
 function petDaily() {
   for (const s of S.sv) { if (!s.pet || s.hp <= 0) continue;
@@ -1419,7 +1511,7 @@ function addBond(a, b, n) {
   if (!a || !b || a === b) return; a.rel = a.rel || {}; b.rel = b.rel || {}; const pk = Math.min(a.id, b.id) + '-' + Math.max(a.id, b.id), today = bondDay.get(pk) || 0; if (today >= 20) return; bondDay.set(pk, today + n);   /* at most ~20 a day per pair */
   const before = bondOf(a, b), m = n * Math.max(.6, (sMod(a, 'cha', .04) + sMod(b, 'cha', .04)) / 2) * Math.max(.25, 1 - before / 150), v = Math.min(100, before + m);   /* each step up is harder */
   a.rel[b.id] = v; b.rel[a.id] = v;
-  for (const [k, lvl] of [['friend', BOND.friend], ['close', BOND.close]]) if (before < lvl && v >= lvl) { if (k === 'friend') S.friendsMade = (S.friendsMade || 0) + 1; floats.push({ w: { x: (a.w.x + b.w.x) / 2, y: (a.w.y + b.w.y) / 2 }, t: k === 'close' ? '♥ CLOSE FRIENDS' : '♥ FRIENDS', col: '#ff9ac8', a: 90 }); say(`${a.name} and ${b.name} are now ${k === 'close' ? 'close friends' : 'friends'}.`); }
+  for (const [k, lvl] of [['friend', BOND.friend], ['close', BOND.close]]) if (before < lvl && v >= lvl) { if (k === 'friend') S.friendsMade = (S.friendsMade || 0) + 1; floats.push({ w: { x: (a.w.x + b.w.x) / 2, y: (a.w.y + b.w.y) / 2 }, t: k === 'close' ? '♥ CLOSE FRIENDS' : '♥ FRIENDS', col: '#ff9ac8', a: 90 }); note('routine', `${a.name} and ${b.name} are now ${k === 'close' ? 'close friends' : 'friends'}.`); }
 }
 function bondTick() {   /* every 120 ticks: time together builds bonds */
   const L = S.sv.filter((q) => q.hp > 0 && !['down', 'away'].includes(q.mode));
@@ -1485,10 +1577,10 @@ function endOfDay() {            // rations: every survivor eats half food, half
   for (const q of S.sv) { q.hunger = ff < 1 ? Math.min(100, q.hunger + 28 * (1 - ff)) : Math.max(0, q.hunger - 35); q.thirst = fw < 1 ? Math.min(100, q.thirst + 28 * (1 - fw)) : Math.max(0, q.thirst - 35); } /* a full ration relieves the meters; a shortfall raises them */
   const open = world.buildings.filter((b) => DEFS[b.type].slot && !b.staff).map((b) => DEFS[b.type].name);
   const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
-  say(`Day ${S.day - 1} · Food +${f1(dayLog.foodIn)} −${f1(ef)} · Water +${f1(dayLog.waterIn)} −${f1(ew)} · Upkeep −${f1(up.paid)} parts${up.unpaid ? ` (${up.unpaid} unpaid)` : ''}` + (open.length ? ` · Open staff slot: ${[...new Set(open)].join(', ')}` : ''));
+  note('routine', `Day ${S.day - 1} · Food +${f1(dayLog.foodIn)} −${f1(ef)} · Water +${f1(dayLog.waterIn)} −${f1(ew)} · Upkeep −${f1(up.paid)} parts${up.unpaid ? ` (${up.unpaid} unpaid)` : ''}` + (open.length ? ` · Open staff slot: ${[...new Set(open)].join(', ')}` : ''));
   dayLog.foodIn = dayLog.waterIn = 0;
-  if (ff < 1) screenToast('⚠ OUT OF FOOD'); else if (S.food < nf) screenToast('⚠ FOOD: under 1 day left');
-  if (fw < 1) screenToast('⚠ OUT OF WATER'); else if (S.water < nw) screenToast('⚠ WATER: under 1 day left');
+  if (ff < 1) note('critical', 'Out of food: rations were short today', { key: 'nofood', icon: '🍖', live: () => S.food < rationNeed().f, dyn: () => `Out of food · ${S.food.toFixed(1)} of ${rationNeed().f.toFixed(1)} needed per day` }); else if (S.food < nf) note('important', '⚠ FOOD: under 1 day left');
+  if (fw < 1) note('critical', 'Out of water: rations were short today', { key: 'nowater', icon: '💧', live: () => S.water < rationNeed().w, dyn: () => `Out of water · ${S.water.toFixed(1)} of ${rationNeed().w.toFixed(1)} needed per day` }); else if (S.water < nw) note('important', '⚠ WATER: under 1 day left');
 }
 function releasePost(b) { if (b.staff) { if (b.staff.post === b) b.staff.post = null; b.staff = null; } }
 function autoStaff() {           // one slot per building; a matching profession is assigned automatically, the best level first
@@ -1498,7 +1590,7 @@ function autoStaff() {           // one slot per building; a matching profession
     if (b.staff && (!S.sv.includes(b.staff) || !jobs.includes(b.staff.job))) releasePost(b);
     if (b.staff) continue;
     const c = S.sv.filter((q) => !q.post && q.hp > 0 && !['down', 'hospital'].includes(q.mode) && jobs.includes(q.job)).sort((x, y) => (y.l - x.l) || (dist(x.w, Wd.doorPoint(b)) - dist(y.w, Wd.doorPoint(b))));
-    if (c.length) { b.staff = c[0]; c[0].post = b; say(`${c[0].name} will staff the ${d.name}.`); }
+    if (c.length) { b.staff = c[0]; c[0].post = b; note('routine', `${c[0].name} will staff the ${d.name}.`); }
   }
 }
 function upgradeCheck(b) {
@@ -1512,20 +1604,20 @@ function upgradeCheck(b) {
 function upgradeBuilding(b) {    // in place: same footprint, same anchor; the building keeps working and keeps its staff
   const c = upgradeCheck(b); if (!c.ok) { say(c.why); return false; }
   const d = DEFS[b.type], n = DEFS[d.next]; S.mat -= d.up; b.type = d.next; b.q = n.q; b.a = n.a; Wd.bump(world);
-  renownGain(2, n.name); screenToast('⬆ ' + n.name.toUpperCase()); say(`${d.name} upgraded to ${n.name}.`); autoStaff(); saveGame(); ui(); return true;
+  renownGain(2, n.name); banner('⬆ ' + n.name.toUpperCase()); say(`${d.name} upgraded to ${n.name}.`, true); autoStaff(); saveGame(); ui(); return true;
 }
 function queueResidentRequest(s) { S.requests.push({ type: 'resident', s }); showNextRequest(); }
 function showNextRequest() {
   const box = $('requestBox'); if (!box || box.innerHTML || !S.requests.length) return; const q = S.requests[0], s = q.s;
   box.innerHTML = `<div class="request frame"><b class="out">🏠 Move-in request</b><br>${s.name} wants to make the Haven home. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act danger out" id="declineReq">Not yet</button></div>`;
-  $('acceptReq').onclick = () => { s.resident = true; renownGain(4, 'New resident'); say(s.name + ' became a resident!'); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
+  $('acceptReq').onclick = () => { s.resident = true; renownGain(4, 'New resident'); say(s.name + ' became a resident!', true); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
 function visitorArrival() {
   S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
-  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.' + lv }); say(name + ' arrived at the Haven.'); ui();
+  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.', gains: job + ' · Lv.' + lv }); say(name + ' arrived at the Haven.', true); ui();
 }
 /* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */
 const GUIDE = [
@@ -1544,7 +1636,7 @@ const guideActive = () => S.stage >= 2 && (S.guide || 0) < GUIDE.length;
 function guideIntro() { const g = GUIDE[S.guide]; if (g) showEventPopup({ title: 'NEXT GOAL · ' + g.name.toUpperCase(), text: g.hint, gains: g.desc + ` · reward +${g.parts} parts, +${g.ren} Renown` }); }
 function guideProgress() {
   const g = GUIDE[S.guide || 0]; if (!g || !g.done()) return;
-  S.mat += g.parts; renownGain(g.ren, g.name); SFX('reward'); screenToast('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); say(`Goal complete: ${g.name} (+${g.parts} parts).`);
+  S.mat += g.parts; renownGain(g.ren, g.name); SFX('reward'); banner('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); say(`Goal complete: ${g.name} (+${g.parts} parts).`, true);
   S.guide = (S.guide || 0) + 1; if (S.guide < GUIDE.length && !GUIDE[S.guide].done()) guideIntro(); else if (S.guide >= GUIDE.length) { say('All guide goals done — missions from here on.'); beginMission(); }
   ui();
 }
@@ -1557,11 +1649,14 @@ function showGoals() {
   $('ib').innerHTML = rows + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
   showPanel(); $('gLog').onclick = showLog;
 }
-function logEvent(t) { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ PARTS · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t) }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
+function logEvent(t, lvl = 'routine') { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ PARTS · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t), l: lvl }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
+let logOnlyKey = false;
 function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
-  const L = (S.log || []).slice().reverse();
-  $('ib').innerHTML = L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> ${esc(e.t)}</div>`).join('') : '<small>Nothing yet.</small>';
+  const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = { critical: '#ff9a84', important: '#ffe08a' };
+  $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div>`
+    + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
+  $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); };
   showPanel();
 }
 function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
@@ -1582,7 +1677,7 @@ function beginMission(id = null) {
   const pool = MISSION_DEFS.filter((m) => (!m.cond || m.cond()) && (!S.lastMission || m.id !== S.lastMission)), d = (id && MISSION_DEFS.find((m) => m.id === id)) || pool[Math.floor(rnd() * pool.length)] || MISSION_DEFS[0];
   const sc = 1 + (d.step ?? .5) * Math.max(0, S.rank - 1), goal = Math.max(1, Math.round(d.goal * sc)), rs = 1 + .35 * Math.max(0, S.rank - 1);
   S.mission = { id: d.id, name: d.name, desc: d.desc(goal), goal, rewardParts: Math.round(d.parts * rs), rewardRen: Math.round(d.ren * rs), progress: 0, start: d.count ? d.count() : 0 };
-  S.lastMission = d.id; say('Mission: ' + d.name + ' — ' + S.mission.desc); ui();
+  S.lastMission = d.id; say('Mission: ' + d.name + ' — ' + S.mission.desc, true); ui();
 }
 function missionProgress() {
   stageCheck(); if (S.stage < 2) return;
@@ -1641,7 +1736,7 @@ function triggerTownEvent() {   /* once a day: a due chain step first, else a ra
 const eventQueue = []; let modalOpen = false;
 function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
 function nextEventPopup() {
-  const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length) return; const e = eventQueue.shift(); modalOpen = true;
+  const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); modalOpen = true;
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
   m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}>${b.label}</button>`).join('')}</div>`;
   m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
@@ -1660,12 +1755,12 @@ function rankConds() {
 }
 function checkRank() {
   const c = rankConds(); if (!c) return; const ok = c.every((r) => r.ok);
-  if (ok && !S.rankReady) { S.rankReady = true; screenToast('★ THE TOWN CAN BE UPGRADED'); say('All rating conditions met — open Upgrade Town (tap the Renown wheel) to raise the Haven\'s rank.'); }
+  if (ok && !S.rankReady) { S.rankReady = true; banner('★ THE TOWN CAN BE UPGRADED'); say('All rating conditions met — open Upgrade Town (tap the Renown wheel) to raise the Haven\'s rank.', true); }
   if (!ok) S.rankReady = false; ui();
 }
 function upgradeTown() {
   const c = rankConds(); if (!c || !c.every((r) => r.ok)) return false;
-  S.rank++; S.threat++; S.rankReady = false; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New buildings, new threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); SFX('reward'); ui(); return true;
+  S.rank++; S.threat++; S.rankReady = false; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New buildings, new threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.', true); SFX('reward'); ui(); return true;
 }
 /* V2.33 town events (like DV2's): cost supplies, run for a few hours, give Renown and mood, and count toward the next star */
 const TOWN_EVENTS = {
@@ -1682,7 +1777,7 @@ function holdEvent(k) {
   S.lastEventDay = S.day; S.eventsHeld = (S.eventsHeld || 0) + 1; S.eventOn = { k, until: nowH() + e.hours };
   for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
   if (e.gain) for (const [r, v] of Object.entries(e.gain)) S[r] += v;
-  renownGain(e.ren, e.name); screenToast(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc); checkRank(); return true;
+  renownGain(e.ren, e.name); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); checkRank(); return true;
 }
 function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   closeP(); endBuildMode(true); upTab = tab || upTab; const c = rankConds();
@@ -1803,7 +1898,7 @@ function startExpedition(destId, riskId, ids) {
   S.sv = S.sv.filter((q) => !ms.includes(q));
   S.trip = { dest: destId, risk: riskId, t0: Date.now(), dur: rk.min * 60000, stage: 0, phase: 'out', backAt: 0, short: pv.short, members: ms.map(expPlain), loot: { food: 0, water: 0, mat: 0 }, log: [`Departed for ${d.name} (${rk.label} risk).` + (pv.short ? ' Short on supplies: the trip is riskier.' : '')], lost: [], hurt: [], troubleSeen: 0 };
   ms.forEach((q) => { const m = S.trip.members.find((x) => x.id === q.id); m.mode = 'away'; });
-  autoStaff(); say(`${ms.map((q) => q.name).join(', ')} left for ${d.name}.`); saveGame(); ui(); expTick(); return { ok: true, why: '' };
+  autoStaff(); say(`${ms.map((q) => q.name).join(', ')} left for ${d.name}.`, true); saveGame(); ui(); expTick(); return { ok: true, why: '' };
 }
 const expStageAt = (t, k) => t.t0 + k * t.dur / EXP_STAGES;
 function expResolveStage(t, quiet) {
@@ -1833,7 +1928,7 @@ function tripUpdate(now = Date.now()) {
 }
 function expRecall() {
   const t = S.trip; if (!t || t.phase !== 'out') return false; const now = Date.now(), back = Math.max(10000, (now - t.t0) * .5);
-  t.phase = 'back'; t.backAt = now + back; t.log.push(`Recalled during stage ${t.stage + 1}. Loot from finished stages is kept; walking home.`); say('The squad is on its way home.'); saveGame(); ui(); return true;
+  t.phase = 'back'; t.backAt = now + back; t.log.push(`Recalled during stage ${t.stage + 1}. Loot from finished stages is kept; walking home.`); say('The squad is on its way home.', true); saveGame(); ui(); return true;
 }
 function expFinish(recalled) {
   const t = S.trip; if (!t) return; S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
@@ -1897,14 +1992,14 @@ function bleedTick(s) {
   if (s.bleed == null) { s.bleed = bleedMax(); s.warned = false; }
   if (beingCarried(s)) return;
   s.bleed--;
-  if (!s.warned && s.bleed <= 1800) { s.warned = true; say(s.name + ' is bleeding out! Get them to care.'); }
+  if (!s.warned && s.bleed <= 1800) { s.warned = true; note('routine', s.name + ' is bleeding out!'); }
   if (s.bleed <= 0) killSurvivor(s, 'bled out');
 }
 function killSurvivor(s, cause) {
   if (!S.sv.includes(s)) return;
   S.sv = S.sv.filter((q) => q !== s); bondsOnDeath(s);
   S.deaths = (S.deaths || []).filter((d) => d > nowD() - 1); S.deaths.push(nowD());
-  if (S.deaths.length >= 2 && !graceOn()) { S.graceUntil = nowD() + 1.5; screenToast('🕯 THE HAVEN MOURNS'); say('After so many losses the survivors hold a vigil. The horde pulls back for a while — rebuild your defences.'); }
+  if (S.deaths.length >= 2 && !graceOn()) { S.graceUntil = nowD() + 1.5; note('important', '🕯 THE HAVEN MOURNS', { log: 'After so many losses the survivors hold a vigil. The horde pulls back for a while — rebuild your defences.' }); }
   for (const q of S.sv) { if (q.rescuing === s) { q.rescuing = null; if (['rescueTo', 'rescueCarry'].includes(q.mode)) { q.carrying = null; enterFree(q, 60); } } if (q.target === s) q.target = null; }
   for (const b of world.buildings) if (b.staff === s) b.staff = null;
   if (selected && selected.ref === s) { selected = null; closeP(); }
@@ -1924,7 +2019,7 @@ function starve(s) {
   if (s.hunger >= 100 || s.thirst >= 100) {
     s.starveT = (s.starveT || 0) + 1; if (s.starveT % 5 === 0) { s.hp -= 1; floats.push({ w: { ...s.w }, t: '-1', col: '#ff8a4b', a: 55 }); }   // 1 HP per 7.5 s: about 1.4 game days from full HP to collapse
     s.why = (s.thirst >= 100 ? 'Dying of thirst' : 'Starving');
-    if (!s.starveWarn) { s.starveWarn = true; say(s.name + ' is ' + (s.thirst >= 100 ? 'dying of thirst' : 'starving') + '!'); }
+    if (!s.starveWarn) { s.starveWarn = true; note('critical', s.name + ' is ' + (s.thirst >= 100 ? 'dying of thirst' : 'starving'), { key: 'starve', icon: '🥫', at: () => { const q = S.sv.find((v) => v.hunger >= 100 || v.thirst >= 100); return q ? q.w : null; }, live: () => S.sv.some((v) => v.hunger >= 100 || v.thirst >= 100), dyn: () => { const n = S.sv.filter((v) => v.hunger >= 100 || v.thirst >= 100).length; return `${n} survivor${n > 1 ? 's are' : ' is'} starving or dying of thirst · losing HP`; } }); }
   } else s.starveWarn = false;
 }
 function useBandage(s) {
@@ -1949,10 +2044,10 @@ let moving = null;   // building being moved (removed from world while placing)
 function closeP() { $('infoPanel').classList.remove('show'); expOpen = false; panelBack = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
-  moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none';
+  moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
 }
 function startTool(tool) {
-  endBuildMode(true); closeP(); sel = tool; preview = null;
+  endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
   if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their parts'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
   else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} part per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
@@ -1973,9 +2068,9 @@ function confirmPreview() {
   if (!preview || !sel || sel.kind !== 'building') return; const d = DEFS[sel.type];
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; }
   if (!moving && S.mat < d.mat) { say('Not enough parts.'); return; }
-  if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); screenToast('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); } }
+  if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); } }
   const nb = { type: sel.type, x: preview.x, y: preview.y, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
-  world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!'); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
+  world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
 let demoPick = null;
 function tryDemolish(px, py, x, y) {   /* V2.33: one Demolish tool for buildings, roads and walls (buildings need a second tap to confirm) */
@@ -2008,11 +2103,11 @@ function tryWall(x, y, type) {
   S.mat -= wd.mat; const whp = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(k, { x, y, type, hp: whp, max: whp }); Wd.bump(world); checkPerimeter(); saveGame(); ui();
 }
 function checkPerimeter() {
-  const p = Wd.perimeter(world); if (p.sealed && !S.sealed) { screenToast('🛡 PERIMETER SEALED'); say('The perimeter is sealed. Zombies must break through.'); }
-  if (!p.sealed && S.sealed) { screenToast('⚠ PERIMETER OPEN'); }
+  const p = Wd.perimeter(world); if (p.sealed && !S.sealed) { note('important', '🛡 PERIMETER SEALED', { log: 'The perimeter is sealed. Zombies must break through.' }); }
+  if (!p.sealed && S.sealed) { note('important', '⚠ PERIMETER OPEN', { log: 'The perimeter is open: zombies can walk in through a gap.' }); }
   S.sealed = p.sealed; return p;
 }
-function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`); saveGame(); ui(); }
+function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`, true); saveGame(); ui(); }
 function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
@@ -2156,7 +2251,7 @@ function perimText() {
 function expandInfo() { const n = Wd.TERRITORY[(S.terr || 0) + 1]; return n ? { n, ok: S.ren >= n.ren && S.mat >= n.mat } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
   const e = expandInfo(); if (!e || !e.ok) return false; S.mat -= e.n.mat; S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = '';
-  S.threat++; screenToast('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
+  S.threat++; banner('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`, true); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
 let tTab = 'overview';
 const progRow = (label, have, need) => `<div class="row"><span style="width:96px">${label}</span><div class="sp">${meter(have / Math.max(1, need) * 100, have >= need ? '' : 'xp')}</div><span class="sm" style="width:74px;text-align:right">${Math.floor(have)}/${need}</span></div>`;
@@ -2307,7 +2402,7 @@ $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank');
 $('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
-$('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { saveGame(); say('Saved.'); screenToast('💾 SAVED'); }; }
+$('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { saveGame(); say('Saved.'); banner('💾 SAVED'); }; }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (!e.target.closest('#tripChip')) showGoals(); };
@@ -2318,9 +2413,9 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider') corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
-  if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
+  if (tick % 30 === 0) alertsTick(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) autoStaff(); if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
-  if (tick % 1000 === 0) { S.hour++; hourlyProduction(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 20) { screenToast('🌙 NIGHT FALLS — THE DEAD ARE RESTLESS'); say('Night falls: more zombies, and they come for the town.'); } if (S.hour === 6) { screenToast('☀ DAWN — THE HORDE THINS'); say('Dawn: fewer zombies until nightfall.'); } if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; hourlyProduction(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
@@ -2345,6 +2440,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();
