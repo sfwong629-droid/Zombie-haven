@@ -34,7 +34,7 @@
 **Tests:** new `living` group (8 checks: shift share, autosave over 2 game days, sleep at 23:00, Now card, treatment progress, patient list). All 20 groups pass.
 **Balance check** (auto-player, 4 seeds × 30 days, V2.35.1 vs V2.36.0):
 - Deaths by day 10: 0–2 per seed, down from 5–11.
-- Deaths by day 30: 15.3 on average, down from 19.8.
+- Deaths by day 30: 16.3 on average, down from 19.8.
 - Territory: expanded in 2 of 4 seeds, against none before.
 - Rank 4 was reached in 4 of 4 seeds, against 3 of 4, and average survivor level is higher.
 - Still to do: food and water sit at the storage cap late in the game (Phase 4).
