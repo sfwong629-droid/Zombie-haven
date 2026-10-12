@@ -182,6 +182,32 @@ async def t_economy(br, port, t):   # V2.35: resource panels, building status, s
     t.ok(r['up'], 'a warning at 18:00 when tonight\'s upkeep cannot be paid')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor panel, treatment clarity, saves never fail
+    ctx, pg, errs = await open_game(br, port, 'living')
+    await close_popups(pg)
+    for k in ['water', 'farm', 'scrapyard', 'house', 'house', 'gym']: await pg.evaluate(PLACE, k)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};let x=11;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};S.mat=80;S.food=S.water=40;
+      for(const [n,j] of [['W1','Engineer'],['W2','Farmer'],['W3','Scavenger']])S.sv.push(ZH.mk(n,j,2,7,10,S.sv.length));ZH.autoStaff();
+      let on=0,tot=0,saveFail=0,sleep=0,sleepN=0,night=0;
+      for(let t=0;t<48000;t++){if(t%400===0)S.z.length=0;ZH.simTick();
+        if(t%50===0&&((S.hour>=8&&S.hour<12)||(S.hour>=14&&S.hour<18)))for(const b of ZH.world.buildings)if(b.staff){tot++;if(['work','goWork'].includes(b.staff.mode))on++}
+        if(t%500===0){try{ZH.serialize()}catch(e){saveFail++}}
+        if(t%250===0&&S.hour>=23){night++;for(const q of S.sv){sleepN++;if(q.sleeping||(q.mode==='goFacility'&&q.facility&&q.facility.type==='house'))sleep++}}}
+      out.shift=on/tot;out.saveFail=saveFail;out.sleep=sleep/sleepN;
+      const w=S.sv.find(q=>q.post);while(!(S.hour>=8&&S.hour<11))ZH.step(100);ZH.step(400);ZH.unitPanel(w);out.now=document.getElementById('uNow').textContent;out.prio=w.mode;
+      return out}""")
+    t.ok(r['shift'] >= .6, f"staffed workers are at (or heading to) work {r['shift']:.0%} of shift hours (zombie-free town)")
+    t.ok(r['saveFail'] == 0, f"autosave never fails over 2 days of play ({r['saveFail']} failures)")
+    t.ok(r['sleep'] >= .6, f"at 23:00 most survivors are asleep or going to bed ({r['sleep']:.0%})")
+    t.ok('Shift work' in r['now'] and 'Works at' in r['now'], f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const q=S.sv[2];q.hp=0;let k=0;while(q.mode!=='hospital'&&k<20000){ZH.simTick();k++}out.inCare=q.mode==='hospital';out.total=!!q.careTotal;
+      ZH.unitPanel(q);out.line=document.getElementById('uNow').textContent;const m=ZH.world.buildings.find(b=>['medic','clinic','hospital'].includes(b.type));ZH.showBuildingInfo(m);const tx=document.getElementById('ib').textContent;out.patients=/Patients [(][0-9]+[)]/.test(tx)&&tx.includes(q.name);
+      const b=ZH.world.buildings.find(b=>b.type==='water');const f0=ZH.S.sv.length;return out}""")
+    t.ok(r['inCare'] and r['total'], 'a rescued survivor is in care with a known treatment time')
+    t.ok('Recovering' in r['line'] and '%' in r['line'], f"their panel shows treatment progress ({r['line'][:80]})")
+    t.ok(r['patients'], 'the medical building lists its patient')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -307,7 +333,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

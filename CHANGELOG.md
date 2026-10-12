@@ -1,5 +1,45 @@
 # Changelog
 
+## V2.36.0 — Phase 3: a living settlement
+**Task commitment**
+- Measured first: staffed workers were at their post only 2–8% of the day. Each shift lasted about 0.6 game hours, then survivors re-decided and nearly always went to train or run an errand first.
+- Workers now keep shifts (7–12 and 13–18). They leave early only for an urgent need (hunger or thirst 75+, fatigue 96+, health below 50%), a threat, a rescue or a fire, and go straight back afterwards.
+- Training, fun and errands now fill lunch, evenings, and the time of survivors without a post.
+- Measured result: during shift hours, staffed workers are at or heading to work about 60–75% of the time (about 40% before).
+
+**Sleep**
+- At night a survivor with a free bed in a House sleeps until 6:00 and wakes fully rested.
+- Without a bed they sleep rough wherever they are, which recovers only half their fatigue ("Sleeping rough: no free bed (build a House)"). Houses now matter.
+
+**Survivor panel "Now" card** (updates live while open)
+- A priority tag: Emergency, Defending, Shift work, Urgent need, Sleep, Recovering, Free time or Expedition.
+- Where they are going (tap to open it) and why.
+- Hunger, thirst and fatigue.
+- Their workplace (tap to open it) and shift times, or which buildings their profession can staff.
+- Weapon and armour.
+
+**Visible work**
+- Workers at outdoor posts (garden, field, water, range, track) do a working swing, only while they are actually on shift there.
+- Producing buildings show a badge whose ring fills with real stored-up output toward the next unit, bright while the building is worked.
+- "+1 FOOD / WATER / PARTS / RESEARCH" pops each time a building really produces a whole unit.
+- Facilities show how many people are inside (💤 for sleepers). Dry farms and unpaid buildings get a marker.
+
+**Rescue and treatment**
+- The survivor panel shows the bleed-out bar and the rescue status ("X is on the way" or "X is wheeling them to the Medical Tent").
+- In care, it shows a treatment progress bar, hours left, and whether a medic is on duty.
+- Medical buildings list their patients with progress bars (tap a patient to open them) and show a ✚ count on the map.
+
+**Fixed (existing bug):** saving silently failed whenever a survivor was hiding in or fighting a fire at a staffed building (a circular reference). Autosaves taken during attacks were lost.
+
+**Tests:** new `living` group (8 checks: shift share, autosave over 2 game days, sleep at 23:00, Now card, treatment progress, patient list). All 20 groups pass.
+**Balance check** (auto-player, 4 seeds × 30 days, V2.35.1 vs V2.36.0):
+- Deaths by day 10: 0–2 per seed, down from 5–11.
+- Deaths by day 30: 15.3 on average, down from 19.8.
+- Territory: expanded in 2 of 4 seeds, against none before.
+- Rank 4 was reached in 4 of 4 seeds, against 3 of 4, and average survivor level is higher.
+- Still to do: food and water sit at the storage cap late in the game (Phase 4).
+**Not tested:** real phones or Safari.
+
 ## V2.35.1 — Faster drawing
 - Profiled a 20-survivor town at night (headless Chromium, 3× screen): about 60% of each frame went to drawing map props and wreckage, including pieces off screen, and each wreck piece saved and restored the whole canvas state.
 - Now only what is on screen (plus a margin) is drawn and depth-sorted, wreck pieces are mirrored without save/restore, and the night tint is a single full-screen pass instead of two.
