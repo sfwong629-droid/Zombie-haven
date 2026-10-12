@@ -120,12 +120,13 @@ async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, 
     t.ok(r['sent'] and r['defMode'] == 'chase', 'Send defender sends a fighter at the zombie')
     t.ok(r['rf'], 'Repair first puts the breach at the head of the repair queue')
     t.ok(r['after'] == 0 and r['rowsAfter'] == 0, 'the alert clears itself once the wall is repaired')
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};ZH.OPTS.autoSlow=false;const s=S.sv[0];s.hp=0;ZH.step(2);out.down=[...ZH.alerts.keys()].some(k=>k.startsWith('down'));out.dtext=document.querySelector('#alerts .at').textContent;
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};ZH.OPTS.autoSlow=false;const s=S.sv[0];s.hp=0;ZH.step(2);out.down=[...ZH.alerts.keys()].some(k=>k.startsWith('down'));out.dtext=document.querySelector('#alerts .at').textContent;const el0=document.querySelector('#alerts .alert[data-k]');el0.classList.remove('new');ZH.step(130);const el1=document.querySelector('#alerts .alert[data-k]');out.same=el0===el1&&!el1.classList.contains('new');out.dtext2=el1.querySelector('.at').textContent;
       ZH.startTool({kind:'building',type:'house'});ZH.showEventPopup({title:'TEST',text:'x'});out.popupWhileBuilding=!!document.getElementById('eventModal').innerHTML;out.compact=document.querySelectorAll('#alerts .alert[data-k]').length;
       ZH.endBuildMode(true);return out}""")
     await pg.wait_for_timeout(50)
     pop = await pg.evaluate("()=>!!document.getElementById('eventModal').innerHTML")
     t.ok(r['down'] and 's left' in r['dtext'], f"a collapsed survivor raises an alert with the bleed-out timer: {r['dtext']}")
+    t.ok(r['same'] and r['dtext2'] != r['dtext'], f"a live alert updates its text in place without re-animating ({r['dtext']} -> {r['dtext2']})")
     t.ok(not r['popupWhileBuilding'] and pop, 'pop-ups wait until building placement is finished')
     t.ok(r['compact'] <= 1, 'while placing a building the alerts shrink to one row')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()

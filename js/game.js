@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.34.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.34.1', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -694,19 +694,29 @@ function alertsTick() {   // every half second of game time: drop resolved alert
   for (const [k, a] of alerts) { if ((a.live && !a.live()) || (a.ttl && tick - a.t0 > a.ttl)) { alerts.delete(k); ch = true; continue; } if (a.dyn) { const t = a.dyn(); if (t !== a.text) { a.text = t; ch = true; } } }
   if (ch || alerts.size) renderAlerts();
 }
-let alertsHtml = '';
+/* V2.35: rows are updated in place (text, buttons) instead of rebuilding the box, so nothing flashes or re-animates; only a NEW alert slides in once */
+function alertRow(a) {
+  const el = document.createElement('div'); el.className = 'alert new'; el.dataset.k = a.key;
+  el.innerHTML = `<div class="arow"><span class="ai">${a.icon}</span><span class="at"></span><span class="ago">›</span><button class="ax" title="Hide">✕</button></div>${a.acts.length ? `<div class="aacts">${a.acts.map((c, i) => `<button class="aa" data-i="${i}"></button>`).join('')}</div>` : ''}`;
+  el.onclick = (e) => { e.stopPropagation(); const p = atOf(a); if (p) { centerOn(p.x, p.y); a.seen = performance.now(); } };
+  el.querySelector('.ax').onclick = (e) => { e.stopPropagation(); a.dismissed = true; renderAlerts(); };
+  el.querySelectorAll('.aa').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); const c = a.acts[+bt.dataset.i]; if (c && (!c.ok || c.ok())) c.fn(); alertsTick(); }; });
+  el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
+  return el;
+}
+function setTxt(el, t) { if (el && el.textContent !== t) el.textContent = t; }
 function renderAlerts() {
-  const box = $('alerts'); if (!box) return; const L = [...alerts.values()].filter((a) => !a.dismissed), max = sel ? 1 : 3;   /* while placing, only one compact row */
-  const h = L.slice(0, max).map((a) => `<div class="alert" data-k="${esc(a.key)}"><div class="arow"><span class="ai">${a.icon}</span><span class="at">${esc(a.text)}</span>${atOf(a) ? '<span class="ago">›</span>' : ''}<button class="ax" title="Hide">✕</button></div>${a.acts.length ? `<div class="aacts">${a.acts.map((c, i) => { const ok = !c.ok || c.ok(); return `<button class="aa" data-i="${i}" ${ok ? '' : 'disabled'}>${esc(typeof c.label === 'function' ? c.label() : c.label)}</button>`; }).join('')}</div>` : ''}</div>`).join('')
-    + (L.length > max ? `<div class="alert more" data-more="1">+${L.length - max} more · tap to show</div>` : '');
-  if (h === alertsHtml) return; alertsHtml = h; box.innerHTML = h;
-  box.querySelectorAll('.alert[data-k]').forEach((el) => {
-    const a = alerts.get(el.dataset.k); if (!a) return;
-    el.onclick = (e) => { e.stopPropagation(); const p = atOf(a); if (p) { centerOn(p.x, p.y); a.seen = performance.now(); } };
-    el.querySelector('.ax').onclick = (e) => { e.stopPropagation(); a.dismissed = true; renderAlerts(); };
-    el.querySelectorAll('.aa').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const c = a.acts[+b.dataset.i]; if (c && (!c.ok || c.ok())) c.fn(); alertsTick(); }; });
+  const box = $('alerts'); if (!box) return; const L = [...alerts.values()].filter((a) => !a.dismissed), max = sel ? 1 : 3, show = L.slice(0, max);   /* while placing, only one compact row */
+  const keep = new Set(show.map((a) => a.key));
+  for (const el of [...box.children]) if (!el.dataset.k || !keep.has(el.dataset.k)) el.remove();
+  show.forEach((a, i) => {
+    let el = box.querySelector(`.alert[data-k="${CSS.escape(a.key)}"]`); if (!el) el = alertRow(a);
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+    setTxt(el.querySelector('.at'), a.text); const go = el.querySelector('.ago'); if (go) go.style.visibility = atOf(a) ? 'visible' : 'hidden';
+    el.querySelectorAll('.aa').forEach((bt) => { const c = a.acts[+bt.dataset.i], ok = !c.ok || c.ok(); setTxt(bt, typeof c.label === 'function' ? c.label() : c.label); if (bt.disabled === ok) bt.disabled = !ok; });
   });
-  const m = box.querySelector('[data-more]'); if (m) m.onclick = (e) => { e.stopPropagation(); const first = [...alerts.values()].find((q) => !q.dismissed); if (first) { alerts.delete(first.key); alerts.set(first.key, first); renderAlerts(); } };
+  if (L.length > max) { const m = document.createElement('div'); m.className = 'alert more'; m.textContent = `+${L.length - max} more · tap to show`;
+    m.onclick = (e) => { e.stopPropagation(); const first = [...alerts.values()].find((q) => !q.dismissed); if (first) { alerts.delete(first.key); alerts.set(first.key, first); renderAlerts(); } }; box.appendChild(m); }
 }
 function rationNeed() { let f = 0; for (const q of S.sv) f += ration(q) / 2; for (const k of S.kids || []) f += .25; return { f, w: f }; }   // a day of rations: half food, half water
 function downAlert(s) {
@@ -743,12 +753,12 @@ function restoreAlerts() {   // alerts are not saved: re-raise the ones whose em
 function drawAlertMarks() {   // pulsing ring on the spot, red rings on nearby threats, an arrow at the screen edge when the spot is off screen
   const t = performance.now() / 1000;
   for (const a of alerts.values()) {
-    if (a.dismissed) continue; const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 6);
+    if (a.dismissed) continue; const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 2.5);   /* V2.35: slow, soft pulse */
     if (a.threats) for (const z of S.z) if (z.hp > 0 && dist(z.w, w) < 5) { const q = project(z.w.x, z.w.y); ctx.save(); ctx.strokeStyle = 'rgba(255,70,60,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(q.x, q.y, .22 * tw, .11 * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); }
     const on = p.x > 20 && p.x < VW - 20 && p.y > 20 && p.y < VH - 20;
-    if (on) { ctx.save(); ctx.strokeStyle = `rgba(255,${80 + 100 * pulse | 0},60,${.55 + .45 * pulse})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, (.38 + .14 * pulse) * tw, (.19 + .07 * pulse) * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); continue; }
+    if (on) { ctx.save(); ctx.strokeStyle = `rgba(255,120,70,${.6 + .25 * pulse})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(p.x, p.y, (.4 + .06 * pulse) * tw, (.2 + .03 * pulse) * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); continue; }
     const cx = VW / 2, cy = VH / 2, dx = p.x - cx, dy = p.y - cy, k = Math.min((VW / 2 - 30) / Math.abs(dx || 1e-6), (VH / 2 - 70) / Math.abs(dy || 1e-6)), ex = cx + dx * k, ey = cy + dy * k, ang = Math.atan2(dy, dx);
-    ctx.save(); ctx.translate(ex, ey); ctx.globalAlpha = .75 + .25 * pulse; ctx.fillStyle = '#d8352b'; ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 2;
+    ctx.save(); ctx.translate(ex, ey); ctx.globalAlpha = .9; ctx.fillStyle = '#d8352b'; ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, 0, 17, 0, 7); ctx.fill(); ctx.stroke(); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(15, -7); ctx.lineTo(15, 7); ctx.closePath(); ctx.fillStyle = '#fff3d6'; ctx.fill(); ctx.restore();
     stampText(a.icon, ex, ey + 7, '17px sans-serif', '#fff');
   }

@@ -1,5 +1,9 @@
 # Changelog
 
+## V2.34.1 — Alerts stop flashing
+- Fix: the red alert rows rebuilt themselves every half second (for example the bleed-out countdown), replaying their slide-in each time, so they kept flashing. Rows now update their text in place, and only a new alert slides in, once.
+- The pulsing ring on the map is slower and softer, and the off-screen arrow no longer blinks.
+
 ## V2.34.0 — Phase 1: geometry, notifications, breach alerts, actionable objectives
 **Geometry audit (P0)**
 - Measured every building sprite against its footprint: all 20 are anchored on the south corner, within 1 art px per side of the footprint width, with 89–100% of the footprint covered by the base. No sprite was resized.
