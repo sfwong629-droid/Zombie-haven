@@ -176,7 +176,7 @@ async def t_economy(br, port, t):   # V2.35: resource panels, building status, s
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};ZH.OPTS.autoSlow=false;ZH.alerts.clear();for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);
       S.water=4;S.hour=11;ZH.step(1000);out.keys=[...ZH.alerts.keys()];const a=ZH.alerts.get('lowwater');out.text=a&&a.text;
       const why=[...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Why?');if(why)why.click();out.panel=document.getElementById('it').textContent;
-      S.mat=0;S.hour=17;ZH.step(1000);out.up=S.log.slice(-6).some(e=>/Upkeep at midnight/.test(e.t));return out}""")
+      S.hour=17;while(ZH.tick%1000!==999)ZH.simTick();S.mat=0;ZH.simTick();out.up=S.log.slice(-6).some(e=>/Upkeep at midnight/.test(e.t));return out}""")
     t.ok('lowwater' in r['keys'], f"a water shortage under a day raises a critical alert ({r['text']})")
     t.ok(r['panel'] == 'WATER', "the alert's Why? button opens the water panel")
     t.ok(r['up'], 'a warning at 18:00 when tonight\'s upkeep cannot be paid')
