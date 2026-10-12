@@ -1,5 +1,20 @@
 # Changelog
 
+## V2.44.0 — Expedition choices
+- After stage 1 or 2 of a trip (55% chance each), the squad can run into a situation with 2–3 choices:
+  - 🚪 Barricaded store
+  - 📢 Cry for help (can bring a survivor home)
+  - 🧟 Horde on the road (fight, sneak, or turn back)
+  - 🚗 Wrecked armored van (gear)
+  - 🤒 Sick stranger (Renown and gear)
+  - 🔫 Raiders' toll (medium and high risk only: pay half, talk, or fight)
+- **Odds are shown on every button**, along with who would do it, e.g. "AGI · Lena · 57%". They come from the best member's stat, their profession (an Engineer forces doors, a Medic treats), their personality (Brave fights, Cautious sneaks, Caring helps, Scrounger searches) and the risk level. Fights use the whole squad: weapons, armor, levels and fighters.
+- Success brings loot, gear, a recruit, Renown or extra XP. A failure hurts whoever tried (armor softens it) and can knock them out, so they are carried home. Choices never kill outright.
+- **The trip never stalls.** If no order comes before the next stage, or the game is closed, the squad decides for itself, and the report says who chose and why: a Brave member takes a good fight, a Cautious one plays safe. Pending choices are saved, shown again when you reopen the game, and also shown in the Explore panel.
+- Fixed: a squad that came home could block the pharmacy recruit, because the returning members were counted twice against the population limit.
+- HUD: the trip timer moved next to the clock, so it no longer hides under the 🏠 button. Pop-ups get more room on short screens.
+- Balance: 16 seeds × 30 days. Deaths are 9.1 on average (median 6.5) against 8.1 (median 8.5) in V2.43, inside the usual spread; two outlier seeds lost survivors to town sieges, not expeditions. Rank 5 median is unchanged (day 20) and parts income is up about 3%. New test group `expchoices` (15 checks).
+
 ## V2.43.0 — Survivor personalities
 Every survivor now has one personality trait for life. Each trait changes a decision the AI already makes, and each has an upside and a cost:
 

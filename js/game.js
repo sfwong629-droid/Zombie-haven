@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.43.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.44.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2326,8 +2326,102 @@ function expResolveStage(t, quiet) {
   }
   t.log.splice(Math.max(1, t.log.length - trouble.length), 0, `Stage ${t.stage}: ${d.lines[Math.floor(Math.random() * d.lines.length)]} Found ${got.join(' and ')}.`);
   if (!ms.length) { t.log.push('Nobody came back.'); return 'wiped'; }
+  if (t.enc) encResolve(t, null);   /* V2.44: no order came during the last stage */
+  if (t.stage < EXP_STAGES && encLive(t).length && Math.random() < EXP_ENC_CHANCE && expEncounter(t)) { if (quiet) encResolve(t, null); else encPopup(t); }
   if (trouble.length && !quiet && t.stage < EXP_STAGES) showEventPopup({ title: 'SQUAD IN TROUBLE', text: `${trouble.join(', ')} on stage ${t.stage} of ${EXP_STAGES}. Recall the squad now, or keep going?`, buttons: [{ label: 'RECALL', fn: () => expRecall() }, { label: 'KEEP GOING' }] });
   return trouble.length ? 'trouble' : 'ok';
+}
+/* ---- V2.44 expedition choices: at the end of stage 1 or 2 the squad may meet a situation with 2–3 options. Each option shows who would do it and the
+   chance, worked out from stats, gear, profession and personality. If no order comes before the next stage (or the game is closed) the squad decides itself. ---- */
+const STAT_ABBR = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
+const EXP_ENC = {
+  door: { title: '🚪 A BARRICADED STORE', text: 'Chained shutters on a corner shop. Whatever is inside has not been looted.', opts: [
+    { id: 'force', label: 'Force the shutters', chk: 'str', job: { Engineer: .1, Mechanic: .1, Guard: .05 }, win: { mat: [2, 3] }, fail: 'hurt', winT: '{who} wrenched the shutters open: {got}.', failT: 'The chain snapped back and caught {who}.' },
+    { id: 'sneak', label: 'Find a way in at the back', chk: 'agi', job: { Scavenger: .12 }, tr: { scrounger: .1 }, win: { food: [1, 2], water: [1, 2] }, fail: 'none', winT: '{who} squeezed in through a vent: {got}.', failT: '{who} found no way in. Nothing lost.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the store alone.' }] },
+  cry: { title: '📢 A CRY FOR HELP', text: 'Someone is shouting from a rooftop, with the dead crowding the stairwell below.', opts: [
+    { id: 'help', label: 'Clear the stairwell', chk: 'fight', tr: { caring: .15, brave: .08 }, win: { recruit: 1 }, fail: 'hurt2', winT: 'The squad cleared the stairs. {got}', failT: 'Too many of them: {who} got hurt pulling back.' },
+    { id: 'talk', label: 'Shout directions to them', chk: 'cha', tr: { caring: .1 }, job: { Civilian: .1, Medic: .05 }, win: { gift: 1 }, fail: 'none', winT: '{who} talked them down a fire escape. {got}', failT: 'They could not make it down. The squad moved on.' },
+    { id: 'leave', label: 'Keep moving', safe: true, winT: 'The squad kept moving. The shouting faded behind them.' }] },
+  horde: { title: '🧟 A HORDE ON THE ROAD', text: 'A slow river of the dead fills the street the squad needs.', opts: [
+    { id: 'fight', label: 'Fight through', chk: 'fight', tr: { brave: .1 }, win: { mat: [1, 2], xp: 6 }, fail: 'hurt2', winT: 'The squad cut a path through: {got}.', failT: 'The horde pushed back hard: {who} got hurt.' },
+    { id: 'sneak', label: 'Sneak around', chk: 'agi', tr: { cautious: .1, owl: .05 }, job: { Scavenger: .1 }, win: {}, fail: 'hurt', winT: '{who} led them round by the back alleys.', failT: 'A crawler gave them away: {who} got hurt getting clear.' },
+    { id: 'back', label: 'Turn back now', safe: true, recall: true, winT: 'The squad turned for home with what they had.' }] },
+  cache: { title: '🚗 A WRECKED ARMORED VAN', text: 'A security van on its side, the back door jammed half open.', opts: [
+    { id: 'climb', label: 'Climb inside', chk: 'agi', tr: { scrounger: .15 }, job: { Scavenger: .1 }, win: { item: 1 }, fail: 'hurt', winT: '{who} wriggled in and came out with {got}.', failT: 'The wreck shifted and pinned {who} for a moment.' },
+    { id: 'pry', label: 'Pry the door off', chk: 'str', job: { Engineer: .12, Mechanic: .12 }, win: { mat: [2, 4] }, fail: 'none', winT: '{who} pried it open and stripped the van: {got}.', failT: 'The door would not move. Nothing lost.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the van alone.' }] },
+  stranger: { title: '🤒 A SICK STRANGER', text: 'A feverish man sits by a burnt-out car, clutching a backpack.', opts: [
+    { id: 'treat', label: 'Treat him', chk: 'int', job: { Medic: .2, Paramedic: .2 }, tr: { caring: .1 }, win: { item: 1, ren: 3 }, fail: 'none', winT: '{who} brought the fever down. He gave them {got}.', failT: 'There was nothing {who} could do. Nothing lost.' },
+    { id: 'leave', label: 'Move on', safe: true, winT: 'The squad moved on.' }] },
+  raiders: { minRisk: 'medium', title: '🔫 RAIDERS DEMAND A TOLL', text: 'Armed raiders block the bridge and want a share of the haul.', opts: [
+    { id: 'pay', label: 'Pay half the haul', safe: true, toll: .5, winT: 'The squad paid the toll and crossed.' },
+    { id: 'talk', label: 'Talk them down', chk: 'cha', job: { Civilian: .1, 'Police Officer': .08 }, win: { mat: [1, 2] }, fail: 'toll', winT: '{who} talked them into a trade: {got}.', failT: '{who} could not sway them: they took the whole haul.' },
+    { id: 'fight', label: 'Fight them', chk: 'fight', hard: 1.5, tr: { brave: .08 }, win: { mat: [3, 5], item: 1, xp: 8 }, fail: 'hurt2', winT: 'The raiders scattered and left their stash: {got}.', failT: 'The raiders fought back: {who} got hurt.' }] },
+};
+const EXP_ENC_CHANCE = .55, EXP_DANGER = { low: 5, medium: 8, high: 12 }, EXP_CHK_PEN = { low: 0, medium: .06, high: .12 };
+const encLive = (t) => t.members.filter((m) => m.hp > 0 && !m.collapsed);
+function encOdds(t, o) {   /* → { chance, who } */
+  const ms = encLive(t), trB = (m) => Object.entries(o.tr || {}).reduce((a, [k, v]) => a + (hasT(m, k) ? v : 0), 0);
+  if (!ms.length || o.safe) return { chance: 1, who: null };
+  if (o.chk === 'fight') {
+    const pow = ms.reduce((a, m) => a + weaponOf(m).atk / 6 + .5 * (m.l || 1) + (isFighter(m) ? 1.5 : 0) + ((itemOf(m, 'armor') || {}).def || 0) * .1, 0), dg = EXP_DANGER[t.risk] * (o.hard || 1);
+    const bonus = Math.max(0, ...ms.map(trB)); return { chance: Math.max(.1, Math.min(.95, pow / (pow + dg) + bonus)), who: 'the squad' };
+  }
+  let best = null, bv = -1e9; for (const m of ms) { const v = (stat(m, o.chk) - 4) * .06 + ((o.job || {})[m.job] || 0) + trB(m); if (v > bv) { bv = v; best = m; } }
+  return { chance: Math.max(.1, Math.min(.95, .35 + bv - EXP_CHK_PEN[t.risk])), who: best.name, whoId: best.id };
+}
+function expEncounter(t, key) {   /* pick (or force) a situation; stores the odds so the player sees exactly what is rolled */
+  if (t.enc) encResolve(t, null);
+  const rkI = ['low', 'medium', 'high'].indexOf(t.risk), pool = Object.keys(EXP_ENC).filter((k) => !EXP_ENC[k].minRisk || rkI >= ['low', 'medium', 'high'].indexOf(EXP_ENC[k].minRisk)).filter((k) => k !== t.lastEnc);
+  const k = key || pool[Math.floor(Math.random() * pool.length)], E = EXP_ENC[k]; if (!E || !encLive(t).length) return null;
+  t.lastEnc = k; t.enc = { k, stage: t.stage, opts: E.opts.map((o) => ({ id: o.id, ...encOdds(t, o) })) };
+  return t.enc;
+}
+function encDefault(t) {   /* the squad's own call: a Brave member takes a good fight, a Cautious one plays safe, otherwise the best odds if they are good */
+  const E = EXP_ENC[t.enc.k], ms = encLive(t), opts = t.enc.opts.map((x, i) => ({ ...x, i, o: E.opts[i] })), safe = opts.find((x) => x.o.safe) || opts[0];
+  const brave = ms.find((m) => hasT(m, 'brave')), caut = ms.find((m) => hasT(m, 'cautious'));
+  const fight = opts.find((x) => x.o.chk === 'fight' && x.chance >= .55); if (brave && fight) return { i: fight.i, lead: brave };
+  if (caut) return { i: safe.i, lead: caut };
+  const good = opts.filter((x) => !x.o.safe && x.chance >= .6).sort((a, b) => b.chance - a.chance)[0]; return { i: good ? good.i : safe.i, lead: ms[0] };
+}
+function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null = no order came) */
+  const en = t.enc; if (!en) return null; const E = EXP_ENC[en.k], rk = EXP_RISK[t.risk]; let lead = null;
+  if (i == null) { const d = encDefault(t); i = d.i; lead = d.lead; }
+  const o = E.opts[i], od = en.opts[i]; t.enc = null; if (!o) return null;
+  const actor = (od.whoId && t.members.find((m) => m.id === od.whoId)) || encLive(t)[0], got = [], r = (a) => Math.max(1, Math.round((a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1))) * Math.sqrt(rk.mult)));
+  const ok = o.safe || roll < od.chance, hurtOne = (m) => { if (!m) return; const loss = m.max * (.3 + Math.random() * .2) * (1 - dmgReduce(m)); m.hp = Math.max(0, Math.round(m.hp - loss)); if (m.hp <= 0) { m.collapsed = true; t.log.push(`${m.name} collapsed and is being carried.`); } else if (!t.hurt.includes(m.name)) t.hurt.push(m.name); return m.name; };
+  let who = actor ? actor.name : 'The squad';
+  if (o.toll) { for (const k in t.loot) t.loot[k] = Math.floor(t.loot[k] * (1 - o.toll)); }
+  if (ok && o.win) {
+    for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] += n; got.push(`${n} ${k === 'mat' ? 'parts' : k}`); }
+    if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
+    if (o.win.recruit) { if (popNow() < popCap()) { t.recruitNow = true; got.push('The survivor will follow the squad home.'); } else { const n = r([1, 2]); t.loot.food += n; t.ren = (t.ren || 0) + 3; got.push(`The Haven has no room, so the survivor gave them ${n} food (+3 Renown)`); } }
+    if (o.win.gift) { const n = r([1, 2]); t.loot.food += n; t.loot.water += n; got.push(`They threw down ${n} food and ${n} water in thanks.`); }
+    if (o.win.ren) { t.ren = (t.ren || 0) + o.win.ren; got.push(`(+${o.win.ren} Renown)`); }
+    if (o.win.xp) encLive(t).forEach((m) => { m.xpB = (m.xpB || 0) + o.win.xp; });
+    if (actor && !o.safe) actor.xpB = (actor.xpB || 0) + 3;
+  }
+  if (!ok) {
+    if (o.fail === 'hurt') who = hurtOne(actor) || who;
+    if (o.fail === 'hurt2') { const L = encLive(t).sort(() => Math.random() - .5).slice(0, 2); who = L.map(hurtOne).filter(Boolean).join(' and ') || who; }
+    if (o.fail === 'toll') for (const k in t.loot) t.loot[k] = 0;
+  }
+  const txt = (ok ? o.winT : o.failT || '').replace('{who}', who).replace('{got}', got.join(', ') || 'nothing much');
+  t.log.push(`${E.title.replace(/^\S+\s/, '')}: ${lead ? `no orders came, so ${lead.name}${TRAITS[lead.trait] ? ' (' + TRAITS[lead.trait].name + ')' : ''} chose “${o.label}”. ` : `“${o.label}”: `}${txt}`);
+  t.choices = (t.choices || 0) + 1; if (o.recall && t.phase === 'out') expRecall(); return { ok, text: txt, opt: o.id };
+}
+function encButtons(t) {
+  const en = t.enc, E = EXP_ENC[en.k];
+  return E.opts.map((o, i) => { const od = en.opts[i]; return { label: `${o.label}<small class="encOdds">${o.safe ? (o.toll ? 'lose half the haul' : o.recall ? 'safe · ends the trip' : 'safe') : `${o.chk === 'fight' ? 'FIGHT' : STAT_ABBR[o.chk]} · ${esc(od.who)} · ${Math.round(od.chance * 100)}%`}</small>`, fn: () => encChoose(en, i) }; });
+}
+function encChoose(en, i) {   /* a stale pop-up (the squad already decided) does nothing */
+  const t = S.trip; if (!t || t.enc !== en) { say('The squad already decided.'); return; }
+  const r = encResolve(t, i); if (r) { say(r.text.length > 90 ? r.text.slice(0, 88) + '…' : r.text, true); saveGame(); if (expOpen) showExpedition(); }
+}
+function encPopup(t) {
+  const en = t.enc, E = EXP_ENC[en.k];
+  showEventPopup({ title: E.title, text: `${E.text}<br><small>Squad: ${encLive(t).map((m) => esc(m.name) + ' ' + traitIcon(m) + ' ' + Math.ceil(m.hp) + '/' + m.max).join(' · ')}</small><br><small>No order before the next stage and the squad decides for itself.</small>`, buttons: encButtons(t) });
 }
 function tripUpdate(now = Date.now()) {
   const t = S.trip; if (!t) return;
@@ -2338,16 +2432,16 @@ function tripUpdate(now = Date.now()) {
 }
 function expRecall() {
   const t = S.trip; if (!t || t.phase !== 'out') return false; const now = Date.now(), back = Math.max(10000, (now - t.t0) * .5);
-  t.phase = 'back'; t.backAt = now + back; t.log.push(`Recalled during stage ${t.stage + 1}. Loot from finished stages is kept; walking home.`); say('The squad is on its way home.', true); saveGame(); ui(); return true;
+  t.phase = 'back'; t.backAt = now + back; if (t.enc) { t.enc = null; t.log.push('The squad left the situation behind.'); } t.log.push(`Recalled during stage ${t.stage + 1}. Loot from finished stages is kept; walking home.`); say('The squad is on its way home.', true); saveGame(); ui(); return true;
 }
 function expFinish(recalled) {
-  const t = S.trip; if (!t) return; S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
+  const t = S.trip; if (!t) return; if (t.enc) { if (recalled) { t.enc = null; t.log.push('The squad left the situation behind on the way home.'); } else encResolve(t, null); } S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
   if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); t.log.push(`${m.name} fell on the way home.`); }
   (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = Math.min(cap, S.food + t.loot.food); S.water = Math.min(cap, S.water + t.loot.water); S.mat += t.loot.mat; S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y <= 6) return tc(w.x, w.y + 1); return tc(7, 7); })();
-  t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage)); m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
+  if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${v} ${k === 'mat' ? 'parts' : k}`).concat((t.items || []).map((id) => ITEMS[id].name));
-  if (d.recruit && t.stage >= EXP_STAGES && t.members.length && S.sv.length < 10 && Math.random() < d.recruit[t.risk]) {
+  if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
     const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'], jb = jobs[Math.floor(Math.random() * jobs.length)];
     recruit = mk(nm, jb, 1, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; S.sv.push(recruit); t.log.push(`${nm}, a ${jb} (${TRAITS[recruit.trait].icon} ${TRAITS[recruit.trait].name}), was found and followed the squad home.`);
   }
@@ -2369,9 +2463,10 @@ function showExpedition() {
     const d = EXP_DEFS[t.dest];
     $('ib').innerHTML = `<b>${d.icon} ${d.name}</b> · ${EXP_RISK[t.risk].label} risk<br><span id="expStage">${t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`}</span> · <b id="expTime">${mmss(expTripLeft(t))}</b> left<br>
       Squad: ${t.members.map((m) => `${esc(m.name)} (${m.job}, HP ${Math.ceil(m.hp)}/${m.max})`).join(', ')}<br>
-      Loot so far: ${['food', 'water', 'mat'].map((k) => `${t.loot[k]} ${k === 'mat' ? 'parts' : k}`).join(' · ')}<br><small>${t.log.map(esc).join('<br>')}</small><br>
+      Loot so far: ${['food', 'water', 'mat'].map((k) => `${t.loot[k]} ${k === 'mat' ? 'parts' : k}`).join(' · ')}<br>${t.enc ? `<div class="card encCard"><b>${EXP_ENC[t.enc.k].title}</b><div class="sm">${EXP_ENC[t.enc.k].text} Decide before the next stage, or the squad decides.</div>${encButtons(t).map((b, i) => `<button class="act${i === 0 ? ' go' : ''}" data-enc="${i}" style="width:100%;margin:4px 0 0">${b.label}</button>`).join('')}</div>` : ''}<small>${t.log.map(esc).join('<br>')}</small><br>
       ${t.phase === 'out' ? '<button class="act danger" id="expRecall">RECALL SQUAD</button><br><small>Recall keeps the loot from finished stages and skips the risk of the rest. Leaving mid-stage forfeits that stage’s loot. The trip keeps running while the game is closed.</small>' : '<small>The squad is heading back.</small>'}`;
     const rb = $('expRecall'); if (rb) rb.onclick = () => { if (expRecall()) showExpedition(); };
+    $('ib').querySelectorAll('[data-enc]').forEach((b) => { const en = t.enc; b.onclick = () => encChoose(en, +b.dataset.enc); });
   } else {
     if (!EXP_DEFS[expSel.dest] || expLocked(expSel.dest)) expSel.dest = 'houses';
     const d = EXP_DEFS[expSel.dest]; if (!d.risks.includes(expSel.risk)) expSel.risk = d.risks[0];
@@ -2381,7 +2476,7 @@ function showExpedition() {
     $('ib').innerHTML = `<div class="sm">Where to?</div><div class="lst">${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<div class="card" data-d="${k}" style="${expSel.dest === k ? 'border-color:var(--gold)' : ''}${lk ? ';opacity:.5' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp">${v.name}<div class="sm">${lk ? '🔒 ' + lk : expSel.dest === k ? d.desc : ''}</div></div>${expSel.dest === k ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>
       <div class="sm">Risk</div><div class="tabs" style="position:static">${d.risks.map((r) => `<button data-r="${r}" class="${expSel.risk === r ? 'on' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min}m</button>`).join('')}</div>
       <div class="sm">Squad (1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}${['cautious', 'scrounger', 'loner'].includes(q.trait) ? ' · ' + TRAITS[q.trait].name + (q.trait === 'cautious' ? ': safer' : q.trait === 'loner' ? ': +loot in 1–2' : ': +loot') : ''}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>
-      <div class="card"><div>Cost: 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''} · Loot ×${pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}</div>
+      <div class="card"><div>Cost: 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''} · Loot ×${pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div><div class="sm">On the way the squad may face choices: their stats, gear, professions and personalities set the odds.</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}</div>
       <button class="act go" id="expGo" style="width:100%">Send squad · ${rk.min} min</button>`;
     $('ib').querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { if (expLocked(b.dataset.d)) { say(expLocked(b.dataset.d)); return; } expSel.dest = b.dataset.d; showExpedition(); }; });
     $('ib').querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { expSel.risk = b.dataset.r; showExpedition(); }; });
@@ -2939,7 +3034,7 @@ async function init() {
   if (!restored || !restored.cam) centerOn(7.5, 10, Math.max(.7, Math.min(1.1, VW / 430)));
   if (titleOn) { $('loading').style.display = 'none'; showTitle(); requestAnimationFrame(frame); return; }
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
-  autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
+  autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
   if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
   if (saveBlocked === 'load') showEventPopup({ title: '💾 SAVE COULD NOT BE OPENED', text: `The town in slot ${SLOT} could not be loaded. <b>Nothing was overwritten</b>: this town will not save while you look around.<br><br>On the main screen, <b>Start → Backups</b> can export the file or import an older backup.`, buttons: [{ label: 'MAIN SCREEN', fn: () => { location.href = location.pathname; } }, { label: 'LOOK AROUND' }] });
@@ -3044,6 +3139,6 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<title>Zombie Haven V2.43.0</title>
+<title>Zombie Haven V2.44.0</title>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 :root{--wood:#7a5a36;--woodL:#b48a52;--woodD:#3b2a19;--panel:#2b2520;--panel2:#3a322a;--ink:#fbf0d6;--muted:#d6c39b;--gold:#ffcf5a;--good:#8fd46a;--bad:#ff7a5c;--blue:#7cc8ff;
@@ -23,7 +23,9 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #plaque .res{display:flex;gap:12px;font-size:26px;line-height:26px;align-items:center;white-space:nowrap}
 #plaque .res span{display:flex;align-items:center;gap:3px}#plaque .res i{font-style:normal;font-size:19px}
 #plaque .res b{font-weight:400;color:#fff6dc}
-#plaque .trip{color:var(--blue)}
+#plaque .trip{color:var(--blue);margin-left:8px}#plaque .trip i{font-style:normal}#plaque .trip b{font-weight:400}
+#plaque{max-width:calc(100% - 70px)}
+#quest #clock{display:inline}#quest .trip{display:inline;white-space:nowrap}#quest .trip b{display:inline;color:var(--blue)}#quest .trip::after{content:none}
 #quest{margin-top:3px;font-size:18px;line-height:19px;color:var(--muted);cursor:pointer}#quest b{display:block;font-weight:400;color:#e6d3a8}#quest span{display:block;color:#fff1c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #lmenu{position:absolute;z-index:8;left:5px;top:112px;display:flex;flex-direction:column;gap:8px}
 .lm{width:76px;height:68px;padding:0;color:var(--ink);font-size:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
@@ -114,6 +116,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .evBox{max-height:70%;overflow:auto;position:absolute;left:6%;right:6%;top:22%;padding:14px 14px 16px;z-index:40;text-align:center;box-shadow:0 0 0 9999px #0009}
 .evTitle{font-size:28px;color:var(--gold);margin-bottom:8px;line-height:28px}.evText{margin-bottom:9px;line-height:23px;font-size:20px}.evGain{color:var(--good);font-size:20px;margin-bottom:10px}
 .evBox button{padding:8px 24px;margin:4px;font-size:22px}
+@media (max-height:700px){.evBox{top:9%;max-height:84%}.evTitle{font-size:24px;line-height:25px}.evText{font-size:18px;line-height:21px}}
 #eventModal{position:absolute;inset:0;pointer-events:none;z-index:40}#eventModal .evBox{pointer-events:auto}
 .request{position:absolute;left:5%;right:5%;bottom:84px;padding:11px;z-index:15;font-size:19px;text-align:center}
 .request b{font-weight:400;color:var(--gold);font-size:23px}
@@ -137,6 +140,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .slot:active{background:#fff1c4}.slot.empty{color:#7a6a50}.slot .snum{width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:#6c5a49;color:#fff1c4;display:flex;align-items:center;justify-content:center;font-size:20px}
 .slot .sinfo{flex:1;min-width:0;line-height:19px}.slot .sinfo b{display:block;font-weight:400;font-size:22px;color:#2a5ac8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slot.empty .sinfo b{color:#7a6a50}
 .slot .sinfo small{display:block;font-size:16px;color:#7a6a50}.slot .sago{font-size:14px!important}
+.encOdds{display:block;font-size:15px;opacity:.85;line-height:16px;margin-top:2px}
 .sdel{background:#f3d9a0;border:2px solid #8a5a24;border-radius:6px;font-size:18px;min-width:44px;min-height:44px;color:#5a2a10}.sdel.arm{background:#d8573f;color:#fff;font-size:15px;padding:0 6px}
 .sFoot{display:flex;align-items:center;justify-content:space-between;gap:8px}.sFoot .act{margin:0}
 #loading{position:absolute;inset:0;z-index:50;background:#14100c;color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:26px}
@@ -144,8 +148,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 </style></head><body>
 <div id="app">
  <div id="world"><canvas id="game"></canvas>
-  <div id="plaque" class="frame out"><div class="res"><span><i>🍖</i><b id="food">0</b></span><span><i>💧</i><b id="water">0</b></span><span><i>⚙️</i><b id="mat">0</b></span><span class="trip" id="tripChip" style="display:none"><i>🧭</i><b id="tripTime">0:00</b></span></div>
-   <div id="quest"><b id="clock">DAY 1 · 08:00</b><span id="qt"></span></div><div id="adv" style="display:none"><span></span><button id="advX" title="Hide for today">✕</button></div></div>
+  <div id="plaque" class="frame out"><div class="res"><span><i>🍖</i><b id="food">0</b></span><span><i>💧</i><b id="water">0</b></span><span><i>⚙️</i><b id="mat">0</b></span></div>
+   <div id="quest"><b id="clock">DAY 1 · 08:00</b><span class="trip" id="tripChip" style="display:none"><i>🧭</i><b id="tripTime">0:00</b></span><span id="qt"></span></div><div id="adv" style="display:none"><span></span><button id="advX" title="Hide for today">✕</button></div></div>
   <div id="lmenu"><button class="lm frame out" id="mBuild"><i>🔨</i>Build</button><button class="lm frame out" id="mExp"><i>🧭</i>Explore</button><button class="lm frame out" id="mSurv"><i>👥</i>People</button><button class="lm frame out" id="mTown"><i>🏚️</i>Town</button><button class="lm frame out" id="mGuide"><i>📖</i>Guide</button></div>
   <div id="gauge" class="out"><div class="wheel"></div><div class="glabel">Renown</div><div class="gval"><span id="ren">0</span></div><div class="grank">Rank <span id="rank">★</span> · ☠<span id="threat">1</span></div><div class="gbar"><i id="renBar"></i></div></div>
   <button id="btnHome" class="frame out" title="Main screen (saves first)">🏠</button><div id="zoom"><span id="zv">100%</span></div>
@@ -161,10 +165,10 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="slots" style="display:none"><div class="sPanel frame"><div class="sHead out">Save Slots</div><div class="slist"></div><div class="sFoot"><span class="sm">Your town saves itself as you play.</span><button class="act" id="sBak">💾 Backups</button><button class="act" id="sBack">Back</button></div></div></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.43.0"></script>
-<script src="js/world.js?v=2.43.0"></script>
-<script src="js/chars.js?v=2.43.0"></script>
-<script src="js/procart.js?v=2.43.0"></script>
-<script src="js/sound.js?v=2.43.0"></script>
-<script src="js/game.js?v=2.43.0"></script>
+<script src="js/iso.js?v=2.44.0"></script>
+<script src="js/world.js?v=2.44.0"></script>
+<script src="js/chars.js?v=2.44.0"></script>
+<script src="js/procart.js?v=2.44.0"></script>
+<script src="js/sound.js?v=2.44.0"></script>
+<script src="js/game.js?v=2.44.0"></script>
 </body></html>

@@ -425,6 +425,46 @@ async def t_traits(br, port, t):   # V2.43: survivor personalities change existi
     t.ok(r[0] == 'eater' and all(x == 'loner' for x in r[1:]), 'personalities are saved')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_expchoices(br, port, t):   # V2.44: expedition situations with choices; odds from stats, gear, professions and personalities
+    ctx, pg, errs = await open_game(br, port, 'expc')
+    SETUP = """(risk)=>{const S=ZH.S;S.trip=null;S.food=S.water=60;for(const q of S.sv){q.hp=q.max;q.hunger=q.thirst=0;q.mode='free';q.rescuing=q.carrying=null}
+      while(S.sv.length<5)S.sv.push(ZH.mk('X'+S.sv.length,'Civilian',1,7,10,S.sv.length));const ids=ZH.expAutoSquad(3).map(q=>q.id);const r=ZH.startExpedition(risk==='low'?'houses':'pharmacy',risk,ids);ZH.closeP();return r.ok}"""
+    await pg.evaluate("()=>{ZH.tryWall(3,5,'wood')}")
+    t.ok(await pg.evaluate(SETUP, 'low'), 'a squad can leave')
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip,e=ZH.expEncounter(t,'door'),names=t.members.map(m=>m.name);const best=t.members.reduce((a,m)=>(m.st.str+(m.job==='Engineer'?2:0))>(a.st.str+(a.job==='Engineer'?2:0))?m:a);
+      const o={n:e.opts.length,c:e.opts.map(x=>x.chance),who:e.opts[0].who,inSquad:names.includes(e.opts[0].who)};const m0=t.loot.mat;const res=ZH.encResolve(t,0,0);o.ok=res.ok;o.gain=t.loot.mat-m0;o.cleared=!t.enc;return o}""")
+    t.ok(r['n'] == 3 and all(0 < c <= 1 for c in r['c']) and r['inSquad'], f"a situation offers 3 options with odds and names who would do it {r}")
+    t.ok(r['ok'] and r['gain'] >= 2 and r['cleared'], f"a successful choice adds its reward {r}")
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip;ZH.expEncounter(t,'horde');const id=t.enc.opts[1].whoId,m=t.members.find(x=>x.id===id),hp=m.hp;const res=ZH.encResolve(t,1,.999);return {ok:res.ok,hp,after:m.hp,col:!!m.collapsed}}""")
+    t.ok(not r['ok'] and (r['after'] < r['hp'] or r['col']), f"a failed risky choice hurts the person who tried {r}")
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip,E=ZH.EXP_ENC.cache.opts[0],F=ZH.EXP_ENC.horde.opts[0];t.members.forEach(m=>m.trait='diligent');const a=ZH.encOdds(t,E).chance;t.members.forEach(m=>m.trait='scrounger');const b=ZH.encOdds(t,E).chance;
+      const f1=ZH.encOdds(t,F).chance;const keep=t.members.map(m=>m.eq.weapon);t.members.forEach(m=>m.eq.weapon='katana');const f2=ZH.encOdds(t,F).chance;t.members.forEach((m,i)=>m.eq.weapon=keep[i]);return {a,b,f1,f2}}""")
+    t.ok(r['b'] - r['a'] > .1, f"a Scrounger improves the odds of searching a wreck {r['a']:.2f} -> {r['b']:.2f}")
+    t.ok(r['f2'] > r['f1'] + .05, f"better weapons improve the odds of a fight {r['f1']:.2f} -> {r['f2']:.2f}")
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip;t.members.forEach(m=>{m.trait='brave';m.eq.weapon='katana';m.l=6});ZH.expEncounter(t,'horde');const a=ZH.encDefault(t).i;t.enc=null;
+      t.members.forEach(m=>m.trait='cautious');ZH.expEncounter(t,'horde');const b=ZH.encDefault(t).i;ZH.encResolve(t,null);return {a,b,phase:t.phase,log:t.log[t.log.length-2]||''}}""")
+    t.ok(r['a'] == 0 and r['b'] == 2, f"with no orders a Brave squad fights through, a Cautious one turns back {r}")
+    t.ok(r['phase'] == 'back' and 'no orders came' in r['log'], f"turning back ends the trip and the report says who decided {r}")
+    await pg.evaluate("()=>{ZH.S.trip=null}")
+    t.ok(await pg.evaluate(SETUP, 'medium'), 'a medium-risk squad can leave')
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip;t.loot={food:6,water:4,mat:8};ZH.expEncounter(t,'raiders');ZH.encResolve(t,0);return t.loot}""")
+    t.ok(r == {'food': 3, 'water': 2, 'mat': 4}, f"paying the raiders' toll costs half the haul {r}")
+    r = await pg.evaluate("""()=>{const t=ZH.S.trip;ZH.expEncounter(t,'stranger');const pend=!!t.enc,ser=JSON.parse(ZH.serialize()).S.trip.enc;ZH.tripUpdate(t.t0+t.dur/3*2+1);return {pend,saved:!!ser&&ser.k==='stranger',done:!t.enc||t.enc.k!=='stranger',log:t.log.join(' | ')}}""")
+    t.ok(r['pend'] and r['saved'], 'a pending choice is saved with the trip')
+    t.ok(r['done'] and 'no orders came' in r['log'], f"if no order comes before the next stage, the squad decides and it is logged")
+    await pg.evaluate("()=>{const t=ZH.S.trip;t.enc=null;ZH.expEncounter(t,'cry');ZH.eventQueue.length=0;document.getElementById('eventModal').innerHTML='';ZH.encPopup(t)}")
+    r = await pg.evaluate("()=>({btn:document.querySelectorAll('#eventModal button').length,html:document.getElementById('eventModal').innerHTML})")
+    t.ok(r['btn'] == 3, f"the situation pop-up shows one button per option ({r['btn']})")
+    await pg.click('#eventModal button >> nth=2'); await pg.wait_for_timeout(100)
+    r = await pg.evaluate("()=>({left:!ZH.S.trip.enc,log:ZH.S.trip.log[ZH.S.trip.log.length-1]})")
+    t.ok(r['left'] and 'Keep moving' in r['log'], f"tapping an option resolves it {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,t=S.trip;ZH.expEncounter(t,'cry');const en=t.enc;ZH.encResolve(t,0,0);let err=null;try{ZH.encChoose(en,0)}catch(e){err=String(e)}
+      const n=S.sv.length+t.members.length,rec=t.recruitNow;t.phase='back';t.backAt=0;ZH.tripUpdate(Date.now()+1);return {rec,err,grew:S.sv.length-n,trip:!!S.trip,last:(S.lastTrip||{}).recruit}}""")
+    t.ok(r['rec'] and r['grew'] == 1 and not r['err'] and not r['trip'], f"rescuing the survivor brings them home with the squad; a stale tap does nothing {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S;ZH.showExpedition();const h1=document.getElementById('ib').innerHTML;ZH.closeP();return {hint:h1.includes('personalities set the odds')}}""")
+    t.ok(r['hint'], 'the Explore panel says that stats, gear and personalities set the odds')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -550,7 +590,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
