@@ -1,5 +1,10 @@
 # Changelog
 
+## V2.35.1 — Faster drawing
+- Profiled a 20-survivor town at night (headless Chromium, 3× screen): about 60% of each frame went to drawing map props and wreckage, including pieces off screen, and each wreck piece saved and restored the whole canvas state.
+- Now only what is on screen (plus a margin) is drawn and depth-sorted, wreck pieces are mirrored without save/restore, and the night tint is a single full-screen pass instead of two.
+- Measured on the same scene: about 10 ms → 6 ms per frame. Day frames are now as fast as V2.33.2, or slightly faster (3.2–3.7 ms vs 3.6–4.2 ms), and night frames are about equal (4.7–5.3 ms vs 5.4–5.8 ms). The simulation itself was not slower (about 0.06 ms per tick).
+
 ## V2.35.0 — Phase 2: town management
 **Resource panels.** Tap 🍖, 💧 or ⚙ at the top left (tabs switch between them). Each panel shows:
 - In stock, storage cap and a fill bar.
