@@ -130,6 +130,27 @@ async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, 
     t.ok(r['compact'] <= 1, 'while placing a building the alerts shrink to one row')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_objectives(br, port, t):   # V2.34: actionable objectives
+    ctx, pg, errs = await open_game(br, port, 'obj')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.stage=0;S.mat=50;const o=ZH.currentObjective();out.act=o.act&&o.act.label;out.spots=o.spots.length;
+      o.act.fn();out.sel=ZH.sel&&ZH.sel.type;out.pv=!!(ZH.preview&&ZH.preview.ok);ZH.endBuildMode(true);
+      document.getElementById('quest').click();out.title=document.getElementById('it').textContent;out.reqRows=document.querySelectorAll('#ib .card .row').length;
+      const sh=document.getElementById('oShow');if(sh)sh.click();out.marks=!!ZH.objMarks;return out}""")
+    t.ok(r['act'] == 'Build Rain Collector' and r['spots'] == 1, f"first objective offers a shortcut and a map spot {r}")
+    t.ok(r['sel'] == 'water' and r['pv'], 'the shortcut opens placement with a valid ghost already on the suggested spot')
+    t.ok(r['title'] == 'OBJECTIVE' and r['reqRows'] >= 1, 'tapping the objective line opens the objective with its requirements')
+    t.ok(r['marks'], 'Show on map highlights the spot')
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,Z=Wd.WALLZONE,out={};S.mat=999;S.rank=5;S.stage=2;S.guide=99;S.z.length=0;
+      const ring=[];for(let x=Z.x0;x<=Z.x1;x++){ring.push([x,Z.y0]);ring.push([x,Z.y1]);}for(let y=Z.y0+1;y<Z.y1;y++){ring.push([Z.x0,y]);ring.push([Z.x1,y]);}
+      let k=0;for(const [x,y] of ring){k++;if(k%9===0)continue;if(Wd.isRoad(W,x,y))continue;ZH.tryWall(x,y,'wood');}
+      out.sealed0=Wd.perimeter(W).sealed;S.mission={id:'seal',name:'Close the Gaps',desc:'Seal the perimeter with walls',goal:1,progress:0,rewardParts:6,rewardRen:7};
+      const o=ZH.currentObjective();out.gaps=o.spots.map(g=>[g.x,g.y,g.label]);out.req=o.reqs[0].label;
+      for(const g of o.spots)ZH.tryWall(g.x,g.y,g.label==='gate'?'gate':'wood');out.sealed1=Wd.perimeter(W).sealed;out.left=ZH.findGaps().length;return out}""")
+    t.ok(not r['sealed0'] and len(r['gaps']) > 0, f"Close the Gaps lists the gaps ({r['req']}: {r['gaps'][:6]})")
+    t.ok(r['sealed1'] and r['left'] == 0, f"walling exactly the listed gaps seals the town (sealed={r['sealed1']}, gaps left={r['left']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -140,6 +161,8 @@ async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save2', init=f"if(!sessionStorage.getItem('x')){{sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26',{json.dumps(save)})}}")
     after = await pg.evaluate("""()=>{const S=ZH.S;return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,4,5).broken,pet:S.sv[0].pet&&S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
     for k in before: t.ok(before[k] == after[k], f'save/load keeps {k}: {before[k]} == {after[k]}')
+    await pg.wait_for_timeout(50)
+    t.ok(await pg.evaluate("()=>ZH.alerts.has('breach4,5')"), 'an unrepaired breach is still flagged after loading')
     t.ok(not errs, 'no page errors'); await ctx.close()
 
 async def t_old_save(br, port, t):
@@ -253,7 +276,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

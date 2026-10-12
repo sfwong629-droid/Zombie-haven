@@ -1,5 +1,33 @@
 # Changelog
 
+## V2.34.0 — Phase 1: geometry, notifications, breach alerts, actionable objectives
+**Geometry audit (P0)**
+- Measured every building sprite against its footprint: all 20 are anchored on the south corner, within 1 art px per side of the footprint width, with 89–100% of the footprint covered by the base. No sprite was resized.
+- Fixed (confirmed): a new building could be placed on another building's entrance tile, so people walked through that building. Placement now refuses it ("Blocks the … entrance"), and refuses a spot that walls another entrance in. In older towns, the building panel shows a red "Entrance blocked by …" line.
+- Fixed: people leaving a building now step out through its entrance tile instead of cutting across a corner of the footprint.
+- Corrected the projection notes: the game uses standard 2:1 projection (atan ½ = 26.565°); the old 3:2 / 33.69° comment was out of date.
+
+**Notifications in three levels**
+- Critical: red rows under the HUD. Tap a row to move the camera there; ✕ hides it. Used for a survivor down (with the bleed-out timer and who is rescuing them), a wall or gate breach, fire, a break-in, raiders, a boss attack, running out of food or water, and starvation. There is one row per unresolved issue, it never repeats, and it clears itself when resolved. When the emergency is off screen, an arrow points to it from the screen edge; on screen, the spot pulses on the map and nearby zombies get a red ring.
+- Important: one banner at a time, queued with no overlap. Used for mission or goal complete, rank, boss warnings, burned buildings, unpaid upkeep, and a new "night in 1 hour" warning.
+- Routine: stat gains, small Renown gains, friendships, gear, staffing and the daily summary go to the event log, plus floating text in the world where it has a place. Small Renown gains no longer pop a banner.
+- Event log: entries are coloured by level, with an "alerts + important" filter and a "1× on emergencies" setting. The setting is on by default: the first emergency drops 2× or 3× back to 1×, at most once a minute.
+- Pop-ups wait while you are placing a building, and alerts shrink to one row in build mode.
+
+**Breach controls** (these follow the real repair rules)
+- *Repair first* moves the breach to the front of the repair queue. Repairs still cost parts and wait until no zombie is within reach.
+- *Send defender* sends the best free fighter at the nearest zombie.
+- Alerts are re-raised after loading a save.
+
+**Actionable objectives**
+- Tap the objective line (top left) to see what to do and why, progress, the reward, and a ✔/✘ list of what is missing (parts, unlocks, staff, free space…).
+- Two buttons: **Show on map**, and a shortcut such as *Build Rain Collector* (opens placement with a valid ghost on a suggested spot), *Open the Workshop* or *Place walls*.
+- *Close the Gaps* marks every gap in the wall ring where zombies would walk in, and says when a road needs a Gate. Placing walls on exactly those tiles seals the town (tested).
+- The objective line flashes green when it is completed.
+
+**Tests:** new `geometry` (12 checks), `alerts` (14) and `objectives` (7), plus 1 new save/load check. All 17 test groups pass in headless Chromium. Visual check done at 320×568, 375×667, 390×844 and 430×932.
+**Not tested:** real phones or Safari (headless Chromium only), the new alert sounds by ear, and the multi-seed balance run (this phase changes no balance values).
+
 ## V2.33.2 — Brute attack frames
 - Brute zombie attack (wind-up, strike, follow-through) and death frames redrawn at one consistent size, no more chunky rescaled frames.
 
