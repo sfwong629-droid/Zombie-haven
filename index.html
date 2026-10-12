@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<title>Zombie Haven V2.40.0</title>
+<title>Zombie Haven V2.41.0</title>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 :root{--wood:#7a5a36;--woodL:#b48a52;--woodD:#3b2a19;--panel:#2b2520;--panel2:#3a322a;--ink:#fbf0d6;--muted:#d6c39b;--gold:#ffcf5a;--good:#8fd46a;--bad:#ff7a5c;--blue:#7cc8ff;
@@ -119,7 +119,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .request b{font-weight:400;color:var(--gold);font-size:23px}
 #crash{display:none;position:absolute;z-index:99;left:6px;right:6px;top:90px;background:#651f1f;color:#fff;border:2px solid #ff9b8e;padding:8px;font:12px monospace}
 /* V2.40 title screen + save slots */
-#app.titleMode #plaque,#app.titleMode #lmenu,#app.titleMode #gauge,#app.titleMode #bottom,#app.titleMode #alerts,#app.titleMode #say,#app.titleMode #fx,#app.titleMode #requestBox{display:none!important}
+#app.titleMode #plaque,#app.titleMode #lmenu,#app.titleMode #gauge,#app.titleMode #bottom,#app.titleMode #alerts,#app.titleMode #say,#app.titleMode #fx,#app.titleMode #requestBox,#app.titleMode #btnHome{display:none!important}
+#btnHome{position:absolute;z-index:8;top:6px;right:6px;width:46px;height:46px;padding:0;font-size:24px;color:var(--ink);display:flex;align-items:center;justify-content:center}
 #title{position:absolute;inset:0;z-index:45;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(28px + env(safe-area-inset-top)) 16px calc(22px + env(safe-area-inset-bottom));background:linear-gradient(#0b1410cc,#0b141022 38%,#0b141000 60%,#0b1410aa)}
 .tLogo{text-align:center;line-height:.86;margin-top:4vh}
 .tLogo .t1,.tLogo .t2{font-size:min(19vw,92px);letter-spacing:2px;text-shadow:-4px 0 #1b120a,4px 0 #1b120a,0 -4px #1b120a,0 4px #1b120a,-4px -4px #1b120a,4px 4px #1b120a,-4px 4px #1b120a,4px -4px #1b120a,0 9px #0008}
@@ -145,9 +146,9 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="world"><canvas id="game"></canvas>
   <div id="plaque" class="frame out"><div class="res"><span><i>🍖</i><b id="food">0</b></span><span><i>💧</i><b id="water">0</b></span><span><i>⚙️</i><b id="mat">0</b></span><span class="trip" id="tripChip" style="display:none"><i>🧭</i><b id="tripTime">0:00</b></span></div>
    <div id="quest"><b id="clock">DAY 1 · 08:00</b><span id="qt"></span></div><div id="adv" style="display:none"><span></span><button id="advX" title="Hide for today">✕</button></div></div>
-  <div id="lmenu"><button class="lm frame out" id="mBuild"><i>🔨</i>Build</button><button class="lm frame out" id="mExp"><i>🧭</i>Explore</button><button class="lm frame out" id="mSurv"><i>👥</i>People</button><button class="lm frame out" id="mTown"><i>🏚️</i>Town</button><button class="lm frame out" id="mGuide"><i>📖</i>Guide</button><button class="lm frame out small" id="mDemo"><i>🪓</i>Demolish</button></div>
+  <div id="lmenu"><button class="lm frame out" id="mBuild"><i>🔨</i>Build</button><button class="lm frame out" id="mExp"><i>🧭</i>Explore</button><button class="lm frame out" id="mSurv"><i>👥</i>People</button><button class="lm frame out" id="mTown"><i>🏚️</i>Town</button><button class="lm frame out" id="mGuide"><i>📖</i>Guide</button></div>
   <div id="gauge" class="out"><div class="wheel"></div><div class="glabel">Renown</div><div class="gval"><span id="ren">0</span></div><div class="grank">Rank <span id="rank">★</span> · ☠<span id="threat">1</span></div><div class="gbar"><i id="renBar"></i></div></div>
-  <div id="zoom"><span id="zv">100%</span></div>
+  <button id="btnHome" class="frame out" title="Main screen (saves first)">🏠</button><div id="zoom"><span id="zv">100%</span></div>
   <div id="fx" class="fxLayer out"></div><div id="alerts" class="out"></div><div id="say" class="out"></div>
   <div id="requestBox"></div><div id="eventModal"></div>
   <div class="panel frame" id="infoPanel"><div class="ph"><button class="back out" id="pBack">‹</button><h3 id="it" class="out">INFO</h3><button class="x out" id="closeInfo">✕</button></div><div class="pb" id="ib"></div></div>
@@ -160,10 +161,10 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="slots" style="display:none"><div class="sPanel frame"><div class="sHead out">Save Slots</div><div class="slist"></div><div class="sFoot"><span class="sm">Your town saves itself as you play.</span><button class="act" id="sBack">Back</button></div></div></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.40.0"></script>
-<script src="js/world.js?v=2.40.0"></script>
-<script src="js/chars.js?v=2.40.0"></script>
-<script src="js/procart.js?v=2.40.0"></script>
-<script src="js/sound.js?v=2.40.0"></script>
-<script src="js/game.js?v=2.40.0"></script>
+<script src="js/iso.js?v=2.41.0"></script>
+<script src="js/world.js?v=2.41.0"></script>
+<script src="js/chars.js?v=2.41.0"></script>
+<script src="js/procart.js?v=2.41.0"></script>
+<script src="js/sound.js?v=2.41.0"></script>
+<script src="js/game.js?v=2.41.0"></script>
 </body></html>

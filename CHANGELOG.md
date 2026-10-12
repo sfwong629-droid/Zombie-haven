@@ -1,5 +1,10 @@
 # Changelog
 
+## V2.41.0
+- New 🏠 button at the top right: saves your town and goes back to the main screen (hidden on the title screen).
+- Demolish moved into the Build menu: a full-width "Demolish" button sits under the Build tabs. The separate Demolish button in the side menu is gone.
+- New test group `menu` (Demolish in Build, home button, save kept when going home). 25 groups, all passing.
+
 ## V2.40.0 — Title screen and save slots
 - New start flow, inspired by Dungeon Village 2 with an original look.
 - **Title screen:** a ZOMBIE HAVEN logo over the town map drifting slowly behind it, with **Start**, **Continue** (opens your most recent save: town name and day) and the version.

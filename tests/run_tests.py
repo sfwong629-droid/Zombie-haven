@@ -317,6 +317,20 @@ async def t_title(br, port, t):   # V2.40: title screen and save slots
     t.ok(r['slot'] == 1 and r['name'] == 'Old Town', f"tapping a saved slot loads it {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_menu(br, port, t):   # V2.41: Demolish inside Build, home button
+    ctx, pg, errs = await open_game(br, port, 'menu')
+    r = await pg.evaluate("()=>({mdemo:!!document.getElementById('mDemo'),home:getComputedStyle(document.getElementById('btnHome')).display})")
+    t.ok(not r['mdemo'], 'the separate Demolish button is gone from the side menu')
+    t.ok(r['home'] != 'none', 'the main-screen button shows in game')
+    await pg.evaluate("()=>ZH.showBuild()"); await pg.click('#bDemo')
+    t.ok(await pg.evaluate("()=>ZH.sel&&ZH.sel.kind==='demolish'"), 'Demolish inside the Build menu starts the demolish tool')
+    await pg.evaluate("()=>{ZH.endBuildMode(true);ZH.S.townName='Home Test';ZH.saveGame()}")
+    await pg.click('#btnHome'); await pg.wait_for_selector('#title', state='visible')
+    r = await pg.evaluate("()=>({home:getComputedStyle(document.getElementById('btnHome')).display,cont:document.getElementById('tCont').textContent})")
+    t.ok(r['home'] == 'none', 'the main-screen button is hidden on the title screen')
+    t.ok('Home Test' in r['cont'], f"going back to the main screen keeps the save ({r['cont']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -442,7 +456,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
