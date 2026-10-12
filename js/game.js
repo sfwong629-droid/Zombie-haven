@@ -58,7 +58,7 @@ function alphaMask(type) {                    // per-sprite alpha for pixel-accu
   return (alphaMasks[type] = m);
 }
 async function loadAll() {
-  const jobs = []; window.ZH_VERSION = VERSION; if (window.ZHChars) jobs.push(ZHChars.load());
+  const jobs = []; window.ZH_VERSION = VERSION; document.title = 'Zombie Haven V' + VERSION; if (window.ZHChars) jobs.push(ZHChars.load());
   ['tree', 'crate', 'debris'].forEach((p) => jobs.push(loadImg('prop:' + p, `assets/props/${p}.png`)));
   jobs.push(loadImg('grass_a', 'assets/terrain/grass_a.png'), loadImg('grass_b', 'assets/terrain/grass_b.png'));
   [['uiBuildIcon', 'build'], ['uiSurvivorsIcon', 'survivors'], ['uiItemsIcon', 'items']].forEach(([id, f]) => { if ($(id)) $(id).src = `assets/ui/${f}.png?v=${VERSION}`; });
