@@ -7,6 +7,7 @@
 | 3 Living settlement | task commitment, visible work routines, facility activity, clearer treatment and rescue | **Done, V2.36.0** |
 | 4 Combat and strategy | combat indicators, defensive behaviour, town policies, survival balance (multi-seed) | **Done, V2.37.0** |
 | 5 Polish | day/night, mobile UI, animation, props and sound, progression pacing | **Done, V2.38.0** |
+| 6 Gap closure | Town Advisor (§9), rank unlocks (§10), touch gestures (§12), road and staffing tests (§17) | **Done, V2.39.0** |
 
 ## Phase 1 known limitations
 - Alerts sit under the HUD on the left half of the map. On a 320×568 screen, two alerts cover about a third of the map; each can be hidden with ✕.

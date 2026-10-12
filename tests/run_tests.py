@@ -253,6 +253,44 @@ async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, 
     t.ok(min(r['close']) >= 44 and r['tab'] >= 42, f"panel close button {r['close']} and tabs ({r['tab']} px) are thumb-sized")
     t.ok(not errs, f'night lights draw without errors {errs[:1]}'); await ctx.close()
 
+async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker assignment, advisor
+    ctx, pg, errs = await open_game(br, port, 'input')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const cv=document.getElementById('game'),R=cv.getBoundingClientRect(),out={};const ev=(type,id,x,y)=>cv.dispatchEvent(new PointerEvent(type,{pointerId:id,clientX:R.left+x,clientY:R.top+y,bubbles:true,isPrimary:id===1}));
+      cv.setPointerCapture=()=>{};const S=ZH.S,W=ZH.world,Wd=ZH.Wd;S.mat=99;ZH.cam.z=1;ZH.centerOn(7.5,11);
+      let t=null;for(let y=Wd.BUILD.y0;y<=Wd.BUILD.y1&&!t;y++)for(let x=Wd.BUILD.x0;x<=Wd.BUILD.x1;x++)if(!Wd.isRoad(W,x,y)&&!Wd.buildingAt(W,x,y)){const p=ZH.project(x+.5,y+.5);if(p.x>40&&p.x<R.width-40&&p.y>200&&p.y<R.height-120){t={x,y,p};break}}
+      ZH.startTool({kind:'road'});const n0=W.roads.size,cx0=ZH.cam.x;
+      ev('pointerdown',1,t.p.x,t.p.y);ev('pointermove',1,t.p.x+40,t.p.y+10);ev('pointerup',1,t.p.x+40,t.p.y+10);out.drag=ZH.cam.x!==cx0&&W.roads.size===n0;
+      ZH.centerOn(7.5,11);const z0=ZH.cam.z;ev('pointerdown',1,t.p.x-30,t.p.y);ev('pointerdown',2,t.p.x+30,t.p.y);ev('pointermove',2,t.p.x+80,t.p.y);out.zoom=ZH.cam.z>z0;
+      const cx1=ZH.cam.x;ev('pointerup',2,t.p.x+80,t.p.y);ev('pointermove',1,t.p.x+10,t.p.y);out.panAfter=ZH.cam.x!==cx1;ev('pointerup',1,t.p.x+10,t.p.y);out.noTapPinch=W.roads.size===n0;
+      ZH.cam.z=1;ZH.centerOn(7.5,11);const p=ZH.project(t.x+.5,t.y+.5);ev('pointerdown',1,p.x,p.y);ev('pointerup',1,p.x,p.y);out.tap=Wd.isRoad(W,t.x,t.y);ZH.endBuildMode(true);
+      ZH.tryRoad&&0;return out}""")
+    t.ok(r['drag'], 'dragging pans the map and does not place anything')
+    t.ok(r['zoom'], 'pinching zooms')
+    t.ok(r['panAfter'], 'after a pinch, the finger left on the screen keeps panning')
+    t.ok(r['noTapPinch'], 'a pinch never counts as a tap')
+    t.ok(r['tap'], 'a quick tap places a road')
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;const B=Wd.BUILD;
+      const rd=[...W.roads][0].split(',').map(Number);out.onRoad=!Wd.placementCheck(W,rd[0],rd[1],ZH.DEFS.house,null).ok;
+      out.outside=!Wd.inTown(B.x0-1,B.y0);const n=W.roads.size;ZH.startTool({kind:'road'});const pb=ZH.project(B.x0-.5,B.y0+.5);ZH.tapAt(pb.x,pb.y);out.noOutside=W.roads.size===n;ZH.endBuildMode(true);
+      const a={x:B.x0,y:rd[1]},b={x:B.x1,y:rd[1]};const p1=Wd.findPath(W,a,b);out.path=!!p1;out.roadShare=p1?p1.filter(q=>Wd.isRoad(W,q.x,q.y)).length/p1.length:0;
+      for(const q of S.sv)q.job='Civilian';S.sv[0].job='Farmer';S.sv[0].l=1;S.sv[1].job='Farmer';S.sv[1].l=4;
+      const D=ZH.DEFS.farm;let f=null;for(let y=B.y0;y<=B.y1&&!f;y++)for(let x=B.x0;x<=B.x1;x++)if(Wd.placementCheck(W,x,y,D,null).ok){f={type:'farm',x,y,w:D.w,h:D.h,q:D.q,a:D.a,staff:null};W.buildings.push(f);Wd.bump(W);break}
+      ZH.autoStaff();out.best=f.staff===S.sv[1];S.sv[1].job='Guard';ZH.autoStaff();out.swap=f.staff===S.sv[0];
+      ZH.killSurvivor(S.sv[0],'test');ZH.autoStaff();out.released=!f.staff;S.sv[2].job='Farmer';ZH.autoStaff();out.refill=f.staff===S.sv[2];ZH.burnDown(f);ZH.autoStaff();out.burnt=!f.staff;
+      return out}""")
+    t.ok(r['onRoad'] and r['outside'] and r['noOutside'], 'roads stay in the build zone and buildings cannot sit on them')
+    t.ok(r['path'] and r['roadShare'] > .5, f"paths follow the road when there is one ({r['roadShare']:.0%} of steps on road)")
+    t.ok(r['best'], 'the higher-level Farmer gets the farm')
+    t.ok(r['swap'], 'a worker who changes profession leaves the post and a matching survivor takes it')
+    t.ok(r['released'] and r['refill'], 'a dead worker frees the post, a new Farmer fills it')
+    t.ok(r['burnt'], 'a burnt building releases its worker')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.stage=2;S.guide=99;S.water=1;S.advMute={};ZH.OPTS.advisor=true;ZH.advisorUpdate();const el=document.getElementById('adv');out.shown=el.style.display!=='none';out.text=el.textContent;
+      const k=ZH.advShown&&ZH.advShown.key;document.getElementById('advX').click();out.muted=!ZH.advisorTips().some(t=>t.key===k);return out}""")
+    t.ok(r['shown'] and 'Water' in r['text'], f"the town advisor names the most urgent issue ({r['text']})")
+    t.ok(r['muted'], 'hiding an advisor tip mutes it for the day')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -378,7 +416,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

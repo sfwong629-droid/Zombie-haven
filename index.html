@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<title>Zombie Haven V2.38.0</title>
+<title>Zombie Haven V2.39.0</title>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 :root{--wood:#7a5a36;--woodL:#b48a52;--woodD:#3b2a19;--panel:#2b2520;--panel2:#3a322a;--ink:#fbf0d6;--muted:#d6c39b;--gold:#ffcf5a;--good:#8fd46a;--bad:#ff7a5c;--blue:#7cc8ff;
@@ -95,6 +95,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #nudge button{background:#5c4a36;border:2px solid var(--woodD);color:#fff;border-radius:5px;font-size:18px;padding:0}
 /* toasts, speech, popups */
 .fxLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:10}
+#adv{margin-top:4px;padding:3px 0 0;border-top:1px solid #6e5638;display:flex;align-items:center;gap:4px;font-size:16px;line-height:17px;color:#ffe9a8;cursor:pointer;max-width:260px}#adv span{flex:1;min-width:0}#adv span::after{content:' ›';color:var(--gold)}#advX{background:none;border:0;color:#c9b48a;font-size:15px;padding:4px 6px;min-width:34px;min-height:34px;margin:-6px -6px -6px 0}
 .res>span{cursor:pointer;display:inline-block;padding:9px 4px;margin:-9px 0}
 /* V2.38 touch targets: at least ~40-44 px */
 .tabs button{min-height:42px}.act{min-height:40px}#closeInfo,#pBack{min-width:44px;min-height:44px}
@@ -123,7 +124,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <div id="app">
  <div id="world"><canvas id="game"></canvas>
   <div id="plaque" class="frame out"><div class="res"><span><i>🍖</i><b id="food">0</b></span><span><i>💧</i><b id="water">0</b></span><span><i>⚙️</i><b id="mat">0</b></span><span class="trip" id="tripChip" style="display:none"><i>🧭</i><b id="tripTime">0:00</b></span></div>
-   <div id="quest"><b id="clock">DAY 1 · 08:00</b><span id="qt"></span></div></div>
+   <div id="quest"><b id="clock">DAY 1 · 08:00</b><span id="qt"></span></div><div id="adv" style="display:none"><span></span><button id="advX" title="Hide for today">✕</button></div></div>
   <div id="lmenu"><button class="lm frame out" id="mBuild"><i>🔨</i>Build</button><button class="lm frame out" id="mExp"><i>🧭</i>Explore</button><button class="lm frame out" id="mSurv"><i>👥</i>People</button><button class="lm frame out" id="mTown"><i>🏚️</i>Town</button><button class="lm frame out" id="mGuide"><i>📖</i>Guide</button><button class="lm frame out small" id="mDemo"><i>🪓</i>Demolish</button></div>
   <div id="gauge" class="out"><div class="wheel"></div><div class="glabel">Renown</div><div class="gval"><span id="ren">0</span></div><div class="grank">Rank <span id="rank">★</span> · ☠<span id="threat">1</span></div><div class="gbar"><i id="renBar"></i></div></div>
   <div id="zoom"><span id="zv">100%</span></div>
@@ -136,10 +137,10 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="bottom"><button class="bb frame out" id="btnSave">Save</button><button class="bb frame out" id="btnSpeed" title="Speed">1×</button><button class="bb frame out" id="btnSound" title="Sound">🔊</button><button class="bb frame out" id="btnLog" title="Event log">📜</button><button class="bb frame out" id="btnCenter" title="Recenter">⌖</button><button class="bb frame out" id="btnDebug" title="Geometry overlay" style="display:none">🐞</button></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.38.0"></script>
-<script src="js/world.js?v=2.38.0"></script>
-<script src="js/chars.js?v=2.38.0"></script>
-<script src="js/procart.js?v=2.38.0"></script>
-<script src="js/sound.js?v=2.38.0"></script>
-<script src="js/game.js?v=2.38.0"></script>
+<script src="js/iso.js?v=2.39.0"></script>
+<script src="js/world.js?v=2.39.0"></script>
+<script src="js/chars.js?v=2.39.0"></script>
+<script src="js/procart.js?v=2.39.0"></script>
+<script src="js/sound.js?v=2.39.0"></script>
+<script src="js/game.js?v=2.39.0"></script>
 </body></html>

@@ -1,5 +1,34 @@
 # Changelog
 
+## V2.39.0 — Phase 6: closing the master-prompt gaps
+**Town Advisor** (master prompt §9)
+- One line under the objective naming the most urgent strategic issue, worked out from the real simulation:
+  - food or water running out within 3 days, or storage full and wasting production
+  - not enough parts for tonight's upkeep
+  - a production building with no worker (and who could take it)
+  - the town ready to upgrade, or a town event the next star needs
+  - gaps in the wall ring, survivors sleeping rough, research ready to start
+- Tap it to open the right screen; ✕ hides that tip for the rest of the game day.
+- Emergencies stay in the red alerts. During the opening guide goals only serious issues are shown.
+- Setting: Event log → Town advisor ON/OFF. The left menu and the alerts move down to sit under the panel, whatever its height.
+
+**Rank unlocks** (§10)
+- Upgrade Town lists what the next star unlocks: buildings (with the research they still need), walls, events, the threat increase and the parts bonus.
+- The rank-up pop-up lists the same.
+
+**Touch controls** (§12)
+- After a pinch-zoom, the finger left on the screen keeps panning; it used to do nothing until lifted.
+- A second finger always cancels a tap.
+
+**Tests** (§17): new `input` group (14 checks):
+- drag pans without placing, pinch zooms, pan continues after a pinch, a pinch never taps, a quick tap places
+- roads stay in the build zone, buildings can't sit on roads, paths follow roads
+- staffing: highest-level match first, swap on profession change, released on death and refilled, released when burnt down
+- the advisor names the most urgent issue, and hiding a tip mutes it for the day
+
+Verified the pan-after-pinch check fails on V2.38. All 23 groups pass.
+**Not tested:** real touch hardware or Safari (the gestures are simulated pointer events in Chromium).
+
 ## V2.38.0 — Phase 5: polish and pacing
 **Progression**
 - Measured: rank 5 was never reached in 30 days. Renown passed 900 by about day 17, but the Hospital it requires needs Field Surgery → Trauma Care research, and nothing on screen said so.
