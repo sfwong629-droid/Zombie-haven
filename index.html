@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<title>Zombie Haven V2.37.0</title>
+<title>Zombie Haven V2.38.0</title>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 :root{--wood:#7a5a36;--woodL:#b48a52;--woodD:#3b2a19;--panel:#2b2520;--panel2:#3a322a;--ink:#fbf0d6;--muted:#d6c39b;--gold:#ffcf5a;--good:#8fd46a;--bad:#ff7a5c;--blue:#7cc8ff;
@@ -95,7 +95,9 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #nudge button{background:#5c4a36;border:2px solid var(--woodD);color:#fff;border-radius:5px;font-size:18px;padding:0}
 /* toasts, speech, popups */
 .fxLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:10}
-.res>span{cursor:pointer}
+.res>span{cursor:pointer;display:inline-block;padding:9px 4px;margin:-9px 0}
+/* V2.38 touch targets: at least ~40-44 px */
+.tabs button{min-height:42px}.act{min-height:40px}#closeInfo,#pBack{min-width:44px;min-height:44px}
 .toast{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%);font-size:22px;color:#fff7c7;background:#4c3b2be8;border:2px solid var(--woodL);border-radius:8px;padding:5px 12px;animation:toastUp 1.6s forwards;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
 @keyframes toastUp{0%{opacity:0;transform:translate(-50%,5px) scale(.8)}20%{opacity:1;transform:translate(-50%,-8px) scale(1.06)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
 .renFlash{animation:renPulse .55s}.qDone{animation:qDone 1.4s}@keyframes qDone{0%,60%{color:#7fd35a;text-shadow:0 0 8px #7fd35a}30%{transform:scale(1.08)}}#quest span::after{content:' ›';color:var(--gold)}@keyframes renPulse{50%{transform:scale(1.22);filter:brightness(1.6)}}
@@ -103,11 +105,11 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #alerts{position:absolute;z-index:10;left:88px;right:6px;top:112px;display:flex;flex-direction:column;gap:5px;pointer-events:none}
 .alert{pointer-events:auto;display:flex;flex-direction:column;gap:3px;background:#6a2119f0;border:2px solid #ff8f6e;border-radius:7px;padding:3px 4px 3px 7px;color:#fff3e0;font-size:17px;line-height:18px;cursor:pointer;box-shadow:0 2px 0 #0006}
 .alert.new{animation:alertIn .3s}.alert .arow{display:flex;align-items:center;gap:5px}.alert .aacts{display:flex;gap:6px;padding:0 0 2px 24px}.alert .ai{font-size:18px}.alert .at{flex:1;min-width:0}.alert .ago{font-size:24px;color:#ffd1b8;padding:0 2px}
-.alert .aa{background:#f3d9a0;color:#4a2a10;border:2px solid #8a5a24;border-radius:5px;font:inherit;font-size:15px;line-height:15px;padding:5px 6px;min-height:32px;white-space:nowrap}.alert .aa:disabled{opacity:.45}
-.alert .ax{background:none;border:0;color:#ffb8a8;font-size:17px;padding:6px 6px;min-width:30px;min-height:32px}
+.alert .aa{background:#f3d9a0;color:#4a2a10;border:2px solid #8a5a24;border-radius:5px;font:inherit;font-size:15px;line-height:15px;padding:6px 8px;min-height:38px;min-width:44px;white-space:nowrap}.alert .aa:disabled{opacity:.45}
+.alert .ax{background:none;border:0;color:#ffb8a8;font-size:18px;padding:6px 8px;min-width:40px;min-height:40px}
 .alert.more{background:#3b1714e6;align-items:center;font-size:15px;padding:4px}
 @keyframes alertIn{0%{transform:translateX(30px);opacity:0}100%{transform:none;opacity:1}}
-#say{position:absolute;z-index:10;left:50%;bottom:112px;transform:translateX(-50%);background:#4c3b2bee;color:var(--ink);border:2px solid var(--woodL);border-radius:8px;padding:6px 11px;font-size:19px;line-height:20px;text-align:center;max-width:70%;opacity:0;pointer-events:none;transition:opacity .2s}
+#say{position:absolute;z-index:9;left:50%;bottom:112px;transform:translateX(-50%);background:#4c3b2bee;color:var(--ink);border:2px solid var(--woodL);border-radius:8px;padding:6px 11px;font-size:19px;line-height:20px;text-align:center;max-width:70%;opacity:0;pointer-events:none;transition:opacity .2s}
 .evBox{max-height:70%;overflow:auto;position:absolute;left:6%;right:6%;top:22%;padding:14px 14px 16px;z-index:40;text-align:center;box-shadow:0 0 0 9999px #0009}
 .evTitle{font-size:28px;color:var(--gold);margin-bottom:8px;line-height:28px}.evText{margin-bottom:9px;line-height:23px;font-size:20px}.evGain{color:var(--good);font-size:20px;margin-bottom:10px}
 .evBox button{padding:8px 24px;margin:4px;font-size:22px}
@@ -134,10 +136,10 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="bottom"><button class="bb frame out" id="btnSave">Save</button><button class="bb frame out" id="btnSpeed" title="Speed">1×</button><button class="bb frame out" id="btnSound" title="Sound">🔊</button><button class="bb frame out" id="btnLog" title="Event log">📜</button><button class="bb frame out" id="btnCenter" title="Recenter">⌖</button><button class="bb frame out" id="btnDebug" title="Geometry overlay" style="display:none">🐞</button></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=2.37.0"></script>
-<script src="js/world.js?v=2.37.0"></script>
-<script src="js/chars.js?v=2.37.0"></script>
-<script src="js/procart.js?v=2.37.0"></script>
-<script src="js/sound.js?v=2.37.0"></script>
-<script src="js/game.js?v=2.37.0"></script>
+<script src="js/iso.js?v=2.38.0"></script>
+<script src="js/world.js?v=2.38.0"></script>
+<script src="js/chars.js?v=2.38.0"></script>
+<script src="js/procart.js?v=2.38.0"></script>
+<script src="js/sound.js?v=2.38.0"></script>
+<script src="js/game.js?v=2.38.0"></script>
 </body></html>

@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900 };
+  const GAP = { hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -44,6 +44,9 @@
     night: (c, o, t) => { [0, -5, -9].forEach((s, i) => tone(c, o, t + i * .35, N(s), 1.2, 'triangle', .08)); },
     dawn: (c, o, t) => { [3, 7, 10, 15].forEach((s, i) => tone(c, o, t + i * .18, N(s), .7, 'triangle', .07)); },
     crackle: (c, o, t) => { for (let i = 0; i < 6; i++) noise(c, o, t + Math.random() * .5, .02 + Math.random() * .03, .18, 1800 + Math.random() * 2500, 2); noise(c, o, t, .6, .05, 400, .5, 'lowpass'); },
+    rescued: (c, o, t) => { tone(c, o, t, N(12), .14, 'triangle', .08); tone(c, o, t + .12, N(19), .3, 'triangle', .08); },   /* V2.38: someone made it to care */
+    rankup: (c, o, t) => { [0, 4, 7, 12].forEach((s2, i) => tone(c, o, t + i * .11, N(s2 + 12), .3, 'square', .05)); [12, 16, 19].forEach((s2) => tone(c, o, t + .5, N(s2 + 12), .7, 'triangle', .05)); },
+    event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => tone(c, o, t + i * .09, N(s2 + 12), .14, 'triangle', .06)); },
     woof: (c, o, t) => { tone(c, o, t, 420, .08, 'sawtooth', .1, 260); tone(c, o, t + .13, 400, .09, 'sawtooth', .1, 240); },
   };
   // ambient music: a slow minor-pentatonic pluck over a soft pad; darker and lower at night

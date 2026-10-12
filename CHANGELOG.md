@@ -1,5 +1,32 @@
 # Changelog
 
+## V2.38.0 — Phase 5: polish and pacing
+**Progression**
+- Measured: rank 5 was never reached in 30 days. Renown passed 900 by about day 17, but the Hospital it requires needs Field Surgery → Trauma Care research, and nothing on screen said so.
+- The Upgrade Town "Build X" row now says what stands in the way, e.g. "Needs research Field Surgery (25 RP) → Trauma Care (50 RP), ⚙ 44 parts".
+- New town event **Trade Caravan** (rank 3): 12 food + 10 water → 10 parts. A late-game use for a full pantry that pays in the scarce resource. Event cards now show what an event gives back.
+- Auto-player: researches toward the next star's building and trades a full pantry. All 4 seeds now reach rank 5 on days 18–21 (none did before). Deaths: 5.5 per 30 days (3.5 in V2.37, within seed noise).
+
+**Night atmosphere**
+- Warm window light on occupied or staffed buildings, a small lantern glow around survivors outdoors, and red eye-glints on zombies so they read in the dark. The lights fade in with the night tint.
+- Kept cheap after measuring: small light pools with normal blending. A quarter-resolution light layer was tried and was 4× slower, so it was dropped. Night frames cost about +0.7 ms vs V2.37 in the test scene; day frames are unchanged.
+- New setting: Event log → **Night lights ON/OFF (faster)**.
+
+**Mobile UI**
+- Removing a wall or road now takes a second tap on the same tile (it turns red first). In both the Demolish tool and the wall/road tools it used to be instant, which made accidental removals easy. Buildings already worked this way.
+- Touch targets: the food/water/parts counters got a larger tap area, the panel ✕ and back are 44×44, tabs are at least 42 px and buttons at least 40 px, and alert buttons are larger.
+- The short message box now sits below the alert stack, so it can no longer cover an alert's button on small screens.
+- Audited at 320×568, 375×667, 390×844 and 430×932; safe areas were already handled.
+
+**Sound**
+- New synthesised cues: a rescue reaching care, a town rank-up (replacing the generic reward jingle) and holding a town event. They are throttled like the rest, and all effects are tested as audible without clipping.
+
+**Performance**
+- Wreck pieces facing the other way are drawn from a pre-mirrored sheet instead of through a negative transform.
+
+**Tests:** new `polish` group (6 checks: two-tap wall and road removal, caravan locked until rank 3 then 12+10 → 10 parts, research path shown for the Hospital, thumb-sized controls, night lights draw). All 22 groups pass.
+**Not tested:** real phones or Safari; the new sounds were not judged by ear.
+
 ## V2.37.0 — Phase 4: combat and survival
 **Why survivors were dying (measured in auto-player runs)**
 - The only cause of death is bleeding out while down. About 28% of collapses were rescuers themselves, mostly while pushing the cart.

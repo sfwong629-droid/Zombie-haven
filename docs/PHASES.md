@@ -6,7 +6,7 @@
 | 2 Town management | resource panels (produced / consumed / net / days left), staffing and status panels, emergency actions, shortage warnings | **Done, V2.35.0** |
 | 3 Living settlement | task commitment, visible work routines, facility activity, clearer treatment and rescue | **Done, V2.36.0** |
 | 4 Combat and strategy | combat indicators, defensive behaviour, town policies, survival balance (multi-seed) | **Done, V2.37.0** |
-| 5 Polish | day/night, mobile UI, animation, props and sound, progression pacing | Next |
+| 5 Polish | day/night, mobile UI, animation, props and sound, progression pacing | **Done, V2.38.0** |
 
 ## Phase 1 known limitations
 - Alerts sit under the HUD on the left half of the map. On a 320×568 screen, two alerts cover about a third of the map; each can be hidden with ✕.
@@ -27,3 +27,9 @@
 ## Phase 4 findings to carry forward
 - **Phase 5, progression:** rank 5 (900 Renown plus a Hospital) is not reached in 30 auto-player days. Food and water sit at the cap from about day 10. Both need pacing work: more ways to use a surplus, and a reachable final star.
 - Balance testing method: compare versions over at least 8 seeds (single seeds diverge chaotically). Look at deaths, share of downed who die, and kill stalls (4-day windows with fewer than 8 kills).
+
+## After Phase 5: known limitations and ideas
+- Eye pixels are made consistent only when a character is redrawn (owner decision). Brute frames and map props were redone in V2.33.
+- Food and water still reach the cap in mid-game auto-play. The Trade Caravan gives that surplus a use, but the bot uses it rarely (it needs both above 70–75% of the cap).
+- Night lights add a little draw cost; the setting can turn them off on slow phones.
+- Nothing has been tested on a real iPhone or Safari from here: headless Chromium only.

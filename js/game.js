@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.37.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.38.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -416,12 +416,14 @@ function wreckSpots() {
   }
   return wreckList;
 }
+const mirCache = new Map();
+function mirrored(key, img) { let c = mirCache.get(key); if (c && c.src === img) return c.cv; const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height; const g = cv.getContext('2d'); g.translate(img.width, 0); g.scale(-1, 1); g.drawImage(img, 0, 0); mirCache.set(key, { cv, src: img }); return cv; }
 function drawWreck(tx, ty) {
   const P = MAPM && MAPM.wreck, im = IMG.mapWreck; if (!P || !okImg(im)) return;
   const pr = P[Math.floor(hash2(tx * 3 + 2, ty * 5 + 7) * P.length) % P.length], flip = hash2(ty, tx) > .5;
   const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('mapWreck', im, m), snap = (v) => Math.round(v * DPR) / DPR;
   ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02;
-  if (flip) { ctx.setTransform(-DPR, 0, 0, DPR, snap(p.x) * DPR, 0); ctx.drawImage(big, pr.x * m, pr.y * m, pr.w * m, pr.h * m, -pr.ax * sc, snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }   /* V2.36: mirror with a transform reset instead of save/restore */
+  if (flip) { const mir = pixelUp('mapWreckF', mirrored('mapWreck', im), m), W = im.width; ctx.drawImage(mir, (W - pr.x - pr.w) * m, pr.y * m, pr.w * m, pr.h * m, snap(p.x - (pr.w - pr.ax) * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); }   /* V2.38: a pre-mirrored sheet (drawing through a negative transform was the slowest thing in the frame) */
   else ctx.drawImage(big, pr.x * m, pr.y * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc);
   ctx.imageSmoothingEnabled = true;
 }
@@ -442,6 +444,7 @@ function draw() {
     }
     if (preview && sel.kind === 'building') for (let yy = 0; yy < preview.h; yy++) for (let xx = 0; xx < preview.w; xx++) diamond(preview.x + xx, preview.y + yy, preview.ok ? 'rgba(114,217,223,.62)' : 'rgba(226,91,85,.62)', preview.ok ? '#d7ffff' : '#ffb0a8');
   }
+  drawTileConfirm();
   const items = [];
   const box = (x, y, r) => ({ x1: x - r, y1: y - r, x2: x + r, y2: y + r });
   /* V2.36: only what is on screen is drawn and depth-sorted (props and wreckage off screen were ~60% of the frame) */
@@ -460,7 +463,7 @@ function draw() {
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
-  drawCombatFocus(); drawDaylight(); drawObjMarks(); drawAlertMarks();
+  drawCombatFocus(); drawDaylight(); drawNightLights(); drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
   for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
@@ -475,6 +478,32 @@ function daylight(h) {
   for (let i = 0; i < LIGHT.length - 1; i++) { const [h0, a] = LIGHT[i], [h1, b] = LIGHT[i + 1]; if (h >= h0 && h <= h1) { const t = (h - h0) / (h1 - h0 || 1); return a.map((v, k) => v + (b[k] - v) * t); } }
   return LIGHT[0][1];
 }
+/* V2.38 night lights: warm window light on occupied buildings, a lantern glow around survivors outdoors, red eye-glints on zombies.
+   One cached glow sprite drawn additively: cheap on phones. Fades in with the night tint. */
+let glowSpr = null;
+function glowSprite() {
+  if (glowSpr) return glowSpr; const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,196,120,.85)'); gr.addColorStop(.45, 'rgba(255,160,80,.32)'); gr.addColorStop(1, 'rgba(255,140,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return (glowSpr = c);
+}
+function drawNightLights() {
+  if (!OPTS.nightLights) return;
+  const c = daylight((S.hour || 0) + (tick % 1000) / 1000), k = Math.max(0, Math.min(1, (c[3] - .14) / .3)); if (k <= 0) return;
+  const tw = TWs(), G = glowSprite(), on = (p, m) => p.x > -m && p.x < VW + m && p.y > -m && p.y < VH + m;
+  const lit = new Set(); for (const q of S.sv) { const b = insideBuilding(q); if (b) lit.add(b); if (q.sleeping && q.facility) lit.add(q.facility); }
+  ctx.save(); ctx.globalCompositeOperation = NL_MODE;
+  for (const b of world.buildings) {
+    if (!ENCLOSED(b) || b.burnt || !(lit.has(b) || isWorking(b))) continue; const r = spriteRect(b); if (!r || !on(r.anchor, tw * 3)) continue;
+    const w = (b.w + b.h) * tw * .3, h = w * .5; ctx.globalAlpha = .75 * k; ctx.drawImage(G, r.anchor.x - w / 2, r.anchor.y - tw * (b.w + b.h) * .26 - h / 2, w, h);
+  }
+  for (const s of S.sv) { if (s.hp <= 0 || s.mode === 'away' || insideBuilding(s)) continue; const p = project(s.w.x, s.w.y); if (!on(p, tw)) continue;
+    ctx.globalAlpha = .38 * k; ctx.drawImage(G, p.x - tw * NL_S, p.y - tw * NL_S * .75, tw * NL_S * 2, tw * NL_S * 1.27); }
+  ctx.globalCompositeOperation = 'source-over';
+  for (const z of S.z) { if (z.hp <= 0 || z.human || z.mode === 'appear') continue; const p = project(z.w.x, z.w.y); if (!on(p, tw)) continue;
+    const hy = p.y - CHAR_H * tw * (z.type === 'crawler' ? .42 : z.type === 'brute' || z.type === 'boss' ? 1.05 : .84), fr = (FACE.get(z) || {}).right ? 1 : -1, e = Math.max(1.2, 1.1 * cam.z);
+    ctx.globalAlpha = .55 + .35 * k; ctx.fillStyle = '#ff4a3a'; ctx.fillRect(p.x + fr * 1.5 * cam.z - e, hy, e, e); ctx.fillRect(p.x + fr * 4 * cam.z - e, hy, e, e); }
+  ctx.restore();
+}
+const NL_MODE = 'source-over', NL_S = .32;   /* measured: lit area is the cost, so small lanterns and normal blending */
 function drawDaylight() {   /* V2.36: one opaque multiply pass (was a multiply pass plus a second full-screen darkening pass inside save/restore) */
   const c = daylight((S.hour || 0) + (tick % 1000) / 1000); if (c[3] < .01) return;
   const f = c[2] > c[0] && c[3] > .3 ? 1 - (c[3] - .3) * .6 : 1, k = (v) => Math.round(255 * (1 - c[3] + c[3] * v / 255) * f);   // multiply by (1-a+a*c) then darken: the same result in one fill
@@ -702,7 +731,7 @@ function renownGain(n, why = '') { S.ren += n; const el = $('ren'); if (el) { el
  * important : one banner at a time (queued, never overlapping), and the event log.
  * routine   : event log only (plus floating text in the world when it has a place). */
 const alerts = new Map(); let bannerQ = [], bannerOn = false, lastSlow = -1e9; const lastBanner = new Map();
-const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); } catch (e) { /* private mode */ }
+const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: true, nightLights: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); } catch (e) { /* private mode */ }
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
 function note(level, text, o = {}) {
@@ -1063,7 +1092,7 @@ function ai(s) {
   if (s.mode === 'rescueCarry') {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     const r = followPath(s, sitePoint(), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
-    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.stateTicks = Math.round(careTicks() * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; q.careTotal = q.stateTicks; q.careAt = medSite(); q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint() }; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.stateTicks = Math.round(careTicks() * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = medSite(); q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (medSite() ? DEFS[medSite().type].name : 'safety') + '.'); } return;
   }
   if (s.mode === 'goFire' || s.mode === 'fightFire') { fireAI(s); return; }
   if (s.mode === 'goWork') {
@@ -1930,9 +1959,9 @@ let logOnlyKey = false;
 function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
   const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = { critical: '#ff9a84', important: '#ffe08a' };
-  $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div>`
+  $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button></div>`
     + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
-  $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); };
+  $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); };
   showPanel();
 }
 function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; questFlash(); renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
@@ -2020,13 +2049,18 @@ function nextEventPopup() {
 const residents = () => S.sv.filter((s) => s.resident).length;
 /* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */
 const RANK_REQ = [null, { ren: 60, flow: 2, events: 1, build: 'canteen' }, { ren: 200, flow: 4, events: 2, build: 'storage' }, { ren: 450, flow: 7, events: 4, build: 'barracks' }, { ren: 900, flow: 10, events: 6, build: 'hospital' }];
+function buildPath(k) {   /* V2.38: what stands between the town and a building: rank, research chain, parts */
+  const d = DEFS[k], steps = []; if (S.rank < (d.rank || 1)) steps.push(`rank ${d.rank}`);
+  if (d.res && !researched(d.res)) { const chain = []; let r = d.res; while (r && !researched(r)) { chain.unshift(RESEARCH[r].name + ` (${RESEARCH[r].rp} RP)`); r = RESEARCH[r].need; } steps.push('research ' + chain.join(' → ') + (bOf('workshop').length ? '' : ' at a Workshop')); }
+  steps.push(`⚙ ${d.mat} parts`); return 'Needs ' + steps.join(', ');
+}
 function rankConds() {
   const q = RANK_REQ[S.rank]; if (!q) return null; const st = supplyStats(), flow = Math.round((st.fNet + st.wNet) * 10) / 10, built = bOf(q.build).length > 0;
   return [
     { ic: 'rating', name: 'Renown', need: q.ren, have: S.ren, ok: S.ren >= q.ren },
     { ic: 'supplies', name: 'Daily supplies', need: '+' + q.flow, have: (flow >= 0 ? '+' : '') + flow, ok: flow >= q.flow, sub: 'food + water made per day, after rations' },
     { ic: 'events', name: 'Events held', need: q.events, have: S.eventsHeld || 0, ok: (S.eventsHeld || 0) >= q.events },
-    { ic: 'living', name: 'Build ' + DEFS[q.build].name, need: '', have: built ? 'Done' : 'Pending', ok: built, wide: true },
+    { ic: 'living', name: 'Build ' + DEFS[q.build].name, need: '', have: built ? 'Done' : 'Pending', ok: built, wide: true, sub: built ? '' : buildPath(q.build) },
   ];
 }
 function checkRank() {
@@ -2036,7 +2070,7 @@ function checkRank() {
 }
 function upgradeTown() {
   const c = rankConds(); if (!c || !c.every((r) => r.ok)) return false;
-  S.rank++; S.threat++; S.rankReady = false; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New buildings, new threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.', true); SFX('reward'); ui(); return true;
+  S.rank++; S.threat++; S.rankReady = false; SFX('rankup'); S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New buildings, new threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.', true); ui(); return true;
 }
 /* V2.33 town events (like DV2's): cost supplies, run for a few hours, give Renown and mood, and count toward the next star */
 const TOWN_EVENTS = {
@@ -2044,6 +2078,7 @@ const TOWN_EVENTS = {
   market: { name: 'Swap Market', icon: '🧺', cost: { mat: 6 }, ren: 8, sat: 4, hours: 4, desc: 'Survivors trade odds and ends. Brings in a little food and water.', gain: { food: 3, water: 3 } },
   sports: { name: 'Sports Day', icon: '🏃', cost: { food: 3, water: 4 }, ren: 7, sat: 5, hours: 3, desc: 'Races and games. Everyone gets some training in.', train: 30 },
   feast: { name: 'Harvest Feast', icon: '🍲', cost: { food: 8, water: 4 }, ren: 12, sat: 12, hours: 4, rank: 2, desc: 'A proper meal for everyone. Hunger and mood are restored.' },
+  caravan: { name: 'Trade Caravan', icon: '🐫', cost: { food: 12, water: 10 }, ren: 6, sat: 3, hours: 4, rank: 3, desc: 'A passing caravan takes surplus food and water and pays in parts.', gain: { mat: 10 } },   /* V2.38: a use for a full pantry */
 };
 function holdEvent(k) {
   const e = TOWN_EVENTS[k]; if (!e || (e.rank || 1) > S.rank) return false;
@@ -2053,7 +2088,7 @@ function holdEvent(k) {
   S.lastEventDay = S.day; S.eventsHeld = (S.eventsHeld || 0) + 1; S.eventOn = { k, until: nowH() + e.hours };
   for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
   if (e.gain) for (const [r, v] of Object.entries(e.gain)) S[r] += v;
-  renownGain(e.ren, e.name); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); checkRank(); return true;
+  renownGain(e.ren, e.name); SFX('event'); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); checkRank(); return true;
 }
 function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   closeP(); endBuildMode(true); upTab = tab || upTab; const c = rankConds();
@@ -2069,7 +2104,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
     const done = (S.lastEventDay ?? -1) >= S.day;
     h += `<div class="sm" style="margin-bottom:6px">Hold one event a day. Events give Renown and cheer everyone up${S.eventOn && nowH() < S.eventOn.until ? ` · <b>${TOWN_EVENTS[S.eventOn.k].name}</b> is on now` : ''}. Held so far: <b>${S.eventsHeld || 0}</b>.</div>`;
     h += Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, can = !lk && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
-      return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small></span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
+      return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small>${e.gain ? `<br><small style="color:var(--good)">You get: ${costText(e.gain)}</small>` : ''}</span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
   }
   $('ib').innerHTML = h; showPanel('Upgrade Town');
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showUpgrade(b.dataset.tab); });
@@ -2351,18 +2386,21 @@ function confirmPreview() {
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
 let demoPick = null;
+let tileConfirm = null;   /* V2.38: removing a wall or road takes a second tap on the same tile (it was instant: easy to do by accident) */
+function confirmTile(kind, x, y, msg) { const k = kind + x + ',' + y, now = performance.now(); if (tileConfirm && tileConfirm.k === k && now - tileConfirm.t < 4000) { tileConfirm = null; return true; } tileConfirm = { k, x, y, t: now }; say(msg); return false; }
+function drawTileConfirm() { if (!tileConfirm || performance.now() - tileConfirm.t > 4000) return; diamond(tileConfirm.x, tileConfirm.y, 'rgba(226,91,85,.55)', '#ffb0a8'); }
 function tryDemolish(px, py, x, y) {   /* V2.33: one Demolish tool for buildings, roads and walls (buildings need a second tap to confirm) */
   const b = hitBuilding(px, py) || Wd.buildingAt(world, x, y);
   if (b) { if (demoPick === b) { demoPick = null; selected = null; demolish(b); startTool({ kind: 'demolish' }); return; } demoPick = b; selected = { kind: 'building', ref: b }; say(`Tap ${DEFS[b.type].name} again to demolish it (+${Math.floor(DEFS[b.type].mat * .5)} parts).`); return; }
   demoPick = null; selected = null;
-  const wl = Wd.wallAt(world, x, y); if (wl) { world.walls.delete(Wd.key(x, y)); Wd.bump(world); S.mat += Math.floor(Wd.WALL_DEFS[wl.type].mat * .5); say(Wd.WALL_DEFS[wl.type].name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
-  if (Wd.isRoad(world, x, y)) { world.roads.delete(Wd.key(x, y)); Wd.bump(world); say('Road removed.'); saveGame(); ui(); return; }
+  const wl = Wd.wallAt(world, x, y); if (wl) { if (!confirmTile('w', x, y, `Tap the ${Wd.WALL_DEFS[wl.type].name} again to remove it (+${Math.floor(Wd.WALL_DEFS[wl.type].mat * .5)} parts).`)) return; world.walls.delete(Wd.key(x, y)); Wd.bump(world); S.mat += Math.floor(Wd.WALL_DEFS[wl.type].mat * .5); say(Wd.WALL_DEFS[wl.type].name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
+  if (Wd.isRoad(world, x, y)) { if (!confirmTile('r', x, y, 'Tap the road again to remove it.')) return; world.roads.delete(Wd.key(x, y)); Wd.bump(world); say('Road removed.'); saveGame(); ui(); return; }
   say('Nothing to demolish there.');
 }
 function tryRoad(x, y) {
   if (!Wd.inTown(x, y)) { say('Roads only inside the build zone.'); return; }
   if (Wd.buildingAt(world, x, y)) { say('A building is in the way.'); return; }
-  if (Wd.isRoad(world, x, y)) { world.roads.delete(Wd.key(x, y)); Wd.bump(world); say('Road removed.'); ui(); return; }
+  if (Wd.isRoad(world, x, y)) { if (!confirmTile('r', x, y, 'Tap the road again to remove it.')) return; world.roads.delete(Wd.key(x, y)); Wd.bump(world); say('Road removed.'); ui(); return; }
   if (S.mat < Wd.ROAD_COST) { say('Not enough parts.'); return; }
   S.mat -= Wd.ROAD_COST; world.roads.add(Wd.key(x, y)); Wd.bump(world); ui();
 }
@@ -2371,7 +2409,7 @@ function tryWall(x, y, type) {
   if (!Wd.inWallZone(x, y)) { say('Walls go around the town, inside the glowing area.'); return; }
   if (Wd.buildingAt(world, x, y)) { say('A building is in the way.'); return; }
   const ex = Wd.wallAt(world, x, y), k = Wd.key(x, y);
-  if (ex && ex.type === type) { world.walls.delete(k); Wd.bump(world); S.mat += Math.floor(wd.mat * .5); say(wd.name + ' removed.'); saveGame(); ui(); return; }
+  if (ex && ex.type === type) { if (!confirmTile('w', x, y, `Tap the ${wd.name} again to remove it.`)) return; world.walls.delete(k); Wd.bump(world); S.mat += Math.floor(wd.mat * .5); say(wd.name + ' removed.'); saveGame(); ui(); return; }
   if (ex && type === 'metal' && ex.type === 'wood') { const diff = wd.mat - Wd.WALL_DEFS.wood.mat; if (S.mat < diff) { say('Not enough parts.'); return; } S.mat -= diff; ex.type = 'metal'; ex.broken = false; ex.max = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); ex.hp = ex.max; say('Upgraded to Metal Wall.'); saveGame(); ui(); return; }
   if (ex) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
   if (wd.rank > S.rank) { say(wd.name + ' needs Haven rank ' + wd.rank + '.'); return; }

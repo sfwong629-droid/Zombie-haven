@@ -236,6 +236,23 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
     t.ok(r['rally'], 'when someone is down and nobody fights, fighters rally out of shelter')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, touch targets
+    ctx, pg, errs = await open_game(br, port, 'polish')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;ZH.tryWall(3,5,'wood');ZH.startTool({kind:'demolish'});const p=ZH.project(3.5,5.5);
+      ZH.tapAt(p.x,p.y);out.after1=!!Wd.wallAt(W,3,5);ZH.tapAt(p.x,p.y);out.after2=!!Wd.wallAt(W,3,5);
+      const rk=[...W.roads][0].split(',').map(Number),q=ZH.project(rk[0]+.5,rk[1]+.5);ZH.tapAt(q.x,q.y);out.road1=Wd.isRoad(W,rk[0],rk[1]);ZH.tapAt(q.x,q.y);out.road2=Wd.isRoad(W,rk[0],rk[1]);ZH.endBuildMode(true);
+      S.rank=2;S.food=S.water=40;S.lastEventDay=-1;out.lock=ZH.holdEvent('caravan');S.rank=3;const m0=S.mat,f0=S.food;out.ok=ZH.holdEvent('caravan');out.parts=S.mat-m0;out.food=f0-S.food;
+      S.rank=4;S.res={};ZH.showUpgrade('rank');out.path=document.getElementById('ib').textContent;
+      S.hour=22;ZH.OPTS.nightLights=true;ZH.draw();ZH.OPTS.nightLights=false;ZH.draw();ZH.OPTS.nightLights=true;out.opt=JSON.parse(localStorage.getItem('zombieHavenOpts')||'{}');
+      ZH.showTown('overview');const c=document.getElementById('closeInfo').getBoundingClientRect(),tb=document.querySelector('.tabs button').getBoundingClientRect();out.close=[c.width,c.height];out.tab=tb.height;return out}""")
+    t.ok(r['after1'] and not r['after2'], 'a wall needs a second tap to be removed')
+    t.ok(r['road1'] and not r['road2'], 'a road needs a second tap to be removed')
+    t.ok(not r['lock'] and r['ok'] and r['parts'] == 10 and r['food'] == 12, f"Trade Caravan: locked before rank 3, then 12 food + 10 water -> 10 parts {r['parts']},{r['food']}")
+    t.ok('Trauma Care' in r['path'] and 'Field Surgery' in r['path'], 'Upgrade Town says the Hospital needs the Field Surgery -> Trauma Care research')
+    t.ok(min(r['close']) >= 44 and r['tab'] >= 42, f"panel close button {r['close']} and tabs ({r['tab']} px) are thumb-sized")
+    t.ok(not errs, f'night lights draw without errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -361,7 +378,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
