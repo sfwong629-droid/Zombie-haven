@@ -19,11 +19,16 @@ NAMES = {
     'props': ['pine', 'pine', 'pine', 'deadtree', 'deadtree', 'bush', 'bush', 'rock', 'rock', 'crate', 'barrel', 'barrel', 'tyres', 'rubble', 'rubble', 'car'],
 }
 
+SCALE = {'props': {'car': 1.4}}   # owner: wrecked car bigger, closer to the wreckage cars
+
 def main():
     kind = sys.argv[1] if len(sys.argv) > 1 else 'wreck'; names = NAMES[kind]
     _, F = load_sheet(os.path.join(SH, 'm_' + kind + '.txt'))
     F = split_wide([despeckle(clean(f), 8) for f in F], len(names))
     if len(F) != len(names): print(f'warning: {len(F)} props found, {len(names)} expected')
+    for i, k in enumerate(names[:len(F)]):
+        z = SCALE.get(kind, {}).get(k)
+        if z: F[i] = F[i].resize((round(F[i].width * z), round(F[i].height * z)), Image.LANCZOS)
     F = [tidy(f) for f in quantize_set(F, 48)]
     W = sum(f.width + 2 for f in F); H = max(f.height for f in F)
     strip = Image.new('RGBA', (W, H), (0, 0, 0, 0)); x = 0; items = []

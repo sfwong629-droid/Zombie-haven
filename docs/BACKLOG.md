@@ -43,7 +43,7 @@ Tick an item only after it has been implemented AND checked in the game.
 - [x] (V2.33) Roads can be demolished too (with the same Demolish tool).
 
 ### Already known from V2.31.0
-- [ ] Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale (waiting on the ChatGPT image limit).
+- [x] (V2.33.1) Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale; wrecked car scaled up.
 - [x] Medic outfits drifted from the white coat (medic_m, medic_f): regenerated in V2.32.
 - [ ] Brute attack frames were rescaled and look slightly chunky: regenerate.
 

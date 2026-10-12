@@ -1,5 +1,9 @@
 # Changelog
 
+## V2.33.1 — New map props
+- 16 new pixel-art map props at the 96x48 tile scale: three pines, two dead trees, bushes, rocks, crate, barrels, tyres, rubble and a wrecked car (scaled up to match the wreckage cars).
+- Fix: props were cut from the top of the props strip instead of their own row, so short props could be clipped.
+
 ## V2.33.0 — Backlog: movement, combat, zombie AI, Upgrade Town, events, rescue cart
 - Smooth movement: people and zombies are drawn between simulation ticks, so walking is smooth at 1x and 2x.
 - Attacks match the hits: ready pose, wind-up, then the strike lands on the frame the damage is dealt; idle pose between hits.
