@@ -1,5 +1,33 @@
 # Changelog
 
+## V2.35.0 — Phase 2: town management
+**Resource panels.** Tap 🍖, 💧 or ⚙ at the top left (tabs switch between them). Each panel shows:
+- In stock, storage cap and a fill bar.
+- Produced per day, used per day and net per day.
+- A forecast: "runs out in about N days", "storage full in N days", or "storage full: production is being wasted".
+- Every producer and user, with its worker and the share of the day they are on the job. Tap one to open the building.
+- Problems: no worker, unpaid upkeep, fire or burnt down, a farm short of water.
+- "Last 24 h (what really happened)": an hourly ledger by source (rations, irrigation, upkeep, wall repairs, zombie drops, missions, wasted overflow…). Anything not traced to a source is listed as "Other".
+
+The daily rates use the simulation's own formulas, with each worker's measured share of the day on the job. Over a tested 24 hours they matched the ledger within 20% (food 9.46 expected vs 9.38 actual). The Town panel and the Upgrade Town supply condition now use the same numbers. They used to assume every staffed building was worked all day.
+
+**Building panels**
+- A status line says what the building is doing right now and why: working (+X% from the worker), base output (no worker), worker away, half output (unpaid), no output (fire or burnt), or short of water.
+- Expected output and inputs per day (food, water, parts, irrigation, upkeep).
+- The worker shows their profession, level and share of the day on the job. Tap them to open their panel.
+- Clear staffing wording replaces "No worker needs Farmer". For example: "No Farmer assigned … runs at base output", "No Farmer in town: change a survivor's profession", or "No Farmer free: Ben works at the Garden Plot".
+- "Better in this family" names the next building tier and what unlocks it.
+
+**Shortage warnings** (from the forecast)
+- Critical alert when food or water will run out in about a day, with *Why?* (opens the resource panel) and *Build* buttons. It stays until supplies recover.
+- A banner once a day when under 2 days are left, or when storage is full and production is being wasted.
+- A warning at 18:00 when there aren't enough parts for tonight's upkeep.
+- The out-of-food, out-of-water and starvation alerts gained *Why?*, *Food* and *Water* buttons.
+
+**Tests:** new `economy` group (12 checks). All 18 groups pass in headless Chromium.
+**Balance check** (auto-player, 4 seeds × 30 days, V2.34.1 vs V2.35.0): rank progress was about the same (rank 4 reached in 3 of 4 seeds vs 2 of 4). Deaths were high in both versions (17–37 per seed, with large swings between seeds), and neither version ever expanded its territory. This phase changed no rules; the death rate is recorded for Phase 4.
+**Finding for Phase 3:** workers are at their post only about 12–33% of the day, so staffed buildings produce far less than the old Town panel suggested.
+
 ## V2.34.1 — Alerts stop flashing
 - Fix: the red alert rows rebuilt themselves every half second (for example the bleed-out countdown), replaying their slide-in each time, so they kept flashing. Rows now update their text in place, and only a new alert slides in, once.
 - The pulsing ring on the map is slower and softer, and the off-screen arrow no longer blinks.

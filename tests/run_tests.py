@@ -152,6 +152,36 @@ async def t_objectives(br, port, t):   # V2.34: actionable objectives
     t.ok(r['sealed1'] and r['left'] == 0, f"walling exactly the listed gaps seals the town (sealed={r['sealed1']}, gaps left={r['left']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_economy(br, port, t):   # V2.35: resource panels, building status, shortage warnings
+    ctx, pg, errs = await open_game(br, port, 'eco')
+    await close_popups(pg)
+    for k in ['water', 'farm', 'scrapyard', 'farm']: await pg.evaluate(PLACE, k)
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.mat=60;S.food=S.water=30;ZH.step(25000);const E=ZH.econ(),out={};
+      for(const k of ['food','water']){const L=ZH.ecoLast24(k),fam=k==='food'?['Garden Plot']:['Rain Collector'];const act=fam.reduce((a,n)=>a+(L.by[n]||0),0)+(L.by['Wasted: storage full']||0)*0;out[k]={exp:E[k].prod,act,hours:L.hours,net:E[k].net,p:E[k].prod,u:E[k].use,days:E[k].days,stock:E[k].stock}}
+      const st=ZH.supplyStats();out.same=Math.abs(st.fNet-E.food.net)<1e-9&&Math.abs(st.wNet-E.water.net)<1e-9;
+      document.querySelector('#food').parentElement.click();out.title=document.getElementById('it').textContent;out.hasNet=/Net . day/.test(document.getElementById('ib').textContent);
+      return out}""")
+    for k in ['food', 'water']:
+        e = r[k]; t.ok(e['hours'] == 24 and abs(e['exp'] - e['act']) <= .2 * max(1, e['act']), f"{k}: expected production {e['exp']:.2f}/day matches the last 24 h ({e['act']:.2f})")
+        t.ok(abs(e['net'] - (e['p'] - e['u'])) < 1e-9 and (e['net'] >= 0 or abs(e['days'] - e['stock'] / -e['net']) < 1e-6), f"{k}: net = produced - used, days left = stock / net")
+    t.ok(r['same'], 'Town panel / rank conditions use the same numbers as the resource panel')
+    t.ok(r['title'] == 'FOOD' and r['hasNet'], 'tapping food at the top opens the food panel')
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};const farm=W.buildings.find(b=>b.type==='farm');
+      for(const q of S.sv)if(q.job==='Farmer'){q.job='Civilian';}ZH.autoStaff();ZH.showBuildingInfo(farm);const tx=document.getElementById('ib').textContent;
+      out.noFarmer=/No Farmer assigned/.test(tx)&&/base output/.test(tx)&&!/needs Farmer/.test(tx);
+      const sy=W.buildings.find(b=>b.type==='water');S.sv[0].job='Engineer';ZH.autoStaff();ZH.showBuildingInfo(sy);const w=document.getElementById('bWorker');out.worker=!!w;if(w){w.click();out.unit=ZH.selected&&ZH.selected.kind==='unit'}
+      return out}""")
+    t.ok(r['noFarmer'], 'a farm without a Farmer says so plainly (and that it runs at base output)')
+    t.ok(r['worker'] and r['unit'], "tapping a building's worker opens that survivor")
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};ZH.OPTS.autoSlow=false;ZH.alerts.clear();for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);
+      S.water=4;S.hour=11;ZH.step(1000);out.keys=[...ZH.alerts.keys()];const a=ZH.alerts.get('lowwater');out.text=a&&a.text;
+      const why=[...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Why?');if(why)why.click();out.panel=document.getElementById('it').textContent;
+      S.mat=0;S.hour=17;ZH.step(1000);out.up=S.log.slice(-6).some(e=>/Upkeep at midnight/.test(e.t));return out}""")
+    t.ok('lowwater' in r['keys'], f"a water shortage under a day raises a critical alert ({r['text']})")
+    t.ok(r['panel'] == 'WATER', "the alert's Why? button opens the water panel")
+    t.ok(r['up'], 'a warning at 18:00 when tonight\'s upkeep cannot be paid')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -277,7 +307,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
