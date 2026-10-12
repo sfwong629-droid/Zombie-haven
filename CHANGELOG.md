@@ -1,5 +1,8 @@
 # Changelog
 
+## V2.33.2 — Brute attack frames
+- Brute zombie attack (wind-up, strike, follow-through) and death frames redrawn at one consistent size, no more chunky rescaled frames.
+
 ## V2.33.1 — New map props
 - 16 new pixel-art map props at the 96x48 tile scale: three pines, two dead trees, bushes, rocks, crate, barrels, tyres, rubble and a wrecked car (scaled up to match the wreckage cars).
 - Fix: props were cut from the top of the props strip instead of their own row, so short props could be clipped.

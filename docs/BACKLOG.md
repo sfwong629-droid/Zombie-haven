@@ -45,7 +45,7 @@ Tick an item only after it has been implemented AND checked in the game.
 ### Already known from V2.31.0
 - [x] (V2.33.1) Map props (trees, rocks, crates, barrels, tyres, rubble, cars) at the new 96x48 scale; wrecked car scaled up.
 - [x] Medic outfits drifted from the white coat (medic_m, medic_f): regenerated in V2.32.
-- [ ] Brute attack frames were rescaled and look slightly chunky: regenerate.
+- [x] (V2.33.2) Brute attack frames were rescaled and look slightly chunky: regenerated.
 
 ### Economy, rank and events (11 Oct 2026, later)
 - [x] (V2.33) Stop the pop-up / log message for every normal zombie killed (keep messages for bosses, raids and notable events).
