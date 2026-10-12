@@ -1,5 +1,19 @@
 # Changelog
 
+## V2.40.0 — Title screen and save slots
+- New start flow, inspired by Dungeon Village 2 with an original look.
+- **Title screen:** a ZOMBIE HAVEN logo over the town map drifting slowly behind it, with **Start**, **Continue** (opens your most recent save: town name and day) and the version.
+- **Save Slots:** three slots. Each shows town name, day, stars, survivors, parts and when it was saved.
+  - Tap a saved slot to load it.
+  - Tap an empty slot to name a new haven and start.
+  - 🗑 deletes a slot; it takes two taps ("Delete?").
+  - Back returns to the title.
+- **Your existing town is kept as Slot 1.** Older saves (V25 and earlier) still load into Slot 1.
+- Town → More: "New game…" (which erased the town after a browser confirm box) is replaced by **🏠 Title screen (saves first)**.
+- **Bug prevented:** leaving the title page would have saved its background town over Slot 1. The title screen now never saves, and a test checks that the other saves are untouched.
+- Tests and the balance tool open the game directly (they skip the title).
+- **Tests:** new `title` group (8 checks: HUD hidden on the title, Continue shows the latest save, an existing save appears in slot 1, new game in a chosen slot with its name, other slots untouched, two-tap delete, loading a slot). All 24 groups pass.
+
 ## V2.39.0 — Phase 6: closing the master-prompt gaps
 **Town Advisor** (master prompt §9)
 - One line under the objective naming the most urgent strategic issue, worked out from the real simulation:

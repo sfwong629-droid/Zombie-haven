@@ -291,6 +291,32 @@ async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker a
     t.ok(r['muted'], 'hiding an advisor tip mutes it for the day')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_title(br, port, t):   # V2.40: title screen and save slots
+    ctx = await br.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(f'http://127.0.0.1:{port}/index.html?test=prep'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.evaluate("()=>{localStorage.clear();ZH.S.townName='Old Town';ZH.S.day=9;ZH.saveGame()}")
+    base = f'http://127.0.0.1:{port}/index.html'
+    await pg.goto(base); await pg.wait_for_selector('#title', state='visible')
+    r = await pg.evaluate("()=>({hud:getComputedStyle(document.getElementById('plaque')).display,cont:document.getElementById('tCont').textContent})")
+    t.ok(r['hud'] == 'none', 'the title screen hides the game HUD')
+    t.ok('Old Town' in r['cont'] and 'Day 9' in r['cont'], f"Continue offers the latest save ({r['cont']})")
+    await pg.click('#tStart'); await pg.wait_for_selector('#slots', state='visible')
+    r = await pg.evaluate("()=>[...document.querySelectorAll('.slot')].map(e=>e.textContent)")
+    t.ok('Old Town' in r[0] and 'Empty' in r[1] and 'Empty' in r[2], 'an existing save shows up in slot 1, the others are empty')
+    await pg.click('.slot[data-i="2"]'); await pg.fill('#sName', 'Ember Hold'); await pg.click('#sGo')
+    await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("()=>{ZH.S.day=3;ZH.saveGame();return {slot:ZH.SLOT,name:ZH.S.townName,old:JSON.parse(localStorage.getItem('zombieHavenV26')).S.townName,s3:!!localStorage.getItem('zombieHavenV26_s3')}}")
+    t.ok(r['slot'] == 3 and r['name'] == 'Ember Hold' and r['s3'], f"a new game starts in the chosen slot with its name {r}")
+    t.ok(r['old'] == 'Old Town', 'starting a new slot and leaving the title never overwrites the other saves')
+    await pg.goto(base); await pg.wait_for_selector('#title', state='visible'); await pg.click('#tStart')
+    await pg.click('.sdel[data-del="2"]'); still = await pg.evaluate("()=>!!localStorage.getItem('zombieHavenV26_s3')")
+    await pg.click('.sdel[data-del="2"]'); gone = await pg.evaluate("()=>!localStorage.getItem('zombieHavenV26_s3')")
+    t.ok(still and gone, 'deleting a slot takes two taps')
+    await pg.click('.slot[data-i="0"]'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.townName'); r = await pg.evaluate("()=>({slot:ZH.SLOT,name:ZH.S.townName,day:ZH.S.day})")
+    t.ok(r['slot'] == 1 and r['name'] == 'Old Town', f"tapping a saved slot loads it {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -416,7 +442,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
