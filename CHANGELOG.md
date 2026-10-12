@@ -1,5 +1,15 @@
 # Changelog
 
+## V2.42.0 — Save reliability
+- **Damaged saves are never overwritten.** If a slot will not load, the game tries that slot's day backup; if that fails too, it tells you, keeps the file untouched and does not autosave over it (the damaged copy is also kept aside as `<slot>_bad`).
+- **Day backup per slot.** The first save of each in-game day is also stored as the slot's backup. The slot screen shows "⚠ Damaged: day backup" when it falls back.
+- **Saving failures are visible.** Storage full or blocked now raises a critical alert with a Backup button (storage full first drops the slot's own day backup and retries). The Save button says when it did not save.
+- **Two tabs on one slot.** If another tab writes the same slot, this tab stops saving and shows an alert with Reload, so the two never overwrite each other.
+- **Export / import backups.** Main screen → Start → 💾 Backups: export any slot (iPhone share sheet: Files, AirDrop, Notes…; Download; or Copy text) and import a backup file or pasted text into any slot. Replacing a town takes two taps and keeps the old one as the slot's day backup. Backups from a newer game version are refused. In game: Event log → 💾 Backup this town.
+- The game asks the browser to keep its storage (persistent storage) and the advisor gives a low-priority reminder if no backup was exported in a week (from Day 4). Safari can clear website data after 7 days without a visit unless the game is on the Home Screen.
+- Slot isolation verified: playing a slot writes only that slot's keys; deleting or starting a slot clears its backups too.
+- Tests: new `saves` group (22 checks); the combat rally test no longer depends on whether the Guard survived the boss night.
+
 ## V2.41.0
 - New 🏠 button at the top right: saves your town and goes back to the main screen (hidden on the title screen).
 - Demolish moved into the Build menu: a full-width "Demolish" button sits under the Build tabs. The separate Demolish button in the side menu is gone.

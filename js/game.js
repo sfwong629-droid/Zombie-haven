@@ -3,11 +3,14 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.41.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.42.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
 let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune'].some((k) => QS.has(k));
+/* V2.42 save safety: a day backup per slot (<key>_bak), a copy of a save that would not load (<key>_bad), a session id so a second tab on the same slot is noticed */
+const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
+let saveBlocked = '', saveErr = '', loadedFrom = '';
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -1942,6 +1945,7 @@ function advisorTips() {
   for (const k of ['food', 'water']) if (E[k].full && E[k].net > .2) add('full' + k, 30, '📦', `${RES_TITLE[k]} storage is full: build Storage${S.rank >= 3 ? ' or hold a Trade Caravan' : ''}`, () => showResource(k));
   const q = RANK_REQ[S.rank]; if (q && (S.eventsHeld || 0) < q.events && (S.lastEventDay ?? -1) < S.day && Object.values(TOWN_EVENTS).some((e) => (e.rank || 1) <= S.rank && Object.entries(e.cost).every(([r, v]) => S[r] >= v))) add('event', 35, '🎉', 'Hold a town event: the next star needs it', () => showUpgrade('events'));
   const ws = bOf('workshop')[0]; if (ws) { const r = Object.entries(RESEARCH).find(([k, x]) => !researched(k) && researched(x.need) && (S.rp || 0) >= x.rp && S.mat >= x.mat); if (r) add('res', 25, '🔬', `Research ready: ${r[1].name}`, () => showBuildingInfo(ws, 'research')); }
+  if (S.day >= 4 && Date.now() - exportedAt(SLOT - 1) > 7 * 864e5) add('backup', 15, '💾', 'No backup this week: export one (Safari can clear old site data)', () => showBackup());   /* V2.42 */
   const day = S.day, mute = S.advMute || {}; return T.filter((t) => mute[t.key] !== day && (S.stage >= 2 || t.pri >= 70)).sort((a, b) => b.pri - a.pri);   /* during the opening goals only serious issues */
 }
 function layoutTop() {   // the left menu and the alerts sit just under the plaque, whatever its height
@@ -1987,9 +1991,9 @@ let logOnlyKey = false;
 function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
   const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = { critical: '#ff9a84', important: '#ffe08a' };
-  $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button><button class="act" id="logAdv" style="flex:1">Town advisor: ${OPTS.advisor ? 'ON' : 'OFF'}</button></div>`
+  $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button><button class="act" id="logAdv" style="flex:1">Town advisor: ${OPTS.advisor ? 'ON' : 'OFF'}</button></div><button class="act" id="logBak" style="width:100%;margin-bottom:6px">💾 Backup this town</button>`
     + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
-  $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); }; $('logAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); showLog(); };
+  $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); }; $('logAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); showLog(); }; $('logBak').onclick = () => showBackup();
   showPanel();
 }
 function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; questFlash(); renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
@@ -2159,9 +2163,30 @@ const SKIP = new Set(['post', 'target', 'facility', 'rescuer', 'rescuing', 'carr
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
-  return JSON.stringify({ version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
+  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
-function saveGame() { if (titleOn) return; try { localStorage.setItem(SAVE_KEY, serialize()); S.lastSave = tick; } catch (e) { /* storage unavailable */ } }   /* V2.40: the title screen's background town is never saved over a slot */
+function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
+function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+/* V2.40: the title screen's background town is never saved over a slot. V2.42: failures are reported, storage-full drops this slot's day backup and retries,
+   a save that could not be loaded (or was changed by another tab) is never overwritten. */
+function saveGame() {
+  if (titleOn || saveBlocked) return false;
+  let data; try { data = serialize(); } catch (e) { saveFail('the town could not be packed (' + e.message + ')'); return false; }
+  let r = writeKey(SAVE_KEY, data);
+  if (r !== true) { try { localStorage.removeItem(BAK(SAVE_KEY)); localStorage.removeItem(BAD(SAVE_KEY)); } catch (e) { /* ignore */ } r = writeKey(SAVE_KEY, data); }
+  if (r !== true) { saveFail(/quota/i.test(r.name + r.message) ? 'the browser storage is full' : 'the browser blocked storage (private browsing?)'); return false; }
+  if (saveErr) { saveErr = ''; renderAlerts(); }
+  S.lastSave = tick; if (S.bakDay !== S.day && writeKey(BAK(SAVE_KEY), data) === true) S.bakDay = S.day;   /* first save of each day becomes the backup */
+  return true;
+}
+function saveFail(why) { const first = !saveErr; saveErr = why; if (first) note('critical', `Saving failed: ${why}`, { key: 'savefail', icon: '💾', live: () => !!saveErr, dyn: () => `Saving failed: ${saveErr}. Export a backup now.`, acts: [{ label: 'Backup', fn: () => showBackup() }] }); }
+function blockSaves(kind) {
+  if (saveBlocked) return; saveBlocked = kind;
+  if (kind === 'tab') note('critical', 'This town was opened in another tab: this tab stopped saving', { key: 'savetab', icon: '💾', live: () => saveBlocked === 'tab', acts: [{ label: 'Reload', fn: () => location.reload() }] });
+}
+window.addEventListener('storage', (e) => {   /* another tab wrote (or deleted) this slot: stop saving here so the two never overwrite each other */
+  if (titleOn || saveBlocked || e.key !== SAVE_KEY) return; const m = e.newValue && /^\{"sid":"(\w+)"/.exec(e.newValue); if (m && m[1] === SID) return; blockSaves('tab');
+});
 function relinkSurvivor(s) {
   if (!s.st) s.st = rollStats(s.job, s.l); if (!s.tp) s.tp = {}; if (!s.eq) { const nm = s.weapon && s.weapon[0], id = Object.keys(ITEMS).find((k) => ITEMS[k].name === nm) || 'pipe'; s.eq = { weapon: id, armor: null, acc: null }; } delete s.weapon;   /* V2.14 save upgrade: stats + gear slots */
   if (!s.cls) { s.cls = { [s.job]: { l: s.l || 1, xp: s.mastery || 0 } }; } if (!s.skills) s.skills = []; learnSkills(s, true); syncClass(s); { const m = baseMax(s); if (m > s.max) { s.hp += m - s.max; s.max = m; } }   /* V2.12 save upgrade: class levels + earned skills */
@@ -2169,11 +2194,25 @@ function relinkSurvivor(s) {
   if (s.hp <= 0) s.mode = 'down'; else if (!['free', 'wait', 'down', 'hospital', 'postCombat'].includes(s.mode)) { s.mode = 'free'; s.stateTicks = 80; s.activity = null; s.dest = null; }
   if (s.mode === 'postCombat') { s.mode = 'free'; s.stateTicks = 40; } if (!s.id) s.id = ++S.seq;
 }
+/* V2.42: try the slot, then its day backup; only a slot with no save at all falls back to the pre-V2.6 keys. A save that fails to load is copied aside and the slot is
+   locked against autosave, so a bug or a damaged file can never be replaced by a fresh town. */
+const S_INIT = JSON.stringify(S), ROADS_INIT = [...world.roads];
+function resetState() { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, JSON.parse(S_INIT)); world.roads = new Set(ROADS_INIT); world.buildings = []; world.walls = new Map(); Wd.setTerritory(0); Wd.bump(world); }
 function loadGame() {
+  const tries = [[SAVE_KEY, 'main'], [BAK(SAVE_KEY), 'bak']]; if (SLOT === 1) tries.push([PREV_KEY, 'prev'], [OLD_KEY, 'legacy']);
+  let had = false, failedMain = null;
+  for (const [key, kind] of tries) {
+    const raw = readKey(key); if (!raw) continue; if ((kind === 'prev' || kind === 'legacy') && had) break; had = true;
+    const d = applySave(raw, kind === 'legacy', kind === 'prev'); if (d) { loadedFrom = kind; if (kind === 'bak' && failedMain) writeKey(BAD(SAVE_KEY), failedMain); return d; }
+    if (kind === 'main') failedMain = raw; resetState();
+  }
+  if (had) { if (failedMain) writeKey(BAD(SAVE_KEY), failedMain); blockSaves('load'); }
+  return false;
+}
+function validSave(d, legacy) { return !!(d && typeof d.S === 'object' && d.S && (legacy || (Array.isArray(d.sv) && Array.isArray(d.buildings || [])))); }
+function applySave(raw, legacy, prev) {
   try {
-    let raw = localStorage.getItem(SAVE_KEY), legacy = false, prev = false;
-    if (!raw && SLOT === 1) { raw = localStorage.getItem(PREV_KEY); prev = !!raw; } if (!raw && SLOT === 1) { raw = localStorage.getItem(OLD_KEY); legacy = !!raw; } if (!raw) return false;
-    const d = JSON.parse(raw); if (!d || !d.S) return false;
+    const d = JSON.parse(raw); if (!validSave(d, legacy)) return false;
     if (legacy) {   // V2.4 saves stored positions in screen-ish pixels (TW≈42, TH≈0.4TW); convert to tile units and clamp. Buildings were already tile based.
       Object.assign(S, d.S); S.sv = (d.S.sv || []).map((s) => { const a = (s.w?.x || 0) / 21, b = (s.w?.y || 0) / 8.4; const x = Math.max(0.5, Math.min(COLS - .5, (a + b) / 2)), y = Math.max(0.5, Math.min(ROWS - .5, (b - a) / 2)); return { ...s, w: { x, y }, weapon: s.weapon || weapons[0], path: null }; });
       d.buildings = (d.S.b || []).map((b) => ({ ...b })); d.roads = null; delete S.b;
@@ -2686,7 +2725,7 @@ function showTown(tab) {
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showTown(b.dataset.tab); });
   $('ib').querySelectorAll('[data-pol]').forEach((b) => { b.onclick = () => { setPolicy(b.dataset.pol); showTown('overview'); }; });
   const rr = $('retreatR'); if (rr) rr.oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
-  const ts = $('tSave'); if (ts) ts.onclick = () => { saveGame(); say('Saved.'); };
+  const ts = $('tSave'); if (ts) ts.onclick = () => { say(saveGame() ? 'Saved.' : 'Not saved: see the alert.'); };
   const tl = $('tLog'); if (tl) tl.onclick = showLog;
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
@@ -2835,7 +2874,7 @@ $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank');
 $('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
-$('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { saveGame(); say('Saved.'); banner('💾 SAVED'); }; }
+$('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { if (saveGame()) { say('Saved.'); banner('💾 SAVED'); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); }; }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { const k = { food: 'food', water: 'water', mat: 'mat' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
@@ -2875,15 +2914,22 @@ async function init() {
   if (titleOn) { $('loading').style.display = 'none'; showTitle(); requestAnimationFrame(frame); return; }
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
+  if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
+  if (saveBlocked === 'load') showEventPopup({ title: '💾 SAVE COULD NOT BE OPENED', text: `The town in slot ${SLOT} could not be loaded. <b>Nothing was overwritten</b>: this town will not save while you look around.<br><br>On the main screen, <b>Start → Backups</b> can export the file or import an older backup.`, buttons: [{ label: 'MAIN SCREEN', fn: () => { location.href = location.pathname; } }, { label: 'LOOK AROUND' }] });
 }
 /* ---------------- V2.40 title screen and save slots (the DV2-style start flow, original look) ---------------- */
-function slotInfo(i) {
-  let raw = null; try { raw = localStorage.getItem(SLOT_KEYS[i]) || (i === 0 && (localStorage.getItem(PREV_KEY) || localStorage.getItem(OLD_KEY))); } catch (e) { return null; }
-  if (!raw) return null; try { const d = JSON.parse(raw), st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '' }; } catch (e) { return { broken: true }; }
+function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }
+function slotInfo(i) {   /* V2.42: a damaged slot shows its day backup if there is one */
+  const k = SLOT_KEYS[i], main = readKey(k), bak = readKey(BAK(k)), raw = main || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || bak; if (!raw) return null;
+  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '' }; } catch (e) { return null; } };
+  const x = info(raw); if (x) return main || raw !== bak ? x : { ...x, fromBak: true };
+  const y = bak && raw !== bak && info(bak); return y ? { ...y, fromBak: true } : { broken: true };
 }
+function clearSlot(i) { try { const k = SLOT_KEYS[i]; [k, BAK(k), BAD(k)].forEach((q) => localStorage.removeItem(q)); if (i === 0) { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } } catch (e) { /* ignore */ } }
 const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
 function playSlot(i, newName) {
-  try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { localStorage.removeItem(SLOT_KEYS[i]); if (i === 0) { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } localStorage.setItem('zhNewName', newName || 'Zombie Haven'); } } catch (e) { /* storage blocked: play without saving */ }
+  try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { clearSlot(i); localStorage.setItem('zhNewName', newName || 'Zombie Haven'); } } catch (e) { /* storage blocked: play without saving */ }
   location.href = location.pathname + '?play=1';
 }
 function backToTitle() { saveGame(); location.href = location.pathname; }
@@ -2895,21 +2941,83 @@ function showTitle() {
 }
 let slotDel = null;
 function showSlots() {
-  $('title').style.display = 'none'; const box = $('slots'); box.style.display = 'flex';
+  $('title').style.display = 'none'; const box = $('slots'); box.style.display = 'flex'; box.querySelector('.sHead').textContent = 'Save Slots';
   const rows = [0, 1, 2].map((i) => { const x = slotInfo(i);
     if (!x) return `<div class="slot empty" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Empty</b><small>Tap to start a new game</small></span></div>`;
     if (x.broken) return `<div class="slot" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Damaged save</b><small>Tap to start over in this slot</small></span></div>`;
-    return `<div class="slot" data-i="${i}" data-full="1"><span class="snum">${i + 1}</span><span class="sinfo"><b>${esc(x.name)}</b><small>Day ${x.day} · ${'★'.repeat(x.rank)} · 👥 ${x.pop} · ⚙ ${x.mat}</small><small class="sago">Saved ${ago(x.time)}${x.ver ? ' · V' + esc(x.ver) : ''}</small></span><button class="sdel${slotDel === i ? ' arm' : ''}" data-del="${i}" title="Delete">${slotDel === i ? 'Delete?' : '🗑'}</button></div>`; }).join('');
+    return `<div class="slot" data-i="${i}" data-full="1"><span class="snum">${i + 1}</span><span class="sinfo"><b>${esc(x.name)}</b><small>Day ${x.day} · ${'★'.repeat(x.rank)} · 👥 ${x.pop} · ⚙ ${x.mat}</small><small class="sago">${x.fromBak ? '⚠ Damaged: day backup' : 'Saved ' + ago(x.time)}${x.ver ? ' · V' + esc(x.ver) : ''}</small></span><button class="sdel${slotDel === i ? ' arm' : ''}" data-del="${i}" title="Delete">${slotDel === i ? 'Delete?' : '🗑'}</button></div>`; }).join('');
   box.querySelector('.slist').innerHTML = rows;
   box.querySelectorAll('.slot').forEach((el) => { el.onclick = (e) => { if (e.target.closest('.sdel')) return; const i = +el.dataset.i; if (el.dataset.full) playSlot(i); else newSlot(i); }; });
-  box.querySelectorAll('.sdel').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.del; if (slotDel === i) { try { localStorage.removeItem(SLOT_KEYS[i]); if (i === 0) { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } } catch (er) { /* ignore */ } slotDel = null; } else slotDel = i; showSlots(); }; });
-  $('sBack').onclick = () => { slotDel = null; showTitle(); };
+  box.querySelectorAll('.sdel').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.del; if (slotDel === i) { clearSlot(i); slotDel = null; } else slotDel = i; showSlots(); }; });
+  $('sBack').onclick = () => { slotDel = null; showTitle(); }; $('sBak').style.display = ''; $('sBak').onclick = () => { slotDel = null; showBackups(); };
 }
 function newSlot(i) {
   const box = $('slots'); box.querySelector('.slist').innerHTML = `<div class="card" style="text-align:center"><b style="font-size:22px">Slot ${i + 1} · New haven</b><div class="sm" style="margin:6px 0">Name your town</div><input id="sName" maxlength="22" value="Zombie Haven" style="width:90%;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #8a6a3a;background:#fff8e6;color:#3a2a14;text-align:center"><div class="row" style="gap:8px;margin-top:10px;justify-content:center"><button class="act" id="sCancel">Cancel</button><button class="act go" id="sGo">Start</button></div></div>`;
   $('sCancel').onclick = showSlots; $('sGo').onclick = () => playSlot(i, ($('sName').value || '').trim() || 'Zombie Haven');
 }
+/* ---------------- V2.42 backups: export a slot to a file (or the clipboard / share sheet), import one into any slot ---------------- */
+const BAK_T = 'zhBackupAt';
+function backupText(i) {
+  const raw = slotRaw(i); if (!raw) return null; let save = null; try { save = JSON.parse(raw); } catch (e) { /* damaged: keep the text */ }
+  const st = (save && save.S) || {}, o = { zhBackup: 1, game: 'Zombie Haven', slot: i + 1, exported: new Date().toISOString(), version: VERSION, name: st.townName || 'Zombie Haven', day: st.day || 1 };
+  return JSON.stringify(save ? { ...o, save } : { ...o, rawText: raw });
+}
+const backupName = (i) => { const x = slotInfo(i) || {}; return `zombie-haven-${String(x.name || 'town').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'town'}-day${x.day || 1}.json`; };
+function markExported(i) { try { const m = JSON.parse(localStorage.getItem(BAK_T) || '{}'); m[i] = Date.now(); localStorage.setItem(BAK_T, JSON.stringify(m)); } catch (e) { /* ignore */ } }
+function exportedAt(i) { try { return (JSON.parse(localStorage.getItem(BAK_T) || '{}'))[i] || 0; } catch (e) { return 0; } }
+async function exportBackup(i, how) {   /* how: 'share' (iPhone share sheet: Files, AirDrop, Notes…), 'file' (download) or 'copy' (clipboard) */
+  const text = backupText(i); if (!text) return 'Nothing saved in this slot yet.'; const name = backupName(i);
+  try {
+    if (how === 'share') { const f = new File([text], name, { type: 'application/json' }); if (!(navigator.canShare && navigator.canShare({ files: [f] }))) return exportBackup(i, 'file'); await navigator.share({ files: [f], title: name }); markExported(i); return 'Backup shared.'; }
+    if (how === 'copy') { if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text); else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); } markExported(i); return 'Backup copied: paste it into Notes or a message to keep it.'; }
+    const u = URL.createObjectURL(new Blob([text], { type: 'application/json' })), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); markExported(i); return 'Backup saved as ' + name;
+  } catch (e) { return e && e.name === 'AbortError' ? 'Cancelled.' : 'Could not export (' + ((e && e.message) || e) + '). Try Copy.'; }
+}
+const verNum = (v) => String(v || '0').split('.').map((n) => +n || 0).reduce((a, n) => a * 1000 + n, 0);
+function parseBackup(text) {
+  let o; try { o = JSON.parse(String(text || '').trim()); } catch (e) { return { ok: false, why: 'That is not a Zombie Haven backup (it could not be read).' }; }
+  const save = o && o.zhBackup ? o.save : o;
+  if (!save || !validSave(save, false)) return { ok: false, why: o && o.rawText ? 'That backup holds a damaged save: it cannot be imported.' : 'That file is not a Zombie Haven save.' };
+  const newer = verNum(save.version) > verNum(VERSION);
+  return { ok: true, save, name: save.S.townName || 'Zombie Haven', day: save.S.day || 1, ver: save.version || '', newer };
+}
+function importBackup(i, text) {
+  const r = parseBackup(text); if (!r.ok) return r; if (r.newer) return { ok: false, why: `That backup is from V${r.ver}, newer than this game (V${VERSION}). Reload the page to update first.` };
+  const k = SLOT_KEYS[i], old = readKey(k), data = JSON.stringify({ sid: 'import', ...r.save, sid: 'import', time: Date.now() });   /* sid first: an open tab on this slot sees the change and stops saving */
+  if (old) writeKey(BAK(k), old);   /* the town being replaced stays as this slot's day backup until it is played */
+  const w = writeKey(k, data); if (w !== true) return { ok: false, why: 'The browser storage is full or blocked.' };
+  if (i === 0) { try { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) { /* ignore */ } }
+  return { ok: true, why: `Imported ${r.name} (Day ${r.day}) into slot ${i + 1}.` };
+}
+const BAK_HINT = 'Safari can clear website data when the game is not opened for 7 days. Add Zombie Haven to your Home Screen, or export a backup now and then.';
+function exportRowHtml(i) { return `<button class="act go" data-ex="share" data-i="${i}" style="width:100%;margin:6px 0 0">Export backup</button><div class="row" style="gap:6px;margin-top:6px"><button class="act" data-ex="file" data-i="${i}" style="flex:1 1 0;margin:0;white-space:nowrap">Download</button><button class="act" data-ex="copy" data-i="${i}" style="flex:1 1 0;margin:0;white-space:nowrap">Copy text</button></div>`; }
+function wireExport(root, done) { root.querySelectorAll('[data-ex]').forEach((b) => { b.onclick = async () => { const m = await exportBackup(+b.dataset.i, b.dataset.ex); done(m); }; }); }
+let bakView = null, bakArm = null;
+function showBackups(msg) {   /* title screen → Start → Backups */
+  $('sBak').style.display = 'none'; const box = $('slots'), list = box.querySelector('.slist'); box.querySelector('.sHead').textContent = 'Backups';
+  if (bakView != null) { importView(bakView, msg); return; }
+  list.innerHTML = (msg ? `<div class="card sm" id="bakMsg">${esc(msg)}</div>` : '') + [0, 1, 2].map((i) => { const x = slotInfo(i), t = exportedAt(i);
+    return `<div class="card" style="color:#2a2a5a;background:#fffaf0"><b>Slot ${i + 1} · ${x ? (x.broken ? 'Damaged save' : esc(x.name) + ' · Day ' + x.day) : 'Empty'}</b><div class="sm" style="color:#7a6a50">${x ? 'Last export: ' + (t ? ago(t) : 'never') : 'Nothing to export'}</div>${x ? exportRowHtml(i) : ''}<button class="act" data-imp="${i}" style="width:100%;margin-top:6px">Import a backup into slot ${i + 1}</button></div>`; }).join('') + `<div class="sm" style="color:#e8e0c8">${BAK_HINT}</div>`;
+  wireExport(list, (m) => showBackups(m)); list.querySelectorAll('[data-imp]').forEach((b) => { b.onclick = () => { bakView = +b.dataset.imp; bakArm = null; showBackups(); }; });
+  $('sBack').onclick = () => { bakView = null; showSlots(); };
+}
+function importView(i, msg) {
+  const list = $('slots').querySelector('.slist'), x = slotInfo(i);
+  list.innerHTML = `<div class="card" style="color:#2a2a5a;background:#fffaf0"><b>Import into slot ${i + 1}</b>${x && !x.broken ? `<div class="sm" style="color:#b0402a">This replaces ${esc(x.name)} (Day ${x.day}). It is kept as the slot's day backup until you play.</div>` : ''}
+    <label class="act" style="display:block;text-align:center;margin:8px 0">Choose a backup file<input type="file" id="impFile" accept=".json,application/json,text/plain" style="display:none"></label>
+    <div class="sm" style="color:#7a6a50">…or paste the backup text:</div><textarea id="impText" rows="4" style="width:100%;box-sizing:border-box;font:14px monospace;border:2px solid #8a6a3a;border-radius:6px;background:#fff8e6;color:#3a2a14"></textarea>
+    ${msg ? `<div class="sm" id="bakMsg" style="color:#b0402a">${esc(msg)}</div>` : ''}<button class="act go" id="impGo" style="width:100%;margin-top:6px">${bakArm === i ? 'Tap again to replace the town' : 'Import'}</button></div>`;
+  const go = (text) => { const r = parseBackup(text); if (!r.ok) { importView(i, r.why); return; } if (x && !x.broken && bakArm !== i) { bakArm = i; $('impText').value = text; importView(i, `Ready: ${r.name}, Day ${r.day}${r.ver ? ' (V' + r.ver + ')' : ''}.`); $('impText').value = text; return; } const w = importBackup(i, text); bakArm = null; if (w.ok) { bakView = null; showBackups(w.why); } else importView(i, w.why); };
+  $('impFile').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; if (f.size > 4e6) { importView(i, 'That file is too big to be a save.'); return; } const rd = new FileReader(); rd.onload = () => go(String(rd.result)); rd.onerror = () => importView(i, 'Could not read that file.'); rd.readAsText(f); };
+  $('impGo').onclick = () => go($('impText').value);
+  $('sBack').onclick = () => { bakView = null; bakArm = null; showBackups(); };
+}
+function showBackup(msg) {   /* in game (event log → Backup): export this town */
+  endBuildMode(true); closeP(); saveGame(); $('it').textContent = 'BACKUP'; const i = SLOT - 1, t = exportedAt(i);
+  $('ib').innerHTML = `<div class="card"><b>${esc(S.townName || 'Zombie Haven')} · slot ${SLOT}</b><div class="sm">${saveErr ? '⚠ Saving is failing: ' + esc(saveErr) : saveBlocked ? '⚠ This tab is not saving' : 'Saved automatically'} · last export: ${t ? ago(t) : 'never'}</div></div>${exportRowHtml(i)}${msg ? `<div class="card sm">${esc(msg)}</div>` : ''}<div class="sm" style="margin-top:6px">To bring a backup back: main screen (🏠) → Start → Backups → Import.</div><div class="sm" style="margin-top:6px">${BAK_HINT}</div>`;
+  wireExport($('ib'), (m) => showBackup(m)); showPanel();
+}
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

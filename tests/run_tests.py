@@ -229,7 +229,7 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
       S.z.length=0;const v=S.sv.find(q=>q.job!=='Guard');v.hp=0;ZH.simTick();ZH.spawn(v.w.x+.5,v.w.y,'walker');const zz=S.z[S.z.length-1];zz.mode='idle';zz.stateTicks=99999;
       for(const q of S.sv)if(q!==v&&q.job!=='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.stateTicks=9999}
       const civ=S.sv.filter(q=>q!==v&&!['Guard','Police Officer','SWAT','Scavenger'].includes(q.job));out.civRescue=false;ZH.assignRescue();out.civRescue=!!(v.rescuer&&civ.includes(v.rescuer));
-      for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max}v.rescuer=null;
+      if(!S.sv.some(q=>q!==v&&q.job==='Guard'))S.sv.push(ZH.mk('Gus','Guard',3,v.w.x+1,v.w.y,S.sv.length));for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max;q.rescuing=null;q.carrying=null}v.rescuer=null;
       out.rally=ZH.rally();return out}""")
     t.ok(r['bosses'] >= 2 and r['after'] == 0, f"every boss leaves at dawn ({r['bosses']} -> {r['after']})")
     t.ok(not r['civRescue'], 'a non-fighter does not walk up to a body with a zombie on it')
@@ -329,6 +329,71 @@ async def t_menu(br, port, t):   # V2.41: Demolish inside Build, home button
     r = await pg.evaluate("()=>({home:getComputedStyle(document.getElementById('btnHome')).display,cont:document.getElementById('tCont').textContent})")
     t.ok(r['home'] == 'none', 'the main-screen button is hidden on the title screen')
     t.ok('Home Test' in r['cont'], f"going back to the main screen keeps the save ({r['cont']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+async def t_saves(br, port, t):   # V2.42: slot isolation, day backup, damaged saves never overwritten, storage full, second tab, export / import
+    base = f'http://127.0.0.1:{port}/index.html'
+    ctx, pg, errs = await open_game(br, port, 'saves1')
+    good = await pg.evaluate("()=>{ZH.S.townName='Bak Town';ZH.S.day=7;return ZH.serialize()}")
+    await ctx.close()
+    # 1. slot isolation: playing slot 2 writes only slot 2 keys
+    ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zhSlot','2');localStorage.setItem('zombieHavenV26','SLOT1');localStorage.setItem('zombieHavenV26_s3','SLOT3')}")
+    pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(base + '?test=iso'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    r = await pg.evaluate("()=>{const ok=ZH.saveGame();return {ok,slot:ZH.SLOT,keys:Object.keys(localStorage).filter(k=>k.startsWith('zombieHaven')).sort(),s1:localStorage.getItem('zombieHavenV26'),s3:localStorage.getItem('zombieHavenV26_s3')}}")
+    t.ok(r['ok'] and r['slot'] == 2 and r['s1'] == 'SLOT1' and r['s3'] == 'SLOT3', f'playing slot 2 never touches slots 1 and 3 {r}')
+    t.ok(set(r['keys']) == {'zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s2_bak', 'zombieHavenV26_s3'}, f"slot 2 keeps its own day backup {r['keys']}")
+    # 5. a second tab on the same slot stops this one from saving
+    pg2 = await ctx.new_page(); await pg2.goto(base + '?test=iso2'); await pg2.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg2.evaluate("()=>ZH.saveGame()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("()=>({blocked:ZH.saveBlocked,saved:ZH.saveGame(),alert:ZH.alerts.has('savetab')})")
+    t.ok(r['blocked'] == 'tab' and not r['saved'] and r['alert'], f'a second tab on the same slot makes the first stop saving, with an alert {r}')
+    # 4. storage full: reported, then recovers
+    r = await pg2.evaluate("""()=>{const o=Storage.prototype.setItem;Storage.prototype.setItem=function(){const e=new Error('full');e.name='QuotaExceededError';throw e};const a=ZH.saveGame(),al=ZH.alerts.has('savefail'),err=ZH.saveErr;Storage.prototype.setItem=o;const b=ZH.saveGame();ZH.alertsTick&&ZH.alertsTick();return {a,al,err,b,cleared:!ZH.saveErr}}""")
+    t.ok(not r['a'] and r['al'] and 'full' in r['err'], f'a full storage is reported as a critical alert {r}')
+    t.ok(r['b'] and r['cleared'], 'saving works again once there is room, and the alert clears')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+    # 2. damaged save + day backup: the backup loads, the damaged copy is kept
+    ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26','{\"broken');localStorage.setItem('zombieHavenV26_bak'," + json.dumps(good) + ")}")
+    pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(base + '?test=bak'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    r = await pg.evaluate("()=>({from:ZH.loadedFrom,name:ZH.S.townName,day:ZH.S.day,bad:localStorage.getItem('zombieHavenV26_bad'),saved:ZH.saveGame()})")
+    t.ok(r['from'] == 'bak' and r['name'] == 'Bak Town' and r['day'] == 7, f'a damaged save falls back to the day backup {r}')
+    t.ok(r['bad'] == '{"broken' and r['saved'], 'the damaged copy is kept aside and the game saves normally')
+    await ctx.close()
+    # 3. damaged save, no backup: nothing is overwritten
+    ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26','{\"S\":{\"day\":3},\"sv\":5}')}")
+    pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(base + '?test=dmg'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("()=>{const a=ZH.saveGame();ZH.step(3000);window.dispatchEvent(new Event('pagehide'));return {a,blocked:ZH.saveBlocked,raw:localStorage.getItem('zombieHavenV26'),pop:document.getElementById('ev')?getComputedStyle(document.getElementById('ev')).display:'?',txt:document.body.innerText.includes('SAVE COULD NOT BE OPENED')}}")
+    t.ok(not r['a'] and r['blocked'] == 'load' and r['raw'] == '{"S":{"day":3},"sv":5}', f'a save that cannot be loaded is never overwritten {r}')
+    t.ok(r['txt'], 'the player is told the save could not be opened')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+    # 6. export / import
+    ctx, pg, errs = await open_game(br, port, 'saves2')
+    r = await pg.evaluate("""()=>{ZH.S.townName='Export Town';ZH.S.day=11;ZH.saveGame();const txt=ZH.backupText(0),o=JSON.parse(txt);const p=ZH.parseBackup(txt),bad=ZH.parseBackup('hello'),half=ZH.parseBackup(txt.slice(0,200));
+      const nv=JSON.parse(txt);nv.save.version='99.0.0';const newer=ZH.importBackup(2,JSON.stringify(nv));const imp=ZH.importBackup(2,txt);const raw=ZH.importBackup(1,JSON.stringify(o.save));
+      return {zh:o.zhBackup,name:o.name,day:o.day,p:p.ok,bad:bad.ok,half:half.ok,newer:newer.ok,imp:imp.ok,info:ZH.slotInfo(2),raw:raw.ok,info1:ZH.slotInfo(1)}}""")
+    t.ok(r['zh'] == 1 and r['name'] == 'Export Town' and r['day'] == 11 and r['p'], f"a backup carries the town name and day {r['name']} {r['day']}")
+    t.ok(not r['bad'] and not r['half'] and not r['newer'], 'garbage, a cut-off file and a backup from a newer version are refused')
+    t.ok(r['imp'] and r['info']['name'] == 'Export Town' and r['info']['day'] == 11 and r['raw'] and r['info1']['name'] == 'Export Town', f"a backup (or a raw save) imports into another slot {r['info']}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+    # 7. title screen Backups: import by pasting into an empty slot, two taps to replace a town
+    ctx = await br.new_context(viewport={'width': 320, 'height': 568}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26'," + json.dumps(good) + ")}")
+    pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(base); await pg.wait_for_selector('#title', state='visible'); await pg.click('#tStart'); await pg.click('#sBak')
+    t.ok(await pg.locator('[data-ex]').count() == 3 and await pg.locator('[data-imp]').count() == 3, 'Backups lists export for the saved slot and import for every slot')
+    await pg.click('[data-imp="1"]'); await pg.fill('#impText', good.replace('Bak Town', 'Pasted Town')); await pg.click('#impGo')
+    r = await pg.evaluate("()=>({s2:JSON.parse(localStorage.getItem('zombieHavenV26_s2')||'{}').S?.townName,msg:(document.getElementById('bakMsg')||{}).textContent})")
+    t.ok(r['s2'] == 'Pasted Town', f'pasting a backup into an empty slot imports it {r}')
+    await pg.click('[data-imp="0"]'); await pg.fill('#impText', good.replace('Bak Town', 'Replaced')); await pg.click('#impGo')
+    first = await pg.evaluate("()=>JSON.parse(localStorage.getItem('zombieHavenV26')).S.townName"); await pg.click('#impGo')
+    second = await pg.evaluate("()=>[JSON.parse(localStorage.getItem('zombieHavenV26')).S.townName,JSON.parse(localStorage.getItem('zombieHavenV26_bak')).S.townName]")
+    t.ok(first == 'Bak Town' and second == ['Replaced', 'Bak Town'], f'replacing a town takes two taps and keeps the old one as the day backup {first} {second}')
+    await pg.click('[data-imp="2"]'); await pg.set_input_files('#impFile', files=[{'name': 'b.json', 'mimeType': 'application/json', 'buffer': good.replace('Bak Town', 'File Town').encode()}]); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("()=>JSON.parse(localStorage.getItem('zombieHavenV26_s3')||'{}').S?.townName"); t.ok(r == 'File Town', f'choosing a backup file imports it ({r})')
+    sw = await pg.evaluate("()=>document.documentElement.scrollWidth"); t.ok(sw <= 320, f'Backups fit a 320 px screen ({sw})')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_save_load(br, port, t):
@@ -456,7 +521,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
