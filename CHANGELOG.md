@@ -1,5 +1,46 @@
 # Changelog
 
+## V2.37.0 — Phase 4: combat and survival
+**Why survivors were dying (measured in auto-player runs)**
+- The only cause of death is bleeding out while down. About 28% of collapses were rescuers themselves, mostly while pushing the cart.
+- In most runs the town eventually stopped fighting: the fighters were down, everyone else hid for days, and zombies stayed inside town forever. Kills stopped while deaths climbed. Hiding survivors starved, the downed bled out, and newcomers walked into it.
+
+**Fixes**
+- Zombies that see no one for about 2 hours in daylight now wander back out of the map.
+- Sheltering indoors slowly heals (+1 HP every 1.5 game minutes), so hurt fighters can rejoin.
+- **Rally:** when someone is down and nobody is fighting, fighters with at least half their health come out together and clear the zombies around the downed.
+- **Militia:** when no able fighter is left and zombies are inside town, healthy civilians band together (3 or more) on the weakest zombie.
+- **Rout:** when 3 or more survivors are down (or 2 with a boss), wounded fighters shelter instead of dying one by one.
+- **Rescue:** anyone not in an emergency can be called, including survivors who are eating, resting, sleeping or walking, plus a fighter when no zombie is within reach of them. Rescues are re-checked every half second, with the most urgent bleed-out first. Non-fighters don't walk into 2 or more zombies, and fighter rescuers clear the zombie off the body first.
+- The cart moves at close to walking pace (0.0158, was 0.0133, barely faster than a walker).
+- Fighters fall back when 2 zombies are on them and they are under 45% health.
+- Bugs fixed: only the first boss left at dawn, so a second boss stayed all day. Escaping zombies (and bosses) left a corpse behind.
+
+**Combat readability**
+- A hit spark appears on whoever takes a real hit.
+- Zombies show an HP bar only once hurt or fighting someone (no permanent bars).
+- A red ring sits under any survivor being hit.
+- Select a fighter to see their weapon range, a line to their target, a ring on the target, and "IN RANGE" or "CLOSING IN".
+- Tapping a wall says how many zombies are hitting it, and whether repairs are underway, waiting for zombies to leave, or blocked by no parts.
+
+**Town policies** (Town → Haven tab). A settlement-wide priority that shifts the AI's weights; it never controls individuals.
+- *Defend the Town:* fighters engage from 40% farther, guards patrol more, fighters hold 5% longer.
+- *Prioritise Production:* second shift to 19:00, more patience before breaks, fighters engage only nearby threats.
+- *Recover & Heal:* fighters fall back 15% sooner, the hurt seek care earlier, second shift ends at 16:00.
+- *Balanced:* the default. The policy is saved with the town.
+
+**Balance** (auto-player, 4 seeds × 30 days, V2.36.0 → V2.37.0)
+- Deaths: 16.2 → 3.5 per run (share of downed who died: 13% → 2%).
+- Average level at day 30: 4.1 → 6.5. Rank 4 by day 8–9 (was day 10–17).
+- Territory: expanded twice in every run (was 2 of 4).
+- Collapses went up (122 → 178 per run): fights are as dangerous, but survivors now recover instead of spiralling.
+- 8 seeds × 15 days: deaths 9.0 ± 2.1 → 3.4 ± 1.1.
+- An ablation (each rescue/rout/rally rule turned off in turn) showed no single rescue rule mattered much. The big gain came from breaking the stall, through zombies leaving and survivors healing in shelter.
+
+**Still open, for Phase 5:** food and water sit at the storage cap from about day 10, and rank 5 (900 Renown plus a Hospital) is never reached in 30 days.
+**Tests:** new `combat` group (9 checks: policies move shifts and retreat, policy saved, contextual HP bars, sleeper woken to rescue, every boss leaves at dawn, no unsafe civilian rescue, rally). All 21 groups pass.
+**Not tested:** real phones or Safari.
+
 ## V2.36.0 — Phase 3: a living settlement
 **Task commitment**
 - Measured first: staffed workers were at their post only 2–8% of the day. Each shift lasted about 0.6 game hours, then survivors re-decided and nearly always went to train or run an errand first.

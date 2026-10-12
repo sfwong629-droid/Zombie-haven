@@ -194,7 +194,7 @@ async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor pan
         if(t%500===0){try{ZH.serialize()}catch(e){saveFail++}}
         if(t%250===0&&S.hour>=23){night++;for(const q of S.sv){sleepN++;if(q.sleeping||(q.mode==='goFacility'&&q.facility&&q.facility.type==='house'))sleep++}}}
       out.shift=on/tot;out.saveFail=saveFail;out.sleep=sleep/sleepN;
-      const w=S.sv.find(q=>q.post);while(!(S.hour>=8&&S.hour<11))ZH.step(100);ZH.step(400);ZH.unitPanel(w);out.now=document.getElementById('uNow').textContent;out.prio=w.mode;
+      const w=S.sv.find(q=>q.post);while(!(S.hour>=8&&S.hour<11))ZH.step(100);for(let k=0;k<3000&&!['work','goWork'].includes(w.mode);k++)ZH.simTick();ZH.unitPanel(w);out.now=document.getElementById('uNow').textContent;out.prio=w.mode;
       return out}""")
     t.ok(r['shift'] >= .6, f"staffed workers are at (or heading to) work {r['shift']:.0%} of shift hours (zombie-free town)")
     t.ok(r['saveFail'] == 0, f"autosave never fails over 2 days of play ({r['saveFail']} failures)")
@@ -206,6 +206,34 @@ async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor pan
     t.ok(r['inCare'] and r['total'], 'a rescued survivor is in care with a known treatment time')
     t.ok('Recovering' in r['line'] and '%' in r['line'], f"their panel shows treatment progress ({r['line'][:80]})")
     t.ok(r['patients'], 'the medical building lists its patient')
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual combat feedback
+    ctx, pg, errs = await open_game(br, port, 'combat')
+    await close_popups(pg)
+    await pg.evaluate(PLACE, 'water')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;const e=S.sv.find(q=>q.job!=='Guard');e.job='Engineer';ZH.autoStaff();const w=e;
+      ZH.setPolicy('produce');S.hour=18;out.produce18=ZH.onShift(w);ZH.setPolicy('recover');out.recover18=ZH.onShift(w);S.hour=14;out.recover14=ZH.onShift(w);out.rp=ZH.retreatPct();
+      ZH.setPolicy('balanced');out.rb=ZH.retreatPct();ZH.setPolicy('defend');out.rd=ZH.retreatPct();
+      const g=S.sv.find(q=>q.job==='Guard');S.alert=0;ZH.spawn(g.w.x+7.5,g.w.y,'walker');const z=S.z[S.z.length-1];z.mode='idle';out.zDist=Math.hypot(z.w.x-g.w.x,z.w.y-g.w.y);
+      out.idleBar=ZH.engaged(z);z.hp-=5;out.hurtBar=ZH.engaged(z);ZH.saveGame();out.saved=JSON.parse(localStorage.getItem('zombieHavenV26')).S.policy;return out}""")
+    t.ok(r['produce18'] and not r['recover18'] and r['recover14'], f"policies move the shift end (Production to 19:00, Recover to 16:00) {r}")
+    t.ok(r['rp'] == r['rb'] + 15 and r['rd'] == r['rb'] - 5, f"Recover falls back sooner, Defend holds longer ({r['rb']} / {r['rp']} / {r['rd']})")
+    t.ok(r['saved'] == 'defend', 'the town policy is saved')
+    t.ok(not r['idleBar'] and r['hurtBar'], 'a zombie shows its HP bar only once hurt or fighting')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;const v=S.sv[0];for(const q of S.sv)if(q!==v){q.mode='useFacility';q.sleeping=true;q.facility=ZH.world.buildings.find(b=>b.type==='house');}
+      v.hp=0;ZH.simTick();ZH.simTick();out.down=v.mode==='down';out.ok=ZH.assignRescue();out.rescuer=!!v.rescuer;out.wasAsleep=v.rescuer&&v.rescuer.facility===null;return out}""")
+    t.ok(r['down'] and r['rescuer'], 'a sleeping survivor is woken to rescue someone who collapsed')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;for(const q of S.sv){q.mode='free';q.sleeping=false;q.facility=null;q.hp=q.max;q.rescuer=null;q.rescuing=null;q.bleed=null}
+      ZH.spawnBoss();ZH.spawnBoss();out.bosses=S.z.filter(z=>z.type==='boss'&&z.hp>0).length;while(S.hour!==5)ZH.step(100);ZH.step(1100);out.after=S.z.filter(z=>z.type==='boss'&&z.hp>0).length;
+      S.z.length=0;const v=S.sv.find(q=>q.job!=='Guard');v.hp=0;ZH.simTick();ZH.spawn(v.w.x+.5,v.w.y,'walker');const zz=S.z[S.z.length-1];zz.mode='idle';zz.stateTicks=99999;
+      for(const q of S.sv)if(q!==v&&q.job!=='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.stateTicks=9999}
+      const civ=S.sv.filter(q=>q!==v&&!['Guard','Police Officer','SWAT','Scavenger'].includes(q.job));out.civRescue=false;ZH.assignRescue();out.civRescue=!!(v.rescuer&&civ.includes(v.rescuer));
+      for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max}v.rescuer=null;
+      out.rally=ZH.rally();return out}""")
+    t.ok(r['bosses'] >= 2 and r['after'] == 0, f"every boss leaves at dawn ({r['bosses']} -> {r['after']})")
+    t.ok(not r['civRescue'], 'a non-fighter does not walk up to a body with a zombie on it')
+    t.ok(r['rally'], 'when someone is down and nobody fights, fighters rally out of shelter')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_save_load(br, port, t):
@@ -333,7 +361,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
