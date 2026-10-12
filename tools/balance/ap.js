@@ -43,6 +43,9 @@
       last.set(s, { mode: s.mode, purpose: s.purpose, why: s.why }); }
   };
   AP.hour = function () {
+    // V2.33: hold a town event at noon when it is affordable, and upgrade the town when the rating conditions are met
+    if (Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
+    if (Z.upgradeTown) Z.upgradeTown();
     // answer story popups with a random choice (and close plain ones)
     for (let i = 0; i < 8; i++) { const bs = [...document.querySelectorAll('#eventModal button')]; if (!bs.length) break; bs[Math.floor(Math.random() * bs.length)].click(); }
     if ((S.fallen || []).length > AP.nf) { const zs = S.z.filter((z) => z.hp > 0); const ty = {}; zs.forEach((z) => ty[z.type] = (ty[z.type] || 0) + 1);
@@ -75,6 +78,8 @@
     if (needW && S.mat >= 4) { if (!place('well')) place('water'); }
     if (needF && S.mat >= 5) { if (!place('field')) place('farm'); }
     if (needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
+    // the building the next town star needs (Upgrade Town "Build X" condition)
+    { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !cnt(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
     // build plan
     let next = null; const want = {}; for (const t of PLAN) { want[t] = (want[t] || 0) + 1; if (cnt(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
     AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.core = ['water', 'farm', 'house', 'scrapyard', 'workshop'].every((t) => cnt(t) > 0);

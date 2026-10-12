@@ -1,5 +1,22 @@
 # Changelog
 
+## V2.33.0 — Backlog: movement, combat, zombie AI, Upgrade Town, events, rescue cart
+- Smooth movement: people and zombies are drawn between simulation ticks, so walking is smooth at 1x and 2x.
+- Attacks match the hits: ready pose, wind-up, then the strike lands on the frame the damage is dealt; idle pose between hits.
+- Guns and bows fire from range (pistol 4 tiles … rifle 6) with tracer lines instead of walking up to melee.
+- Zombies wander but creep slowly toward the town (about 2 tiles per game hour); they stay off building tiles.
+- Walls: zombies walk around walls to an opening. Only when the town is fully sealed do they break a wall, and once any wall breaks, every zombie nearby rushes the breach.
+- Rescue: the rescuer pushes a hand cart with the injured person lying in it (24 survivor sheets: 12 jobs, male and female); the bleed-out timer rides above the cart.
+- Day and night lighting: warm morning, clear day, orange dusk, blue night.
+- Trader menu shows item icons; menus are brighter.
+- Demolish has its own button on the left menu; roads can be demolished; buildings ask for a second tap.
+- No more message for each normal zombie killed (a small "+★" floats instead); bosses and raiders still announce.
+- Parts drop more often (55% for walkers, more for tougher zombies, was 25%).
+- Upgrade Town screen like DV2: town ribbon with stars and a Rating Conditions list — Renown, daily supplies (food + water made per day after rations), events held, and a Build X requirement. Tap the Renown wheel or Town → Upgrade.
+- Town events: Bonfire Night, Market Day, Sports Day, and a Feast from rank 2. One a day; each costs supplies and gives Renown and mood.
+- Balance sim (6 seeds, 14 days): deaths average 7.3 (V2.32: 7.7); the auto-player now builds the required building and holds only the events it needs.
+- tools/art: build_carts.py (cart sheets; splits frames whose carts overlap the previous pusher), cart_check.py.
+
 ## V2.32.0 — Approved samples: wreckage, medics, menu icons
 - Wreckage (overturned car, burnt pickup, collapsed shack, broken fence, fallen power pole, concrete and rebar, burnt mattress, oil drums, road barricade, smouldering rubble) scattered over land that isn't unlocked yet; it clears as the territory grows.
 - Both medics redrawn with white lab coats, stethoscopes and the standard eye (all animations).

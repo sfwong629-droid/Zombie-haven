@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.32.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.33.0', SAVE_KEY = 'zombieHavenV26', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -259,7 +259,11 @@ function humanAnim(o, st) {
   const kind = o.eq && o.eq.weapon && ITEMS[o.eq.weapon] ? ITEMS[o.eq.weapon].kind : null;
   if (o.mode === 'down' || o.mode === 'zdown') { st.downT = (st.downT || 0) + 1; return ['collapse', Math.min(3, Math.floor(st.downT / 9))]; } st.downT = 0;
   const atk = o.mode === 'attack' || o.mode === 'recover' || o.mode === 'zattack';
-  if (atk) { const a = kind === 'gun' || kind === 'bow' ? 'shoot' : kind ? 'blunt' : 'punch'; return [a, Math.floor((tick + (o.phase || 0)) / ANIM_T[a])]; }
+  if (atk) {   /* V2.33: one swing per hit — ready stance, wind-up, the strike exactly when the damage lands, follow-through, back to ready */
+    const a = kind === 'gun' || kind === 'bow' ? 'shoot' : kind ? 'blunt' : 'punch';
+    if (o.mode === 'attack' || o.mode === 'zattack') { const t = o.stateTicks || 0; return t > 12 ? ['idle', 0] : t > 3 ? [a, 0] : [a, 1]; }
+    const el = (o.recDur || 40) - (o.stateTicks || 0); return el < 10 ? [a, 2] : ['idle', 0];
+  }
   if (o.carrying || o.carriedLoot) return ['carry', o.moving === false ? 0 : Math.floor((tick + (o.phase || 0)) / ANIM_T.carry)];
   if (o.moving || o.mode === 'walk' || o.mode === 'rsneak' || o.mode === 'rflee' || o.mode === 'zchase') return ['walk', Math.floor((tick + (o.phase || 0)) / ANIM_T.walk)];
   return ['idle', Math.floor((tick + (o.phase || 0)) / ANIM_T.idle)];
@@ -291,13 +295,30 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   if (view === 0) drawW();
   return p.y - CHAR_H * tw;
 }
+function drawCart(s, p) {   /* V2.33: the rescuer pushes a hand cart with the injured person lying in it */
+  const L = ZHChars.look(s), sheet = ZHChars.sheetFor(s), c = sheet && ZHChars.cart(sheet.zhTag, L.sex), q = s.carrying; if (!c) return false;
+  const fc = facing(s), view = fc.up ? 1 : 0, flip = fc.right, f = s.moving ? Math.floor((tick + (s.phase || 0)) / 8) % 4 : 0, M = c.m, tw = TWs(), sc = tw / ART_TILE;
+  const m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp(c.key, c.im, m), snap = (v) => Math.round(v * DPR) / DPR, w = M.fw * sc, h = M.fh * sc;
+  ctx.save(); ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.translate(snap(p.x), snap(p.y)); if (flip) ctx.scale(-1, 1);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(-(M.ax - M.fw * .45) * sc, 0, .5 * tw, .12 * tw, 0, 0, 7); ctx.fill();
+  const x0 = -M.ax * sc, y0 = -(M.ay + 1) * sc;
+  ctx.drawImage(big, f * M.fw * m, view * M.fh * m, M.fw * m, M.fh * m, x0, y0, w, h);
+  if (q && window.ZHChars) { const qs = ZHChars.sheetFor(q); if (qs) { const lb = ZHChars.lying(qs), CMm = ZHChars.meta, bd = c.beds[view * 4 + f], qbig = pixelUp('ch' + qs.zhTag, qs, m);
+    ctx.save(); ctx.translate(x0 + bd[0] * sc, y0 + (bd[1] + 6) * sc); if (view === 1) ctx.scale(-1, 1);
+    ctx.drawImage(qbig, lb.f * CMm.fw * m, 0, CMm.fw * m, CMm.fh * m, -lb.cx * sc, -lb.cy * sc, CMm.fw * sc, CMm.fh * sc); ctx.restore(); } }
+  ctx.drawImage(big, f * M.fw * m, (2 + view) * M.fh * m, M.fw * m, M.fh * m, x0, y0, w, h);   /* the cart's front rim over them: they lie inside */
+  ctx.restore(); ctx.imageSmoothingEnabled = true; return true;
+}
+function bleedRing(s, p, dy = 0, dx = 0) {   /* the bleed-out timer; while carried it rides above the cart bed */
+  const tw = TWs(); p = { x: p.x + dx, y: p.y }; const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45 + dy, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); stampText(String(Math.ceil(s.bleed / 60)), p.x, cy + 5 * cam.z, `${Math.round(Math.max(13, 13 * cam.z))}px 'Jersey 15', monospace`, '#fff'); }
 function drawHuman(s) {
   if (insideBuilding(s)) return;   // hidden while inside
   const p = project(s.w.x, s.w.y);
-  if (window.ZHChars && ZHChars.ready) { const sc = ZHChars.sheetFor(s); if (sc) drawChar(s, sc, p, s.eq && s.eq.weapon); }
+  if (s.mode === 'down' && beingCarried(s)) { if (s.bleed != null) bleedRing(s, project(s.rescuer.w.x, s.rescuer.w.y), -CHAR_H * TWs() * .62, TWs() * .45 * (facing(s.rescuer).right ? 1 : -1)); return; }   /* V2.33: drawn lying in the rescuer's cart */
+  if (window.ZHChars && ZHChars.ready) { const sc = ZHChars.sheetFor(s); if (sc && !(s.mode === 'rescueCarry' && s.carrying && drawCart(s, p))) drawChar(s, sc, p, s.eq && s.eq.weapon); }
   const tw = TWs(), top = p.y - CHAR_H * tw - 3;
   if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
-  if (s.mode === 'down' && s.bleed != null) { const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); stampText(String(Math.ceil(s.bleed / 60)), p.x, cy + 5 * cam.z, `${Math.round(Math.max(13, 13 * cam.z))}px 'Jersey 15', monospace`, '#fff'); }
+  if (s.mode === 'down' && s.bleed != null) bleedRing(s, p);
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
   if (tagT) statusTag(p.x, top - 2, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
@@ -314,13 +335,14 @@ function tinted(key, img, fn) {   /* recolour a pixel-art sheet once (keeps ever
 }
 const RAIDER_TINT = (r, g, b) => (r > 190 && g > 165 && b > 120 && r - b < 110 ? [Math.round(r * .62), Math.round(g * .2), Math.round(b * .2)] : r > 60 && r < 200 && g < r && b < g ? [Math.round(r * .55), Math.round(g * .55), Math.round(b * .6)] : [r, g, b]);   // red shirt, darker clothes
 const BOSS_TINT = (r, g, b) => [Math.min(255, Math.round(r * .9 + 40)), Math.round(g * .55), Math.min(255, Math.round(b * 1.15 + 30))];   // sickly purple
-const corpses = [];   /* short death animations (not saved) */
+const corpses = [], shots = [];   /* shots: short tracer lines for guns and bows (V2.33) */   /* short death animations (not saved) */
 function zFrame(zm, zmeta) {
   const fr = zmeta.frames, fc = facing(zm), boss = zm.type === 'boss';
   const A = (n, t) => fr[n][0] + (Math.floor((tick + (zm.phase || 0)) / t) % fr[n][1]);
   let f;
   if (zm.dead != null) f = fr.death[0] + Math.min(fr.death[1] - 1, Math.floor(zm.dead / 7));
-  else if (zm.mode === 'zattack') f = boss ? A('slam', 8) : A('attack', 7);
+  else if (zm.mode === 'zattack') { const t = zm.stateTicks || 0, at = fr[boss ? 'slam' : 'attack']; f = t > 12 ? fr.idle[0] : at[0] + (t > 3 ? 0 : Math.min(1, at[1] - 1)); }
+  else if (zm.mode === 'zrecover') { const at = fr[boss ? 'slam' : 'attack'], el = (zm.recDur || 40) - (zm.stateTicks || 0); f = el < 10 ? at[0] + Math.min(2, at[1] - 1) : fr.idle[0]; }
   else if (boss && zm.mode === 'appear') f = A('roar', 12);
   else if (['zchase', 'zmarch', 'zbreak', 'appear'].includes(zm.mode) || zm.moving) f = A('walk', zm.type === 'runner' ? 4 : boss ? 9 : 7);
   else f = A('idle', 24);
@@ -415,12 +437,27 @@ function draw() {
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
+  drawDaylight();
+  for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
+    ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
   for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
   if (debug) drawDebug();
 }
 /* walls: procedural placeholder art (no sprite sheet yet) — single-tile blocks that join their neighbours */
+/* V2.33 day / night: a soft tint over the world — warm morning, clear day, orange dusk, deep blue night */
+const LIGHT = [[0, [20, 30, 80, .5]], [4.5, [20, 30, 80, .5]], [6, [255, 170, 110, .16]], [8, [255, 255, 255, 0]], [17, [255, 255, 255, 0]], [19, [255, 120, 60, .2]], [20.5, [40, 40, 110, .42]], [24, [20, 30, 80, .5]]];
+function daylight(h) {
+  for (let i = 0; i < LIGHT.length - 1; i++) { const [h0, a] = LIGHT[i], [h1, b] = LIGHT[i + 1]; if (h >= h0 && h <= h1) { const t = (h - h0) / (h1 - h0 || 1); return a.map((v, k) => v + (b[k] - v) * t); } }
+  return LIGHT[0][1];
+}
+function drawDaylight() {
+  const c = daylight((S.hour || 0) + (tick % 1000) / 1000); if (c[3] < .01) return;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${c[3]})`; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.globalCompositeOperation = 'source-over'; if (c[2] > c[0] && c[3] > .3) { ctx.fillStyle = `rgba(10,15,45,${(c[3] - .3) * .6})`; ctx.fillRect(0, 0, cv.width, cv.height); }
+  ctx.restore();
+}
 function drawWall(wl) {   /* V2.30: pixel-art wall pieces (post + arms toward joined neighbours), cracked below 60% HP, rubble when broken */
   const W = MAPM && MAPM.wall, im = IMG.mapWalls; if (!W || !okImg(im)) return;
   const has = (dx, dy) => { const o = Wd.wallAt(world, wl.x + dx, wl.y + dy); return !!o && !o.broken; }, f = wl.hp / wl.max;
@@ -555,7 +592,10 @@ const ITEMS = {   // slot, attack (weapons), defence (armor), stat bonuses, part
 const SLOTS = ['weapon', 'armor', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', acc: 'Accessory' };
 const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
+const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
 const weaponOf = (s) => itemOf(s, 'weapon') || ITEMS.pipe;
+const RANGE = { pistol: 4, revolver: 4.2, shotgun: 3, smg: 4.2, rifle: 6, assault: 5.2, bow: 5, crossbow: 5.5 };   /* V2.33: ranged weapons fire from a distance (tiles) */
+const weaponRange = (w) => (w && w.ranged ? RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : .9);
 function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; return Math.max(1, v); }
 const sMod = (s, k, per) => 1 + (stat(s, k) - 5) * per;   // 5 = average; each point above/below changes the effect by `per`
 function itemScore(it) { return it ? (it.atk || 0) * 1 + (it.def || 0) * 2.2 + Object.values(it.st || {}).reduce((a, v) => a + v * 3, 0) : 0; }
@@ -630,8 +670,8 @@ function stepToward(o, p, sp) {
 function followPath(o, goal, sp) {
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;
-  if (!o.path || o.pathGoal !== gk || o.pathVer !== world.ver) {
-    const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human); o.pathGoal = gk; o.pathVer = world.ver;
+  if (!o.path || o.pathGoal !== gk + (o.wallCost ? '#w' : '') || o.pathVer !== world.ver) {
+    const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human, o.wallCost || 0); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver;
     if (!p) { o.path = null; return 'fail'; }
     o.path = p.map((q) => tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
   }
@@ -837,10 +877,12 @@ function ai(s) {
   if (['chase', 'attack', 'recover'].includes(s.mode)) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (retreatCheck(s)) return;
-    if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > (weaponOf(s).ranged ? 2.4 : .9)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; SFX('hit'); floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5);
-      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker; if (rnd() < .25) { S.mat += 1; floats.push({ w: { ...z.w }, t: '+1 PARTS', col: '#9fe0ff', a: 70 }); } renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); stageCheck(); enterPost(s); return; }
-      s.mode = 'recover'; s.stateTicks = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02)); } return; }
+    if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
+    if (s.mode === 'attack' && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + .6) { s.mode = 'chase'; return; }   /* target slipped out of reach: follow, don't swing at air */
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; SFX('hit'); floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; if (rnd() < pd[0]) { S.mat += pd[1]; floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' PARTS', col: '#9fe0ff', a: 70 }); }
+        if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); enterPost(s); return; }
+      s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02)); } return; }
     if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) s.mode = 'chase'; } return;
   }
   if (s.mode === 'postCombat') { s.moving = false; if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
@@ -966,7 +1008,8 @@ function eventSchedule() {   /* called every game hour */
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
 }
-function zai(z) {
+function zai(z) { zai0(z); if (!z.human && z.hp > 0) zPushOut(z); }
+function zai0(z) {
   if (z.human && z.hp < z.max * .5 && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
   if (z.human && !['zchase', 'zattack', 'zrecover', 'appear'].includes(z.mode)) return rai(z);
   const d = zombieTypes[z.type] || zombieTypes.walker; if (z.cool > 0) z.cool--; if (z.stateTicks > 0) z.stateTicks--;
@@ -976,7 +1019,7 @@ function zai(z) {
     let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; z.blocked = 0; alertPack(z, best); SFX('groan'); return; }
     if (--z.goalT <= 0) { z.goal = siegeGoal(z); z.goalT = 90; }
-    zWalk(z, z.goal, d.chase * .8); return;
+    zMarchStep(z, z.goal, d.chase * .8); return;
   }
   if (z.mode === 'zbreak') {
     const wl = z.wallT; z.moving = false;
@@ -987,8 +1030,10 @@ function zai(z) {
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
   }
   if (z.mode === 'idle') {
-    if (!z.dest || z.stateTicks <= 0) { z.dest = { x: z.w.x + (rnd() - .5) * 3, y: z.w.y + (rnd() - .5) * 3 }; z.stateTicks = 60 + rnd() * 100; }
-    if (z.dest) moveSlide(z, z.dest, d.chase * .35);
+    if (!z.dest || z.stateTicks <= 0) {   /* V2.33: wandering, but slowly drifting toward the town */
+      const c = townCentre(), dx = c.x - z.w.x, dy = c.y - z.w.y, l = Math.hypot(dx, dy) || 1, pull = Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)) ? 0 : ZDRIFT;
+      z.dest = { x: z.w.x + (rnd() - .5) * 3 + dx / l * pull, y: z.w.y + (rnd() - .5) * 3 + dy / l * pull }; z.stateTicks = 60 + rnd() * 100; }
+    if (z.dest) { if (moveSlide(z, z.dest, d.chase * .35)) z.stateTicks = Math.min(z.stateTicks, 20); }
     let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; alertPack(z, best); } return;
   }
@@ -997,20 +1042,39 @@ function zai(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > .8) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = 26; } return;
   }
-  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, Math.round((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; SFX('hurt'); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, Math.round((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; SFX('hurt'); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
 const wallAtTile = (x, y) => world.walls.get(x + ',' + y) || null;
 function siegeGoal(z) {
   const d = zombieTypes[z.type] || zombieTypes.walker, elite = z.type === 'spitter' || z.type === 'brute' || z.type === 'boss';
-  if (elite && world.walls.size) {   // elites are smarter: they go for the gate; with no gate they pick the weakest segment
+  const open = [...world.walls.values()].some((wl) => wl.broken);
+  if (elite && world.walls.size && !open) {   // elites are smarter: they go for the gate; with no gate they pick the weakest segment
     let best = null, bs = 1e9; for (const wl of world.walls.values()) if (wl.type === 'gate') { const sc = dist(z.w, { x: wl.x + .5, y: wl.y + .5 }); if (sc < bs) { bs = sc; best = wl; } }
     if (!best) for (const wl of world.walls.values()) { const sc = wl.hp + dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) * 6; if (sc < bs) { bs = sc; best = wl; } }
     return { x: best.x + .5, y: best.y + .5 }; }
   let g = null, gd = 1e9; for (const s of S.sv) if (s.hp > 0 && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < gd) { gd = dd; g = s.w; } }
   for (const b of world.buildings) { const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 }, dd = dist(c, z.w); if (dd < gd) { gd = dd; g = c; } }
   return g ? { x: g.x, y: g.y } : tc(7, 11);
+}
+const ZDRIFT = .25;   /* tiles of pull per wander step (~2 tiles per game hour): a slow creep toward the town */
+const townCentre = () => ({ x: (Wd.BUILD.x0 + Wd.BUILD.x1 + 1) / 2, y: (Wd.BUILD.y0 + Wd.BUILD.y1 + 1) / 2 });
+function zMarchStep(z, goal, sp) {   /* V2.33: walk around walls to any opening; only a sealed town makes them break a wall (the first one on the cheapest route) */
+  if (!goal) return;
+  if (z.path && z.path.length) { const n = z.path[0], wl = wallAtTile(Math.floor(n.x), Math.floor(n.y)); if (wl && !wl.broken && dist(z.w, n) < 1.08) { z.wallT = wl; z.mode = 'zbreak'; z.stateTicks = 20; z.path = null; z.blocked = 0; return; } }
+  z.wallCost = 160; const r = followPath(z, goal, sp); z.wallCost = 0;
+  if (r === 'fail') zWalk(z, goal, sp);
+}
+function zPushOut(z) {   /* V2.33: zombies keep clear of building footprints so they never look like part of a building */
+  const R = .3, x = z.w.x, y = z.w.y;
+  for (let ty = Math.floor(y - R); ty <= Math.floor(y + R); ty++) for (let tx = Math.floor(x - R); tx <= Math.floor(x + R); tx++) {
+    if (!Wd.buildingAt(world, tx, ty)) continue;
+    const cx = Math.max(tx, Math.min(tx + 1, z.w.x)), cy = Math.max(ty, Math.min(ty + 1, z.w.y)); let dx = z.w.x - cx, dy = z.w.y - cy, d = Math.hypot(dx, dy);
+    if (d >= R) continue;
+    if (d < 1e-4) { const opts = [[tx - R, z.w.y, z.w.x - tx], [tx + 1 + R, z.w.y, tx + 1 - z.w.x], [z.w.x, ty - R, z.w.y - ty], [z.w.x, ty + 1 + R, ty + 1 - z.w.y]].sort((a, b) => a[2] - b[2]); z.w.x = opts[0][0]; z.w.y = opts[0][1]; }
+    else { z.w.x = cx + dx / d * R; z.w.y = cy + dy / d * R; }
+  }
 }
 function zWalk(z, goal, sp, viaPath = false) {   // slide toward the goal; when walls hold it still for a moment, start breaking the nearest one
   const bx = z.w.x, by = z.w.y; if (!goal) return; moveSlide(z, goal, sp);
@@ -1021,7 +1085,8 @@ function zWalk(z, goal, sp, viaPath = false) {   // slide toward the goal; when 
   }
 }
 function wallBroken(wl) {
-  wl.hp = 0; wl.broken = true; Wd.bump(world); S.alert = 1800; SFX('breach'); const gate = wl.type === 'gate';   /* V2.18: it stays as rubble and the repair crew rebuilds it */
+  wl.hp = 0; wl.broken = true; Wd.bump(world); S.alert = 1800; SFX('breach'); const gate = wl.type === 'gate';
+  for (const z of S.z) if (z.hp > 0 && !z.human && ['idle', 'zmarch', 'zbreak'].includes(z.mode) && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 16) { z.siege = true; z.mode = 'zmarch'; z.wallT = null; z.path = null; z.goal = null; z.goalT = 0; z.blocked = 0; }   /* V2.33: the whole horde rushes the breach */   /* V2.18: it stays as rubble and the repair crew rebuilds it */
   screenToast('⚠ ' + (gate ? 'GATE' : 'WALL') + ' BREACHED'); say((gate ? 'The gate' : 'A wall section') + ' was broken! Zombies can walk through until it is repaired (automatic, costs parts).'); ui();
 }
 let repairFrac = 0;
@@ -1314,7 +1379,8 @@ function traderTrade(i) {
 }
 function showTrader() {
   const T = S.trader; if (!T) return; selected = null; closeP(); $('it').textContent = 'WANDERING TRADER'; const disc = Math.round(traderDisc() * 100);
-  const offer = (o) => o.k === 'item' ? `${ITEMS[o.id].name}<small> · ${itemText(ITEMS[o.id])}</small>` : o.k === 'pet' ? `${PETS[o.id].name}<small> · ${PETS[o.id].desc}</small>` : `Research notes<small> · +${o.n} RP</small>`;
+  const tIcon = (o) => { const src = o.k === 'item' && window.ZHItems && ZHItems.icon(o.id); return src ? `<img class="pix tIco" src="${src}" alt="">` : `<span class="tIco">${o.k === 'pet' ? (o.id === 'dog' ? '🐕' : '🐈') : o.k === 'rp' ? '📜' : '📦'}</span>`; };   /* V2.33: item icons in the trader menu */
+  const offer = (o) => tIcon(o) + (o.k === 'item' ? `${ITEMS[o.id].name}<small> · ${itemText(ITEMS[o.id])}</small>` : o.k === 'pet' ? `${PETS[o.id].name}<small> · ${PETS[o.id].desc}</small>` : `Research notes<small> · +${o.n} RP</small>`);
   $('ib').innerHTML = `Leaves at 19:00. Prices ${disc ? `<b>−${disc}%</b> (your best Charisma)` : 'are full price — a survivor with high Charisma gets a discount'}.<br><b>For sale</b><br>`
     + T.stock.map((o, i) => o.sold ? `<div><small>✔ sold: ${o.k === 'item' ? ITEMS[o.id].name : o.k === 'pet' ? PETS[o.id].name : 'Research notes'}</small></div>` : `<button class="act" data-buy="${i}" ${canPay(priced(o.cost)) ? '' : 'style="opacity:.45"'}>${offer(o)} · ${costText(priced(o.cost))}</button>`).join('')
     + '<br><b>Exchange</b> <small>(3 times each per visit)</small><br>' + TRADES.map((t, i) => { const c = i < 2 ? t.give : priced(t.give); return `<button class="act" data-trade="${i}" ${T.ex[i] < 3 && canPay(c) ? '' : 'style="opacity:.45"'}>${costText(c)} → ${costText(t.get)} <small>(${3 - T.ex[i]} left)</small></button>`; }).join('');
@@ -1579,12 +1645,67 @@ function nextEventPopup() {
   m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
-function checkRank() {
-  const n = rankRules[S.rank]; if (!n) return;
-  if (S.ren >= n.ren && S.produced >= n.income && residents() >= n.residents && world.buildings.length >= n.facilities) { S.rank++; S.threat++; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); ui(); }
+/* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */
+const RANK_REQ = [null, { ren: 60, flow: 2, events: 1, build: 'canteen' }, { ren: 200, flow: 4, events: 2, build: 'storage' }, { ren: 450, flow: 7, events: 4, build: 'barracks' }, { ren: 900, flow: 10, events: 6, build: 'hospital' }];
+function rankConds() {
+  const q = RANK_REQ[S.rank]; if (!q) return null; const st = supplyStats(), flow = Math.round((st.fNet + st.wNet) * 10) / 10, built = bOf(q.build).length > 0;
+  return [
+    { ic: 'rating', name: 'Renown', need: q.ren, have: S.ren, ok: S.ren >= q.ren },
+    { ic: 'supplies', name: 'Daily supplies', need: '+' + q.flow, have: (flow >= 0 ? '+' : '') + flow, ok: flow >= q.flow, sub: 'food + water made per day, after rations' },
+    { ic: 'events', name: 'Events held', need: q.events, have: S.eventsHeld || 0, ok: (S.eventsHeld || 0) >= q.events },
+    { ic: 'living', name: 'Build ' + DEFS[q.build].name, need: '', have: built ? 'Done' : 'Pending', ok: built, wide: true },
+  ];
 }
+function checkRank() {
+  const c = rankConds(); if (!c) return; const ok = c.every((r) => r.ok);
+  if (ok && !S.rankReady) { S.rankReady = true; screenToast('★ THE TOWN CAN BE UPGRADED'); say('All rating conditions met — open Upgrade Town (tap the Renown wheel) to raise the Haven\'s rank.'); }
+  if (!ok) S.rankReady = false; ui();
+}
+function upgradeTown() {
+  const c = rankConds(); if (!c || !c.every((r) => r.ok)) return false;
+  S.rank++; S.threat++; S.rankReady = false; S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads. New buildings, new threats and new opportunities lie ahead.', gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.'); SFX('reward'); ui(); return true;
+}
+/* V2.33 town events (like DV2's): cost supplies, run for a few hours, give Renown and mood, and count toward the next star */
+const TOWN_EVENTS = {
+  bonfire: { name: 'Bonfire Night', icon: '🔥', cost: { food: 4, water: 2 }, ren: 6, sat: 8, hours: 3, desc: 'Stories and songs around the fire. Everyone feels better.' },
+  market: { name: 'Swap Market', icon: '🧺', cost: { mat: 6 }, ren: 8, sat: 4, hours: 4, desc: 'Survivors trade odds and ends. Brings in a little food and water.', gain: { food: 3, water: 3 } },
+  sports: { name: 'Sports Day', icon: '🏃', cost: { food: 3, water: 4 }, ren: 7, sat: 5, hours: 3, desc: 'Races and games. Everyone gets some training in.', train: 30 },
+  feast: { name: 'Harvest Feast', icon: '🍲', cost: { food: 8, water: 4 }, ren: 12, sat: 12, hours: 4, rank: 2, desc: 'A proper meal for everyone. Hunger and mood are restored.' },
+};
+function holdEvent(k) {
+  const e = TOWN_EVENTS[k]; if (!e || (e.rank || 1) > S.rank) return false;
+  if ((S.lastEventDay ?? -1) >= S.day) { say('Only one event a day.'); return false; }
+  if (!Object.entries(e.cost).every(([r, v]) => S[r] >= v)) { say('Not enough supplies for ' + e.name + '.'); return false; }
+  for (const [r, v] of Object.entries(e.cost)) S[r] -= v;
+  S.lastEventDay = S.day; S.eventsHeld = (S.eventsHeld || 0) + 1; S.eventOn = { k, until: nowH() + e.hours };
+  for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
+  if (e.gain) for (const [r, v] of Object.entries(e.gain)) S[r] += v;
+  renownGain(e.ren, e.name); screenToast(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc); checkRank(); return true;
+}
+function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
+  closeP(); endBuildMode(true); upTab = tab || upTab; const c = rankConds();
+  let h = tabBar([['rank', 'Upgrade', 'rating'], ['events', 'Events', 'events']], upTab);
+  if (upTab === 'rank') {
+    h += `<div class="ribbon"><div class="rname">${esc(S.townName || 'Zombie Haven')}</div><div class="rstars">${'★'.repeat(S.rank)}<span>${'★'.repeat(Math.max(0, 5 - S.rank))}</span></div></div>`;
+    if (!c) h += '<div class="card" style="text-align:center">The Haven is at the highest rank.</div>';
+    else {
+      h += `<div class="conds"><div class="ctitle">★${S.rank + 1} Rating Conditions</div>` + c.map((r) => `<div class="crow"><span class="cic">${uiIcon(r.ic)}</span><span class="cname">${r.name}${r.sub ? `<small>${r.sub}</small>` : ''}</span>${r.wide ? '' : `<span class="cneed">${r.need}</span>`}<span class="chave${r.wide ? ' wide' : ''}">${r.have}</span><span class="cok ${r.ok ? 'y' : 'n'}">${r.ok ? '✔' : '✘'}</span></div>`).join('') + '</div>';
+      h += `<div style="text-align:center"><button class="act go" id="uDo" ${c.every((r) => r.ok) ? '' : 'disabled'}>Upgrade the Haven</button></div>`;
+    }
+  } else {
+    const done = (S.lastEventDay ?? -1) >= S.day;
+    h += `<div class="sm" style="margin-bottom:6px">Hold one event a day. Events give Renown and cheer everyone up${S.eventOn && nowH() < S.eventOn.until ? ` · <b>${TOWN_EVENTS[S.eventOn.k].name}</b> is on now` : ''}. Held so far: <b>${S.eventsHeld || 0}</b>.</div>`;
+    h += Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, can = !lk && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
+      return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small></span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
+  }
+  $('ib').innerHTML = h; showPanel('Upgrade Town');
+  $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showUpgrade(b.dataset.tab); });
+  const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); };
+  $('ib').querySelectorAll('[data-ev]').forEach((b) => { b.onclick = () => { if (holdEvent(b.dataset.ev)) showUpgrade('events'); }; });
+}
+let upTab = 'rank';
 function ui() {
-  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
@@ -1831,6 +1952,7 @@ function endBuildMode(restore) {
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null;
   if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their parts'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
   else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} part per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else { $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
 }
@@ -1852,6 +1974,15 @@ function confirmPreview() {
   if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); screenToast('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); } }
   const nb = { type: sel.type, x: preview.x, y: preview.y, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!'); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
+}
+let demoPick = null;
+function tryDemolish(px, py, x, y) {   /* V2.33: one Demolish tool for buildings, roads and walls (buildings need a second tap to confirm) */
+  const b = hitBuilding(px, py) || Wd.buildingAt(world, x, y);
+  if (b) { if (demoPick === b) { demoPick = null; selected = null; demolish(b); startTool({ kind: 'demolish' }); return; } demoPick = b; selected = { kind: 'building', ref: b }; say(`Tap ${DEFS[b.type].name} again to demolish it (+${Math.floor(DEFS[b.type].mat * .5)} parts).`); return; }
+  demoPick = null; selected = null;
+  const wl = Wd.wallAt(world, x, y); if (wl) { world.walls.delete(Wd.key(x, y)); Wd.bump(world); S.mat += Math.floor(Wd.WALL_DEFS[wl.type].mat * .5); say(Wd.WALL_DEFS[wl.type].name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
+  if (Wd.isRoad(world, x, y)) { world.roads.delete(Wd.key(x, y)); Wd.bump(world); say('Road removed.'); saveGame(); ui(); return; }
+  say('Nothing to demolish there.');
 }
 function tryRoad(x, y) {
   if (!Wd.inTown(x, y)) { say('Roads only inside the build zone.'); return; }
@@ -2033,7 +2164,7 @@ function showTown(tab) {
   let h = tabBar([['overview', 'Haven'], ['defense', 'Defense'], ['people', 'People'], ['more', 'More']], tTab);
   if (tTab === 'overview') {
     h += `<div class="card"><div style="font-size:23px">Rank ${'★'.repeat(S.rank)} <span class="sm">· threat ☠${S.threat}</span></div>`
-      + (nx ? `<div class="sm">To reach the next rank:</div>${progRow('Renown', S.ren, nx.ren)}${progRow('Produced', S.produced, nx.income)}${progRow('Residents', residents(), nx.residents)}${progRow('Buildings', world.buildings.length, nx.facilities)}` : '<div>Max rank reached.</div>') + '</div>'
+      + (rankConds() ? `<div class="sm">Next star: ${rankConds().filter((r) => r.ok).length}/4 conditions met</div><button class="act${S.rankReady ? ' go' : ''}" id="tUpg">⭐ Upgrade Town</button>` : '<div>Max rank reached.</div>') + '</div>'
       + `<div class="card"><div class="kv"><div><span>🍖 Food</span><span style="color:${st.fNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.fNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.fDays)}</span></div>
          <div><span>💧 Water</span><span style="color:${st.wNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.wNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.wDays)}</span></div>
          <div><span>⚙ Upkeep</span><span>−${upkeepTotal().toFixed(1)}/day</span></div><div><span class="sm">storage cap</span><span>${supplyCap()}</span></div></div>
@@ -2064,6 +2195,7 @@ function showTown(tab) {
   const tl = $('tLog'); if (tl) tl.onclick = showLog;
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
+  const tu = $('tUpg'); if (tu) tu.onclick = () => showUpgrade('rank');
   const tr = $('tReset'); if (tr) tr.onclick = () => { if (confirm('Erase this town and start over?')) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) {} location.reload(); } };
 }
 const GUIDE_TXT = [
@@ -2107,7 +2239,7 @@ function showBuildingInfo(b, tab) {
     if (b.unpaid) status += '<div style="color:var(--bad)">Unpaid upkeep: half output</div>';
     h += `<div class="card row"><div style="width:84px;height:76px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 84, 76)}</div><div class="sp">${out ? `<div>${out}</div>` : ''}${staff ? `<div>${staff}</div>` : ''}${cb.names.length ? `<div class="sm">★ ${cb.names.length} neighbour bonus${cb.names.length > 1 ? 'es' : ''}</div>` : ''}</div></div>${status}`;
     if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'disabled'}>⚡ Rush · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<div class="sm">${esc(rc.why)}</div>`}`; }
-    h += `<div><button class="act" id="bMove">Move</button><button class="act danger" id="bDem">Demolish (+${Math.floor(d.mat * .5)})</button></div>`;
+    h += `<div><button class="act" id="bMove">Move</button></div>`;
   } else if (bTab === 'details') {
     const users = S.sv.filter((q) => q.facility === b && ['goFacility', 'useFacility'].includes(q.mode)).map((q) => esc(q.name));
     h += `<div class="sm">${BDESC[b.type] || ''}</div><div class="kv card"><div><span>Upkeep</span><span>${upkeepOf(b).toFixed(1)}/day</span></div><div><span>Capacity</span><span>${facilityUsers(b)}/${cap(b)}</span></div><div><span>Quality</span><span>${b.q}</span></div><div><span>Appeal</span><span>${b.a}</span></div></div>`
@@ -2156,6 +2288,7 @@ function tapAt(px, py) {
   if (sel) {
     const t = unproject(px, py), tx = Math.floor(t.x), ty = Math.floor(t.y);
     if (sel.kind === 'road') { tryRoad(tx, ty); return; }
+    if (sel.kind === 'demolish') { tryDemolish(px, py, tx, ty); return; }
     if (sel.kind === 'wall') { tryWall(tx, ty, sel.wtype); return; }
     const d = DEFS[sel.type], o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
@@ -2167,7 +2300,7 @@ function tapAt(px, py) {
 }
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
-$('mBuild').onclick = showBuild; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
+$('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); { const md = $('mDemo'); if (md) md.onclick = () => startTool({ kind: 'demolish' }); } $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
 $('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9);
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; };
@@ -2180,13 +2313,20 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 
 /* ---------------- loop ---------------- */
 function simTick() {
+  for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider') corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) autoStaff(); if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 1000 === 0) { S.hour++; hourlyProduction(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 20) { screenToast('🌙 NIGHT FALLS — THE DEAD ARE RESTLESS'); say('Night falls: more zombies, and they come for the town.'); } if (S.hour === 6) { screenToast('☀ DAWN — THE HORDE THINS'); say('Dawn: fewer zombies until nightfall.'); } if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
-function frame(t) { if (!last) last = t; acc += modalOpen ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; draw(); requestAnimationFrame(frame); }
+const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
+function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
+  const moved = [];
+  for (const o of movers()) { const p = o.pv; if (!p || !o.w) continue; const dx = o.w.x - p.x, dy = o.w.y - p.y; if (Math.abs(dx) + Math.abs(dy) > 1.2 || (!dx && !dy)) continue; moved.push([o, o.w]); o.w = { x: p.x + dx * alpha, y: p.y + dy * alpha }; }
+  try { draw(); } finally { for (const [o, w] of moved) o.w = w; }
+}
+function frame(t) { if (!last) last = t; acc += modalOpen ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) saveGame(); else { last = 0; tripUpdate(); expTick(); } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
@@ -2202,6 +2342,6 @@ async function init() {
   autoStaff(); tripUpdate(); expTick(); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();

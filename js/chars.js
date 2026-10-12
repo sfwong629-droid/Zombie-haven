@@ -30,6 +30,7 @@
   const Items = { meta: null, icons: {}, held: null, idx: {} }; let ZM = null; const zim = {};
   async function load() {
     try { M = await (await fetch('assets/characters/v7/meta.json?v=' + V)).json(); } catch (e) { console.warn('char meta missing', e); return; }
+    await loadCarts();
     await Promise.all(Object.entries(M.sheets).map(async ([k, f]) => { const im = await img('assets/characters/v7/' + f); if (im) { im.zhTag = k; raw[k] = im; } }));
     try { ZM = await (await fetch('assets/zombies/v7/meta.json?v=' + V)).json(); await Promise.all(Object.keys(ZM).map(async (k) => { zim[k] = await img('assets/zombies/v7/' + k + '.png'); })); } catch (e) { console.warn('zombie art missing', e); }
     try {
@@ -39,7 +40,18 @@
       Items.held = hd; Items.meta.weapons.forEach((w, i) => { Items.idx[w] = i; });
     } catch (e) { console.warn('items missing', e); }
   }
+  /* V2.33 rescue carts (tools/art/build_carts.py): a survivor pushing a hand cart; the injured person is drawn lying in it */
+  let CM = null; const carts = {}, lieBox = {};
+  async function loadCarts() { try { CM = await (await fetch('assets/characters/v7/cart/meta.json?v=' + V)).json(); await Promise.all(Object.keys(CM.beds).map(async (t) => { const im = await img('assets/characters/v7/cart/' + t + '.png'); if (im) carts[t] = im; })); } catch (e) { CM = null; } }
+  function lying(sheetIm) {   /* bbox centre of the 'lying' collapse frame on the front row (cached per sheet) */
+    const t = sheetIm.zhTag; if (lieBox[t]) return lieBox[t]; const f = M.frames.collapse[0] + 3, c = document.createElement('canvas'); c.width = M.fw; c.height = M.fh;
+    const g = c.getContext('2d'); g.drawImage(sheetIm, f * M.fw, 0, M.fw, M.fh, 0, 0, M.fw, M.fh); const d = g.getImageData(0, 0, M.fw, M.fh).data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = 0; y < M.fh; y++) for (let x = 0; x < M.fw; x++) if (d[(y * M.fw + x) * 4 + 3]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return (lieBox[t] = { f, cx: (x0 + x1 + 1) / 2, cy: y1 + 1 });
+  }
+  function cart(tag, sex) { if (!CM) return null; const t = [tag, 'civ_' + (sex || 'm'), 'civ_m'].find((k) => carts[k]); return t ? { im: carts[t], beds: CM.beds[t], m: CM, key: 'cart' + t } : null; }
   window.ZHChars = {
+    cart, lying,
     load, look, sheetFor, sheet, portrait, get meta() { return M; }, get ready() { return !!M; },
     frame(anim, i) { const a = M.frames[anim]; return a[0] + (i % a[1]); }, count(anim) { return M.frames[anim][1]; },
     hand(view, f, tag) { const h = M.hands[tag] || M.hands[Object.keys(M.hands)[0]]; return h[view][f]; }, wpose(f) { return M.wpose[f]; },

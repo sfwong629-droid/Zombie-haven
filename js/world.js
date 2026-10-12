@@ -122,7 +122,9 @@
     return null;
   }
   // tiles AFTER start up to the goal (inclusive); [] if already there; null if unreachable
-  function findPath(w, from, to, z = false) {
+  // wallCost (zombies only): unbroken wall tiles count as passable at that extra cost, so a sealed town still yields a
+  // route whose first wall tile is the one to break; any real opening is always preferred when it exists.
+  function findPath(w, from, to, z = false, wallCost = 0) {
     const tb = buildingAt(w, to.x, to.y), gt = tb && !z ? approachTile(tb) : to;   // a goal inside a building = its approach tile
     const fb = buildingAt(w, from.x, from.y), ft = fb && !z ? approachTile(fb) : from;   // leaving a building = start from its approach tile
     const g = nearestWalkable(w, gt.x, gt.y, z), s = nearestWalkable(w, ft.x, ft.y, z); if (!g || !s) return null;
@@ -130,12 +132,13 @@
     const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap();
     heap.push({ x: s.x, y: s.y, g: 0, f: Math.abs(s.x - g.x) + Math.abs(s.y - g.y) });
     let guard = 0;
-    while (heap.size && guard++ < 6000) {
+    while (heap.size && guard++ < 9000) {
       const c = heap.pop(); if (c.g > (best.get(key(c.x, c.y)) ?? 1e9)) continue;
       if (c.x === g.x && c.y === g.y) { const out = []; let k = key(c.x, c.y); while (prev.has(k)) { const [px, py] = k.split(',').map(Number); out.push({ x: px, y: py }); k = prev.get(k); } return out.reverse(); }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = c.x + dx, ny = c.y + dy; if (!walkable(w, nx, ny, z)) continue;
-        const ng = c.g + stepCost(w, nx, ny), k = key(nx, ny);
+        const nx = c.x + dx, ny = c.y + dy; let extra = 0;
+        if (!walkable(w, nx, ny, z)) { const wl = wallCost && inMap(nx, ny) && !buildingAt(w, nx, ny) ? wallAt(w, nx, ny) : null; if (!wl) continue; extra = wallCost; }
+        const ng = c.g + stepCost(w, nx, ny) + extra, k = key(nx, ny);
         if (ng < (best.get(k) ?? 1e9)) { best.set(k, ng); prev.set(k, key(c.x, c.y)); heap.push({ x: nx, y: ny, g: ng, f: ng + Math.abs(nx - g.x) + Math.abs(ny - g.y) }); }
       }
     }
