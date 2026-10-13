@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.46.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.47.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -84,7 +84,7 @@ async function loadAll() {
     }
   }
   Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v7/${t}.png`)));
-  jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), loadImg('mapWreck', 'assets/map/v7/wreck.png'), loadImg('uiIcons', 'assets/ui/icons.png'), (async () => { try { UIM = await (await fetch('assets/ui/icons.json?v=' + VERSION)).json(); } catch (e) { UIM = null; } })(), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
+  jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), loadImg('mapWreck', 'assets/map/v7/wreck.png'), loadImg('uiIcons', 'assets/ui/icons.png'), loadImg('statIcons', 'assets/ui/stats.png'), (async () => { try { UIM = await (await fetch('assets/ui/icons.json?v=' + VERSION)).json(); } catch (e) { UIM = null; } })(), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
   await Promise.all(jobs);
 }
 
@@ -188,16 +188,16 @@ function drawRoadTile(x, y) {
 /* ---------------- sprites ---------------- */
 function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v7/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
 function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; if (d && okImg(im)) return { d, im }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
-function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - p4.d.ax * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }
-  const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - sp.ax * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
+function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - (b.rot ? im.width - p4.d.ax : p4.d.ax) * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }   /* V2.47: a rotated building is the mirrored sprite */
+  const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - (b.rot ? sp.w - sp.ax : sp.ax) * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
 function drawBuilding(b, ghost, ok) {
   const p4 = b4(b);
   if (p4) {   // pixel art: same sharp-bilinear path as characters, one shared art-pixel size
-    const burnt = b.burnt && !ghost, src = burnt ? tinted('burnt' + b.type, p4.im, BURNT_TINT) : p4.im, r = spriteRect(b), m = Math.max(1, Math.ceil(r.s * DPR - 0.02)), big = pixelUp((burnt ? 'b4x' : 'b4') + b.type, src, m);
+    const burnt = b.burnt && !ghost, src0 = burnt ? tinted('burnt' + b.type, p4.im, BURNT_TINT) : p4.im, src = b.rot ? mirrored((burnt ? 'b4xm' : 'b4m') + b.type, src0) : src0, r = spriteRect(b), m = Math.max(1, Math.ceil(r.s * DPR - 0.02)), big = pixelUp((burnt ? 'b4x' : 'b4') + (b.rot ? 'm' : '') + b.type, src, m);
     ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = Math.abs(r.s * DPR - m) > 0.02; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(big, r.x, r.y, r.w, r.h); ctx.restore(); return;
   }
-  const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + b.type, sp.img, r.w * DPR, r.h * DPR);   // anchor = SOUTH corner; V2.18: scaled to device pixels (was CSS pixels: blurry and slow on 3× screens)
+  const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + (b.rot ? 'm' : '') + b.type, b.rot ? mirrored('sprm' + b.type, sp.img) : sp.img, r.w * DPR, r.h * DPR);   // anchor = SOUTH corner; V2.18: scaled to device pixels (was CSS pixels: blurry and slow on 3× screens)
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; if (ghost) ctx.globalAlpha = ok ? .7 : .45;
   ctx.drawImage(img, r.x, r.y, r.w, r.h); ctx.restore();
 }
@@ -1972,8 +1972,8 @@ function upgradeCheck(b) {
   const d = DEFS[b.type], n = d.next && DEFS[d.next]; if (!n) return { ok: false, why: 'Already the highest tier available' };
   if (S.rank < n.rank) return { ok: false, why: `Needs Haven rank ${n.rank}` };
   if (S.mat < d.up) return { ok: false, why: `Needs ${d.up} parts` };
-  if (n.w !== b.w || n.h !== b.h) return { ok: false, why: 'Footprint differs' };
-  const chk = Wd.placementCheck(world, b.x, b.y, n, b); if (!chk.ok) return { ok: false, why: chk.why };
+  { const nr = Wd.rotDef(n, b.rot); if (nr.w !== b.w || nr.h !== b.h) return { ok: false, why: 'Footprint differs' }; }
+  const chk = Wd.placementCheck(world, b.x, b.y, Wd.rotDef(n, b.rot), b); if (!chk.ok) return { ok: false, why: chk.why };
   return { ok: true, why: '' };
 }
 function upgradeBuilding(b) {    // in place: same footprint, same anchor; the building keeps working and keeps its staff
@@ -2338,7 +2338,7 @@ const SKIP = new Set(['post', 'target', 'facility', 'rescuer', 'rescuing', 'carr
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
-  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
+  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
 function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -2399,7 +2399,7 @@ function applySave(raw, legacy, prev) {
       delete S.money; delete S.earned; S.sv.forEach((q) => { delete q.money; });
     }
     if (S.produced === undefined) S.produced = 0; delete S.med;
-    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, w: DEFS[b.type].w, h: DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
+    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.rot ? DEFS[b.type].h : DEFS[b.type].w, h: b.rot ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
@@ -2708,15 +2708,15 @@ function endBuildMode(restore) {
 }
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
-  if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
-  else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their parts'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
-  else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} part per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else { $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
+  if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${wd.mat} part${wd.mat > 1 ? 's' : ''} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
+  else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their parts'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
+  else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} part per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  else { $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
 }
 function updatePreview(x, y) {
-  const d = DEFS[sel.type], chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
-  preview = { type: sel.type, x, y, w: d.w, h: d.h, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
+  const d = Wd.rotDef(DEFS[sel.type], sel.rot), chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
+  preview = { type: sel.type, x, y, w: d.w, h: d.h, rot: sel.rot ? 1 : 0, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
   const mat = moving ? 0 : d.mat, afford = S.mat >= mat;
   $('confirmName').textContent = `${d.name.toUpperCase()} · ${d.w}×${d.h}` + (moving ? ' · MOVE (free)' : ` · PARTS ${d.mat}`) + (!chk.ok ? ' · ' + chk.why.toUpperCase() : !afford ? ' · NOT ENOUGH PARTS' : '') + (chk.ok ? (() => { const pv = { type: sel.type, x, y, w: d.w, h: d.h }, c = combos(pv); comboCache.map.delete(pv); return c.names.length ? ' · ★ ' + c.names.map((n) => n.split(' (')[0]).join(', ') : ''; })() : '');
   const go = chk.ok && afford; $('yesBuild').disabled = !go; $('yesBuild').style.opacity = go ? 1 : .45; $('confirmBar').style.display = 'block';
@@ -2726,11 +2726,11 @@ function pushUnitsOut(b) {
   for (const u of [...S.sv, ...S.z]) if (Iso.footprintContains(b, u.w.x, u.w.y)) { u.w = { x: dp.x + (rnd() - .5) * .3, y: dp.y }; u.path = null; }
 }
 function confirmPreview() {
-  if (!preview || !sel || sel.kind !== 'building') return; const d = DEFS[sel.type];
+  if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }
   if (!moving && S.mat < d.mat) { say('Not enough parts.'); return; }
   if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); } }
-  const nb = { type: sel.type, x: preview.x, y: preview.y, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
+  const nb = { type: sel.type, x: preview.x, y: preview.y, rot: sel.rot ? 1 : 0, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
 let demoPick = null;
@@ -2774,7 +2774,7 @@ function checkPerimeter() {
   S.sealed = p.sealed; return p;
 }
 function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`, true); saveGame(); ui(); }
-function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
+function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: b.rot ? 1 : 0 }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
 let panelBack = null;
@@ -2876,20 +2876,20 @@ function patientsHtml(b) {   // medical building: who is in care here and how fa
     return `<div data-u="${S.sv.indexOf(q)}" style="cursor:pointer"><div class="row"><span class="sp">${esc(q.name)} <span class="sm">${q.mode === 'hospital' ? 'recovering after a collapse' : 'patching up'}</span></span><span class="sm">${f != null ? Math.round(f * 100) + '%' : ''} ›</span></div>${f != null ? bar(f, '#7fd35a') : ''}</div>`; }).join('')}</div>`;
 }
 function nowCard(u) {   /* V2.36: the "Now" card: priority, destination, reason, workplace + shift, needs, gear */
-  const n = unitNow(u), [pl, pc] = PRIO[n.prio], need = (l, v) => `<span class="sm" style="flex:1">${l} <b style="color:${v >= 75 ? 'var(--bad)' : v >= 50 ? '#ffb36b' : 'var(--good)'}">${Math.round(v)}</b></span>`;
+  const n = unitNow(u), [pl, pc] = PRIO[n.prio], need = (k, v) => `<span class="need" style="flex:1">${SI(k)}<b style="color:${v >= 75 ? 'var(--bad)' : v >= 50 ? '#ffb36b' : 'var(--good)'}">${Math.round(v)}</b><span class="nbar"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${v >= 75 ? 'var(--bad)' : v >= 50 ? '#ffb36b' : 'var(--good)'}"></i></span></span>`, why = u.why || activityText(u);
   const sh = SHIFT.map(([a, b]) => `${a}–${b}`).join(', '), post = u.post && world.buildings.includes(u.post) ? u.post : null, w = weaponOf(u), ar = itemOf(u, 'armor');
   const jobs = Object.entries(STAFF_JOBS).filter(([, l]) => l.includes(u.job)).map(([f]) => f), canWork = jobs.length > 0;
   return `<div class="card" id="uNow"><div class="row" style="gap:6px"><span style="background:${pc};color:#241a10;border-radius:4px;padding:0 6px;font-size:16px">${pl}</span>${n.dest ? `<span class="sp"${n.destB ? ' id="uDest" style="cursor:pointer"' : ''}>→ ${esc(n.dest)}${n.destB ? ' <span style="color:var(--gold)">›</span>' : ''}</span>` : '<span class="sp"></span>'}</div>`
-    + `<div class="sm" style="margin:3px 0">Why: ${esc(u.why || activityText(u))}</div>` + careLine(u)
-    + `<div class="row" style="gap:4px">${need('Hunger', u.hunger)}${need('Thirst', u.thirst)}${need('Tired', u.fatigue)}</div>`
-    + `<div class="sm" style="margin-top:3px">${post ? `Works at <b id="uPost" style="cursor:pointer;color:var(--gold)">${DEFS[post.type].name} ›</b> · shifts ${sh}${onShift(u) ? ' · <span style="color:var(--good)">on shift now</span>' : ''}` : canWork ? `No workplace yet: a ${u.job} can staff ${jobs.map((f) => ({ water: 'water', farm: 'farms', medical: 'medical', kitchen: 'the canteen', scrap: 'the scrapyard', research: 'the workshop' })[f] || f).join(', ')} buildings` : `${u.job}s have no workplace: they ${isFighter(u) ? 'patrol and defend' : 'train and help out'} in their free time`}</div>`
+    + (why && why !== activityText(u) ? `<div class="sm" style="margin:3px 0">${esc(why)}</div>` : '') + careLine(u)
+    + `<div class="row" style="gap:8px;margin:4px 0">${need('hunger', u.hunger)}${need('thirst', u.thirst)}${need('fatigue', u.fatigue)}</div>`
+    + `<div class="sm" style="margin-top:3px">${post ? `👷 <b id="uPost" style="cursor:pointer;color:var(--gold)">${DEFS[post.type].name} ›</b> · ${sh}${onShift(u) ? ' · <span style="color:var(--good)">on shift</span>' : ''}` : canWork ? `No workplace yet: a ${u.job} can staff ${jobs.map((f) => ({ water: 'water', farm: 'farms', medical: 'medical', kitchen: 'the canteen', scrap: 'the scrapyard', research: 'the workshop' })[f] || f).join(', ')} buildings` : `${u.job}s have no workplace: they ${isFighter(u) ? 'patrol and defend' : 'train and help out'} in their free time`}</div>`
     + `<div class="sm">⚔ ${esc(w.name)}${ar ? ' · 🛡 ' + esc(ar.name) : ''}</div></div>`;
 }
 function refreshNow() {   // keep the open survivor's "Now" card live
   const el = $('uNow'); if (!el || !selected || selected.kind !== 'unit') return; const u = selected.ref, h = nowCard(u); if (el.outerHTML === h) return;
-  el.outerHTML = h; const nd = unitNow(u), dd = $('uDest'), pp = $('uPost'); if (dd && nd.destB) dd.onclick = () => showBuildingInfo(nd.destB); if (pp) pp.onclick = () => showBuildingInfo(u.post);
+  el.outerHTML = h; wireSI($('uNow')); const nd = unitNow(u), dd = $('uDest'), pp = $('uPost'); if (dd && nd.destB) dd.onclick = () => showBuildingInfo(nd.destB); if (pp) pp.onclick = () => showBuildingInfo(u.post);
 }
-function traitCard(u) { const t = TRAITS[u.trait]; return t ? `<div class="card traitCard"><b>${t.icon} ${t.name}</b> <span class="sm">personality</span><div class="sm">✔ ${traitGood(u)}</div><div class="sm">✖ ${t.bad}</div></div>` : ''; }
+function traitCard(u) { const t = TRAITS[u.trait]; return t ? `<div class="card traitCard"><b>${t.icon} ${t.name}</b><div class="sm">✔ ${traitGood(u)}</div><div class="sm">✖ ${t.bad}</div></div>` : ''; }
 function unitPanel(u) {
   selected = { kind: 'unit', ref: u }; closeP();
   $('ib').innerHTML = `<div class="card row">${portrait(u)}<div class="sp"><div style="font-size:24px;line-height:22px">${esc(u.name)} ${u.resident ? '🏠' : ''}${u.partner ? '💑' : ''}</div><div class="sm">${u.job} · Lv.${u.l}</div>
@@ -2905,12 +2905,10 @@ function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
 const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
 const STAT_SHORT = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
 function statsHtml(u) {
-  const needs = [['Hunger', u.hunger], ['Thirst', u.thirst], ['Tired', u.fatigue]].map(([n, v]) => `<div><span class="sm">${n}</span>${meter(v, v > 60 ? 'hp' : '')}</div>`).join('');
-  const rows = STATS.map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);
-    return `<div><span${main ? ' style="color:var(--gold)"' : ''}>${STAT_SHORT[k]}</span><span>${tot}${tot !== base ? `<small> (${tot > base ? '+' : ''}${tot - base})</small>` : ''}</span></div>`; }).join('');
+  const rows = ['str', 'agi', 'int', 'end', 'per', 'cha'].map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);
+    return `<div class="statC${main ? ' main' : ''}">${SI(k)}<b>${tot}</b>${tot !== base ? `<small>${tot > base ? '+' : ''}${tot - base}</small>` : ''}</div>`; }).join('');
   const w = weaponOf(u), dmg = Math.round(4 + w.atk * .55 + (w.ranged ? stat(u, 'per') : stat(u, 'str')) * .6 + (professions[u.job]?.combat || 0) + skillDmg(u));
-  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">${needs}</div><div class="kv card">${rows}</div>
-    <div class="row" style="gap:16px"><span>⚔ Damage <b>${dmg}</b></span><span>🛡 Armor <b>${Math.round(dmgReduce(u) * 100)}%</b></span></div><div class="sm">Gold = ${u.job} main stats. Training buildings raise stats.</div>`;
+  return `<div class="statG">${rows}</div><div class="row" style="gap:16px;margin-top:6px"><span>⚔ <b>${dmg}</b></span><span>🛡 <b>${Math.round(dmgReduce(u) * 100)}%</b></span><span class="sm" style="margin-left:auto">gold = ${u.job} stats</span></div>`;
 }
 function gearHtml(u, picking) {
   if (picking) {
@@ -2938,7 +2936,7 @@ function unitExtra(u, picking = false, gearPick = null, tab = null) {
       <div class="sm" style="margin-top:6px">Other jobs: ${CLASS_LIST.filter((j) => u.cls[j] && j !== u.job).map((j) => `${j} Lv.${u.cls[j].l}`).join(' · ') || 'none yet'}</div>`;
   } else body = '<div class="sm">Levels and skills are kept when switching.</div><div class="lst">' + CLASS_LIST.map((j) => { const c = u.cls[j]; return `<div class="card" data-job="${j}" style="${j === u.job ? 'opacity:.45' : ''}"><div class="sp">${j} <span class="sm">Lv.${c ? c.l : 1}</span><div class="sm">${isFighter({ job: j }) ? '⚔ fights zombies' : '🏃 hides from zombies'}</div></div></div>`; }).join('') + '</div><button class="act" id="chgCancel">Back</button>';
   box.innerHTML = tabBar([['stats', 'Status'], ['gear', 'Gear'], ['skills', 'Job'], ['bonds', 'Bonds']], uTab) + body;
-  const old = $('unitExtra'); if (old) old.remove(); $('ib').appendChild(box);
+  const old = $('unitExtra'); if (old) old.remove(); $('ib').appendChild(box); wireSI(box); wireSI($('ib'));
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => unitExtra(u, false, null, b.dataset.tab); });
   const cj = $('chgJob'); if (cj && !busy) cj.onclick = () => unitExtra(u, true);
   box.querySelectorAll('[data-slot]').forEach((b) => { b.onclick = () => unitExtra(u, false, b.dataset.slot); });
@@ -3011,7 +3009,7 @@ function showTown(tab) {
 }
 const GUIDE_TXT = [
   ['Moving around', 'Drag to look around, pinch to zoom. ⌖ jumps back to the town. 1× / 2× / 3× changes the game speed.'],
-  ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, then tap Build. Buildings cost parts ⚙ and a little upkeep each day.'],
+  ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost parts ⚙ and a little upkeep each day.'],
   ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
   ['Walls', 'Build → Defend → Wood Barricade, Metal Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with parts.'],
@@ -3027,6 +3025,14 @@ function showGuide() {
 }
 /* V2.20 tabbed panels */
 let UIM = null; const uiIconCache = {};
+/* V2.47 stat and need icons (assets/ui/stats.png, tools/art/build_stat_icons.py): 16-px pixel art; until the sheet exists, short text */
+const SI_NAMES = ['str', 'agi', 'int', 'end', 'per', 'cha', 'hunger', 'thirst', 'fatigue'], SI_LABEL = { str: 'Strength', agi: 'Agility', int: 'Intelligence', end: 'Endurance', per: 'Perception', cha: 'Charisma', hunger: 'Hunger', thirst: 'Thirst', fatigue: 'Tired' }, SI_TEXT = { str: 'STR', agi: 'AGI', int: 'INT', end: 'END', per: 'PER', cha: 'CHA', hunger: 'Hunger', thirst: 'Thirst', fatigue: 'Tired' }, siCache = {};
+function SI(k) {
+  if (siCache[k] !== undefined) return siCache[k]; const im = IMG.statIcons, i = SI_NAMES.indexOf(k); if (i < 0 || !okImg(im)) return `<span class="siT" data-si="${k}">${SI_TEXT[k] || k}</span>`;
+  const c = document.createElement('canvas'), Z = 2; c.width = c.height = 16 * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * 16, 0, 16, 16, 0, 0, 16 * Z, 16 * Z);
+  return (siCache[k] = `<img class="pix si" data-si="${k}" src="${c.toDataURL()}" alt="${SI_LABEL[k]}" title="${SI_LABEL[k]}">`);
+}
+function wireSI(root) { root.querySelectorAll('[data-si]').forEach((e) => { e.onclick = (ev) => { ev.stopPropagation(); say(SI_LABEL[e.dataset.si] || e.dataset.si); }; }); }
 function uiIcon(name) {   /* V2.32: DV2-style menu icons (assets/ui/icons.png), 2x crisp */
   if (uiIconCache[name] !== undefined) return uiIconCache[name]; const im = IMG.uiIcons, i = UIM ? UIM.icons.indexOf(name) : -1; if (i < 0 || !okImg(im)) return '';
   const n = UIM.n, Z = 2, c = document.createElement('canvas'); c.width = c.height = n * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * n, 0, n, n, 0, 0, n * Z, n * Z);
@@ -3125,7 +3131,7 @@ cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel
 cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, cam.z * (e.deltaY < 0 ? 1.1 : .91)); }, { passive: false });
 function hitBuilding(px, py) {   // pixel-accurate against the sprite alpha, topmost first; falls back to the footprint
   const order = [...world.buildings].sort((a, b) => (b.x + b.w + b.y + b.h) - (a.x + a.w + a.y + a.h));
-  for (const b of order) { const r = spriteRect(b); if (!r || px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) continue; const m = alphaMask(b.type); if (!m) return b; const ix = Math.floor((px - r.x) / r.w * m.w), iy = Math.floor((py - r.y) / r.h * m.h); if (m.d[(iy * m.w + ix) * 4 + 3] > 24) return b; }
+  for (const b of order) { const r = spriteRect(b); if (!r || px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) continue; const m = alphaMask(b.type); if (!m) return b; const ix0 = Math.floor((px - r.x) / r.w * m.w), ix = b.rot ? m.w - 1 - ix0 : ix0, iy = Math.floor((py - r.y) / r.h * m.h); if (m.d[(iy * m.w + ix) * 4 + 3] > 24) return b; }
   const t = unproject(px, py); return Wd.buildingAt(world, Math.floor(t.x), Math.floor(t.y));
 }
 function hitUnit(px, py) {
@@ -3138,7 +3144,7 @@ function tapAt(px, py) {
     if (sel.kind === 'demolish') { tryDemolish(px, py, tx, ty); return; }
     if (sel.kind === 'wall') { tryWall(tx, ty, sel.wtype); return; }
     if (sel.kind === 'post') { const r = tryPost(tx, ty); if (r.why !== 'open') updatePostBar(); return; }
-    const d = DEFS[sel.type], o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
+    const d = Wd.rotDef(DEFS[sel.type], sel.rot), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
   if (hitTrader(px, py)) { showTrader(); return; }
   const u = hitUnit(px, py); if (u) { unitPanel(u); return; }
@@ -3147,6 +3153,7 @@ function tapAt(px, py) {
   { const t = unproject(px, py), wl = Wd.wallAt(world, Math.floor(t.x), Math.floor(t.y)); if (wl) { const n = S.z.filter((z) => z.hp > 0 && z.mode === 'zbreak' && z.wallT === wl).length, hot = S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6); say(`${Wd.WALL_DEFS[wl.type].name} · ${Math.ceil(wl.hp)}/${wl.max} HP` + (n ? ` · ${n} zombie${n > 1 ? 's' : ''} hitting it` : '') + (wl.hp < wl.max ? (S.mat < 1 ? ' · no parts to repair' : hot ? ' · repairs wait until zombies leave' : ' · being repaired') : '') + (wl.broken ? ' · BROKEN: zombies can walk through' : '')); return; } }
   selected = null; closeP();
 }
+$('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = sel.rot ? 0 : 1; if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(sel.rot ? 'Entrance on the right-hand wall.' : 'Entrance on the left-hand wall.'); };   /* V2.47: turn the entrance */
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
 $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;

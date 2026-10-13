@@ -199,7 +199,7 @@ async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor pan
     t.ok(r['shift'] >= .6, f"staffed workers are at (or heading to) work {r['shift']:.0%} of shift hours (zombie-free town)")
     t.ok(r['saveFail'] == 0, f"autosave never fails over 2 days of play ({r['saveFail']} failures)")
     t.ok(r['sleep'] >= .6, f"at 23:00 most survivors are asleep or going to bed ({r['sleep']:.0%})")
-    t.ok('Shift work' in r['now'] and 'Works at' in r['now'], f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
+    t.ok('Shift work' in r['now'] and 'Medical Tent ›' in r['now'], f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};const q=S.sv[2];q.hp=0;let k=0;while(q.mode!=='hospital'&&k<20000){ZH.simTick();k++}out.inCare=q.mode==='hospital';out.total=!!q.careTotal;
       ZH.unitPanel(q);out.line=document.getElementById('uNow').textContent;const m=ZH.world.buildings.find(b=>['medic','clinic','hospital'].includes(b.type));ZH.showBuildingInfo(m);const tx=document.getElementById('ib').textContent;out.patients=/Patients [(][0-9]+[)]/.test(tx)&&tx.includes(q.name);
       const b=ZH.world.buildings.find(b=>b.type==='water');const f0=ZH.S.sv.length;return out}""")
@@ -528,6 +528,28 @@ async def t_replay(br, port, t):   # V2.46: starts, difficulty, legacy goals, th
     t.ok(r == ['farm', 'easy', 'Hayfield', 3] and sw <= 320, f"the new-game screen sets the name, start and difficulty and fits 320 px {r} {sw}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entrance faces the other wall
+    ctx, pg, errs = await open_game(br, port, 'rotate')
+    r = await pg.evaluate("""()=>{const S=ZH.S,Wd=ZH.Wd;S.mat=300;ZH.startTool({kind:'building',type:'canteen'});let sp=null;const rb=document.getElementById('rotBuild');
+      for(let y=Wd.BUILD.y0;y<=Wd.BUILD.y1&&!sp;y++)for(let x=Wd.BUILD.x0;x<=Wd.BUILD.x1&&!sp;x++){ZH.updatePreview(x,y);const ok1=ZH.preview.ok;rb.click();const ok2=ZH.preview.ok;rb.click();if(ok1&&ok2)sp=[x,y]}
+      ZH.updatePreview(sp[0],sp[1]);const p0={...ZH.preview};rb.click();const p1={...ZH.preview};ZH.confirmPreview();const b=ZH.world.buildings[ZH.world.buildings.length-1];
+      const d=Wd.doorPoint(b),a=Wd.approachTile(b);const path=!!Wd.findPath(ZH.world,{x:7,y:10},a);
+      const rect=ZH.spriteRect(b),hit=ZH.hitBuilding(rect.anchor.x,rect.anchor.y-rect.h*.3);
+      return {vis:getComputedStyle(rb).display,p0:[p0.w,p0.h],p1:[p1.w,p1.h,p1.rot],b:[b.rot,b.w,b.h],door:[d.x-b.x,d.y-b.y],app:[a.x-b.x,a.y-b.y],path,hit:hit===b}}""")
+    t.ok(r['vis'] != 'none' and r['p0'] == [2, 1] and r['p1'] == [1, 2, 1], f"the ↻ button turns the building while placing it (footprint 2×1 → 1×2) {r}")
+    t.ok(r['b'] == [1, 1, 2] and abs(r['door'][0] - .65) < 1e-6 and r['door'][1] == 1 and r['app'] == [1, 1], f"a turned building has its entrance on the other wall {r}")
+    t.ok(r['path'] and r['hit'], f"the new entrance is reachable and the mirrored sprite can be tapped {r}")
+    r = await pg.evaluate("""()=>{const d=JSON.parse(ZH.serialize());return d.buildings.filter(b=>b.rot).length}""")
+    save = await pg.evaluate("()=>{ZH.saveGame();return localStorage.getItem('zombieHavenV26')}"); await ctx.close()
+    ctx, pg, errs2 = await open_game(br, port, 'rotate2', init=f"if(!sessionStorage.getItem('x')){{sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26',{json.dumps(save)})}}")
+    r2 = await pg.evaluate("()=>ZH.world.buildings.filter(b=>b.rot).map(b=>[b.type,b.w,b.h])")
+    t.ok(r == 1 and r2 == [['canteen', 1, 2]], f"turned buildings are saved and load turned {r} {r2}")
+    r = await pg.evaluate("""()=>{const b=ZH.world.buildings.find(q=>q.rot);ZH.moveBuilding(b);const rot=ZH.sel.rot;ZH.endBuildMode(true);return rot}""")
+    t.ok(r == 1, 'moving a turned building keeps its direction')
+    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);const ib=document.getElementById('ib'),n=ib.querySelectorAll('[data-si]').length,t=ib.innerText;ZH.closeP();return {n,why:(t.match(/Why:/g)||[]).length,hunger:(t.match(/Hunger/g)||[]).length}}")
+    t.ok(r['n'] >= 9 and r['why'] == 0 and r['hunger'] <= 1, f"the survivor panel shows needs and stats once, as icons, without a repeated Why line {r}")
+    t.ok(not errs and not errs2, f'no page errors {(errs + errs2)[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -653,7 +675,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

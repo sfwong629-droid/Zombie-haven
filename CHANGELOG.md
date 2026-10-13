@@ -1,5 +1,19 @@
 # Changelog
 
+## V2.47.0 — Turn buildings, a shorter survivor panel
+- **Turn buildings.** When placing or moving a building, ↻ turns it: the sprite is mirrored and the entrance moves from the left-hand front wall to the right-hand one, so it can face a road or the inside of the town. The footprint turns with it (a 2×1 becomes 1×2).
+  - Placement, the entrance rules, paths, tapping the building, upgrades, moving and saves all respect the direction.
+  - Old buildings keep facing the way they did.
+- **Survivor panel, less to read:**
+  - Hunger, thirst and tired appear once: an icon, the number and a small bar. They were shown twice before.
+  - The "Why:" line only appears when it adds something new.
+  - The workplace line is shorter.
+  - The Status tab shows the six stats as icon tiles, with the job's main stats framed in gold.
+  - The personality card is two short lines.
+  - Tapping any icon names it.
+- **Pixel-art icons** for the six stats and the three needs are drawn in code (`tools/art/build_stat_icons.py`). They switch on once `assets/ui/stats.png` exists, which waits for the owner to approve the sample sheet. Until then the panel shows short labels (STR, Hunger…).
+- Tests: new group `rotate` (6 checks, including the compact panel).
+
 ## V2.46.0 — Replayability: starts, difficulty, legacy goals and an ending
 - **New-game screen.** After naming the town, pick a start and a difficulty. It fits a 320 px screen. Slot cards show the start and difficulty icons, plus 🏆 once a town has won.
 - **4 starts:**
