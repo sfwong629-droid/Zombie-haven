@@ -1,5 +1,10 @@
 # Changelog
 
+## V2.48.0 — Slate & Signal colour theme
+- The UI moves from dark brown wood to the **Slate & Signal** theme the owner picked from four mock-ups: cool blue-grey panels and buttons, light slate cards, and safety-orange for the selected tab and main actions (Build, Start, Send, the selected option). Gold titles and the meaning colours (green good, red danger and HP, blue water) are unchanged.
+- This covers the HUD plaque and side menu, all panels and tabs, cards, buttons, pop-ups, toasts, the Renown wheel, the title screen, save slots, Backups and the new-game screen. Map art, characters and buildings are untouched.
+- No layout changes. All tests pass.
+
 ## V2.47.0 — Turn buildings, a shorter survivor panel
 - **Turn buildings.** When placing or moving a building, ↻ turns it: the sprite is mirrored and the entrance moves from the left-hand front wall to the right-hand one, so it can face a road or the inside of the town. The footprint turns with it (a 2×1 becomes 1×2).
   - Placement, the entrance rules, paths, tapping the building, upgrades, moving and saves all respect the direction.

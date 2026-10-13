@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.47.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.48.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2093,7 +2093,7 @@ function showResource(k) {
   const last = Object.entries(L.by).filter(([, v]) => Math.abs(v) > .05).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
   $('ib').innerHTML = tabBar([['food', 'Food'], ['water', 'Water'], ['mat', 'Parts']], rTab)
     + `<div class="card"><div class="kv"><div><span>In stock</span><span><b>${Math.floor(e.stock)}</b>${e.cap ? ' / ' + e.cap : ''}</span></div><div><span>Produced / day</span><span style="color:var(--good)">${sgn(e.prod)}</span></div><div><span>Used / day</span><span style="color:#ffb36b">−${f1(e.use)}</span></div><div><span><b>Net / day</b></span><span style="color:${e.net >= 0 ? 'var(--good)' : 'var(--bad)'}"><b>${sgn(e.net)}</b></span></div></div>`
-    + (e.cap ? `<div style="height:8px;background:#2a2118;border-radius:4px;margin:5px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100, 100 * e.stock / e.cap)}%;background:${e.full ? 'var(--gold)' : '#6fb3e0'};border-radius:4px"></i></div>` : '')
+    + (e.cap ? `<div style="height:8px;background:#1d242b;border-radius:4px;margin:5px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100, 100 * e.stock / e.cap)}%;background:${e.full ? 'var(--gold)' : '#6fb3e0'};border-radius:4px"></i></div>` : '')
     + `<div style="color:${fc.c}">${fc.t}</div>` + (rTab === 'mat' ? '<div class="sm">Parts also come from zombie kills, missions and expeditions, and go to repairs, gear and building. Those swing day to day, so they are in "Last 24 h" below, not in the daily rate.</div>' : '') + '</div>'
     + (e.issues.length ? `<div class="card" style="border-color:#c0574a"><b style="color:var(--bad)">Problems</b>${e.issues.map((i) => `<div class="row" data-b="${world.buildings.indexOf(i.b)}" style="gap:6px"><span class="sp">⚠ ${esc(i.t)}</span><span style="color:var(--gold)">›</span></div>`).join('')}</div>` : '')
     + `<div class="card"><b>Producers</b>${e.producers.length ? e.producers.map((q) => row(q, 1)).join('') : `<div class="sm">None yet: ${rTab === 'food' ? 'build a Garden Plot' : rTab === 'water' ? 'build a Rain Collector' : 'build a Scrapyard'}.</div>`}</div>`
@@ -2135,7 +2135,7 @@ function showObjective() {
   endBuildMode(true); closeP(); $('it').textContent = 'OBJECTIVE';
   const [c, g] = o.prog, pct = Math.round(100 * Math.min(1, c / (g || 1)));
   $('ib').innerHTML = `<div class="card"><div style="font-size:24px;color:var(--gold)">${esc(o.name)}</div><div style="font-size:20px">${esc(o.desc)}</div>`
-    + (g > 1 ? `<div class="gbar" style="position:relative;height:10px;background:#2a2118;border-radius:5px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:#7fd35a;border-radius:5px"></i></div><div class="sm">${c}/${g}</div>` : '')
+    + (g > 1 ? `<div class="gbar" style="position:relative;height:10px;background:#1d242b;border-radius:5px;margin:6px 0"><i style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:#7fd35a;border-radius:5px"></i></div><div class="sm">${c}/${g}</div>` : '')
     + (o.how ? `<div class="sm" style="margin-top:4px">${esc(o.how)}</div>` : '') + (o.reward ? `<div class="sm" style="color:var(--good)">Reward: ${o.reward}</div>` : '') + '</div>'
     + (o.reqs.length ? `<div class="card">${o.reqs.map((r) => `<div class="row" style="gap:6px"><span style="width:22px;color:${r.ok ? '#7fd35a' : '#ff8a7a'}">${r.ok ? '✔' : '✘'}</span><span class="sp">${esc(r.label)}${r.detail ? ` <small style="color:var(--muted)">· ${esc(r.detail)}</small>` : ''}</span></div>`).join('')}</div>` : '')
     + `<div class="row" style="gap:6px">${o.spots.length ? '<button class="act" id="oShow" style="flex:1">📍 Show on map</button>' : ''}${o.act ? `<button class="act go" id="oAct" style="flex:1">${esc(o.act.label)}</button>` : ''}</div><button class="act" id="oAll">All goals</button>`;
@@ -2167,7 +2167,7 @@ function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
   const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = { critical: '#ff9a84', important: '#ffe08a' };
   $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button><button class="act" id="logAdv" style="flex:1">Town advisor: ${OPTS.advisor ? 'ON' : 'OFF'}</button></div><button class="act" id="logBak" style="width:100%;margin-bottom:6px">💾 Backup this town</button>`
-    + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #574634${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
+    + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #3e4a56${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
   $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); }; $('logAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); showLog(); }; $('logBak').onclick = () => showBackup();
   showPanel();
 }
@@ -2863,7 +2863,7 @@ function unitNow(u) {
   return { prio, dest, destB };
 }
 function activityText(u) { return u.mode === 'down' ? 'Bleeding out!' : u.mode === 'hospital' ? 'In care' : u.mode === 'away' ? 'On expedition' : u.why || u.mode; }
-const bar = (f, col) => `<div style="height:7px;background:#2a2118;border-radius:4px;margin:3px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(100 * Math.max(0, Math.min(1, f)))}%;background:${col};border-radius:4px"></i></div>`;
+const bar = (f, col) => `<div style="height:7px;background:#1d242b;border-radius:4px;margin:3px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(100 * Math.max(0, Math.min(1, f)))}%;background:${col};border-radius:4px"></i></div>`;
 function careLine(u) {   /* V2.36: rescue and treatment progress, from the real timers */
   if (u.mode === 'down') { const left = Math.max(0, Math.ceil((u.bleed || 0) / 60)), r = u.rescuer; return `<div style="color:var(--bad)">Bleeding out: ${left} s left</div>${bar((u.bleed || 0) / bleedMax(), '#d84d48')}<div class="sm">${r ? (r.carrying === u ? `${esc(r.name)} is wheeling them to ${medSite() ? 'the ' + DEFS[medSite().type].name : 'safety'}` : `${esc(r.name)} is on the way`) : 'No rescuer yet: the nearest free survivor will come'}</div>`; }
   if (u.mode === 'hospital') { const tot = u.careTotal || careTicks(), f = 1 - (u.stateTicks || 0) / tot, m = u.careAt || medSite(); return `<div>Recovering${m ? ' at the ' + DEFS[m.type].name : ''}: ${Math.round(f * 100)}% · about ${Math.ceil((u.stateTicks || 0) / 1000 * 10) / 10} h left</div>${bar(f, '#7fd35a')}<div class="sm">${m && isWorking(m) ? `${esc(m.staff.name)} is treating patients (faster)` : m && DEFS[m.type].slot ? 'No medic on duty: slower recovery' : ''}</div>`; }
@@ -3240,11 +3240,11 @@ function showSlots() {
 let newOpt = { start: 'camp', diff: 'normal' };
 function newSlot(i, keepName) {   /* V2.46: name, starting condition and difficulty */
   const box = $('slots'), nm = keepName ?? 'Zombie Haven', R = records(), rec = R[newOpt.start + '/' + newOpt.diff];
-  box.querySelector('.slist').innerHTML = `<div class="card newGame" style="color:#2a2a5a;background:#fffaf0"><b style="font-size:22px">Slot ${i + 1} · New haven</b>
-    <div class="sm" style="margin:6px 0 2px;color:#7a6a50">Name your town</div><input id="sName" maxlength="22" value="${esc(nm)}" style="width:100%;box-sizing:border-box;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #8a6a3a;background:#fff8e6;color:#3a2a14;text-align:center">
-    <div class="sm" style="margin:8px 0 2px;color:#7a6a50">Start</div>${Object.entries(STARTS).map(([k, v]) => `<div class="ngOpt${newOpt.start === k ? ' on' : ''}" data-st="${k}"><span class="ngI">${v.icon}</span><span><b>${v.name}</b>${newOpt.start === k ? `<small>${v.desc}</small>` : ''}</span></div>`).join('')}
-    <div class="sm" style="margin:8px 0 2px;color:#7a6a50">Difficulty</div><div class="row" style="gap:4px">${Object.entries(DIFFS).map(([k, v]) => `<button class="act${newOpt.diff === k ? ' go' : ''}" data-df="${k}" style="flex:1 1 0;margin:0;padding:6px 2px;font-size:17px">${v.icon} ${v.name}</button>`).join('')}</div>
-    <div class="sm" style="margin-top:4px;color:#7a6a50">${DIFFS[newOpt.diff].desc}</div>
+  box.querySelector('.slist').innerHTML = `<div class="card newGame" style="color:#2a2a5a;background:#f3f6f9"><b style="font-size:22px">Slot ${i + 1} · New haven</b>
+    <div class="sm" style="margin:6px 0 2px;color:#5b6b7a">Name your town</div><input id="sName" maxlength="22" value="${esc(nm)}" style="width:100%;box-sizing:border-box;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #7f93a6;background:#f7fafc;color:#1f2a33;text-align:center">
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Start</div>${Object.entries(STARTS).map(([k, v]) => `<div class="ngOpt${newOpt.start === k ? ' on' : ''}" data-st="${k}"><span class="ngI">${v.icon}</span><span><b>${v.name}</b>${newOpt.start === k ? `<small>${v.desc}</small>` : ''}</span></div>`).join('')}
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Difficulty</div><div class="row" style="gap:4px">${Object.entries(DIFFS).map(([k, v]) => `<button class="act${newOpt.diff === k ? ' go' : ''}" data-df="${k}" style="flex:1 1 0;margin:0;padding:6px 2px;font-size:17px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#5b6b7a">${DIFFS[newOpt.diff].desc}</div>
     <div class="sm" style="margin-top:4px;color:#2a5ac8">${rec ? `🏆 Best here: ${rec.score} (${esc(rec.name)}, day ${rec.day})` : 'No win yet with this start and difficulty.'}</div>
     <div class="row" style="gap:8px;margin-top:10px;justify-content:center"><button class="act" id="sCancel">Cancel</button><button class="act go" id="sGo">Start</button></div></div>`;
   const nmNow = () => ($('sName').value || '').trim() || 'Zombie Haven';
@@ -3294,15 +3294,15 @@ function showBackups(msg) {   /* title screen → Start → Backups */
   $('sBak').style.display = 'none'; const box = $('slots'), list = box.querySelector('.slist'); box.querySelector('.sHead').textContent = 'Backups';
   if (bakView != null) { importView(bakView, msg); return; }
   list.innerHTML = (msg ? `<div class="card sm" id="bakMsg">${esc(msg)}</div>` : '') + [0, 1, 2].map((i) => { const x = slotInfo(i), t = exportedAt(i);
-    return `<div class="card" style="color:#2a2a5a;background:#fffaf0"><b>Slot ${i + 1} · ${x ? (x.broken ? 'Damaged save' : esc(x.name) + ' · Day ' + x.day) : 'Empty'}</b><div class="sm" style="color:#7a6a50">${x ? 'Last export: ' + (t ? ago(t) : 'never') : 'Nothing to export'}</div>${x ? exportRowHtml(i) : ''}<button class="act" data-imp="${i}" style="width:100%;margin-top:6px">Import a backup into slot ${i + 1}</button></div>`; }).join('') + `<div class="sm" style="color:#e8e0c8">${BAK_HINT}</div>`;
+    return `<div class="card" style="color:#2a2a5a;background:#f3f6f9"><b>Slot ${i + 1} · ${x ? (x.broken ? 'Damaged save' : esc(x.name) + ' · Day ' + x.day) : 'Empty'}</b><div class="sm" style="color:#5b6b7a">${x ? 'Last export: ' + (t ? ago(t) : 'never') : 'Nothing to export'}</div>${x ? exportRowHtml(i) : ''}<button class="act" data-imp="${i}" style="width:100%;margin-top:6px">Import a backup into slot ${i + 1}</button></div>`; }).join('') + `<div class="sm" style="color:#e8e0c8">${BAK_HINT}</div>`;
   wireExport(list, (m) => showBackups(m)); list.querySelectorAll('[data-imp]').forEach((b) => { b.onclick = () => { bakView = +b.dataset.imp; bakArm = null; showBackups(); }; });
   $('sBack').onclick = () => { bakView = null; showSlots(); };
 }
 function importView(i, msg) {
   const list = $('slots').querySelector('.slist'), x = slotInfo(i);
-  list.innerHTML = `<div class="card" style="color:#2a2a5a;background:#fffaf0"><b>Import into slot ${i + 1}</b>${x && !x.broken ? `<div class="sm" style="color:#b0402a">This replaces ${esc(x.name)} (Day ${x.day}). It is kept as the slot's day backup until you play.</div>` : ''}
+  list.innerHTML = `<div class="card" style="color:#2a2a5a;background:#f3f6f9"><b>Import into slot ${i + 1}</b>${x && !x.broken ? `<div class="sm" style="color:#b0402a">This replaces ${esc(x.name)} (Day ${x.day}). It is kept as the slot's day backup until you play.</div>` : ''}
     <label class="act" style="display:block;text-align:center;margin:8px 0">Choose a backup file<input type="file" id="impFile" accept=".json,application/json,text/plain" style="display:none"></label>
-    <div class="sm" style="color:#7a6a50">…or paste the backup text:</div><textarea id="impText" rows="4" style="width:100%;box-sizing:border-box;font:14px monospace;border:2px solid #8a6a3a;border-radius:6px;background:#fff8e6;color:#3a2a14"></textarea>
+    <div class="sm" style="color:#5b6b7a">…or paste the backup text:</div><textarea id="impText" rows="4" style="width:100%;box-sizing:border-box;font:14px monospace;border:2px solid #7f93a6;border-radius:6px;background:#f7fafc;color:#1f2a33"></textarea>
     ${msg ? `<div class="sm" id="bakMsg" style="color:#b0402a">${esc(msg)}</div>` : ''}<button class="act go" id="impGo" style="width:100%;margin-top:6px">${bakArm === i ? 'Tap again to replace the town' : 'Import'}</button></div>`;
   const go = (text) => { const r = parseBackup(text); if (!r.ok) { importView(i, r.why); return; } if (x && !x.broken && bakArm !== i) { bakArm = i; $('impText').value = text; importView(i, `Ready: ${r.name}, Day ${r.day}${r.ver ? ' (V' + r.ver + ')' : ''}.`); $('impText').value = text; return; } const w = importBackup(i, text); bakArm = null; if (w.ok) { bakView = null; showBackups(w.why); } else importView(i, w.why); };
   $('impFile').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; if (f.size > 4e6) { importView(i, 'That file is too big to be a save.'); return; } const rd = new FileReader(); rd.onload = () => go(String(rd.result)); rd.onerror = () => importView(i, 'Could not read that file.'); rd.readAsText(f); };
