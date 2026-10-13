@@ -1,5 +1,11 @@
 # Changelog
 
+## V2.49.0 — Wider zoom, safer memory
+- **Zoom:** pinch or the mouse wheel now goes from 35% (the whole map) to 300% (close-up). It was 50–190%.
+- **Memory:** the game pre-scales pixel art into cached bitmaps. That cache now has a 120 MB budget (it reached about 180 MB on a 3× iPhone screen after zooming around), and each image is pre-scaled at most 4×. Past that, the art is drawn with nearest-neighbour scaling, which keeps pixels sharp.
+  - This keeps the game well under Safari's canvas memory limit (about 384 MB) at every zoom.
+  - Measured on a 3× screen at zooms from 35% to 300%: no repeated rebuilding and no slowdown.
+
 ## V2.48.0 — Slate & Signal colour theme
 - The UI moves from dark brown wood to the **Slate & Signal** theme the owner picked from four mock-ups: cool blue-grey panels and buttons, light slate cards, and safety-orange for the selected tab and main actions (Build, Start, Send, the selected option). Gold titles and the meaning colours (green good, red danger and HP, blue water) are unchanged.
 - This covers the HUD plaque and side menu, all panels and tabs, cards, buttons, pop-ups, toasts, the Renown wheel, the title screen, save slots, Backups and the new-game screen. Map art, characters and buildings are untouched.

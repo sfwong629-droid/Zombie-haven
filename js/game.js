@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.48.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.49.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -42,12 +42,15 @@ const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-ar
 function loadImg(key, src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(); im.onerror = () => { console.warn('missing asset', src); res(); }; im.src = src + '?v=' + VERSION; IMG[key] = im; }); }
 const okImg = (im) => im && im.complete && im.naturalWidth > 0;
 const scaledCache = new Map();
-const pixelCache = new Map(); const PIXSTAT = { miss: 0, px: 0 };
+const pixelCache = new Map(); const PIXSTAT = { miss: 0, px: 0 }; let pixelBytes = 0; const PIX_BUDGET = 120e6;   /* bytes of pre-scaled bitmaps kept */
+/* V2.49: the pre-scale factor is capped at 4×, so zooming far in no longer builds huge cached bitmaps (Safari limits canvas memory to about 384 MB);
+   past the cap the art is drawn with nearest-neighbour scaling, which keeps pixels sharp. */
+const PXM_CAP = 4, pxm = (want) => Math.min(PXM_CAP, Math.max(1, Math.ceil(want - .02)));
 function pixelUp(key, img, m) {   // whole-number nearest-neighbour enlargement of a pixel-art sheet, cached per factor
   const k = key + '#' + m; let c = pixelCache.get(k); if (c) { pixelCache.delete(k); pixelCache.set(k, c); return c; }
   PIXSTAT.miss++; PIXSTAT.px += img.width * m * img.height * m;
   c = document.createElement('canvas'); c.width = img.width * m; c.height = img.height * m; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, c.width, c.height);
-  while (pixelCache.size > 48) pixelCache.delete(pixelCache.keys().next().value);   /* V2.18: drop the oldest instead of wiping everything (a late-game town needs more than 24 sheets, so it rebuilt them every frame) */
+  pixelBytes += c.width * c.height * 4; while (pixelCache.size > 48 || (pixelBytes > PIX_BUDGET && pixelCache.size > 8)) { const k0 = pixelCache.keys().next().value, o = pixelCache.get(k0); pixelBytes -= o.width * o.height * 4; pixelCache.delete(k0); }   /* V2.49: also a memory budget */   /* V2.18: drop the oldest instead of wiping everything (a late-game town needs more than 24 sheets, so it rebuilt them every frame) */
   pixelCache.set(k, c); return c;
 }
 function scaled(key, img, tw, th) {           // high-quality downscale by repeated halving, cached
@@ -159,13 +162,13 @@ function buildGround() {
   g.putImageData(id, 0, 0);
   { const A = (x, y) => [GOXA + (x - y) * APX / 2, (x + y) * APY / 2], B = Wd.BUILD, c = [A(B.x0, B.y0), A(B.x1 + 1, B.y0), A(B.x1 + 1, B.y1 + 1), A(B.x0, B.y1 + 1)];   /* build-zone outline */
     g.beginPath(); g.moveTo(...c[0]); c.slice(1).forEach((q) => g.lineTo(...q)); g.closePath(); g.strokeStyle = 'rgba(214,235,178,.35)'; g.lineWidth = 1; g.stroke(); }
-  pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) pixelCache.delete(k); });
+  pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) { pixelBytes -= v.width * v.height * 4; pixelCache.delete(k); } });
 }
 function drawGround() {
   const key = [...world.roads].join('|') + '#' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + ',' + Wd.BUILD.y0;   // ground depends on roads and the territory
   if (!groundCv || key !== groundKey) { groundKey = key; buildGround(); }
-  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m0 = Math.min(3, Math.max(1, Math.ceil(want - 0.02))), m = groundCv.width * groundCv.height * m0 * m0 > 8e6 ? 1 : m0, big = m > 1 ? pixelUp('ground', groundCv, m) : groundCv;   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
-  ctx.imageSmoothingEnabled = m > 1 && Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m0 = Math.min(3, pxm(want)), m = groundCv.width * groundCv.height * m0 * m0 > 8e6 ? 1 : m0, big = m > 1 ? pixelUp('ground', groundCv, m) : groundCv;   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
+  ctx.imageSmoothingEnabled = m > 1 && want < m - .02; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(big, o.x - GOXA * s, o.y, groundCv.width * s, groundCv.height * s); ctx.imageSmoothingEnabled = true;
 }
 function tilePath(x, y, grow = 0) { const n = project(x, y), e = project(x + 1, y), s = project(x + 1, y + 1), w = project(x, y + 1); ctx.beginPath(); ctx.moveTo(n.x, n.y - grow); ctx.lineTo(e.x + grow, e.y); ctx.lineTo(s.x, s.y + grow); ctx.lineTo(w.x - grow, w.y); ctx.closePath(); }
@@ -193,8 +196,8 @@ function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w
 function drawBuilding(b, ghost, ok) {
   const p4 = b4(b);
   if (p4) {   // pixel art: same sharp-bilinear path as characters, one shared art-pixel size
-    const burnt = b.burnt && !ghost, src0 = burnt ? tinted('burnt' + b.type, p4.im, BURNT_TINT) : p4.im, src = b.rot ? mirrored((burnt ? 'b4xm' : 'b4m') + b.type, src0) : src0, r = spriteRect(b), m = Math.max(1, Math.ceil(r.s * DPR - 0.02)), big = pixelUp((burnt ? 'b4x' : 'b4') + (b.rot ? 'm' : '') + b.type, src, m);
-    ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = Math.abs(r.s * DPR - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+    const burnt = b.burnt && !ghost, src0 = burnt ? tinted('burnt' + b.type, p4.im, BURNT_TINT) : p4.im, src = b.rot ? mirrored((burnt ? 'b4xm' : 'b4m') + b.type, src0) : src0, r = spriteRect(b), m = pxm(r.s * DPR), big = pixelUp((burnt ? 'b4x' : 'b4') + (b.rot ? 'm' : '') + b.type, src, m);
+    ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = r.s * DPR < m - .02; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(big, r.x, r.y, r.w, r.h); ctx.restore(); return;
   }
   const sp = SPR[b.type]; if (!sp || !okImg(sp.img)) return; const r = spriteRect(b), img = scaled('b:' + (b.rot ? 'm' : '') + b.type, b.rot ? mirrored('sprm' + b.type, sp.img) : sp.img, r.w * DPR, r.h * DPR);   // anchor = SOUTH corner; V2.18: scaled to device pixels (was CSS pixels: blurry and slow on 3× screens)
@@ -206,16 +209,16 @@ function drawProp(kind, tx, ty) {   /* V2.30: pixel-art props from assets/map/pr
   const h = (tx * 31 + ty * 17) % 7, P = MAPM && MAPM.props, im = IMG.mapProps; if (!P || !okImg(im)) return;
   const pick = (names) => { const l = P.filter((q) => names.includes(q.k)); return l[h % l.length]; };
   const pr = kind === 'tree' ? (h === 3 ? pick(['deadtree']) : pick(['pine'])) : kind === 'crate' ? pick(['crate', 'barrel', 'tyres']) : kind === 'car' ? pick(['car']) : pick(h % 2 ? ['rock', 'rubble'] : ['bush', 'rock']);
-  const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('mapProps', im, m), snap = (v) => Math.round(v * DPR) / DPR;
-  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, pr.x * m, (pr.y || 0) * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); ctx.imageSmoothingEnabled = true;
+  const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = pxm(sc * DPR), big = pixelUp('mapProps', im, m), snap = (v) => Math.round(v * DPR) / DPR;
+  ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.drawImage(big, pr.x * m, (pr.y || 0) * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); ctx.imageSmoothingEnabled = true;
 }
 function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, crisp = false, flip = false) {   // hScale = content height in tile widths; content = figure height in source px
   if (!okImg(img)) return; const tw = TWs(), sc = hScale * tw / content;
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .26 * tw * Math.max(1, hScale / CHAR_H), .09 * tw, 0, 0, 7); ctx.fill();
   if (crisp) {   // pixel art, "sharp bilinear": exact size (tracks zoom smoothly), nearest-neighbour pre-scale keeps pixels square and sharp
-    const want = sc * DPR, m = Math.max(1, Math.ceil(want - 0.02)), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR;
+    const want = sc * DPR, m = pxm(want), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR;
     const w = fw * sc, h = fh * sc, y = snap(p.y - (footY + 1) * sc);
-    ctx.imageSmoothingEnabled = Math.abs(want - m) > 0.02; ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingEnabled = want < m - .02; ctx.imageSmoothingQuality = 'high';
     if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, -w / 2, y, w, h); ctx.restore(); }   // art faces left; mirrored = facing right
     else ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, snap(p.x - w / 2), y, w, h);
     ctx.imageSmoothingEnabled = true; return; }
@@ -283,9 +286,9 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   const pose = ZHChars.wpose(f), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
   const drawW = () => {
     if (!wcell) return; const h = ZHChars.hand(view, f, sheetCv.zhTag), hxp = flip ? CM.fw - 1 - h[0] : h[0];
-    const big = pixelUp('held', ZHItems.held, Math.max(1, Math.ceil(sc * DPR - .02))), m = big.width / ZHItems.held.width, snap = (v) => Math.round(v * DPR) / DPR;
+    const big = pixelUp('held', ZHItems.held, pxm(sc * DPR)), m = big.width / ZHItems.held.width, snap = (v) => Math.round(v * DPR) / DPR;
     const x0 = p.x - CM.fw * sc / 2 + (hxp + .5) * sc, y0 = p.y - (CM.foot + 1) * sc + (h[1] + .5) * sc, half = (wcell.s / 2 + .5) * sc;
-    ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.save();
+    ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.save();
     if (flip) { ctx.translate(snap(x0), 0); ctx.scale(-1, 1); ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, -half, snap(y0 - half), wcell.s * sc, wcell.s * sc); }
     else ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, snap(x0 - half), snap(y0 - half), wcell.s * sc, wcell.s * sc);
     ctx.restore(); ctx.imageSmoothingEnabled = true;
@@ -293,10 +296,10 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   if (view === 1) drawW();
   ctx.save(); ctx.translate(0, 0);
   const fr = view * 1;   // row
-  { const want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), key = 'ch' + (sheetCv.zhTag || o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
+  { const want = sc * DPR, m = pxm(want), key = 'ch' + (sheetCv.zhTag || o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
     const w = CM.fw * sc, h = CM.fh * sc, y = snap(p.y - (CM.foot + 1) * sc);
     ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .24 * tw, .085 * tw, 0, 0, 7); ctx.fill();
-    ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingEnabled = want < m - .02; ctx.imageSmoothingQuality = 'high';
     if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, f * CM.fw * m, fr * CM.fh * m, CM.fw * m, CM.fh * m, -w / 2, y, w, h); }
     else ctx.drawImage(big, f * CM.fw * m, fr * CM.fh * m, CM.fw * m, CM.fh * m, snap(p.x - w / 2), y, w, h);
   }
@@ -307,8 +310,8 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
 function drawCart(s, p) {   /* V2.33: the rescuer pushes a hand cart with the injured person lying in it */
   const L = ZHChars.look(s), sheet = ZHChars.sheetFor(s), c = sheet && ZHChars.cart(sheet.zhTag, L.sex), q = s.carrying; if (!c) return false;
   const fc = facing(s), view = fc.up ? 1 : 0, flip = fc.right, f = s.moving ? Math.floor((tick + (s.phase || 0)) / 8) % 4 : 0, M = c.m, tw = TWs(), sc = tw / ART_TILE;
-  const m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp(c.key, c.im, m), snap = (v) => Math.round(v * DPR) / DPR, w = M.fw * sc, h = M.fh * sc;
-  ctx.save(); ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.translate(snap(p.x), snap(p.y)); if (flip) ctx.scale(-1, 1);
+  const m = pxm(sc * DPR), big = pixelUp(c.key, c.im, m), snap = (v) => Math.round(v * DPR) / DPR, w = M.fw * sc, h = M.fh * sc;
+  ctx.save(); ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.translate(snap(p.x), snap(p.y)); if (flip) ctx.scale(-1, 1);
   ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(-(M.ax - M.fw * .45) * sc, 0, .5 * tw, .12 * tw, 0, 0, 7); ctx.fill();
   const x0 = -M.ax * sc, y0 = -(M.ay + 1) * sc;
   ctx.drawImage(big, f * M.fw * m, view * M.fh * m, M.fw * m, M.fh * m, x0, y0, w, h);
@@ -377,11 +380,11 @@ function zFrame(zm, zmeta) {
 }
 function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
   const t = zm.type === 'raider' ? null : zm.type, zmeta = t && window.ZHChars && ZHChars.zmeta(t), sh = zmeta && ZHChars.zsheet(t); if (!sh) return null;
-  const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp('z7' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
+  const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = pxm(want), big = pixelUp('z7' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
   const w = zmeta.fw * sc, h = zmeta.fh * sc, y = snap(p.y - (zmeta.foot + 1) * sc);
   if (zm.dead != null) ctx.globalAlpha = Math.max(0, Math.min(1, (120 - zm.dead) / 40));
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(.24, zmeta.fw / 160) * tw, .085 * tw * Math.max(1, zmeta.fw / 50), 0, 0, 7); ctx.fill();
-  ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high'; ctx.save();
+  ctx.imageSmoothingEnabled = want < m - .02; ctx.imageSmoothingQuality = 'high'; ctx.save();
   if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, f * zmeta.fw * m, view * zmeta.fh * m, zmeta.fw * m, zmeta.fh * m, -w / 2, y, w, h); }
   else ctx.drawImage(big, f * zmeta.fw * m, view * zmeta.fh * m, zmeta.fw * m, zmeta.fh * m, snap(p.x - w / 2), y, w, h);
   ctx.restore(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1;
@@ -428,8 +431,8 @@ function mirrored(key, img) { let c = mirCache.get(key); if (c && c.src === img)
 function drawWreck(tx, ty) {
   const P = MAPM && MAPM.wreck, im = IMG.mapWreck; if (!P || !okImg(im)) return;
   const pr = P[Math.floor(hash2(tx * 3 + 2, ty * 5 + 7) * P.length) % P.length], flip = hash2(ty, tx) > .5;
-  const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('mapWreck', im, m), snap = (v) => Math.round(v * DPR) / DPR;
-  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02;
+  const p = project(tx + .5, ty + .5), sc = TWs() / ART_TILE, m = pxm(sc * DPR), big = pixelUp('mapWreck', im, m), snap = (v) => Math.round(v * DPR) / DPR;
+  ctx.imageSmoothingEnabled = sc * DPR < m - .02;
   if (flip) { const mir = pixelUp('mapWreckF', mirrored('mapWreck', im), m), W = im.width; ctx.drawImage(mir, (W - pr.x - pr.w) * m, pr.y * m, pr.w * m, pr.h * m, snap(p.x - (pr.w - pr.ax) * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc); }   /* V2.38: a pre-mirrored sheet (drawing through a negative transform was the slowest thing in the frame) */
   else ctx.drawImage(big, pr.x * m, pr.y * m, pr.w * m, pr.h * m, snap(p.x - pr.ax * sc), snap(p.y - pr.ay * sc), pr.w * sc, pr.h * sc);
   ctx.imageSmoothingEnabled = true;
@@ -525,9 +528,9 @@ function drawWall(wl) {   /* V2.30: pixel-art wall pieces (post + arms toward jo
   const key = wl.broken ? 'rubble' : wl.type + (+has(-1, 0)) + (+has(1, 0)) + (+has(0, -1)) + (+has(0, 1)) + (f < .6 ? 'c' : ''), i = W.cells[key] ?? W.cells.rubble;
   const hit = wl.hit > 0; if (hit) wl.hit--;
   const src = hit ? tinted('wallsHit', im, (r, g, b) => [Math.min(255, r + 120), Math.min(255, g + 110), Math.min(255, b + 100)]) : im;
-  const O = project(wl.x, wl.y), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp(hit ? 'wallsH' : 'walls', src, m), snap = (v) => Math.round(v * DPR) / DPR;
+  const O = project(wl.x, wl.y), sc = TWs() / ART_TILE, m = pxm(sc * DPR), big = pixelUp(hit ? 'wallsH' : 'walls', src, m), snap = (v) => Math.round(v * DPR) / DPR;
   const cx = (i % W.cols) * W.w, cy = Math.floor(i / W.cols) * W.h;
-  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, cx * m, cy * m, W.w * m, W.h * m, snap(O.x - W.ax * sc), snap(O.y - W.ay * sc), W.w * sc, W.h * sc); ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.drawImage(big, cx * m, cy * m, W.w * m, W.h * m, snap(O.x - W.ax * sc), snap(O.y - W.ay * sc), W.w * sc, W.h * sc); ctx.imageSmoothingEnabled = true;
   if (f < 1 && !wl.broken) { const q = project(wl.x + .5, wl.y + .5), py = q.y - ((W.hgt && W.hgt[wl.type === 'metal' ? 'metal' : 'wood']) || 28) * sc - 6 * sc; ctx.fillStyle = '#1a1715'; ctx.fillRect(q.x - 10 * cam.z, py - 2 * cam.z, 20 * cam.z, 4 * cam.z); ctx.fillStyle = f > .5 ? '#67c75a' : f > .25 ? '#e0b43c' : '#d84d48'; ctx.fillRect(q.x - 9 * cam.z, py - cam.z, 18 * cam.z * Math.max(0, f), 2 * cam.z); }
 }
 /* V2.45 guard post pixel art, drawn in code on the 96-px-per-tile art grid: a sandbag ring around a pole, the flag coloured by the watch (blue night, gold day, red both) */
@@ -546,8 +549,8 @@ function postArt(sched) {
 }
 let postIconUrl = null; const postIcon = () => postIconUrl || (postIconUrl = (() => { const a = postArt('night'), c = document.createElement('canvas'); c.width = a.width * 2; c.height = a.height * 2; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(a, 0, 0, c.width, c.height); return c.toDataURL(); })());
 function drawPost(p) {
-  const im = postArt(p.sched), O = project(p.x + .5, p.y + .5), sc = TWs() / ART_TILE, m = Math.max(1, Math.ceil(sc * DPR - .02)), big = pixelUp('post_' + p.sched, im, m), snap = (v) => Math.round(v * DPR) / DPR;
-  ctx.imageSmoothingEnabled = Math.abs(sc * DPR - m) > .02; ctx.drawImage(big, snap(O.x - POST_AX * sc), snap(O.y - POST_AY * sc), im.width * sc, im.height * sc); ctx.imageSmoothingEnabled = true;
+  const im = postArt(p.sched), O = project(p.x + .5, p.y + .5), sc = TWs() / ART_TILE, m = pxm(sc * DPR), big = pixelUp('post_' + p.sched, im, m), snap = (v) => Math.round(v * DPR) / DPR;
+  ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.drawImage(big, snap(O.x - POST_AX * sc), snap(O.y - POST_AY * sc), im.width * sc, im.height * sc); ctx.imageSmoothingEnabled = true;
 }
 function drawPostRange(p, strong) {   /* the watch radius: zombies inside it go for the holder */
   ctx.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2, q = project(p.x + .5 + Math.cos(a) * POST_R, p.y + .5 + Math.sin(a) * POST_R); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); }
@@ -1796,9 +1799,9 @@ function petPos(s) {   /* trails a little behind its owner */
   p.moving = d > .08; return p;
 }
 function drawPix(key, img, frame, fw, fh, p, flip, noShadow = false) {   /* same sharp-bilinear path as drawSheet, with a pet-sized shadow */
-  const tw = TWs(), sc = tw / APX, want = sc * DPR, m = Math.max(1, Math.ceil(want - .02)), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR, w = fw * sc, h = fh * sc, y = snap(p.y - fh * sc);
+  const tw = TWs(), sc = tw / APX, want = sc * DPR, m = pxm(want), big = pixelUp(key, img, m), snap = (v) => Math.round(v * DPR) / DPR, w = fw * sc, h = fh * sc, y = snap(p.y - fh * sc);
   if (!noShadow) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, w * .45, .05 * tw, 0, 0, 7); ctx.fill(); }
-  ctx.imageSmoothingEnabled = Math.abs(want - m) > .02; ctx.imageSmoothingQuality = 'high';
+  ctx.imageSmoothingEnabled = want < m - .02; ctx.imageSmoothingQuality = 'high';
   if (flip) { ctx.save(); ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, -w / 2, y, w, h); ctx.restore(); }
   else ctx.drawImage(big, frame * fw * m, 0, fw * m, fh * m, snap(p.x - w / 2), y, w, h);
   ctx.imageSmoothingEnabled = true;
@@ -3117,7 +3120,8 @@ function showBuildingInfo(b, tab) {
 /* ---------------- input ---------------- */
 const pointers = new Map(); let gesture = null, tapStart = null;
 const local = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-function zoomAt(px, py, nz) { nz = Math.max(.5, Math.min(1.9, nz)); const w = unproject(px, py); cam.z = nz; const p = project(w.x, w.y); cam.x += px - p.x; cam.y += py - p.y; clampCam(); updateZoomLabel(); }
+const ZOOM_MIN = .35, ZOOM_MAX = 3;   /* V2.49: wider zoom (was 0.5–1.9) */
+function zoomAt(px, py, nz) { nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nz)); const w = unproject(px, py); cam.z = nz; const p = project(w.x, w.y); cam.x += px - p.x; cam.y += py - p.y; clampCam(); updateZoomLabel(); }
 cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); if (pointers.size === 1) tapStart = { ...p, id: e.pointerId, cx: cam.x, cy: cam.y, moved: false, t: performance.now() }; else if (pointers.size === 2) { if (tapStart) tapStart.moved = true;   /* V2.39: a second finger means a gesture, never a tap */ const a = [...pointers.values()]; gesture = { dist: Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), z: cam.z }; tapStart = null; } });
 cv.addEventListener('pointermove', (e) => {
   if (!pointers.has(e.pointerId)) return; const p = local(e); pointers.set(e.pointerId, p);
@@ -3315,6 +3319,6 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();
