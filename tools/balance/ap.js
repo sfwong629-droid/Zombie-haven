@@ -47,6 +47,7 @@
     if (Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
     if (Z.holdEvent && S.hour === 13 && S.rank >= 3 && (S.lastEventDay ?? -1) < S.day && S.food > Z.supplyCap() * .75 && S.water > Z.supplyCap() * .7) Z.holdEvent('caravan');   /* V2.38: trade a full pantry for parts */
     if (Z.upgradeTown) Z.upgradeTown();
+    if (Z.signalReady && AP.finale !== false && S.hour === 8 && Z.signalReady()) { Z.startFinale(); AP.events.push('signal@d' + S.day); }   // V2.46: call the convoy as soon as it is possible
     // V2.45: guard posts once the town has two stars: one night watch north of the centre, one day watch south, as a player would put them by the gates
     if (Z.tryPost && AP.posts !== false && S.rank >= 2 && S.hour === 9 && (S.posts || []).length < Math.min(2, Z.postMax()) && S.mat > 20) {
       const B = Wd.BUILD, cx = Math.round((B.x0 + B.x1) / 2), cand = (S.posts || []).length ? [[cx, B.y1], [cx - 1, B.y1], [cx + 1, B.y1], [cx, B.y1 - 1], [cx - 2, B.y1 - 1]] : [[cx, B.y0], [cx - 1, B.y0], [cx + 1, B.y0], [cx, B.y0 + 1], [cx + 2, B.y0 + 1]];
@@ -109,6 +110,7 @@
     const sv = S.sv, per = Wd.perimeter(W), wl = [...W.walls.values()];
     return { d: S.day, sv: sv.length, fallen: (S.fallen || []).length, down: sv.filter((q) => q.mode === 'down' || q.mode === 'hospital').length,
       food: Math.round(S.food), water: Math.round(S.water), mat: Math.round(S.mat), rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
+      leg: Z.legacyDone ? Z.legacyDone() : 0, fin: S.finale ? S.finale.night : null, won: S.won ? S.won.day : null, score: S.won ? S.won.score : null,
       kills: S.kills, nb: W.buildings.length, walls: wl.length, sealed: per.sealed, wallHp: wl.length ? Math.round(100 * wl.reduce((a, w) => a + w.hp / w.max, 0) / wl.length) : 0,
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),
       lvl: +(sv.reduce((a, q) => a + q.l, 0) / Math.max(1, sv.length)).toFixed(1), sat: Math.round(sv.reduce((a, q) => a + (q.sat || 0), 0) / Math.max(1, sv.length)),

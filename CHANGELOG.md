@@ -1,5 +1,29 @@
 # Changelog
 
+## V2.46.0 — Replayability: starts, difficulty, legacy goals and an ending
+- **New-game screen.** After naming the town, pick a start and a difficulty. It fits a 320 px screen. Slot cards show the start and difficulty icons, plus 🏆 once a town has won.
+- **4 starts:**
+  - ⛺ Roadside Camp: the usual start.
+  - 🌾 Old Farmstead: two garden plots, a full pantry, three people, few parts.
+  - ⚙️ Scrapyard Outpost: 70 parts and a scrapyard, but almost no food or water.
+  - 🔥 Last Two Standing: a guard, a medic and a tent; newcomers arrive twice as often in the first week.
+- **3 difficulties:**
+  - 🌱 Sheltered: zombies ×0.75, hordes ×0.8, raids 50% rarer, upkeep ×0.75, bleed-out ×1.5.
+  - ⚔️ Survivor: unchanged.
+  - 💀 Hardened: zombies ×1.25, hordes ×1.2, raids 25% more often, upkeep ×1.25, bleed-out ×0.8, score ×1.6.
+- **8 legacy goals** for the long game, shown in Goals: survive 30 days, 12 people, 3 territory expansions, 4 bosses, 6 research projects, 12 expeditions, a child grows up, 3 masters. Each pays +15 Renown and +10 parts.
+- **The ending: The Signal.** At ★5 with 4 legacy goals done, call for the convoy from Goals. Then hold out for 3 nights of growing hordes: brutes, spitters, a boss on night 2 and two bosses on night 3. Nobody arrives during the stand.
+  - If fewer than half your people are still alive, the convoy turns back and you can call again 5 days later.
+  - If enough survive, the convoy arrives and you get a **score**: survivors, legacy goals, rank, losses and speed, times the difficulty.
+  - The best score per start and difficulty is kept on this device and shown on the title and new-game screens. You can keep playing the town after winning.
+- Older saves play as Survivor difficulty from the Roadside Camp.
+- Balance: the auto-player now calls the convoy when it can; `ZH_OPT='&start=…&diff=…'` picks a start and difficulty.
+  - Survivor/Camp, 16 seeds: deaths by day 30 average 6.6 (6.9 before) and Rank 5 median is day 19.
+  - Sheltered: 2.1 deaths. Hardened: 17.8 deaths, Rank 5 day 21.5.
+  - Farmstead, 4 seeds: 7.8 deaths, Rank 5 day 25.5 (its weak economy slows it down). Scrapyard: 7.2 deaths, Rank 5 day 17. Last Two: 6.5 deaths, Rank 5 day 20.5. No town was wiped out.
+  - Final stand, 8 seeds: called on days 25–31, 0–9 people lost (median about 4), all won. The auto-player never prepares for it, so a careless player can lose.
+- New test group `replay` (12 checks).
+
 ## V2.45.0 — Guard posts and patrols
 - **Guard Post** (Build → Defend, 3 parts; up to 1 + your rank). It is a sandbag ring with a flag, drawn in pixel art in code. The flag shows the watch: blue for night, gold for day, red for both. Place it anywhere in or around the town except on a building or a wall, and at least 3 tiles from another post. Tap a post to set it up; Demolish removes it (+1 part).
 - **Who holds it:** Auto (Guards and Police first), a fighter you choose, or Nobody (patrol point only). If the chosen holder is away or hurt, Auto fills in.

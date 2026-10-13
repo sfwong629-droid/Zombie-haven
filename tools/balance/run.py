@@ -1,4 +1,4 @@
-# usage: run.py SEED DAYS OUTFILE  — plays DAYS game days with the auto-player, one JSON line per day
+# usage: [ZH_OPT='&start=farm&diff=hard'] run.py SEED DAYS OUTFILE  — plays DAYS game days with the auto-player, one JSON line per day
 import asyncio,json,sys,time
 from playwright.async_api import async_playwright
 SEED,DAYS,OUT=int(sys.argv[1]),int(sys.argv[2]),sys.argv[3]
@@ -7,7 +7,7 @@ async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch(); pg=await (await b.new_context(viewport={'width':390,'height':844})).new_page(); errs=[]
         pg.on('pageerror',lambda e:errs.append(str(e)))
-        await pg.goto(f'http://localhost:8765/index.html?s={SEED}'); await pg.wait_for_timeout(2500)
+        OPT=__import__('os').environ.get('ZH_OPT',''); await pg.goto(f'http://localhost:8765/index.html?s={SEED}'+OPT); await pg.wait_for_timeout(2500)
         await pg.evaluate("(seed)=>{window.requestAnimationFrame=()=>0;let x=seed;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};ZH.showEventPopup=()=>{};const b0=Date.now();Date.now=()=>b0+ZH.tick*1000/60;}",SEED)
         await pg.evaluate("()=>{let v=ZH.S.mat;window.LEDGER={};Object.defineProperty(ZH.S,'mat',{get(){return v},set(n){const d=n-v;if(Math.abs(d)>1e-9){const st=new Error().stack.split(String.fromCharCode(10));let fn='?';for(let i=2;i<st.length;i++){const m=st[i].match(/at (?:Object\\.)?([A-Za-z_$][\\w$]*)/);if(m&&!['set','eval'].includes(m[1])){fn=m[1];break}}const k=fn+(d>0?'+':'-');LEDGER[k]=(LEDGER[k]||0)+d}v=n},configurable:true,enumerable:true})}"); await pg.evaluate(AP); await pg.evaluate('(e)=>{AP.exp=e[0];AP.nowalls=e[1]}', [len(sys.argv)<5 or sys.argv[4]!='noexp', len(sys.argv)>5 and sys.argv[5]=='nowalls'])
         f=open(OUT,'w'); t0=time.time()

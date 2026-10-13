@@ -492,6 +492,42 @@ async def t_posts(br, port, t):   # V2.45: guard posts, watches, patrols, zombie
     t.ok(r['s'] == 'all' and r['txt'], f"the post panel explains the effects and sets the watch {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_replay(br, port, t):   # V2.46: starts, difficulty, legacy goals, the ending
+    base = f'http://127.0.0.1:{port}/index.html'
+    ctx = await br.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    want = {'camp': (3, 4, 30), 'farm': (4, 3, 14), 'scrap': (3, 4, 70), 'lone': (1, 2, 25)}
+    for st, (nb, ns, mat) in want.items():
+        await ctx.close(); ctx = await br.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.goto(f'{base}?test=r{st}&start={st}'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+        r = await pg.evaluate("()=>({b:ZH.world.buildings.length,s:ZH.S.sv.length,m:ZH.S.mat,st:ZH.S.start})")
+        t.ok(r['b'] == nb and r['s'] == ns and r['m'] == mat and r['st'] == st, f"start '{st}' sets up its town {r}")
+    await ctx.close(); ctx = await br.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(f'{base}?test=rdiff'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    r = await pg.evaluate("""()=>{const S=ZH.S,o={};const sp=(d)=>{S.diff=d;ZH.spawn(5,3,'walker');return S.z[S.z.length-1]};const n=sp('normal'),h=sp('hard'),e=sp('easy');o.hp=[e.hp/n.hp,h.hp/n.hp];o.pw=[e.pw/n.pw,h.pw/n.pw];
+      const b=ZH.world.buildings[0];S.diff='normal';const u0=ZH.upkeepTotal(),bl0=ZH.bleedMax();S.diff='hard';o.up=ZH.upkeepTotal()/u0;o.bl=ZH.bleedMax()/bl0;S.diff='normal';const sc0=ZH.scoreOf();S.diff='hard';o.sc=ZH.scoreOf()/sc0;S.diff='normal';return o}""")
+    t.ok(abs(r['hp'][0] - .75) < .05 and abs(r['hp'][1] - 1.25) < .05 and abs(r['pw'][1] - 1.25) < .01, f"difficulty scales zombie health and damage {r['hp']} {r['pw']}")
+    t.ok(abs(r['up'] - 1.25) < .01 and abs(r['bl'] - .8) < .01 and abs(r['sc'] - 1.6) < .02, f"hard costs more upkeep, bleeds out sooner and scores ×1.6 {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.diff='hard';S.start='scrap';const d=JSON.parse(ZH.serialize());delete d.S.diff;delete d.S.start;delete d.S.legacy;localStorage.setItem('zombieHavenV26',JSON.stringify(d));const o=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k.startsWith('zombieHavenV26'))return;return o.call(this,k,v)};return 1}""")
+    await pg.goto(f'{base}?test=rold'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    r = await pg.evaluate("()=>[ZH.S.diff,ZH.S.start]")
+    t.ok(r == ['normal', 'camp'], f'an older save plays as Survivor difficulty from the Roadside Camp {r}')
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.legacy={};S.day=31;const m=S.mat,ren=S.ren;ZH.legacyCheck();return {month:S.legacy.month,mat:S.mat-m,ren:S.ren-ren,ready:ZH.signalReady()}}""")
+    t.ok(r['month'] == 31 and r['mat'] >= 10 and r['ren'] >= 15 and not r['ready'], f"a legacy goal pays out once and the signal still needs ★5 {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S;localStorage.removeItem('zhRecords');S.rank=5;S.legacy={month:1,town:1,land:1,giants:1};const ready=ZH.signalReady();ZH.startFinale();const f=!!S.finale;S.hour=21;const z0=S.z.length;ZH.eventSchedule&&0;return {ready,f}}""")
+    t.ok(r['ready'] and r['f'], f"at ★5 with 4 legacy goals the convoy can be called {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.z.length=0;let mobs=0;for(let n=1;n<=3;n++){S.finale.night=n-1;S.hour=21;ZH.finaleTest();mobs=Math.max(mobs,S.z.filter(z=>z.mob).length)}const boss=S.z.some(z=>z.type==='boss');S.hour=6;ZH.finaleTest();
+      return {mobs,boss,won:!!S.won,score:S.won&&S.won.score,rec:JSON.parse(localStorage.getItem('zhRecords')||'{}')}}""")
+    t.ok(r['mobs'] >= 10 and r['boss'], f"the final stand sends growing hordes and a boss on the last night {r['mobs']} {r['boss']}")
+    t.ok(r['won'] and r['score'] > 0 and 'camp/normal' in r['rec'], f"surviving the third night wins, scores and records the best {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+    ctx = await br.new_context(viewport={'width': 320, 'height': 568}, device_scale_factor=2, is_mobile=True, has_touch=True); pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.goto(base); await pg.wait_for_selector('#title', state='visible'); await pg.click('#tStart'); await pg.click('.slot[data-i="2"]')
+    await pg.click('[data-st="farm"]'); await pg.click('[data-df="easy"]'); sw = await pg.evaluate("()=>document.documentElement.scrollWidth"); await pg.fill('#sName', 'Hayfield'); await pg.click('#sGo')
+    await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("()=>{ZH.saveGame();return [ZH.S.start,ZH.S.diff,ZH.S.townName,ZH.SLOT]}")
+    t.ok(r == ['farm', 'easy', 'Hayfield', 3] and sw <= 320, f"the new-game screen sets the name, start and difficulty and fits 320 px {r} {sw}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
@@ -617,7 +653,7 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

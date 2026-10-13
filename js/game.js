@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.45.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.46.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -90,7 +90,7 @@ async function loadAll() {
 
 /* ---------------- state ---------------- */
 const world = Wd.createWorld();
-const S = { posts: [], kids: [], guide: 0, log: [], expCount: 0, pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 2.6, nextBoss: 3, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
+const S = { diff: 'normal', start: 'camp', legacy: {}, finale: null, won: null, posts: [], kids: [], guide: 0, log: [], expCount: 0, pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 2.6, nextBoss: 3, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
 const floats = [];
 let sel = null;            // active build tool: {kind:'building',type} | {kind:'road'}
 let preview = null;        // {x,y,w,h,type,ok,why}
@@ -1277,6 +1277,71 @@ function spawnPoint() {   /* a walkable tile on the map edge outside the territo
   }
   return [1, 2];
 }
+/* ---------------- V2.46 replayability: difficulty, starting conditions, legacy goals and an ending ---------------- */
+const DIFFS = {
+  easy:   { name: 'Sheltered', icon: '🌱', desc: 'Weaker zombies, smaller hordes, fewer raids, cheaper upkeep and more time to rescue the downed.', z: .75, count: .8, raid: 1.5, upkeep: .75, bleed: 1.5, score: .6 },
+  normal: { name: 'Survivor', icon: '⚔️', desc: 'The game as designed.', z: 1, count: 1, raid: 1, upkeep: 1, bleed: 1, score: 1 },
+  hard:   { name: 'Hardened', icon: '💀', desc: 'Tougher, more numerous zombies, raids more often, upkeep costs more and the downed bleed out sooner. Scores ×1.6.', z: 1.25, count: 1.2, raid: .75, upkeep: 1.25, bleed: .8, score: 1.6 },
+};
+const DF = () => DIFFS[S.diff] || DIFFS.normal;
+const STARTS = {
+  camp:  { name: 'Roadside Camp', icon: '⛺', desc: 'Four survivors, a medical tent, a canteen and a house. The usual start.', food: 14, water: 14, mat: 30,
+    b: [['medic', 2, 7], ['canteen', 8, 6], ['house', 11, 11]], sv: [['Marcus', 'Guard', 3, 'brave', 7, 12], ['Amy', 'Medic', 2, 'caring', 5, 10], ['Lena', 'Scavenger', 2, 'scrounger', 9, 14], ['Ben', 'Farmer', 1, 'diligent', 6, 11]] },
+  farm:  { name: 'Old Farmstead', icon: '🌾', desc: 'Two garden plots and a full pantry, but only three people and few parts. Strong food, weak defence.', food: 30, water: 22, mat: 14,
+    b: [['farm', 8, 7], ['farm', 10, 7], ['canteen', 4, 7], ['house', 11, 11]], sv: [['Ben', 'Farmer', 2, 'diligent'], ['Rosa', 'Farmer', 1, 'eater'], ['Marcus', 'Guard', 2, 'cautious']] },
+  scrap: { name: 'Scrapyard Outpost', icon: '⚙️', desc: 'Plenty of parts and a scrapyard, but almost no food or water: get a Rain Collector up fast.', food: 6, water: 5, mat: 70,
+    b: [['scrapyard', 8, 6], ['medic', 2, 7], ['house', 11, 11]], sv: [['Theo', 'Engineer', 2, 'diligent'], ['Lena', 'Scavenger', 2, 'scrounger'], ['Marcus', 'Guard', 2, 'brave'], ['June', 'Civilian', 1, 'caring']] },
+  lone:  { name: 'Last Two Standing', icon: '🔥', desc: 'Just a guard, a medic and a tent. Newcomers arrive twice as often in the first week. A hard start.', food: 12, water: 12, mat: 25, arrive: 2,
+    b: [['medic', 2, 7]], sv: [['Marcus', 'Guard', 3, 'brave'], ['Amy', 'Medic', 2, 'caring']] },
+};
+const ST = () => STARTS[S.start] || STARTS.camp;
+function applyStart(key) {   /* builds the opening town for a starting condition */
+  const st = STARTS[key] || STARTS.camp; S.start = STARTS[key] ? key : 'camp'; S.food = st.food; S.water = st.water; S.mat = st.mat; world.buildings = [];
+  for (const [type, x, y] of st.b) { const d = DEFS[type]; if (!d) continue; const chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok) world.buildings.push({ type, x, y, w: d.w, h: d.h, q: d.q, a: d.a }); }
+  Wd.bump(world); S.sv = st.sv.map(([n, job, l, tr, x, y], i) => { const q = mk(n, job, l, x ?? 5 + 2 * (i % 3), y ?? 10 + (i % 2) * 2, i); q.trait = tr; q.max = baseMax(q); q.hp = q.max; return q; });
+}
+const LEGACY = [
+  { id: 'month', icon: '📅', name: 'A Month of Dawns', desc: 'Survive 30 days', prog: () => [S.day - 1, 30] },
+  { id: 'town', icon: '👥', name: 'A Real Town', desc: '12 people living in the Haven', prog: () => [S.sv.length + (S.trip ? S.trip.members.length : 0), 12] },
+  { id: 'land', icon: '🗺️', name: 'Room to Breathe', desc: 'Expand the territory 3 times', prog: () => [S.terr || 0, 3] },
+  { id: 'giants', icon: '☠️', name: 'Giant Slayers', desc: 'Defeat 4 Mutant Bosses', prog: () => [S.bossKills || 0, 4] },
+  { id: 'know', icon: '🔬', name: 'Know-How', desc: 'Finish 6 research projects', prog: () => [Object.keys(S.res || {}).filter((k) => S.res[k]).length, 6] },
+  { id: 'trips', icon: '🧭', name: 'Far Horizons', desc: 'Send out 12 expeditions', prog: () => [S.expCount || 0, 12] },
+  { id: 'family', icon: '👶', name: 'Next Generation', desc: 'A child grows up in the Haven', prog: () => [S.grown || 0, 1] },
+  { id: 'masters', icon: '🎖️', name: 'Old Hands', desc: '3 survivors master a profession', prog: () => [S.sv.filter((q) => q.mastered).length, 3] },
+];
+const LEGACY_NEED = 4, FINALE_NIGHTS = 3;
+const legacyDone = () => LEGACY.filter((g) => (S.legacy || {})[g.id]).length;
+function legacyCheck() {   /* daily, and when the goals panel opens */
+  S.legacy = S.legacy || {}; for (const g of LEGACY) { if (S.legacy[g.id]) continue; const [a, b] = g.prog(); if (a >= b) { S.legacy[g.id] = S.day; S.mat += 10; renownGain(15, 'Legacy goal'); showEventPopup({ title: '🏅 LEGACY: ' + g.name.toUpperCase(), text: `${g.desc}: done on day ${S.day}.<br><br>${legacyDone()} of ${LEGACY.length} legacy goals. ${legacyDone() >= LEGACY_NEED ? 'The radio tower can call for the convoy (Goals).' : `Complete ${LEGACY_NEED} and reach ★5 to call for the convoy.`}`, gains: '+15 Renown · +10 parts' }); } }
+}
+const signalReady = () => !S.finale && !S.won && S.rank >= 5 && legacyDone() >= LEGACY_NEED && S.day >= (S.signalAgain || 0);
+function startFinale() {   /* the ending: hold out for three nights of escalating hordes until the convoy arrives */
+  if (!signalReady()) return false; S.finale = { day: S.day, night: 0, lost0: (S.fallen || []).length, pop0: S.sv.length + (S.trip ? S.trip.members.length : 0) }; S.nextBoss = Math.max(S.nextBoss, S.day + FINALE_NIGHTS + 3); saveGame();
+  showEventPopup({ title: '📻 THE SIGNAL IS OUT', text: `A convoy answered: it will reach the Haven at dawn in ${FINALE_NIGHTS} days.<br><br>Every horde for miles heard the signal too. Hold out for <b>${FINALE_NIGHTS} nights</b>: each one brings a bigger horde, and the last a Mutant Boss.<br><br>The convoy only stops for a living town: keep at least <b>${Math.ceil(S.finale.pop0 / 2)}</b> of your ${S.finale.pop0} people alive.`, gains: 'Walls, guard posts, gear and medics: now is the time' }); return true;
+}
+function finaleHour() {
+  const f = S.finale; if (!f || S.won) return;
+  if (S.hour === 20) note('important', `📻 FINAL STAND · NIGHT ${f.night + 1} OF ${FINALE_NIGHTS}: THE HORDE COMES AT 21:00`);
+  if (S.hour === 21) { f.night++; const n = Math.round((12 + 6 * f.night + Math.floor(S.day / 3)) * DF().count), boost = 1 + .15 * f.night, add = (type) => { spawn(null, null, type); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.hp = z.max = Math.round(z.hp * boost); z.pw *= boost; };
+    for (let i = 0; i < n; i++) add(null); for (let i = 0; i < 2 * f.night; i++) add('brute'); for (let i = 0; i < f.night; i++) add('spitter'); if (f.night >= 2) spawnBoss(); if (f.night >= FINALE_NIGHTS) spawnBoss();
+    note('critical', `Final stand: night ${f.night} of ${FINALE_NIGHTS}`, { key: 'finale', icon: '📻', threats: true, live: () => !!S.finale && !S.won && isNight(), dyn: () => `Final stand · night ${S.finale ? S.finale.night : FINALE_NIGHTS} of ${FINALE_NIGHTS} · ${S.z.filter((z) => z.hp > 0 && !z.human).length} zombies` }); }
+  const alive = S.sv.length + (S.trip ? S.trip.members.length : 0), need = Math.ceil((f.pop0 || 2) / 2);
+  if (f.night && alive < need) { S.finale = null; S.signalAgain = S.day + 5; S.z.forEach((z) => { if (z.mob) z.siege = false; }); saveGame(); showEventPopup({ title: '📻 THE CONVOY TURNED BACK', text: `Too few people were left (${alive} of the ${need} needed) and the convoy would not risk the stop.<br><br>Rebuild: the radio can call again from day ${S.signalAgain}.`, gains: 'The legacy goals you finished still count' }); return; }
+  if (S.hour === 6 && f.night >= FINALE_NIGHTS) winGame();
+}
+function scoreOf() {
+  const lost = (S.fallen || []).length, alive = S.sv.length + (S.trip ? S.trip.members.length : 0);
+  return Math.max(100, Math.round((1000 + 60 * alive + 120 * legacyDone() + 40 * (S.rank || 1) - 35 * lost - 8 * Math.max(0, S.day - 35)) * DF().score));
+}
+const REC_KEY = 'zhRecords';
+function records() { try { return JSON.parse(localStorage.getItem(REC_KEY) || '{}'); } catch (e) { return {}; } }
+function winGame() {
+  if (S.won || !S.sv.length) return; const sc = scoreOf(), lost = (S.fallen || []).length; S.won = { day: S.day, score: sc, alive: S.sv.length, lost }; S.finale = null; S.z.forEach((z) => { if (z.type === 'boss' || z.mob) { z.hp = 0; z.escaped = true; } });
+  const k = S.start + '/' + S.diff, R = records(), prev = R[k], best = !prev || sc > prev.score; if (best) { R[k] = { score: sc, day: S.day, name: S.townName || 'Zombie Haven', t: Date.now() }; try { localStorage.setItem(REC_KEY, JSON.stringify(R)); } catch (e) { /* ignore */ } }
+  renownGain(50, 'The convoy arrived'); SFX('reward'); saveGame();
+  showEventPopup({ title: '🚚 THE CONVOY ARRIVES', text: `${esc(S.townName || 'The Haven')} held out. The convoy rolls in at dawn on day ${S.day}.<br><br>${ST().icon} ${ST().name} · ${DF().icon} ${DF().name}<br>${S.sv.length} survivors · ${lost} lost · ${legacyDone()}/${LEGACY.length} legacy goals<br><br><b style="font-size:26px">Score ${sc}</b>${best ? '<br>🏆 New best for this start and difficulty!' : `<br>Best so far: ${prev.score}`}`, gains: 'You can keep playing this town, or start a new one with another start or difficulty.' });
+}
 /* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
 let dangerT = -1, dangerV = 1;
 function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
@@ -1285,8 +1350,8 @@ function danger() {   /* adaptive: tracks how strong the Haven's people are righ
   return (dangerV = Math.max(.8, Math.min(2.4, .7 + .004 * st + .02 * S.day)));
 }
 function spawn(x = null, y = null, type = null) {
-  const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind], dm = danger(), hp = Math.round(d.hp * dm);
-  S.z.push({ type: kind, pw: 1 + (dm - 1) * .6, w: tc(x ?? a[0], y ?? a[1]), hp, max: hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null, siege: rnd() < Math.min(.85, .08 + .12 * (S.rank - 1) + (world.walls.size ? .15 : 0) + (isNight() ? .25 : 0) + .05 * (S.terr || 0)), blocked: 0, goal: null, goalT: 0, wallT: null });
+  const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind], dm = danger(), hp = Math.round(d.hp * dm * DF().z);
+  S.z.push({ type: kind, pw: (1 + (dm - 1) * .6) * DF().z, w: tc(x ?? a[0], y ?? a[1]), hp, max: hp, cool: 35 + rnd() * 40, phase: rnd() * 100, dest: null, mode: 'appear', stateTicks: 45 + rnd() * 30, target: null, path: null, siege: rnd() < Math.min(.85, .08 + .12 * (S.rank - 1) + (world.walls.size ? .15 : 0) + (isNight() ? .25 : 0) + .05 * (S.terr || 0)), blocked: 0, goal: null, goalT: 0, wallT: null });
 }
 const nowD = () => S.day + S.hour / 24;
 const graceOn = () => (S.graceUntil || 0) > nowD();   /* V2.24 mourning: the horde pulls back after heavy losses */
@@ -1294,7 +1359,7 @@ const avgLevel = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.l || 1), 0) /
 const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, quieter days */
 function monsterGeneration() {
   S.spawnClock++; const tr = S.terr || 0, base = 5 + S.rank + Math.floor(S.threat / 2) + 2 * tr + Math.floor(S.day / 3), night = isNight();
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr))) * (graceOn() ? .75 : 1)), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
   if (activeZ() < desired && S.spawnClock > gap) { spawn(); S.spawnClock = 0; }
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -1342,15 +1407,15 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
 function spawnBoss() {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0;
-  const L = avgLevel(), bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * S.day));   /* V2.24: scales with the survivors' levels, not the Haven rank */
+  const L = avgLevel(), bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * S.day) * DF().z);   /* V2.24: scales with the survivors' levels, not the Haven rank */
   S.z.push({ type: 'boss', boss: true, pw: 1.25 + .03 * S.day, w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   S.z[S.z.length - 1].max = S.z[S.z.length - 1].hp;
   const mob = 3 + Math.round(L * .8) + 3 * tr + Math.floor(S.day / 5); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
   SFX('boss'); note('critical', `A Mutant Boss and ${mob} zombies attack!`, { key: 'boss', icon: '☠', log: `A Mutant Boss is leading ${mob} zombies against the Haven!`, threats: true, at: () => { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); return b ? b.w : null; }, live: () => S.z.some((z) => z.type === 'boss' && z.hp > 0) }); S.alert = 2400;
 }
 function eventSchedule() {   /* called every game hour */
-  const now = S.day + S.hour / 24;
-  if (S.day >= 2 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + 2 + rnd() * 1.5; } }
+  const now = S.day + S.hour / 24; finaleHour();
+  if (S.day >= 2 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; note('important', '☠ The horde holds back tonight', { log: 'The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.' }); }
   if (S.day === S.nextBoss && S.hour === 18) { note('important', '☠ A BOSS ATTACKS AT 21:00', { log: 'Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.' }); }
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
@@ -1482,7 +1547,7 @@ const prodMult = (b, working = isWorking(b)) => (b.fire || b.burnt ? 0 : 1) * (b
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs parts each day; unpaid buildings run at half output ---------------- */
 const UPKEEP = { house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
-const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1);
+const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1) * DF().upkeep;
 const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
   const order = ['water', 'well', 'farm', 'field', 'medic', 'clinic', 'hospital', 'scrapyard', 'canteen', 'house'];
@@ -1858,6 +1923,7 @@ function bondsDaily() {
   }
 }
 function growUp(k) {
+  S.grown = (S.grown || 0) + 1;
   S.kids = S.kids.filter((q) => q !== k); const h = bOf('house')[0], p = h ? Wd.approachPoint(h) : tc(7, 10);
   const v = mk(k.name, 'Civilian', 1, Math.floor(p.x), Math.floor(p.y), S.sv.length); v.w = { x: p.x, y: p.y };
   for (const s of STATS) v.st[s] = Math.min(STAT_CAP, Math.max(1, (k.st[s] || 5) + (rnd() < .5 ? 1 : 0))); v.max = baseMax(v); v.hp = v.max; v.resident = true; v.sat = 40; v.parents = [...k.parents];
@@ -1877,7 +1943,7 @@ function bondsHtml(u) {
 }
 function endOfDay() {            // rations: every survivor eats half food, half water; a shortfall makes them hungry and thirsty (gentle, no damage yet)
   const up = payUpkeep();
-  for (const b of world.buildings) if (b.rushes) b.rushes--; petDaily(); bondsDaily();
+  for (const b of world.buildings) if (b.rushes) b.rushes--; petDaily(); bondsDaily(); try { legacyCheck(); } catch (e) { /* never block the day */ }
   for (const q of S.sv) if (hasT(q, 'scrounger') && q.hp > 0 && q.mode !== 'down' && rnd() < .5) { S.mat += 1; flow('mat', 'Scrounged (trait)', 1); note('routine', `${q.name} scrounged a spare part.`, { at: q.w, float: '🔍 +1 PART', col: '#9fe0ff' }); }   /* V2.43 */
   if (!S.wk) weekStart(); if (S.day > 1 && (S.day - 1) % 7 === 0) havenReview();
   let nf = 0, nw = 0; for (const q of S.sv) { nf += ration(q) / 2; nw += ration(q) / 2; } for (const k of S.kids || []) { nf += .25; nw += .25; }   /* children eat half a ration */
@@ -1923,7 +1989,7 @@ function showNextRequest() {
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
 function visitorArrival() {
-  S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
+  if (S.finale) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
   v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.' + (TRAITS[v.trait] ? `<br><br>${TRAITS[v.trait].icon} <b>${TRAITS[v.trait].name}</b>: ${traitGood(v)}. <i>${TRAITS[v.trait].bad}.</i>` : ''), gains: job + ' · Lv.' + lv + traitTag(v) }); say(name + ' arrived at the Haven.', true); ui();
@@ -2090,8 +2156,10 @@ function showGoals() {
   const first = [['Water', 'Build a Rain Collector', S.stage >= 1], ['First Blood', 'Defeat 3 Walkers', S.stage >= 2]];
   const rows = first.map(([n, d, ok]) => `<div style="opacity:${ok ? .6 : 1}">${ok ? '✔' : '▶'} <b>${n}</b> — ${d}</div>`).join('')
     + GUIDE.map((g, i) => { const done = S.stage >= 2 && i < gi, cur = S.stage >= 2 && i === gi; return `<div style="opacity:${done ? .6 : cur ? 1 : .45};${cur ? 'border:1px solid #ffe38a;border-radius:4px;padding:3px;margin:2px 0' : ''}">${done ? '✔' : cur ? '▶' : '·'} <b>${g.name}</b> — ${g.desc}${cur ? `<br><small>${g.hint}</small><br><small>Reward: +${g.parts} parts, +${g.ren} Renown</small>` : ''}</div>`; }).join('');
-  $('ib').innerHTML = rows + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
-  showPanel(); $('gLog').onclick = showLog;
+  legacyCheck(); const lg = `<div class="card" style="margin-top:8px"><b>🏅 Legacy goals</b> <span class="sm">${legacyDone()}/${LEGACY.length} · ${DF().icon} ${DF().name} · ${ST().icon} ${ST().name}</span>${LEGACY.map((g) => { const d = (S.legacy || {})[g.id], [a, b] = g.prog(); return `<div style="opacity:${d ? .6 : 1}">${d ? '✔' : g.icon} <b>${g.name}</b> — ${g.desc} <span class="sm">${d ? 'day ' + d : Math.min(a, b) + '/' + b}</span></div>`; }).join('')}<div class="sm">Each: +15 Renown, +10 parts.</div></div>
+    <div class="card"><b>📻 The Signal</b><div class="sm">${S.won ? `The convoy came on day ${S.won.day}. Score ${S.won.score}. The town is yours to keep building.` : S.finale ? `Final stand under way: night ${S.finale.night} of ${FINALE_NIGHTS}. Hold out until dawn after night ${FINALE_NIGHTS}.` : `Reach ★5 and finish ${LEGACY_NEED} legacy goals, then call for the convoy: ${FINALE_NIGHTS} nights of hordes, then the ending and your score. (★${S.rank}/5 · ${legacyDone()}/${LEGACY_NEED} goals)`}</div>${signalReady() ? '<button class="act go" id="gSignal" style="width:100%">📻 Call for the convoy</button>' : ''}</div>`;
+  $('ib').innerHTML = (gi >= GUIDE.length ? lg + rows : rows + lg) + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
+  showPanel(); $('gLog').onclick = showLog; const gs = $('gSignal'); if (gs) gs.onclick = () => { closeP(); startFinale(); };
 }
 function logEvent(t, lvl = 'routine') { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ PARTS · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t), l: lvl }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
 let logOnlyKey = false;
@@ -2575,7 +2643,7 @@ const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 }
 const CARE_TICKS = { medic: 3600, clinic: 2700, hospital: 1800 };
 let BANDAGE_COST = 2, BANDAGE_TICKS = 3600;   /* Field Medicine research: 1 part, longer */
 function medTier() { const m = medSite(); return m ? m.type : 'none'; }
-function bleedMax() { return BLEED_TICKS[medTier()]; }
+function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed); }
 function careTicks() { const t = medTier(), m = medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1)); }
 function beingCarried(s) { const r = s.rescuer; return !!(r && r.carrying === s && r.mode === 'rescueCarry'); }
 function bleedTick(s) {
@@ -3117,9 +3185,8 @@ async function init() {
   if (!SKIP_TITLE) { titleOn = true; document.getElementById('app').classList.add('titleMode'); }
   const restored = titleOn ? null : loadGame();
   if (!restored) {
-    world.buildings = [{ type: 'medic', x: 2, y: 7, w: 2, h: 2, q: 10, a: 10 }, { type: 'canteen', x: 8, y: 6, w: 2, h: 2, q: 10, a: 10 }, { type: 'house', x: 11, y: 11, w: 2, h: 2, q: 10, a: 8 }]; Wd.bump(world);
-    S.sv = [mk('Marcus', 'Guard', 3, 7, 12, 0), mk('Amy', 'Medic', 2, 5, 10, 1), mk('Lena', 'Scavenger', 2, 9, 14, 2), mk('Ben', 'Farmer', 1, 6, 11, 3)];
-    ['brave', 'caring', 'scrounger', 'diligent'].forEach((t, i) => { const q = S.sv[i]; q.trait = t; q.max = baseMax(q); q.hp = q.max; });
+    let o = {}; if (!titleOn) { try { o = JSON.parse(localStorage.getItem('zhNewOpts') || '{}') || {}; localStorage.removeItem('zhNewOpts'); } catch (e) { o = {}; } } const tq = (k) => QS.get(k);   /* V2.46: chosen on the new-game screen (?start=&diff= for testing) */
+    S.diff = DIFFS[tq('diff') || o.diff] ? (tq('diff') || o.diff) : 'normal'; applyStart(tq('start') || o.start || 'camp');
     spawn(5, 3, 'walker'); spawn(9, 3, 'crawler'); spawn(12, 4, 'walker');
   } else { for (let i = 0; i < 3; i++) spawn(); if (restored.cam && restored.cam.z) { cam.z = restored.cam.z; cam.x = restored.cam.x; cam.y = restored.cam.y; clampCam(); } }
   if (!restored || !restored.cam) centerOn(7.5, 10, Math.max(.7, Math.min(1.1, VW / 430)));
@@ -3134,14 +3201,14 @@ async function init() {
 function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }
 function slotInfo(i) {   /* V2.42: a damaged slot shows its day backup if there is one */
   const k = SLOT_KEYS[i], main = readKey(k), bak = readKey(BAK(k)), raw = main || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || bak; if (!raw) return null;
-  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '' }; } catch (e) { return null; } };
+  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '', diff: st.diff || 'normal', start: st.start || 'camp', won: !!st.won, finale: !!st.finale }; } catch (e) { return null; } };
   const x = info(raw); if (x) return main || raw !== bak ? x : { ...x, fromBak: true };
   const y = bak && raw !== bak && info(bak); return y ? { ...y, fromBak: true } : { broken: true };
 }
 function clearSlot(i) { try { const k = SLOT_KEYS[i]; [k, BAK(k), BAD(k)].forEach((q) => localStorage.removeItem(q)); if (i === 0) { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } } catch (e) { /* ignore */ } }
 const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
-function playSlot(i, newName) {
-  try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { clearSlot(i); localStorage.setItem('zhNewName', newName || 'Zombie Haven'); } } catch (e) { /* storage blocked: play without saving */ }
+function playSlot(i, newName, opts) {
+  try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { clearSlot(i); localStorage.setItem('zhNewName', newName || 'Zombie Haven'); localStorage.setItem('zhNewOpts', JSON.stringify(opts || {})); } } catch (e) { /* storage blocked: play without saving */ }
   location.href = location.pathname + '?play=1';
 }
 function backToTitle() { saveGame(); location.href = location.pathname; }
@@ -3149,7 +3216,7 @@ function showTitle() {
   $('title').style.display = 'flex'; $('slots').style.display = 'none';
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
-  $('tStart').onclick = showSlots; $('tVer').textContent = 'ver ' + VERSION;
+  $('tStart').onclick = showSlots; { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;
 function showSlots() {
@@ -3157,15 +3224,26 @@ function showSlots() {
   const rows = [0, 1, 2].map((i) => { const x = slotInfo(i);
     if (!x) return `<div class="slot empty" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Empty</b><small>Tap to start a new game</small></span></div>`;
     if (x.broken) return `<div class="slot" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Damaged save</b><small>Tap to start over in this slot</small></span></div>`;
-    return `<div class="slot" data-i="${i}" data-full="1"><span class="snum">${i + 1}</span><span class="sinfo"><b>${esc(x.name)}</b><small>Day ${x.day} · ${'★'.repeat(x.rank)} · 👥 ${x.pop} · ⚙ ${x.mat}</small><small class="sago">${x.fromBak ? '⚠ Damaged: day backup' : 'Saved ' + ago(x.time)}${x.ver ? ' · V' + esc(x.ver) : ''}</small></span><button class="sdel${slotDel === i ? ' arm' : ''}" data-del="${i}" title="Delete">${slotDel === i ? 'Delete?' : '🗑'}</button></div>`; }).join('');
+    return `<div class="slot" data-i="${i}" data-full="1"><span class="snum">${i + 1}</span><span class="sinfo"><b>${esc(x.name)}</b><small>${x.won ? '🏆 ' : x.finale ? '📻 ' : ''}Day ${x.day} · ${'★'.repeat(x.rank)} · 👥 ${x.pop} · ${(STARTS[x.start] || STARTS.camp).icon}${(DIFFS[x.diff] || DIFFS.normal).icon}</small><small class="sago">${x.fromBak ? '⚠ Damaged: day backup' : 'Saved ' + ago(x.time)}${x.ver ? ' · V' + esc(x.ver) : ''}</small></span><button class="sdel${slotDel === i ? ' arm' : ''}" data-del="${i}" title="Delete">${slotDel === i ? 'Delete?' : '🗑'}</button></div>`; }).join('');
   box.querySelector('.slist').innerHTML = rows;
   box.querySelectorAll('.slot').forEach((el) => { el.onclick = (e) => { if (e.target.closest('.sdel')) return; const i = +el.dataset.i; if (el.dataset.full) playSlot(i); else newSlot(i); }; });
   box.querySelectorAll('.sdel').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.del; if (slotDel === i) { clearSlot(i); slotDel = null; } else slotDel = i; showSlots(); }; });
   $('sBack').onclick = () => { slotDel = null; showTitle(); }; $('sBak').style.display = ''; $('sBak').onclick = () => { slotDel = null; showBackups(); };
 }
-function newSlot(i) {
-  const box = $('slots'); box.querySelector('.slist').innerHTML = `<div class="card" style="text-align:center"><b style="font-size:22px">Slot ${i + 1} · New haven</b><div class="sm" style="margin:6px 0">Name your town</div><input id="sName" maxlength="22" value="Zombie Haven" style="width:90%;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #8a6a3a;background:#fff8e6;color:#3a2a14;text-align:center"><div class="row" style="gap:8px;margin-top:10px;justify-content:center"><button class="act" id="sCancel">Cancel</button><button class="act go" id="sGo">Start</button></div></div>`;
-  $('sCancel').onclick = showSlots; $('sGo').onclick = () => playSlot(i, ($('sName').value || '').trim() || 'Zombie Haven');
+let newOpt = { start: 'camp', diff: 'normal' };
+function newSlot(i, keepName) {   /* V2.46: name, starting condition and difficulty */
+  const box = $('slots'), nm = keepName ?? 'Zombie Haven', R = records(), rec = R[newOpt.start + '/' + newOpt.diff];
+  box.querySelector('.slist').innerHTML = `<div class="card newGame" style="color:#2a2a5a;background:#fffaf0"><b style="font-size:22px">Slot ${i + 1} · New haven</b>
+    <div class="sm" style="margin:6px 0 2px;color:#7a6a50">Name your town</div><input id="sName" maxlength="22" value="${esc(nm)}" style="width:100%;box-sizing:border-box;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #8a6a3a;background:#fff8e6;color:#3a2a14;text-align:center">
+    <div class="sm" style="margin:8px 0 2px;color:#7a6a50">Start</div>${Object.entries(STARTS).map(([k, v]) => `<div class="ngOpt${newOpt.start === k ? ' on' : ''}" data-st="${k}"><span class="ngI">${v.icon}</span><span><b>${v.name}</b>${newOpt.start === k ? `<small>${v.desc}</small>` : ''}</span></div>`).join('')}
+    <div class="sm" style="margin:8px 0 2px;color:#7a6a50">Difficulty</div><div class="row" style="gap:4px">${Object.entries(DIFFS).map(([k, v]) => `<button class="act${newOpt.diff === k ? ' go' : ''}" data-df="${k}" style="flex:1 1 0;margin:0;padding:6px 2px;font-size:17px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#7a6a50">${DIFFS[newOpt.diff].desc}</div>
+    <div class="sm" style="margin-top:4px;color:#2a5ac8">${rec ? `🏆 Best here: ${rec.score} (${esc(rec.name)}, day ${rec.day})` : 'No win yet with this start and difficulty.'}</div>
+    <div class="row" style="gap:8px;margin-top:10px;justify-content:center"><button class="act" id="sCancel">Cancel</button><button class="act go" id="sGo">Start</button></div></div>`;
+  const nmNow = () => ($('sName').value || '').trim() || 'Zombie Haven';
+  box.querySelectorAll('[data-st]').forEach((e) => { e.onclick = () => { newOpt.start = e.dataset.st; newSlot(i, nmNow()); }; });
+  box.querySelectorAll('[data-df]').forEach((e) => { e.onclick = () => { newOpt.diff = e.dataset.df; newSlot(i, nmNow()); }; });
+  $('sCancel').onclick = showSlots; $('sGo').onclick = () => playSlot(i, nmNow(), { ...newOpt });
 }
 /* ---------------- V2.42 backups: export a slot to a file (or the clipboard / share sheet), import one into any slot ---------------- */
 const BAK_T = 'zhBackupAt';
@@ -3230,6 +3308,6 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
 init();
 })();
