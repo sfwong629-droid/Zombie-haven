@@ -47,3 +47,15 @@ The style reference is `docs/ref/survivors_style.png` (the approved 4-survivor i
 - Sprites are stored at native size. The game enlarges a sheet by a whole number (nearest-neighbour), then
   resizes smoothly to the exact zoom size ("sharp bilinear"), so pixels stay square at every zoom.
 - The ground is generated pixel by pixel on the 96 × 48 grid (`buildGround` in js/game.js).
+
+## Draft: HD standard (V8, under evaluation, October 2026)
+Owner request: higher-detail art like the approved town mock-up. Not adopted yet; a test medic and canteen come first.
+- Exactly 2× the V7 standard: tile 192 × 96, people 84 px tall, character cells 128 × 120 with feet on row 112,
+  buildings 188 / 284 / 380 wide (1×1 / 2×1 / 2×2), zombies 2× their V7 heights.
+- Two views only (front down-left, back up-left); right-facing views stay mirrored (owner agreed: 4 views would double
+  the drawing and memory for little gain). Avoid strongly one-sided details in designs.
+- The default zoom would rise to about 160% so the extra detail is visible. At today's 100% default, an art pixel
+  would be smaller than a screen pixel.
+- Memory estimate: about 90 MB of decoded art (was 28), plus the 120 MB pixel-cache budget. Target iPhone XS/XR (3 GB)
+  and newer. Load sheets on demand to cut this.
+- Source images: ChatGPT on flat #FF00FF, each art pixel a 4×4 block, converted with tools/art (same pipeline as V7).
