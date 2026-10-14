@@ -675,7 +675,26 @@ async def t_sim(br, port, t):
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})")
     t.ok(r['nb'] >= 12, f"it grows ({r['nb']} buildings)"); t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — PixelLab farmer, HD medical tent
+    ctx, pg, errs = await open_game(br, port, 'hd', init="localStorage.setItem('zhHD','1')")
+    await pg.wait_for_function('window.ZHChars && ZHChars.ready && ZHChars.hdSheets.length > 0', timeout=15000)
+    r = await pg.evaluate("""()=>{const S=ZH.S,a=S.sv[0];a.job='Farmer';a.look={sex:'m',skin:0,hair:0};const sh=ZHChars.sheetFor(a),D=ZHChars.dims(sh);
+      const out={hd:ZHChars.hdSheets,tag:sh.zhTag,res:D.res,walk:ZHChars.count('walk',sh),idle:ZHChars.count('idle',sh),w:sh.naturalWidth,frames:Object.values(D.frames).reduce((t,f)=>t+f[1],0),wp:D.wpose.length,hands:D.hands[0].length+D.hands[1].length};
+      out.portrait=(ZHChars.portrait(a)||'').slice(0,22);
+      const modes=[['walk',{moving:true}],['wait',{}],['attack',{stateTicks:2}],['recover',{stateTicks:30,recDur:40}],['down',{}],['work',{}]];
+      for(const [m,o] of modes){a.mode=m;Object.assign(a,o);a.eq={weapon:'pipe'};for(let k=0;k<8;k++){ZH.step(1);ZH.draw();}}
+      a.mode='wait';a.moving=false;a.carriedLoot=true;ZH.draw();a.carriedLoot=false;
+      const b=ZH.world.buildings.find(q=>q.type==='medic'),r=b&&ZH.spriteRect(b);out.tent=b?[r.w/r.s,Math.round(r.w/(ZH.TWs()/96))]:null;return out}""")
+    t.ok(r['hd'] == ['farm_m'] and r['tag'] == 'farm_m' and r['res'] == 2, f"?hd=1 loads the HD farmer sheet {r}")
+    t.ok(r['walk'] == 6 and r['idle'] == 2 and r['frames'] == 27 and r['w'] == 27 * 128 and r['wp'] == 27 and r['hands'] == 54, f"the HD sheet has its own frame table (walk 6, 27 frames) with hand points and weapon poses {r}")
+    t.ok(r['portrait'].startswith('data:image/png'), f"the HD farmer has a portrait {r['portrait']}")
+    t.ok(r['tent'] and r['tent'][0] == 192 and 92 <= r['tent'][1] <= 98, f"the HD medical tent covers the same footprint as the V7 one (192 HD px = ~96 V7 px) {r['tent']}")
+    t.ok(not errs, f'no page errors while the HD farmer walks, idles, fights, falls and works {errs[:1]}'); await ctx.close()
+    ctx, pg, errs = await open_game(br, port, 'hd0')
+    r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD]")
+    t.ok(r == [0, False], f"without ?hd=1 the game uses the current art only {r}"); await ctx.close()
+
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

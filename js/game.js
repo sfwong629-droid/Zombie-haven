@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.49.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.50.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -11,6 +11,10 @@ let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test',
 /* V2.42 save safety: a day backup per slot (<key>_bak), a copy of a save that would not load (<key>_bad), a session id so a second tab on the same slot is noticed */
 const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
 let saveBlocked = '', saveErr = '', loadedFrom = '';
+/* V2.50 HD art preview (V8: 2 art px per V7 px, characters from PixelLab). Off by default until a full set exists; ?hd=1 turns it on (remembered), ?hd=0 off. */
+const HD = (() => { try { const q = QS.get('hd'); if (q === '1' || q === '0') localStorage.setItem('zhHD', q); return localStorage.getItem('zhHD') === '1'; } catch (e) { return QS.get('hd') === '1'; } })();
+window.ZH_HD = HD;
+const HD_BUILD = { medic: { ax: 96, ay: 170, res: 2 } };   /* tools/art/sources/medic_tent_hd_src.png via fix_iso.py; ax, ay in HD px */
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
 const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
@@ -86,7 +90,8 @@ async function loadAll() {
       jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
     }
   }
-  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/v7/${t}.png`)));
+  if (HD) Object.assign(B4_DEFS, HD_BUILD);
+  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, B4_DEFS[t].res === 2 ? `assets/buildings/hd/${t}.png` : `assets/buildings/v7/${t}.png`)));
   jobs.push(loadImg('mapWalls', 'assets/map/v7/walls.png'), loadImg('mapProps', 'assets/map/v7/props.png'), loadImg('mapWreck', 'assets/map/v7/wreck.png'), loadImg('uiIcons', 'assets/ui/icons.png'), loadImg('statIcons', 'assets/ui/stats.png'), (async () => { try { UIM = await (await fetch('assets/ui/icons.json?v=' + VERSION)).json(); } catch (e) { UIM = null; } })(), (async () => { try { MAPM = await (await fetch('assets/map/v7/map.json?v=' + VERSION)).json(); } catch (e) { MAPM = null; } })());
   await Promise.all(jobs);
 }
@@ -191,7 +196,7 @@ function drawRoadTile(x, y) {
 /* ---------------- sprites ---------------- */
 function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v7/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
 function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; if (d && okImg(im)) return { d, im }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
-function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE, im = p4.im; return { x: a.x - (b.rot ? im.width - p4.d.ax : p4.d.ax) * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }   /* V2.47: a rotated building is the mirrored sprite */
+function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE / (p4.d.res || 1), im = p4.im; return { x: a.x - (b.rot ? im.width - p4.d.ax : p4.d.ax) * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }   /* V2.47: a rotated building is the mirrored sprite */
   const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - (b.rot ? sp.w - sp.ax : sp.ax) * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
 function drawBuilding(b, ghost, ok) {
   const p4 = b4(b);
@@ -281,13 +286,13 @@ function humanAnim(o, st) {
   return ['idle', Math.floor((tick + (o.phase || 0)) / ANIM_T.idle)];
 }
 function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head */
-  const CM = ZHChars.meta, fc = facing(o), view = fc.up ? 1 : 0, [anim, i] = humanAnim(o, fc), f = ZHChars.frame(anim, i);
-  const tw = TWs(), sc = tw / ART_TILE, flip = fc.right;
-  const pose = ZHChars.wpose(f), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
+  const CM = ZHChars.dims(sheetCv), fc = facing(o), view = fc.up ? 1 : 0, [anim, i] = humanAnim(o, fc), f = ZHChars.frame(anim, i, sheetCv);
+  const tw = TWs(), sc = tw / ART_TILE, flip = fc.right, sp = sc / CM.res;   /* sp = screen px per sheet px (V2.50: HD sheets have 2 per V7 px) */
+  const pose = ZHChars.wpose(f, sheetCv), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
   const drawW = () => {
     if (!wcell) return; const h = ZHChars.hand(view, f, sheetCv.zhTag), hxp = flip ? CM.fw - 1 - h[0] : h[0];
     const big = pixelUp('held', ZHItems.held, pxm(sc * DPR)), m = big.width / ZHItems.held.width, snap = (v) => Math.round(v * DPR) / DPR;
-    const x0 = p.x - CM.fw * sc / 2 + (hxp + .5) * sc, y0 = p.y - (CM.foot + 1) * sc + (h[1] + .5) * sc, half = (wcell.s / 2 + .5) * sc;
+    const x0 = p.x - CM.fw * sp / 2 + (hxp + .5) * sp, y0 = p.y - (CM.foot + 1) * sp + (h[1] + .5) * sp, half = (wcell.s / 2 + .5) * sc;
     ctx.imageSmoothingEnabled = sc * DPR < m - .02; ctx.save();
     if (flip) { ctx.translate(snap(x0), 0); ctx.scale(-1, 1); ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, -half, snap(y0 - half), wcell.s * sc, wcell.s * sc); }
     else ctx.drawImage(big, wcell.x * m, wcell.y * m, wcell.s * m, wcell.s * m, snap(x0 - half), snap(y0 - half), wcell.s * sc, wcell.s * sc);
@@ -296,8 +301,8 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   if (view === 1) drawW();
   ctx.save(); ctx.translate(0, 0);
   const fr = view * 1;   // row
-  { const want = sc * DPR, m = pxm(want), key = 'ch' + (sheetCv.zhTag || o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
-    const w = CM.fw * sc, h = CM.fh * sc, y = snap(p.y - (CM.foot + 1) * sc);
+  { const want = sp * DPR, m = pxm(want), key = 'ch' + (sheetCv.zhTag || o.type), big = pixelUp(key, sheetCv, m), snap = (v) => Math.round(v * DPR) / DPR;
+    const w = CM.fw * sp, h = CM.fh * sp, y = snap(p.y - (CM.foot + 1) * sp);
     ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .24 * tw, .085 * tw, 0, 0, 7); ctx.fill();
     ctx.imageSmoothingEnabled = want < m - .02; ctx.imageSmoothingQuality = 'high';
     if (flip) { ctx.translate(snap(p.x), 0); ctx.scale(-1, 1); ctx.drawImage(big, f * CM.fw * m, fr * CM.fh * m, CM.fw * m, CM.fh * m, -w / 2, y, w, h); }
@@ -315,9 +320,9 @@ function drawCart(s, p) {   /* V2.33: the rescuer pushes a hand cart with the in
   ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(-(M.ax - M.fw * .45) * sc, 0, .5 * tw, .12 * tw, 0, 0, 7); ctx.fill();
   const x0 = -M.ax * sc, y0 = -(M.ay + 1) * sc;
   ctx.drawImage(big, f * M.fw * m, view * M.fh * m, M.fw * m, M.fh * m, x0, y0, w, h);
-  if (q && window.ZHChars) { const qs = ZHChars.sheetFor(q); if (qs) { const lb = ZHChars.lying(qs), CMm = ZHChars.meta, bd = c.beds[view * 4 + f], qbig = pixelUp('ch' + qs.zhTag, qs, m);
+  if (q && window.ZHChars) { const qs = ZHChars.sheetFor(q); if (qs) { const lb = ZHChars.lying(qs), CMm = ZHChars.dims(qs), qsp = sc / CMm.res, qm = pxm(qsp * DPR), bd = c.beds[view * 4 + f], qbig = pixelUp('ch' + qs.zhTag, qs, qm);
     ctx.save(); ctx.translate(x0 + bd[0] * sc, y0 + (bd[1] + 6) * sc); if (view === 1) ctx.scale(-1, 1);
-    ctx.drawImage(qbig, lb.f * CMm.fw * m, 0, CMm.fw * m, CMm.fh * m, -lb.cx * sc, -lb.cy * sc, CMm.fw * sc, CMm.fh * sc); ctx.restore(); } }
+    ctx.drawImage(qbig, lb.f * CMm.fw * qm, 0, CMm.fw * qm, CMm.fh * qm, -lb.cx * qsp, -lb.cy * qsp, CMm.fw * qsp, CMm.fh * qsp); ctx.restore(); } }
   ctx.drawImage(big, f * M.fw * m, (2 + view) * M.fh * m, M.fw * m, M.fh * m, x0, y0, w, h);   /* the cart's front rim over them: they lie inside */
   ctx.restore(); ctx.imageSmoothingEnabled = true; return true;
 }

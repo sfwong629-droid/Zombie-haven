@@ -1,5 +1,13 @@
 # Changelog
 
+## V2.50.0 — HD art preview (first HD survivor and building)
+- **HD preview, off by default.** Open the game with `?hd=1` to see the new HD art (remembered on that device; `?hd=0` turns it off). Everything stays the same size on screen; HD art has half-size pixels, so it shows more detail.
+- **First HD survivor:** the male Farmer, animated with PixelLab: a 6-frame walk in both views, with legs that properly alternate. Until his other animations are made, idle, carry, falling and fighting reuse his walk and standing poses (the weapon still swings).
+- **First HD building:** the Medical Tent.
+- The game now reads each character sheet's own size and frame table, so HD and current sheets work side by side. Portraits, the rescue cart, held weapons and tapping all support both.
+- New art tool `tools/art/build_hd_char.py` builds an HD sheet from PixelLab GIFs. The HD standard and the ChatGPT → PixelLab steps are in docs/ART_STANDARD.md.
+- New regression test `hd`. All 31 test groups pass.
+
 ## V2.49.0 — Wider zoom, safer memory
 - **Zoom:** pinch or the mouse wheel now goes from 35% (the whole map) to 300% (close-up). It was 50–190%.
 - **Memory:** the game pre-scales pixel art into cached bitmaps. That cache now has a 120 MB budget (it reached about 180 MB on a 3× iPhone screen after zooming around), and each image is pre-scaled at most 4×. Past that, the art is drawn with nearest-neighbour scaling, which keeps pixels sharp.

@@ -48,14 +48,23 @@ The style reference is `docs/ref/survivors_style.png` (the approved 4-survivor i
   resizes smoothly to the exact zoom size ("sharp bilinear"), so pixels stay square at every zoom.
 - The ground is generated pixel by pixel on the 96 × 48 grid (`buildGround` in js/game.js).
 
-## Draft: HD standard (V8, parked October 2026: owner chose to keep the current art, roads and scale)
-Owner request: higher-detail art like the approved town mock-up. Not adopted yet; a test medic and canteen come first.
-- Exactly 2× the V7 standard: tile 192 × 96, people 84 px tall, character cells 128 × 120 with feet on row 112,
-  buildings 188 / 284 / 380 wide (1×1 / 2×1 / 2×2), zombies 2× their V7 heights.
-- Two views only (front down-left, back up-left); right-facing views stay mirrored (owner agreed: 4 views would double
-  the drawing and memory for little gain). Avoid strongly one-sided details in designs.
-- The default zoom would rise to about 160% so the extra detail is visible. At today's 100% default, an art pixel
-  would be smaller than a screen pixel.
-- Memory estimate: about 90 MB of decoded art (was 28), plus the 120 MB pixel-cache budget. Target iPhone XS/XR (3 GB)
-  and newer. Load sheets on demand to cut this.
-- Source images: ChatGPT on flat #FF00FF, each art pixel a 4×4 block, converted with tools/art (same pipeline as V7).
+## HD standard (V8) — in preview since V2.50 (`?hd=1`), owner-approved October 2026
+Same scale and roads as V7 on screen; every art pixel is half the size. Buildings and characters share one pixel size.
+- Exactly 2× the V7 standard: tile 192 × 96, people 84 px tall, buildings about 188 / 284 / 380 wide (1×1 / 2×1 / 2×2),
+  zombies 2× their V7 heights.
+- Character cells 128 × 120, feet on row 113 (so (foot + 1) / 2 = 57 matches V7). Frame table per sheet:
+  idle 2, walk 6, carry 6, collapse 4, punch 3, blunt 3, shoot 3 (27 frames per row; row 0 front, row 1 back).
+- Two views (front = south-west/down-left, back = north-west/up-left); the game mirrors them for the right-facing directions.
+- Characters, owner-approved pipeline:
+  1. ChatGPT (project "2D Game Sprite Generator") draws one front-facing (south) base sprite: straight at the viewer,
+     symmetrical, hands empty, flat #FF00FF.
+  2. Clean it to 84 px on a transparent 128 × 128 canvas (tools/art/sources/pixellab/<tag>_south_base.png).
+  3. PixelLab, 8 directions: upload it as South, generate the rotation, then animate (walk preset, 6 frames) for
+     South-West and North-West. ChatGPT cannot draw alternating walk legs; PixelLab can.
+  4. Save the GIFs as tools/art/sources/pixellab/<tag>_<anim>_sw.gif / _nw.gif and run
+     `python3 tools/art/build_hd_char.py <tag>`. Missing animations fall back (see the script header).
+- Buildings: ChatGPT with the footprint guides in tools/art/templates, straightened by fix_iso.py, files in assets/buildings/hd
+  with ax / ay in HD px and `res: 2` (HD_BUILD in js/game.js).
+- Held weapons are still V7 pixel size (assets/items/held.png) until an HD set exists.
+- Memory estimate for a full HD set: about 90 MB of decoded art (was 28), plus the 120 MB pixel-cache budget.
+  Target iPhone XS/XR (3 GB) and newer.
