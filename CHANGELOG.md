@@ -1,5 +1,13 @@
 # Changelog
 
+## V2.51.0 — HD ground (preview)
+- With `?hd=1`, grass, dirt patches and roads are now generated at HD resolution (pixels half the size), matching the HD farmer and Medical Tent. Road edges are smoother and the grass texture is finer. Nothing changes without `?hd=1`.
+- The ground is now built in pieces: 16 for HD, so no single image passes iPhone Safari's 16.7-megapixel canvas limit, and 1 for the current art, which comes out identical to before.
+- Placing or removing a road only regenerates the pieces around it. In the test browser this takes about 0.14 s with HD and 0.3 s with the current art; before, the whole ground took 0.5 s.
+- A full HD ground build (on load or when the territory grows) takes about 1.2 s in the test browser and may be slower on an iPhone. HD ground uses about 62 MB of memory, four times the current ground's 15 MB.
+- The `hd` test now also checks the ground. All 31 test groups pass.
+- Known issue: the `expchoices` and `posts` tests sometimes fail when a zombie wanders in at the wrong moment. This also happens on V2.50.0, so these changes didn't cause it.
+
 ## V2.50.0 — HD art preview (first HD survivor and building)
 - **HD preview, off by default.** Open the game with `?hd=1` to see the new HD art (remembered on that device; `?hd=0` turns it off). Everything stays the same size on screen; HD art has half-size pixels, so it shows more detail.
 - **First HD survivor:** the male Farmer, animated with PixelLab: a 6-frame walk in both views, with legs that properly alternate. Until his other animations are made, idle, carry, falling and fighting reuse his walk and standing poses (the weapon still swings).

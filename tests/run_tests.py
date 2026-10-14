@@ -689,10 +689,12 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     t.ok(r['walk'] == 6 and r['idle'] == 2 and r['frames'] == 27 and r['w'] == 27 * 128 and r['wp'] == 27 and r['hands'] == 54, f"the HD sheet has its own frame table (walk 6, 27 frames) with hand points and weapon poses {r}")
     t.ok(r['portrait'].startswith('data:image/png'), f"the HD farmer has a portrait {r['portrait']}")
     t.ok(r['tent'] and r['tent'][0] == 192 and 92 <= r['tent'][1] <= 98, f"the HD medical tent covers the same footprint as the V7 one (192 HD px = ~96 V7 px) {r['tent']}")
+    r = await pg.evaluate("()=>{const c=ZH.groundChunks;ZH.world.roads.add('6,6');const n=ZH.buildGround();ZH.world.roads.delete('6,6');ZH.buildGround();return {gr:ZH.GR,n:c.length,max:Math.max(...c.map(q=>q.width*q.height)),w:c.reduce((t,q,i)=>t+(i<4?q.width:0),0),part:n}}")
+    t.ok(r['gr'] == 2 and r['n'] == 16 and r['max'] < 16.7e6 and r['w'] == 2 * 58 * 48 and 1 <= r['part'] <= 4, f"HD ground: 2 px per V7 px in 16 chunks (each under Safari's canvas limit); a new road only redraws the chunks around it {r}")
     t.ok(not errs, f'no page errors while the HD farmer walks, idles, fights, falls and works {errs[:1]}'); await ctx.close()
     ctx, pg, errs = await open_game(br, port, 'hd0')
-    r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD]")
-    t.ok(r == [0, False], f"without ?hd=1 the game uses the current art only {r}"); await ctx.close()
+    r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD, ZH.GR, ZH.groundChunks.length]")
+    t.ok(r == [0, False, 1, 1], f"without ?hd=1 the game uses the current art and ground only {r}"); await ctx.close()
 
 TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]

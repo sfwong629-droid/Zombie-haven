@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.50.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.51.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -133,14 +133,24 @@ function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - x
   const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1); return a + (b - a) * s(xf) + (c - a) * s(yf) + (a - b - c + d) * s(xf) * s(yf); }
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const GRASS = ['#3a4d2c', '#425832', '#4b6437', '#546f3c', '#607b44'].map(hex), DIRT = ['#4a3f30', '#55483a', '#605140', '#3e352a'].map(hex), GRASS_OUT = ['#262e22', '#2b3526', '#313c2a', '#37432e', '#3e4b33'].map(hex);   /* V2.25: darker, muted */
+const PEBBLE = hex('#8a8476'), FLOWER_Y = hex('#e7d77a'), FLOWER_P = hex('#d8a8d0');
 const ROADC = { base: hex('#6a5a45'), dark: hex('#5d4f3c'), light: hex('#76654e'), curb: hex('#4a3f31'), lip: hex('#7c6b53'), dash: hex('#6a5a45') };   /* V2.25: packed-dirt roads */
-function buildGround() {
-  const W = (COLS + ROWS) * APX / 2, H = (COLS + ROWS) * APY / 2;
-  if (!groundCv) { groundCv = document.createElement('canvas'); groundCv.width = W; groundCv.height = H; }
-  const g = groundCv.getContext('2d'), id = g.createImageData(W, H), d = id.data;
-  const road = (x, y) => Wd.isRoad(world, x, y);
-  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
-    const A = (px + .5 - GOXA) / (APX / 2), B = (py + .5) / (APY / 2), wx = (A + B) / 2, wy = (B - A) / 2;
+/* V2.50 HD ground (?hd=1): the same generator at 2 art px per V7 px (GR = 2), split into 4 x 4 chunks so no canvas passes
+   iPhone Safari's 16.7-Mpx limit, and a road change only regenerates the chunks around it. V7 keeps one chunk. */
+const GR = HD ? 2 : 1, GN = HD ? 4 : 1, GW = (COLS + ROWS) * APX / 2 * GR, GH = (COLS + ROWS) * APY / 2 * GR;
+let groundChunks = null, groundRoads = null, groundBuildKey = '';
+function groundChunkRect(i, j) { const x0 = Math.floor(GW * i / GN), x1 = Math.floor(GW * (i + 1) / GN), y0 = Math.floor(GH * j / GN), y1 = Math.floor(GH * (j + 1) / GN); return { x0, y0, x1, y1 }; }
+function renderGroundChunk(i, j) {
+  const R = groundChunkRect(i, j), W = R.x1 - R.x0, H = R.y1 - R.y0, PX = APX * GR, PY = APY * GR, OXA = GOXA * GR;
+  let cv0 = groundChunks[j * GN + i]; if (!cv0) { cv0 = document.createElement('canvas'); cv0.width = W; cv0.height = H; groundChunks[j * GN + i] = cv0; }
+  const g = cv0.getContext('2d'), id = g.createImageData(W, H), d = id.data;
+  const RD = new Uint8Array((COLS + 2) * (ROWS + 2)), TN = new Uint8Array(COLS * ROWS);   // per-tile lookups (hot loop)
+  for (let y = -1; y <= ROWS; y++) for (let x = -1; x <= COLS; x++) RD[(y + 1) * (COLS + 2) + x + 1] = Wd.isRoad(world, x, y) ? 1 : 0;
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) TN[y * COLS + x] = Wd.inTown(x, y) ? 1 : 0;
+  const road = (x, y) => RD[(y + 1) * (COLS + 2) + x + 1] === 1;
+  for (let qy = 0; qy < H; qy++) for (let qx = 0; qx < W; qx++) {
+    const px = qx + R.x0, py = qy + R.y0;
+    const A = (px + .5 - OXA) / (PX / 2), B = (py + .5) / (PY / 2), wx = (A + B) / 2, wy = (B - A) / 2;
     if (wx < 0 || wy < 0 || wx >= COLS || wy >= ROWS) continue;
     const tx = Math.floor(wx), ty = Math.floor(wy), u = wx - tx, v = wy - ty; let c;
     if (road(tx, ty)) {
@@ -150,31 +160,52 @@ function buildGround() {
       const onX = Math.abs(v - .5) < .045 && ((ea && u >= .5) || (we && u <= .5)), onY = Math.abs(u - .5) < .045 && ((so && v >= .5) || (n && v <= .5));
       const dash = (onX && Math.floor(wx * 6) % 2 === 0) || (onY && Math.floor(wy * 6) % 2 === 0);
       const r = hash2(px, py);
-      c = edge ? ROADC.curb : lip ? ROADC.lip : dash ? ROADC.dash : r < .08 ? ROADC.dark : r > .95 ? ROADC.light : r > .992 ? hex('#8a8476') : ROADC.base;
+      c = edge ? ROADC.curb : lip ? ROADC.lip : dash ? ROADC.dash : r < .08 ? ROADC.dark : r > .95 ? ROADC.light : r > .992 ? PEBBLE : ROADC.base;
     } else {
-      const pal = Wd.inTown(tx, ty) ? GRASS : GRASS_OUT;
-      let k = vnoise(wx * 2.2, wy * 2.2) * 0.65 + vnoise(px / 3.1, py / 2.3) * 0.35;   // clumps + fine texture
-      let i = k < .34 ? 0 : k < .46 ? 1 : k < .58 ? 2 : k < .7 ? 3 : 4;
+      const town = TN[ty * COLS + tx] === 1, pal = town ? GRASS : GRASS_OUT;
+      let k = vnoise(wx * 2.2, wy * 2.2) * 0.65 + vnoise(px / 3.1, py / 2.3) * 0.35;   // clumps + fine texture (HD: the texture is per HD pixel, so finer)
+      let ii = k < .34 ? 0 : k < .46 ? 1 : k < .58 ? 2 : k < .7 ? 3 : 4;
       const r = hash2(px * 3 + 1, py * 5 + 2);
-      if (r < .035 && i > 0) i -= 1; else if (r > .975 && i < 4) i += 1;            // single-pixel tufts
-      const dz = vnoise(wx * .55 + 7, wy * .55 + 3) + (Wd.inTown(tx, ty) ? -.12 : 0);   /* V2.30: worn dirt patches, more outside the walls */
-      if (dz > .7) { const q = hash2(px * 5, py * 3); c = q < .1 ? DIRT[3] : q > .93 ? DIRT[2] : DIRT[dz > .74 ? 1 : 0]; if (hash2(px, py * 11) > .985) c = hex('#8a8476'); }   // pebbles
+      if (r < .035 && ii > 0) ii -= 1; else if (r > .975 && ii < 4) ii += 1;            // single-pixel tufts
+      const dz = vnoise(wx * .55 + 7, wy * .55 + 3) + (town ? -.12 : 0);   /* V2.30: worn dirt patches, more outside the walls */
+      if (dz > .7) { const q = hash2(px * 5, py * 3); c = q < .1 ? DIRT[3] : q > .93 ? DIRT[2] : DIRT[dz > .74 ? 1 : 0]; if (hash2(px, py * 11) > .985) c = PEBBLE; }   // pebbles
       else if (dz > .66 && hash2(px * 2, py) > .5) c = DIRT[0];
-      else if (hash2(px, py * 7) > .985 && hash2(py, px) > .5 && i >= 2) c = hex(hash2(px * 3, py) > .5 ? '#e7d77a' : '#d8a8d0'); else c = pal[i];   // rare flowers
+      else if (hash2(px, py * 7) > .985 && hash2(py, px) > .5 && ii >= 2) c = hash2(px * 3, py) > .5 ? FLOWER_Y : FLOWER_P; else c = pal[ii];   // rare flowers
     }
-    const j = (py * W + px) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255;
+    const jj = (qy * W + qx) * 4; d[jj] = c[0]; d[jj + 1] = c[1]; d[jj + 2] = c[2]; d[jj + 3] = 255;
   }
   g.putImageData(id, 0, 0);
-  { const A = (x, y) => [GOXA + (x - y) * APX / 2, (x + y) * APY / 2], B = Wd.BUILD, c = [A(B.x0, B.y0), A(B.x1 + 1, B.y0), A(B.x1 + 1, B.y1 + 1), A(B.x0, B.y1 + 1)];   /* build-zone outline */
-    g.beginPath(); g.moveTo(...c[0]); c.slice(1).forEach((q) => g.lineTo(...q)); g.closePath(); g.strokeStyle = 'rgba(214,235,178,.35)'; g.lineWidth = 1; g.stroke(); }
-  pixelCache.forEach((v, k) => { if (k.startsWith('ground#')) { pixelBytes -= v.width * v.height * 4; pixelCache.delete(k); } });
+  { const A = (x, y) => [OXA + (x - y) * PX / 2 - R.x0, (x + y) * PY / 2 - R.y0], B = Wd.BUILD, c = [A(B.x0, B.y0), A(B.x1 + 1, B.y0), A(B.x1 + 1, B.y1 + 1), A(B.x0, B.y1 + 1)];   /* build-zone outline */
+    g.beginPath(); g.moveTo(...c[0]); c.slice(1).forEach((q) => g.lineTo(...q)); g.closePath(); g.strokeStyle = 'rgba(214,235,178,.35)'; g.lineWidth = GR; g.stroke(); }
+  pixelCache.forEach((v, k) => { if (k.startsWith('ground' + (j * GN + i) + '#')) { pixelBytes -= v.width * v.height * 4; pixelCache.delete(k); } });
+}
+function buildGround() {   /* regenerate what changed: everything after a territory change, else only the chunks around changed road tiles */
+  const bk = Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + ',' + Wd.BUILD.y0 + ',' + Wd.BUILD.x0, roads = new Set(world.roads);
+  const all = !groundChunks || bk !== groundBuildKey || !groundRoads; const dirty = new Set();
+  if (all) { groundChunks = groundChunks || new Array(GN * GN).fill(null); for (let k = 0; k < GN * GN; k++) dirty.add(k); }
+  else {
+    const changed = [...roads].filter((k) => !groundRoads.has(k)).concat([...groundRoads].filter((k) => !roads.has(k)));
+    const PX = APX * GR, PY = APY * GR, OXA = GOXA * GR;
+    for (const key of changed) { const m = String(key).match(/-?\d+/g); if (!m) { for (let k = 0; k < GN * GN; k++) dirty.add(k); break; } const x = +m[0], y = +m[1];
+      const xs = [OXA + (x - 1 - (y + 2)) * PX / 2, OXA + (x + 2 - (y - 1)) * PX / 2], ys = [(x - 1 + y - 1) * PY / 2, (x + 2 + y + 2) * PY / 2];   // the tile and its neighbours
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const R = groundChunkRect(i, j); if (xs[1] >= R.x0 && xs[0] <= R.x1 && ys[1] >= R.y0 && ys[0] <= R.y1) dirty.add(j * GN + i); } }
+  }
+  dirty.forEach((k) => renderGroundChunk(k % GN, Math.floor(k / GN)));
+  groundRoads = roads; groundBuildKey = bk; groundCv = groundChunks[0]; return dirty.size;
 }
 function drawGround() {
   const key = [...world.roads].join('|') + '#' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + ',' + Wd.BUILD.y0;   // ground depends on roads and the territory
-  if (!groundCv || key !== groundKey) { groundKey = key; buildGround(); }
-  const s = TWs() / APX, o = project(0, 0), want = s * DPR, m0 = Math.min(3, pxm(want)), m = groundCv.width * groundCv.height * m0 * m0 > 8e6 ? 1 : m0, big = m > 1 ? pixelUp('ground', groundCv, m) : groundCv;   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit */
-  ctx.imageSmoothingEnabled = m > 1 && want < m - .02; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(big, o.x - GOXA * s, o.y, groundCv.width * s, groundCv.height * s); ctx.imageSmoothingEnabled = true;
+  if (!groundChunks || key !== groundKey) { groundKey = key; buildGround(); }
+  const s = TWs() / (APX * GR), o = project(0, 0), want = s * DPR, ox = o.x - GOXA * GR * s, snap = (v) => Math.round(v * DPR) / DPR;
+  for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) {
+    const c = groundChunks[j * GN + i], R = groundChunkRect(i, j); if (!c) continue;
+    const x0 = snap(ox + R.x0 * s), x1 = snap(ox + R.x1 * s), y0 = snap(o.y + R.y0 * s), y1 = snap(o.y + R.y1 * s);
+    if (x1 < 0 || y1 < 0 || x0 > VW || y0 > VH) continue;   // off screen
+    const m0 = Math.min(3, pxm(want)), m = GN > 1 || c.width * c.height * m0 * m0 > 8e6 ? 1 : m0, big = m > 1 ? pixelUp('ground' + (j * GN + i), c, m) : c;   /* ≤3×: the 4× ground image was ~63 MB, close to iPhone Safari's canvas limit; HD chunks are never pre-scaled */
+    ctx.imageSmoothingEnabled = m > 1 && want < m - .02; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(big, x0, y0, x1 - x0, y1 - y0);
+  }
+  ctx.imageSmoothingEnabled = true;
 }
 function tilePath(x, y, grow = 0) { const n = project(x, y), e = project(x + 1, y), s = project(x + 1, y + 1), w = project(x, y + 1); ctx.beginPath(); ctx.moveTo(n.x, n.y - grow); ctx.lineTo(e.x + grow, e.y); ctx.lineTo(s.x, s.y + grow); ctx.lineTo(w.x - grow, w.y); ctx.closePath(); }
 function diamond(x, y, fill, edge) { tilePath(x, y); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = Math.max(1, cam.z); ctx.stroke(); } }
@@ -3324,6 +3355,6 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH };
+window.ZH = { upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 init();
 })();
