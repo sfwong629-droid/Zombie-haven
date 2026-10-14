@@ -695,6 +695,10 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     ctx, pg, errs = await open_game(br, port, 'hd0')
     r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD, ZH.GR, ZH.groundChunks.length]")
     t.ok(r == [0, False, 1, 1], f"without ?hd=1 the game uses the current art and ground only {r}"); await ctx.close()
+    ctx, pg, errs = await open_game(br, port, 'c64', init="localStorage.setItem('zhC64','1');localStorage.setItem('zhHD','1')")
+    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);ZH.closeP();for(let k=0;k<5;k++){ZH.step(2);ZH.draw();}return [window.ZH_C64, window.ZH_HD, ZH.GR, ZHChars.hdSheets.length>=0]}")
+    t.ok(r[:3] == [True, False, 1], f"?c64=1 (58-px characters) replaces the HD preview, keeps the normal ground and falls back to current art for anyone not redrawn yet {r}")
+    t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 
 TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]

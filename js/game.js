@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.51.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.52.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -12,12 +12,15 @@ let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test',
 const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
 let saveBlocked = '', saveErr = '', loadedFrom = '';
 /* V2.50 HD art preview (V8: 2 art px per V7 px, characters from PixelLab). Off by default until a full set exists; ?hd=1 turns it on (remembered), ?hd=0 off. */
-const HD = (() => { try { const q = QS.get('hd'); if (q === '1' || q === '0') localStorage.setItem('zhHD', q); return localStorage.getItem('zhHD') === '1'; } catch (e) { return QS.get('hd') === '1'; } })();
-window.ZH_HD = HD;
+const HD0 = (() => { try { const q = QS.get('hd'); if (q === '1' || q === '0') localStorage.setItem('zhHD', q); return localStorage.getItem('zhHD') === '1'; } catch (e) { return QS.get('hd') === '1'; } })();
+/* V2.52 C64 character preview: people redrawn on PixelLab's 64 canvas (about 58 px tall, the town mock-up's size) at the normal
+   pixel size, so faces and expressions read. ?c64=1 turns it on (remembered), ?c64=0 off; it replaces the HD preview. */
+const C64 = (() => { try { const q = QS.get('c64'); if (q === '1' || q === '0') localStorage.setItem('zhC64', q); return localStorage.getItem('zhC64') === '1'; } catch (e) { return QS.get('c64') === '1'; } })();
+window.ZH_HD = HD0 && !C64; window.ZH_C64 = C64; const HD = window.ZH_HD;
 const HD_BUILD = { medic: { ax: 96, ay: 170, res: 2 } };   /* tools/art/sources/medic_tent_hd_src.png via fix_iso.py; ax, ay in HD px */
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
 const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS;
-const CHAR_H = 42 / 96;   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = (C64 ? 58 : 42) / 96;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;

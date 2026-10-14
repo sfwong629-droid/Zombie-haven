@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Build an HD (V8) character sheet from PixelLab animations.
+"""Build a character sheet from PixelLab animations, in one of two standards:
 
-    python3 tools/art/build_hd_char.py farm_m
+    python3 tools/art/build_hd_char.py farm_m            # HD (V8): 84-px people, half-size pixels   (preview ?hd=1)
+    python3 tools/art/build_hd_char.py --c64 farm_m      # C64: 58-px people on PixelLab's 64 canvas, normal pixels (preview ?c64=1)
+
+C64 (owner-approved October 2026, matches the town mock-up's medic): same pixel size as the V7 world, people about 58 px
+tall (V7: 42), PixelLab 64 x 64 canvas, cells 96 x 80, feet on row 74; sources in tools/art/sources/pixellab/c64/.
 
 Sources (tools/art/sources/pixellab/):
     <tag>_walk_sw.gif   6-frame walk facing south-west  = our FRONT view (down-left)
@@ -22,8 +26,13 @@ import json, os, sys
 from PIL import Image, ImageSequence
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SRC = os.path.join(ROOT, 'tools', 'art', 'sources', 'pixellab'); OUT = os.path.join(ROOT, 'assets', 'characters', 'hd')
-FW, FH, FOOT = 128, 120, 113
+KINDS = {'hd': dict(res=2, fw=128, fh=120, foot=113, src='', out='hd', bob=2), 'c64': dict(res=1, fw=96, fh=80, foot=74, src='c64', out='c64', bob=1)}
+SRC = OUT = None; FW = FH = FOOT = BOB = 0; KIND = 'hd'
+def use(kind):
+    global SRC, OUT, FW, FH, FOOT, BOB, KIND
+    k = KINDS[kind]; KIND = kind; FW, FH, FOOT, BOB = k['fw'], k['fh'], k['foot'], k['bob']
+    SRC = os.path.join(ROOT, 'tools', 'art', 'sources', 'pixellab', k['src']); OUT = os.path.join(ROOT, 'assets', 'characters', k['out'])
+use('hd')
 ANIMS = [('idle', 2), ('walk', 6), ('carry', 6), ('collapse', 4), ('punch', 3), ('blunt', 3), ('shoot', 3)]
 WPOSE = (['rest'] * 2 + ['rest'] * 6 + ['none'] * 6 + ['none'] * 4 + ['rest'] * 3 + ['up', 'fwd', 'down'] + ['aim', 'fire', 'aim'])
 
@@ -47,7 +56,8 @@ def feet_together(cells):
         px = c.load(); xs = [x for y in range(FOOT - 9, FOOT + 1) for x in range(FW) if px[x, y][3]]; return (max(xs) - min(xs)) if xs else 999
     return min(range(len(cells)), key=lambda i: w(cells[i]))
 
-def bob(cell, dy=2):
+def bob(cell, dy=None):
+    dy = dy or BOB
     """breathing: everything above the waist moves down dy px (the legs stay planted)"""
     bb = cell.getbbox(); waist = bb[1] + int((bb[3] - bb[1]) * .62)
     out = Image.new('RGBA', cell.size, (0, 0, 0, 0)); out.alpha_composite(cell.crop((0, waist, FW, FH)), (0, waist))
@@ -68,6 +78,7 @@ def hand(cell, front):
     """weapon grip point (upright frames): the lowest skin pixel of the leftmost hand, between head and thighs; centre of the body otherwise"""
     px = cell.load(); bb = cell.getbbox(); h = bb[3] - bb[1]; y0, y1 = bb[1] + int(h * .40), bb[1] + int(h * .66)   # below the head, above the thighs
     pts = [(x, y) for y in range(y0, y1) for x in range(bb[0], bb[2]) if px[x, y][3] and px[x, y][:3] in SKIN]
+    if not pts: pts = [(x, y) for y in range(y0, y1) for x in range(bb[0], bb[2]) if px[x, y][3]]   # other palettes: the leftmost limb in that band
     if not pts: return [FW // 2 - 10, bb[1] + int(h * .62)]
     xl = min(p[0] for p in pts); near = [p for p in pts if p[0] <= xl + 4]   # the hand on the near (left) side
     x, y = max(near, key=lambda p: p[1]); return [x + 2, y - 2]
@@ -105,10 +116,13 @@ def main(tag):
     mp = os.path.join(OUT, 'meta.json'); meta = json.load(open(mp)) if os.path.exists(mp) else {}
     frames, k = {}, 0
     for a, n in ANIMS: frames[a] = [k, n]; k += n
-    meta.setdefault('defs', {})['v8'] = {'res': 2, 'fw': FW, 'fh': FH, 'foot': FOOT, 'frames': frames, 'wpose': WPOSE}
-    meta.setdefault('sheets', {})[tag] = {'file': f'{tag}.png', 'def': 'v8', 'hands': [hf, hb]}
+    dn = 'v8' if KIND == 'hd' else KIND; bb = front[0].getbbox()
+    meta.setdefault('defs', {})[dn] = {'res': KINDS[KIND]['res'], 'fw': FW, 'fh': FH, 'foot': FOOT, 'frames': frames, 'wpose': WPOSE}
+    meta.setdefault('sheets', {})[tag] = {'file': f'{tag}.png', 'def': dn, 'hands': [hf, hb], 'h': FOOT + 1 - bb[1]}
     json.dump(meta, open(mp, 'w'), separators=(',', ':'))
     print(tag, sheet.size, 'frames', k)
 
 if __name__ == '__main__':
-    for t in sys.argv[1:] or ['farm_m']: main(t)
+    args = sys.argv[1:]
+    if '--c64' in args: use('c64'); args.remove('--c64')
+    for t in args or ['farm_m']: main(t)

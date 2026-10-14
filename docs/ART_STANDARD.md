@@ -48,6 +48,14 @@ The style reference is `docs/ref/survivors_style.png` (the approved 4-survivor i
   resizes smoothly to the exact zoom size ("sharp bilinear"), so pixels stay square at every zoom.
 - The ground is generated pixel by pixel on the 96 × 48 grid (`buildGround` in js/game.js).
 
+## C64 character standard — chosen October 2026 (preview `?c64=1` from V2.52)
+- People about 58 px tall at the V7 pixel size (the town mock-up medic measures 58–60), drawn by PixelLab on a 64 × 64
+  canvas: Low Top-Down, Bipedal realistic, Medium detail, single-colour black outline. Body and style like the medic in
+  tools/art/sources/pixellab/c64/style_medic_64*.png: average adult build, head about a third of the height, readable face.
+- Per character: a front (south) reference in the South slot, 8 directions, then 6-frame walks for South-West (front) and
+  North-West (back); other animations as available. Build with `python3 tools/art/build_hd_char.py --c64 <tag>`.
+- Buildings, ground and props stay V7.
+
 ## HD standard (V8) — in preview since V2.50 (`?hd=1`), owner-approved October 2026
 Same scale and roads as V7 on screen; every art pixel is half the size. Buildings and characters share one pixel size.
 - Exactly 2× the V7 standard: tile 192 × 96, people 84 px tall, buildings about 188 / 284 / 380 wide (1×1 / 2×1 / 2×2),

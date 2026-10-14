@@ -1,5 +1,13 @@
 # Changelog
 
+## V2.52.0 — C64 character standard (preview switch, waiting for art)
+- New owner-approved character size: about 58 px tall, drawn by PixelLab on its 64 × 64 canvas, at the same pixel size as the current town. This matches the medic in the town mock-up and leaves room for faces and expressions. It replaces the HD direction for characters.
+- `?c64=1` turns on the preview (remembered; `?c64=0` turns it off). It replaces the HD preview. Survivors without a 64-px sheet yet keep their current art. Name labels, health bars and tap areas use the taller height.
+- `tools/art/build_hd_char.py --c64 <tag>` builds a sheet from PixelLab GIFs in `tools/art/sources/pixellab/c64/`. Cells are 96 × 80 with feet on row 74.
+- Style references are in `tools/art/sources/pixellab/c64/`: the mock-up medic redrawn at 58 px, and a medic-style farmer facing south for PixelLab's South slot.
+- Portraits now follow each sheet's body height.
+- The `hd` test also checks the C64 preview. All 31 test groups pass.
+
 ## V2.51.0 — HD ground (preview)
 - With `?hd=1`, grass, dirt patches and roads are now generated at HD resolution (pixels half the size), matching the HD farmer and Medical Tent. Road edges are smoother and the grass texture is finer. Nothing changes without `?hd=1`.
 - The ground is now built in pieces: 16 for HD, so no single image passes iPhone Safari's 16.7-megapixel canvas limit, and 1 for the current art, which comes out identical to before.
