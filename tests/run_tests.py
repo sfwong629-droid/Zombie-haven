@@ -696,7 +696,8 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD, ZH.GR, ZH.groundChunks.length]")
     t.ok(r == [0, False, 1, 1], f"without ?hd=1 the game uses the current art and ground only {r}"); await ctx.close()
     ctx, pg, errs = await open_game(br, port, 'c64', init="localStorage.setItem('zhC64','1');localStorage.setItem('zhHD','1')")
-    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);ZH.closeP();for(let k=0;k<5;k++){ZH.step(2);ZH.draw();}return [window.ZH_C64, window.ZH_HD, ZH.GR, ZHChars.hdSheets.length>=0]}")
+    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);ZH.closeP();ZH.S.mat=99;for(let x=3;x<=6;x++)ZH.tryWall(x,5,'wood');for(let k=0;k<5;k++){ZH.step(2);ZH.draw();}return [window.ZH_C64, window.ZH_HD, ZH.GR, ZH.TILE_PX, ZH.groundChunks[0].width]}")
+    t.ok(r[3] == 106 and r[4] == 58 * 53, f"the C64 preview uses the 10% bigger grid (106 x 53 tiles), ground and walls included {r}")
     t.ok(r[:3] == [True, False, 1], f"?c64=1 (58-px characters) replaces the HD preview, keeps the normal ground and falls back to current art for anyone not redrawn yet {r}")
     t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 

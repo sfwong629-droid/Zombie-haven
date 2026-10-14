@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Guide images for ChatGPT: the exact 2:1 footprint diamond (and wall guides) on flat magenta, at 4 image px per HD art px.
-Image models follow a drawn outline far better than a written angle. -> tools/art/templates/footprint_<w>x<h>.png"""
-import os
+"""Guide images for ChatGPT: the exact 2:1 footprint diamond (and wall guides) on flat magenta.
+Image models follow a drawn outline far better than a written angle.
+
+    python3 tools/art/make_templates.py          # V2.53 standard: tile 106 x 53 art px, 8 image px per art px -> templates/t106/
+    python3 tools/art/make_templates.py --hd     # parked HD standard: tile 192 x 96, 4 image px per art px -> templates/
+Buildings on the 106 grid are drawn 10% taller than V7 (owner request), so the wall guides are 10% higher too."""
+import os, sys
 from PIL import Image, ImageDraw
-OUT = os.path.join(os.path.dirname(__file__), 'templates')
-S = 4; HW, HH = 96 * S, 48 * S          # half tile across / down in image px (HD tile 192 x 96 art px)
-def template(w, h, wall=1.3):
+HDT = '--hd' in sys.argv
+OUT = os.path.join(os.path.dirname(__file__), 'templates', '' if HDT else 't106')
+S = 4 if HDT else 8; TILE = 192 if HDT else 106
+HW, HH = TILE // 2 * S, TILE // 4 * S if HDT else TILE * S // 4   # half tile across / down in image px
+WALL = 1.3 if HDT else 1.43
+def template(w, h, wall=WALL):
     Wd = HW * (w + h) + 2 * 120; Hd = HH * (w + h) + int(HW * wall * 1.6) + 2 * 120
     im = Image.new('RGB', (Wd, Hd), (255, 0, 255)); d = ImageDraw.Draw(im)
     bx = 120 + HW * w; by = Hd - 120                                   # south corner

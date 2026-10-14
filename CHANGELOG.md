@@ -1,5 +1,12 @@
 # Changelog
 
+## V2.53.0 — 10% bigger map grid for the new art standard
+- With `?c64=1`, map tiles are 106 × 53 art pixels instead of 96 × 48. Roads, plots and the ground are 10% bigger. Pixels stay the same size everywhere; nothing is shrunk or stretched. The owner picked this from a side-by-side screenshot test.
+- Walls are rebuilt for the new grid (`tools/art/build_walls.py --t106` → `assets/map/t106/`), so wall runs join up.
+- New ChatGPT footprint guides for the 106 grid are in `tools/art/templates/t106/` (1×1, 2×1, 2×2). Their dashed wall guides are 10% higher, because buildings on this grid are drawn 10% taller. The parked HD guides are unchanged.
+- Current buildings still use their 96-grid art, so in the preview they look about 10% small on their plots until they're redrawn at the new size.
+- The `hd` test now checks the 106 grid. All 31 test groups pass.
+
 ## V2.52.0 — C64 character standard (preview switch, waiting for art)
 - New owner-approved character size: about 58 px tall, drawn by PixelLab on its 64 × 64 canvas, at the same pixel size as the current town. This matches the medic in the town mock-up and leaves room for faces and expressions. It replaces the HD direction for characters.
 - `?c64=1` turns on the preview (remembered; `?c64=0` turns it off). It replaces the HD preview. Survivors without a 64-px sheet yet keep their current art. Name labels, health bars and tap areas use the taller height.

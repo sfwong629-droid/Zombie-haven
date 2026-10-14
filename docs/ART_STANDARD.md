@@ -54,7 +54,10 @@ The style reference is `docs/ref/survivors_style.png` (the approved 4-survivor i
   tools/art/sources/pixellab/c64/style_medic_64*.png: average adult build, head about a third of the height, readable face.
 - Per character: a front (south) reference in the South slot, 8 directions, then 6-frame walks for South-West (front) and
   North-West (back); other animations as available. Build with `python3 tools/art/build_hd_char.py --c64 <tag>`.
-- Buildings, ground and props stay V7.
+- Map grid (V2.53): tiles 106 x 53 art px (10% bigger than V7), same pixel size. Buildings fill the new footprint and are
+  10% taller than V7: 1x1 about 104 px wide (a small house about 104 x 104), 2x1 about 157, 2x2 about 210.
+  ChatGPT guides: tools/art/templates/t106/footprint_*.png (8 image px per art px). Straighten with
+  fix_iso.fix_footprint(..., tile=106, S=8). Walls: build_walls.py --t106. Props, trees and wreckage keep their V7 art.
 
 ## HD standard (V8) — in preview since V2.50 (`?hd=1`), owner-approved October 2026
 Same scale and roads as V7 on screen; every art pixel is half the size. Buildings and characters share one pixel size.

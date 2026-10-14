@@ -16,11 +16,13 @@ from build_chars import despeckle
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SH = os.path.join(os.path.dirname(__file__), 'sheets'); OUT = os.path.join(ROOT, 'assets', 'map', 'v7')
-TW, TH = 96, 48
-CW, CH, AX, AY = 112, 100, 56, 44          # cell size; tile north corner inside the cell
+SH = os.path.join(os.path.dirname(__file__), 'sheets')
+TILE = 106 if '--t106' in sys.argv else 96   # V2.53: the C64 standard's 10% bigger grid -> assets/map/t106
+OUT = os.path.join(ROOT, 'assets', 'map', 't106' if TILE == 106 else 'v7')
+TW, TH = TILE, TILE // 2
+CW, CH, AX, AY = TW + 16, 100 + (TILE - 96) // 2, (TW + 16) // 2, 44   # cell size; tile north corner inside the cell
 CX, CY = AX, AY + TH // 2                  # tile centre inside the cell
-HALF = TW // 4                             # an arm spans 24 px across (centre -> edge midpoint)
+HALF = (TW + 3) // 4                       # an arm spans centre -> edge midpoint (24 px; 27 for 106, 1 px overlap so tiles join)
 
 def foot(im):
     px = im.load(); out = []
@@ -118,7 +120,8 @@ def main():
     sheet = Image.new('RGBA', (cols * CW, rows * CH), (0, 0, 0, 0))
     for i, im in enumerate(cells): sheet.alpha_composite(im, ((i % cols) * CW, (i // cols) * CH))
     sheet.save(os.path.join(OUT, 'walls.png'))
-    mp = os.path.join(OUT, 'map.json'); meta = json.load(open(mp)) if os.path.exists(mp) else {}
+    mp = os.path.join(OUT, 'map.json'); v7 = os.path.join(ROOT, 'assets', 'map', 'v7', 'map.json')
+    meta = json.load(open(mp)) if os.path.exists(mp) else (json.load(open(v7)) if os.path.exists(v7) else {})   # props / wreck entries come from v7
     meta['wall'] = {'w': CW, 'h': CH, 'ax': AX, 'ay': AY, 'cols': cols, 'cells': {k: i for i, k in enumerate(keys)},
                     'hgt': {k: height(st) for k, (st, _) in strips.items()}}
     json.dump(meta, open(mp, 'w')); print('walls', sheet.size, len(keys), 'cells')
