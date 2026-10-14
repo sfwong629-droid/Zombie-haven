@@ -48,7 +48,7 @@ The style reference is `docs/ref/survivors_style.png` (the approved 4-survivor i
   resizes smoothly to the exact zoom size ("sharp bilinear"), so pixels stay square at every zoom.
 - The ground is generated pixel by pixel on the 96 × 48 grid (`buildGround` in js/game.js).
 
-## Draft: HD standard (V8, under evaluation, October 2026)
+## Draft: HD standard (V8, parked October 2026: owner chose to keep the current art, roads and scale)
 Owner request: higher-detail art like the approved town mock-up. Not adopted yet; a test medic and canteen come first.
 - Exactly 2× the V7 standard: tile 192 × 96, people 84 px tall, character cells 128 × 120 with feet on row 112,
   buildings 188 / 284 / 380 wide (1×1 / 2×1 / 2×2), zombies 2× their V7 heights.
