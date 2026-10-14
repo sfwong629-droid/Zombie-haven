@@ -98,5 +98,14 @@ The game uses 3 frames per attack (wind-up, hit, follow-through); 7-frame GIFs a
 | blunt (pipe, bat, axe) | `both empty hands raised high over the right shoulder as if gripping a club, ready to swing, feet apart` | `swings both hands down hard in front of the body as if hitting with a club, then returns to the raised ready pose` |
 | shoot (guns, bow) | `aiming forward at shoulder height with both empty hands together as if holding a rifle, front foot forward` | `small recoil: shoulders jolt back slightly as if firing, then settle back into the aim` |
 
+**Blunt: use 3 states, not an animation** (tested October 2026). Animating "swing" with empty hands made PixelLab add a
+stick and a white swing streak, or turn it into a punch. Three states (palette from reference ticked) work cleanly;
+each state GIF holds all 8 directions in the order S, SE, E, NE, N, NW, W, SW (use frame 8 = SW, frame 6 = NW):
+- up: the blunt state above
+- forward: `both empty fists together, arms stretched straight out in front of the chest, body leaning forward, feet apart, no weapon, no stick, no effects`
+- down: `both empty fists together low in front of the knees, arms straight down, body bent forward at the waist, feet apart, no weapon, no stick, no effects`
+
+Sources: `tools/art/sources/pixellab/c64/farm_m_blunt_{up,fwd,down}_8dir.gif`.
+
 Optional transitions with interpolation (start = state, end = idle): `lowers the fists and relaxes`.
 Small face or hand glitches: fix in Pixelorama (copy the good face across frames) rather than regenerating.
