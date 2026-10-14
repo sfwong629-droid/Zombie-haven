@@ -84,3 +84,19 @@ patch, NO shadow, NO text. Output only the building.
 **Into the game**: read onto the game grid at the drawn scale (about 10.3 image px per game px for the approved
 tent), anchored on the front post's base, with `fix_iso.repix_anchor`. No straightening or resizing (owner rule).
 Check the footprint and run an in-game screenshot test before adding it to `C64_BUILD` in js/game.js.
+
+## Character attacks: PixelLab states (workflow from PixelLab's "Character States" video)
+
+Make a **state** (the pose) first, then animate **from** that state with Custom animation V3, "Enhance prompt" on,
+and the first frame kept (6 generated frames + the state = 7 frames). Only South-West and North-West are needed;
+the game mirrors the rest. Hands stay empty: the game draws the equipped weapon in the hand.
+The game uses 3 frames per attack (wind-up, hit, follow-through); 7-frame GIFs are fine, the builder picks frames.
+
+| Game animation | State prompt | Animation prompt |
+|---|---|---|
+| punch (unarmed) | `fighting stance, fists raised in front of the face, weight on the back foot, hands empty` | `quick jab: punches forward with the front fist, then pulls back to the fighting stance` |
+| blunt (pipe, bat, axe) | `both empty hands raised high over the right shoulder as if gripping a club, ready to swing, feet apart` | `swings both hands down hard in front of the body as if hitting with a club, then returns to the raised ready pose` |
+| shoot (guns, bow) | `aiming forward at shoulder height with both empty hands together as if holding a rifle, front foot forward` | `small recoil: shoulders jolt back slightly as if firing, then settle back into the aim` |
+
+Optional transitions with interpolation (start = state, end = idle): `lowers the fists and relaxes`.
+Small face or hand glitches: fix in Pixelorama (copy the good face across frames) rather than regenerating.
