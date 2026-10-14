@@ -699,6 +699,8 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);ZH.closeP();ZH.S.mat=99;for(let x=3;x<=6;x++)ZH.tryWall(x,5,'wood');for(let k=0;k<5;k++){ZH.step(2);ZH.draw();}return [window.ZH_C64, window.ZH_HD, ZH.GR, ZH.TILE_PX, ZH.groundChunks[0].width]}")
     t.ok(r[3] == 106 and r[4] == 58 * 53, f"the C64 preview uses the 10% bigger grid (106 x 53 tiles), ground and walls included {r}")
     t.ok(r[:3] == [True, False, 1], f"?c64=1 (58-px characters) replaces the HD preview, keeps the normal ground and falls back to current art for anyone not redrawn yet {r}")
+    r = await pg.evaluate("()=>{const b=ZH.world.buildings.find(q=>q.type==='medic'),sr=b&&ZH.spriteRect(b);return [ZH.B4_DEFS.medic.dir, sr?Math.round(sr.w/sr.s):0]}")
+    t.ok(r == ['t106', 105], f"the C64 preview uses the 106-grid Medical Tent (105 px wide, same pixel size as everything else) {r}")
     t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 
 TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),

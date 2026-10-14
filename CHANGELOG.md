@@ -1,5 +1,11 @@
 # Changelog
 
+## V2.54.0 — First 106-grid building: the Medical Tent (preview)
+- With `?c64=1`, the Medical Tent is the new tent drawn by ChatGPT, following the updated project instructions and footprint guide. The owner picked Option 1 of two.
+- It sits on one tile of the 106 grid at the same pixel size as the farmer and the ground. It is about 105 px wide and 107 px tall.
+- How it was made: the image was read onto the game's pixel grid at the scale ChatGPT drew it (about 10.3 image pixels per game pixel). It was not straightened, warped or resized. The source image is in `tools/art/sources/medic_tent_t106_src.png`.
+- The `hd` test now checks the new tent. All 31 test groups pass.
+
 ## V2.53.0 — 10% bigger map grid for the new art standard
 - With `?c64=1`, map tiles are 106 × 53 art pixels instead of 96 × 48. Roads, plots and the ground are 10% bigger. Pixels stay the same size everywhere; nothing is shrunk or stretched. The owner picked this from a side-by-side screenshot test.
 - Walls are rebuilt for the new grid (`tools/art/build_walls.py --t106` → `assets/map/t106/`), so wall runs join up.
