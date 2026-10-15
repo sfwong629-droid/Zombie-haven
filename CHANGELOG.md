@@ -1,5 +1,16 @@
 # Changelog
 
+## V2.55.0 — The approved farmer in the C64 preview
+- With `?c64=1`, farmers use the owner-approved slim farmer from PixelLab: 58–62 px tall, same pixel size as the 106 grid and the Medical Tent.
+- Walk: 6 frames for front (South-West) and back (North-West); the game mirrors them for the other two directions.
+- Attacks are made from PixelLab "states" (one pose each, all 8 directions) with empty hands, so the game's equipped weapon is drawn in the hand:
+  - blunt: up, forward and down poses, front and back;
+  - shoot: aim, fire (recoil), aim, front and back;
+  - punch: front only, frames 3–5 of a PixelLab jab; the back view uses the standing pose until a back punch exists.
+- Idle, carry and collapse still come from the walk (feet-together frame with a 1-px breathing bob, the walk, and a tip-over).
+- `build_hd_char.py` can now take hand-picked frames (`PICKS`) when even sampling would miss the key poses.
+- Other jobs keep their current art until they are redrawn.
+
 ## V2.54.0 — First 106-grid building: the Medical Tent (preview)
 - With `?c64=1`, the Medical Tent is the new tent drawn by ChatGPT, following the updated project instructions and footprint guide. The owner picked Option 1 of two.
 - It sits on one tile of the 106 grid at the same pixel size as the farmer and the ground. It is about 105 px wide and 107 px tall.

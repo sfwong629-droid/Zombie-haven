@@ -33,7 +33,7 @@ def use(kind):
     k = KINDS[kind]; KIND = kind; FW, FH, FOOT, BOB = k['fw'], k['fh'], k['foot'], k['bob']
     SRC = os.path.join(ROOT, 'tools', 'art', 'sources', 'pixellab', k['src']); OUT = os.path.join(ROOT, 'assets', 'characters', k['out'])
 use('hd')
-PICKS = {}   # hand-picked frames (0-based) where even sampling would miss the key poses
+PICKS = {'farm_m_punch_sw': [2, 3, 4]}   # hand-picked frames (0-based) where even sampling would miss the key poses
 ANIMS = [('idle', 2), ('walk', 6), ('carry', 6), ('collapse', 4), ('punch', 3), ('blunt', 3), ('shoot', 3)]
 WPOSE = (['rest'] * 2 + ['rest'] * 6 + ['none'] * 6 + ['none'] * 4 + ['rest'] * 3 + ['up', 'fwd', 'down'] + ['aim', 'fire', 'aim'])
 
