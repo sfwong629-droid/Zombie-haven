@@ -109,3 +109,13 @@ Sources: `tools/art/sources/pixellab/c64/farm_m_blunt_{up,fwd,down}_8dir.gif`.
 
 Optional transitions with interpolation (start = state, end = idle): `lowers the fists and relaxes`.
 Small face or hand glitches: fix in Pixelorama (copy the good face across frames) rather than regenerating.
+
+## Other professions: ChatGPT from the farmer template (October 2026)
+
+Files: `tools/art/templates/c64_char/` — `template_walk.png`, `template_attacks.png` (the approved farmer laid out
+6 x 2, 64 x 64 art-px cells at 4 x 4 image px per art px, magenta background, cyan feet and head lines) and
+`chatgpt_character_prompt.txt` (walk request, attack request, redo line, outfit ideas).
+Converting: read at the drawn block size, anchored on the feet line, no resizing; walk rows map to
+`<tag>_walk_sw/nw`, attack cells 1–3 to blunt, 4–5 to shoot (aim, fire, aim), 6 to punch.
+ChatGPT struggled with alternating legs before; if a walk fails, make only the front reference in ChatGPT and
+animate it in PixelLab with the farmer settings.

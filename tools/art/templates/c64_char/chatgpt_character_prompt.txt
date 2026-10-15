@@ -1,0 +1,73 @@
+ZOMBIE HAVEN: NEW PROFESSION SPRITE SHEETS (ChatGPT)
+Upload with every request: template_walk.png and template_attacks.png (approved farmer).
+Send TWO requests per profession: first the walk sheet, then (new message) the attack sheet.
+Replace [PROFESSION] and [OUTFIT] each time.
+
+===== REQUEST 1: WALK SHEET =====
+Zombie Haven character sprite sheet. PIXEL ART, not painting.
+Use template_walk.png as the exact template: same image size, same grid, same
+poses, same pixel size, same height, same style. Redraw ONLY the clothes and
+face for a new character. Keep every pose, leg position, arm swing and body
+shape exactly like the farmer in the template.
+
+New character: [PROFESSION], young adult, lean but healthy build, slightly
+slimmer than average, head about one third of height, expressive face with
+clear eyes, eyebrows and mouth. Outfit: [OUTFIT]. Hands empty, no tools,
+no weapons.
+
+IMAGE: exactly 1536 x 512 pixels, flat solid #FF00FF magenta background.
+GRID: 6 columns x 2 rows of square cells, each cell 256 x 256 image pixels.
+PIXEL SIZE: every art pixel is one 4 x 4 block of image pixels, all on one
+perfectly even grid (each cell = 64 x 64 art pixels). No smaller or bigger
+pixels, no anti-aliasing, no blur, no soft edges, no gradients.
+HEIGHT: the character is 58 art pixels tall (232 image pixels), from the top
+of the head or hat to the bottom of the boots, the same as the farmer. The
+feet stand on the cyan feet line, the top of the head touches the upper cyan
+line. Same width and body proportions as the farmer.
+STYLE: same as the farmer: 1-art-pixel near-black outline around the whole
+figure, flat colours with 3 shades per material, light from the top-left,
+warm muted post-apocalyptic colours.
+ROWS:
+- Top row = walking toward the bottom-left (front view, face visible),
+  6 frames, the same 6 leg and arm positions as the farmer's top row.
+- Bottom row = walking toward the top-left (back view, back of the head),
+  6 frames, the same as the farmer's bottom row.
+Every frame the same size, feet on the feet line, centred in its cell.
+Do NOT draw the grid lines, the cyan lines, text, numbers, shadows or ground.
+Output only the sprite sheet.
+
+===== REQUEST 2: ATTACK SHEET (same chat, after the walk sheet) =====
+Now the attack sheet for the same [PROFESSION]. Use template_attacks.png as
+the exact template: same image size (1536 x 512), same 6 x 2 grid of 256 x 256
+cells, same 4 x 4 image pixels per art pixel, same 58-art-pixel height, same
+feet line, same style. Draw the character from your walk sheet (same face,
+clothes and colours) in exactly the farmer's poses:
+- Top row (front view, facing bottom-left), left to right:
+  1 both fists raised high over the right shoulder (swing wind-up)
+  2 both fists together, arms straight out in front of the chest (mid-swing)
+  3 both fists low in front of the knees, bent forward (swing hit)
+  4 aiming: front arm stretched forward, back hand at the cheek (aim)
+  5 same aim, shoulders jolted back, front hand kicked up (recoil)
+  6 punch: front fist punched straight out, body leaning in
+- Bottom row (back view, facing top-left): the same 6 poses seen from behind.
+  Cell 6 has no farmer example: draw the punch from behind, front fist punched
+  out toward the top-left.
+Hands EMPTY in every pose: no weapon, no gun, no stick, no tool (the game adds
+the weapon). No motion lines, no smoke, no effects. Flat #FF00FF magenta
+background, no grid lines, no cyan lines, no text, no shadow. Output only the
+sprite sheet.
+
+===== IF IT DRIFTS =====
+Reply: "Redo it. Keep every pose and the 6 x 2 grid exactly like the template,
+every art pixel a 4 x 4 block, character exactly 58 art pixels (232 image
+pixels) tall with feet on the feet line, PIXEL ART like the farmer, not
+painting."
+
+OUTFIT IDEAS (change only these):
+- Medic: white shirt with a red cross armband, grey trousers, brown boots, small belt pouch
+- Mechanic: blue overalls with rolled sleeves, oil stains, orange work gloves tucked in belt, dark boots
+- Builder: yellow hard hat, orange high-vis vest over a grey shirt, tan work trousers, brown boots
+- Scavenger: hooded dark green jacket, patched cargo trousers, large backpack, scarf
+- Cook: white apron over a striped shirt, dark trousers, rolled sleeves, head bandana
+- Guard: dark leather jacket, padded shoulder, black trousers, combat boots, cap
+- Hunter: camouflage jacket, brown trousers, knit beanie, tall boots
