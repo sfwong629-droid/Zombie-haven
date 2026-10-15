@@ -1,0 +1,103 @@
+ZOMBIE HAVEN: SMALL CHARACTER ANIMATIONS (ChatGPT)
+Attach template_small.png to the FIRST message. Same chat for all 8 sheets.
+4 game directions = 2 drawn rows. The game mirrors them for the other 2:
+  top row = FRONT-LEFT (walking toward the bottom-left, face visible)
+  bottom row = BACK-LEFT (walking toward the top-left, back of the head)
+The game also adds the whole-body movement (hop height, lunge toward the
+enemy, knockback, shake), so each frame stays in its own cell.
+
+===== MESSAGE 1: RULES + SHEET 1 (Idle + Hold) =====
+Zombie Haven character animation sheet. PIXEL ART, chibi style, exactly
+like the farmer in template_small.png: same face, outfit, colours, 1-pixel
+black outline, same shading. Keep these rules for every sheet in this chat:
+
+IMAGE: exactly 1536 x 768 pixels, flat solid #FF00FF magenta background.
+GRID: 4 columns x 2 rows, each cell 384 x 384 image pixels.
+PIXEL SIZE: every art pixel is one 12 x 12 block of image pixels, all on
+one perfectly even grid, so each cell is 32 x 32 art pixels. No smaller or
+bigger pixels, no anti-aliasing, no blur, no gradients.
+SIZE: the character is 30 art pixels tall and about 20 wide, exactly like
+the template. Feet on the cyan feet line, centred in the cell. Never draw
+him bigger or smaller.
+ROWS: top row = front-left view (like the template's top farmer), bottom
+row = back-left view (like the template's bottom farmer).
+HANDS: always empty. When a pose holds a weapon, the hand is a closed fist
+with a gap for a handle; never draw the weapon, the game adds it.
+NO grid lines, cyan lines, text, numbers, shadows, ground, effects or
+motion lines. Output only the sprite sheet.
+
+Sheet 1, left to right in each row:
+ 1 IDLE A: standing relaxed, arms at the sides.
+ 2 IDLE B: same, body squashed down 1 art pixel (breathing), eyes the same.
+ 3 HOLD A: standing, front arm held straight out forward at waist height,
+   fist closed as if gripping a handle.
+ 4 HOLD B: same as 3, body squashed down 1 art pixel.
+
+===== MESSAGE 2: SHEET 2 (Walk) =====
+Sheet 2, same rules and same character. Walk cycle, 4 frames:
+ 1 left foot forward, right arm forward
+ 2 feet together, body 1 art pixel higher
+ 3 right foot forward, left arm forward
+ 4 feet together, body 1 art pixel higher
+
+===== MESSAGE 3: SHEET 3 (Rescue carry) =====
+Sheet 3, same rules. Walking while carrying someone above his head, 4
+frames, the same legs as the walk. Both arms raised straight up, both
+palms flat and open at the top of the cell, as if holding a body above
+his head. Do NOT draw the carried person (the game adds it). Determined
+face.
+
+===== MESSAGE 4: SHEET 4 (Hurt + Gun) =====
+Sheet 4, same rules:
+ 1 HURT A: knocked back, body leaning away from the front, head tilted
+   back, eyes squeezed shut (> <), mouth open, arms flung out.
+ 2 HURT B: recovering, body leaning back less, one eye open, wincing.
+ 3 GUN AIM: both fists together held forward at chest height as if holding
+   a rifle, front foot forward, focused eyes.
+ 4 GUN FIRE: same, shoulders and head jolted back 1 art pixel, fists kicked
+   up 1 art pixel (recoil).
+
+===== MESSAGE 5: SHEET 5 (Happy jump) =====
+Sheet 5, same rules. Happy jump, 3 frames (cell 4 empty magenta):
+ 1 crouch: knees bent, body squashed down 2 art pixels, arms down.
+ 2 in the air: both arms raised high, legs tucked, big smile, happy eyes
+   drawn as upward curves (^ ^). Keep him inside the cell.
+ 3 landing: knees bent, arms out to the sides, still smiling with ^ ^ eyes.
+
+===== MESSAGE 6: SHEET 6 (Collapse) =====
+Sheet 6, same rules. Collapse, 3 frames (cell 4 empty magenta):
+ 1 stagger: knees buckling, body bent forward, eyes half closed.
+ 2 falling: falling forward at a 45 degree angle, arms reaching down.
+ 3 lying flat on the ground, chest and belly facing down, face turned to
+   the side, eyes closed drawn as short straight lines (- -), arms by the
+   head. He lies across the cell, on the feet line.
+
+===== MESSAGE 7: SHEET 7 (Swing A: first hit) =====
+Sheet 7, same rules. Weapon swing, 3 frames (cell 4 empty magenta). The
+whole body moves with the swing:
+ 1 wind-up: body twisted back and leaning back, front fist raised high
+   over the shoulder, back foot planted.
+ 2 strike: whole body lunging forward and down, front fist swung down low
+   in front, front knee bent, determined eyes.
+ 3 follow-through: body still leaning forward, fist low behind the front
+   leg, about to recover.
+
+===== MESSAGE 8: SHEET 8 (Swing B + C: combo hits) =====
+Sheet 8, same rules. Two extra combo hits, whole body moving:
+ 1 SWING B wind-up: fist low at the opposite hip, body twisted the other way.
+ 2 SWING B strike (backhand): fist swept up and across to the front,
+   body turning forward, slight hop (feet 1 art pixel off the line).
+ 3 SWING C wind-up: fist pulled back at the waist, body crouched low,
+   weight on the back foot.
+ 4 SWING C strike (finisher): big lunge, front arm thrust straight
+   forward, body stretched forward, back foot lifted, shouting mouth.
+
+===== IF IT DRIFTS =====
+"Redo it. Same 4 x 2 grid of 384 x 384 cells, every art pixel a 12 x 12
+block, the character exactly 30 art pixels tall like template_small.png,
+feet on the feet line, empty hands, PIXEL ART not painting."
+
+HOW THE GAME USES THEM
+1-hit attack = Swing A. 2-hit combo = Swing A + Swing B. 3-hit combo =
+Swing A + B + C. The game adds the lunge toward the enemy, the hop, the
+knockback and the shake, and draws the weapon in the fist.
