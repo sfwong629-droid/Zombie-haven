@@ -1,0 +1,55 @@
+ZOMBIE HAVEN: SMALL FARMER (30 px, 48 canvas) — PIXELLAB LIST
+Always: start from the small farmer character, tick "Use color palette from
+reference", Enhance prompt OFF, add to every prompt:
+  "hands empty, no weapon, no effects, same size"
+Directions needed: South-East (front) and North-East (back). The game mirrors.
+States give all 8 directions at once; for animations, run SE and NE.
+
+STATES (one pose each)
+1 hold        front arm held straight out forward at waist height, fist closed
+              as if gripping a handle, other arm at the side
+2 hurt A      knocked back, body leaning away, head tilted back, eyes squeezed
+              shut like > <, mouth open, arms flung out
+3 hurt B      recovering from a hit, body leaning back slightly, wincing, one
+              eye closed
+4 gun aim     both fists together held forward at chest height as if holding
+              a rifle, front foot forward, focused eyes
+5 gun fire    same aim, shoulders and head jolted back, fists kicked up
+              slightly from recoil
+6 swing A up  front fist raised high over the shoulder, body twisted back,
+              leaning back, back foot planted
+7 swing A hit whole body lunging forward and down, front fist swung down low
+              in front, front knee bent, determined face
+8 swing B up  front fist low at the opposite hip, body twisted the other way
+9 swing B hit fist swept up and across to the front, body turning forward,
+              small hop
+10 swing C up fist pulled back at the waist, body crouched low, weight on the
+              back foot
+11 swing C hit big lunge, front arm thrust straight forward, body stretched
+              forward, back foot lifted, shouting mouth
+
+ANIMATIONS (Custom animation, from the base character unless noted)
+12 idle       standing still, relaxed, gentle breathing, shoulders rise 1
+              pixel and settle, feet do not move
+13 happy jump crouches, jumps straight up with both arms raised high, big
+              smile, happy eyes drawn as upward curves like ^ ^, lands with
+              knees bent, still smiling
+14 collapse   knees buckle, falls forward, ends lying flat face down with
+              chest and belly on the ground, face turned to the side, eyes
+              closed drawn as short straight lines like - -, arms by the head
+15 rescue     walking forward with both arms raised straight up above the
+   walk       head, palms flat and open as if carrying a person overhead, legs
+              walk like the normal walk, determined face (do not draw the
+              carried person)
+
+OPTIONAL: swings as smooth animations = Interpolation start = "up" state,
+end = "hit" state (A, B, C), prompt: "fast strike, whole body moves with the
+swing, feet planted, hands empty, no weapon, no motion blur, no smear, no effects".
+
+CHECK each result: faces right (SE front / NE back), 30 px tall like the walk,
+hands empty, no stick or streak. Send me the 8-direction state GIFs and the
+SE + NE animation GIFs.
+
+GAME USE: 1-hit = swing A, 2-hit combo = A + B, 3-hit combo = A + B + C.
+The game adds the lunge toward the enemy, hops, knockback and shake, and
+draws the weapon in the fist.
