@@ -33,6 +33,7 @@ def use(kind):
     k = KINDS[kind]; KIND = kind; FW, FH, FOOT, BOB = k['fw'], k['fh'], k['foot'], k['bob']
     SRC = os.path.join(ROOT, 'tools', 'art', 'sources', 'pixellab', k['src']); OUT = os.path.join(ROOT, 'assets', 'characters', k['out'])
 use('hd')
+PICKS = {}   # hand-picked frames (0-based) where even sampling would miss the key poses
 ANIMS = [('idle', 2), ('walk', 6), ('carry', 6), ('collapse', 4), ('punch', 3), ('blunt', 3), ('shoot', 3)]
 WPOSE = (['rest'] * 2 + ['rest'] * 6 + ['none'] * 6 + ['none'] * 4 + ['rest'] * 3 + ['up', 'fwd', 'down'] + ['aim', 'fire', 'aim'])
 
@@ -91,7 +92,8 @@ def row(tag, view):
         p = os.path.join(SRC, f'{tag}_{anim}_{view}.gif')
         if not os.path.exists(p): return None
         fr = gif_frames(p); g2, c2 = ground(fr), centre_x(fr); cells = [to_cell(f, g2, c2) for f in fr]
-        return [cells[int(i * len(cells) / n)] for i in range(n)]
+        pick = PICKS.get(f'{tag}_{anim}_{view}')
+        return [cells[i] for i in pick] if pick else [cells[int(i * len(cells) / n)] for i in range(n)]
     stand = walk[feet_together(walk)]
     anims = {
         'idle': load('idle', 2) or [stand, bob(stand)],
