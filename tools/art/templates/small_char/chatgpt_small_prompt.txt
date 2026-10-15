@@ -1,8 +1,8 @@
 ZOMBIE HAVEN: SMALL CHARACTER ANIMATIONS (ChatGPT)
 Attach template_small.png to the FIRST message. Same chat for all 8 sheets.
 4 game directions = 2 drawn rows. The game mirrors them for the other 2:
-  top row = FRONT-LEFT (walking toward the bottom-left, face visible)
-  bottom row = BACK-LEFT (walking toward the top-left, back of the head)
+  top row = FRONT-RIGHT (facing and walking toward the bottom-right, face visible)
+  bottom row = BACK-RIGHT (facing and walking toward the top-right, back of the head)
 The game also adds the whole-body movement (hop height, lunge toward the
 enemy, knockback, shake), so each frame stays in its own cell.
 
@@ -16,11 +16,11 @@ GRID: 4 columns x 2 rows, each cell 384 x 384 image pixels.
 PIXEL SIZE: every art pixel is one 12 x 12 block of image pixels, all on
 one perfectly even grid, so each cell is 32 x 32 art pixels. No smaller or
 bigger pixels, no anti-aliasing, no blur, no gradients.
-SIZE: the character is 30 art pixels tall and about 20 wide, exactly like
+SIZE: the character is exactly 30 art pixels tall (360 image pixels), never shorter, and about 20 wide, exactly like
 the template. Feet on the cyan feet line, centred in the cell. Never draw
 him bigger or smaller.
-ROWS: top row = front-left view (like the template's top farmer), bottom
-row = back-left view (like the template's bottom farmer).
+ROWS: top row = front-right view (like the template's top farmer), bottom
+row = back-right view (like the template's bottom farmer).
 HANDS: always empty. When a pose holds a weapon, the hand is a closed fist
 with a gap for a handle; never draw the weapon, the game adds it.
 NO grid lines, cyan lines, text, numbers, shadows, ground, effects or
@@ -28,7 +28,7 @@ motion lines. Output only the sprite sheet.
 
 Sheet 1, left to right in each row:
  1 IDLE A: standing relaxed, arms at the sides.
- 2 IDLE B: same, body squashed down 1 art pixel (breathing), eyes the same.
+ 2 IDLE B: same, body squashed down only 1 art pixel (breathing), eyes the same.
  3 HOLD A: standing, front arm held straight out forward at waist height,
    fist closed as if gripping a handle.
  4 HOLD B: same as 3, body squashed down 1 art pixel.
