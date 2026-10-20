@@ -95,6 +95,10 @@ for n in names:
                 for (x,y) in eyes:
                     if n=='collapse':  ep[x,y]=skin; ep[x-1,y]=skin; ep[x,y+1]=K; ep[x-1,y+1]=K          # -  -
                     else:              ep[x-1,y]=skin; ep[x,y]=K; ep[x,y+1]=skin; ep[x-1,y+1]=K; ep[x+1,y+1]=K   # ^  ^
+                for y in range(C):                                  # any eye pixel the pattern missed (lying pose) goes dark too
+                    for x in range(C):
+                        c=ep[x,y]
+                        if c[3] and ((c[2]>180 and c[0]<200) or min(c[:3])>225): ep[x,y]=K if n=='collapse' else skin
             lst.append({'i':len(atlas),'hand':hand,'tor':[tor[0],tor[1]],'top':top}); atlas.append(cell)
         meta[n][v]=lst
 cols=16; rows=(len(atlas)+cols-1)//cols
