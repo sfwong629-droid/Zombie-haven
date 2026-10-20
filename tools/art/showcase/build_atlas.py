@@ -57,6 +57,21 @@ for n in names:
                 far=max(hands,key=lambda c: max(q[0] for q in c))
                 q=max(far,key=lambda q:(q[0]-tor[0])**2+(q[1]-tor[1])**2)
                 hand=[q[0],q[1]]
+            if n in ('hold_idle','hold_walking') and v=='ne' and hand:
+                # back view: PixelLab raised the weapon arm to the shoulder; drop the fist 5 px to hip height like the front view
+                hx,hy=hand; import math
+                PX,PY=27,hy+2                                     # shoulder pivot
+                arm=Image.new('RGBA',(C,C),(0,0,0,0)); ap=arm.load(); cp=cell.load()
+                for y in range(hy-2,hy+5):
+                    for x in range(PX,C):
+                        if cp[x,y][3]: ap[x,y]=cp[x,y]; cp[x,y]=(0,0,0,0)
+                ANG=-38
+                arm=arm.rotate(ANG,resample=Image.NEAREST,center=(PX,PY)); rp=arm.load()
+                lone=[(x,y) for y in range(1,C-1) for x in range(1,C-1) if rp[x,y][3] and sum(1 for dx in (-1,0,1) for dy in (-1,0,1) if (dx or dy) and rp[x+dx,y+dy][3])<2]
+                for q in lone: rp[q]=(0,0,0,0)                    # drop stray specks left by the rotation
+                cell.alpha_composite(arm)
+                r=math.radians(-ANG); dx,dy=hx-PX,hy-PY
+                hand=[round(PX+dx*math.cos(r)-dy*math.sin(r)), round(PY+dx*math.sin(r)+dy*math.cos(r))]
             lst.append({'i':len(atlas),'hand':hand,'tor':[tor[0],tor[1]],'top':top}); atlas.append(cell)
         meta[n][v]=lst
 cols=16; rows=(len(atlas)+cols-1)//cols

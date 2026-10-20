@@ -55,7 +55,7 @@ p.lede{ margin:4px 0 0; color:var(--muted); max-width:62ch }
   <div class="stage"><canvas id="town" width="336" height="214" aria-label="Town scene with the tent and farmers"></canvas></div>
 
   <div class="grid" id="grid"></div>
-  <p class="note">Directions in each card, left to right: down-right, down-left, up-right, up-left. Down-left and up-left are the game mirroring the two drawn views. The lunge on swings, the knock-back and white flash on damage, and the weapon are added by code, the way Dungeon Village 2 does it.</p>
+  <p class="note">Directions in each card, left to right: down-right, down-left, up-right, up-left. Down-left and up-left are the game mirroring the two drawn views. The lunge and swing trail on swings, the knock-back and hit spark on damage, the jump hop, and the weapon are added by code, the way Dungeon Village 2 does it.</p>
 </div>
 
 <script>
@@ -113,8 +113,34 @@ function weaponPose(anim, view, f, e){
   if (!e.hand) return null;
   const [hx, hy] = e.hand, ddx = hx - e.tor[0];
   if (weapon === 'rifle' || anim === 'fire') return { hx, hy, dx: 1, dy: 0.15, behind: view === 'ne' };
-  if (view === 'ne') return { hx, hy, dx: 0.85, dy: -0.5, behind: false };      // back view: the arm is drawn higher, so the weapon leans forward
-  return { hx, hy, dx: Math.sign(ddx || 1) * 0.45, dy: -1, behind: false };   // holding: points up, slightly forward
+  return { hx, hy, dx: 0.22, dy: -1, behind: false };                         // holding: nearly straight up, a little forward
+}
+
+/* swing trail: a pale crescent the weapon tip sweeps through between the last frame and this one */
+const TIP = { pipe: 14, bat: 13, axe: 13, rifle: 15 };
+function drawSwoosh(g, anim, view, f, kind){
+  const tbl = SWING[anim][view]; if (!tbl || f === 0) return;
+  const [hx, hy, a1] = tbl[f % tbl.length], a0 = tbl[(f - 1) % tbl.length][2];
+  let d = a1 - a0; if (d > 180) d -= 360; if (d < -180) d += 360;
+  const R = TIP[kind] || 13, gx = hx + PADX, gy = hy + PADY;
+  if (Math.abs(d) >= 30) {
+    const steps = Math.ceil(Math.abs(d) / 6);
+    for (let k = 0; k <= steps; k++) {
+      const a = (a0 + d * k / steps) * Math.PI / 180, fade = k / steps;
+      [[R + 2, '#ffffff'], [R + 1, '#d9fbff'], [R, '#9eeaff'], [R - 1, fade > 0.4 ? '#6fd3f5' : null]].forEach(([r, c]) => {
+        if (!c || (r === R + 2 && fade < 0.35)) return; px(g, gx + Math.cos(a) * r, gy + Math.sin(a) * r, c); });
+    }
+  } else if (anim === 'swing_c' && f >= 2 && f <= 4) {           // thrust: speed lines along the weapon
+    const a = a1 * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a);
+    for (let i = 2; i < R; i++) for (const o of [-2, 2]) if ((i + o) % 3) px(g, gx + Math.cos(a) * i + nx * o, gy + Math.sin(a) * i + ny * o, '#bff4ff');
+  }
+}
+/* hit spark: a small yellow pixel star on the body where the blow lands */
+function drawSpark(g, x, y, f){
+  const big = f === 0, s = big ? 4 : 3;
+  for (let i = -s; i <= s; i++) { px(g, x + i, y, Math.abs(i) < 2 ? '#ffffff' : '#ffe14a'); px(g, x, y + i, Math.abs(i) < 2 ? '#ffffff' : '#ffe14a'); }
+  const dg = big ? 3 : 2; for (let i = -dg; i <= dg; i++) { if (i) { px(g, x + i, y + i, '#ffc21a'); px(g, x + i, y - i, '#ffc21a'); } }
+  px(g, x, y, '#ffffff'); if (big) { px(g, x + s + 1, y, '#ff9a1a'); px(g, x - s - 1, y, '#ff9a1a'); px(g, x, y - s - 1, '#ff9a1a'); px(g, x, y + s + 1, '#ff9a1a'); }
 }
 const VIEWS = [['se', false], ['se', true], ['ne', false], ['ne', true]];
 const PADX = 24, PADY = 16, TW = C + 2 * PADX, TH = C + PADY;
@@ -129,8 +155,8 @@ function drawChar(g, anim, view, flip, t, x, y){
   const e = seq[f];
   let ox = 0, oy = 0, flash = false;
   if (anim.startsWith('swing') && f >= Math.floor(n / 2) && f < n - 1) ox = 2;   // lunge into the hit
-  if (anim === 'taking_damage' && f < 2) { ox = -2; flash = f === 0; }           // knock-back + flash
-  if (anim === 'happy_jump') oy = -[0, 5, 13, 16, 9, 0][f % 6];                  // code hop on top of the drawn jump
+  if (anim === 'taking_damage' && f < 2) ox = -2;                                  // knock-back (the hit spark is drawn below)
+  if (anim === 'happy_jump') oy = -[0, 3, 6, 8, 5, 0][f % 6];                    // code hop on top of the drawn jump
   if (flip) ox = -ox;
   const sx = (e.i % COLS) * C, sy = Math.floor(e.i / COLS) * C;
   tg.clearRect(0, 0, TW, TH); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C);
@@ -139,6 +165,8 @@ function drawChar(g, anim, view, flip, t, x, y){
   const w = showW ? weaponPose(anim, seqs[view] ? view : 'se', f, e) : null;
   if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
   if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind);
+  if (w && SWING[anim]) drawSwoosh(tg, anim, seqs[view] ? view : 'se', f, kind);
+  if (anim === 'taking_damage' && f < 3) drawSpark(tg, PADX + 30, PADY + 20 + (seq[0].top || 10) - 10, f);
   if (flash) { fg2.clearRect(0,0,TW,TH); fg2.drawImage(tmp,0,0); fg2.globalCompositeOperation='source-in'; fg2.fillStyle='#fff'; fg2.fillRect(0,0,TW,TH); fg2.globalCompositeOperation='source-over'; }
   const src = flash ? flashC : tmp;
   // shadow
