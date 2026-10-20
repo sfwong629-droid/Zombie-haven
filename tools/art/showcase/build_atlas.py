@@ -1,6 +1,8 @@
 import os, json
 from PIL import Image, ImageSequence, ImageDraw
-D='/home/claude/Zombie-haven/tools/art/sources/small/farm_m_set/'
+import sys
+TAG=sys.argv[1] if len(sys.argv)>1 else 'farm_m'
+D=f'/home/claude/Zombie-haven/tools/art/sources/small/{TAG}_set/'
 OUT='/tmp/claude-0/-home-claude/77a2a33f-40e5-51d5-92b1-709af4ea3c51/scratchpad/showcase/'
 names=['idle','walking','hold_idle','hold_walking','swing_a','swing_b','swing_c','fire','taking_damage','happy_jump','collapse','rescue']
 C=48; FEET=44
@@ -114,7 +116,8 @@ for n in names:
 cols=16; rows=(len(atlas)+cols-1)//cols
 sheet=Image.new('RGBA',(cols*C,rows*C),(0,0,0,0))
 for i,c in enumerate(atlas): sheet.alpha_composite(c,((i%cols)*C,(i//cols)*C))
-sheet.save(OUT+'farm_atlas.png'); json.dump(meta,open(OUT+'farm_meta.json','w'))
+pre='farm' if TAG=='farm_m' else TAG
+sheet.save(OUT+f'{pre}_atlas.png'); json.dump(meta,open(OUT+f'{pre}_meta.json','w'))
 rows=[('swing_a','se'),('swing_a','ne'),('swing_b','se'),('swing_b','ne'),('hold_idle','se'),('hold_idle','ne')]
 out=Image.new('RGBA',(7*C,len(rows)*C),(205,205,200,255)); d=ImageDraw.Draw(out)
 for r,(a,v) in enumerate(rows):
