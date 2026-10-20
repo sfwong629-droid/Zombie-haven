@@ -35,9 +35,14 @@ p.lede{ margin:4px 0 0; color:var(--muted); max-width:62ch }
 <div class="wrap">
   <header>
     <h1>Small Farmer Test</h1>
-    <p class="lede">Every PixelLab animation of the small farmer, on the 56 px tile next to the new Medical Tent. The weapon is drawn by the game in his hand, so switch it below to see each one.</p>
+    <p class="lede">Every PixelLab animation of the small farmer, and the Medic made from him by code, on the 56 px tile next to the new Medical Tent. The weapon is drawn by the game in his hand, so switch it below to see each one.</p>
   </header>
 
+  <div class="bar" role="group" aria-label="Character">
+    <span class="lbl">CHARACTER</span>
+    <button class="chip" id="c-farm" data-c="farm" aria-pressed="true">Farmer</button>
+    <button class="chip" id="c-medic" data-c="medic">Medic</button>
+  </div>
   <div class="bar" role="group" aria-label="Weapon">
     <span class="lbl">WEAPON</span>
     <button class="chip" id="w-none" data-w="none">Empty hands</button>
@@ -61,6 +66,7 @@ p.lede{ margin:4px 0 0; color:var(--muted); max-width:62ch }
 <script>
 const META = __META__;
 const ATLAS_SRC = "data:image/png;base64,__ATLAS__";
+const MEDIC_SRC = "data:image/png;base64,__MEDIC__";
 const TENT_SRC = "data:image/png;base64,__TENT__";
 const C = 48, COLS = 16;
 const ANIMS = [
@@ -182,11 +188,11 @@ function drawChar(g, anim, view, flip, t, x, y){
   if (anim === 'happy_jump') oy = -[0, 3, 6, 8, 5, 0][f % 6];                    // code hop on top of the drawn jump
   if (flip) ox = -ox;
   const sx = (e.i % COLS) * C, sy = Math.floor(e.i / COLS) * C;
-  tg.clearRect(0, 0, TW, TH); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C);
+  tg.clearRect(0, 0, TW, TH); tg.drawImage(atlasNow, sx, sy, C, C, PADX, PADY, C, C);
   const showW = weapon !== 'none' && (MELEE.has(anim) || anim === 'fire' || anim === 'taking_damage');
   const kind = anim === 'fire' && weapon !== 'none' ? 'rifle' : weapon;
   const w = showW ? weaponPose(anim, seqs[view] ? view : 'se', f, e) : null;
-  if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind, anim === 'fire' ? 8 : 3); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
+  if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind, anim === 'fire' ? 8 : 3); tg.drawImage(atlasNow, sx, sy, C, C, PADX, PADY, C, C); }
   if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind, anim === 'fire' ? 8 : 3);
   if (w && SWING[anim]) drawSwoosh(tg, anim, seqs[view] ? view : 'se', f, kind);
   if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 10, w.hy + PADY + w.dy * 10, f === 2, w.dx, w.dy);
@@ -250,6 +256,10 @@ const TENT_AX = __TAX__, TENT_AY = __TAY__;
 
 document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => {
   weapon = b.dataset.w; document.querySelectorAll('[data-w]').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+const medicImg = new Image(); medicImg.src = MEDIC_SRC; const farmImg = atlas;
+let atlasNow = atlas;
+document.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
+  atlasNow = b.dataset.c === 'medic' ? medicImg : farmImg; document.querySelectorAll('[data-c]').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
 document.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => {
   frameMs = +b.dataset.s; document.querySelectorAll('[data-s]').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
 </script>
