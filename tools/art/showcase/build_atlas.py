@@ -29,6 +29,18 @@ for n in names:
         fr=[f.convert('RGBA') for f in ImageSequence.Iterator(Image.open(p))]
         bot=max(f.getbbox()[3] for f in fr)
         b0=fr[0].getbbox(); cx=(b0[0]+b0[2])/2
+        if n=='rescue':
+            # smoother carry walk: the arms-up upper body from the first rescue frame on top of the normal walk's legs
+            wk=[x.convert('RGBA') for x in ImageSequence.Iterator(Image.open(D+f'walking_{v}.gif'))]
+            wbot=max(x.getbbox()[3] for x in wk); wb0=wk[0].getbbox(); wcx=(wb0[0]+wb0[2])/2
+            up=Image.new('RGBA',(C,C),(0,0,0,0)); up.alpha_composite(fr[0],(round(C/2-cx),FEET-bot))
+            WAIST=FEET-9; t0=None; nf=[]
+            for x in wk:
+                legs=Image.new('RGBA',(C,C),(0,0,0,0)); legs.alpha_composite(x,(round(C/2-wcx),FEET-wbot))
+                top=legs.getbbox()[1]; t0=top if t0 is None else t0; bobv=top-t0
+                cell=Image.new('RGBA',(C,C),(0,0,0,0)); cell.alpha_composite(legs.crop((0,WAIST,C,C)),(0,WAIST))
+                cell.alpha_composite(up.crop((0,0,C,WAIST)),(0,bobv)); nf.append(cell)
+            fr=nf; bot=FEET; cx=C/2
         lst=[]
         for f in fr:
             cell=Image.new('RGBA',(C,C),(0,0,0,0)); cell.alpha_composite(f,(round(C/2-cx),FEET-bot))
