@@ -113,7 +113,8 @@ function weaponPose(anim, view, f, e){
     const back = Math.abs(a) > 110; return { hx, hy, dx, dy, behind: view === 'ne' ? !back : back }; }
   if (!e.hand) return null;
   const [hx, hy] = e.hand, ddx = hx - e.tor[0];
-  if (weapon === 'rifle' || anim === 'fire') return { hx, hy, dx: 1, dy: 0.15, behind: view === 'ne' };
+  if (anim === 'fire') return { hx, hy, dx: 1, dy: 0.15, behind: view === 'ne' };
+  if (anim === 'taking_damage') return { hx, hy, dx: -0.35, dy: -1, behind: false };  // knocked back: the weapon tips back
   return { hx, hy, dx: 0.22, dy: -1, behind: false };                         // holding: nearly straight up, a little forward
 }
 
@@ -182,7 +183,7 @@ function drawChar(g, anim, view, flip, t, x, y){
   if (flip) ox = -ox;
   const sx = (e.i % COLS) * C, sy = Math.floor(e.i / COLS) * C;
   tg.clearRect(0, 0, TW, TH); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C);
-  const showW = weapon !== 'none' && (MELEE.has(anim) || anim === 'fire');
+  const showW = weapon !== 'none' && (MELEE.has(anim) || anim === 'fire' || anim === 'taking_damage');
   const kind = anim === 'fire' && weapon !== 'none' ? 'rifle' : weapon;
   const w = showW ? weaponPose(anim, seqs[view] ? view : 'se', f, e) : null;
   if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
