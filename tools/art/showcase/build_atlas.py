@@ -88,19 +88,19 @@ for n in names:
                 cell.alpha_composite(arm)
                 r=math.radians(-ANG); dx,dy=hx-PX,hy-PY
                 hand=[round(PX+dx*math.cos(r)-dy*math.sin(r)), round(PY+dx*math.sin(r)+dy*math.cos(r))]
-            if n in ('collapse','happy_jump'):
+            if n in ('collapse','happy_jump','taking_damage'):
                 ep=cell.load(); skin=(248,193,149,255); K=(0,0,0,255)
                 eyes=[(x,y) for y in range(C-1) for x in range(1,C-1) if ep[x,y][3] and ep[x,y][2]>180 and ep[x,y][0]<200
                       and ep[x,y+1][3] and min(ep[x,y+1][:3])>220]
                 for (x,y) in eyes:
-                    if n=='collapse':  ep[x,y]=skin; ep[x-1,y]=skin; ep[x,y+1]=K; ep[x-1,y+1]=K          # -  -
+                    if n!='happy_jump':  ep[x,y]=skin; ep[x-1,y]=skin; ep[x,y+1]=K; ep[x-1,y+1]=K          # -  -
                     else:              # ^ : the upper lid row becomes the peak, the iris row the two feet, the white goes to skin
                         ep[x-1,y-1]=skin; ep[x,y-1]=K; ep[x+1,y-1]=skin
                         ep[x-1,y]=K; ep[x,y]=skin; ep[x+1,y]=K; ep[x,y+1]=skin
                 for y in range(C):                                  # any eye pixel the pattern missed (lying pose) goes dark too
                     for x in range(C):
                         c=ep[x,y]
-                        if c[3] and ((c[2]>180 and c[0]<200) or min(c[:3])>225): ep[x,y]=K if n=='collapse' else skin
+                        if c[3] and ((c[2]>180 and c[0]<200) or min(c[:3])>225): ep[x,y]=K if n!='happy_jump' else skin
             lst.append({'i':len(atlas),'hand':hand,'tor':[tor[0],tor[1]],'top':top}); atlas.append(cell)
         meta[n][v]=lst
 cols=16; rows=(len(atlas)+cols-1)//cols

@@ -137,18 +137,32 @@ function drawSwoosh(g, anim, view, f, kind){
   }
 }
 
-/* muzzle flash: a short yellow-white burst at the end of the barrel */
-function drawFlash(g, x, y, big){
-  const c = big ? [[0,0,'#ffffff'],[1,0,'#ffffff'],[2,0,'#fff3a0'],[3,0,'#ffd23a'],[4,0,'#ff9a1a'],[1,-1,'#ffe14a'],[1,1,'#ffe14a'],[2,-2,'#ffb02a'],[2,2,'#ffb02a'],[0,-1,'#fff3a0'],[0,1,'#fff3a0'],[-1,0,'#ffe14a']]
-                 : [[0,0,'#fff3a0'],[1,0,'#ffd23a'],[2,0,'#ff9a1a'],[1,-1,'#ffb02a'],[1,1,'#ffb02a']];
-  for (const [dx, dy, col] of c) px(g, x + dx, y + dy, col);
+/* comic burst: a spiky star filled yellow with a red rim and a pale core, rasterised to whole pixels.
+   (dx,dy) stretches it along a direction, for a muzzle flash that shoots forward. */
+function drawBurst(g, cx, cy, R, r, n, rot, dx = 0, dy = 0, stretch = 1){
+  const pts = [];
+  for (let k = 0; k < 2 * n; k++) { const a = rot + k * Math.PI / n, rr = k % 2 ? r : R * (k % 4 ? 0.82 : 1); pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+  const inside = (x, y) => {                         // undo the stretch, then point-in-polygon
+    let u = x, v = y; if (stretch !== 1) { const al = u * dx + v * dy, pe = -u * dy + v * dx; u = (al / stretch) * dx - pe * dy; v = (al / stretch) * dy + pe * dx; }
+    let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > v) !== (yj > v) && u < (xj - xi) * (v - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const E = Math.ceil(R * stretch) + 2, inn = new Set();
+  for (let y = -E; y <= E; y++) for (let x = -E; x <= E; x++) if (inside(x, y)) inn.add(x + ',' + y);
+  for (let y = -E; y <= E; y++) for (let x = -E; x <= E; x++) {
+    const k = x + ',' + y;
+    if (inn.has(k)) { const d = Math.hypot(x, y); px(g, cx + x, cy + y, d < r * 0.55 ? '#ffffff' : d < r * 0.95 ? '#fff27a' : '#ffd21f'); }
+    else if (inn.has((x+1)+','+y) || inn.has((x-1)+','+y) || inn.has(x+','+(y+1)) || inn.has(x+','+(y-1))) px(g, cx + x, cy + y, '#d2281e');
+  }
 }
-/* hit spark: a small yellow pixel star on the body where the blow lands */
+/* muzzle flash: a forward-stretched burst at the end of the barrel */
+function drawFlash(g, x, y, big, dx = 1, dy = 0){
+  const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+  if (big) drawBurst(g, x + dx * 4, y + dy * 4, 5, 2.4, 6, 0.3, dx, dy, 1.6);
+  else drawBurst(g, x + dx * 2, y + dy * 2, 3.5, 1.8, 5, 0.6, dx, dy, 1.4);
+}
+/* hit: a big comic POW burst on the body where the blow lands, shrinking over 3 frames */
 function drawSpark(g, x, y, f){
-  const big = f === 0, s = big ? 4 : 3;
-  for (let i = -s; i <= s; i++) { px(g, x + i, y, Math.abs(i) < 2 ? '#ffffff' : '#ffe14a'); px(g, x, y + i, Math.abs(i) < 2 ? '#ffffff' : '#ffe14a'); }
-  const dg = big ? 3 : 2; for (let i = -dg; i <= dg; i++) { if (i) { px(g, x + i, y + i, '#ffc21a'); px(g, x + i, y - i, '#ffc21a'); } }
-  px(g, x, y, '#ffffff'); if (big) { px(g, x + s + 1, y, '#ff9a1a'); px(g, x - s - 1, y, '#ff9a1a'); px(g, x, y - s - 1, '#ff9a1a'); px(g, x, y + s + 1, '#ff9a1a'); }
+  const R = [8, 6, 4][f] || 4; drawBurst(g, x, y, R, R * 0.5, 7, f * 0.4);
 }
 const VIEWS = [['se', false], ['se', true], ['ne', false], ['ne', true]];
 const PADX = 24, PADY = 16, TW = C + 2 * PADX, TH = C + PADY;
@@ -174,7 +188,7 @@ function drawChar(g, anim, view, flip, t, x, y){
   if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
   if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind);
   if (w && SWING[anim]) drawSwoosh(tg, anim, seqs[view] ? view : 'se', f, kind);
-  if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 10, w.hy + PADY + w.dy * 10, f === 2);
+  if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 10, w.hy + PADY + w.dy * 10, f === 2, w.dx, w.dy);
   if (anim === 'taking_damage' && f < 3) drawSpark(tg, PADX + 30, PADY + 20 + (seq[0].top || 10) - 10, f);
   if (flash) { fg2.clearRect(0,0,TW,TH); fg2.drawImage(tmp,0,0); fg2.globalCompositeOperation='source-in'; fg2.fillStyle='#fff'; fg2.fillRect(0,0,TW,TH); fg2.globalCompositeOperation='source-over'; }
   const src = flash ? flashC : tmp;
