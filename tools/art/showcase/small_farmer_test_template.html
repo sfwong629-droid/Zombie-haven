@@ -116,6 +116,7 @@ function drawChar(g, anim, view, flip, t, x, y){
   let ox = 0, oy = 0, flash = false;
   if (anim.startsWith('swing') && f >= Math.floor(n / 2) && f < n - 1) ox = 2;   // lunge into the hit
   if (anim === 'taking_damage' && f < 2) { ox = -2; flash = f === 0; }           // knock-back + flash
+  if (anim === 'happy_jump') oy = -[0, 5, 13, 16, 9, 0][f % 6];                  // code hop on top of the drawn jump
   if (flip) ox = -ox;
   const sx = (e.i % COLS) * C, sy = Math.floor(e.i / COLS) * C;
   tg.clearRect(0, 0, C, C); tg.drawImage(atlas, sx, sy, C, C, 0, 0, C, C);
