@@ -82,12 +82,12 @@ const WPN = {
   rifle: { len: 15, body: '#3a3d40', tip: '#6b4a2a', gun: true },
 };
 function px(g, x, y, c){ g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
-function drawWeapon(g, hx, hy, dx, dy, kind){
+function drawWeapon(g, hx, hy, dx, dy, kind, gunBack = 8){
   const w = WPN[kind]; if (!w) return;
   const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
   const pts = [];
-  const back = w.gun ? 8 : 2;                     // a gun is held at its middle: the stock runs back past the hand to the chest
-  for (let i = -back; i <= w.len - (w.gun ? 7 : 0); i++) pts.push([hx + dx * i, hy + dy * i, i]);
+  const back = w.gun ? gunBack : 2;               // aiming, a gun is held at its middle; carried, near the stock
+  for (let i = -back; i <= (w.gun ? 16 - back : w.len); i++) pts.push([hx + dx * i, hy + dy * i, i]);
   // outline pass
   for (const [x, y] of pts) for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) px(g, x + ox, y + oy, '#111');
   if (w.thick) for (const [x, y, i] of pts) if (i > w.len - 5) for (const [ox, oy] of [[1,1],[-1,-1],[1,-1],[-1,1]]) px(g, x + ox, y + oy, '#111');
@@ -186,8 +186,8 @@ function drawChar(g, anim, view, flip, t, x, y){
   const showW = weapon !== 'none' && (MELEE.has(anim) || anim === 'fire' || anim === 'taking_damage');
   const kind = anim === 'fire' && weapon !== 'none' ? 'rifle' : weapon;
   const w = showW ? weaponPose(anim, seqs[view] ? view : 'se', f, e) : null;
-  if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
-  if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind);
+  if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind, anim === 'fire' ? 8 : 3); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
+  if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind, anim === 'fire' ? 8 : 3);
   if (w && SWING[anim]) drawSwoosh(tg, anim, seqs[view] ? view : 'se', f, kind);
   if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 10, w.hy + PADY + w.dy * 10, f === 2, w.dx, w.dy);
   if (anim === 'taking_damage' && f < 3) drawSpark(tg, PADX + 30, PADY + 20 + (seq[0].top || 10) - 10, f);
