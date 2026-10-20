@@ -94,7 +94,9 @@ for n in names:
                       and ep[x,y+1][3] and min(ep[x,y+1][:3])>220]
                 for (x,y) in eyes:
                     if n=='collapse':  ep[x,y]=skin; ep[x-1,y]=skin; ep[x,y+1]=K; ep[x-1,y+1]=K          # -  -
-                    else:              ep[x-1,y]=skin; ep[x,y]=K; ep[x,y+1]=skin; ep[x-1,y+1]=K; ep[x+1,y+1]=K   # ^  ^
+                    else:              # ^ : the upper lid row becomes the peak, the iris row the two feet, the white goes to skin
+                        ep[x-1,y-1]=skin; ep[x,y-1]=K; ep[x+1,y-1]=skin
+                        ep[x-1,y]=K; ep[x,y]=skin; ep[x+1,y]=K; ep[x,y+1]=skin
                 for y in range(C):                                  # any eye pixel the pattern missed (lying pose) goes dark too
                     for x in range(C):
                         c=ep[x,y]
