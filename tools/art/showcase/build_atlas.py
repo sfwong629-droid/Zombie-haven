@@ -45,6 +45,14 @@ for n in names:
                 for y in range(H_):
                     for x in range(W_):
                         if (x<lo or x>hi) and handish(lp[x,y]): lp[x,y]=(0,0,0,0); gone.add((x,y))
+                for y in range(min(6,H_)):                          # leftover bits of the hand's outline beside the hips
+                    for x in list(range(0,lo-1))+list(range(hi+2,W_)):
+                        if lp[x,y][3]: lp[x,y]=(0,0,0,0)
+                for y in range(min(5,H_)):                          # the hips: the walk's swinging hand also crosses in front of the shorts here
+                    for x in range(lo,hi+1):
+                        if handish(lp[x,y]):
+                            nb=[lp[x+d,y] for d in (-1,1,-2,2) if 0<=x+d<W_ and lp[x+d,y][3] and not handish(lp[x+d,y]) and max(lp[x+d,y][:3])>=45]
+                            lp[x,y]=nb[0] if nb else (0,0,0,0)        # patch with the shorts' own colour beside it
                 kill=[]                                             # the hand's own outline: black pixels next to the removed hand
                 for y in range(H_):                                 # that touch no remaining coloured pixel
                     for x in range(W_):
