@@ -86,12 +86,13 @@ function drawWeapon(g, hx, hy, dx, dy, kind){
   const w = WPN[kind]; if (!w) return;
   const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
   const pts = [];
-  for (let i = -2; i <= w.len; i++) pts.push([hx + dx * i, hy + dy * i, i]);
+  const back = w.gun ? 8 : 2;                     // a gun is held at its middle: the stock runs back past the hand to the chest
+  for (let i = -back; i <= w.len - (w.gun ? 7 : 0); i++) pts.push([hx + dx * i, hy + dy * i, i]);
   // outline pass
   for (const [x, y] of pts) for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) px(g, x + ox, y + oy, '#111');
   if (w.thick) for (const [x, y, i] of pts) if (i > w.len - 5) for (const [ox, oy] of [[1,1],[-1,-1],[1,-1],[-1,1]]) px(g, x + ox, y + oy, '#111');
   if (w.head) { const [x, y] = pts[pts.length - 2]; for (let k = -3; k <= 3; k++) { px(g, x - dy * k + 1, y + dx * k + 1, '#111'); } }
-  for (const [x, y, i] of pts) px(g, x, y, i > w.len - 4 ? w.tip : w.body);
+  for (const [x, y, i] of pts) px(g, x, y, w.gun ? (i < 0 ? w.tip : w.body) : (i > w.len - 4 ? w.tip : w.body));
   if (w.thick) for (const [x, y, i] of pts) if (i > w.len - 5) { px(g, x + 1, y, w.tip); px(g, x, y + 1, w.body); }
   if (w.head) { const [x, y] = pts[pts.length - 2]; for (let k = -2; k <= 2; k++) px(g, x - dy * k, y + dx * k, w.tip); }
 }
@@ -173,7 +174,7 @@ function drawChar(g, anim, view, flip, t, x, y){
   if (w && w.behind) { tg.clearRect(0, 0, TW, TH); drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind); tg.drawImage(atlas, sx, sy, C, C, PADX, PADY, C, C); }
   if (w && !w.behind) drawWeapon(tg, w.hx + PADX, w.hy + PADY, w.dx, w.dy, kind);
   if (w && SWING[anim]) drawSwoosh(tg, anim, seqs[view] ? view : 'se', f, kind);
-  if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 16, w.hy + PADY + w.dy * 16, f === 2);
+  if (w && anim === 'fire' && (f === 2 || f === 3)) drawFlash(tg, w.hx + PADX + w.dx * 10, w.hy + PADY + w.dy * 10, f === 2);
   if (anim === 'taking_damage' && f < 3) drawSpark(tg, PADX + 30, PADY + 20 + (seq[0].top || 10) - 10, f);
   if (flash) { fg2.clearRect(0,0,TW,TH); fg2.drawImage(tmp,0,0); fg2.globalCompositeOperation='source-in'; fg2.fillStyle='#fff'; fg2.fillRect(0,0,TW,TH); fg2.globalCompositeOperation='source-over'; }
   const src = flash ? flashC : tmp;
