@@ -76,7 +76,13 @@ shadow, text or effects. Output only the building on magenta.
 Rotation: the game shows 4 views. Two are drawn (FRONT and BACK); the game
 mirrors them for the other two. A 2x1 building turned 90 degrees is the
 mirrored view, so the same guide works for every view.
-Attach the approved front view and the same guide, then paste:
+Attach back_view_<size>_<id>.png (Claude makes it: the approved front on the
+left guide, an empty guide on the right), then paste:
+"Draw in the EMPTY right guide the SAME building as the left one, seen from
+the opposite side (turned 180 degrees). EXACTLY the same size as the left
+one: same width, same height, same pixel size, the roof peak at the same
+height, the walls on the same diamond corners. Do not change the left one."
+then the rest:
 "Now draw the SAME building from the opposite side, as if it were turned
 180 degrees: we now see the two walls that were hidden (the back and the
 other side). Same colours, materials, roof and size, every detail that goes
