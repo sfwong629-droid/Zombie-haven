@@ -50,7 +50,7 @@ shadow, text or effects. Output only the building on magenta.
              planks, red cross painted on a white panel, a stretcher by the
              door, a canvas side awning.
   canteen    Canteen: long tent-roof kitchen with a counter, a big cooking pot
-             on a fire barrel, benches, a hand-painted "FOOD" board.
+             on a fire barrel, benches, a hanging pot-and-ladle sign.
   armory     Armory: fortified metal shed with sandbags, a barred window, a
              weapon rack of bats and pipes by the door.
   workshop   Workshop: open garage with a workbench, tools on a pegboard, a
@@ -71,6 +71,21 @@ shadow, text or effects. Output only the building on magenta.
              a water trough, a scarecrow.
   barracks   Barracks: long army-style building of sandbags and plywood,
              watch platform on top, bunk beds through the door.
+
+===== BACK VIEW (send after the front view is approved) =====
+Rotation: the game shows 4 views. Two are drawn (FRONT and BACK); the game
+mirrors them for the other two. A 2x1 building turned 90 degrees is the
+mirrored view, so the same guide works for every view.
+Attach the approved front view and the same guide, then paste:
+"Now draw the SAME building from the opposite side, as if it were turned
+180 degrees: we now see the two walls that were hidden (the back and the
+other side). Same colours, materials, roof and size, every detail that goes
+around the building continues around it. Same guide, same rules: every art
+pixel a 12 x 12 block, standing exactly on the cyan diamond, highest point
+touching the dotted line. No door on these walls unless the building has a
+back door. No text or letters anywhere (mirroring would flip them)."
+Check: same height and footprint as the front, same palette, nothing that
+only makes sense from one side (a sign facing the wrong way, a door moved).
 
 ===== IF IT DRIFTS =====
 "Redo it. Same guide, every art pixel a 12 x 12 block like the farmer, the
