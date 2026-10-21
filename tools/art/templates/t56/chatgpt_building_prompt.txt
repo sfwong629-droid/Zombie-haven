@@ -89,7 +89,8 @@ other side). Same colours, materials, roof and size, every detail that goes
 around the building continues around it. Same guide, same rules: every art
 pixel a 12 x 12 block, standing exactly on the cyan diamond, highest point
 touching the dotted line. No door on these walls unless the building has a
-back door. No text or letters anywhere (mirroring would flip them)."
+back door. No text or letters anywhere (mirroring would flip them). Signs and
+symbols (red cross, logos) stay on the FRONT only; the back is plain."
 Check: same height and footprint as the front, same palette, nothing that
 only makes sense from one side (a sign facing the wrong way, a door moved).
 
