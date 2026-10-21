@@ -1,0 +1,172 @@
+<title>Building Rotation Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one stage (the map at whole-number zoom) with a control strip above and per-building rotation cards below. Single dusk look, like the game. */
+:root {
+  --bg: #1d2321; --panel: #262e2b; --line: #3a4541; --fg: #e8e4d8; --muted: #a3a99d;
+  --accent: #e2b04a; --accent-ink: #2a1f08; --sky: #2b3532;
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 32px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; max-width: 65ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+.grp { display: flex; gap: 4px; align-items: center; padding-right: 10px; border-right: 1px solid var(--line); }
+.grp:last-child { border-right: 0; }
+button { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.stage { background: var(--sky); border: 1px solid var(--line); border-radius: 8px; overflow: auto; display: grid; place-items: center; padding: 8px; max-width: 100%; }
+canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: pointer; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.card h2 { font-family: var(--display); font-weight: 400; font-size: 15px; margin: 0; }
+.card .row { display: flex; gap: 4px; flex-wrap: wrap; }
+.card .info { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Silkscreen&display=swap">
+
+<div class="wrap">
+  <div>
+    <h1>Building Rotation Test</h1>
+    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer walks the path for scale.</p>
+  </div>
+  <div class="bar">
+    <div class="grp"><span class="lab">Rotate</span><button id="rotAll">All 90°</button><button id="rotReset">Reset</button></div>
+    <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
+    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button></div>
+  </div>
+  <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
+  <div class="cards" id="cards"></div>
+  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, farmer walk 6 frames at 200 ms.</p>
+</div>
+
+<script>
+const A = __ASSETS__;
+const TW = 56, TH = 28, N = 7;
+const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
+const B = [
+  { key: 'tent', x: 2, y: 3, rot: 0 },
+  { key: 'house', x: 4, y: 2, rot: 0 },
+];
+const PATH = [[1, 1], [5, 1], [5, 5], [1, 5]];   // tile corners of the farmer's loop (he walks tile centres)
+const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+cv.width = W; cv.height = H;
+let zoom = 3, anim = true, showFarmer = true, showGrid = false;
+const img = {};
+let loading = 0;
+function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
+for (const k of ['tent', 'house']) A[k].views.forEach((v, i) => load(k + i, v.src));
+load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
+
+const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
+
+// ground: grass checker + dirt path, drawn once at art-pixel size
+const ground = document.createElement('canvas'); ground.width = W; ground.height = H;
+(function drawGround() {
+  const q = ground.getContext('2d');
+  const onPath = (x, y) => (y === 1 || y === 5) && x >= 1 && x <= 5 || (x === 1 || x === 5) && y >= 1 && y <= 5;
+  for (let ty = 0; ty < N; ty++) for (let tx = 0; tx < N; tx++) {
+    const [cx, top] = P(tx, ty);
+    const dirt = onPath(tx, ty), alt = (tx + ty) % 2;
+    q.fillStyle = dirt ? (alt ? '#8a6a45' : '#94734b') : (alt ? '#5b7a3c' : '#638442');
+    for (let r = 0; r < TH; r++) { const hw = r < TH / 2 ? 2 * (r + 1) : 2 * (TH - r); q.fillRect(cx - hw, top + r, hw * 2, 1); }
+  }
+})();
+function gridLines() {
+  g.fillStyle = 'rgba(120,220,255,.55)';
+  for (let ty = 0; ty < N; ty++) for (let tx = 0; tx < N; tx++) {
+    const [cx, top] = P(tx, ty);
+    for (let r = 0; r < TH; r++) { const hw = r < TH / 2 ? 2 * (r + 1) : 2 * (TH - r); g.fillRect(cx - hw, top + r, 1, 1); g.fillRect(cx + hw - 1, top + r, 1, 1); }
+  }
+}
+
+function drawStrip(im, s, f, ax, ay, flip) {   // draw frame f with its anchor (ax, ay) at screen (ax, ay)
+  const sax = flip ? s.w - 1 - s.ax : s.ax;
+  const x = Math.round(ax - sax), y = Math.round(ay - s.ay);
+  if (!flip) { g.drawImage(im, f * s.w, 0, s.w, s.h, x, y, s.w, s.h); return; }
+  g.save(); g.translate(x + s.w, y); g.scale(-1, 1); g.drawImage(im, f * s.w, 0, s.w, s.h, 0, 0, s.w, s.h); g.restore();
+}
+
+// farmer on the loop
+const loopLen = PATH.reduce((a, p, i) => { const q = PATH[(i + 1) % PATH.length]; return a + Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]); }, 0);
+function farmerAt(t) {   // t in tiles walked
+  let d = t % loopLen;
+  for (let i = 0; i < PATH.length; i++) {
+    const p = PATH[i], q = PATH[(i + 1) % PATH.length], L = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+    if (d <= L) { const k = d / L; return { x: p[0] + (q[0] - p[0]) * k, y: p[1] + (q[1] - p[1]) * k, dx: Math.sign(q[0] - p[0]), dy: Math.sign(q[1] - p[1]) }; }
+    d -= L;
+  }
+}
+
+let t0 = performance.now(), paused = 0, frozenAt = 0;
+function frame(now) {
+  const t = anim ? now - t0 - paused : frozenAt;
+  g.clearRect(0, 0, W, H); g.drawImage(ground, 0, 0);
+  if (showGrid) gridLines();
+  if (!loading) {
+    const items = [];
+    for (const b of B) {
+      const def = A[b.key], v = def.views[b.rot >> 1], f = Math.floor(t / def.ms) % v.n;
+      const [cx, top] = P(b.x, b.y);
+      items.push({ d: b.x + b.y + 1, fn: () => drawStrip(img[b.key + (b.rot >> 1)], v, f, cx, top + TH, b.rot & 1) });
+    }
+    if (showFarmer) {
+      const m = farmerAt(t / 1000 * 0.9), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
+      const s = up ? A.walk_ne : A.walk_se, f = Math.floor(t / 200) % s.n;
+      const [cx, top] = P(m.x + .5, m.y + .5);
+      items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[up ? 'walk_ne' : 'walk_se'], s, f, cx, top, flip) });
+    }
+    items.sort((a, b) => a.d - b.d).forEach(i => i.fn());
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// zoom
+function fitZoom() { const avail = document.querySelector('.stage').clientWidth - 18; return Math.max(1, Math.min(5, Math.floor(avail / W))); }
+function setZoom(z) { zoom = z; cv.style.width = W * z + 'px'; cv.style.height = H * z + 'px'; document.querySelectorAll('#zooms button').forEach(b => b.classList.toggle('on', +b.dataset.z === z)); }
+const zs = document.getElementById('zooms');
+for (const z of [1, 2, 3, 4, 5]) { const b = document.createElement('button'); b.textContent = z + '×'; b.dataset.z = z; b.onclick = () => setZoom(z); zs.appendChild(b); }
+setZoom(fitZoom());
+
+// cards
+const cards = document.getElementById('cards');
+function renderCards() {
+  cards.innerHTML = '';
+  for (const b of B) {
+    const def = A[b.key], v = def.views[b.rot >> 1];
+    const c = document.createElement('div'); c.className = 'card';
+    c.innerHTML = `<h2>${def.name}</h2><div class="row">${ROT.map((r, i) => `<button data-k="${b.key}" data-r="${i}" class="${i === b.rot ? 'on' : ''}">${r.split(' ')[0]}</button>`).join('')}</div>
+      <div class="info">${ROT[b.rot]} · drawn view ${(b.rot >> 1) ? 'back' : 'front'} · frame ${v.w}×${v.h} px · ${v.n} frames</div>`;
+    cards.appendChild(c);
+  }
+  cards.querySelectorAll('button').forEach(btn => btn.onclick = () => { B.find(b => b.key === btn.dataset.k).rot = +btn.dataset.r; renderCards(); });
+}
+renderCards();
+const rotate = (b) => { b.rot = (b.rot + 1) % 4; };
+document.getElementById('rotAll').onclick = () => { B.forEach(rotate); renderCards(); };
+document.getElementById('rotReset').onclick = () => { B.forEach(b => b.rot = 0); renderCards(); };
+const tog = (id, fn) => { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on', fn()); }; };
+tog('tAnim', () => { const now = performance.now(); if (anim) frozenAt = now - t0 - paused; else paused = now - t0 - frozenAt; anim = !anim; return anim; });
+tog('tFarmer', () => (showFarmer = !showFarmer));
+tog('tGrid', () => (showGrid = !showGrid));
+
+// tap a building to rotate it (hit test: its diamond and the area above it)
+cv.addEventListener('click', (e) => {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / zoom, y = (e.clientY - r.top) / zoom;
+  for (const b of [...B].sort((p, q) => (q.x + q.y) - (p.x + p.y))) {
+    const [cx, top] = P(b.x, b.y);
+    if (Math.abs(x - cx) <= TW / 2 + 4 && y <= top + TH && y >= top + TH - 84) { rotate(b); renderCards(); return; }
+  }
+});
+</script>
