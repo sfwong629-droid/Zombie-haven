@@ -1,0 +1,82 @@
+ZOMBIE HAVEN: 56-PX TILE BUILDINGS (ChatGPT)
+One building per message, all in the SAME chat. Attach to the first message:
+  - the guide for that building's size (footprint_1x1 / 2x1 / 2x2.png)
+  - assets/buildings/t56/medic.png (the approved Medical Tent, style reference)
+For later buildings of a new size, attach the new guide with that message.
+
+===== MESSAGE 1: RULES (send once, with the first building) =====
+Zombie Haven building sprite. PIXEL ART in exactly the same style as the
+Medical Tent I attached: same 1-pixel black outline, same chunky pixels,
+light from the top-left, warm muted post-apocalyptic colours, scrap wood,
+rope, canvas and rusty metal. Keep these rules for every building in this chat:
+
+GUIDE: draw on top of the guide image I attach, same image size, keep its
+flat #FF00FF magenta background.
+PIXEL SIZE: every art pixel is one 12 x 12 block of image pixels on one even
+grid, exactly the size of the farmer's pixels in the guide. No smaller or
+bigger pixels, no anti-aliasing, no blur, no gradients.
+FOOTPRINT: the building stands exactly on the cyan diamond. Its walls start
+at the diamond's left, bottom and right corners; nothing hangs past the
+diamond's left or right corner by more than 2 art pixels.
+HEIGHT: the highest point (roof, chimney, flag) touches the dotted cyan line,
+never above it.
+VIEW: isometric, 2:1, front corner pointing at the viewer (bottom of the
+diamond), door on the bottom-left wall.
+REMOVE: the farmer, the cyan diamond and the dotted line. No ground, grass,
+shadow, text or effects. Output only the building on magenta.
+
+===== BUILDINGS (paste one line after "Building:") =====
+1x1 (footprint_1x1.png, 56 px wide, top line 68 px up)
+  house      House: small boarded-up wooden shack, patched tin roof, one lit
+             window, a door, a stovepipe chimney.
+  water      Rain Collector: wooden frame holding a big blue plastic barrel,
+             a tarp funnel on top, a pipe and tap at the bottom, a bucket.
+  farm       Garden Plot: raised wooden planter box with rows of green crops,
+             a short scrap-wood fence, a watering can, a small scarecrow post
+             (this one is mostly low; the scarecrow reaches the line).
+  well       Well: round stone well, wooden roof with a crank and rope,
+             a bucket on the rim.
+  storage    Storage: shipping-container shed with crates and barrels stacked
+             against it, a tarp tied over the top.
+  gym        Gym: open lean-to with a tin roof, a punching bag hanging, a
+             barbell rack and tyres.
+  library    Library: small brick shed with a slanted roof, a bookshelf seen
+             through the open door, books stacked outside, a lantern.
+  lounge     Lounge: canvas awning over old sofas and a crate table, string
+             lights, a radio.
+
+2x1 (footprint_2x1.png, 84 px wide, top line 82 px up)
+  clinic     Clinic: small single-storey building of corrugated metal and
+             planks, red cross painted on a white panel, a stretcher by the
+             door, a canvas side awning.
+  canteen    Canteen: long tent-roof kitchen with a counter, a big cooking pot
+             on a fire barrel, benches, a hand-painted "FOOD" board.
+  armory     Armory: fortified metal shed with sandbags, a barred window, a
+             weapon rack of bats and pipes by the door.
+  workshop   Workshop: open garage with a workbench, tools on a pegboard, a
+             vice, scrap parts, a hanging work light.
+  scrapyard  Scrapyard: fenced heap of junk, car doors, tyres, pipes, a small
+             crane arm made of scrap.
+  range      Shooting Range: long wooden counter with sandbags, three paper
+             targets on posts at the back.
+  track      Obstacle Course: wooden wall to climb, hurdles, tyres on the
+             ground, a rope net.
+  sparring   Sparring Ring: square ring of rope and posts on a wooden platform,
+             a bucket and a stool in the corner.
+
+2x2 (footprint_2x2.png, 112 px wide, top line 96 px up)
+  hospital   Hospital: two-storey patched brick building, big red cross on the
+             roof sign, ambulance-style double doors, generator and IV stands.
+  field      Farm: fenced field of crop rows, a small barn on the back corner,
+             a water trough, a scarecrow.
+  barracks   Barracks: long army-style building of sandbags and plywood,
+             watch platform on top, bunk beds through the door.
+
+===== IF IT DRIFTS =====
+"Redo it. Same guide, every art pixel a 12 x 12 block like the farmer, the
+building exactly on the cyan diamond and touching the dotted line, same
+style as the Medical Tent, PIXEL ART not painting."
+
+AFTER: save each result as tools/art/sources/<id>_t56_src.png (or send it to
+Claude). Claude reads it at its drawn pixel size into assets/buildings/t56/<id>.png
+and reports the measured size; nothing is shrunk or straightened.
