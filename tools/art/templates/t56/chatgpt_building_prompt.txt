@@ -94,6 +94,17 @@ symbols (red cross, logos) stay on the FRONT only; the back is plain."
 Check: same height and footprint as the front, same palette, nothing that
 only makes sense from one side (a sign facing the wrong way, a door moved).
 
+===== LESSONS (use in every building prompt) =====
+- Attach size_guide_1x1_farmer.png (tent + empty diamond + farmer) and
+  give REAL SCALE: the farmer is a 1.75 m person, 30 px tall; give the
+  doorway / object heights in pixels. Fill the rest of the diamond with a
+  low floor, pad or planter 2 px thick.
+- SIMPLE: "Match the Medical Tent's level of detail: a few big flat colour
+  areas, each with one light side and one dark side, 1-pixel black
+  outline, at most 3 shades per material. No texture lines, stripes,
+  bolts, hinges, rust spots or tiny objects. Every shape at least 3 px."
+- Name only 3-4 props. No corner posts unless wanted. No text.
+
 ===== IF IT DRIFTS =====
 "Redo it. Same guide, every art pixel a 12 x 12 block like the farmer, the
 building exactly on the cyan diamond and touching the dotted line, same

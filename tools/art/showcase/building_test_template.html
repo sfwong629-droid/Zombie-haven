@@ -54,11 +54,12 @@ const A = __ASSETS__;
 const TW = 56, TH = 28, N = 9;
 const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
 const B = [
-  { key: 'tent', x: 3, y: 2, rot: 0 },
-  { key: 'house', x: 5, y: 3, rot: 0 },
-  { key: 'water', x: 2, y: 4, rot: 0 },
-  { key: 'farm', x: 3, y: 6, rot: 0 },
-  { key: 'well', x: 5, y: 5, rot: 0 },
+  { key: 'tent', x: 2, y: 2, rot: 0 },
+  { key: 'house', x: 4, y: 2, rot: 0 },
+  { key: 'water', x: 6, y: 2, rot: 0 },
+  { key: 'farm', x: 2, y: 5, rot: 0 },
+  { key: 'well', x: 4, y: 5, rot: 0 },
+  { key: 'storage', x: 6, y: 5, rot: 0 },
 ];
 const PATH = [[1, 1], [7, 1], [7, 7], [1, 7]];   // tile corners of the farmer's loop (he walks tile centres)
 const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
@@ -68,7 +69,7 @@ let zoom = 3, anim = true, showFarmer = true, showGrid = false;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
-for (const k of ['tent', 'house', 'water', 'farm', 'well']) A[k].views.forEach((v, i) => load(k + i, v.src));
+for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage']) A[k].views.forEach((v, i) => load(k + i, v.src));
 load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
