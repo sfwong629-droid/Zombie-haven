@@ -10,10 +10,10 @@ from drip import drip
 DROP, WET, DARK = (92, 160, 222, 255), (186, 210, 226, 255), (52, 104, 168, 255)
 N = 20
 VIEWS = {   # (file, funnel hole, drop starts (x, y, first frame), tap (x, y, water row) or None)
-    'water':      ('water.png', (30, 16), [(14, 10, 0), (45, 10, 7), (27, 4, 13)], (41, 36, 38)),
-    'water_back': ('water_back.png', (30, 16), [(46, 10, 0), (14, 10, 7), (30, 4, 13)], None),
+    'water':      ('water.png', (30, 16), [(14, 10, 0), (45, 10, 3), (27, 4, 6), (20, 9, 10), (40, 8, 13), (33, 5, 16), (17, 11, 18)], (41, 36, 38)),
+    'water_back': ('water_back.png', (30, 16), [(46, 10, 0), (14, 10, 3), (30, 4, 6), (40, 9, 10), (20, 8, 13), (27, 5, 16), (44, 11, 18)], None),
 }
-LIFE = 7   # frames a drop takes to reach the hole
+LIFE = 6   # frames a drop takes to reach the hole (+1 splash frame)
 
 def is_tarp(p):
     return p[3] and p[0] > 170 and p[1] > 140 and p[2] > 90
@@ -25,7 +25,11 @@ def frames(base, hole, drops, tap):
         im = (taps[f % 10] if taps else base).copy(); px = im.load()
         for (sx, sy, start) in drops:
             a = (f - start) % N
-            if a >= LIFE: continue
+            if a == LIFE:   # splash at the funnel hole
+                for q in ((hole[0] - 1, hole[1] - 1), (hole[0] + 1, hole[1] - 1), (hole[0], hole[1] - 2)):
+                    if is_tarp(base.getpixel(q)): px[q] = WET
+                continue
+            if a > LIFE: continue
             t = a / (LIFE - 1)
             pos = lambda u: (round(sx + (hole[0] - sx) * u), round(sy + (hole[1] - sy) * u ** 1.4))   # slow at first, then runs
             for k in range(12):   # wet streak behind the drop
