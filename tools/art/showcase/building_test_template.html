@@ -46,19 +46,20 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   </div>
   <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
   <div class="cards" id="cards"></div>
-  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, farmer walk 6 frames at 200 ms.</p>
+  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, farmer walk 6 frames at 200 ms.</p>
 </div>
 
 <script>
 const A = __ASSETS__;
-const TW = 56, TH = 28, N = 7;
+const TW = 56, TH = 28, N = 8;
 const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
 const B = [
-  { key: 'tent', x: 2, y: 2, rot: 0 },
-  { key: 'house', x: 4, y: 2, rot: 0 },
+  { key: 'tent', x: 3, y: 2, rot: 0 },
+  { key: 'house', x: 5, y: 3, rot: 0 },
   { key: 'water', x: 2, y: 4, rot: 0 },
+  { key: 'farm', x: 4, y: 5, rot: 0 },
 ];
-const PATH = [[1, 1], [5, 1], [5, 5], [1, 5]];   // tile corners of the farmer's loop (he walks tile centres)
+const PATH = [[1, 1], [6, 1], [6, 6], [1, 6]];   // tile corners of the farmer's loop (he walks tile centres)
 const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
 const cv = document.getElementById('cv'), g = cv.getContext('2d');
 cv.width = W; cv.height = H;
@@ -66,7 +67,7 @@ let zoom = 3, anim = true, showFarmer = true, showGrid = false;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
-for (const k of ['tent', 'house', 'water']) A[k].views.forEach((v, i) => load(k + i, v.src));
+for (const k of ['tent', 'house', 'water', 'farm']) A[k].views.forEach((v, i) => load(k + i, v.src));
 load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
@@ -75,7 +76,7 @@ const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 const ground = document.createElement('canvas'); ground.width = W; ground.height = H;
 (function drawGround() {
   const q = ground.getContext('2d');
-  const onPath = (x, y) => (y === 1 || y === 5) && x >= 1 && x <= 5 || (x === 1 || x === 5) && y >= 1 && y <= 5;
+  const onPath = (x, y) => (y === 1 || y === 6) && x >= 1 && x <= 6 || (x === 1 || x === 6) && y >= 1 && y <= 6;
   for (let ty = 0; ty < N; ty++) for (let tx = 0; tx < N; tx++) {
     const [cx, top] = P(tx, ty);
     const dirt = onPath(tx, ty), alt = (tx + ty) % 2;
