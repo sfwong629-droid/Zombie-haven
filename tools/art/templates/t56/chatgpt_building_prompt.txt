@@ -105,6 +105,14 @@ only makes sense from one side (a sign facing the wrong way, a door moved).
   bolts, hinges, rust spots or tiny objects. Every shape at least 3 px."
 - Name only 3-4 props. No corner posts unless wanted. No text.
 
+- WORKING PROMPT START (Gym, 60x55): "EDIT the attached guide image. Do NOT
+  make a new picture. The output must be the SAME image as the guide: same
+  width and height, the Medical Tent still on the left exactly as it is,
+  the grey slab still in the same place on the right. Only paint the new
+  building on top of the grey slab." + "SIZE: the grey slab is the exact
+  size of the building... keeping its EXACT outline (not bigger, not
+  smaller, not moved)". Guide: floor_guide_1x1.png.
+
 ===== IF IT DRIFTS =====
 "Redo it. Same guide, every art pixel a 12 x 12 block like the farmer, the
 building exactly on the cyan diamond and touching the dotted line, same
