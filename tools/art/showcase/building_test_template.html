@@ -46,7 +46,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   </div>
   <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
   <div class="cards" id="cards"></div>
-  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, farmer walk 6 frames at 200 ms.</p>
+  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector drip 10 frames at 120 ms, farmer walk 6 frames at 200 ms.</p>
 </div>
 
 <script>
@@ -54,8 +54,9 @@ const A = __ASSETS__;
 const TW = 56, TH = 28, N = 7;
 const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
 const B = [
-  { key: 'tent', x: 2, y: 3, rot: 0 },
+  { key: 'tent', x: 2, y: 2, rot: 0 },
   { key: 'house', x: 4, y: 2, rot: 0 },
+  { key: 'water', x: 2, y: 4, rot: 0 },
 ];
 const PATH = [[1, 1], [5, 1], [5, 5], [1, 5]];   // tile corners of the farmer's loop (he walks tile centres)
 const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
@@ -65,7 +66,7 @@ let zoom = 3, anim = true, showFarmer = true, showGrid = false;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
-for (const k of ['tent', 'house']) A[k].views.forEach((v, i) => load(k + i, v.src));
+for (const k of ['tent', 'house', 'water']) A[k].views.forEach((v, i) => load(k + i, v.src));
 load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
@@ -116,9 +117,9 @@ function frame(now) {
   if (!loading) {
     const items = [];
     for (const b of B) {
-      const def = A[b.key], v = def.views[b.rot >> 1], f = Math.floor(t / def.ms) % v.n;
+      const def = A[b.key], vi = Math.min(b.rot >> 1, def.views.length - 1), v = def.views[vi], f = Math.floor(t / def.ms) % v.n;
       const [cx, top] = P(b.x, b.y);
-      items.push({ d: b.x + b.y + 1, fn: () => drawStrip(img[b.key + (b.rot >> 1)], v, f, cx, top + TH, b.rot & 1) });
+      items.push({ d: b.x + b.y + 1, fn: () => drawStrip(img[b.key + vi], v, f, cx, top + TH, b.rot & 1) });
     }
     if (showFarmer) {
       const m = farmerAt(t / 1000 * 0.9), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
@@ -144,10 +145,10 @@ const cards = document.getElementById('cards');
 function renderCards() {
   cards.innerHTML = '';
   for (const b of B) {
-    const def = A[b.key], v = def.views[b.rot >> 1];
+    const def = A[b.key], v = def.views[Math.min(b.rot >> 1, def.views.length - 1)], noBack = def.views.length < 2 && b.rot > 1;
     const c = document.createElement('div'); c.className = 'card';
     c.innerHTML = `<h2>${def.name}</h2><div class="row">${ROT.map((r, i) => `<button data-k="${b.key}" data-r="${i}" class="${i === b.rot ? 'on' : ''}">${r.split(' ')[0]}</button>`).join('')}</div>
-      <div class="info">${ROT[b.rot]} · drawn view ${(b.rot >> 1) ? 'back' : 'front'} · frame ${v.w}×${v.h} px · ${v.n} frames</div>`;
+      <div class="info">${ROT[b.rot]} · drawn view ${noBack ? 'front (back not drawn yet)' : (b.rot >> 1) ? 'back' : 'front'} · frame ${v.w}×${v.h} px · ${v.n} frames</div>`;
     cards.appendChild(c);
   }
   cards.querySelectorAll('button').forEach(btn => btn.onclick = () => { B.find(b => b.key === btn.dataset.k).rot = +btn.dataset.r; renderCards(); });
