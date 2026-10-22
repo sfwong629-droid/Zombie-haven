@@ -28,7 +28,7 @@ def frames(im, box, drip):
         ring = {0: [(0, 0)], 1: [(-1, 0), (1, 0)], 2: [(-2, 0), (2, 0), (0, -1)], 3: [(-3, 0), (3, 0)]}.get(f, [])
         for (a, b) in ring:
             q = (dx + a, dy + b)
-            if water(px[q]): op[q] = HI if f < 2 else MID
+            if 0 <= q[0] < im.width and 0 <= q[1] < im.height and water(px[q]): op[q] = HI if f < 2 else MID
         out.append(o)
     return out
 
