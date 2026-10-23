@@ -46,12 +46,12 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   </div>
   <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
   <div class="cards" id="cards"></div>
-  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, farmer walk 6 frames at 200 ms.</p>
+  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, farmer walk 6 frames at 200 ms.</p>
 </div>
 
 <script>
 const A = __ASSETS__;
-const TW = 56, TH = 28, N = 11;
+const TW = 56, TH = 28, N = 12;
 const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
 const B = [
   { key: 'tent', x: 2, y: 2, rot: 0 },
@@ -65,8 +65,9 @@ const B = [
   { key: 'lounge', x: 2, y: 7, rot: 0 },
   { key: 'clinic', x: 8, y: 4, rot: 0 },
   { key: 'canteen', x: 8, y: 7, rot: 0 },
+  { key: 'armory', x: 10, y: 4, rot: 0 },
 ];
-const PATH = [[1, 1], [9, 1], [9, 9], [1, 9]];   // tile corners of the farmer's loop (he walks tile centres)
+const PATH = [[1, 1], [11, 1], [11, 10], [1, 10]];   // tile corners of the farmer's loop (he walks tile centres)
 const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
 const cv = document.getElementById('cv'), g = cv.getContext('2d');
 cv.width = W; cv.height = H;
@@ -74,7 +75,7 @@ let zoom = 3, anim = true, showFarmer = true, showGrid = false;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
-for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen']) A[k].views.forEach((v, i) => load(k + i, v.src));
+for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory']) A[k].views.forEach((v, i) => load(k + i, v.src));
 load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
@@ -83,7 +84,7 @@ const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 const ground = document.createElement('canvas'); ground.width = W; ground.height = H;
 (function drawGround() {
   const q = ground.getContext('2d');
-  const onPath = (x, y) => (y === 1 || y === 9) && x >= 1 && x <= 9 || (x === 1 || x === 9) && y >= 1 && y <= 9;
+  const onPath = (x, y) => (y === 1 || y === 10) && x >= 1 && x <= 11 || (x === 1 || x === 11) && y >= 1 && y <= 10;
   for (let ty = 0; ty < N; ty++) for (let tx = 0; tx < N; tx++) {
     const [cx, top] = P(tx, ty);
     const dirt = onPath(tx, ty), alt = (tx + ty) % 2;
