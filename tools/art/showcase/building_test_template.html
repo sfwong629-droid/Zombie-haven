@@ -46,13 +46,15 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   </div>
   <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
   <div class="cards" id="cards"></div>
-  <p class="note">0° and 180° are drawn (front and back). 90° and 270° are the same drawings mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, farmer walk 6 frames at 200 ms.</p>
+  <p class="note">Buildings turn clockwise. 0° and 180° are drawn (front and back); 90° is the back mirrored and 270° is the front mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, farmer walk 6 frames at 200 ms.</p>
 </div>
 
 <script>
 const A = __ASSETS__;
 const TW = 56, TH = 28, N = 12;
-const ROT = ['0° front', '90° front mirrored', '180° back', '270° back mirrored'];
+const ROT = ['0° front', '90° back mirrored', '180° back', '270° front mirrored'];
+// clockwise turn: 0° front, 90° back mirrored, 180° back, 270° front mirrored
+const VIEW = (r) => (r === 1 || r === 2) ? 1 : 0;
 const B = [
   { key: 'tent', x: 2, y: 2, rot: 0 },
   { key: 'house', x: 4, y: 2, rot: 0 },
@@ -127,7 +129,7 @@ function frame(now) {
   if (!loading) {
     const items = [];
     for (const b of B) {
-      const def = A[b.key], vi = Math.min(b.rot >> 1, def.views.length - 1), v = def.views[vi], f = Math.floor(t / def.ms) % v.n;
+      const def = A[b.key], vi = Math.min(VIEW(b.rot), def.views.length - 1), v = def.views[vi], f = Math.floor(t / def.ms) % v.n;
       const [cx, top] = P(b.x, b.y);
       items.push({ d: b.x + b.y + 1, fn: () => drawStrip(img[b.key + vi], v, f, cx, top + TH, b.rot & 1) });
     }
@@ -155,10 +157,10 @@ const cards = document.getElementById('cards');
 function renderCards() {
   cards.innerHTML = '';
   for (const b of B) {
-    const def = A[b.key], v = def.views[Math.min(b.rot >> 1, def.views.length - 1)], noBack = def.views.length < 2 && b.rot > 1;
+    const def = A[b.key], v = def.views[Math.min(VIEW(b.rot), def.views.length - 1)], noBack = def.views.length < 2 && VIEW(b.rot) === 1;
     const c = document.createElement('div'); c.className = 'card';
     c.innerHTML = `<h2>${def.name}</h2><div class="row">${ROT.map((r, i) => `<button data-k="${b.key}" data-r="${i}" class="${i === b.rot ? 'on' : ''}">${r.split(' ')[0]}</button>`).join('')}</div>
-      <div class="info">${ROT[b.rot]} · drawn view ${noBack ? 'front (back not drawn yet)' : (b.rot >> 1) ? 'back' : 'front'} · frame ${v.w}×${v.h} px · ${v.n} frames</div>`;
+      <div class="info">${ROT[b.rot]} · drawn view ${noBack ? 'front (back not drawn yet)' : (VIEW(b.rot)) ? 'back' : 'front'} · frame ${v.w}×${v.h} px · ${v.n} frames</div>`;
     cards.appendChild(c);
   }
   cards.querySelectorAll('button').forEach(btn => btn.onclick = () => { B.find(b => b.key === btn.dataset.k).rot = +btn.dataset.r; renderCards(); });
