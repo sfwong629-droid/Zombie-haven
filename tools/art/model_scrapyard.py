@@ -33,11 +33,11 @@ if __name__ == '__main__':
     g.paste(m, (0, 0), m)
     g.save(sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x1_scrapyard.png')
 
-def back_guide(out='tools/art/templates/t56/back_model_2x1_scrapyard.png', front='assets/buildings/t56/scrapyard.png'):
+def back_guide(out='tools/art/templates/t56/back_model_2x1_scrapyard.png', front='assets/buildings/t56/scrapyard.png', fence_h=15):
     """Approved front on the left, the model turned 180 degrees (u -> 2-u, v -> 1-v) on the right."""
     global OBJ
     keep = OBJ
-    OBJ = [(2 - u1, 2 - u0, 1 - v1, 1 - v0, h0, h1, c) for (u0, u1, v0, v1, h0, h1, c) in keep]
+    OBJ = [(2 - u1, 2 - u0, 1 - v1, 1 - v0, h0, fence_h if c == FENCE else h1, c) for (u0, u1, v0, v1, h0, h1, c) in keep]   # fence_h: the fence now faces us; lower keeps the yard open
     m = render(A=(110, 69)); OBJ = keep
     g = Image.new('RGBA', (198 * 12, 86 * 12), (255, 0, 255, 255))
     f = Image.open(front).convert('RGBA')
