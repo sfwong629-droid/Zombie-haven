@@ -20,9 +20,9 @@ OBJ = [  # u0,u1, v0,v1, h0,h1, colour   (u = long axis, v = short axis, h px)
     (1.70, 1.74, .70, .90, 14, 26, PAPER),
     (.48, .64, .70, .90, 2, 9, CRATE),         # ammo crate
 ]
-def render(A=(84, 69), W=198, H=86):
+def render(A=(84, 69), W=198, H=86, order=None):
     m = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(m)
-    for o in sorted(OBJ, key=lambda o: (o[5] > 2, (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2)):
+    for o in (order or sorted(OBJ, key=lambda o: (o[5] > 2, (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2))):
         box(d, A, *o[:6], sh(o[6]))
     return m
 if __name__ == '__main__':
@@ -31,3 +31,17 @@ if __name__ == '__main__':
     m = render().resize((198 * 12, 86 * 12), Image.NEAREST)
     g.paste(m, (0, 0), m)
     g.save(sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x1_range.png')
+
+def back_guide(out='tools/art/templates/t56/back_model_2x1_range.png', front='assets/buildings/t56/range.png'):
+    """Approved front on the left, the model turned 180 degrees (u -> 2-u, v -> 1-v) on the right."""
+    global OBJ
+    keep = OBJ
+    OBJ = [(2 - u1, 2 - u0, 1 - v1, 1 - v0, h0, h1, c) for (u0, u1, v0, v1, h0, h1, c) in keep]
+    rest = [o for o in OBJ if o[6] != SAND]
+    m = render(A=(110, 69), order=[OBJ[0]] + sorted(rest[1:], key=lambda o: (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2) + [o for o in OBJ if o[6] == SAND])
+    OBJ = keep   # the sandbag wall is now the nearest thing: drawn last
+    g = Image.new('RGBA', (198 * 12, 86 * 12), (255, 0, 255, 255))
+    f = Image.open(front).convert('RGBA')
+    g.alpha_composite(f.resize((f.width * 12, f.height * 12), Image.NEAREST), (2 * 12, (84 - f.height) * 12))
+    g.alpha_composite(m.resize((198 * 12, 86 * 12), Image.NEAREST))
+    g.convert('RGB').save(out)
