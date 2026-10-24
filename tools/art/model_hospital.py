@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""Colour-block model guide for the 56-tile Hospital (2x2): two-storey patched brick block with a flat roof, a red-cross sign
-on the roof, double doors with a small canopy on the front-left wall, a generator and an IV stand outside."""
+"""Colour-block model guide for the 56-tile Hospital (2x2), v2: a wide, low two-storey clinic block at the back, the entrance
+on its front-left wall with a red canopy on posts, a parked ambulance along its front-right side, a stretcher in the yard and a
+red-cross sign on the roof. (u runs up-right, v down-right; the front-left wall is the u0 face.)"""
 import sys
 sys.path.insert(0, 'tools/art')
 from guide_2x2 import guide
 
-CONC, BRICK, ROOF, SIGN, DOOR, CANOPY, GEN, POLE = (150, 150, 145), (165, 95, 70), (110, 105, 100), (235, 230, 220), (90, 120, 140), (200, 200, 195), (110, 130, 70), (160, 160, 165)
+CONC, WALL, ROOF, SIGN, DOOR, CANOPY, POST, VAN, CAB, STRETCH = ((150, 150, 145), (225, 220, 205), (110, 105, 100),
+    (235, 230, 220), (90, 120, 140), (200, 70, 60), (180, 180, 180), (230, 230, 225), (200, 200, 195), (110, 140, 90))
 OBJ = [  # u0,u1, v0,v1, h0,h1, colour  (2x2: u and v both 0..2, h px)
     (0, 2, 0, 2, 0, 2, CONC),                        # concrete yard
-    (.15, 1.85, .15, 1.45, 2, 62, BRICK),            # two-storey block
-    (.15, 1.85, .15, 1.45, 62, 65, ROOF),            # flat roof with a low parapet
-    (.75, .81, .45, 1.15, 65, 83, SIGN),             # red-cross sign board on the roof, facing front-left
-    (.05, .15, .55, 1.05, 2, 33, DOOR),              # double doors (porch)
-    (.0, .2, .5, 1.1, 33, 36, CANOPY),               # small canopy over the doors
-    (1.3, 1.75, 1.6, 1.9, 2, 15, GEN),               # generator in the front yard
-    (.02, .06, 1.25, 1.29, 2, 28, POLE),             # IV stand by the door
+    (.8, 1.9, .1, 1.4, 2, 48, WALL),                 # two-storey block at the back
+    (.8, 1.9, .1, 1.4, 48, 51, ROOF),                # flat roof
+    (.86, .92, .4, 1.1, 51, 67, SIGN),               # red-cross sign board on the roof's front edge, facing front-left
+    (.75, .8, .4, 1.0, 2, 30, DOOR),                 # wide double doors on the front-left wall
+    (.42, .8, .3, 1.1, 30, 34, CANOPY),              # red entrance canopy on two posts
+    (.44, .49, .32, .37, 2, 30, POST),
+    (.44, .49, 1.03, 1.08, 2, 30, POST),
+    (.95, 1.75, 1.5, 1.9, 2, 22, VAN),               # ambulance along the front-right side: box body
+    (.8, .95, 1.53, 1.87, 2, 16, CAB),               # and its cab
+    (.1, .3, .5, 1.0, 2, 8, STRETCH),                # stretcher in the yard
 ]
 if __name__ == '__main__':
     guide(OBJ, sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x2_hospital.png')
