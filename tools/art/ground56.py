@@ -8,7 +8,7 @@ from PIL import Image
 
 TW, TH = 56, 28
 G = [(78, 110, 52), (92, 126, 58), (106, 142, 64), (124, 160, 74)]      # grass: dark .. light
-D = [(116, 88, 58), (134, 104, 68), (150, 118, 78), (168, 136, 92)]     # dirt
+D = [(170, 142, 98), (192, 164, 116), (206, 180, 130), (220, 198, 150)]   # sandy path: dark .. light
 EDGE = (64, 92, 44)                                                     # grass lip over the dirt
 FLOW = [(236, 226, 150), (230, 160, 170), (240, 240, 230)]
 
@@ -37,18 +37,18 @@ def render(N, path):
             # screen -> tile coords (u right-down, v left-down): x = OX + (u - v) * TW/2, y = (u + v) * TH/2
             a = (x - OX + .5) / (TW / 2); b = (y + .5) / (TH / 2); u = (a + b) / 2; v = (b - a) / 2
             if not (0 <= u < N and 0 <= v < N): continue
-            wu = u + (warp_u(x, y) - .5) * .32; wv = v + (warp_v(x, y) - .5) * .32
+            wu = u + (warp_u(x, y) - .5) * .07; wv = v + (warp_v(x, y) - .5) * .07   # only a slight wobble: the path follows the tiles
             dirt = (math.floor(wu), math.floor(wv)) in path
             mat[(x, y)] = dirt
     for (x, y), dirt in mat.items():
         # flat base colour with a few big, hard-edged patches (no soft gradients: reads as pixel art)
         s = shade(x, y * 2) * .7 + clump(x, y * 2) * .3
         if dirt:
-            col = D[1] if s < .38 else D[2] if s < .66 else D[3]
-            if not mat.get((x, y - 1), True) or not mat.get((x, y - 2), True): col = EDGE if not mat.get((x, y - 1), True) else D[0]   # grass lip + its shadow
+            col = D[1] if s < .4 else D[2] if s < .72 else D[3]
+            if not mat.get((x, y - 1), True) and (x // 2 + y) % 2: col = G[1]   # soft edge: a few grass pixels dither into the sand
         else:
             col = G[0] if s < .3 else G[1] if s < .62 else G[2]
-            if mat.get((x, y + 1)) : col = G[3]   # bright rim where grass meets the path
+
         p[x, y] = col + (255,)
     rr = random.Random(11)
     TUFT = [(0, 0, 3), (0, -1, 3), (2, 0, 3), (2, -1, 3), (2, -2, 3), (4, 0, 3), (4, -1, 3), (1, 1, 0), (2, 1, 0), (3, 1, 0)]   # three blades
@@ -56,7 +56,7 @@ def render(N, path):
         x, y = rr.randrange(W), rr.randrange(H)
         if not all((x + dx, y + dy) in mat and not mat[(x + dx, y + dy)] for dx, dy, _ in TUFT): 
             if (x, y) in mat and mat[(x, y)] and mat.get((x + 1, y + 1)) and rr.random() < .35:   # pebble on the path
-                for dx, dy, c in ((0, 0, D[3]), (1, 0, D[3]), (2, 0, D[2]), (0, 1, D[0]), (1, 1, D[0]), (2, 1, D[0])):
+                for dx, dy, c in ((0, 0, (236, 222, 190)), (1, 0, (236, 222, 190)), (2, 0, D[3]), (0, 1, D[0]), (1, 1, D[0]), (2, 1, D[0])):
                     if mat.get((x + dx, y + dy)): p[x + dx, y + dy] = c + (255,)
             continue
         if rr.random() < .15:   # flower: a 2 x 1 petal on a dark stem
