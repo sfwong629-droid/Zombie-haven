@@ -18,10 +18,15 @@ OBJ += [(1.35, 1.9, .1, .9, 2, 30, BARN), (1.33, 1.92, .08, .92, 30, 34, BROOF)]
 OBJ += [(1.5, 1.8, 1.62, 1.85, 2, 7, TROUGH)]                                           # water trough, front corner
 OBJ += [(.66, .7, .9, .94, 2, 32, FENCE), (.66, .7, .8, 1.04, 24, 27, STRAW),   # scarecrow in the middle of the crops: pole, arms
         (.65, .71, .89, .95, 27, 33, STRAW)]                                         # and head
-OBJ += [(0, 2, 0, t, 2, 9, FENCE), (2 - t, 2, 0, 2, 2, 9, FENCE),                        # low fence all round
-        (0, t, 0, 2, 2, 9, FENCE), (0, 2, 2 - t, 2, 2, 9, FENCE)]
-FAR = OBJ[-4:-2]; NEAR = OBJ[-2:]
-ORDER = [OBJ[0]] + FAR + [o for o in OBJ[1:-4]] + NEAR
-ORDER = [ORDER[0]] + FAR + sorted([o for o in OBJ[1:-4]], key=lambda o: (o[5] > 8, (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2)) + NEAR
+# low fence ON the footprint edge: posts every quarter tile and two rails, so ChatGPT copies its exact outline
+POSTS = [(s, s + .05, e, e + .05) for s in [i * .25 for i in range(8)] + [1.95] for e in (0, 1.95)]
+POSTS += [(e, e + .05, s, s + .05) for s in [i * .25 for i in range(1, 8)] for e in (0, 1.95)]
+def rails(u0, u1, v0, v1): return [(u0, u1, v0, v1, 4, 5, FENCE), (u0, u1, v0, v1, 8, 9, FENCE)]
+FAR = rails(0, 2, 0, t) + rails(2 - t, 2, 0, 2) + [(a, b, c, d, 2, 11, FENCE) for (a, b, c, d) in POSTS if c < .1 or a > 1.9]
+NEAR = rails(0, t, 0, 2) + rails(0, 2, 2 - t, 2) + [(a, b, c, d, 2, 11, FENCE) for (a, b, c, d) in POSTS if not (c < .1 or a > 1.9)]
+OBJ += FAR + NEAR
+MID = [o for o in OBJ[1:] if o not in FAR and o not in NEAR]
+DEPTH = lambda o: (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2
+ORDER = [OBJ[0]] + FAR + sorted(MID, key=lambda o: (o[5] > 8, DEPTH(o))) + sorted(NEAR, key=DEPTH)
 if __name__ == '__main__':
     guide(OBJ, sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x2_field.png', order=ORDER)
