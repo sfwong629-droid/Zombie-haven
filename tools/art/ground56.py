@@ -8,7 +8,7 @@ from PIL import Image
 
 TW, TH = 56, 28
 G = [(84, 86, 50), (100, 100, 56), (116, 112, 62), (140, 130, 76)]       # dying olive grass: dark .. light
-D = [(156, 134, 98), (178, 154, 114), (192, 168, 126), (206, 184, 142)]   # dusty sand path: dark .. light
+D = [(132, 116, 82), (146, 128, 92), (156, 138, 100), (168, 150, 110)]   # worn dirt track, close to the dead-earth tones so it doesn't glare
 BARE = [(118, 100, 74), (132, 114, 84)]                                   # dead bare-earth patches in the grass
 MIX = [(126, 116, 70), (146, 130, 84), (164, 144, 98)]                 # grass -> sand: dry grass, sandy grass, grassy sand
 ASPH = [(68, 68, 70), (78, 78, 79), (88, 87, 86), (106, 104, 100)]       # cracked asphalt: dark .. light
@@ -34,7 +34,7 @@ def render(N, path):
     OX = N * TW // 2
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0)); p = im.load()
     warp_u, warp_v = vnoise(1, 9), vnoise(2, 9)
-    shade, clump, fine = vnoise(3, 22), vnoise(4, 5), vnoise(5, 2.2); blot = vnoise(6, 7); dead = vnoise(8, 15)
+    shade, clump, fine = vnoise(3, 22), vnoise(4, 5), vnoise(5, 2.2); blot = vnoise(6, 7); dead = vnoise(8, 15); wear = vnoise(12, 6)
     crk1, crk2 = vnoise(9, 11), vnoise(10, 6)
     kind = {}
     rnd = random.Random(7)
@@ -56,8 +56,9 @@ def render(N, path):
                     else: din = min(din, min(wu - tu, tu + 1 - wu, wv - tv, tv + 1 - wv) if d == 0 else d)
             sd = dout if not k else -din
             # sand amount: the whole fade happens INSIDE the road tile (grass at its edge, full sand ~.2 tile in)
-            f = min(1, max(0, (-sd - .01) / .2))
-            if 0 < f < 1: f += (blot(x, y * 2) - .5) * .5   # irregular fade, only inside the transition band
+            f = min(1, max(0, (-sd - .01) / .3))
+            f += (blot(x, y * 2) - .5) * .6 * min(1, 4 * f)   # irregular fade
+            f -= max(0, wear(x, y * 2) - .5) * 2.6           # grass growing back over the track in patches
             if k == 'asphalt':   # asphalt: a broken, crumbled edge instead of a soft fade (1 = tar, .5 = crumbs, 0 = grass)
                 f = min(1, max(0, (-sd - .01) / .18)) + (fine(x, y * 2) - .5) * .8
                 f = 1. if f > .6 else .5 if f > .35 else 0.
@@ -109,17 +110,26 @@ def render(N, path):
     rr = random.Random(11)
     TUFT = [(0, 0, 3), (0, -1, 3), (2, 0, 3), (2, -1, 3), (2, -2, 3), (4, 0, 3), (4, -1, 3), (1, 1, 0), (2, 1, 0), (3, 1, 0)]
     TC = [G[0], None, None, (150, 134, 80)]   # dry, yellowed blades   # three blades
-    for _ in range(N * N * 5):
-        x, y = rr.randrange(W), rr.randrange(H)
-        if not all((x + dx, y + dy) in mat and mat[(x + dx, y + dy)] < .05 for dx, dy, _ in TUFT): 
+    # decorations come in CLUSTERS (a few tufts and stones together) with open ground between them
+    spots = []
+    for _ in range(N * N):
+        cx, cy = rr.randrange(W), rr.randrange(H)
+        for _ in range(rr.randint(2, 7)):
+            spots.append((cx + int(rr.gauss(0, 7)), cy + int(rr.gauss(0, 3.5)), rr.random()))
+    for _ in range(N * N * 2):   # road details are not clustered: pebbles and crack weeds
+        spots.append((rr.randrange(W), rr.randrange(H), -1))
+    for x, y, roll in spots:
+        if not all((x + dx, y + dy) in mat and mat[(x + dx, y + dy)] < .2 and kind.get((x + dx, y + dy)) != 'asphalt' for dx, dy, _ in TUFT):
+            if roll >= 0: continue
             if kind.get((x, y)) == 'asphalt' and mat.get((x, y)) == 1. and p[x, y][:3] == CRACK and rr.random() < .5:   # weed in a crack
                 for dx, dy in ((0, 0), (0, -1), (1, -1), (-1, -1), (0, -2)): p[x + dx, y + dy] = ((150, 134, 80) if dy == -2 else G[1]) + (255,)
                 continue
-            if kind.get((x, y)) == 'sand' and mat.get((x, y), 0) > .95 and mat.get((x + 1, y + 1), 0) > .95 and rr.random() < .35:   # pebble on the path
-                for dx, dy, c in ((0, 0, (236, 222, 190)), (1, 0, (236, 222, 190)), (2, 0, D[3]), (0, 1, D[0]), (1, 1, D[0]), (2, 1, D[0])):
-                    if mat.get((x + dx, y + dy), 0) > .9: p[x + dx, y + dy] = c + (255,)
+            if kind.get((x, y)) == 'sand' and mat.get((x, y), 0) > .9 and mat.get((x + 1, y + 1), 0) > .9 and rr.random() < .2:   # pebble on the track
+                for dx, dy, c in ((0, 0, (186, 176, 150)), (1, 0, (186, 176, 150)), (2, 0, D[3]), (0, 1, D[0]), (1, 1, D[0]), (2, 1, D[0])):
+                    if mat.get((x + dx, y + dy), 0) > .85: p[x + dx, y + dy] = c + (255,)
             continue
-        if rr.random() < .25:   # debris: a 2 x 1 stone or rust bit with a dark shadow pixel under it
+        if roll < 0: continue
+        if roll < .25:   # debris: a 2 x 1 stone or rust bit with a dark shadow pixel under it
             c = rr.choice(FLOW); p[x, y] = c + (255,); p[x + 1, y] = c + (255,); p[x, y + 1] = G[0] + (255,); p[x + 1, y + 1] = G[0] + (255,)
         else:
             for dx, dy, k in TUFT: p[x + dx, y + dy] = TC[k] + (255,)
