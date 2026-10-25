@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.56.0', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -15,8 +15,13 @@ let saveBlocked = '', saveErr = '', loadedFrom = '';
 const HD0 = (() => { try { const q = QS.get('hd'); if (q === '1' || q === '0') localStorage.setItem('zhHD', q); return localStorage.getItem('zhHD') === '1'; } catch (e) { return QS.get('hd') === '1'; } })();
 /* V2.52 C64 character preview: people redrawn on PixelLab's 64 canvas (about 58 px tall, the town mock-up's size) at the normal
    pixel size, so faces and expressions read. ?c64=1 turns it on (remembered), ?c64=0 off; it replaces the HD preview. */
-const C64 = (() => { try { const q = QS.get('c64'); if (q === '1' || q === '0') localStorage.setItem('zhC64', q); return localStorage.getItem('zhC64') === '1'; } catch (e) { return QS.get('c64') === '1'; } })();
-window.ZH_HD = HD0 && !C64; window.ZH_C64 = C64; const HD = window.ZH_HD;
+/* V2.56 T56 preview: the 56-px-tile buildings (assets/buildings/t56, drawn with ChatGPT on colour-block guides, read onto their pixel grid,
+   never straightened) with front + back views, animation strips and four clockwise turns. People, zombies and map art stay on the 96 grid
+   for now (smaller pixels than the buildings). ?t56=1 turns it on (remembered), ?t56=0 off; it replaces the HD and C64 previews. */
+const T56 = (() => { try { const q = QS.get('t56'); if (q === '1' || q === '0') localStorage.setItem('zhT56', q); return localStorage.getItem('zhT56') === '1'; } catch (e) { return QS.get('t56') === '1'; } })();
+window.ZH_T56 = T56;
+const C64 = !T56 && (() => { try { const q = QS.get('c64'); if (q === '1' || q === '0') localStorage.setItem('zhC64', q); return localStorage.getItem('zhC64') === '1'; } catch (e) { return QS.get('c64') === '1'; } })();
+window.ZH_HD = HD0 && !C64 && !T56; window.ZH_C64 = C64; const HD = window.ZH_HD;
 const HD_BUILD = { medic: { ax: 96, ay: 170, res: 2 } };
 const C64_BUILD = { medic: { ax: 58, ay: 105, dir: 't106' } };   /* V2.54: buildings drawn for the 106 grid (ChatGPT + footprint guides; read onto the game pixel grid, never straightened). ax, ay = south corner */   /* tools/art/sources/medic_tent_hd_src.png via fix_iso.py; ax, ay in HD px */
 const BASE_TW = 80, BASE_TH = BASE_TW * Iso.RATIO;          // ONE projection for terrain, roads, buildings, units
@@ -24,7 +29,7 @@ const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS
 /* V2.53: the C64 standard also has a 10% bigger map grid: tiles 106 x 53 art px (V7: 96 x 48), every pixel the same size.
    Buildings and walls are drawn for it (assets/buildings|map/t106, tools/art/templates); older 96-px building art stands smaller on its plot until redrawn. */
 const TILE_PX = C64 ? 106 : 96;
-const CHAR_H = (C64 ? 58 : 42) / TILE_PX;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = (C64 ? 58 : 42) / TILE_PX;   /* T56 keeps the current people (drawn on the 96 grid) until they are redrawn for 56 */   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
@@ -45,6 +50,36 @@ const B4_DEFS = {   // V2.31: V7 pixel-art buildings (assets/buildings/v7/<type>
   workshop: { ax: 95, ay: 109 }, canteen: { ax: 95, ay: 102 }, armory: { ax: 95, ay: 102 }, clinic: { ax: 95, ay: 99 }, scrapyard: { ax: 95, ay: 97 }, range: { ax: 95, ay: 93 }, track: { ax: 95, ay: 94 }, sparring: { ax: 95, ay: 96 },
   hospital: { ax: 95, ay: 140 }, field: { ax: 95, ay: 121 }, barracks: { ax: 95, ay: 124 },
 };
+/* V2.56: T56 buildings. Per type: ms per frame, views [file, frames, frame w, frame h, ax, ay] — view 0 front, view 1 back (180 degrees).
+   ax, ay = the south ground corner inside a frame; 56 art px = 1 tile width. tools/art/showcase/building_test_template.html shows the same set. */
+const T56_BUILD = {
+  medic: { ms: 140, v: [['medic_anim', 6, 64, 64, 32, 64], ['medic_back_anim', 6, 66, 64, 33, 64]] },
+  house: { ms: 130, v: [['house_anim', 12, 77, 81, 34, 81], ['house_back_anim', 12, 77, 83, 34, 83]] },
+  water: { ms: 110, v: [['water_anim', 20, 62, 54, 31, 54], ['water_back_anim', 20, 63, 54, 31, 54]] },
+  farm: { ms: 150, v: [['farm_anim', 12, 68, 63, 34, 63], ['farm_back_anim', 12, 69, 53, 34, 53]] },
+  well: { ms: 150, v: [['well_anim', 21, 64, 57, 32, 57], ['well_back_anim', 21, 66, 57, 33, 57]] },
+  storage: { ms: 140, v: [['storage_anim', 8, 70, 54, 35, 54], ['storage_back_anim', 8, 67, 54, 33, 54]] },
+  gym: { ms: 160, v: [['gym_anim', 8, 60, 55, 30, 55], ['gym_back_anim', 8, 60, 55, 30, 55]] },
+  library: { ms: 150, v: [['library_anim', 8, 59, 61, 29, 61], ['library_back_anim', 8, 60, 61, 30, 61]] },
+  lounge: { ms: 220, v: [['lounge_anim', 6, 69, 60, 34, 60], ['lounge_back_anim', 6, 69, 60, 34, 60]] },
+  clinic: { ms: 130, v: [['clinic_anim', 12, 98, 99, 30, 99], ['clinic_back_anim', 12, 99, 100, 30, 100]] },
+  canteen: { ms: 140, v: [['canteen_anim', 8, 85, 63, 27, 63], ['canteen_back_anim', 8, 87, 64, 30, 64]] },
+  armory: { ms: 160, v: [['armory_anim', 8, 91, 78, 30, 78], ['armory_back_anim', 8, 89, 73, 30, 73]] },
+  workshop: { ms: 110, v: [['workshop_anim', 10, 89, 75, 29, 75], ['workshop_back', 1, 88, 72, 28, 72]] },
+  scrapyard: { ms: 160, v: [['scrapyard_anim', 8, 86, 70, 32, 70], ['scrapyard_back', 1, 86, 70, 32, 70]] },
+  range: { ms: 110, v: [['range_anim', 14, 92, 65, 31, 65], ['range_back', 1, 85, 55, 28, 55]] },
+  track: { ms: 140, v: [['track_anim', 6, 92, 75, 30, 75], ['track_back_anim', 6, 92, 63, 32, 63]] },
+  sparring: { ms: 120, v: [['sparring', 1, 87, 61, 31, 61], ['sparring', 1, 87, 61, 31, 61]] },
+  hospital: { ms: 150, v: [['hospital_anim', 12, 114, 105, 57, 105], ['hospital_back_anim', 12, 117, 103, 57, 103]] },
+  field: { ms: 150, v: [['field_anim', 12, 124, 82, 61, 82], ['field_back_anim', 12, 119, 73, 55, 73]] },
+  barracks: { ms: 150, v: [['barracks_anim', 12, 121, 111, 61, 111], ['barracks_back_anim', 12, 120, 98, 63, 98]] },
+};
+/* The T56 2x1 art has its LONG side going up-right from the south corner and the entrance on the short front-left wall, so in T56 the
+   2x1 footprints are 1 x 2 (x by y). Saves keep the V7 convention: a 2x1 stored at turn r loads as turn 3 - r (same tiles covered). */
+const T56_LONG = T56 ? Object.keys(DEFS).filter((k) => DEFS[k].w === 2 && DEFS[k].h === 1) : [];
+for (const k of T56_LONG) { DEFS[k].w = 1; DEFS[k].h = 2; }
+const r4Conv = (type, r4) => (T56_LONG.includes(type) ? 3 - r4 : r4);   // V7 <-> T56 turn for the same tiles (its own inverse)
+const VIEW4 = (r4) => (r4 === 1 || r4 === 2 ? 1 : 0), FLIP4 = (r4) => r4 & 1;   // turn -> drawn view (front/back) and mirrored
 const ART_TILE = TILE_PX; let MAPM = null;   /* V2.30 map art (tools/chars/mapart.py) */
 const Z4_DEFS = {   // h = body height for the health bar (the brute's raised-arm attack frame is taller than its body)
   walker: { fw: 35, fh: 35, foot: 33, h: 32 }, crawler: { fw: 32, fh: 25, foot: 23, h: 22 }, runner: { fw: 40, fh: 34, foot: 32, h: 31 },
@@ -74,10 +109,10 @@ function scaled(key, img, tw, th) {           // high-quality downscale by repea
   if (scaledCache.size > 160) scaledCache.clear(); scaledCache.set(k, f); return f;
 }
 const alphaMasks = {};
-function alphaMask(type) {                    // per-sprite alpha for pixel-accurate tapping
-  if (type in alphaMasks) return alphaMasks[type];
-  let m = null; try { const pa = b4({ type }), im = pa ? pa.im : SPR[type].img, c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
-  return (alphaMasks[type] = m);
+function alphaMask(type, r4 = 0) {            // per-sprite alpha for pixel-accurate tapping (T56: per view, from its first frame)
+  const key = type + (B4_DEFS[type] && B4_DEFS[type].t56 ? ':' + VIEW4(r4) : ''); if (key in alphaMasks) return alphaMasks[key];
+  let m = null; try { const pa = b4({ type, r4 }), im = pa ? pa.im : SPR[type].img, fw = pa && pa.d.t56 ? pa.v[2] : im.naturalWidth, c = document.createElement('canvas'); c.width = fw; c.height = im.naturalHeight; const g = c.getContext('2d'); g.drawImage(im, 0, 0); m = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; } catch (e) { m = null; }
+  return (alphaMasks[key] = m);
 }
 async function loadAll() {
   const jobs = []; window.ZH_VERSION = VERSION; document.title = 'Zombie Haven V' + VERSION; if (window.ZHChars) jobs.push(ZHChars.load());
@@ -98,7 +133,10 @@ async function loadAll() {
     }
   }
   if (HD) Object.assign(B4_DEFS, HD_BUILD); if (C64) Object.assign(B4_DEFS, C64_BUILD);
-  Object.keys(B4_DEFS).forEach((t) => jobs.push(loadImg('b4:' + t, `assets/buildings/${B4_DEFS[t].dir || (B4_DEFS[t].res === 2 ? 'hd' : 'v7')}/${t}.png`)));
+  if (T56) for (const t of Object.keys(T56_BUILD)) B4_DEFS[t] = Object.assign({ t56: true, tile: 56, dir: 't56' }, T56_BUILD[t]);
+  Object.keys(B4_DEFS).forEach((t) => { const d = B4_DEFS[t];
+    if (d.t56) d.v.forEach((v, i) => jobs.push(loadImg(`b56:${t}:${i}`, `assets/buildings/t56/${v[0]}.png`)));
+    else jobs.push(loadImg('b4:' + t, `assets/buildings/${d.dir || (d.res === 2 ? 'hd' : 'v7')}/${t}.png`)); });
   jobs.push(loadImg('mapWalls', `assets/map/${C64 ? 't106' : 'v7'}/walls.png`), loadImg('mapProps', 'assets/map/v7/props.png'), loadImg('mapWreck', 'assets/map/v7/wreck.png'), loadImg('uiIcons', 'assets/ui/icons.png'), loadImg('statIcons', 'assets/ui/stats.png'), (async () => { try { UIM = await (await fetch('assets/ui/icons.json?v=' + VERSION)).json(); } catch (e) { UIM = null; } })(), (async () => { try { MAPM = await (await fetch(`assets/map/${C64 ? 't106' : 'v7'}/map.json?v=` + VERSION)).json(); } catch (e) { MAPM = null; } })());
   await Promise.all(jobs);
 }
@@ -232,12 +270,23 @@ function drawRoadTile(x, y) {
 }
 
 /* ---------------- sprites ---------------- */
-function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/v7/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
-function b4(b) { const d = B4_DEFS[b.type], im = IMG['b4:' + b.type]; if (d && okImg(im)) return { d, im }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
-function spriteRect(b) { const p4 = b4(b); if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE / (p4.d.res || 1), im = p4.im; return { x: a.x - (b.rot ? im.width - p4.d.ax : p4.d.ax) * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }   /* V2.47: a rotated building is the mirrored sprite */
+function buildIcon(k) { if (B4_DEFS[k]) return `assets/buildings/${B4_DEFS[k].t56 ? 't56' : 'v7'}/${k}.png?v=${VERSION}`; try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); return pa.im.toDataURL(); } catch (e) { return ''; } }
+function b4(b) { const d = B4_DEFS[b.type];
+  if (d && d.t56) { const r4 = Wd.R4(b), vi = Math.min(VIEW4(r4), d.v.length - 1), im = IMG[`b56:${b.type}:${vi}`]; if (okImg(im)) return { d, im, v: d.v[vi], vi, flip: FLIP4(r4) }; }
+  const im = IMG['b4:' + b.type]; if (d && !d.t56 && okImg(im)) return { d, im, flip: b.rot }; const D0 = DEFS[b.type]; if (!D0 || !window.ZHProc) return null; const pa = ZHProc.art(b.type, D0.w, D0.h); return { d: { ax: pa.ax, ay: pa.ay }, im: pa.im }; }   /* V2.25: procedural pixel art until a drawn sprite exists */
+function spriteRect(b) { const p4 = b4(b);
+  if (p4 && p4.v) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / p4.d.tile, [, , fw, fh, ax, ay] = p4.v; return { x: a.x - (p4.flip ? fw - ax : ax) * s, y: a.y - ay * s, w: fw * s, h: fh * s, s, anchor: a }; }   /* V2.56: one frame of the view's strip */
+  if (p4) { const a = project(b.x + b.w, b.y + b.h), s = TWs() / ART_TILE / (p4.d.res || 1), im = p4.im; return { x: a.x - (b.rot ? im.width - p4.d.ax : p4.d.ax) * s, y: a.y - p4.d.ay * s, w: im.width * s, h: im.height * s, s, anchor: a }; }   /* V2.47: a rotated building is the mirrored sprite */
   const sp = SPR[b.type]; if (!sp) return null; const a = project(b.x + b.w, b.y + b.h), tw = TWs(), s = sp.grid ? tw / sp.tileW : ((b.w + b.h) * tw / 2) * sp.fit / sp.w; return { x: a.x - (b.rot ? sp.w - sp.ax : sp.ax) * s, y: a.y - sp.ay * s, w: sp.w * s, h: sp.h * s, s, anchor: a }; }
 function drawBuilding(b, ghost, ok) {
   const p4 = b4(b);
+  if (p4 && p4.v) {   // V2.56 T56: the view's animation strip, mirrored for odd turns (a mirrored strip runs its frames right to left)
+    const [, n, fw, fh] = p4.v, burnt = b.burnt && !ghost, id = `${b.type}:${p4.vi}`, src0 = burnt ? tinted('burnt56' + id, p4.im, BURNT_TINT) : p4.im,
+      src = p4.flip ? mirrored((burnt ? 'b56xm' : 'b56m') + id, src0) : src0, r = spriteRect(b), m = pxm(r.s * DPR), big = pixelUp((burnt ? 'b56x' : 'b56') + (p4.flip ? 'm' : '') + id, src, m),
+      f0 = burnt || n < 2 ? 0 : Math.floor(performance.now() / p4.d.ms) % n, f = p4.flip ? n - 1 - f0 : f0;
+    ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = r.s * DPR < m - .02; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(big, f * fw * m, 0, fw * m, fh * m, r.x, r.y, r.w, r.h); ctx.restore(); return;
+  }
   if (p4) {   // pixel art: same sharp-bilinear path as characters, one shared art-pixel size
     const burnt = b.burnt && !ghost, src0 = burnt ? tinted('burnt' + b.type, p4.im, BURNT_TINT) : p4.im, src = b.rot ? mirrored((burnt ? 'b4xm' : 'b4m') + b.type, src0) : src0, r = spriteRect(b), m = pxm(r.s * DPR), big = pixelUp((burnt ? 'b4x' : 'b4') + (b.rot ? 'm' : '') + b.type, src, m);
     ctx.save(); if (ghost) ctx.globalAlpha = ok ? .7 : .45; ctx.imageSmoothingEnabled = r.s * DPR < m - .02; ctx.imageSmoothingQuality = 'high';
@@ -1343,7 +1392,7 @@ const STARTS = {
 const ST = () => STARTS[S.start] || STARTS.camp;
 function applyStart(key) {   /* builds the opening town for a starting condition */
   const st = STARTS[key] || STARTS.camp; S.start = STARTS[key] ? key : 'camp'; S.food = st.food; S.water = st.water; S.mat = st.mat; world.buildings = [];
-  for (const [type, x, y] of st.b) { const d = DEFS[type]; if (!d) continue; const chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok) world.buildings.push({ type, x, y, w: d.w, h: d.h, q: d.q, a: d.a }); }
+  for (const [type, x, y] of st.b) { if (!DEFS[type]) continue; const r = r4Conv(type, 0), d = Wd.rotDef(DEFS[type], r), chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok) world.buildings.push({ type, x, y, w: d.w, h: d.h, rot: r & 1, r4: r, q: d.q, a: d.a }); }   /* V2.56: start layouts are V7 footprints */
   Wd.bump(world); S.sv = st.sv.map(([n, job, l, tr, x, y], i) => { const q = mk(n, job, l, x ?? 5 + 2 * (i % 3), y ?? 10 + (i % 2) * 2, i); q.trait = tr; q.max = baseMax(q); q.hp = q.max; return q; });
 }
 const LEGACY = [
@@ -2018,8 +2067,8 @@ function upgradeCheck(b) {
   const d = DEFS[b.type], n = d.next && DEFS[d.next]; if (!n) return { ok: false, why: 'Already the highest tier available' };
   if (S.rank < n.rank) return { ok: false, why: `Needs Haven rank ${n.rank}` };
   if (S.mat < d.up) return { ok: false, why: `Needs ${d.up} parts` };
-  { const nr = Wd.rotDef(n, b.rot); if (nr.w !== b.w || nr.h !== b.h) return { ok: false, why: 'Footprint differs' }; }
-  const chk = Wd.placementCheck(world, b.x, b.y, Wd.rotDef(n, b.rot), b); if (!chk.ok) return { ok: false, why: chk.why };
+  { const nr = Wd.rotDef(n, Wd.R4(b)); if (nr.w !== b.w || nr.h !== b.h) return { ok: false, why: 'Footprint differs' }; }
+  const chk = Wd.placementCheck(world, b.x, b.y, Wd.rotDef(n, Wd.R4(b)), b); if (!chk.ok) return { ok: false, why: chk.why };
   return { ok: true, why: '' };
 }
 function upgradeBuilding(b) {    // in place: same footprint, same anchor; the building keeps working and keeps its staff
@@ -2384,7 +2433,7 @@ const SKIP = new Set(['post', 'target', 'facility', 'rescuer', 'rescuing', 'carr
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
-  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
+  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: r4Conv(b.type, Wd.R4(b)) & 1, r4: r4Conv(b.type, Wd.R4(b)), w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
 function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -2445,7 +2494,7 @@ function applySave(raw, legacy, prev) {
       delete S.money; delete S.earned; S.sv.forEach((q) => { delete q.money; });
     }
     if (S.produced === undefined) S.produced = 0; delete S.med;
-    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.rot ? DEFS[b.type].h : DEFS[b.type].w, h: b.rot ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
+    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => { const r = r4Conv(b.type, (b.r4 != null ? b.r4 : b.rot ? 3 : 0) & 3); return { type: b.type, x: b.x, y: b.y, rot: r & 1, r4: r, w: r & 1 ? DEFS[b.type].h : DEFS[b.type].w, h: r & 1 ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }; });
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
@@ -2761,8 +2810,8 @@ function startTool(tool) {
   else { $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
 }
 function updatePreview(x, y) {
-  const d = Wd.rotDef(DEFS[sel.type], sel.rot), chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
-  preview = { type: sel.type, x, y, w: d.w, h: d.h, rot: sel.rot ? 1 : 0, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
+  const R = Wd.R4(sel), d = Wd.rotDef(DEFS[sel.type], R), chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
+  preview = { type: sel.type, x, y, w: d.w, h: d.h, rot: R & 1, r4: R, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
   const mat = moving ? 0 : d.mat, afford = S.mat >= mat;
   $('confirmName').textContent = `${d.name.toUpperCase()} · ${d.w}×${d.h}` + (moving ? ' · MOVE (free)' : ` · PARTS ${d.mat}`) + (!chk.ok ? ' · ' + chk.why.toUpperCase() : !afford ? ' · NOT ENOUGH PARTS' : '') + (chk.ok ? (() => { const pv = { type: sel.type, x, y, w: d.w, h: d.h }, c = combos(pv); comboCache.map.delete(pv); return c.names.length ? ' · ★ ' + c.names.map((n) => n.split(' (')[0]).join(', ') : ''; })() : '');
   const go = chk.ok && afford; $('yesBuild').disabled = !go; $('yesBuild').style.opacity = go ? 1 : .45; $('confirmBar').style.display = 'block';
@@ -2772,11 +2821,11 @@ function pushUnitsOut(b) {
   for (const u of [...S.sv, ...S.z]) if (Iso.footprintContains(b, u.w.x, u.w.y)) { u.w = { x: dp.x + (rnd() - .5) * .3, y: dp.y }; u.path = null; }
 }
 function confirmPreview() {
-  if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
+  if (!preview || !sel || sel.kind !== 'building') return; const R = Wd.R4(sel), d = Wd.rotDef(DEFS[sel.type], R);
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }
   if (!moving && S.mat < d.mat) { say('Not enough parts.'); return; }
   if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); } }
-  const nb = { type: sel.type, x: preview.x, y: preview.y, rot: sel.rot ? 1 : 0, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
+  const nb = { type: sel.type, x: preview.x, y: preview.y, rot: R & 1, r4: R, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
 let demoPick = null;
@@ -2820,7 +2869,7 @@ function checkPerimeter() {
   S.sealed = p.sealed; return p;
 }
 function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`, true); saveGame(); ui(); }
-function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: b.rot ? 1 : 0 }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
+function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: b.rot ? 1 : 0, r4: Wd.R4(b) }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
 let panelBack = null;
@@ -3178,7 +3227,7 @@ cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel
 cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, cam.z * (e.deltaY < 0 ? 1.1 : .91)); }, { passive: false });
 function hitBuilding(px, py) {   // pixel-accurate against the sprite alpha, topmost first; falls back to the footprint
   const order = [...world.buildings].sort((a, b) => (b.x + b.w + b.y + b.h) - (a.x + a.w + a.y + a.h));
-  for (const b of order) { const r = spriteRect(b); if (!r || px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) continue; const m = alphaMask(b.type); if (!m) return b; const ix0 = Math.floor((px - r.x) / r.w * m.w), ix = b.rot ? m.w - 1 - ix0 : ix0, iy = Math.floor((py - r.y) / r.h * m.h); if (m.d[(iy * m.w + ix) * 4 + 3] > 24) return b; }
+  for (const b of order) { const r = spriteRect(b); if (!r || px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) continue; const p4 = b4(b), m = alphaMask(b.type, Wd.R4(b)); if (!m) return b; const ix0 = Math.floor((px - r.x) / r.w * m.w), ix = (p4 ? p4.flip : b.rot) ? m.w - 1 - ix0 : ix0, iy = Math.floor((py - r.y) / r.h * m.h); if (m.d[(iy * m.w + ix) * 4 + 3] > 24) return b; }
   const t = unproject(px, py); return Wd.buildingAt(world, Math.floor(t.x), Math.floor(t.y));
 }
 function hitUnit(px, py) {
@@ -3191,7 +3240,7 @@ function tapAt(px, py) {
     if (sel.kind === 'demolish') { tryDemolish(px, py, tx, ty); return; }
     if (sel.kind === 'wall') { tryWall(tx, ty, sel.wtype); return; }
     if (sel.kind === 'post') { const r = tryPost(tx, ty); if (r.why !== 'open') updatePostBar(); return; }
-    const d = Wd.rotDef(DEFS[sel.type], sel.rot), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
+    const d = Wd.rotDef(DEFS[sel.type], Wd.R4(sel)), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
   if (hitTrader(px, py)) { showTrader(); return; }
   const u = hitUnit(px, py); if (u) { unitPanel(u); return; }
@@ -3200,7 +3249,10 @@ function tapAt(px, py) {
   { const t = unproject(px, py), wl = Wd.wallAt(world, Math.floor(t.x), Math.floor(t.y)); if (wl) { const n = S.z.filter((z) => z.hp > 0 && z.mode === 'zbreak' && z.wallT === wl).length, hot = S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6); say(`${Wd.WALL_DEFS[wl.type].name} · ${Math.ceil(wl.hp)}/${wl.max} HP` + (n ? ` · ${n} zombie${n > 1 ? 's' : ''} hitting it` : '') + (wl.hp < wl.max ? (S.mat < 1 ? ' · no parts to repair' : hot ? ' · repairs wait until zombies leave' : ' · being repaired') : '') + (wl.broken ? ' · BROKEN: zombies can walk through' : '')); return; } }
   selected = null; closeP();
 }
-$('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = sel.rot ? 0 : 1; if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(sel.rot ? 'Entrance on the right-hand wall.' : 'Entrance on the left-hand wall.'); };   /* V2.47: turn the entrance */
+$('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return;   /* V2.47: turn the entrance; V2.56 T56: four clockwise turns (front, back mirrored, back, front mirrored) */
+  const r = Wd.R4(sel); sel.r4 = T56 ? (r + 1) % 4 : (r ? 0 : 3); sel.rot = sel.r4 & 1;
+  if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.r4), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); }
+  say(['Entrance on the left-hand wall.', 'Entrance on the back left wall.', 'Entrance on the back right wall.', 'Entrance on the right-hand wall.'][sel.r4]); };
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
 $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;

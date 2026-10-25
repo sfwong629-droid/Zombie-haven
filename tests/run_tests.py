@@ -31,6 +31,7 @@ PLACE = """(t)=>{const W=ZH.world,D=ZH.Wd.DEFS[t],B=ZH.Wd.BUILD;for(let y=B.y0;y
 
 async def open_game(browser, port, tag, init=None):
     ctx = await browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
+    if os.environ.get('ZH_T56'): await ctx.add_init_script("localStorage.setItem('zhT56','1')")   # ZH_T56=1: run the suite with the T56 buildings
     if init: await ctx.add_init_script(init)
     pg = await ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -703,7 +704,36 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     t.ok(r == ['t106', 105], f"the C64 preview uses the 106-grid Medical Tent (105 px wide, same pixel size as everything else) {r}")
     t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_t56(br, port, t):   # V2.56: T56 buildings behind ?t56=1 — 56-px-tile art with front/back views, animation strips, four clockwise turns
+    ctx, pg, errs = await open_game(br, port, 't56', init="localStorage.setItem('zhT56','1')")
+    r = await pg.evaluate("""()=>{const D=ZH.B4_DEFS,ks=Object.keys(D).filter(k=>D[k].t56),W=ZH.world;
+      const bad=ks.filter(k=>D[k].v.some((v,i)=>{const im=document.createElement('img');return false}));
+      const can=ZH.Wd.DEFS.canteen,b=W.buildings.find(q=>q.type==='medic'),r=b&&ZH.spriteRect(b);
+      return {n:ks.length,t56:window.ZH_T56,c64:window.ZH_C64,canteen:[can.w,can.h],tent:r?[Math.round(r.w/r.s),Math.round(r.h/r.s),Math.round(r.s*56/ZH.TWs()*100)/100]:null}}""")
+    t.ok(r['t56'] and not r['c64'] and r['n'] == 20, f"?t56=1 loads the 20 T56 buildings and switches the C64 preview off {r}")
+    t.ok(r['canteen'] == [1, 2], f"T56 2x1 footprints run along y, like the art (long side up-right) {r}")
+    t.ok(r['tent'] == [64, 64, 1.0], f"the Medical Tent is one 64 x 64 frame of its strip at 56 art px per tile {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,Wd=ZH.Wd;S.mat=999;S.rank=9;ZH.startTool({kind:'building',type:'canteen'});const rb=document.getElementById('rotBuild');let sp=null;
+      for(let y=Wd.BUILD.y0;y<=Wd.BUILD.y1&&!sp;y++)for(let x=Wd.BUILD.x0;x<=Wd.BUILD.x1&&!sp;x++){ZH.updatePreview(x,y);let ok=ZH.preview.ok;for(let k=0;k<4;k++){rb.click();ok=ok&&ZH.preview.ok}if(ok)sp=[x,y]}
+      ZH.updatePreview(sp[0],sp[1]);const out=[];
+      for(let k=0;k<4;k++){const p={...ZH.preview};const fake={type:'canteen',x:p.x,y:p.y,w:p.w,h:p.h,r4:p.r4};const a=Wd.approachTile(fake),d=Wd.doorPoint(fake);
+        const side=a.y===p.y+p.h?'S':a.x===p.x+p.w?'E':a.y===p.y-1?'N':a.x===p.x-1?'W':'?';out.push([p.r4,p.w,p.h,side,d.x>=p.x&&d.x<=p.x+p.w&&d.y>=p.y&&d.y<=p.y+p.h]);rb.click()}
+      ZH.confirmPreview();return {out,sel:ZH.sel}}""")
+    t.ok(r['out'] == [[0, 1, 2, 'S', True], [1, 2, 1, 'W', True], [2, 1, 2, 'N', True], [3, 2, 1, 'E', True]], f"the ↻ button turns a building clockwise through four turns; the entrance turns with it (front-left, back-left, back-right, front-right) {r}")
+    r = await pg.evaluate("""()=>{const W=ZH.world,b=W.buildings[W.buildings.length-1];ZH.draw();const out={b:[b.type,b.r4,b.rot,b.w,b.h]};
+      const rect=ZH.spriteRect(b);out.hit=ZH.hitBuilding(rect.anchor.x,rect.anchor.y-rect.h*.3)===b;
+      const d=JSON.parse(ZH.serialize()),sb=d.buildings.filter(q=>q.type==='canteen').pop();out.saved=[sb.r4,sb.rot,sb.w,sb.h];return out}""")
+    t.ok(r['b'] == ['canteen', 0, 0, 1, 2] and r['hit'], f"a placed T56 building can be tapped {r}")
+    t.ok(r['saved'] == [3, 1, 1, 2], f"saves keep the V7 turn for 2x1s (a T56 front is a V7 turn 3 over the same tiles) {r}")
+    for k in range(4):
+        await pg.evaluate(f"()=>{{for(const b of ZH.world.buildings){{const D=ZH.Wd.DEFS[b.type];b.r4={k};b.rot={k}&1;b.w={k}&1?D.h:D.w;b.h={k}&1?D.w:D.h}}ZH.draw()}}")
+    save = await pg.evaluate("()=>{const W=ZH.world;for(const b of W.buildings){const D=ZH.Wd.DEFS[b.type];b.r4=0;b.rot=0;b.w=D.w;b.h=D.h}ZH.saveGame();return localStorage.getItem('zombieHavenV26')}"); await ctx.close()
+    ctx, pg, errs2 = await open_game(br, port, 't56b', init=f"if(!sessionStorage.getItem('x')){{sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenV26',{json.dumps(save)})}}")
+    r = await pg.evaluate("()=>ZH.world.buildings.filter(b=>b.type==='canteen').map(b=>[b.r4,b.w,b.h])")
+    t.ok(len(r) >= 1 and all(q == [3, 1, 2] for q in r), f"the same save loads in the normal (V7) game over the same tiles (V7 turn 3 = 1 x 2) {r}"); await ctx.close()
+    t.ok(not errs and not errs2, f'no page errors while drawing every T56 view {(errs + errs2)[:1]}')
+
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('t56', t_t56), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

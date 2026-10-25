@@ -1,5 +1,14 @@
 # Changelog
 
+## V2.56.0 — The 56-px buildings in the game, with four turns (preview)
+- With `?t56=1` (remembered; `?t56=0` turns it off), every building uses the new 56-px-tile art from `assets/buildings/t56`: all 20 types, each with a front and a back view and its animation (flags, smoke, rain, crops, the well bucket, welding sparks, the crane hook, the arrow, flickering windows and more).
+- The ↻ button now turns a building clockwise through four turns: front, back mirrored, back, front mirrored. The entrance turns with it: front-left wall, back-left, back-right, front-right. Survivors walk to whichever wall the door is on.
+- In this preview the 2x1 buildings are 1 tile across and 2 tiles deep, because the new art has its long side going up-right and the door on the short front-left wall.
+- Saves are shared with the normal game: a 2x1 keeps the same tiles when a save moves between the two (a T56 front is stored as the old turn 3).
+- Without `?t56=1` nothing changes: the ↻ button still swaps the entrance between the left and right walls.
+- Not yet redrawn for the 56 grid: people, zombies, walls and map props keep their current size, so their pixels are smaller than the buildings'.
+- New `t56` test group (8 checks). All 32 test groups pass.
+
 ## V2.55.0 — The approved farmer in the C64 preview
 - With `?c64=1`, farmers use the owner-approved slim farmer from PixelLab: 58–62 px tall, same pixel size as the 106 grid and the Medical Tent.
 - Walk: 6 frames for front (South-West) and back (North-West); the game mirrors them for the other two directions.
