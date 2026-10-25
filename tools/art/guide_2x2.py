@@ -34,3 +34,15 @@ def guide(objs, out, order=None, A=A):
 
 def back(objs):   # the same model turned 180 degrees on a 2x2 footprint
     return [(2 - u1, 2 - u0, 2 - v1, 2 - v0, h0, h1, c) for (u0, u1, v0, v1, h0, h1, c) in objs]
+
+def back_guide(objs, front, out, order=None):
+    """Approved front sprite on the left, the model turned 180 degrees on the right (same footprint, same ground line)."""
+    c = Image.new('RGBA', (W, H), (255, 0, 255, 255))
+    f = Image.open(front).convert('RGBA')
+    c.alpha_composite(f, (2, BOTTOM - f.height + 1))
+    m = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(m); A2 = (W - 2 - 112 - 4, A[1])
+    objs = back(objs)
+    for o in (order or sorted(objs, key=lambda o: (o[5] > 2, (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2))):
+        box(d, A2, *o[:6], sh(o[6]))
+    c.alpha_composite(m)
+    c.resize((W * 12, H * 12), Image.NEAREST).convert('RGB').save(out)
