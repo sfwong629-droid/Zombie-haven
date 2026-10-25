@@ -47,11 +47,30 @@ class Cell:
         self.top, self.bot = rows[0], rows[-1]
         self.inside = lambda x, y: 2 <= x <= W - 3 and self.top + 2 <= y <= self.bot - 2
         self.fill = Counter(p[x, y] for x in (3, 4, 5, W - 4, W - 5) for y in range(8, self.bot - 6) if p[x, y][3] and not dark(p[x, y])).most_common(1)[0][0]
+        # the drawing inside the bubble = groups of non-fill pixels that do not touch the bubble's edge (its rounded corners
+        # and outline bits are left alone, so nothing of the bubble ever moves or disappears)
+        p = c.load(); todo = {(x, y) for x in range(W) for y in range(H) if self.inside(x, y) and self.differs(p[x, y])}
+        edge = lambda x, y: x <= 2 or x >= W - 3 or y <= self.top + 2 or y >= self.bot - 2
+        self.art = set()
+        while todo:
+            s = todo.pop(); grp = [s]; q = [s]
+            while q:
+                a, b = q.pop()
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        n = (a + dx, b + dy)
+                        if n in todo: todo.discard(n); grp.append(n); q.append(n)
+            if not any(edge(x, y) and max(p[x, y][:3]) < 90 for x, y in grp) or len(grp) > 30: self.art.update(grp)
+        # clean the bubble: stray specks inside it (from reading ChatGPT's image) become fill; the rounded corners stay
+        corner = lambda x, y: (x <= 4 or x >= W - 5) and (y <= self.top + 4 or y >= self.bot - 4)
+        for x in range(W):
+            for y in range(H):
+                if self.inside(x, y) and (x, y) not in self.art and not corner(x, y): p[x, y] = self.fill
     def differs(self, q): return q[3] and sum(abs(q[i] - self.fill[i]) for i in range(3)) > 40
-    def pick(self, box, test=None):   # pixels of one element: inside box, not bubble fill
+    def pick(self, box, test=None):   # pixels of one element: inside box, part of the drawing (not bubble fill or bubble edge)
         p = self.c.load(); x0, y0, x1, y1 = box
         return {(x, y): p[x, y] for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)
-                if self.inside(x, y) and self.differs(p[x, y]) and (test is None or test(x, y, p[x, y]))}
+                if (x, y) in self.art and (test is None or test(x, y, p[x, y]))}
     def frame(self, erase=(), draw=()):
         o = self.c.copy(); op = o.load()
         for px in erase:
@@ -110,7 +129,8 @@ def tired(C):
 def idea(C):
     p = C.c.load()
     rays = [C.pick(b) for b in ((15, 1, 20, 5), (5, 4, 11, 10), (24, 4, 31, 10), (2, 11, 8, 16), (27, 11, 34, 16), (5, 19, 12, 25), (24, 19, 31, 25))]
-    bulb = C.pick((10, 6, 26, 26), lambda x, y, q: q[0] > 180 and q[1] > 120 and q[2] < 200)
+    ray_px = set().union(*rays)
+    bulb = C.pick((10, 6, 26, 26), lambda x, y, q: q[0] > 180 and q[1] > 120 and q[2] < 200 and (x, y) not in ray_px)
     def dim(col, k):   # k = 0 dark .. 1 lit
         r, g, b, a = col; l = .3 * r + .6 * g + .1 * b; d = (l * .42, l * .42, l * .40)
         return (round(d[0] + (r - d[0]) * k), round(d[1] + (g - d[1]) * k), round(d[2] + (b - d[2]) * k), a)
@@ -140,9 +160,7 @@ def question(C):
     return out
 
 def mover(C, moves):
-    p = C.c.load(); W = C.W
-    corner = lambda x, y: (x < 6 or x > W - 7) and (y < 6 or y > C.bot - 5)
-    icon = {(x, y): p[x, y] for x in range(W) for y in range(C.H) if C.inside(x, y) and not corner(x, y) and C.differs(p[x, y])}
+    p = C.c.load(); icon = {xy: p[xy] for xy in C.art}
     return [C.frame(erase=[icon], draw=[(icon, dx, dy)]) for dx, dy in moves]
 
 SPECIAL = {'happy': happy, 'sad': sad, 'angry': angry, 'tired': tired, 'idea': idea, 'question': question}
