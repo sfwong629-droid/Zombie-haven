@@ -44,12 +44,13 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
     <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button></div>
     <div class="grp"><span class="lab">Ground</span><button id="gPix" class="on">Pixel art</button><button id="gFlat">Flat</button></div>
-    <div class="grp"><span class="lab">Walk</span><button id="wLuma" class="on">Luma (new)</button><button id="wOld">Old</button></div>
+    <div class="grp"><span class="lab">Walk</span><button id="wCalm" class="on">Luma calm</button><button id="wLuma">Luma bob</button><button id="wOld">Old</button></div>
   </div>
+  <div class="bar"><div class="grp"><span class="lab">Walk side by side</span><canvas id="wcmp" aria-label="Old walk, Luma walk with bob, calm Luma walk" style="image-rendering:pixelated;max-width:100%;background:#969696;border-radius:6px"></canvas></div></div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
   <div class="cards" id="cards"></div>
-  <p class="note">Buildings turn clockwise. 0° and 180° are drawn (front and back); 90° is the back mirrored and 270° is the front mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, scrapyard crane hook 8 frames at 160 ms, archery range arrow and target 14 frames at 110 ms, obstacle course pennant 6 frames at 140 ms, hospital windows (one failing bulb) 12 frames at 150 ms, farm crops and scarecrow 12 frames at 150 ms, barracks windows 12 frames at 150 ms, farmer walk 6 frames at 200 ms (front walk: 8 frames at 145 ms traced from a Luma video, see tools/art/luma_walk.md). Emotes: 13 bubbles, 8 frames at 140 ms, drawn at their own pixel size (half a world pixel).</p>
+  <p class="note">Buildings turn clockwise. 0° and 180° are drawn (front and back); 90° is the back mirrored and 270° is the front mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, scrapyard crane hook 8 frames at 160 ms, archery range arrow and target 14 frames at 110 ms, obstacle course pennant 6 frames at 140 ms, hospital windows (one failing bulb) 12 frames at 150 ms, farm crops and scarecrow 12 frames at 150 ms, barracks windows 12 frames at 150 ms, farmer walk 6 frames at 200 ms (front walk traced from a Luma video, 8 frames: calm 165 ms, bob 145 ms; see tools/art/luma_walk.md). Emotes: 13 bubbles, 8 frames at 140 ms, drawn at their own pixel size (half a world pixel).</p>
 </div>
 
 <script>
@@ -87,12 +88,12 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, lumaWalk = true;
+let zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_calm';
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('emotes', A.emotes.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_luma', A.walk_se_luma.src);
+load('emotes', A.emotes.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_luma', A.walk_se_luma.src); load('walk_se_calm', A.walk_se_calm.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -148,7 +149,7 @@ function frame(now) {
     }
     if (showFarmer) {
       const m = farmerAt(t / 1000 * 0.9), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
-      const sk = up ? 'walk_ne' : lumaWalk ? 'walk_se_luma' : 'walk_se', s = A[sk], f = Math.floor(t / (s.ms || 200)) % s.n;   // the front walk can be the Luma-traced one
+      const sk = up ? 'walk_ne' : walkKind, s = A[sk], f = Math.floor(t / (s.ms || 200)) % s.n;   // the front walk can be the Luma-traced one
       const [cx, top] = P(m.x + .5, m.y + .5);
       items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
       emoteAt = { x: cx, y: top - s.ay + 4 };   // just above the farmer's hat
@@ -200,9 +201,19 @@ tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
 const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
 gp.onclick = () => { pixGround = true; gp.classList.add('on'); gf.classList.remove('on'); };
-const wl = document.getElementById('wLuma'), wo = document.getElementById('wOld');
-wl.onclick = () => { lumaWalk = true; wl.classList.add('on'); wo.classList.remove('on'); };
-wo.onclick = () => { lumaWalk = false; wo.classList.add('on'); wl.classList.remove('on'); };
+const WB = { wCalm: 'walk_se_calm', wLuma: 'walk_se_luma', wOld: 'walk_se' };
+for (const id in WB) document.getElementById(id).onclick = () => { walkKind = WB[id]; for (const j in WB) document.getElementById(j).classList.toggle('on', j === id); };
+// side-by-side walk comparison (own canvas, always animating)
+const wc = document.getElementById('wcmp'), wg = wc.getContext('2d'), WZ = 4, WCMP = [['walk_se', 'Old'], ['walk_se_luma', 'Luma bob'], ['walk_se_calm', 'Luma calm']];
+wc.width = WCMP.length * 48 * WZ; wc.height = 48 * WZ + 18;
+function walkCmp(now) {
+  wg.clearRect(0, 0, wc.width, wc.height); wg.imageSmoothingEnabled = false; wg.font = '12px system-ui, sans-serif'; wg.fillStyle = '#111'; wg.textAlign = 'center';
+  WCMP.forEach(([k, lab], j) => { const s = A[k], f = Math.floor(now / (s.ms || 200)) % s.n;
+    if (img[k] && img[k].complete) wg.drawImage(img[k], f * s.w, 0, s.w, s.h, j * 48 * WZ, 14, 48 * WZ, 48 * WZ);
+    wg.fillText(lab + ' · ' + s.n + ' fr', j * 48 * WZ + 24 * WZ, 12); });
+  requestAnimationFrame(walkCmp);
+}
+requestAnimationFrame(walkCmp);
 gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
 
 // tap a building to rotate it (hit test: its diamond and the area above it)
