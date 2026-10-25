@@ -81,15 +81,26 @@
 
   // door: world point just INSIDE the entrance (front-left wall), so the door tile is part of the footprint.
   // approach: the tile just outside that wall, which survivors walk to before stepping in.
-  // V2.47 rotation: rot = 1 mirrors a building on screen, which swaps its world x/y. The footprint is transposed (w and h swap) and the
-  // entrance moves from the front-left wall (y + h side) to the front-right wall (x + w side).
-  const doorOf = (type, w, h, rot) => { const d = DEFS[type] && DEFS[type].door; return rot ? (d ? [d[1], d[0]] : [w - .35, h / 2]) : (d || [w / 2, h - .35]); };
-  function doorPoint(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return { x: b.x + d[0], y: b.y + d[1] }; }
+  // V2.56 four-way rotation, clockwise: r4 0 front, 1 back mirrored, 2 back, 3 front mirrored (the drawn views). An odd r4 swaps the
+  // building's world x/y on screen, so its footprint is transposed (w and h swap) and b.rot = 1 marks that (V2.47's rot = 1 is r4 = 3).
+  // The entrance turns with the building: front-left wall (y + h side) at 0, front-right (x + w) at 3, back-right (y = 0) at 2, back-left (x = 0) at 1.
+  const R4 = (o) => (o.r4 != null ? o.r4 : o.rot ? 3 : 0);
+  function doorOf(type, r4, w, h) {   // door point inside the footprint as placed, and the wall it is on ('S', 'E', 'N', 'W')
+    const D0 = DEFS[type] || { w: r4 & 1 ? h : w, h: r4 & 1 ? w : h }, W0 = D0.w, H0 = D0.h, d = D0.door || [W0 / 2, H0 - .35];
+    return r4 === 3 ? [d[1], d[0], 'E'] : r4 === 2 ? [W0 - d[0], H0 - d[1], 'N'] : r4 === 1 ? [H0 - d[1], W0 - d[0], 'W'] : [d[0], d[1], 'S'];
+  }
+  function doorPoint(b) { const d = doorOf(b.type, R4(b), b.w, b.h); return { x: b.x + d[0], y: b.y + d[1] }; }
   function doorTile(b) { const p = doorPoint(b); return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
-  function approachTile(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return b.rot ? { x: b.x + b.w, y: Math.floor(b.y + d[1]) } : { x: Math.floor(b.x + d[0]), y: b.y + b.h }; }
-  function approachPoint(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return b.rot ? { x: b.x + b.w + .35, y: b.y + d[1] } : { x: b.x + d[0], y: b.y + b.h + .35 }; }
-  const rotDef = (def, rot) => (rot ? Object.assign({}, def, { w: def.h, h: def.w, rot: 1, door: def.door ? [def.door[1], def.door[0]] : null }) : def);   // def as placed (transposed when rotated)
-  const defApproach = (x, y, def) => (def.rot ? { x: x + def.w, y: Math.floor(y + (def.door ? def.door[1] : def.h / 2)) } : { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h });
+  function approachAt(type, r4, x, y, w, h, pt) {
+    const [dx, dy, s] = doorOf(type, r4, w, h), o = pt ? .35 : 0, f = pt ? (v) => v : Math.floor;
+    return s === 'S' ? { x: f(x + dx), y: y + h + o } : s === 'E' ? { x: x + w + o, y: f(y + dy) } : s === 'N' ? { x: f(x + dx), y: y - (pt ? o : 1) } : { x: x - (pt ? o : 1), y: f(y + dy) };
+  }
+  function approachTile(b) { return approachAt(b.type, R4(b), b.x, b.y, b.w, b.h, false); }
+  function approachPoint(b) { return approachAt(b.type, R4(b), b.x, b.y, b.w, b.h, true); }
+  const rotDef = (def, r4) => { r4 = (r4 | 0) & 3; const t = Object.keys(DEFS).find((k) => DEFS[k] === def);   // def as placed (transposed when the turn is odd)
+    return r4 ? Object.assign({}, def, { w: r4 & 1 ? def.h : def.w, h: r4 & 1 ? def.w : def.h, rot: r4 & 1, r4, type: t }) : def; };
+  const defApproach = (x, y, def) => { const t = def.type || Object.keys(DEFS).find((k) => DEFS[k] === def);
+    return t ? approachAt(t, def.r4 || 0, x, y, def.w, def.h, false) : { x: Math.floor(x + def.w / 2), y: y + def.h }; };
 
   function footprintCheck(w, x, y, def, ignore = null) {
     if (x < BUILD.x0 || y < BUILD.y0 || x + def.w - 1 > BUILD.x1 || y + def.h - 1 > BUILD.y1) return { ok: false, why: 'Outside the build zone' };
@@ -163,5 +174,5 @@
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
-  return { TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, R4, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });
