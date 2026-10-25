@@ -43,6 +43,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Rotate</span><button id="rotAll">All 90°</button><button id="rotReset">Reset</button></div>
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
     <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button></div>
+    <div class="grp"><span class="lab">Ground</span><button id="gPix" class="on">Pixel art</button><button id="gFlat">Flat</button></div>
   </div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
@@ -85,12 +86,12 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let zoom = 3, anim = true, showFarmer = true, showGrid = false;
+let zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('emotes', A.emotes.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
+load('emotes', A.emotes.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -135,7 +136,7 @@ function farmerAt(t) {   // t in tiles walked
 let t0 = performance.now(), paused = 0, frozenAt = 0, emoteAt = null;
 function frame(now) {
   const t = anim ? now - t0 - paused : frozenAt;
-  g.clearRect(0, 0, W, H); g.drawImage(ground, 0, 0);
+  g.clearRect(0, 0, W, H); if (pixGround && img.ground && img.ground.complete) g.drawImage(img.ground, OX - N * TW / 2, OY); else g.drawImage(ground, 0, 0);   // pixel-art ground: tools/art/ground56.py
   if (showGrid) gridLines();
   if (!loading) {
     const items = [];
@@ -196,6 +197,9 @@ const tog = (id, fn) => { const el = document.getElementById(id); el.onclick = (
 tog('tAnim', () => { const now = performance.now(); if (anim) frozenAt = now - t0 - paused; else paused = now - t0 - frozenAt; anim = !anim; return anim; });
 tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
+const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
+gp.onclick = () => { pixGround = true; gp.classList.add('on'); gf.classList.remove('on'); };
+gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
 
 // tap a building to rotate it (hit test: its diamond and the area above it)
 cv.addEventListener('click', (e) => {
