@@ -44,9 +44,10 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
     <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button></div>
   </div>
-  <div class="stage"><canvas id="cv" aria-label="Isometric test map with the Medical Tent, the House and a walking farmer"></canvas></div>
+  <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
+  <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
   <div class="cards" id="cards"></div>
-  <p class="note">Buildings turn clockwise. 0° and 180° are drawn (front and back); 90° is the back mirrored and 270° is the front mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, scrapyard crane hook 8 frames at 160 ms, archery range arrow and target 14 frames at 110 ms, obstacle course pennant 6 frames at 140 ms, hospital windows (one failing bulb) 12 frames at 150 ms, farm crops and scarecrow 12 frames at 150 ms, barracks windows 12 frames at 150 ms, farmer walk 6 frames at 200 ms.</p>
+  <p class="note">Buildings turn clockwise. 0° and 180° are drawn (front and back); 90° is the back mirrored and 270° is the front mirrored by the game. Animations: tent flag 6 frames at 140 ms, house smoke 12 frames at 130 ms, rain collector tarp drops + tap drip 20 frames at 110 ms, garden plot scarecrow and crops 12 frames at 150 ms, well bucket and water 21 frames at 150 ms, storage tarp 8 frames at 140 ms, gym bag 8 frames at 160 ms, library lamp flicker 8 frames at 150 ms, lounge lights 6 frames at 220 ms, clinic flag and smoke 12 frames at 130 ms, canteen fire, sparks and steam 8 frames at 140 ms, armory lamp 8 frames at 160 ms, workshop welding sparks 10 frames at 110 ms, scrapyard crane hook 8 frames at 160 ms, archery range arrow and target 14 frames at 110 ms, obstacle course pennant 6 frames at 140 ms, hospital windows (one failing bulb) 12 frames at 150 ms, farm crops and scarecrow 12 frames at 150 ms, barracks windows 12 frames at 150 ms, farmer walk 6 frames at 200 ms. Emotes: 13 bubbles, 8 frames at 140 ms, drawn at their own pixel size (half a world pixel).</p>
 </div>
 
 <script>
@@ -81,12 +82,15 @@ const PATH = [[1, 1], [11, 1], [11, 10], [1, 10]];   // tile corners of the farm
 const OX = N * TW / 2 + 4, OY = 60, W = N * TW + 8, H = OY + N * TH + 8;
 const cv = document.getElementById('cv'), g = cv.getContext('2d');
 cv.width = W; cv.height = H;
+// emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
+const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
+let emote = 'cycle';
 let zoom = 3, anim = true, showFarmer = true, showGrid = false;
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
+load('emotes', A.emotes.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -128,7 +132,7 @@ function farmerAt(t) {   // t in tiles walked
   }
 }
 
-let t0 = performance.now(), paused = 0, frozenAt = 0;
+let t0 = performance.now(), paused = 0, frozenAt = 0, emoteAt = null;
 function frame(now) {
   const t = anim ? now - t0 - paused : frozenAt;
   g.clearRect(0, 0, W, H); g.drawImage(ground, 0, 0);
@@ -145,8 +149,15 @@ function frame(now) {
       const s = up ? A.walk_ne : A.walk_se, f = Math.floor(t / 200) % s.n;
       const [cx, top] = P(m.x + .5, m.y + .5);
       items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[up ? 'walk_ne' : 'walk_se'], s, f, cx, top, flip) });
+      emoteAt = { x: cx, y: top - s.ay + 4 };   // just above the farmer's hat
     }
     items.sort((a, b) => a.d - b.d).forEach(i => i.fn());
+  }
+  og.clearRect(0, 0, ov.width, ov.height);
+  if (!loading && showFarmer && emoteAt) {   // cycle: each emote for 2 s, then a short gap; or the one picked
+    const E = A.emotes, k = emote === 'cycle' ? Math.floor(t / 2600) % E.names.length : E.names.indexOf(emote), on = emote !== 'cycle' || t % 2600 < 2200;
+    if (k >= 0 && on) { const [cw, ch] = E.cell, f = Math.floor(t / E.ms) % E.frames;
+      og.drawImage(img.emotes, f * cw, k * ch, cw, ch, Math.round(emoteAt.x * 2 - cw / 2), Math.round(emoteAt.y * 2 - ch), cw, ch); }
   }
   requestAnimationFrame(frame);
 }
@@ -154,10 +165,15 @@ requestAnimationFrame(frame);
 
 // zoom
 function fitZoom() { const avail = document.querySelector('.stage').clientWidth - 18; return Math.max(1, Math.min(5, Math.floor(avail / W))); }
-function setZoom(z) { zoom = z; cv.style.width = W * z + 'px'; cv.style.height = H * z + 'px'; document.querySelectorAll('#zooms button').forEach(b => b.classList.toggle('on', +b.dataset.z === z)); }
+function setZoom(z) { zoom = z; cv.style.width = ov.style.width = W * z + 'px'; cv.style.height = ov.style.height = H * z + 'px'; document.querySelectorAll('#zooms button').forEach(b => b.classList.toggle('on', +b.dataset.z === z)); }
 const zs = document.getElementById('zooms');
 for (const z of [1, 2, 3, 4, 5]) { const b = document.createElement('button'); b.textContent = z + '×'; b.dataset.z = z; b.onclick = () => setZoom(z); zs.appendChild(b); }
 setZoom(Math.max(2, fitZoom()));
+
+// emote picker
+const em = document.getElementById('emos');
+for (const n of ['cycle', ...A.emotes.names]) { const b = document.createElement('button'); b.textContent = n === 'cycle' ? 'Cycle all' : n; b.dataset.e = n; b.className = n === emote ? 'on' : '';
+  b.onclick = () => { emote = n; em.querySelectorAll('button').forEach(q => q.classList.toggle('on', q.dataset.e === n)); }; em.appendChild(b); }
 
 // cards
 const cards = document.getElementById('cards');
