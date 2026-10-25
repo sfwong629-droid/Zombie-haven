@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Pixel-art ground for the 56-px tile grid, made in code so tiles line up exactly and never show seams:
-grass (3 greens, darker 2-px clumps, light blade tufts, a few flowers), dirt path (browns, pebbles, wheel ruts) with a ragged,
+dying olive grass (3 tones, bare dead patches, dry tufts, stone/rust debris), dirt path (browns, pebbles, wheel ruts) with a ragged,
 edge that fades into the grass through dithered dry-grass bands, all on whole art pixels.
     python3 tools/art/ground56.py <out.png> [N=10]    -> a sample N x N map with the test page's path loop"""
 import sys, math, random
 from PIL import Image
 
 TW, TH = 56, 28
-G = [(78, 110, 52), (92, 126, 58), (106, 142, 64), (124, 160, 74)]      # grass: dark .. light
-D = [(170, 142, 98), (192, 164, 116), (206, 180, 130), (220, 198, 150)]   # sandy path: dark .. light
-MIX = [(118, 136, 66), (150, 148, 84), (178, 158, 102)]                # grass -> sand: dry grass, sandy grass, grassy sand
-FLOW = [(236, 226, 150), (230, 160, 170), (240, 240, 230)]
+G = [(84, 86, 50), (100, 100, 56), (116, 112, 62), (140, 130, 76)]       # dying olive grass: dark .. light
+D = [(156, 134, 98), (178, 154, 114), (192, 168, 126), (206, 184, 142)]   # dusty sand path: dark .. light
+BARE = [(118, 100, 74), (132, 114, 84)]                                   # dead bare-earth patches in the grass
+MIX = [(126, 116, 70), (146, 130, 84), (164, 144, 98)]                 # grass -> sand: dry grass, sandy grass, grassy sand
+FLOW = [(150, 146, 136), (90, 84, 78), (170, 120, 80)]                  # scattered debris: pale stone, dark stone, rust
 
 def vnoise(seed, scale):
     rnd = random.Random(seed); cache = {}
@@ -29,7 +30,7 @@ def render(N, path):
     OX = N * TW // 2
     im = Image.new('RGBA', (W, H), (0, 0, 0, 0)); p = im.load()
     warp_u, warp_v = vnoise(1, 9), vnoise(2, 9)
-    shade, clump, fine = vnoise(3, 22), vnoise(4, 5), vnoise(5, 2.2); blot = vnoise(6, 7)
+    shade, clump, fine = vnoise(3, 22), vnoise(4, 5), vnoise(5, 2.2); blot = vnoise(6, 7); dead = vnoise(8, 15)
     rnd = random.Random(7)
     mat = {}
     for y in range(H):
@@ -37,7 +38,7 @@ def render(N, path):
             # screen -> tile coords (u right-down, v left-down): x = OX + (u - v) * TW/2, y = (u + v) * TH/2
             a = (x - OX + .5) / (TW / 2); b = (y + .5) / (TH / 2); u = (a + b) / 2; v = (b - a) / 2
             if not (0 <= u < N and 0 <= v < N): continue
-            wu = u + (warp_u(x, y) - .5) * .18; wv = v + (warp_v(x, y) - .5) * .18
+            wu, wv = u, v   # no warp: a road tile's look depends only on itself and its 8 neighbours, so built roads tile cleanly
             # signed distance (in tiles) to the path edge, from the 3x3 neighbouring tiles: + outside, - inside
             iu, iv = math.floor(wu), math.floor(wv); dout, din = 9., 9.
             for du in (-1, 0, 1):
@@ -47,8 +48,8 @@ def render(N, path):
                     if (tu, tv) in path: dout = min(dout, d)
                     else: din = min(din, min(wu - tu, tu + 1 - wu, wv - tv, tv + 1 - wv) if d == 0 else d)
             sd = dout if (iu, iv) not in path else -din
-            # sand amount: full sand to ~.1 tile past the tile edge, fading to grass by ~.6 tile outside it
-            f = min(1, max(0, (.6 - sd) / .5))
+            # sand amount: the whole fade happens INSIDE the road tile (grass at its edge, full sand ~.2 tile in)
+            f = min(1, max(0, (-sd - .01) / .2))
             if 0 < f < 1: f += (blot(x, y * 2) - .5) * .5   # irregular fade, only inside the transition band
             mat[(x, y)] = max(0., min(1., f))
     BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
@@ -58,12 +59,15 @@ def render(N, path):
         s = shade(x, y * 2) * .7 + clump(x, y * 2) * .3
         sand = D[1] if s < .4 else D[2] if s < .72 else D[3]
         grass = G[0] if s < .3 else G[1] if s < .62 else G[2]
+        dd = dead(x, y * 2) + (clump(x, y * 2) - .5) * .25
+        if dd > .73: grass = BARE[0] if dd > .8 else BARE[1] if dd > .76 else MIX[0]   # dead patches: dry rim, bare earth
         ramp = [grass, MIX[0], MIX[1], MIX[2], sand]
         lv = f * 4 + (BAYER[(y // 1) % 4][(x // 2) % 4] / 16 - .5) * .9
         col = ramp[max(0, min(4, round(lv)))]
         p[x, y] = col + (255,)
     rr = random.Random(11)
-    TUFT = [(0, 0, 3), (0, -1, 3), (2, 0, 3), (2, -1, 3), (2, -2, 3), (4, 0, 3), (4, -1, 3), (1, 1, 0), (2, 1, 0), (3, 1, 0)]   # three blades
+    TUFT = [(0, 0, 3), (0, -1, 3), (2, 0, 3), (2, -1, 3), (2, -2, 3), (4, 0, 3), (4, -1, 3), (1, 1, 0), (2, 1, 0), (3, 1, 0)]
+    TC = [G[0], None, None, (150, 134, 80)]   # dry, yellowed blades   # three blades
     for _ in range(N * N * 5):
         x, y = rr.randrange(W), rr.randrange(H)
         if not all((x + dx, y + dy) in mat and mat[(x + dx, y + dy)] < .05 for dx, dy, _ in TUFT): 
@@ -71,10 +75,10 @@ def render(N, path):
                 for dx, dy, c in ((0, 0, (236, 222, 190)), (1, 0, (236, 222, 190)), (2, 0, D[3]), (0, 1, D[0]), (1, 1, D[0]), (2, 1, D[0])):
                     if mat.get((x + dx, y + dy), 0) > .9: p[x + dx, y + dy] = c + (255,)
             continue
-        if rr.random() < .15:   # flower: a 2 x 1 petal on a dark stem
-            c = rr.choice(FLOW); p[x, y] = c + (255,); p[x + 1, y] = c + (255,); p[x, y + 1] = G[0] + (255,)
+        if rr.random() < .25:   # debris: a 2 x 1 stone or rust bit with a dark shadow pixel under it
+            c = rr.choice(FLOW); p[x, y] = c + (255,); p[x + 1, y] = c + (255,); p[x, y + 1] = G[0] + (255,); p[x + 1, y + 1] = G[0] + (255,)
         else:
-            for dx, dy, k in TUFT: p[x + dx, y + dy] = G[k] + (255,)
+            for dx, dy, k in TUFT: p[x + dx, y + dy] = TC[k] + (255,)
     return im
 
 if __name__ == '__main__':
