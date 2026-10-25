@@ -1,12 +1,10 @@
 {
  "cell": [
-  15,
-  15
+  39,
+  35
  ],
- "tail": [
-  7,
-  13
- ],
+ "frames": 8,
+ "ms": 120,
  "names": [
   "happy",
   "sad",
@@ -21,5 +19,6 @@
   "alert",
   "idea",
   "question"
- ]
+ ],
+ "tail_x": 19
 }
