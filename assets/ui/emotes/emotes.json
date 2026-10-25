@@ -1,0 +1,25 @@
+{
+ "cell": [
+  15,
+  15
+ ],
+ "tail": [
+  7,
+  13
+ ],
+ "names": [
+  "happy",
+  "sad",
+  "angry",
+  "scared",
+  "love",
+  "hungry",
+  "thirsty",
+  "tired",
+  "hurt",
+  "sick",
+  "alert",
+  "idea",
+  "question"
+ ]
+}
