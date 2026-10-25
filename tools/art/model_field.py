@@ -27,5 +27,8 @@ OBJ += FAR + NEAR
 MID = [o for o in OBJ[1:] if o not in FAR and o not in NEAR]
 DEPTH = lambda o: (o[2] + o[3]) / 2 - (o[0] + o[1]) / 2
 ORDER = [OBJ[0]] + FAR + sorted(MID, key=lambda o: (o[5] > 8, DEPTH(o))) + sorted(NEAR, key=DEPTH)
+K = .82   # ChatGPT paints this busy field 20-30% past the model (3 tries: 137, 143, 136 px for a 112 px tile), so the model is drawn 82% size about the tile centre
+def shrink(o): u0, u1, v0, v1, h0, h1, c = o; f = lambda s: 1 + (s - 1) * K; return (f(u0), f(u1), f(v0), f(v1), round(h0 * K) if h0 > 2 else h0, round(h1 * K) if h1 > 2 else h1, c)
 if __name__ == '__main__':
-    guide(OBJ, sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x2_field.png', order=ORDER)
+    out = sys.argv[1] if len(sys.argv) > 1 else 'tools/art/templates/t56/model_guide_2x2_field.png'
+    guide([shrink(o) for o in OBJ], out, order=[shrink(o) for o in ORDER])
