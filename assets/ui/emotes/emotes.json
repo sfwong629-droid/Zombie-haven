@@ -4,7 +4,7 @@
   35
  ],
  "frames": 8,
- "ms": 120,
+ "ms": 140,
  "names": [
   "happy",
   "sad",
@@ -19,6 +19,5 @@
   "alert",
   "idea",
   "question"
- ],
- "tail_x": 19
+ ]
 }
