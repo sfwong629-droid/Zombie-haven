@@ -1,6 +1,8 @@
 ZOMBIE HAVEN: PIXELLAB ANIMATION PROMPTS THAT WORK FOR EVERY VIEW (one prompt, all 8 directions)
 Rule: describe motion only relative to the way the character already faces. Never write camera, screen, up/down,
 left/right, "toward the viewer", or right/left hand. "Lead" = the hand/foot on the side the character faces.
+NO FACE WORDS: never mention the face, eyes, mouth, smile or expression. On back views (north-east, north-west)
+any face word makes PixelLab turn the head round to show it. Expressions can be added in a separate front-only run.
 Settings: Enhance prompt OFF, use the character's colour palette, same canvas size.
 
 1 IDLE
@@ -16,31 +18,36 @@ The character keeps facing the same direction as the starting pose in every fram
 The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Walking forward like the normal walk, but the lead arm stays held straight forward at waist height with the fist closed as if gripping a handle; only the other arm swings. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 5 RESCUE WALK
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Walking forward like the normal walk, with both arms raised straight up above the head, palms flat and open, as if carrying a person overhead. The arms stay up the whole time; only the legs walk. Determined face. Do not draw the person or anything else. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Walking forward like the normal walk, with both arms raised straight up above the head, palms flat and open, as if carrying a person overhead. The arms stay up the whole time; only the legs walk. Do not draw the person or anything else. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 6 PUNCH
 The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Guard stance with both fists up in front of the chest, lead foot slightly forward. A quick straight jab forward with the lead fist, the shoulder turning into it, then snap back to the guard. Feet stay planted. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 7 SWING A (overhead chop)
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Start with the lead fist held forward at waist height, closed as if gripping a handle. Raise it high over the shoulder, body twisting back and leaning back, back foot planted. Then the whole body lunges forward and down, the fist swinging down low in front, front knee bent, determined face. Return to the start pose. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Start with the lead fist held forward at waist height, closed as if gripping a handle. Raise it high over the shoulder, body twisting back and leaning back, back foot planted. Then the whole body lunges forward and down, the fist swinging down low in front, front knee bent. Return to the start pose. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 8 SWING B (rising backhand)
 The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Start with the lead fist held forward at waist height, closed as if gripping a handle. Pull it low across the body to the opposite hip, body twisting away. Then sweep it up and across to the front, ending forward at shoulder height, body turning forward with a small hop. Return to the start pose. Arms never spread out sideways. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 9 SWING C (lunge thrust)
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Crouch low with weight on the back foot, the lead fist pulled back to the waist. Then a sudden lunge forward: the body stretches forward, the lead arm thrusts straight forward at chest height, back foot lifts, mouth opens in a shout. Then pull back to the crouch. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Crouch low with weight on the back foot, the lead fist pulled back to the waist. Then a sudden lunge forward: the body stretches forward, the lead arm thrusts straight forward at chest height, back foot lifts. Then pull back to the crouch. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 10 FIRE
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Both fists held together straight forward at chest height as if holding a long pole level, lead foot forward, focused eyes. A quick jolt: shoulders and head kick back and the fists kick up slightly, then settle back to the steady aim. Arms stay together in front. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Both fists held together straight forward at chest height as if holding a long pole level, lead foot forward. A quick jolt: shoulders and head kick back and the fists kick up slightly, then settle back to the steady aim. Arms stay together in front. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 11 HURT
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Start with the lead fist held forward at waist height, closed. Hit from the front: knocked backward, body leaning back, head tilted back, eyes squeezed shut like > <, mouth open, one small step back. The fist stays closed. Then recover, wincing with one eye closed, back to the start pose. Never falls, never spins. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Start with the lead fist held forward at waist height, closed. Hit from the front: knocked backward, body leaning back, head tilted back, one small step back. The fist stays closed. Then recover back to the start pose. Never falls, never spins. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 12 COLLAPSE
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Knees buckle and the body falls forward, ending lying flat face down with chest and belly on the ground, face turned to the side, eyes closed drawn as short lines like - -, arms by the head, legs straight behind. Stays lying still. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Forward means the direction the character is already facing. Knees buckle and the body falls forward, ending lying flat face down with chest and belly on the ground, head turned to the side, arms by the head, legs straight behind. Stays lying still. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
 
 13 CHEER (happy jump)
-The character keeps facing the same direction as the starting pose in every frame and never turns around. Crouch with knees bent, then jump straight up with both arms raised high above the head, big smile, happy eyes drawn as upward curves like ^ ^. Land on the same spot with knees bent, still smiling. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+The character keeps facing the same direction as the starting pose in every frame and never turns around. Crouch with knees bent, then jump straight up with both arms raised straight up above the head, hands higher than the head and close together, arms never spread out sideways. Land on the same spot with knees bent, arms still up. Hands empty, no weapon, no effects, same size, static camera, crisp 2D pixel art.
+
+FRONT-ONLY EXPRESSION RUN (optional): run the same prompt again with one of these added at the end, and keep ONLY
+the south-east and south-west results from that run (back views come from the face-free run):
+  cheer: "Big smile, happy eyes drawn as upward curves like ^ ^."   hurt: "Eyes squeezed shut like > <, mouth open."
+  swing C: "Mouth open in a shout."   collapse: "Eyes closed drawn as short lines like - -."
 
 IF ONE VIEW STILL TURNS AROUND: keep the good views, regenerate only that one, or mirror its opposite view
 (north-east from north-west, south-east from south-west). The game mirrors anyway.
