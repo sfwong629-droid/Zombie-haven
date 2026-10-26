@@ -25,7 +25,7 @@ them back onto the game's pixel grid, frame by frame. So the clips must be easy 
 3. **Facing stays the same** for the whole clip (front stays front, back stays back). No turning around.
 4. **Background stays flat RGB (150,150,150).** No floor, shadow, horizon, light change, vignette, particles or text.
 5. **Keep the pixel-art look.** Same chunky square pixels, same black outline, same colours. No smoothing, no realism,
-   no new clothing, no extra objects except the one prop the action names.
+   no new clothing, no objects of any kind (the game adds weapons and carried things itself).
 6. **In place.** Feet stay on the same ground line; the character never travels across the frame.
 7. **No motion blur** if there is any setting for it.
 8. Output 960x540 is fine (no upscale needed). 24 fps. About 4–9 seconds.
