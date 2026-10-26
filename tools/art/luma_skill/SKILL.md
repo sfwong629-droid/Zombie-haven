@@ -33,35 +33,57 @@ them back onto the game's pixel grid, frame by frame. So the clips must be easy 
 7. **No motion blur** if there is any setting for it.
 8. Output 960x540 is fine (no upscale needed). 24 fps. About 4–9 seconds.
 
-## The pose set (one clip per action per direction given)
+## Facing and camera (read this first: most failed clips broke it)
 
-Make ONE clip per request. Use loop mode where the table says yes. Name each output `<character>_<direction>_<action>.mp4`.
+The start images are drawn from a HIGH THREE-QUARTER (isometric) camera, and the character stands turned on a DIAGONAL:
+- `front`: facing DOWN-RIGHT: toward the viewer AND toward the right edge of the picture (face and chest turned
+  partly right). We call this direction "forward" in the descriptions below: forward = toward the lower right of the image.
+- `back`: facing UP-RIGHT: away from the viewer AND toward the right edge of the picture (back of the head, partly
+  turned right). Forward = toward the upper right of the image.
 
-**Weapons are added by the game later. NO WEAPON AND NO GUN IS EVER GENERATED.** In every combat pose the hands are
-closed as if gripping a handle, but they hold NOTHING: no weapon, gun, tool or object appears. Keep the gripping hand clearly visible (not hidden behind the body).
+For the whole clip:
+- Keep exactly that diagonal facing. NEVER turn to face the camera straight on, never turn the back straight to the
+  camera, never turn to the left. The nose/hat brim keeps pointing the same way as in frame 1.
+- Keep the same high three-quarter camera angle. Never show the character from directly above, from the side, or from below,
+  even when lying down.
+- Arms move forward/back along the facing diagonal, not out to the sides: NO T-pose, no arms spread sideways
+  (unless a pose below says so).
+- The body never spins, flips, cartwheels or leaves the ground except in the jump of `cheer`.
 
-| action | loop | what happens |
+## The pose set (one clip per request)
+
+Make ONE clip per request. Loop mode where the table says yes. Name each output `<character>_<direction>_<action>.mp4`.
+
+**Weapons are added by the game later. NO WEAPON AND NO GUN IS EVER GENERATED.** Where a pose says "gripping",
+the fist is closed as if holding a handle, but it holds NOTHING. Keep that fist clearly visible, never hidden behind
+the body. "Front arm" = the arm on the side the character faces (the right side of the image).
+
+| action | loop | what happens (forward = the facing diagonal) |
 |---|---|---|
-| idle | yes | Standing still, relaxed. Slow breathing: chest and shoulders rise and fall a little. Arms hang loosely at the sides. Feet never move. |
-| walk | yes | Steady walk cycle in place. Legs step one after the other, arms swing opposite the legs, head and hat stay level. Feet stay on the same spot. |
-| carry | yes | Rescue carry: the same walk cycle in place, but BOTH arms are raised up above the head with the hands open, palms up, as if holding something over the head. Arms stay up the whole time; only the legs walk. |
-| punch | yes | Ready stance with both fists up in front of the face. Quick straight punch forward with the front fist, pull it back to the guard, short pause, repeat. Body leans slightly into the punch; feet stay planted. Empty hands: no weapon, no gun. |
-| swing_a | yes | Over-the-shoulder chop. Ready stance, both hands together gripping an invisible handle at waist height. Wind up: lift both hands up and back over the shoulder. Chop: bring both hands down hard diagonally across the front of the body to the opposite low side. Follow through, then return to the ready stance. Empty hands: no weapon, no gun. |
-| swing_b | yes | Backhand swing. Ready stance, one hand gripping an invisible handle held across the body near the opposite hip. Swing the arm outward in a wide flat arc at chest height, ending with the arm stretched out to the side. Return to the ready stance. Empty hands: no weapon, no gun. |
-| swing_c | yes | Thrust. Ready stance, both hands gripping an invisible handle at the waist. Step the front foot forward slightly and push both hands straight forward in a fast jab, arms fully extended, then pull back to the waist and step back. Empty hands: no weapon, no gun. |
-| fire | yes | Aim and recoil. Both arms raised straight forward at shoulder height, hands together as if gripping a handle, steady. Then a short sharp jolt: hands and shoulders kick back and up a little, then settle back to the steady aim. Pause, repeat. Empty hands: no weapon, no gun. |
-| hurt | no | Hit while fighting. Starts in the ready stance with the hands gripping an invisible handle in front of the body (as in swing_a). Gets struck: head and upper body jerk backward, one foot steps back, eyes squeeze shut, the grip stays closed. Then recovers back to the same ready stance. Empty hands: no weapon, no gun. |
-| collapse | no | Falls down forward. Knees buckle, the body tips forward, hands drop, and the character lands flat on the belly, face down, arms loosely out to the sides, legs straight behind. Stays lying still on the belly until the end. The character stays in the same spot (falls forward in place, does not slide out of frame). |
-| cheer | yes | Celebration. Both arms shoot straight up above the head with fists closed. Bend the knees, then jump straight up with both arms still high, land softly on the same spot, bounce once, arms stay up. Repeat. Big happy expression. |
+| idle | yes | Standing still and relaxed in the start pose. Gentle breathing: the shoulders rise one pixel and settle. Arms hang at the sides. Feet and facing never change. |
+| walk | yes | Walking in place along the facing diagonal. Legs step one after the other, arms swing forward and back opposite the legs (not sideways), head and hat stay level. |
+| carry | yes | Rescue walk: walking in place exactly like `walk`, but BOTH arms are raised straight up above the head, palms flat and open facing up, as if carrying a person overhead (do NOT draw the person or anything else). Arms stay straight up the whole clip; only the legs walk. Determined face. |
+| punch | yes | Guard stance: both fists up in front of the chest, front foot slightly forward. Quick straight jab with the front fist forward along the facing diagonal, the shoulder turning into it, then snap back to the guard. Short pause, repeat. Feet stay planted. Empty fists. |
+| swing_a | yes | Overhead strike. 1) Ready: front fist held forward at waist height, closed as if gripping a handle. 2) Wind-up: front fist raised high over the shoulder, body twisted back and leaning back, back foot planted. 3) Strike: whole body lunges forward and down, front fist swung down low in front, front knee bent, determined face. 4) Back to ready. Fist empty. |
+| swing_b | yes | Rising backhand. 1) Ready (as swing_a). 2) Wind-up: front fist pulled low across the body to the opposite hip, body twisted the other way. 3) Strike: fist swept up and across to the front, ending forward at shoulder height, body turning forward, small hop. 4) Back to ready. Arms never spread sideways. Fist empty. |
+| swing_c | yes | Lunge thrust. 1) Ready (as swing_a). 2) Wind-up: fist pulled back to the waist, body crouched low, weight on the back foot. 3) Strike: big lunge forward, front arm thrust straight forward along the facing diagonal, body stretched forward, back foot lifted, shouting mouth. 4) Pull back to ready. Fist empty. |
+| fire | yes | Aim and recoil, no weapon drawn. Both fists together held straight forward at chest height along the facing diagonal, as if holding a long pole level; front foot forward; focused eyes. Then a quick jolt: shoulders and head kick back and the fists kick up slightly, then settle back to the steady aim. Pause, repeat. Arms stay together in front, never spread. Fists empty. |
+| hurt | no | Hit while fighting. Starts in the ready pose (front fist held forward at waist height, closed). Struck from the front: body knocked back and leaning away, head tilted back, eyes squeezed shut like > <, mouth open; one small step back. The front fist stays closed. Then recovers, wincing with one eye closed, back to the ready pose. Feet stay on the ground: no fall, no flip, no spin. |
+| collapse | no | Knocked out. Knees buckle, the body falls forward along the facing diagonal and ends lying flat FACE DOWN: chest and belly on the ground, face turned to the side, eyes closed drawn as short lines like - -, arms by the head, legs straight behind. Seen from the same high three-quarter angle (NOT from above). Stays still on the belly to the end, in the same spot. |
+| cheer | yes | Happy jump. Crouch with knees bent, then jump straight up with both arms raised high above the head, big smile, happy eyes drawn as upward curves like ^ ^. Land on the same spot with knees bent, still smiling, arms still up. Repeat. Same diagonal facing the whole time, no shadow, no dust. |
 
 (Not needed yet: profession work poses such as farming, building or healing. They come later per profession.)
 
 Prompt template (fill in the direction and the action's description from the table):
 
-> Animate this pixel art character, seen from the {front | back, facing away from the camera}: {description}.
+> Animate this pixel art character from the start image. It faces {DOWN-RIGHT: toward the viewer and the right edge
+> of the picture | UP-RIGHT: away from the viewer and toward the right edge of the picture}, seen from a high
+> three-quarter isometric camera; keep that exact facing and camera angle for the whole clip, never turn to face the
+> camera or show it from above or the side. Forward means along that diagonal. Action: {description}.
 > Keep the exact same character design, outfit, colors and chunky pixel art style, flat 2D video game sprite.
-> Static shot: locked camera, no camera movement, no zoom. Character stays centered, the same size and facing the same
-> way, feet on the same spot. Plain flat grey background stays unchanged. No weapon, no gun, no tool, no objects of any kind: hands are empty and hold nothing.
+> Static shot: locked camera, no camera movement, no zoom. Character stays centered and the same size, feet on the
+> same spot. Plain flat grey background stays unchanged, no shadow, no dust, no effects. No weapon, no gun, no tool,
+> no objects of any kind: hands are empty and hold nothing.
 
 ## Checks before handing a clip back
 
@@ -70,6 +92,7 @@ Prompt template (fill in the direction and the action's description from the tab
 - Looping clips: last frame flows into frame 1 without a jump.
 - Background still flat grey in every frame.
 - No weapon, gun, tool or other object anywhere in the clip; hands empty.
+- Facing is the same diagonal as frame 1 in every frame (not turned to face the camera, not seen from above).
 If a clip fails a check, regenerate it rather than fixing it with an upscale or filter.
 
 ## Hand-off
