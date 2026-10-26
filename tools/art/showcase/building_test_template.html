@@ -47,6 +47,7 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Walk side by side</div><canvas id="wcmp" aria-label="Front walks (Old, Luma raw, Luma calm, Clean) and back walks (Old, Luma raw) side by side" style="display:block;width:100%;max-width:420px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Template test: farmer → medic by code</div><canvas id="tcmp" aria-label="Farmer and the code-made medic: walk and swing A, front and back" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
   <div class="cards" id="cards"></div>
@@ -213,6 +214,19 @@ function walkCmp(now) {
     if (img[k] && img[k].complete) wg.drawImage(img[k], f * s.w, 0, s.w, s.h, gx, gy + 14, 48 * WZ, 48 * WZ);
     wg.fillText(lab + ' · ' + s.n + ' fr', gx + 24 * WZ, gy + 14); });
   requestAnimationFrame(walkCmp);
+// template test: every strip has 2 rows (farmer on top, medic below), frames a.w x a.w, drawn in 48-px cells
+const tc = document.getElementById('tcmp'), tg = tc.getContext('2d'), TZ = 3, TA = A.reskin;
+tc.width = TA.anims.length * 48 * TZ; tc.height = 2 * 48 * TZ + 16;
+for (const a of TA.anims) load('rs_' + a.k, a.src);
+function tplCmp(now) {
+  tg.clearRect(0, 0, tc.width, tc.height); tg.imageSmoothingEnabled = false; tg.font = '11px system-ui, sans-serif'; tg.fillStyle = '#111'; tg.textAlign = 'center';
+  TA.anims.forEach((a, j) => { const f = Math.floor(now / a.ms) % a.n, im = img['rs_' + a.k];
+    const w = a.w, ox = (48 - w) / 2 * TZ, oy = (48 - w) * TZ;
+    for (let r = 0; r < 2; r++) if (im && im.complete) tg.drawImage(im, f * w, r * w, w, w, j * 48 * TZ + ox, 14 + r * 48 * TZ + oy, w * TZ, w * TZ);
+    tg.fillText(a.label, j * 48 * TZ + 24 * TZ, 11); });
+  requestAnimationFrame(tplCmp);
+}
+requestAnimationFrame(tplCmp);
 }
 requestAnimationFrame(walkCmp);
 gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
