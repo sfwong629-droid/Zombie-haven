@@ -37,16 +37,17 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 <div class="wrap">
   <div>
     <h1>Building Rotation Test</h1>
-    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer walks the path for scale. Rubble and debris lie in small clusters on the open ground.</p>
+    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer and the medic walk the path for scale. Rubble and debris lie in small clusters on the open ground.</p>
   </div>
   <div class="bar">
     <div class="grp"><span class="lab">Rotate</span><button id="rotAll">All 90°</button><button id="rotReset">Reset</button></div>
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
-    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button><button id="tDebris" class="on">Debris</button></div>
+    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tMedic" class="on">Medic</button><button id="tGrid">Tile grid</button><button id="tDebris" class="on">Debris</button></div>
     <div class="grp"><span class="lab">Ground</span><button id="gPix" class="on">Pixel art</button><button id="gFlat">Flat</button></div>
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Walk side by side</div><canvas id="wcmp" aria-label="Front walks (Old, Luma raw, Luma calm, Clean) and back walks (Old, Luma raw) side by side" style="display:block;width:100%;max-width:420px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Template test: farmer animations → PixelLab medic (head + colours carried by code)</div><canvas id="tcmp" aria-label="Farmer and the code-made medic: walk and swing A, front and back" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
@@ -89,12 +90,12 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let showDebris = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
+let showDebris = true, showMedic = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('emotes', A.emotes.src); load('debris', A.debris.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
+load('emotes', A.emotes.src); load('debris', A.debris.src); load('m_walk_se', A.medic.walk_se.src); load('m_walk_ne', A.medic.walk_ne.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -159,6 +160,12 @@ function frame(now) {
       items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
       emoteAt = { x: cx, y: top - s.ay + 4 };   // just above the farmer's hat
     }
+    if (showMedic) {   // the medic walks the same loop two tiles behind the farmer
+      const m = farmerAt(t / 1000 * 0.9 + loopLen - 2), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
+      const sk = up ? 'm_walk_ne' : 'm_walk_se', s = A.medic[up ? 'walk_ne' : 'walk_se'], f = Math.floor(t / s.ms) % s.n;
+      const [cx, top] = P(m.x + .5, m.y + .5);
+      items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
+    }
     items.sort((a, b) => a.d - b.d).forEach(i => i.fn());
   }
   og.clearRect(0, 0, ov.width, ov.height);
@@ -205,6 +212,7 @@ tog('tAnim', () => { const now = performance.now(); if (anim) frozenAt = now - t
 tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
 tog('tDebris', () => (showDebris = !showDebris));
+tog('tMedic', () => (showMedic = !showMedic));
 const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
 gp.onclick = () => { pixGround = true; gp.classList.add('on'); gf.classList.remove('on'); };
 const WB = { wRig: 'walk_se_rig', wCalm: 'walk_se_calm', wRaw: 'walk_se_raw', wOld: 'walk_se' };
@@ -219,6 +227,8 @@ function walkCmp(now) {
     if (img[k] && img[k].complete) wg.drawImage(img[k], f * s.w, 0, s.w, s.h, gx, gy + 14, 48 * WZ, 48 * WZ);
     wg.fillText(lab + ' · ' + s.n + ' fr', gx + 24 * WZ, gy + 14); });
   requestAnimationFrame(walkCmp);
+}
+requestAnimationFrame(walkCmp);
 // template test: every strip has 2 rows (farmer on top, medic below), frames a.w x a.w, drawn in 48-px cells
 const tc = document.getElementById('tcmp'), tg = tc.getContext('2d'), TZ = 3, TA = A.reskin;
 const TCOL = 4, TROWS = Math.ceil(TA.anims.length / TCOL), TBH = 2 * 48 * TZ + 16;
@@ -233,8 +243,18 @@ function tplCmp(now) {
   requestAnimationFrame(tplCmp);
 }
 requestAnimationFrame(tplCmp);
+// medic: every PixelLab animation, front (se) and back (ne), 48-px frames
+const mc = document.getElementById('mcmp'), mg = mc.getContext('2d'), MZ = 3, MA = A.medic, MCOL = 4, MBH = 48 * MZ + 16;
+mc.width = MCOL * 48 * MZ; mc.height = Math.ceil(MA.anims.length / MCOL) * MBH;
+for (const a of MA.anims) load('md_' + a.k, a.src);
+function medicCmp(now) {
+  mg.clearRect(0, 0, mc.width, mc.height); mg.imageSmoothingEnabled = false; mg.font = '11px system-ui, sans-serif'; mg.fillStyle = '#111'; mg.textAlign = 'center';
+  MA.anims.forEach((a, j) => { const f = Math.floor(now / a.ms) % a.n, im = img['md_' + a.k], cx = (j % MCOL) * 48 * MZ, by = Math.floor(j / MCOL) * MBH;
+    if (im && im.complete) mg.drawImage(im, f * 48, 0, 48, 48, cx, by + 14, 48 * MZ, 48 * MZ);
+    mg.fillText(a.label, cx + 24 * MZ, by + 11); });
+  requestAnimationFrame(medicCmp);
 }
-requestAnimationFrame(walkCmp);
+requestAnimationFrame(medicCmp);
 gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
 
 // tap a building to rotate it (hit test: its diamond and the area above it)
