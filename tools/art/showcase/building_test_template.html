@@ -37,12 +37,12 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 <div class="wrap">
   <div>
     <h1>Building Rotation Test</h1>
-    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer walks the path for scale.</p>
+    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer walks the path for scale. Rubble and debris lie in small clusters on the open ground.</p>
   </div>
   <div class="bar">
     <div class="grp"><span class="lab">Rotate</span><button id="rotAll">All 90°</button><button id="rotReset">Reset</button></div>
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
-    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button></div>
+    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tGrid">Tile grid</button><button id="tDebris" class="on">Debris</button></div>
     <div class="grp"><span class="lab">Ground</span><button id="gPix" class="on">Pixel art</button><button id="gFlat">Flat</button></div>
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
@@ -89,12 +89,12 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
+let showDebris = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('emotes', A.emotes.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
+load('emotes', A.emotes.src); load('debris', A.debris.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -148,6 +148,10 @@ function frame(now) {
       const [cx, top] = P(b.x, b.y);
       items.push({ d: b.x + b.y + 1, fn: () => drawStrip(img[b.key + vi], v, f, cx, top + TH, b.rot & 1) });
     }
+    if (showDebris) for (const [i, dx, dy] of A.debris.place) {   // rubble and debris clusters: tools/art/debris_layer.py, drawn size, foot at (dx, dy)
+      const [ax, w, h] = A.debris.items[i], [sx, sy] = P(dx, dy);
+      items.push({ d: dx + dy, fn: () => g.drawImage(img.debris, ax, 0, w, h, Math.round(sx - w / 2), Math.round(sy - h + 2), w, h) });
+    }
     if (showFarmer) {
       const m = farmerAt(t / 1000 * 0.9), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
       const sk = up ? (walkKind === 'walk_se_raw' ? 'walk_ne_raw' : 'walk_ne') : walkKind, s = A[sk], f = Math.floor(t / (s.ms || 200)) % s.n;   // the front walk can be the Luma-traced one
@@ -200,6 +204,7 @@ const tog = (id, fn) => { const el = document.getElementById(id); el.onclick = (
 tog('tAnim', () => { const now = performance.now(); if (anim) frozenAt = now - t0 - paused; else paused = now - t0 - frozenAt; anim = !anim; return anim; });
 tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
+tog('tDebris', () => (showDebris = !showDebris));
 const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
 gp.onclick = () => { pixGround = true; gp.classList.add('on'); gf.classList.remove('on'); };
 const WB = { wRig: 'walk_se_rig', wCalm: 'walk_se_calm', wRaw: 'walk_se_raw', wOld: 'walk_se' };
