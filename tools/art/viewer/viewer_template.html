@@ -1,0 +1,159 @@
+<title>Farmer Turntable</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one stage that fills the width, a strip of controls under it, short notes below. */
+:root {
+  --paper: #ecdebe; --stage: #e4d3ac; --ink: #2e2116; --muted: #6e5a44; --line: #cdb994;
+  --accent: #5e7430; --btn: #f6ecd4;
+  --f-display: "Kalam", "Comic Sans MS", cursive;
+  --f-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #1f1a14; --stage: #e4d3ac; --ink: #efe3cc; --muted: #b5a184; --line: #4a3e30;
+  --accent: #a8c46a; --btn: #2c251c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #1f1a14; --stage: #e4d3ac; --ink: #efe3cc; --muted: #b5a184; --line: #4a3e30;
+  --accent: #a8c46a; --btn: #2c251c; color-scheme: dark }
+body { background: var(--paper); color: var(--ink); font: 400 15px/1.5 var(--f-body); }
+.wrap { max-width: 880px; margin: 0 auto; padding-block: 22px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 14px; }
+h1 { font: 700 34px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); max-width: 64ch; }
+.stage { position: relative; background: var(--stage); border: 2px solid var(--ink); border-radius: 8px; overflow: hidden;
+  aspect-ratio: 4 / 3.4; max-width: 100%; touch-action: none; }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hint { position: absolute; left: 12px; bottom: 10px; font: 700 13px/1 var(--f-body); color: #6e5a44; pointer-events: none; }
+.load { position: absolute; inset: 0; display: grid; place-items: center; font: 700 22px var(--f-display); color: #6e5a44; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.grp { display: flex; align-items: center; gap: 8px; }
+.lbl { font: 700 11px/1 var(--f-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; }
+.seg button { font: 700 14px/1 var(--f-body); color: var(--ink); background: var(--btn); border: 0; border-right: 2px solid var(--ink);
+  padding: 9px 13px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
+.seg button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 3px; }
+</style>
+
+<div class="wrap">
+  <h1>Farmer v3, in 3D</h1>
+  <p class="sub">The same Blender model the sprites are rendered from: one shared body with the Farmer's clothes, hair and hoe on top. Drag to turn him, scroll or pinch to zoom.</p>
+  <div class="stage" id="stage"><div class="load" id="load">Loading the Farmer…</div><span class="hint">drag to rotate · scroll to zoom</span></div>
+  <div class="bar">
+    <div class="grp"><span class="lbl">Motion</span>
+      <div class="seg" id="anim"><button id="m-idle" data-v="idle" aria-pressed="true">Idle</button><button id="m-walk" data-v="walk" aria-pressed="false">Walk</button><button id="m-still" data-v="still" aria-pressed="false">Still</button></div></div>
+    <div class="grp"><span class="lbl">Spin</span>
+      <div class="seg" id="spin"><button id="s-on" data-v="on" aria-pressed="true">On</button><button id="s-off" data-v="off" aria-pressed="false">Off</button></div></div>
+    <div class="grp"><span class="lbl">Camera</span>
+      <div class="seg" id="cam"><button id="c-game" data-v="game" aria-pressed="true">Game angle</button><button id="c-eye" data-v="eye" aria-pressed="false">Eye level</button></div></div>
+  </div>
+  <ul>
+    <li>Game angle is the sprite camera: looking down at 45°. Eye level shows the face and clothes straight on.</li>
+    <li>Shading and outlines here are a browser approximation of the Blender ink look, so tones differ a little from the sprites.</li>
+  </ul>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+
+const GLB = "data:model/gltf-binary;base64,__GLB__";
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .01, 50);
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.target.set(0, .66, 0); controls.enablePan = false; controls.enableDamping = true;
+controls.minZoom = .6; controls.maxZoom = 4; controls.autoRotate = true; controls.autoRotateSpeed = 2.2;
+const outline = new OutlineEffect(renderer, { defaultThickness: .0055, defaultColor: [.13, .09, .06], defaultAlpha: 1 });
+
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x8a7a60, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2dc, 2.2); scene.add(sun); scene.add(sun.target);
+// ground disc + soft shadow blob
+const g = document.createElement('canvas'); g.width = g.height = 128; const gc = g.getContext('2d');
+const rg = gc.createRadialGradient(64, 64, 4, 64, 64, 64); rg.addColorStop(0, 'rgba(60,40,20,.45)'); rg.addColorStop(1, 'rgba(60,40,20,0)');
+gc.fillStyle = rg; gc.fillRect(0, 0, 128, 128);
+const blob = new THREE.Mesh(new THREE.PlaneGeometry(.9, .9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(g), transparent: true, depthWrite: false }));
+blob.rotation.x = -Math.PI / 2; blob.position.y = .002; blob.userData.outlineParameters = { visible: false }; scene.add(blob);
+
+const grad = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 190, 190, 190, 255, 255, 255, 255, 255]), 3, 1);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+
+function toonize(root) {
+  // plaid spacing: use the largest spacing seen per line colour+axis so small pieces match the shirt
+  const best = {};
+  root.traverse(o => { if (!o.isMesh) return; const L = JSON.parse(o.material.userData.zh_lines || '[]');
+    for (const l of L) { const k = l[0] + l[3]; best[k] = Math.max(best[k] || 0, l[1]); } });
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const src = o.material, ud = src.userData || {};
+    const m = new THREE.MeshToonMaterial({ color: new THREE.Color(ud.zh_base || '#' + src.color.getHexString()).convertSRGBToLinear(), gradientMap: grad });
+    const L = JSON.parse(ud.zh_lines || '[]').slice(0, 2);
+    if (L.length) {
+      const ax = { X: 'x', Y: 'z', Z: 'y' };
+      m.onBeforeCompile = sh => {
+        sh.vertexShader = 'varying vec3 vRest;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
+        let code = '';
+        L.forEach(l => { const c = new THREE.Color(l[3]); const sp = best[l[0] + l[3]].toFixed(4);
+          code += `{ float f = fract(vRest.${ax[l[0]]} / ${sp}); if (f < ${l[2].toFixed(3)}) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(${c.r.toFixed(3)},${c.g.toFixed(3)},${c.b.toFixed(3)}), ${l[4].toFixed(2)}); }\n`; });
+        sh.fragmentShader = 'varying vec3 vRest;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + code);
+      };
+      m.customProgramCacheKey = () => JSON.stringify(L);
+    }
+    o.material = m; o.frustumCulled = false;
+  });
+}
+
+let mixer, actions = {}, current = 'idle';
+new GLTFLoader().load(GLB, gltf => {
+  const root = gltf.scene; toonize(root); scene.add(root);
+  mixer = new THREE.AnimationMixer(root);
+  for (const c of gltf.animations) actions[c.name] = mixer.clipAction(c);
+  setAnim('idle'); document.getElementById('load').remove();
+}, undefined, e => { document.getElementById('load').textContent = 'Could not load the model.'; console.error(e); });
+
+function setAnim(v) {
+  current = v;
+  for (const [k, a] of Object.entries(actions)) {
+    if (v === 'still') { a.stop(); continue; }
+    if (k === v) a.reset().fadeIn(.2).play(); else a.fadeOut(.2);
+  }
+  if (v === 'still' && actions.idle) { actions.idle.reset().play(); mixer.update(0); actions.idle.paused = true; }
+}
+function setCam(v) {
+  const d = 6, el = v === 'game' ? 45 : 8, az = Math.atan2(cam.position.x - controls.target.x, cam.position.z - controls.target.z) || Math.PI / 4;
+  const r = d * Math.cos(el * Math.PI / 180);
+  cam.position.set(controls.target.x + r * Math.sin(az), controls.target.y + d * Math.sin(el * Math.PI / 180), controls.target.z + r * Math.cos(az));
+  controls.update();
+}
+cam.position.set(3, 4.9, 3); setCam('game');
+function seg(id, fn) { const el = document.getElementById(id); el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b.dataset.v); }); }
+seg('anim', setAnim); seg('spin', v => controls.autoRotate = v === 'on'); seg('cam', setCam);
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.autoRotate = false;
+  document.getElementById('s-off').click(); }
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false);
+  const half = .9, a = w / h; cam.left = -half * a; cam.right = half * a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta(); if (mixer && current !== 'still') mixer.update(dt);
+  controls.update();
+  // light follows the camera a little so the face never goes fully dark
+  const off = new THREE.Vector3().subVectors(cam.position, controls.target).normalize();
+  sun.position.copy(controls.target).add(new THREE.Vector3(off.x + .9, 1.6, off.z - .4).multiplyScalar(4));
+  outline.render(scene, cam);
+});
+</script>

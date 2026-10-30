@@ -32,6 +32,8 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=None, emit=None, lines=None
     if hatch is None: hatch = DEFAULTS['hatch']
     shadow = shadow or shade_of(base)
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree
+    m['zh_base'] = base; m['zh_shadow'] = shadow; m['zh_coord'] = coord; m['zh_bands'] = bands
+    if lines: m['zh_lines'] = repr(lines)
     for n in list(nt.nodes): nt.nodes.remove(n)
     N = nt.nodes.new; L = nt.links.new
     out = N('ShaderNodeOutputMaterial')
