@@ -114,12 +114,13 @@ function toonize(root) {
 }
 
 let mixer, actions = {}, current = 'idle';
-new GLTFLoader().load(GLB, gltf => {
+const bin = Uint8Array.from(atob(GLB.split(',')[1]), c => c.charCodeAt(0)).buffer;
+new GLTFLoader().parse(bin, '', gltf => {
   const root = gltf.scene; toonize(root); scene.add(root);
   mixer = new THREE.AnimationMixer(root);
   for (const c of gltf.animations) actions[c.name] = mixer.clipAction(c);
   setAnim('idle'); document.getElementById('load').remove();
-}, undefined, e => { document.getElementById('load').textContent = 'Could not load the model.'; console.error(e); });
+}, e => { document.getElementById('load').textContent = 'Could not load the model.'; console.error(e); });
 
 function setAnim(v) {
   current = v;
