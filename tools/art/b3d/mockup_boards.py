@@ -195,6 +195,12 @@ return {{}};
 SHEETS = [('l5', 'R3AdultLineup.dc.html', 'Round 3 · Ink, grown-up character lineup', 640, None),
           ('b5', 'R3Buildings.dc.html', 'Round 3 · Ink, building sheet', 853, 'Round 3 ink building sheet: medical tent, workshop shed, log cabin, fenced farm plot, watchtower and outdoor kitchen'),
           ('z5', 'R3Zombies.dc.html', 'Round 3 · Ink, zombie variety', 640, 'Round 3 ink zombie lineup: walker, runner, bloated heavy, crawler, firefighter and farmer zombies')]
+SHEETS += [('c6', 'InkCloseup.dc.html', 'Blender 3D · Ink close-up: cabin and Farmer', 800,
+            'Blender ink-style close-up: log cabin with shingle roof, stone chimney, lit windows, barrel, crates, firewood and a crop bed, with the Farmer holding a hoe'),
+           ('t6', 'InkTurn.dc.html', 'Blender 3D · Ink Farmer, four directions', 396,
+            'The ink-style Farmer standing, facing SE, SW, NW and NE'),
+           ('w6', 'InkWalk.dc.html', 'Blender 3D · Ink Farmer walking (SE and NE)', 792,
+            'Animated walk cycle of the ink-style Farmer, front view and back view')]
 for k, n, t, h, alt in SHEETS:
     if k in URL:
         open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k], h, alt))

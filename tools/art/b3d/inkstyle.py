@@ -22,7 +22,7 @@ def shade_of(hexcol, k=0.62, hue_shift=-0.02, sat=1.12):
 
 _cache = {}
 def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None, flecks=0.0, patches=0.0, fleck_scale=9):
-    key = (name, base, shadow, speckle, hatch, emit, lines, flecks, patches, fleck_scale)
+    key = (name, base, shadow, speckle, hatch, emit, str(lines), flecks, patches, fleck_scale)
     if key in _cache: return _cache[key]
     shadow = shadow or shade_of(base)
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree
@@ -51,15 +51,21 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None
         hs = N('ShaderNodeMath'); hs.operation = 'MULTIPLY'; hs.inputs[1].default_value = 0.45; L(hm.outputs[0], hs.inputs[0])
         mix = N('ShaderNodeMix'); mix.data_type = 'RGBA'; mix.inputs['B'].default_value = (0.05, 0.035, 0.025, 1)
         L(hs.outputs[0], mix.inputs['Factor']); L(col, mix.inputs['A']); col = mix.outputs['Result']
-    if lines:   # thin ink lines in object space: plank seams, roof boards
-        axis, spacing = lines
-        sx = N('ShaderNodeSeparateXYZ'); L(tc.outputs['Object'], sx.inputs[0])
-        mu = N('ShaderNodeMath'); mu.operation = 'DIVIDE'; mu.inputs[1].default_value = spacing; L(sx.outputs[axis], mu.inputs[0])
-        fr = N('ShaderNodeMath'); fr.operation = 'FRACT'; L(mu.outputs[0], fr.inputs[0])
-        lt = N('ShaderNodeMath'); lt.operation = 'LESS_THAN'; lt.inputs[1].default_value = 0.09; L(fr.outputs[0], lt.inputs[0])
-        lk = N('ShaderNodeMath'); lk.operation = 'MULTIPLY'; lk.inputs[1].default_value = 0.75; L(lt.outputs[0], lk.inputs[0])
-        lm = N('ShaderNodeMix'); lm.data_type = 'RGBA'; lm.inputs['B'].default_value = (0.05, 0.035, 0.025, 1)
-        L(lk.outputs[0], lm.inputs['Factor']); L(col, lm.inputs['A']); col = lm.outputs['Result']
+    if lines:   # ink lines in object space: plank seams, roof boards, plaid
+        # lines = (axis, spacing) or a list of (axis, spacing[, width, hexcolour, strength])
+        specs = [lines] if isinstance(lines[0], str) else list(lines)
+        for sp in specs:
+            axis, spacing = sp[0], sp[1]
+            width = sp[2] if len(sp) > 2 else 0.09
+            colr = lin(sp[3]) if len(sp) > 3 and sp[3] else (0.05, 0.035, 0.025, 1)
+            strength = sp[4] if len(sp) > 4 else 0.75
+            sx = N('ShaderNodeSeparateXYZ'); L(tc.outputs['Object'], sx.inputs[0])
+            mu = N('ShaderNodeMath'); mu.operation = 'DIVIDE'; mu.inputs[1].default_value = spacing; L(sx.outputs[axis], mu.inputs[0])
+            fr = N('ShaderNodeMath'); fr.operation = 'FRACT'; L(mu.outputs[0], fr.inputs[0])
+            lt = N('ShaderNodeMath'); lt.operation = 'LESS_THAN'; lt.inputs[1].default_value = width; L(fr.outputs[0], lt.inputs[0])
+            lk = N('ShaderNodeMath'); lk.operation = 'MULTIPLY'; lk.inputs[1].default_value = strength; L(lt.outputs[0], lk.inputs[0])
+            lm = N('ShaderNodeMix'); lm.data_type = 'RGBA'; lm.inputs['B'].default_value = colr
+            L(lk.outputs[0], lm.inputs['Factor']); L(col, lm.inputs['A']); col = lm.outputs['Result']
     if flecks:  # scattered dark ink marks (ground, bark)
         fn = N('ShaderNodeTexVoronoi'); fn.inputs['Scale'].default_value = fleck_scale
         L(tc.outputs['Object'], fn.inputs['Vector'])
