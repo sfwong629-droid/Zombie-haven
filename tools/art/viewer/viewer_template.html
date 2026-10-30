@@ -1,4 +1,4 @@
-<title>Farmer Turntable</title>
+<title>__TITLE__</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
@@ -40,10 +40,11 @@ ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 3px
 </style>
 
 <div class="wrap">
-  <h1>Farmer v3, in 3D</h1>
-  <p class="sub">The same Blender model the sprites are rendered from: one shared body with the Farmer's clothes, hair and hoe on top. Drag to turn him, scroll or pinch to zoom.</p>
-  <div class="stage" id="stage"><div class="load" id="load">Loading the Farmer…</div><span class="hint">drag to rotate · scroll to zoom</span></div>
+  <h1>__H1__</h1>
+  <p class="sub">__SUB__</p>
+  <div class="stage" id="stage"><div class="load" id="load">Loading…</div><span class="hint">drag to rotate · scroll to zoom</span></div>
   <div class="bar">
+    <div class="grp" id="modelgrp" hidden><span class="lbl">Model</span><div class="seg" id="model"></div></div>
     <div class="grp"><span class="lbl">Motion</span>
       <div class="seg" id="anim"><button id="m-idle" data-v="idle" aria-pressed="true">Idle</button><button id="m-walk" data-v="walk" aria-pressed="false">Walk</button><button id="m-still" data-v="still" aria-pressed="false">Still</button></div></div>
     <div class="grp"><span class="lbl">Spin</span>
@@ -64,7 +65,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
 
-const GLB = "data:model/gltf-binary;base64,__GLB__";
+const MODELS = __MODELS__;
 const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -114,20 +115,34 @@ function toonize(root) {
 }
 
 let mixer, actions = {}, current = 'idle';
-const bin = Uint8Array.from(atob(GLB.split(',')[1]), c => c.charCodeAt(0)).buffer;
-new GLTFLoader().parse(bin, '', gltf => {
-  const root = gltf.scene; toonize(root); scene.add(root);
-  mixer = new THREE.AnimationMixer(root);
-  for (const c of gltf.animations) actions[c.name] = mixer.clipAction(c);
-  setAnim('idle'); document.getElementById('load').remove();
-}, e => { document.getElementById('load').textContent = 'Could not load the model.'; console.error(e); });
+let shown = null; const cache = {};
+function showModel(name) {
+  const done = gltf => {
+    if (shown) scene.remove(shown);
+    const root = gltf.scene; shown = root; scene.add(root);
+    mixer = new THREE.AnimationMixer(root); actions = {};
+    for (const c of gltf.animations) actions[c.name] = mixer.clipAction(c);
+    setAnim(current); const l = document.getElementById('load'); if (l) l.remove();
+  };
+  if (cache[name]) return done(cache[name]);
+  const bin = Uint8Array.from(atob(MODELS[name]), c => c.charCodeAt(0)).buffer;
+  new GLTFLoader().parse(bin, '', gltf => { toonize(gltf.scene); cache[name] = gltf; done(gltf); }, e => { document.getElementById('load').textContent = 'Could not load the model.'; console.error(e); });
+}
+const names = Object.keys(MODELS);
+if (names.length > 1) {
+  const el = document.getElementById('model'); document.getElementById('modelgrp').hidden = false;
+  names.forEach((n, i) => { const b = document.createElement('button'); b.id = 'mdl-' + i; b.dataset.v = n; b.textContent = n;
+    b.setAttribute('aria-pressed', i === 0); el.append(b); });
+}
+showModel(names[0]);
 
 function setAnim(v) {
-  current = v;
+  current = v; if (!mixer) return;
   for (const [k, a] of Object.entries(actions)) {
     if (v === 'still') { a.stop(); continue; }
     if (k === v) a.reset().fadeIn(.2).play(); else a.fadeOut(.2);
   }
+  if (!mixer) return;
   if (v === 'still' && actions.idle) { actions.idle.reset().play(); mixer.update(0); actions.idle.paused = true; }
 }
 function setCam(v) {
@@ -139,7 +154,7 @@ function setCam(v) {
 cam.position.set(3, 4.9, 3); setCam('game');
 function seg(id, fn) { const el = document.getElementById(id); el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
   el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b.dataset.v); }); }
-seg('anim', setAnim); seg('spin', v => controls.autoRotate = v === 'on'); seg('cam', setCam);
+seg('anim', setAnim); seg('model', showModel); seg('spin', v => controls.autoRotate = v === 'on'); seg('cam', setCam);
 if (matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.autoRotate = false;
   document.getElementById('s-off').click(); }
 

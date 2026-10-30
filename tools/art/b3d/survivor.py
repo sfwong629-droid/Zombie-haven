@@ -115,11 +115,11 @@ def body_mesh(b, J):
 
 # ------------------------------------------------------------------ head & face
 def head_mesh(b, J):
-    s = b.get('height', 1.0); hz = 1.345 * s; hr = .168 * s
-    jaw = b.get('jaw', 1.0)
+    s = b.get('height', 1.0); hr = .168 * s * b.get('head_scale', 1.0); hz = 1.18 * s + hr * .98
+    jaw = b.get('jaw', 1.0); ns = b.get('nose', 1.0)
     bm = _sphere((0, 0, hz), (hr * .96, hr, hr * 1.03), 32, 24)
     _merge(bm, _sphere((0, -hr * .25, hz - hr * .48), (hr * .62 * jaw, hr * .62, hr * .52)))      # jaw / cheeks
-    _capsule(bm, Vector((0, -hr * .86, hz + hr * .08)), Vector((0, -hr * 1.08, hz - hr * .2)), hr * .1, hr * .13, 8)   # wedge nose
+    if ns: _capsule(bm, Vector((0, -hr * .86, hz + hr * .02)), Vector((0, -hr * (.86 + .22 * ns), hz - hr * .16)), hr * .1 * ns, hr * .13 * ns, 8)   # nose
     for x in (1, -1):
         _merge(bm, _sphere((x * hr * .95, .01, hz - hr * .05), (hr * .12, hr * .2, hr * .27)))     # ears
     return _facet(_remesh(bm, 'head', 0.006 * s, smooth=5, smooth_factor=0.5), FACET['head']), hz, hr
@@ -145,8 +145,14 @@ def face(b, hz, hr, parts):
         if b.get('cheeks', False):
             c = _sphere((x * hr * .52, -hr * .78, hz - hr * .25), (hr * .13, hr * .05, hr * .08), 10, 6)
             parts.append(('cheek', _obj(c, 'cheek', cheek)))
-    m = _sphere((0, -hr * .9, hz - hr * .5), (hr * .16, hr * .05, hr * .035), 12, 6)
-    parts.append(('mouth', _obj(m, 'mouth', mouth)))
+    if b.get('smile'):   # small curved mouth: a bent capsule sitting on the face
+        mb = bmesh.new()
+        pts = [Vector((x * hr * .19, -hr * (.94 - .04 * abs(x)), hz - hr * .4 + hr * .08 * x * x)) for x in (-1, -.5, 0, .5, 1)]
+        for a_, b_ in zip(pts, pts[1:]): _capsule(mb, a_, b_, hr * .036, hr * .036, 6)
+        parts.append(('mouth', _obj(mb, 'mouth', mouth)))
+    else:
+        m = _sphere((0, -hr * .9, hz - hr * .5), (hr * .16, hr * .05, hr * .035), 12, 6)
+        parts.append(('mouth', _obj(m, 'mouth', mouth)))
     if b.get('beard'):
         bd = _sphere((0, -hr * .45, hz - hr * .62), (hr * .7, hr * .58, hr * .44), 20, 12)
         _merge(bd, _sphere((0, -hr * .78, hz - hr * .78), (hr * .4, hr * .3, hr * .3), 12, 8))
@@ -164,7 +170,8 @@ def hair(style, colour, hz, hr, parts, seed=1):
     """Closed hair volumes are fused first, then the face opening is cut out."""
     if style in (None, 'none'): return
     R = random.Random(seed)
-    bm = _sphere((0, hr * .1, hz + hr * .12), (hr * 1.07, hr * 1.08, hr * 1.02), 24, 16)
+    cap = (1.04, 1.03, 1.0) if style == 'tousled' else (1.07, 1.08, 1.02)
+    bm = _sphere((0, hr * .06, hz + hr * .12), tuple(c * hr for c in cap), 24, 16)
     if style in ('messy', 'spiky'):
         n = 11 if style == 'messy' else 13
         for i in range(n):
@@ -183,6 +190,15 @@ def hair(style, colour, hz, hr, parts, seed=1):
         for x in (-.45, -.1, .3):                                  # fringe falling forward over the brow
             base = Vector((x * hr, -hr * .55, hz + hr * .85))
             _capsule(bm, base, base + Vector((x * hr * .5 - hr * .1, -hr * .35, -hr * .25)), hr * .24, hr * .1, 6)
+    if style == 'tousled':   # one solid cap with a few chunky locks over the brow and at the crown
+        for x in (-.55, -.18, .2, .55):   # fringe stops above the brows so the eyes stay clear
+            base = Vector((x * hr, -hr * .5, hz + hr * .86))
+            _capsule(bm, base, base + Vector((x * hr * .25, -hr * .42, -hr * (.24 - .06 * abs(x)))), hr * .22, hr * .09, 8)
+        for a in (-.8, 0, .8):            # a few short crown locks, close to the head
+            base = Vector((math.sin(a) * hr * .45, hr * .25, hz + hr * .9))
+            _capsule(bm, base, base + Vector((math.sin(a) * hr * .18, hr * .22, hr * .08)), hr * .2, hr * .08, 8)
+        for x in (1, -1):   # sideburn locks
+            _capsule(bm, Vector((x * hr * .82, -hr * .2, hz + hr * .4)), Vector((x * hr * .9, -hr * .25, hz - hr * .05)), hr * .16, hr * .08, 8)
     if style == 'bun':
         _merge(bm, _sphere((0, hr * .75, hz + hr * .6), hr * .42, 16, 10))
     if style == 'ponytail':
@@ -337,6 +353,15 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
     from professions import TEMPLATES
     b = dict(TEMPLATES[prof['body'].get('template', 'average')]); b.update(prof['body']); J = joints(b)
     COVERS.clear()
+    saved = dict(FACET)
+    if b.get('smooth'): FACET.update({k: 0 for k in FACET})
+    try:
+        return _build(prof, b, J, origin, facing, tag)
+    finally:
+        FACET.update(saved)
+
+def _build(prof, b, J, origin, facing, tag):
+    import wardrobe
     body = body_mesh(b, J); body.name = tag + '_body'
     W, dom = dominant(body, J)
     import inkstyle as _ik
@@ -351,12 +376,38 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
         getattr(wardrobe, kind)(ctx, **opts)
     hide_covered(body, dom)
     # Look E proportions: shorter legs. Squash everything below the hips, shift the rest down.
-    lf = b.get('legs', .84); hip = .66 * b.get('height', 1.0)
-    def f(z): return z * lf if z < hip else z - hip * (1 - lf)
+    # Proportions: legs squashed below the hip, torso between hip and neck; head and neck top only shift.
+    # With arm_scale the arms are scaled as a whole about the shoulder, so hands keep their shape.
+    S = b.get('height', 1.0); lf = b.get('legs', .84); tf = b.get('torso', 1.0); af = b.get('arm_scale')
+    hip, neck = .66 * S, 1.10 * S
+    def f(z):
+        if z < hip: return z * lf
+        if z < neck: return hip * lf + (z - hip) * tf
+        return hip * lf + (neck - hip) * tf + (z - neck)
+    def core(co): return Vector((co.x, co.y, f(co.z)))
+    ARM = [k for k in J if k.split('.')[0] in ('upperarm', 'forearm', 'hand')]
+    def arm_map(co, side):
+        P = J['upperarm.' + side][0]; Pn = core(P)
+        a = Pn + (co - P) * af
+        w = max(0.0, min(1.0, ((co - P).length - .04 * S) / (.09 * S)))
+        return core(co).lerp(a, w)
+    def near_arm(co):
+        best, bk = 9, None
+        for k, (h, t, _) in J.items():
+            pt, u = intersect_point_line(co, h, t); u = max(0, min(1, u)); d = (co - (h + (t - h) * u)).length
+            if d < best: best, bk = d, k
+        return bk.split('.')[1] if bk in ARM else None
     for role, o in parts:
-        for v in o.data.vertices: v.co.z = f(v.co.z)
+        bone = o.get('bone')
+        for v in o.data.vertices:
+            side = None
+            if af:
+                if bone: side = bone.split('.')[1] if bone in ARM else None
+                elif role not in ('head', 'eye', 'hi', 'brow', 'cheek', 'mouth', 'beard', 'hair', 'hat'): side = near_arm(v.co)
+            v.co = arm_map(v.co, side) if side else core(v.co)
         o.data.update()
-    J = {k: (Vector((h.x, h.y, f(h.z))), Vector((t.x, t.y, f(t.z))), p) for k, (h, t, p) in J.items()}
+    def mp(k, p): return arm_map(p, k.split('.')[1]) if (af and k in ARM) else core(p)
+    J = {k: (mp(k, h), mp(k, t), p) for k, (h, t, p) in J.items()}
     ao = armature(J, tag + '_rig', origin, facing)
     # bind: body/garments by distance, head pieces rigid to the head bone, others as declared
     for role, o in parts:
@@ -364,7 +415,7 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
         rigid = o.get('bone', rigid)
         bind_weights(o, J, rigid=rigid)
         attach(o, ao)
-    return dict(arm=ao, parts=parts, J=J)
+    return dict(arm=ao, parts=parts, J=J, head_up=b.get('head_up', 0))
 
 # ------------------------------------------------------------------ posing
 SIGN = {}   # filled by calibration: per bone, +1/-1 so that 'forward' swings mean the same thing everywhere
@@ -373,6 +424,7 @@ def pose(rig, p):
     ao = rig['arm']
     for pb in ao.pose.bones:
         x, y, z = p.get(pb.name, (0, 0, 0))
+        if pb.name == 'head': x -= rig.get('head_up', 0)   # big heads tip back a little so the face meets the camera
         sg = SIGN.get(pb.name, 1)
         pb.rotation_euler = (D(x) * sg, D(y), D(z) * sg)
     ao.pose.bones['pelvis'].location = (0, 0, 0)
