@@ -219,6 +219,8 @@ SHEETS += [('g2', 'StorybookGuyV2.dc.html', 'Storybook body v2 · shorter arms, 
             'The ink reference, the first storybook survivor, then v2 from both sides with shorter arms, eyes lower on the face and side-parted swept hair')]
 SHEETS += [('g3', 'StorybookGear.dc.html', 'Storybook body v3 · bold outline, less round face, gear', 484,
             'The ink reference next to three storybook survivors with a bold dark outline: plain shirt and jeans, a scavenger with backpack, scarf and crowbar, and a guard with vest, rifle on the back and binoculars')]
+SHEETS += [('m1', 'CasualMobileRef.dc.html', 'ChatGPT · casual 3D mobile survivor style (Town Survival-like)', 640,
+            'ChatGPT character sheet of five original survivors in a polished casual 3D mobile style: farmer with pitchfork, medic with first-aid case, guard with shotgun, cook with frying pan, scavenger with backpack and crowbar, with style notes on proportions, faces, clothing and shading')]
 for k, n, t, h, alt in SHEETS:
     if k in URL:
         open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k], h, alt))
