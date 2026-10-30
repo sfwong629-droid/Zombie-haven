@@ -48,9 +48,9 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   </div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Walk side by side</div><canvas id="wcmp" aria-label="Front walks (Old, Luma raw, Luma calm, Clean) and back walks (Old, Luma raw) side by side" style="display:block;width:100%;max-width:420px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div class="row" style="margin:8px 0"><button id="tWeap" class="on">Weapons in hand</button></div>
-  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Farmer (PixelLab): all 13 animations, front and back</div><canvas id="fcmp" aria-label="The farmer's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
-  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
-  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Engineer A (PixelLab): all 13 animations, front and back</div><canvas id="ecmp" aria-label="Engineer A's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Farmer (PixelLab): all 13 animations, front and back</div><canvas id="fcmp" aria-label="The farmer's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Engineer A (PixelLab): all 13 animations, front and back</div><canvas id="ecmp" aria-label="Engineer A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Template test: farmer animations → PixelLab medic (head + colours carried by code)</div><canvas id="tcmp" aria-label="Farmer and the code-made medic: walk and swing A, front and back" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
@@ -254,16 +254,79 @@ function tplCmp(now) {
   requestAnimationFrame(tplCmp);
 }
 requestAnimationFrame(tplCmp);
-// character galleries: every PixelLab animation, front (se) and back (ne), 48-px frames
+// character galleries: every PixelLab animation, front (se) and back (ne), 48-px frames.
+// Weapons and effects are drawn by the game (as on the small-farmer test): a baseball bat or a rifle as pixel
+// strokes in the hand found in each frame (weapon_rig.json), swing trails, a comic hit burst and a muzzle flash.
+const WPN = { bat: { len: 12, body: '#b07a3e', tip: '#c99252', grip: '#3b2a1e', thick: true }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
+function wpx(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
+function drawWeapon(g, hx, hy, dx, dy, kind, back) {
+  const w = WPN[kind], n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n; const pts = [];
+  for (let i = -back; i <= (w.gun ? w.len - back : w.len); i++) pts.push([hx + dx * i, hy + dy * i, i]);
+  const fat = (i) => w.thick && i > w.len - 6;                               // the bat's barrel: thicker toward the end
+  for (const [x, y, i] of pts) for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]].concat(fat(i) ? [[1,1],[-1,-1],[1,-1],[-1,1]] : [])) wpx(g, x + ox, y + oy, '#111');
+  for (const [x, y, i] of pts) {
+    if (w.gun) wpx(g, x, y, i < 0 ? w.tip : w.body);
+    else { wpx(g, x, y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body); if (fat(i)) { wpx(g, x + 1, y, w.tip); wpx(g, x, y + 1, w.body); } }
+  }
+}
+function drawBurst(g, cx, cy, R, r, n, rot, dx = 0, dy = 0, stretch = 1) {   // comic star: yellow, red rim, pale core
+  const pts = [];
+  for (let k = 0; k < 2 * n; k++) { const a = rot + k * Math.PI / n, rr = k % 2 ? r : R * (k % 4 ? 0.82 : 1); pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+  const inside = (x, y) => { let u = x, v = y; if (stretch !== 1) { const al = u * dx + v * dy, pe = -u * dy + v * dx; u = (al / stretch) * dx - pe * dy; v = (al / stretch) * dy + pe * dx; }
+    let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > v) !== (yj > v) && u < (xj - xi) * (v - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const E = Math.ceil(R * stretch) + 2, inn = new Set();
+  for (let y = -E; y <= E; y++) for (let x = -E; x <= E; x++) if (inside(x, y)) inn.add(x + ',' + y);
+  for (let y = -E; y <= E; y++) for (let x = -E; x <= E; x++) { const k = x + ',' + y;
+    if (inn.has(k)) { const d = Math.hypot(x, y); wpx(g, cx + x, cy + y, d < r * 0.55 ? '#ffffff' : d < r * 0.95 ? '#fff27a' : '#ffd21f'); }
+    else if (inn.has((x+1)+','+y) || inn.has((x-1)+','+y) || inn.has(x+','+(y+1)) || inn.has(x+','+(y-1))) wpx(g, cx + x, cy + y, '#d2281e'); }
+}
+function drawSwoosh(g, hx, hy, a0, a1, R) {                                     // pale crescent swept by the bat tip
+  let d = a1 - a0; if (d > 180) d -= 360; if (d < -180) d += 360; if (Math.abs(d) < 30) return false;
+  const steps = Math.ceil(Math.abs(d) / 6);
+  for (let k = 0; k <= steps; k++) { const a = (a0 + d * k / steps) * Math.PI / 180, fade = k / steps;
+    [[R + 2, '#ffffff'], [R + 1, '#d9fbff'], [R, '#9eeaff'], [R - 1, fade > 0.4 ? '#6fd3f5' : null]].forEach(([r, c]) => {
+      if (!c || (r === R + 2 && fade < 0.35)) return; wpx(g, hx + Math.cos(a) * r, hy + Math.sin(a) * r, c); }); }
+  return true;
+}
+const PX = 20, PY = 12, FC = document.createElement('canvas'); FC.width = 48 + 2 * PX; FC.height = 48 + PY; const fg = FC.getContext('2d');
+function clipFrame(CA, tag, a, f) {   // one frame of a clip with its weapon and effects, at art-pixel size, in FC
+  fg.clearRect(0, 0, FC.width, FC.height);
+  const im = img[tag + a.k]; if (!im || !im.complete) return;
+  const [anim, view] = [a.k.slice(0, -3), a.k.slice(-2)], rig = showWeapons && CA.rig && CA.rig[a.k], r = rig && rig[f % rig.length];
+  let ox = 0; const n = a.n;
+  if (anim.startsWith('swing') && f >= Math.floor(n / 2) && f < n - 1) ox = 2;          // lunge into the hit
+  if (anim === 'hurt' && f < 2) ox = -2;                                                // knocked back
+  const body = () => fg.drawImage(im, f * 48, 0, 48, 48, PX + ox, PY, 48, 48);
+  if (!r) { body(); return; }
+  const kind = anim === 'fire' ? 'rifle' : 'bat', hx = r[0] + PX + ox, hy = r[1] + PY;
+  let dx, dy, behind = false, ang = r[2];
+  if (anim.startsWith('swing')) { const q = ang * Math.PI / 180; dx = Math.cos(q); dy = Math.sin(q); const backSwing = Math.abs(ang) > 110; behind = view === 'ne' ? !backSwing : backSwing; }
+  else if (anim === 'fire') { dx = 1; dy = 0.15; behind = view === 'ne'; }
+  else if (anim === 'hurt') { dx = -0.35; dy = -1; }
+  else { dx = 0.22; dy = -1; }                                                          // held ready: nearly upright
+  const back = kind === 'rifle' ? 6 : 2;
+  if (behind) { drawWeapon(fg, hx, hy, dx, dy, kind, back); body(); } else { body(); drawWeapon(fg, hx, hy, dx, dy, kind, back); }
+  if (anim.startsWith('swing') && f > 0) {
+    const p = rig[(f - 1) % rig.length];
+    if (!drawSwoosh(fg, hx, hy, p[2], ang, 13) && anim === 'swing_c' && f >= 2 && f <= 4) {   // thrust: speed lines
+      const q = ang * Math.PI / 180, nx = -Math.sin(q), ny = Math.cos(q);
+      for (let i = 2; i < 13; i++) for (const o of [-2, 2]) if ((i + o) % 3) wpx(fg, hx + Math.cos(q) * i + nx * o, hy + Math.sin(q) * i + ny * o, '#bff4ff');
+    }
+  }
+  if (anim === 'fire' && (f === 2 || f === 3)) { const L = WPN.rifle.len - back + 2, n2 = Math.hypot(dx, dy); const tx = hx + dx / n2 * L, ty = hy + dy / n2 * L;
+    if (f === 2) drawBurst(fg, tx + dx * 4, ty + dy * 4, 5, 2.4, 6, 0.3, dx / n2, dy / n2, 1.6); else drawBurst(fg, tx + dx * 2, ty + dy * 2, 3.5, 1.8, 5, 0.6, dx / n2, dy / n2, 1.4); }
+  if (anim === 'hurt' && f < 3) { const R = [8, 6, 4][f]; drawBurst(fg, PX + 30, PY + 20, R, R * 0.5, 7, f * 0.4); }
+}
 function gallery(id, CA, tag) {
-  const mc = document.getElementById(id), mg = mc.getContext('2d'), MZ = 3, MCOL = 4, MBH = 48 * MZ + 16;
-  mc.width = MCOL * 48 * MZ; mc.height = Math.ceil(CA.anims.length / MCOL) * MBH;
-  for (const a of CA.anims) { load(tag + a.k, a.src); if (a.wsrc) load(tag + 'w_' + a.k, a.wsrc); }
+  const mc = document.getElementById(id), mg = mc.getContext('2d'), MZ = 3, MCOL = 4, VW = 64, VH = 56, CW = VW * MZ, MBH = VH * MZ + 16;
+  mc.width = MCOL * CW; mc.height = Math.ceil(CA.anims.length / MCOL) * MBH;
+  for (const a of CA.anims) load(tag + a.k, a.src);
   (function draw(now) {
     mg.clearRect(0, 0, mc.width, mc.height); mg.imageSmoothingEnabled = false; mg.font = '11px system-ui, sans-serif'; mg.fillStyle = '#111'; mg.textAlign = 'center';
-    CA.anims.forEach((a, j) => { const w = showWeapons && a.wsrc, f = Math.floor(now / a.ms) % a.n, im = img[tag + (w ? 'w_' : '') + a.k], cx = (j % MCOL) * 48 * MZ, by = Math.floor(j / MCOL) * MBH;
-      if (im && im.complete) mg.drawImage(im, f * 48, 0, 48, 48, cx, by + 14, 48 * MZ, 48 * MZ);
-      mg.fillText(a.label + (w ? ' ⚔' : ''), cx + 24 * MZ, by + 11); });
+    CA.anims.forEach((a, j) => { const f = Math.floor(now / a.ms) % a.n, cx = (j % MCOL) * CW, by = Math.floor(j / MCOL) * MBH;
+      clipFrame(CA, tag, a, f);
+      mg.drawImage(FC, PX - 8, PY - 8, VW, VH, cx, by + 14, VW * MZ, VH * MZ);   // 8 px of room around the 48-px frame for the weapon
+      mg.fillText(a.label, cx + CW / 2, by + 11); });
     requestAnimationFrame(draw);
   })(0);
 }

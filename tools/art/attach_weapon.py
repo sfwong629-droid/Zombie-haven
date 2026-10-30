@@ -99,5 +99,32 @@ def main(strip, weapon, mode, out, hold_rot):
             res.paste(fr, (i * C, 0))
     res.save(out)
 
+def rig(strip, hold_rot, mode):
+    """per frame: [hand x, hand y, arm angle in degrees (0 = forward, -90 = up)] for the game to draw the weapon"""
+    skin = skin_of(hold_rot); s = Image.open(strip).convert('RGBA'); n = s.width // C
+    f0 = np.array(s.crop((0, 0, C, C))); ys, xs = np.where(f0[..., 3] > 0); t0 = ys.min()
+    hm = ys <= t0 + 9; head0 = (xs[hm].mean(), ys[hm].mean())
+    out, prev, prev_t = [], None, 0
+    for i in range(n):
+        a = np.array(s.crop((i * C, 0, i * C + C, C))); ys, xs = np.where(a[..., 3] > 0); t = ys.min()
+        head = (xs[ys <= t + 9].mean(), head0[1] + (t - t0))
+        hit = hand_of(a, head, skin)
+        if prev and (hit is None or (mode != 'swing' and math.hypot(hit[0][0] - prev[0][0], hit[0][1] - prev[0][1]) > 5)):
+            dy = t - prev_t; hit = ((prev[0][0], prev[0][1] + dy), (prev[1][0], prev[1][1] + dy), [])
+        if hit: prev, prev_t = hit, t
+        if not hit: out.append(None); continue
+        (hx, hy), (cx, cy), _ = hit
+        out.append([round(float(hx), 1), round(float(hy), 1), round(math.degrees(math.atan2(hy - cy, hx - cx)))])
+    # frames before the first found hand borrow the first one
+    first = next((r for r in out if r), None)
+    return [r or first for r in out]
+
 if __name__ == '__main__':
-    main(*sys.argv[1:6])
+    if sys.argv[1] == 'rig':   # rig <char_dir> <prefix> <hold_rotation> <out.json>
+        import json
+        d, pre, hr, o = sys.argv[2:6]
+        MODES = {'hold_idle': 'hold', 'hold_walk': 'hold', 'swing_a': 'swing', 'swing_b': 'swing', 'swing_c': 'swing', 'hurt': 'hold', 'fire': 'fire'}
+        R = {f'{k}_{t}': rig(f'{d}/{pre}_{k}_{t}.png', hr, m) for k, m in MODES.items() for t in ('se', 'ne')}
+        json.dump(R, open(o, 'w'))
+    else:
+        main(*sys.argv[1:6])
