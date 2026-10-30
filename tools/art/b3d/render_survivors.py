@@ -34,7 +34,7 @@ Z = float(([a.split('=')[1] for a in sys.argv if a.startswith('zoom=')] or ['1']
 PPM = 300 * Z
 W = int(PPM * (len(names) * gap + .5)); H = int(560 * Z)
 TILT = float(([a.split('=')[1] for a in sys.argv if a.startswith('tilt=')] or ['45'])[0])
-cam.data.type = 'ORTHO'; cam.data.ortho_scale = W / PPM; cam.rotation_euler = (D(TILT), 0, D(45))
+cam.data.type = 'ORTHO'; cam.data.ortho_scale = max(W, H) / PPM; cam.rotation_euler = (D(TILT), 0, D(45))
 look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .72)) - look * 30
 cam.data.clip_end = 80; S.camera = cam
 S.render.resolution_x, S.render.resolution_y = W, H
@@ -76,7 +76,6 @@ if 'lineup' in JOBS:
     for v in VIEWS:
         for r in rigs:
             r['arm'].rotation_euler = (0, 0, D(FACE[v])); p_ = survivor.idle(0)
-            if TILT > 60: r['head_up'] = 0   # eye-level sheet: head level
             if APOSE: p_['upperarm.L'] = (p_['upperarm.L'][0], 0, p_['upperarm.L'][2] - APOSE); p_['upperarm.R'] = (p_['upperarm.R'][0], 0, p_['upperarm.R'][2] + APOSE)
             survivor.pose(r, p_)
         p = os.path.join(OUT, f'lineup_{v}.png'); shot(p); on_paper(p, os.path.join(OUT, f'lineup_{v}_paper.png'))

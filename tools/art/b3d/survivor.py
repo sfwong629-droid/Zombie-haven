@@ -99,7 +99,7 @@ def body_mesh(b, J):
     _capsule(bm, J['neck'][0] - Vector((0, 0, .03)), J['neck'][1], .052 * s, .05 * s)
     for side in 'LR':
         ua, fa, hd = J['upperarm.' + side], J['forearm.' + side], J['hand.' + side]
-        _merge(bm, _sphere(ua[0], .07 * s * bulk))   # shoulder ball
+        _merge(bm, _sphere(ua[0], .07 * s * bulk * b.get('delt', 1.0)))   # shoulder ball
         _capsule(bm, ua[0], ua[1], .064 * s * bulk, .055 * s * bulk)
         _capsule(bm, fa[0], fa[1], .055 * s * bulk, .043 * s)
         hc = (hd[0] + hd[1]) / 2
@@ -130,33 +130,54 @@ def head_mesh(b, J):
     return _facet(_remesh(bm, 'head', 0.006 * s, smooth=5, smooth_factor=0.5), FACET['head']), hz, hr
 
 def face(b, hz, hr, parts):
-    """Eyes, highlights, brows, mouth, cheeks. Big oval eyes read from the 45 deg camera."""
+    """Eyes, highlights, brows, mouth, cheeks. Big oval eyes read from the 45 deg camera.
+    With snap_face the features are set into the head surface instead of floating at fixed depths."""
     eye = ink('f_eye', '#1a1310', hatch=False, speckle=0)
     hi = ink('f_hi', '#fff8e8', hatch=False, speckle=0, emit=('#ffffff', 0.4))
     brow = ink('f_brow', b.get('brow', '#3a2516'), hatch=False, speckle=0)
     cheek = ink('f_cheek', '#e08a72', hatch=False, speckle=0)
     mouth = ink('f_mouth', '#5a2a1e', hatch=False, speckle=0)
     es = b.get('eye_size', 1.0) * 1.2; ey = hz + hr * b.get('eye_y', .12); ex = hr * b.get('eye_x', .34)
+    snap = b.get('snap_face')
+    if snap:
+        from mathutils.bvhtree import BVHTree
+        head = dict(parts)['head']; me = head.data
+        tree = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+        def Y(x, z, default):
+            hit = tree.ray_cast(Vector((x, -3 * hr, z)), Vector((0, 1, 0)))
+            return hit[0].y if hit[0] is not None else default
+    else:
+        def Y(x, z, default): return default
     for x in (1, -1):
-        e = _sphere((x * ex, -hr * .9, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
+        sy = Y(x * ex, ey, -hr * .98)
+        eyc = sy + hr * .045 if snap else -hr * .9          # mostly sunk into the face
+        e = _sphere((x * ex, eyc, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
         parts.append(('eye', _obj(e, 'eye', eye)))
-        h = _sphere((x * ex + hr * .035, -hr * .985, ey + hr * .07), hr * .035, 8, 6)
+        hy = (eyc - hr * .08 * .8) if snap else -hr * .985
+        h = _sphere((x * ex + hr * .035, hy, ey + hr * .07), hr * .035, 8, 6)
         parts.append(('hi', _obj(h, 'hi', hi)))
+        bz = ey + hr * (.16 * es + .1) if snap else ey + hr * .29
+        by = Y(x * ex, bz, -hr * .93) + hr * .03 if snap else -hr * .93
         bb = bmesh.new(); bmesh.ops.create_cube(bb, size=1)
-        bmesh.ops.scale(bb, vec=Vector((hr * .34, hr * .08, hr * .085)), verts=bb.verts)
+        bmesh.ops.scale(bb, vec=Vector((hr * .34, hr * .08, hr * .085)) * (.85 if snap else 1), verts=bb.verts)
         bmesh.ops.rotate(bb, cent=Vector(), matrix=Matrix.Rotation(x * D(b.get('brow_tilt', 8)), 3, 'Y'), verts=bb.verts)
-        bmesh.ops.translate(bb, vec=Vector((x * ex, -hr * .93, ey + hr * .29)), verts=bb.verts)
+        bmesh.ops.translate(bb, vec=Vector((x * ex, by, bz)), verts=bb.verts)
         parts.append(('brow', _obj(bb, 'brow', brow)))
         if b.get('cheeks', False):
-            c = _sphere((x * hr * .52, -hr * .78, hz - hr * .25), (hr * .13, hr * .05, hr * .08), 10, 6)
+            cz = hz - hr * .25; cy = Y(x * hr * .52, cz, -hr * .78) + hr * .03 if snap else -hr * .78
+            c = _sphere((x * hr * .52, cy, cz), (hr * .13, hr * .05, hr * .08), 10, 6)
             parts.append(('cheek', _obj(c, 'cheek', cheek)))
+    my = b.get('mouth_y', .5)
     if b.get('smile'):   # small curved mouth: a bent capsule sitting on the face
-        mb = bmesh.new()
-        pts = [Vector((x * hr * .19, -hr * (.94 - .04 * abs(x)), hz - hr * b.get('mouth_y', .4) + hr * .08 * x * x)) for x in (-1, -.5, 0, .5, 1)]
-        for a_, b_ in zip(pts, pts[1:]): _capsule(mb, a_, b_, hr * .036, hr * .036, 6)
+        mb = bmesh.new(); pts = []
+        for x in (-1, -.5, 0, .5, 1):
+            px, pz = x * hr * .17, hz - hr * my + hr * .07 * x * x
+            py = Y(px, pz, -hr * (.94 - .04 * abs(x))) + (hr * .012 if snap else 0)
+            pts.append(Vector((px, py, pz)))
+        for a_, b_ in zip(pts, pts[1:]): _capsule(mb, a_, b_, hr * .032, hr * .032, 6)
         parts.append(('mouth', _obj(mb, 'mouth', mouth)))
     else:
-        m = _sphere((0, -hr * .9, hz - hr * b.get('mouth_y', .5)), (hr * .16, hr * .05, hr * .035), 12, 6)
+        m = _sphere((0, -hr * .9, hz - hr * my), (hr * .16, hr * .05, hr * .035), 12, 6)
         parts.append(('mouth', _obj(m, 'mouth', mouth)))
     if b.get('beard'):
         bd = _sphere((0, -hr * .45, hz - hr * .62), (hr * .7, hr * .58, hr * .44), 20, 12)
@@ -247,6 +268,7 @@ def hair(style, colour, hz, hr, parts, seed=1):
     parts.append(('hair', o))
 
 # ------------------------------------------------------------------ garments cut from the body
+CLOTH = [1.0]   # garment offset/thickness factor for the body being built
 COVERS = []   # keep() rules of every garment on the survivor being built: the body under them is removed
 
 def hide_covered(body, dom, rings=2):
@@ -267,6 +289,7 @@ def hide_covered(body, dom, rings=2):
 def garment(body, dom, keep, offset, name, mat, thicken=.006):
     """Copy the body, keep only vertices whose dominant bone/height pass keep(bone, co), push out along normals."""
     COVERS.append(keep)
+    offset *= CLOTH[0]; thicken *= CLOTH[0]
     bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table(); bm.normal_update()
     drop = [v for v in bm.verts if not keep(dom[v.index], v.co)]
     for v in bm.verts: v.co += v.normal * offset
@@ -377,7 +400,7 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
     from professions import TEMPLATES
     b = dict(TEMPLATES[prof['body'].get('template', 'average')]); b.update(prof['body']); J = joints(b)
     COVERS.clear()
-    saved = dict(FACET)
+    saved = dict(FACET); CLOTH[0] = b.get('cloth', 1.0)
     if b.get('smooth'): FACET.update({k: 0 for k in FACET})
     try:
         return _build(prof, b, J, origin, facing, tag)

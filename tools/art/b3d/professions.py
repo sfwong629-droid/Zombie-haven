@@ -9,9 +9,9 @@ TEMPLATES = {
     'broad':   {'height': 1.03, 'shoulders': 1.12, 'hips': 1.04, 'belly': 1.1, 'bulk': 1.09},
     'slight':  {'height': .96, 'shoulders': .92, 'hips': 1.04, 'belly': .95, 'bulk': .93},
     # storybook: about three heads tall, big round head, short torso and legs, stubby arms (ink reference)
-    'storybook': {'height': 1.0, 'shoulders': .96, 'hips': 1.02, 'belly': 1.0, 'bulk': 1.12,
-                  'head_scale': 1.38, 'legs': .66, 'torso': .8, 'arm_scale': .52, 'nose': .45, 'eye_size': 1.15, 'smile': True, 'head_up': 10,
-                  'eye_y': -.04, 'eye_x': .37, 'mouth_y': .5, 'head_shape': (.88, .94, 1.06), 'chin': True},
+    'storybook': {'height': 1.0, 'shoulders': .8, 'hips': .86, 'belly': .9, 'bulk': .84, 'arm_thick': .62, 'delt': .55, 'cloth': .5,
+                  'head_scale': 1.38, 'legs': .66, 'torso': .8, 'arm_scale': .52, 'nose': .45, 'eye_size': 1.15, 'smile': True, 'head_up': -6,
+                  'eye_y': -.17, 'eye_x': .36, 'mouth_y': .6, 'head_shape': (.88, .94, 1.06), 'chin': True, 'snap_face': True},
 }
 SKIN = ['#f2c4a0', '#e8b08a', '#d99a72', '#c98e6a', '#a86a48', '#8e5a3e', '#6a4030']
 HAIR_COLOURS = ['#d8a854', '#c0602a', '#8a4a2a', '#4a3020', '#2a1f18', '#1a1210', '#b8b0a0']
@@ -79,8 +79,8 @@ ORDER = ['farmer', 'medic', 'guard', 'cook', 'scavenger', 'engineer']
 _BARE = {'hair': 'swoop', 'hair_colour': '#6a4428', 'seed': 2,
          'wear': [('shirt', {'colour': '#c9c4b8', 'sleeves': 'short', 'buttons': False, 'collar': False}), ('pants', {'colour': '#6a6e78'}), ('boots', {'colour': '#4a3a2e'})]}
 _SHAPES = {
-    'shape_a': {},                                                                                          # current (too buff)
-    'shape_b': {'bulk': .84, 'shoulders': .82, 'arm_thick': .62, 'belly': .92},                              # slimmer
+    'shape_a': {'bulk': 1.12, 'shoulders': .96, 'arm_thick': .85, 'belly': 1.0, 'delt': 1.0, 'cloth': 1.0},   # first version (too buff)
+    'shape_b': {},                                                                                          # chosen: now the storybook default
     'shape_c': {'bulk': .72, 'shoulders': .72, 'hips': .9, 'arm_thick': .55, 'belly': .88},                  # slight
     'shape_d': {'bulk': .74, 'shoulders': .74, 'hips': .92, 'arm_thick': .56, 'belly': .9, 'legs': .76, 'torso': .86},   # slight, longer legs
 }
