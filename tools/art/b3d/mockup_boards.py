@@ -52,12 +52,16 @@ STY = {
 for _k, _t in (('gpt1', 'ChatGPT 1 · Painted survival'), ('gpt2', 'ChatGPT 2 · Overcast scrap fort'),
                ('gpt3', 'ChatGPT 3 · Autumn evening'), ('gpt4', 'ChatGPT 4 · Grounded detail')):
     STY[_k] = dict(STY['gritty'], title=_t)
+for _k, _base, _t in (('s1', 'gritty', 'Style 1 · Oil painting'), ('s2', 'toy', 'Style 2 · Flat vector'),
+                      ('s3', 'gritty', 'Style 3 · Hand-drawn ink cartoon'), ('s4', 'gritty', 'Style 4 · Comic cel-shaded'),
+                      ('s5', 'night', 'Style 5 · Noir, red accent'), ('s6', 'toy', 'Style 6 · Clay diorama')):
+    STY[_k] = dict(STY[_base], title=_t, toyhud=(_base == 'toy'))
 RES = [('food', 'Food', '46'), ('water', 'Water', '31'), ('wood', 'Wood', '120'), ('scrap', 'Scrap', '58'), ('med', 'Medicine', '9')]
 BUILD = [('house', 'Shelter'), ('farm', 'Farm'), ('tool', 'Workshop'), ('med', 'Medical'), ('wall', 'Defense'), ('box', 'Storage')]
 
 def board(key):
     s = STY[key]; img = URL[key]
-    toy = key == 'toy'
+    toy = key == 'toy' or s.get('toyhud', False)
     pad = '10px 14px' if not toy else '10px 16px'
     shadow = 'box-shadow: 0 6px 18px rgba(0,0,0,0.35);' if not toy else 'box-shadow: 0 6px 0 rgba(60,90,40,0.18), 0 10px 24px rgba(0,0,0,0.12);'
     P = f"background: {s['panel']}; border: 1px solid {s['edge']}; border-radius: {s['radius']}; {shadow} color: {s['ink']};"
@@ -142,7 +146,9 @@ return {{}};
     return html
 
 names = {'gritty': 'Main.dc.html', 'night': 'Night.dc.html', 'toy': 'Toy.dc.html',
-         'gpt1': 'GptPainted.dc.html', 'gpt2': 'GptScrap.dc.html', 'gpt3': 'GptAutumn.dc.html', 'gpt4': 'GptDetail.dc.html'}
+         'gpt1': 'GptPainted.dc.html', 'gpt2': 'GptScrap.dc.html', 'gpt3': 'GptAutumn.dc.html', 'gpt4': 'GptDetail.dc.html',
+         's1': 'StyleOil.dc.html', 's2': 'StyleFlat.dc.html', 's3': 'StyleInk.dc.html', 's4': 'StyleComic.dc.html',
+         's5': 'StyleNoir.dc.html', 's6': 'StyleClay.dc.html'}
 for k, n in names.items():
     if k not in URL: continue
     open(os.path.join(ROOT, 'project', n), 'w').write(board(k))
