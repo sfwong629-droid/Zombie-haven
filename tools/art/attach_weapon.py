@@ -35,20 +35,33 @@ def skin_of(hold_rot):
     return np.array(keep or cols)
 
 def hand_of(f, head_c, skin):
+    """the lead hand: a patch of skin colour that is NOT the face. Skin pixels are grouped into touching patches;
+    the face is the patch nearest the head centre; the hand is the remaining patch farthest from the shoulder."""
+    from scipy import ndimage
     a = f; ys, xs = np.where(a[..., 3] > 0)
     if not len(ys): return None
     top, bot = ys.min(), ys.max(); h = bot - top
     band = (ys >= top + .33 * h) & (ys <= top + .6 * h)
     cx, cy = xs[band].mean(), ys[band].mean()
-    hip = top + .66 * h
-    sk = [(x, y) for y, x in zip(ys, xs) if y <= hip and np.abs(skin - a[y, x, :3].astype(int)).sum(1).min() < TOL
-          and math.hypot(x - head_c[0], y - head_c[1]) >= HEADR]
-    sk = [(x, y) for x, y in sk if x >= cx - 3 or y < top + 4]
-    if not sk: return None
-    best = max(sk, key=lambda p: math.hypot(p[0] - cx, (p[1] - cy) * 1.1))
-    pts = [p for p in sk if abs(p[0] - best[0]) <= 2 and abs(p[1] - best[1]) <= 2]
-    hx = np.mean([p[0] for p in pts]); hy = np.mean([p[1] for p in pts])
-    return (hx, hy), (cx, cy), pts
+    m = np.zeros(a.shape[:2], bool)
+    for y, x in zip(ys, xs):
+        if y <= top + .75 * h and np.abs(skin - a[y, x, :3].astype(int)).sum(1).min() < TOL: m[y, x] = True
+    lab, n = ndimage.label(m, structure=np.ones((3, 3)))
+    if n == 0: return None
+    cents = ndimage.center_of_mass(m, lab, range(1, n + 1)); sizes = ndimage.sum(m, lab, range(1, n + 1))
+    near = [k for k in range(n) if math.hypot(cents[k][1] - head_c[0], cents[k][0] - head_c[1]) <= 8 and sizes[k] >= 8]
+    face = max(near, key=lambda k: sizes[k]) if near else -1   # the face is the BIG skin patch at the head (a fist is small)
+    sx, sy = cx + 1, top + .36 * h                                                       # the lead shoulder
+    best = None
+    for k in range(n):
+        if k == face or sizes[k] < 1: continue
+        yy, xx = cents[k]; d = math.hypot(xx - sx, yy - sy)
+        if xx < cx - 3 and yy > top + 3: continue                     # the back hand (behind the body)
+        if best is None or d > best[0]: best = (d, k)
+    if best is None: return None
+    k = best[1]; pts = [(x, y) for y, x in zip(*np.where(lab == k + 1))]
+    yy, xx = cents[k]
+    return (xx, yy), (sx, sy), pts
 
 def rot(w, deg, grip):
     """rotate the weapon about its grip with nearest-neighbour (pixels stay pixels); returns image + new grip"""
@@ -99,7 +112,16 @@ def main(strip, weapon, mode, out, hold_rot):
             res.paste(fr, (i * C, 0))
     res.save(out)
 
-def rig(strip, hold_rot, mode):
+def bat_angle(kind, ax, ay):
+    """the bat's direction from where the hand is relative to the shoulder (0 = forward, -90 = up, 90 = down).
+    The bat is not the arm: hand forward at shoulder height -> bat raised up-forward; hand up high -> bat back
+    over the shoulder; hand low in front (the hit) -> bat out forward and down. A thrust keeps it along the arm."""
+    e = math.degrees(math.atan2(-ay, ax))            # arm elevation: + up, - down
+    if kind == 'swing_c': return round(math.degrees(math.atan2(ay, ax)) * .35)
+    b = -70 - 1.0 * e if e >= 0 else -70 - 2.6 * e   # raised arm swings the bat back; lowered arm brings it through
+    return round(max(-175, min(75, b)))
+
+def rig(strip, hold_rot, mode, kind=''):
     """per frame: [hand x, hand y, arm angle in degrees (0 = forward, -90 = up)] for the game to draw the weapon"""
     skin = skin_of(hold_rot); s = Image.open(strip).convert('RGBA'); n = s.width // C
     f0 = np.array(s.crop((0, 0, C, C))); ys, xs = np.where(f0[..., 3] > 0); t0 = ys.min()
@@ -113,8 +135,8 @@ def rig(strip, hold_rot, mode):
             dy = t - prev_t; hit = ((prev[0][0], prev[0][1] + dy), (prev[1][0], prev[1][1] + dy), [])
         if hit: prev, prev_t = hit, t
         if not hit: out.append(None); continue
-        (hx, hy), (cx, cy), _ = hit
-        out.append([round(float(hx), 1), round(float(hy), 1), round(math.degrees(math.atan2(hy - cy, hx - cx)))])
+        (hx, hy), (sx, sy), _ = hit
+        out.append([round(float(hx), 1), round(float(hy), 1), bat_angle(kind, hx - sx, hy - sy)])
     # frames before the first found hand borrow the first one
     first = next((r for r in out if r), None)
     return [r or first for r in out]
@@ -124,7 +146,7 @@ if __name__ == '__main__':
         import json
         d, pre, hr, o = sys.argv[2:6]
         MODES = {'hold_idle': 'hold', 'hold_walk': 'hold', 'swing_a': 'swing', 'swing_b': 'swing', 'swing_c': 'swing', 'hurt': 'hold', 'fire': 'fire'}
-        R = {f'{k}_{t}': rig(f'{d}/{pre}_{k}_{t}.png', hr, m) for k, m in MODES.items() for t in ('se', 'ne')}
+        R = {f'{k}_{t}': rig(f'{d}/{pre}_{k}_{t}.png', hr, m, k) for k, m in MODES.items() for t in ('se', 'ne')}
         json.dump(R, open(o, 'w'))
     else:
         main(*sys.argv[1:6])
