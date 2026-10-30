@@ -14,7 +14,7 @@ def _mat(name, colour, pattern=None, accent=None, **kw):
     lines = None
     if pattern == 'plaid':
         a = accent or '#1e3a1a'
-        lines = [('X', .07, .3, a, .55), ('Z', .05, .3, a, .45), ('X', .07, .07, a, .8), ('Z', .05, .07, a, .8)]
+        lines = [('X', .16, .45, a, .5), ('Z', .12, .45, a, .4)]     # big checks (Look E)
     elif pattern == 'stripes':
         lines = [('Z', .06, .3, accent or '#20201c', .6)]
     elif pattern == 'seams':

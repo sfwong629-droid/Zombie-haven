@@ -65,6 +65,18 @@ def _capsule(bm_all, p0, p1, r0, r1, seg=16):
 def _merge(dst, src):
     me = bpy.data.meshes.new('_t'); src.to_mesh(me); src.free(); dst.from_mesh(me); bpy.data.meshes.remove(me)
 
+# Look E (low-poly papercraft): every organic mesh is decimated to big flat facets.
+FACET = {'body': .03, 'head': .05, 'hair': .05, 'garment': .035, 'beard': .12}
+
+def _facet(o, ratio):
+    """Collapse a smooth mesh into big flat facets (the folded-paper look)."""
+    if not ratio: return o
+    d = o.modifiers.new('dec', 'DECIMATE'); d.decimate_type = 'COLLAPSE'; d.ratio = ratio; d.use_collapse_triangulate = True
+    dg = bpy.context.evaluated_depsgraph_get(); ev = o.evaluated_get(dg)
+    nm = bpy.data.meshes.new_from_object(ev); o.modifiers.remove(d); old = o.data; o.data = nm; bpy.data.meshes.remove(old)
+    for p in o.data.polygons: p.use_smooth = False
+    return o
+
 def _remesh(bm, name, voxel, smooth=6, smooth_factor=0.6):
     """Fuse overlapping primitives into one clean surface (voxel remesh + smoothing)."""
     me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
@@ -91,25 +103,25 @@ def body_mesh(b, J):
         _capsule(bm, ua[0], ua[1], .056 * s * bulk, .046 * s * bulk)
         _capsule(bm, fa[0], fa[1], .046 * s * bulk, .036 * s)
         hc = (hd[0] + hd[1]) / 2
-        _merge(bm, _sphere(hc, (.038 * s, .03 * s, .062 * s)))                       # mitten hand
-        thumb = hc + Vector((0, -.03, .02)) * s
-        _merge(bm, _sphere(thumb, (.017 * s, .02 * s, .03 * s)))
+        _merge(bm, _sphere(hc, (.047 * s, .037 * s, .068 * s)))                      # chunky mitten hand
+        thumb = hc + Vector((0, -.035, .022)) * s
+        _merge(bm, _sphere(thumb, (.02 * s, .024 * s, .034 * s)))
         th, sh, ft = J['thigh.' + side], J['shin.' + side], J['foot.' + side]
         _capsule(bm, th[0] + Vector((0, 0, .03)) * s, th[1], .082 * s * bulk, .062 * s * bulk)
         _capsule(bm, sh[0], sh[1], .06 * s * bulk, .045 * s)
-        _merge(bm, _sphere((ft[0] + ft[1]) / 2 + Vector((0, 0, -.01)) * s, (.05 * s, .1 * s, .045 * s)))
-    return _remesh(bm, 'body', 0.011 * s, smooth=8)
+        _merge(bm, _sphere((ft[0] + ft[1]) / 2 + Vector((0, 0, -.01)) * s, (.06 * s, .115 * s, .05 * s)))
+    return _remesh(bm, 'body', 0.011 * s, smooth=8)      # faceted later, after covered skin is removed
 
 # ------------------------------------------------------------------ head & face
 def head_mesh(b, J):
-    s = b.get('height', 1.0); hz = 1.335 * s; hr = .158 * s
+    s = b.get('height', 1.0); hz = 1.345 * s; hr = .168 * s
     jaw = b.get('jaw', 1.0)
     bm = _sphere((0, 0, hz), (hr * .96, hr, hr * 1.03), 32, 24)
     _merge(bm, _sphere((0, -hr * .25, hz - hr * .48), (hr * .62 * jaw, hr * .62, hr * .52)))      # jaw / cheeks
-    _merge(bm, _sphere((0, -hr * .98, hz - hr * .12), (hr * .14, hr * .16, hr * .17)))            # nose
+    _capsule(bm, Vector((0, -hr * .86, hz + hr * .08)), Vector((0, -hr * 1.08, hz - hr * .2)), hr * .1, hr * .13, 8)   # wedge nose
     for x in (1, -1):
         _merge(bm, _sphere((x * hr * .95, .01, hz - hr * .05), (hr * .12, hr * .2, hr * .27)))     # ears
-    return _remesh(bm, 'head', 0.006 * s, smooth=5, smooth_factor=0.5), hz, hr
+    return _facet(_remesh(bm, 'head', 0.006 * s, smooth=5, smooth_factor=0.5), FACET['head']), hz, hr
 
 def face(b, hz, hr, parts):
     """Eyes, highlights, brows, mouth, cheeks. Big oval eyes read from the 45 deg camera."""
@@ -120,7 +132,7 @@ def face(b, hz, hr, parts):
     mouth = ink('f_mouth', '#5a2a1e', hatch=False, speckle=0)
     es = b.get('eye_size', 1.0); ey = hz + hr * .12; ex = hr * .34
     for x in (1, -1):
-        e = _sphere((x * ex, -hr * .9, ey), (hr * .12 * es, hr * .08, hr * .19 * es), 16, 10)
+        e = _sphere((x * ex, -hr * .9, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
         parts.append(('eye', _obj(e, 'eye', eye)))
         h = _sphere((x * ex + hr * .035, -hr * .985, ey + hr * .07), hr * .035, 8, 6)
         parts.append(('hi', _obj(h, 'hi', hi)))
@@ -129,13 +141,17 @@ def face(b, hz, hr, parts):
         bmesh.ops.rotate(bb, cent=Vector(), matrix=Matrix.Rotation(x * D(b.get('brow_tilt', 8)), 3, 'Y'), verts=bb.verts)
         bmesh.ops.translate(bb, vec=Vector((x * ex, -hr * .93, ey + hr * .29)), verts=bb.verts)
         parts.append(('brow', _obj(bb, 'brow', brow)))
-        c = _sphere((x * hr * .52, -hr * .78, hz - hr * .25), (hr * .13, hr * .05, hr * .08), 10, 6)
-        parts.append(('cheek', _obj(c, 'cheek', cheek)))
+        if b.get('cheeks', False):
+            c = _sphere((x * hr * .52, -hr * .78, hz - hr * .25), (hr * .13, hr * .05, hr * .08), 10, 6)
+            parts.append(('cheek', _obj(c, 'cheek', cheek)))
     m = _sphere((0, -hr * .9, hz - hr * .5), (hr * .16, hr * .05, hr * .035), 12, 6)
     parts.append(('mouth', _obj(m, 'mouth', mouth)))
     if b.get('beard'):
-        bd = _sphere((0, -hr * .45, hz - hr * .62), (hr * .66, hr * .55, hr * .4), 20, 12)
-        parts.append(('beard', _obj(bd, 'beard', ink('f_beard', b['beard'], hatch=False, lines=[('Z', .05, .25, None, .45)], coord='Generated'))))
+        bd = _sphere((0, -hr * .45, hz - hr * .62), (hr * .7, hr * .58, hr * .44), 20, 12)
+        _merge(bd, _sphere((0, -hr * .78, hz - hr * .78), (hr * .4, hr * .3, hr * .3), 12, 8))
+        o = _remesh(bd, 'beard', .006, smooth=2); _facet(o, FACET['beard'])
+        o.data.materials.append(ink('f_beard' + b['beard'], b['beard'], hatch=False))
+        parts.append(('beard', o))
 
 def _obj(bm, name, mat):
     me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free(); o = _link(me, name); o.data.materials.append(mat)
@@ -147,15 +163,15 @@ def hair(style, colour, hz, hr, parts, seed=1):
     """Closed hair volumes are fused first, then the face opening is cut out."""
     if style in (None, 'none'): return
     R = random.Random(seed)
-    bm = _sphere((0, hr * .1, hz + hr * .12), (hr * 1.05, hr * 1.06, hr * 1.0), 24, 16)
+    bm = _sphere((0, hr * .1, hz + hr * .12), (hr * 1.07, hr * 1.08, hr * 1.02), 24, 16)
     if style in ('messy', 'spiky'):
-        n = 16 if style == 'messy' else 22
+        n = 11 if style == 'messy' else 13
         for i in range(n):
             a = R.uniform(0, 2 * math.pi); el = R.uniform(.35, 1.25)
             dirv = Vector((math.cos(a) * math.cos(el), math.sin(a) * math.cos(el) + .15, math.sin(el))).normalized()
             base = Vector((0, hr * .08, hz + hr * .14)) + dirv * hr * .85
             tip = base + (dirv + Vector((0, 0, -.2 if style == 'messy' else .2))).normalized() * hr * R.uniform(.32, .55)
-            _capsule(bm, base, tip, hr * R.uniform(.16, .22), hr * .035, 8)
+            _capsule(bm, base, tip * 1.0 + (tip - base) * .6, hr * R.uniform(.24, .32), hr * .03, 6)
     if style == 'bun':
         _merge(bm, _sphere((0, hr * .75, hz + hr * .6), hr * .42, 16, 10))
     if style == 'ponytail':
@@ -174,20 +190,38 @@ def hair(style, colour, hz, hr, parts, seed=1):
         if abs(c.x) > hr * .9 and c.z < hz + hr * .05 and c.y < hr * .2: return True   # keep ears clear
         return False
     bmesh.ops.delete(fb, geom=[v for v in fb.verts if gone(v.co)], context='VERTS')
-    fb.to_mesh(o.data); fb.free()
+    fb.to_mesh(o.data); fb.free(); _facet(o, FACET['hair'])
     so = o.modifiers.new('t', 'SOLIDIFY'); so.thickness = .006
-    o.data.materials.append(ink('hair' + colour, colour, lines=[('X', .07, .2, None, .45)], coord='Generated', hatch=False))
+    o.data.materials.append(ink('hair' + colour, colour, hatch=False, speckle=.08))
     parts.append(('hair', o))
 
 # ------------------------------------------------------------------ garments cut from the body
+COVERS = []   # keep() rules of every garment on the survivor being built: the body under them is removed
+
+def hide_covered(body, dom, rings=2):
+    """Delete body skin that clothing covers (keeping a small overlap under the edges), then facet what is left."""
+    bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table()
+    covered = [any(k(dom[v.index], v.co) for k in COVERS) for v in bm.verts]
+    show = [not c for c in covered]
+    for _ in range(rings):   # grow the visible skin a little under garment edges
+        grow = list(show)
+        for e in bm.edges:
+            a, b = e.verts[0].index, e.verts[1].index
+            if show[a] or show[b]: grow[a] = grow[b] = True
+        show = grow
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not show[v.index]], context='VERTS')
+    bm.to_mesh(body.data); bm.free(); body.data.update()
+    return _facet(body, FACET['body'] * 2.2)
+
 def garment(body, dom, keep, offset, name, mat, thicken=.006):
     """Copy the body, keep only vertices whose dominant bone/height pass keep(bone, co), push out along normals."""
+    COVERS.append(keep)
     bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table(); bm.normal_update()
     drop = [v for v in bm.verts if not keep(dom[v.index], v.co)]
     for v in bm.verts: v.co += v.normal * offset
     bmesh.ops.delete(bm, geom=drop, context='VERTS')
     # remove tiny islands left by the cut
-    o = _obj(bm, name, mat)
+    o = _obj(bm, name, mat); _facet(o, FACET['garment'])
     if thicken:
         so = o.modifiers.new('t', 'SOLIDIFY'); so.thickness = thicken; so.offset = 1
     return o
@@ -289,7 +323,9 @@ def attach(obj, ao):
 # ------------------------------------------------------------------ build a whole survivor
 def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
     import wardrobe
-    b = prof['body']; J = joints(b)
+    from professions import TEMPLATES
+    b = dict(TEMPLATES[prof['body'].get('template', 'average')]); b.update(prof['body']); J = joints(b)
+    COVERS.clear()
     body = body_mesh(b, J); body.name = tag + '_body'
     W, dom = dominant(body, J)
     import inkstyle as _ik
@@ -302,6 +338,7 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
     for item in prof.get('wear', []):
         kind, opts = (item, {}) if isinstance(item, str) else (item[0], item[1])
         getattr(wardrobe, kind)(ctx, **opts)
+    hide_covered(body, dom)
     ao = armature(J, tag + '_rig', origin, facing)
     # bind: body/garments by distance, head pieces rigid to the head bone, others as declared
     for role, o in parts:

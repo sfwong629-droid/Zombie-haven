@@ -21,10 +21,15 @@ def shade_of(hexcol, k=0.62, hue_shift=-0.02, sat=1.12):
     return '#%02x%02x%02x' % tuple(int(v * 255) for v in (r, g, b))
 
 _cache = {}
-def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None, flecks=0.0, patches=0.0, fleck_scale=9, coord='Object'):
-    """coord='Generated' keeps patterns fixed to a deforming (skinned) mesh."""
-    key = (name, base, shadow, speckle, hatch, emit, str(lines), flecks, patches, fleck_scale, coord)
+DEFAULTS = dict(bands=2, hatch=True)
+
+def ink(name, base, shadow=None, speckle=0.18, hatch=None, emit=None, lines=None, flecks=0.0, patches=0.0, fleck_scale=9, coord='Object', bands=None):
+    """coord='Generated' keeps patterns fixed to a deforming (skinned) mesh.
+    bands=4 gives the faceted papercraft look: each facet lands in one of four tones."""
+    key = (name, base, shadow, speckle, hatch, emit, str(lines), flecks, patches, fleck_scale, coord, bands)
     if key in _cache: return _cache[key]
+    if bands is None: bands = DEFAULTS['bands']
+    if hatch is None: hatch = DEFAULTS['hatch']
     shadow = shadow or shade_of(base)
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree
     for n in list(nt.nodes): nt.nodes.remove(n)
@@ -37,6 +42,11 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None
     ramp = N('ShaderNodeValToRGB'); ramp.color_ramp.interpolation = 'CONSTANT'
     e = ramp.color_ramp.elements
     e[0].position, e[0].color = 0.0, lin(shadow); e[1].position, e[1].color = 0.16, lin(base)
+    if bands >= 3:
+        e[1].color = lin(shade_of(base, k=.86, hue_shift=-.008, sat=1.04))
+        x = e.new(.42); x.color = lin(base)
+    if bands >= 4:
+        x = e.new(.78); x.color = lin(shade_of(base, k=1.1, hue_shift=.006, sat=.96))
     L(bw.outputs[0], ramp.inputs[0])
     col = ramp.outputs[0]
     # shadow mask (1 in shadow)

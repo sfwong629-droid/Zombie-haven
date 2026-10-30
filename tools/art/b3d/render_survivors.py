@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mathutils import Vector
 from PIL import Image
 import inkstyle, survivor
+inkstyle.DEFAULTS.update(bands=4, hatch=False)   # Look E: faceted, four flat tones, no hatching
 from professions import PROFESSIONS, ORDER
 
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)
@@ -29,8 +30,10 @@ for i, n in enumerate(names):
     print('built', n, round(time.time() - t0), flush=True)
 
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); S.collection.objects.link(cam)
-W = int(300 * (len(names) * gap + .5)); H = 560
-cam.data.type = 'ORTHO'; cam.data.ortho_scale = W / 300; cam.rotation_euler = (D(45), 0, D(45))
+Z = float(([a.split('=')[1] for a in sys.argv if a.startswith('zoom=')] or ['1'])[0])
+PPM = 300 * Z
+W = int(PPM * (len(names) * gap + .5)); H = int(560 * Z)
+cam.data.type = 'ORTHO'; cam.data.ortho_scale = W / PPM; cam.rotation_euler = (D(45), 0, D(45))
 look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .72)) - look * 30
 cam.data.clip_end = 80; S.camera = cam
 S.render.resolution_x, S.render.resolution_y = W, H
