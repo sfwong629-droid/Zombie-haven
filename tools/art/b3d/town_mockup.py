@@ -32,6 +32,12 @@ STY = {
                 sun=(3.6, (1.0, 0.97, 0.9)), world=((0.6, 0.66, 0.76), 0.95), night=False, grid=True,
                 body=dict(hip=0.42, torso=0.36, head=0.23, bw=0.19, limb=1.35)),
 }
+STY['ink'] = dict(tilt=45, ppm=64, view='Standard', look='None', bevel=0.0,
+                  grass=('#8f9236', '#a3a13e', '#b5a646'), dirt=('#c4954e', '#d4a65c'),
+                  wood=('#8a5a34',), wood_d=('#6a4428',), metal=('#7d7f78',), rust=('#a8552f',), canvas=('#e9dfc4',),
+                  roof=('#b9532f',), leaf=('#3f5e36',), rock=('#9a968a',),
+                  sun=(3.0, (1.0, 0.95, 0.85)), world=((0.5, 0.5, 0.5), 0.6), night=False, ink=True,
+                  body=dict(hip=0.62, torso=0.44, head=0.17, bw=0.19, limb=1.15))
 STY['night'] = dict(STY['gritty'], sun=(0.6, (0.55, 0.65, 1.0)), world=((0.07, 0.09, 0.16), 1.0),
                     night=True, view='AgX', look='AgX - Base Contrast')
 st = STY[STYLE]
@@ -110,11 +116,22 @@ def ground_mat():
     L(out, b.inputs['Base Color'])
     return m
 
+INK = st.get('ink', False)
+if INK:
+    import os as _os; sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import inkstyle
+    _plain_M = M
+    def M(name, cols, scale=5, rough=0.85, wave=None, emit=None, planks=False):
+        if isinstance(cols, str): cols = (cols,)
+        base = cols[len(cols) // 2]
+        lines = ('Z', 0.26) if planks else None
+        return inkstyle.ink(name, base, emit=emit, lines=lines)
 GROUND = ground_mat()
 WOOD = M('wood', st['wood'], 0.6, wave=3); WOODD = M('woodd', st['wood_d'], 0.8, wave=2)
 WALL = M('wall', st['wood'], 0.45, wave=0.6, planks=True)
 METAL = M('metal', st['metal'], 8, 0.5); RUST = M('rust', st['rust'], 6, 0.7)
 CANVAS = M('canvas', st['canvas'], 4); ROOF = M('roof', st['roof'], 0.9, wave=0.4)
+if INK: ROOF = inkstyle.ink('roof', st['roof'][0], lines=('X', 0.3))
 LEAF = M('leaf', st['leaf'], 6); ROCK = M('rock', st['rock'], 5); TRUNK = M('trunk', st['wood_d'], 6)
 SOIL = M('soil', ('#3d2a1b', '#5a3d27') if STYLE != 'toy' else ('#8a5a36', '#a06c42'), 7)
 CROP = M('crop', ('#4f7d2d', '#6e9e3a') if STYLE != 'toy' else ('#5cb843', '#78cc55'), 8)
@@ -148,7 +165,29 @@ def prism(center_xy, base_z, length, half_w, h, m, axis='X', rz=0):
     return o
 
 # ------------------------------------------------------------------ ground
-obj('plane', (0, 0, 0), (1, 1, 1), GROUND, size=80)
+if INK:
+    obj('plane', (0, 0, 0), (1, 1, 1), inkstyle.ink('grass', st['grass'][1], flecks=0.55, fleck_scale=26, patches=0.28, speckle=0.3), size=80)
+    obj('plane', (0, 0, 0.004), (1, 1, 1), inkstyle.ink('dirt', st['dirt'][1], flecks=0.45, fleck_scale=30, patches=0.18, speckle=0.25), size=13.6)
+    # grass tufts and fallen leaves: lots of small marks give the drawn texture
+    _t = [inkstyle.ink('tuft1', '#6f7a2c'), inkstyle.ink('tuft2', '#55692a'), inkstyle.ink('tuft3', '#8a8a32')]
+    _lv = [inkstyle.ink('lf' + c, c, hatch=False) for c in ('#d4752e', '#c2502a', '#e0b24a', '#b8642c')]
+    _r = random.Random(5)
+    for _ in range(900):
+        x, y = _r.uniform(-16, 16), _r.uniform(-16, 16)
+        if max(abs(x), abs(y)) < 7.3: continue
+        h = _r.uniform(0.12, 0.26); m = _r.choice(_t)
+        for k in range(3):
+            obj('cone', (x + _r.uniform(-.07, .07), y + _r.uniform(-.07, .07), h / 2), (0.03, 0.03, h), m, vertices=3, radius1=1, depth=1,
+                rot=(_r.uniform(-.5, .5), _r.uniform(-.5, .5), _r.uniform(0, 3)), bevel=0)
+    for _ in range(500):
+        x, y = _r.uniform(-16, 16), _r.uniform(-16, 16)
+        if max(abs(x), abs(y)) < 6.4 and _r.random() < 0.8: continue
+        obj('cylinder', (x, y, 0.012), (0.09, 0.06, 0.01), _r.choice(_lv), vertices=5, radius=1, depth=1, rot=(0, 0, _r.uniform(0, 3)))
+    for _ in range(140):   # pebbles and dirt clods inside
+        x, y = _r.uniform(-6.6, 6.6), _r.uniform(-6.6, 6.6)
+        obj('ico_sphere', (x, y, 0.02), (0.06, 0.05, 0.03), inkstyle.ink('peb', '#8f7f66'), subdivisions=1, radius=1)
+else:
+    obj('plane', (0, 0, 0), (1, 1, 1), GROUND, size=80)
 
 # ------------------------------------------------------------------ walls
 WL = 7.0
@@ -259,6 +298,13 @@ for lx, ly in ((-1.6, -5.6), (5.6, 0.2), (-5.6, -0.4), (1.6, -5.6)):
 # trees and rocks outside the walls (mostly behind, so nothing hides the town)
 def tree(x, y, s):
     obj('cylinder', (x, y, 0.5 * s), (0.14 * s, 0.14 * s, 1.0 * s), TRUNK, vertices=7, radius=1, depth=1)
+    if INK and random.random() < 0.55:
+        col = random.choice(('#d4752e', '#d9a63a', '#c2502a', '#e0b24a'))
+        obj('cylinder', (x, y, 0.6 * s), (0.11 * s, 0.11 * s, 1.2 * s), TRUNK, vertices=6, radius=1, depth=1)
+        for k in range(6):
+            obj('ico_sphere', (x + random.uniform(-.5, .5) * s, y + random.uniform(-.5, .5) * s, (1.25 + random.uniform(0, .7)) * s),
+                (random.uniform(.38, .55) * s,) * 2 + (random.uniform(.3, .45) * s,), inkstyle.ink('leafA' + col, col), subdivisions=2, radius=1)
+        return
     if STYLE == 'toy':
         obj('ico_sphere', (x, y, 1.6 * s), (0.85 * s, 0.85 * s, 0.95 * s), LEAF, subdivisions=2, radius=1, smooth=True)
     else:
@@ -307,8 +353,11 @@ def person(loc, rz, pal, pose='stand', hat=None, zombie=False, prop=None):
     P('uv_sphere', (hr * 0.95, hr, hr * 1.05), (0, 0, hz), nk, skin, segments=16, ring_count=10, radius=1)
     P('uv_sphere', (hr, hr * 0.93, hr * 0.95), (0, hr * 0.28, hz + hr * 0.18), nk, hair, segments=16, ring_count=10, radius=1)
     eye = M('eye', '#ffdd55', emit=('#ffdd55', 4)) if zombie and st['night'] else M('eye', '#1b1714', 0.3)
+    es = 1.7 if (zombie and INK) else 1.0
     for s in (1, -1):
-        P('uv_sphere', (hr * .14, hr * .08, hr * .17), (s * hr * .36, -hr * .93, hz + hr * .05), nk, eye, segments=8, ring_count=6, radius=1)
+        P('uv_sphere', (hr * .14 * es, hr * .08, hr * .17 * es), (s * hr * .36, -hr * .93, hz + hr * .05), nk, eye, segments=8, ring_count=6, radius=1)
+    if zombie and INK:
+        P('cube', (hr * 0.5, hr * 0.06, hr * 0.16), (0, -hr * 0.97, hz - hr * 0.42), nk, M('teeth', '#efe6cc'), size=1, bevel=0)
     if hat == 'straw':
         P('cylinder', (hr * 1.9, hr * 1.85, 0.02), (0, 0.02, hz + hr * 0.75), nk, M('straw', ('#c9a14c', '#ecce80'), 45), vertices=18, radius=1, depth=1, rot=(D(-10), 0, 0))
         P('cone', (hr * 1.05, hr * 1.0, hr * 0.85), (0, 0.04, hz + hr * 1.12), nk, M('straw', ('#c9a14c', '#ecce80'), 45), vertices=16, radius1=1, radius2=0.85, depth=1, rot=(D(-10), 0, 0))
@@ -364,6 +413,7 @@ def crate_prop(wr):
 def P_(skin, top, pants, boots, hair): return (M('s' + skin, skin, rough=0.7), M('t' + str(top), top, 4), M('p' + pants, pants),
                                               M('b' + boots, boots, rough=0.6), M('h' + hair, (hair, hair), 50))
 SK = '#e6a882'; SK2 = '#b97d58'; ZS = '#8d9c74' if STYLE != 'toy' else '#9ccc78'
+if INK: ZS = '#b4bb9c'
 FARMER = (M('fs', SK, rough=0.7), M('plaid', ('#2f6a2a', '#4a9640', '#5cab4c'), 18, wave=0.2) if STYLE != 'toy' else M('plaid', '#4fb33f'),
           M('fp', '#7a4a26'), M('fb', '#47291a', rough=0.6), M('fh', ('#c39a45', '#e6c46c'), 60))
 MEDIC = P_(SK2, ('#d8dde0', '#eef2f4'), '#3f5a73', '#2b2b2b', '#2a1f18')
@@ -423,6 +473,13 @@ if st['look'] != 'None':
     try: S.view_settings.look = st['look']
     except Exception: pass
 S.render.image_settings.file_format = 'JPEG'; S.render.image_settings.quality = 90
+if INK:
+    inkstyle.setup(S, line_px=2.0, wobble=1.3)
+    S.render.image_settings.file_format = 'PNG'
+    OUT = OUT.rsplit('.', 1)[0] + '.png'
 S.render.filepath = OUT
 bpy.ops.render.render(write_still=True)
+if INK:
+    inkstyle.paper(OUT, strength=0.55)
+    from PIL import Image as _I; _I.open(OUT).convert('RGB').save(OUT.rsplit('.', 1)[0] + '.jpg', quality=90)
 print('rendered', STYLE, OUT)

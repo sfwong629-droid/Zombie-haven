@@ -62,6 +62,7 @@ for _k, _base, _t in (('r3a', 'gritty', 'Round 2 · Ink cartoon, colourful day')
 for _k, _base, _t in (('r5a', 'gritty', 'Round 3 · Ink, grown-up survivors'), ('r5b', 'gritty', 'Round 3 · Ink, bigger town'),
                       ('r5c', 'gritty', 'Round 3 · Ink, winter')):
     STY[_k] = dict(STY[_base], title=_t)
+STY['b3ink'] = dict(STY['gritty'], title='Blender 3D · Ink style, first pass')
 RES = [('food', 'Food', '46'), ('water', 'Water', '31'), ('wood', 'Wood', '120'), ('scrap', 'Scrap', '58'), ('med', 'Medicine', '9')]
 BUILD = [('house', 'Shelter'), ('farm', 'Farm'), ('tool', 'Workshop'), ('med', 'Medical'), ('wall', 'Defense'), ('box', 'Storage')]
 
@@ -155,6 +156,7 @@ names = {'gritty': 'Main.dc.html', 'night': 'Night.dc.html', 'toy': 'Toy.dc.html
          'gpt1': 'GptPainted.dc.html', 'gpt2': 'GptScrap.dc.html', 'gpt3': 'GptAutumn.dc.html', 'gpt4': 'GptDetail.dc.html',
          's1': 'StyleOil.dc.html', 's2': 'StyleFlat.dc.html', 's3': 'StyleInk.dc.html', 's4': 'StyleComic.dc.html',
          's5': 'StyleNoir.dc.html', 's6': 'StyleClay.dc.html',
+         'b3ink': 'BlenderInk.dc.html',
          'r5a': 'R3AdultTown.dc.html', 'r5b': 'R3BiggerTown.dc.html', 'r5c': 'R3Winter.dc.html',
          'r3a': 'R2InkDay.dc.html', 'r3b': 'R2InkNight.dc.html', 'r4a': 'R2ComicNight.dc.html', 'r4b': 'R2ComicClean.dc.html'}
 for k, n in names.items():
