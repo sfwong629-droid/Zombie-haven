@@ -260,14 +260,17 @@ requestAnimationFrame(tplCmp);
 const WPN = { bat: { len: 12, body: '#b07a3e', tip: '#c99252', grip: '#3b2a1e', thick: true }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
 function wpx(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
 function drawWeapon(g, hx, hy, dx, dy, kind, back) {
-  const w = WPN[kind], n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n; const pts = [];
-  for (let i = -back; i <= (w.gun ? w.len - back : w.len); i++) pts.push([hx + dx * i, hy + dy * i, i]);
-  const fat = (i) => w.thick && i > w.len - 6;                               // the bat's barrel: thicker toward the end
-  for (const [x, y, i] of pts) for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]].concat(fat(i) ? [[1,1],[-1,-1],[1,-1],[-1,1]] : [])) wpx(g, x + ox, y + oy, '#111');
-  for (const [x, y, i] of pts) {
-    if (w.gun) wpx(g, x, y, i < 0 ? w.tip : w.body);
-    else { wpx(g, x, y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body); if (fat(i)) { wpx(g, x + 1, y, w.tip); wpx(g, x, y + 1, w.body); } }
+  // fill first, then a 1-px black outline around EVERY filled pixel, so the thick end is never left open
+  const w = WPN[kind], n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n; const fill = new Map();
+  const put = (x, y, c) => fill.set(Math.round(x) + ',' + Math.round(y), c);
+  for (let i = -back; i <= (w.gun ? w.len - back : w.len); i++) {
+    const x = hx + dx * i, y = hy + dy * i;
+    if (w.gun) put(x, y, i < 0 ? w.tip : w.body);
+    else { put(x, y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body); if (w.thick && i > w.len - 6) { put(x + 1, y, w.tip); put(x, y + 1, w.body); } }
   }
+  for (const k of fill.keys()) { const [x, y] = k.split(',').map(Number);
+    for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) if (!fill.has((x + ox) + ',' + (y + oy))) wpx(g, x + ox, y + oy, '#111'); }
+  for (const [k, c] of fill) { const [x, y] = k.split(',').map(Number); wpx(g, x, y, c); }
 }
 function drawBurst(g, cx, cy, R, r, n, rot, dx = 0, dy = 0, stretch = 1) {   // comic star: yellow, red rim, pale core
   const pts = [];
