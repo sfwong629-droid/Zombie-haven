@@ -131,7 +131,7 @@ def face(b, hz, hr, parts):
     brow = ink('f_brow', b.get('brow', '#3a2516'), hatch=False, speckle=0)
     cheek = ink('f_cheek', '#e08a72', hatch=False, speckle=0)
     mouth = ink('f_mouth', '#5a2a1e', hatch=False, speckle=0)
-    es = b.get('eye_size', 1.0) * 1.2; ey = hz + hr * .12; ex = hr * .34
+    es = b.get('eye_size', 1.0) * 1.2; ey = hz + hr * b.get('eye_y', .12); ex = hr * b.get('eye_x', .34)
     for x in (1, -1):
         e = _sphere((x * ex, -hr * .9, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
         parts.append(('eye', _obj(e, 'eye', eye)))
@@ -147,11 +147,11 @@ def face(b, hz, hr, parts):
             parts.append(('cheek', _obj(c, 'cheek', cheek)))
     if b.get('smile'):   # small curved mouth: a bent capsule sitting on the face
         mb = bmesh.new()
-        pts = [Vector((x * hr * .19, -hr * (.94 - .04 * abs(x)), hz - hr * .4 + hr * .08 * x * x)) for x in (-1, -.5, 0, .5, 1)]
+        pts = [Vector((x * hr * .19, -hr * (.94 - .04 * abs(x)), hz - hr * b.get('mouth_y', .4) + hr * .08 * x * x)) for x in (-1, -.5, 0, .5, 1)]
         for a_, b_ in zip(pts, pts[1:]): _capsule(mb, a_, b_, hr * .036, hr * .036, 6)
         parts.append(('mouth', _obj(mb, 'mouth', mouth)))
     else:
-        m = _sphere((0, -hr * .9, hz - hr * .5), (hr * .16, hr * .05, hr * .035), 12, 6)
+        m = _sphere((0, -hr * .9, hz - hr * b.get('mouth_y', .5)), (hr * .16, hr * .05, hr * .035), 12, 6)
         parts.append(('mouth', _obj(m, 'mouth', mouth)))
     if b.get('beard'):
         bd = _sphere((0, -hr * .45, hz - hr * .62), (hr * .7, hr * .58, hr * .44), 20, 12)
@@ -170,7 +170,7 @@ def hair(style, colour, hz, hr, parts, seed=1):
     """Closed hair volumes are fused first, then the face opening is cut out."""
     if style in (None, 'none'): return
     R = random.Random(seed)
-    cap = (1.04, 1.03, 1.0) if style == 'tousled' else (1.07, 1.08, 1.02)
+    cap = {'tousled': (1.04, 1.03, 1.0), 'swoop': (1.04, 1.04, 1.0)}.get(style, (1.07, 1.08, 1.02))
     bm = _sphere((0, hr * .06, hz + hr * .12), tuple(c * hr for c in cap), 24, 16)
     if style in ('messy', 'spiky'):
         n = 11 if style == 'messy' else 13
@@ -190,6 +190,25 @@ def hair(style, colour, hz, hr, parts, seed=1):
         for x in (-.45, -.1, .3):                                  # fringe falling forward over the brow
             base = Vector((x * hr, -hr * .55, hz + hr * .85))
             _capsule(bm, base, base + Vector((x * hr * .5 - hr * .1, -hr * .35, -hr * .25)), hr * .24, hr * .1, 6)
+    def chain(pts, r0, r1):   # a curved lock: capsules along a path, tapering
+        n = len(pts) - 1
+        for i in range(n):
+            _capsule(bm, Vector(pts[i]), Vector(pts[i + 1]), r0 + (r1 - r0) * i / n, r0 + (r1 - r0) * (i + 1) / n, 8)
+    def curve(a, m, e, k=6):   # quadratic curve through a control point
+        a, m, e = Vector(a), Vector(m), Vector(e)
+        return [a * (1 - t) ** 2 + m * 2 * t * (1 - t) + e * t * t for t in (j / k for j in range(k + 1))]
+    if style == 'swoop':   # storybook: smooth cap, side part, fringe sweeping across the brow in a few big locks
+        px = hr * .38                                                   # parting on the character's left
+        for i, (sx, ex, ez) in enumerate(((0, -.7, .52), (.22, -.3, .42), (.42, .12, .47), (.6, .52, .6))):
+            st = (px - hr * sx, -hr * .2, hz + hr * 1.0)
+            mid = (st[0] - hr * .25, -hr * .95, hz + hr * .88)
+            en = (ex * hr - hr * .12, -hr * 1.0, hz + hr * ez)
+            chain(curve(st, mid, en), hr * .2, hr * .05)
+        for x in (1, -1):                                               # soft tufts over the ears, tucked down and back
+            chain(curve((x * hr * .7, -hr * .25, hz + hr * .6), (x * hr * .98, -hr * .2, hz + hr * .3), (x * hr * .9, hr * .05, hz + hr * .02), 4), hr * .2, hr * .08)
+        for x in (-.45, 0, .45):                                        # nape locks curling under
+            chain(curve((x * hr, hr * .6, hz + hr * .5), (x * hr * 1.1, hr * 1.02, hz + hr * .05), (x * hr * 1.05, hr * .85, hz - hr * .3), 5), hr * .24, hr * .1)
+        chain(curve((hr * .15, hr * .2, hz + hr * 1.0), (hr * .2, hr * .4, hz + hr * 1.18), (hr * .05, hr * .55, hz + hr * 1.22), 4), hr * .12, hr * .04)   # cowlick
     if style == 'tousled':   # one solid cap with a few chunky locks over the brow and at the crown
         for x in (-.55, -.18, .2, .55):   # fringe stops above the brows so the eyes stay clear
             base = Vector((x * hr, -hr * .5, hz + hr * .86))
@@ -388,7 +407,8 @@ def _build(prof, b, J, origin, facing, tag):
     ARM = [k for k in J if k.split('.')[0] in ('upperarm', 'forearm', 'hand')]
     def arm_map(co, side):
         P = J['upperarm.' + side][0]; Pn = core(P)
-        a = Pn + (co - P) * af
+        ax = (J['hand.' + side][1] - P).normalized(); d = co - P; along = ax * d.dot(ax)
+        a = Pn + along * af + (d - along) * max(af, b.get('arm_thick', .85))   # shorter, but not thinner
         w = max(0.0, min(1.0, ((co - P).length - .04 * S) / (.09 * S)))
         return core(co).lerp(a, w)
     def near_arm(co):

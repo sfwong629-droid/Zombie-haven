@@ -215,6 +215,8 @@ SHEETS += [('e5', 'E3dFarmerV3.dc.html', 'Look E in 3D · Farmer v3: collar, cuf
             'Farmer v2, then v3 front and back with a shirt collar and buttons, chunky rolled cuffs, fist hands, laced work boots, bunched trouser hems and swept hair, next to the Look E target')]
 SHEETS += [('g1', 'StorybookGuy.dc.html', 'Storybook body · general survivor, smooth vs faceted', 469,
             'The ink reference next to a general male survivor on the new storybook body: big round head, short legs, cream shirt and jeans, shown smooth, faceted, and from the back')]
+SHEETS += [('g2', 'StorybookGuyV2.dc.html', 'Storybook body v2 · shorter arms, lower eyes, swept hair', 517,
+            'The ink reference, the first storybook survivor, then v2 from both sides with shorter arms, eyes lower on the face and side-parted swept hair')]
 for k, n, t, h, alt in SHEETS:
     if k in URL:
         open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k], h, alt))
