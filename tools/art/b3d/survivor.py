@@ -103,9 +103,10 @@ def body_mesh(b, J):
         _capsule(bm, ua[0], ua[1], .064 * s * bulk, .055 * s * bulk)
         _capsule(bm, fa[0], fa[1], .055 * s * bulk, .043 * s)
         hc = (hd[0] + hd[1]) / 2
-        _merge(bm, _sphere(hc, (.047 * s, .037 * s, .068 * s)))                      # chunky mitten hand
-        thumb = hc + Vector((0, -.035, .022)) * s
-        _merge(bm, _sphere(thumb, (.02 * s, .024 * s, .034 * s)))
+        sx = 1 if side == 'L' else -1
+        _merge(bm, _sphere(hc + Vector((0, 0, -.005)) * s, (.05 * s, .046 * s, .056 * s)))                 # fist
+        _capsule(bm, hc + Vector((sx * .005, -.04, -.03)) * s, hc + Vector((sx * .005, -.04, .025)) * s, .026 * s, .026 * s, 8)   # knuckles
+        _merge(bm, _sphere(hc + Vector((-sx * .03, -.032, .018)) * s, (.02 * s, .024 * s, .03 * s)))     # thumb
         th, sh, ft = J['thigh.' + side], J['shin.' + side], J['foot.' + side]
         _capsule(bm, th[0] + Vector((0, 0, .03)) * s, th[1], .082 * s * bulk, .062 * s * bulk)
         _capsule(bm, sh[0], sh[1], .06 * s * bulk, .045 * s)
@@ -130,14 +131,14 @@ def face(b, hz, hr, parts):
     brow = ink('f_brow', b.get('brow', '#3a2516'), hatch=False, speckle=0)
     cheek = ink('f_cheek', '#e08a72', hatch=False, speckle=0)
     mouth = ink('f_mouth', '#5a2a1e', hatch=False, speckle=0)
-    es = b.get('eye_size', 1.0); ey = hz + hr * .12; ex = hr * .34
+    es = b.get('eye_size', 1.0) * 1.2; ey = hz + hr * .12; ex = hr * .34
     for x in (1, -1):
         e = _sphere((x * ex, -hr * .9, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
         parts.append(('eye', _obj(e, 'eye', eye)))
         h = _sphere((x * ex + hr * .035, -hr * .985, ey + hr * .07), hr * .035, 8, 6)
         parts.append(('hi', _obj(h, 'hi', hi)))
         bb = bmesh.new(); bmesh.ops.create_cube(bb, size=1)
-        bmesh.ops.scale(bb, vec=Vector((hr * .3, hr * .07, hr * .06)), verts=bb.verts)
+        bmesh.ops.scale(bb, vec=Vector((hr * .34, hr * .08, hr * .085)), verts=bb.verts)
         bmesh.ops.rotate(bb, cent=Vector(), matrix=Matrix.Rotation(x * D(b.get('brow_tilt', 8)), 3, 'Y'), verts=bb.verts)
         bmesh.ops.translate(bb, vec=Vector((x * ex, -hr * .93, ey + hr * .29)), verts=bb.verts)
         parts.append(('brow', _obj(bb, 'brow', brow)))
@@ -172,6 +173,16 @@ def hair(style, colour, hz, hr, parts, seed=1):
             base = Vector((0, hr * .08, hz + hr * .14)) + dirv * hr * .85
             tip = base + (dirv + Vector((0, 0, -.2 if style == 'messy' else .2))).normalized() * hr * R.uniform(.32, .55)
             _capsule(bm, base, tip * 1.0 + (tip - base) * .6, hr * R.uniform(.24, .32), hr * .03, 6)
+    if style == 'swept':   # shaped clumps sweeping back and out, plus a fringe (Look E)
+        for i in range(10):
+            a = D(-150 + i * 33) + R.uniform(-.15, .15)          # around the head, back half denser
+            dirv = Vector((math.cos(a), math.sin(a) * .8 + .35, R.uniform(.35, .75))).normalized()
+            base = Vector((0, hr * .1, hz + hr * .2)) + dirv * hr * .75
+            tip = base + (dirv + Vector((0, .5, -.35))).normalized() * hr * R.uniform(.4, .55)
+            _capsule(bm, base, tip, hr * R.uniform(.3, .36), hr * .13, 6)
+        for x in (-.45, -.1, .3):                                  # fringe falling forward over the brow
+            base = Vector((x * hr, -hr * .55, hz + hr * .85))
+            _capsule(bm, base, base + Vector((x * hr * .5 - hr * .1, -hr * .35, -hr * .25)), hr * .24, hr * .1, 6)
     if style == 'bun':
         _merge(bm, _sphere((0, hr * .75, hz + hr * .6), hr * .42, 16, 10))
     if style == 'ponytail':
@@ -185,7 +196,7 @@ def hair(style, colour, hz, hr, parts, seed=1):
     # cut the face: front below the hairline, and everything below the nape
     fb = bmesh.new(); fb.from_mesh(o.data)
     def gone(c):
-        if c.y < -hr * .25 and c.z < hz + hr * .55 - (abs(c.x) / hr) * .3: return True
+        if c.y < -hr * .25 and c.z < hz + hr * .55 - (abs(c.x) / hr) * .3 and not (c.y < -hr * .9 and c.z > hz + hr * .3): return True
         if c.z < hz - hr * (.35 if c.y < hr * .3 else .62): return True
         if abs(c.x) > hr * .9 and c.z < hz + hr * .05 and c.y < hr * .2: return True   # keep ears clear
         return False

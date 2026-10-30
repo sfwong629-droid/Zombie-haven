@@ -8,7 +8,7 @@ Colours are hex strings; 'plaid' and 'stripes' are pattern options.
 from mathutils import Vector
 import math
 from inkstyle import ink
-from survivor import garment, box, tube, ellip, ring, ragged_disc, D
+from survivor import garment, box, tube, ellip, ring, ragged_disc, D, COVERS
 
 def _mat(name, colour, pattern=None, accent=None, **kw):
     lines = None
@@ -31,7 +31,7 @@ def _arm_len(J, side, f):
     return a + (b - a) * f
 
 # ------------------------------------------------------------------ garments
-def shirt(ctx, colour='#4a9640', pattern=None, accent=None, sleeves='long', tuck=True, layer=0):
+def shirt(ctx, colour='#4a9640', pattern=None, accent=None, sleeves='long', tuck=True, layer=0, collar=True, buttons=True):
     J = ctx['J']; s = ctx['s']
     cut = {'long': .97, 'rolled': .62, 'short': .3, 'none': 0.0}[sleeves]
     zl = {k: _arm_len(J, k, cut) for k in 'LR'}
@@ -44,10 +44,19 @@ def shirt(ctx, colour='#4a9640', pattern=None, accent=None, sleeves='long', tuck
         return False
     o = garment(ctx['body'], ctx['dom'], keep, .012 + .012 * layer, 'shirt', _mat('shirt', colour, pattern, accent))
     _add(ctx, 'shirt', o)
-    if sleeves == 'rolled':     # rolled cuffs
+    if sleeves == 'rolled':     # chunky rolled cuffs
         for side in 'LR':
             a, b = J['forearm.' + side][:2]; c = a + (b - a) * ((cut - .5) / .5 if cut > .5 else 0)
-            _add(ctx, 'cuff', tube(c + Vector((0, 0, .02)), c - Vector((0, 0, .02)), .056 * s, .056 * s, _mat('cuff', colour, pattern, accent)))
+            _add(ctx, 'cuff', tube(c + Vector((0, 0, .028)), c - Vector((0, 0, .028)), .07 * s, .066 * s, _mat('cuff', colour, pattern, accent), seg=8))
+    if collar and layer == 0:   # pointed shirt collar, open at the neck
+        cm = _mat('collar', colour, pattern, accent)
+        for x in (1, -1):
+            _add(ctx, 'collar', box((x * .045 * s, -.098 * s, 1.105 * s), (.075 * s, .014, .055 * s), cm,
+                                    rot=(D(-35), x * D(-12), x * D(28)), bevel=.004), 'chest')
+            _add(ctx, 'collar', box((x * .06 * s, -.02 * s, 1.135 * s), (.06 * s, .1 * s, .03 * s), cm, rot=(0, 0, x * D(12)), bevel=.004), 'chest')
+    if buttons and layer == 0:
+        for z in (1.0, .93, .86):
+            _add(ctx, 'button', ellip((0, -.152 * s, z * s), (.011, .006, .011), ink('sbtn', '#d8c8a0'), seg=8), 'chest')
 
 def jacket(ctx, colour='#8a5a34', pattern=None, accent=None, sleeves='long', open_front=False, collar=True):
     shirt(ctx, colour, pattern, accent, sleeves, tuck=False, layer=1)
@@ -70,11 +79,16 @@ def pants(ctx, colour='#7a4a26', pattern=None, pockets=False):
         if bone == 'pelvis': return co.z < .82 * s
         if bone.startswith(('thigh', 'shin')): return co.z > .16 * s
         return False
-    _add(ctx, 'pants', garment(ctx['body'], ctx['dom'], keep, .01, 'pants', _mat('pants', colour, pattern)))
+    _add(ctx, 'pants', garment(ctx['body'], ctx['dom'], keep, .012, 'pants', _mat('pants', colour, pattern)))
+    for side in 'LR':   # bunched hems over the boots
+        a, b = J['shin.' + side][:2]; c = a + (b - a) * .72
+        _add(ctx, 'hem', tube(c + Vector((0, 0, .03)), c - Vector((0, 0, .02)), .072 * s, .08 * s, _mat('hem', colour), seg=8), 'shin.' + side)
     if pockets:
         for side, x in (('L', 1), ('R', -1)):
-            a, b = J['thigh.' + side][:2]; c = (a + b) / 2
-            _add(ctx, 'pocket', box(c + Vector((x * .072 * s, -.01, 0)), (.03, .1 * s, .11 * s), _mat('pocket', colour, 'seams')), 'thigh.' + side)
+            a, b = J['thigh.' + side][:2]; c = a + (b - a) * .55
+            pm = _mat('pocket', colour, 'seams')
+            _add(ctx, 'pocket', box(c + Vector((x * .085 * s, -.01, 0)), (.035, .11 * s, .12 * s), pm, bevel=.008), 'thigh.' + side)
+            _add(ctx, 'pocket', box(c + Vector((x * .1 * s, -.01, .06 * s)), (.02, .115 * s, .035 * s), pm, bevel=.005), 'thigh.' + side)
 
 def overalls(ctx, colour='#3f5a8a'):
     pants(ctx, colour)
@@ -91,12 +105,21 @@ def suspenders(ctx, colour='#5a3519'):
         _add(ctx, 'button', ellip((x * .08 * s, -.145 * s, .82 * s), (.012, .006, .012), ink('btn', '#c9b27a')), 'chest')
 
 def boots(ctx, colour='#47291a', tall=False):
-    s = ctx['s']; top = (.28 if tall else .17) * s
+    """Chunky work boots: shaft on the shin, rounded foot with a raised toe, thick sole, folded top."""
+    s = ctx['s']; top = (.28 if tall else .2) * s
     def keep(bone, co): return (bone.startswith('foot') or bone.startswith('shin')) and co.z < top
-    _add(ctx, 'boots', garment(ctx['body'], ctx['dom'], keep, .018, 'boots', ink('boot' + colour, colour), thicken=.01))
+    COVERS.append(keep)
+    m = ink('boot' + colour, colour); sole = ink('sole', '#2a1a10')
+    import inkstyle; cuffc = inkstyle.shade_of(colour, k=1.15, sat=.9)
     for side, x in (('L', 1), ('R', -1)):
         a, b = ctx['J']['foot.' + side][:2]
-        _add(ctx, 'sole', box(((a.x + b.x) / 2, (a.y + b.y) / 2 - .005, .012), (.11 * s, .23 * s, .025), ink('sole', '#2a1a10'), bevel=.008), 'foot.' + side)
+        _add(ctx, 'boots', tube((a.x, a.y, .05 * s), (a.x, a.y, top), .072 * s, .07 * s, m, seg=8), 'shin.' + side)
+        _add(ctx, 'boots', ring((a.x, a.y, top - .01), .078 * s, .04 * s, ink('bcuff' + cuffc, cuffc), thick=.012, seg=8), 'shin.' + side)
+        _add(ctx, 'boots', box((a.x, a.y - .07 * s, .06 * s), (.13 * s, .2 * s, .1 * s), m, bevel=.035), 'foot.' + side)
+        _add(ctx, 'boots', ellip((a.x, a.y - .145 * s, .065 * s), (.066 * s, .06 * s, .05 * s), m, seg=8), 'foot.' + side)   # round toe
+        _add(ctx, 'sole', box((a.x, a.y - .075 * s, .014), (.14 * s, .25 * s, .03), sole, bevel=.008), 'foot.' + side)
+        for k in range(3):   # laces
+            _add(ctx, 'lace', box((a.x, a.y - .072 * s, (.1 + k * .03) * s), (.06 * s, .01, .008), ink('lace', '#c9b27a'), bevel=0), 'shin.' + side)
 
 def gloves(ctx, colour='#3d3d3a'):
     def keep(bone, co): return bone.startswith('hand')
