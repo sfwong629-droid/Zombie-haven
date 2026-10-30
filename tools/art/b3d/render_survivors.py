@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mathutils import Vector
 from PIL import Image
 import inkstyle, survivor
-inkstyle.DEFAULTS.update(bands=4, hatch=False)   # Look E: faceted, four flat tones, no hatching
+inkstyle.DEFAULTS.update(bands=3, hatch=False)   # Look E: faceted, four flat tones, no hatching
 from professions import PROFESSIONS, ORDER
 
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)

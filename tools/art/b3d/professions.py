@@ -17,8 +17,8 @@ PROFESSIONS = {
     'farmer': {
         'body': {'template': 'average', 'skin': '#e8b08a', 'beard': '#b8864a', 'brow': '#8a5a2a'},
         'hair': 'spiky', 'hair_colour': '#d8a854', 'seed': 3,
-        'wear': [('shirt', {'colour': '#4a9640', 'pattern': 'plaid', 'accent': '#1e4a1a', 'sleeves': 'rolled'}),
-                 ('pants', {'colour': '#7a4a26', 'pockets': True}), 'suspenders', ('belt', {'colour': '#4a2e18'}), ('boots', {'colour': '#47291a'}),
+        'wear': [('shirt', {'colour': '#7a8a46', 'pattern': 'plaid', 'accent': '#3a4a26', 'sleeves': 'rolled'}),   # muted olive plaid (Look E)
+                 ('pants', {'colour': '#8a6e46', 'pockets': True}), ('suspenders', {'colour': '#6a3e1e'}), ('belt', {'colour': '#4a2e18'}), ('boots', {'colour': '#7a5230'}),
                  ('tool', {'kind': 'hoe'})],   # straw hat off while we work on the face; add ('hat', {'kind': 'straw'}) back later
     },
     'medic': {

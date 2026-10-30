@@ -66,7 +66,7 @@ def _merge(dst, src):
     me = bpy.data.meshes.new('_t'); src.to_mesh(me); src.free(); dst.from_mesh(me); bpy.data.meshes.remove(me)
 
 # Look E (low-poly papercraft): every organic mesh is decimated to big flat facets.
-FACET = {'body': .03, 'head': .05, 'hair': .05, 'garment': .035, 'beard': .12}
+FACET = {'body': .06, 'head': .09, 'hair': .07, 'garment': .07, 'beard': .16}
 
 def _facet(o, ratio):
     """Collapse a smooth mesh into big flat facets (the folded-paper look)."""
@@ -100,8 +100,8 @@ def body_mesh(b, J):
     for side in 'LR':
         ua, fa, hd = J['upperarm.' + side], J['forearm.' + side], J['hand.' + side]
         _merge(bm, _sphere(ua[0], .07 * s * bulk))   # shoulder ball
-        _capsule(bm, ua[0], ua[1], .056 * s * bulk, .046 * s * bulk)
-        _capsule(bm, fa[0], fa[1], .046 * s * bulk, .036 * s)
+        _capsule(bm, ua[0], ua[1], .064 * s * bulk, .055 * s * bulk)
+        _capsule(bm, fa[0], fa[1], .055 * s * bulk, .043 * s)
         hc = (hd[0] + hd[1]) / 2
         _merge(bm, _sphere(hc, (.047 * s, .037 * s, .068 * s)))                      # chunky mitten hand
         thumb = hc + Vector((0, -.035, .022)) * s
@@ -339,6 +339,13 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
         kind, opts = (item, {}) if isinstance(item, str) else (item[0], item[1])
         getattr(wardrobe, kind)(ctx, **opts)
     hide_covered(body, dom)
+    # Look E proportions: shorter legs. Squash everything below the hips, shift the rest down.
+    lf = b.get('legs', .84); hip = .66 * b.get('height', 1.0)
+    def f(z): return z * lf if z < hip else z - hip * (1 - lf)
+    for role, o in parts:
+        for v in o.data.vertices: v.co.z = f(v.co.z)
+        o.data.update()
+    J = {k: (Vector((h.x, h.y, f(h.z))), Vector((t.x, t.y, f(t.z))), p) for k, (h, t, p) in J.items()}
     ao = armature(J, tag + '_rig', origin, facing)
     # bind: body/garments by distance, head pieces rigid to the head bone, others as declared
     for role, o in parts:

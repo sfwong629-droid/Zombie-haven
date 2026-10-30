@@ -209,6 +209,8 @@ SHEETS += [('e1', 'E3dLineup.dc.html', 'Look E in 3D · six professions, four di
             'Six survivors built from one shared body: farmer, medic, guard, cook, scavenger, engineer, shown facing SE, SW, NW and NE'),
            ('e2', 'E3dWalk.dc.html', 'Look E in 3D · all six walking', 385, 'The six Look E survivors walking, with clothes and gear moving with them'),
            ('e3', 'E3dFarmer.dc.html', 'Look E in 3D · Farmer close-up', 616, 'The Look E Farmer close up, front and back three-quarter views')]
+SHEETS += [('e4', 'E3dFarmerV2.dc.html', 'Look E in 3D · Farmer v2: shorter legs, Look E colours', 330,
+            'Farmer before, then v2 front and back with shorter legs, thicker arms and muted Look E colours, next to the Look E target')]
 for k, n, t, h, alt in SHEETS:
     if k in URL:
         open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k], h, alt))
