@@ -47,6 +47,8 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Walk side by side</div><canvas id="wcmp" aria-label="Front walks (Old, Luma raw, Luma calm, Clean) and back walks (Old, Luma raw) side by side" style="display:block;width:100%;max-width:420px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div class="row" style="margin:8px 0"><button id="tWeap" class="on">Weapons in hand</button></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Farmer (PixelLab): all 13 animations, front and back</div><canvas id="fcmp" aria-label="The farmer's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Engineer A (PixelLab): all 13 animations, front and back</div><canvas id="ecmp" aria-label="Engineer A's 13 animations, front and back views" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Template test: farmer animations → PixelLab medic (head + colours carried by code)</div><canvas id="tcmp" aria-label="Farmer and the code-made medic: walk and swing A, front and back" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
@@ -91,7 +93,7 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let showDebris = true, showMedic = true, showEng = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
+let showWeapons = true, showDebris = true, showMedic = true, showEng = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
@@ -219,6 +221,7 @@ tog('tAnim', () => { const now = performance.now(); if (anim) frozenAt = now - t
 tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
 tog('tDebris', () => (showDebris = !showDebris));
+tog('tWeap', () => (showWeapons = !showWeapons));
 tog('tMedic', () => (showMedic = !showMedic));
 tog('tEng', () => (showEng = !showEng));
 const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
@@ -255,16 +258,16 @@ requestAnimationFrame(tplCmp);
 function gallery(id, CA, tag) {
   const mc = document.getElementById(id), mg = mc.getContext('2d'), MZ = 3, MCOL = 4, MBH = 48 * MZ + 16;
   mc.width = MCOL * 48 * MZ; mc.height = Math.ceil(CA.anims.length / MCOL) * MBH;
-  for (const a of CA.anims) load(tag + a.k, a.src);
+  for (const a of CA.anims) { load(tag + a.k, a.src); if (a.wsrc) load(tag + 'w_' + a.k, a.wsrc); }
   (function draw(now) {
     mg.clearRect(0, 0, mc.width, mc.height); mg.imageSmoothingEnabled = false; mg.font = '11px system-ui, sans-serif'; mg.fillStyle = '#111'; mg.textAlign = 'center';
-    CA.anims.forEach((a, j) => { const f = Math.floor(now / a.ms) % a.n, im = img[tag + a.k], cx = (j % MCOL) * 48 * MZ, by = Math.floor(j / MCOL) * MBH;
+    CA.anims.forEach((a, j) => { const w = showWeapons && a.wsrc, f = Math.floor(now / a.ms) % a.n, im = img[tag + (w ? 'w_' : '') + a.k], cx = (j % MCOL) * 48 * MZ, by = Math.floor(j / MCOL) * MBH;
       if (im && im.complete) mg.drawImage(im, f * 48, 0, 48, 48, cx, by + 14, 48 * MZ, 48 * MZ);
-      mg.fillText(a.label, cx + 24 * MZ, by + 11); });
+      mg.fillText(a.label + (w ? ' ⚔' : ''), cx + 24 * MZ, by + 11); });
     requestAnimationFrame(draw);
   })(0);
 }
-gallery('mcmp', A.medic, 'md_'); gallery('ecmp', A.engineer, 'en_');
+gallery('fcmp', A.farmerG, 'fm_'); gallery('mcmp', A.medic, 'md_'); gallery('ecmp', A.engineer, 'en_');
 gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
 
 // tap a building to rotate it (hit test: its diamond and the area above it)
