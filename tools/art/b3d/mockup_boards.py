@@ -56,6 +56,9 @@ for _k, _base, _t in (('s1', 'gritty', 'Style 1 · Oil painting'), ('s2', 'toy',
                       ('s3', 'gritty', 'Style 3 · Hand-drawn ink cartoon'), ('s4', 'gritty', 'Style 4 · Comic cel-shaded'),
                       ('s5', 'night', 'Style 5 · Noir, red accent'), ('s6', 'toy', 'Style 6 · Clay diorama')):
     STY[_k] = dict(STY[_base], title=_t, toyhud=(_base == 'toy'))
+for _k, _base, _t in (('r3a', 'gritty', 'Round 2 · Ink cartoon, colourful day'), ('r3b', 'night', 'Round 2 · Ink cartoon, night'),
+                      ('r4a', 'night', 'Round 2 · Comic, night with red accent'), ('r4b', 'gritty', 'Round 2 · Comic, clean mobile')):
+    STY[_k] = dict(STY[_base], title=_t)
 RES = [('food', 'Food', '46'), ('water', 'Water', '31'), ('wood', 'Wood', '120'), ('scrap', 'Scrap', '58'), ('med', 'Medicine', '9')]
 BUILD = [('house', 'Shelter'), ('farm', 'Farm'), ('tool', 'Workshop'), ('med', 'Medical'), ('wall', 'Defense'), ('box', 'Storage')]
 
@@ -148,8 +151,42 @@ return {{}};
 names = {'gritty': 'Main.dc.html', 'night': 'Night.dc.html', 'toy': 'Toy.dc.html',
          'gpt1': 'GptPainted.dc.html', 'gpt2': 'GptScrap.dc.html', 'gpt3': 'GptAutumn.dc.html', 'gpt4': 'GptDetail.dc.html',
          's1': 'StyleOil.dc.html', 's2': 'StyleFlat.dc.html', 's3': 'StyleInk.dc.html', 's4': 'StyleComic.dc.html',
-         's5': 'StyleNoir.dc.html', 's6': 'StyleClay.dc.html'}
+         's5': 'StyleNoir.dc.html', 's6': 'StyleClay.dc.html',
+         'r3a': 'R2InkDay.dc.html', 'r3b': 'R2InkNight.dc.html', 'r4a': 'R2ComicNight.dc.html', 'r4b': 'R2ComicClean.dc.html'}
 for k, n in names.items():
     if k not in URL: continue
     open(os.path.join(ROOT, 'project', n), 'w').write(board(k))
+def lineup(title, img):
+    return f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{{margin:0}}
+a{{color:#555}}a:hover{{color:#222}}
+</style>
+</helmet>
+<div style="width: 1280px; height: 640px; position: relative; overflow: hidden; background: #222">
+<img src="{img}" alt="{title}: farmer with a straw hat and hoe, medic with a red-cross armband, lookout with binoculars, cook in an apron, scavenger with a backpack, and a shambling zombie" style="position: absolute; inset: 0; width: 1280px; height: 640px; object-fit: cover">
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{{"$preview":{{"width":1280,"height":640}}}}'>
+class Component extends DCLogic {{
+renderVals() {{
+return {{}};
+}}
+}}
+</script>
+</body>
+</html>
+'''
+for k, n, t in (('l3', 'R2InkLineup.dc.html', 'Round 2 · Ink cartoon, character lineup'), ('l4', 'R2ComicLineup.dc.html', 'Round 2 · Comic, character lineup')):
+    if k in URL:
+        open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k]))
 print('boards written')
