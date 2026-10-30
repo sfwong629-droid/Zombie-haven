@@ -21,8 +21,9 @@ def shade_of(hexcol, k=0.62, hue_shift=-0.02, sat=1.12):
     return '#%02x%02x%02x' % tuple(int(v * 255) for v in (r, g, b))
 
 _cache = {}
-def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None, flecks=0.0, patches=0.0, fleck_scale=9):
-    key = (name, base, shadow, speckle, hatch, emit, str(lines), flecks, patches, fleck_scale)
+def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None, flecks=0.0, patches=0.0, fleck_scale=9, coord='Object'):
+    """coord='Generated' keeps patterns fixed to a deforming (skinned) mesh."""
+    key = (name, base, shadow, speckle, hatch, emit, str(lines), flecks, patches, fleck_scale, coord)
     if key in _cache: return _cache[key]
     shadow = shadow or shade_of(base)
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree
@@ -59,7 +60,7 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None
             width = sp[2] if len(sp) > 2 else 0.09
             colr = lin(sp[3]) if len(sp) > 3 and sp[3] else (0.05, 0.035, 0.025, 1)
             strength = sp[4] if len(sp) > 4 else 0.75
-            sx = N('ShaderNodeSeparateXYZ'); L(tc.outputs['Object'], sx.inputs[0])
+            sx = N('ShaderNodeSeparateXYZ'); L(tc.outputs[coord], sx.inputs[0])
             mu = N('ShaderNodeMath'); mu.operation = 'DIVIDE'; mu.inputs[1].default_value = spacing; L(sx.outputs[axis], mu.inputs[0])
             fr = N('ShaderNodeMath'); fr.operation = 'FRACT'; L(mu.outputs[0], fr.inputs[0])
             lt = N('ShaderNodeMath'); lt.operation = 'LESS_THAN'; lt.inputs[1].default_value = width; L(fr.outputs[0], lt.inputs[0])
@@ -68,14 +69,14 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None
             L(lk.outputs[0], lm.inputs['Factor']); L(col, lm.inputs['A']); col = lm.outputs['Result']
     if flecks:  # scattered dark ink marks (ground, bark)
         fn = N('ShaderNodeTexVoronoi'); fn.inputs['Scale'].default_value = fleck_scale
-        L(tc.outputs['Object'], fn.inputs['Vector'])
+        L(tc.outputs[coord], fn.inputs['Vector'])
         fl = N('ShaderNodeMath'); fl.operation = 'LESS_THAN'; fl.inputs[1].default_value = 0.07; L(fn.outputs['Distance'], fl.inputs[0])
         fk = N('ShaderNodeMath'); fk.operation = 'MULTIPLY'; fk.inputs[1].default_value = flecks; L(fl.outputs[0], fk.inputs[0])
         fm = N('ShaderNodeMix'); fm.data_type = 'RGBA'; fm.inputs['B'].default_value = (0.06, 0.04, 0.025, 1)
         L(fk.outputs[0], fm.inputs['Factor']); L(col, fm.inputs['A']); col = fm.outputs['Result']
     if patches:  # broad lighter / darker patches, like uneven watercolour wash
         pn = N('ShaderNodeTexNoise'); pn.inputs['Scale'].default_value = 0.18; pn.inputs['Detail'].default_value = 3
-        L(tc.outputs['Object'], pn.inputs['Vector'])
+        L(tc.outputs[coord], pn.inputs['Vector'])
         pr = N('ShaderNodeValToRGB'); pe = pr.color_ramp.elements
         pe[0].position, pe[0].color = 0.35, (1 - patches, 1 - patches * 0.8, 1 - patches * 1.1, 1)
         pe[1].position, pe[1].color = 0.65, (1 + patches * 0.5, 1 + patches * 0.45, 1 + patches * 0.2, 1)
@@ -85,7 +86,7 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=True, emit=None, lines=None
     if speckle:
         nz = N('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = 7; nz.inputs['Detail'].default_value = 8
         nz.inputs['Roughness'].default_value = 0.7
-        L(tc.outputs['Object'], nz.inputs['Vector'])
+        L(tc.outputs[coord], nz.inputs['Vector'])
         sr = N('ShaderNodeValToRGB'); se = sr.color_ramp.elements
         se[0].position, se[0].color = 0.35, (1 - speckle, 1 - speckle, 1 - speckle * 0.9, 1)
         se[1].position, se[1].color = 0.75, (1.04, 1.03, 1.0, 1)

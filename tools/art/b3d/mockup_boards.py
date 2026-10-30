@@ -201,6 +201,10 @@ SHEETS += [('c6', 'InkCloseup.dc.html', 'Blender 3D · Ink close-up: cabin and F
             'The ink-style Farmer standing, facing SE, SW, NW and NE'),
            ('w6', 'InkWalk.dc.html', 'Blender 3D · Ink Farmer walking (SE and NE)', 792,
             'Animated walk cycle of the ink-style Farmer, front view and back view')]
+LOOKS = [('la', 'LookA.dc.html', 'Look A · Chunky toy figure', 853), ('lb', 'LookB.dc.html', 'Look B · Storybook (ChatGPT kept the hat)', 788),
+         ('lc', 'LookC.dc.html', 'Look C · Lanky gothic', 853), ('ld', 'LookD.dc.html', 'Look D · Rugged and sturdy', 853),
+         ('le', 'LookE.dc.html', 'Look E · Low-poly papercraft', 853), ('lf', 'LookF.dc.html', 'Look F · Soft vinyl figure', 853)]
+SHEETS += [(k, n, t, h, t + ': the Farmer as a 3D game character, front and back three-quarter views') for k, n, t, h in LOOKS]
 for k, n, t, h, alt in SHEETS:
     if k in URL:
         open(os.path.join(ROOT, 'project', n), 'w').write(lineup(t, URL[k], h, alt))
