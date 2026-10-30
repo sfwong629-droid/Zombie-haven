@@ -257,23 +257,30 @@ requestAnimationFrame(tplCmp);
 // character galleries: every PixelLab animation, front (se) and back (ne), 48-px frames.
 // Weapons and effects are drawn by the game (as on the small-farmer test): a baseball bat or a rifle as pixel
 // strokes in the hand found in each frame (weapon_rig.json), swing trails, a comic hit burst and a muzzle flash.
-const WPN = { bat: { len: 12, body: '#b07a3e', tip: '#c99252', grip: '#3b2a1e', thick: true }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
+const WPN = { bat: { len: 14 }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
 function wpx(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
 // A weapon is a fixed pixel drawing for each of 16 directions (22.5 deg apart), built once and cached, and it is
 // placed on whole pixels: so its shape never wobbles from frame to frame, only its direction changes.
 const WCACHE = {};
+// Baseball bat, along its length i (0 = hand): a round knob below the hand, a taped grip, a thin handle that
+// swells into a rounded barrel with a lit edge and a shaded edge. Widths are pixel offsets across the bat.
+const BAT = [ // [from i, to i, offsets across, colour by offset (-1 lit, 0 mid, 1 shade)]
+  [-2, -2, [-1, 0, 1], { '-1': '#8a5a2b', 0: '#6e4520', 1: '#5a3818' }],      // knob
+  [-1, 2, [0], { 0: 'tape' }],                                                 // grip tape
+  [3, 6, [0], { 0: '#c8925a' }],                                               // handle
+  [7, 9, [0, 1], { 0: '#d9a465', 1: '#a8743c' }],                              // taper
+  [10, 13, [-1, 0, 1], { '-1': '#f2cf97', 0: '#dba868', 1: '#a8743c' }],       // barrel
+  [14, 14, [0], { 0: '#dba868' }],                                             // rounded end
+];
 function weaponShape(kind, idx, back) {
   const key = kind + idx + ':' + back; if (WCACHE[key]) return WCACHE[key];
   const w = WPN[kind], a = idx * Math.PI / 8, c = Math.cos(a), s = Math.sin(a), fill = new Map();
   const put = (x, y, col) => { const k = x + ',' + y; if (!fill.has(k)) fill.set(k, col); };
-  const end = w.gun ? w.len - back : w.len, flat = Math.abs(c) >= Math.abs(s);
-  for (let i = -back; i <= end; i++) {
-    const x = Math.round(c * i), y = Math.round(s * i);
-    if (w.gun) put(x, y, i < 0 ? w.tip : w.body);
-    else {
-      fill.set(x + ',' + y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body);
-      if (w.thick && i > w.len - 6) put(x + (flat ? 0 : 1), y + (flat ? 1 : 0), w.body);   // the barrel: one pixel fatter
-    }
+  if (w.gun) for (let i = -back; i <= w.len - back; i++) put(Math.round(c * i), Math.round(s * i), i < 0 ? w.tip : w.body);
+  else for (const [i0, i1, offs, col] of BAT) for (let i = i0; i <= i1 + 0.01; i += 0.5) for (const o of offs) {
+    const x = Math.round(c * i - s * o), y = Math.round(s * i + c * o);
+    const k = x + ',' + y, cc = col[o] === 'tape' ? (Math.floor(i) % 2 ? '#3a3a44' : '#5a5a66') : col[o];
+    if (o === 0) fill.set(k, cc); else put(x, y, cc);                     // the centre line always wins
   }
   const px = [];
   for (const k of fill.keys()) { const [x, y] = k.split(',').map(Number);
