@@ -130,8 +130,14 @@ def rig(strip, hold_rot, mode, kind=''):
     for i in range(n):
         a = np.array(s.crop((i * C, 0, i * C + C, C))); ys, xs = np.where(a[..., 3] > 0); t = ys.min()
         head = (xs[ys <= t + 9].mean(), head0[1] + (t - t0))
-        hit = hand_of(a, head, skin)
-        if prev and (hit is None or (mode != 'swing' and math.hypot(hit[0][0] - prev[0][0], hit[0][1] - prev[0][1]) > 5)):
+        if mode in ('hold', 'fire'):   # the fist held forward is the front-most point of the arm band
+            ys2, xs2 = np.where(a[..., 3] > 0); h2 = ys2.max() - t
+            band = (ys2 >= t + .26 * h2) & (ys2 <= t + .62 * h2); xm = xs2[band].max()
+            yy = ys2[band & (xs2 >= xm - 1)]
+            hit = ((float(xm) - .5, float(yy.mean())), (float(xm) - 8, float(t + .36 * h2)), [])
+        else:
+            hit = hand_of(a, head, skin)
+        if prev and (hit is None or (mode == 'never' and math.hypot(hit[0][0] - prev[0][0], hit[0][1] - prev[0][1]) > 5)):
             dy = t - prev_t; hit = ((prev[0][0], prev[0][1] + dy), (prev[1][0], prev[1][1] + dy), [])
         if hit: prev, prev_t = hit, t
         if not hit: out.append(None); continue

@@ -259,18 +259,31 @@ requestAnimationFrame(tplCmp);
 // strokes in the hand found in each frame (weapon_rig.json), swing trails, a comic hit burst and a muzzle flash.
 const WPN = { bat: { len: 12, body: '#b07a3e', tip: '#c99252', grip: '#3b2a1e', thick: true }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
 function wpx(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
-function drawWeapon(g, hx, hy, dx, dy, kind, back) {
-  // fill first, then a 1-px black outline around EVERY filled pixel, so the thick end is never left open
-  const w = WPN[kind], n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n; const fill = new Map();
-  const put = (x, y, c) => fill.set(Math.round(x) + ',' + Math.round(y), c);
-  for (let i = -back; i <= (w.gun ? w.len - back : w.len); i++) {
-    const x = hx + dx * i, y = hy + dy * i;
+// A weapon is a fixed pixel drawing for each of 16 directions (22.5 deg apart), built once and cached, and it is
+// placed on whole pixels: so its shape never wobbles from frame to frame, only its direction changes.
+const WCACHE = {};
+function weaponShape(kind, idx, back) {
+  const key = kind + idx + ':' + back; if (WCACHE[key]) return WCACHE[key];
+  const w = WPN[kind], a = idx * Math.PI / 8, c = Math.cos(a), s = Math.sin(a), fill = new Map();
+  const put = (x, y, col) => { const k = x + ',' + y; if (!fill.has(k)) fill.set(k, col); };
+  const end = w.gun ? w.len - back : w.len, flat = Math.abs(c) >= Math.abs(s);
+  for (let i = -back; i <= end; i++) {
+    const x = Math.round(c * i), y = Math.round(s * i);
     if (w.gun) put(x, y, i < 0 ? w.tip : w.body);
-    else { put(x, y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body); if (w.thick && i > w.len - 6) { put(x + 1, y, w.tip); put(x, y + 1, w.body); } }
+    else {
+      fill.set(x + ',' + y, i < 3 ? w.grip : i > w.len - 4 ? w.tip : w.body);
+      if (w.thick && i > w.len - 6) put(x + (flat ? 0 : 1), y + (flat ? 1 : 0), w.body);   // the barrel: one pixel fatter
+    }
   }
+  const px = [];
   for (const k of fill.keys()) { const [x, y] = k.split(',').map(Number);
-    for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) if (!fill.has((x + ox) + ',' + (y + oy))) wpx(g, x + ox, y + oy, '#111'); }
-  for (const [k, c] of fill) { const [x, y] = k.split(',').map(Number); wpx(g, x, y, c); }
+    for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const kk = (x + ox) + ',' + (y + oy); if (!fill.has(kk)) px.push([x + ox, y + oy, '#111']); } }
+  for (const [k, col] of fill) { const [x, y] = k.split(',').map(Number); px.push([x, y, col]); }
+  return (WCACHE[key] = px);
+}
+function drawWeapon(g, hx, hy, dx, dy, kind, back) {
+  const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 8)) % 16) + 16) % 16, X = Math.round(hx), Y = Math.round(hy);
+  for (const [x, y, col] of weaponShape(kind, idx, back)) wpx(g, X + x, Y + y, col);
 }
 function drawBurst(g, cx, cy, R, r, n, rot, dx = 0, dy = 0, stretch = 1) {   // comic star: yellow, red rim, pale core
   const pts = [];
