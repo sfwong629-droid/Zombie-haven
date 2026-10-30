@@ -37,12 +37,12 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 <div class="wrap">
   <div>
     <h1>Building Rotation Test</h1>
-    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer, medic, engineer and cook walk the path for scale. Rubble and debris lie in small clusters on the open ground.</p>
+    <p class="sub">56-px tiles, every sprite at its drawn size. Tap a building to turn it 90°. The farmer, medic, engineer, cook, scavenger and guard walk the path for scale. Rubble and debris lie in small clusters on the open ground.</p>
   </div>
   <div class="bar">
     <div class="grp"><span class="lab">Rotate</span><button id="rotAll">All 90°</button><button id="rotReset">Reset</button></div>
     <div class="grp"><span class="lab">Zoom</span><span id="zooms" class="row" style="display:flex;gap:4px"></span></div>
-    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tMedic" class="on">Medic</button><button id="tEng" class="on">Engineer</button><button id="tCook" class="on">Cook</button><button id="tGrid">Tile grid</button><button id="tDebris" class="on">Debris</button></div>
+    <div class="grp"><span class="lab">Show</span><button id="tAnim" class="on">Animation</button><button id="tFarmer" class="on">Farmer</button><button id="tMedic" class="on">Medic</button><button id="tEng" class="on">Engineer</button><button id="tCook" class="on">Cook</button><button id="tScav" class="on">Scavenger</button><button id="tGuard" class="on">Guard</button><button id="tGrid">Tile grid</button><button id="tDebris" class="on">Debris</button></div>
     <div class="grp"><span class="lab">Ground</span><button id="gPix" class="on">Pixel art</button><button id="gFlat">Flat</button></div>
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
@@ -54,6 +54,8 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Engineer A (PixelLab): all 13 animations, front and back</div><canvas id="ecmp" aria-label="Engineer A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Cook A (PixelLab): all 13 animations, front and back</div><canvas id="ccmp" aria-label="Cook A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Scavenger A (PixelLab): all 13 animations, front and back</div><canvas id="scmp" aria-label="Scavenger A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
+  <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Guard A (PixelLab): all 13 animations, front and back</div><canvas id="gcmp" aria-label="Guard A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Template test: farmer animations → PixelLab medic (head + colours carried by code)</div><canvas id="tcmp" aria-label="Farmer and the code-made medic: walk and swing A, front and back" style="display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div class="bar"><div class="grp"><span class="lab">Emote</span><span id="emos" class="row" style="display:flex;gap:4px;flex-wrap:wrap"></span></div></div>
   <div class="stage"><div style="position:relative;line-height:0"><canvas id="cv" aria-label="Isometric test map with the buildings and a walking farmer showing emotes"></canvas><canvas id="ov" style="position:absolute;left:0;top:0;pointer-events:none;image-rendering:pixelated"></canvas></div></div>
@@ -96,12 +98,12 @@ cv.width = W; cv.height = H;
 // emotes: ChatGPT's bubbles keep their own pixel grid (half the size of a world pixel), so they draw on an overlay at 2 px per art px
 const ov = document.getElementById('ov'), og = ov.getContext('2d'); ov.width = W * 2; ov.height = H * 2; og.imageSmoothingEnabled = false;
 let emote = 'cycle';
-let showWeapons = true, showDebris = true, showMedic = true, showEng = true, showCook = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
+let showWeapons = true, showDebris = true, showMedic = true, showEng = true, showCook = true, showScav = true, showGuard = true, zoom = 3, anim = true, showFarmer = true, showGrid = false, pixGround = true, walkKind = 'walk_se_raw';
 const img = {};
 let loading = 0;
 function load(k, src) { loading++; const i = new Image(); i.onload = () => { loading--; }; i.src = src; img[k] = i; }
 for (const k of ['tent', 'house', 'water', 'farm', 'well', 'storage', 'gym', 'library', 'lounge', 'clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'hospital', 'field', 'barracks']) A[k].views.forEach((v, i) => load(k + i, v.src));
-load('emotes', A.emotes.src); load('debris', A.debris.src); load('m_walk_se', A.medic.walk_se.src); load('m_walk_ne', A.medic.walk_ne.src); load('e_walk_se', A.engineer.walk_se.src); load('e_walk_ne', A.engineer.walk_ne.src); load('c_walk_se', A.cook.walk_se.src); load('c_walk_ne', A.cook.walk_ne.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
+load('emotes', A.emotes.src); load('debris', A.debris.src); load('m_walk_se', A.medic.walk_se.src); load('m_walk_ne', A.medic.walk_ne.src); load('e_walk_se', A.engineer.walk_se.src); load('e_walk_ne', A.engineer.walk_ne.src); load('c_walk_se', A.cook.walk_se.src); load('c_walk_ne', A.cook.walk_ne.src); load('s_walk_se', A.scav.walk_se.src); load('s_walk_ne', A.scav.walk_ne.src); load('g_walk_se', A.guard.walk_se.src); load('g_walk_ne', A.guard.walk_ne.src); load('ground', A.ground.src); load('walk_se', A.walk_se.src); load('walk_ne', A.walk_ne.src); load('walk_se_raw', A.walk_se_raw.src); load('walk_ne_raw', A.walk_ne_raw.src); load('walk_se_calm', A.walk_se_calm.src); load('walk_se_rig', A.walk_se_rig.src);
 
 const P = (tx, ty) => [OX + (tx - ty) * TW / 2, OY + (tx + ty) * TH / 2];
 
@@ -184,6 +186,18 @@ function frame(now) {
       const [cx, top] = P(m.x + .5, m.y + .5);
       items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
     }
+    if (showScav) {   // the scavenger walks eight tiles behind the farmer
+      const m = farmerAt(t / 1000 * 0.9 + loopLen - 8), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
+      const sk = up ? 's_walk_ne' : 's_walk_se', s = A.scav[up ? 'walk_ne' : 'walk_se'], f = Math.floor(t / s.ms) % s.n;
+      const [cx, top] = P(m.x + .5, m.y + .5);
+      items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
+    }
+    if (showGuard) {   // the guard walks ten tiles behind the farmer
+      const m = farmerAt(t / 1000 * 0.9 + loopLen - 10), up = m.dy < 0 || m.dx < 0, flip = m.dx < 0 || m.dy > 0;
+      const sk = up ? 'g_walk_ne' : 'g_walk_se', s = A.guard[up ? 'walk_ne' : 'walk_se'], f = Math.floor(t / s.ms) % s.n;
+      const [cx, top] = P(m.x + .5, m.y + .5);
+      items.push({ d: m.x + m.y + 1, fn: () => drawStrip(img[sk], s, f, cx, top, flip) });
+    }
     items.sort((a, b) => a.d - b.d).forEach(i => i.fn());
   }
   og.clearRect(0, 0, ov.width, ov.height);
@@ -236,6 +250,8 @@ document.querySelectorAll('[data-gun]').forEach(b => b.onclick = () => { gun = b
 tog('tMedic', () => (showMedic = !showMedic));
 tog('tEng', () => (showEng = !showEng));
 tog('tCook', () => (showCook = !showCook));
+tog('tScav', () => (showScav = !showScav));
+tog('tGuard', () => (showGuard = !showGuard));
 const gp = document.getElementById('gPix'), gf = document.getElementById('gFlat');
 gp.onclick = () => { pixGround = true; gp.classList.add('on'); gf.classList.remove('on'); };
 const WB = { wRig: 'walk_se_rig', wCalm: 'walk_se_calm', wRaw: 'walk_se_raw', wOld: 'walk_se' };
@@ -382,7 +398,7 @@ function gallery(id, CA, tag) {
     requestAnimationFrame(draw);
   })(0);
 }
-gallery('fcmp', A.farmerG, 'fm_'); gallery('mcmp', A.medic, 'md_'); gallery('ecmp', A.engineer, 'en_'); gallery('ccmp', A.cook, 'ck_');
+gallery('fcmp', A.farmerG, 'fm_'); gallery('mcmp', A.medic, 'md_'); gallery('ecmp', A.engineer, 'en_'); gallery('ccmp', A.cook, 'ck_'); gallery('scmp', A.scav, 'sc_'); gallery('gcmp', A.guard, 'gd_');
 gf.onclick = () => { pixGround = false; gf.classList.add('on'); gp.classList.remove('on'); };
 
 // tap a building to rotate it (hit test: its diamond and the area above it)

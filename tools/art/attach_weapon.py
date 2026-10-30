@@ -32,7 +32,10 @@ def skin_of(hold_rot):
     # drop colours that are really headwear/hair (common in the top rows), e.g. the farmer's straw hat
     head = a[top:top + 6].reshape(-1, 4); head = head[head[:, 3] > 0][:, :3].astype(int)
     keep = [c for c in cols if (np.abs(head - c).sum(1) < 20).sum() <= 4]
-    return np.array(keep or cols)
+    if not (keep or cols):   # fist in a dark glove or sleeve: fall back to the sprite's skin-like colours
+        px = a[a[..., 3] > 0][:, :3].astype(int)
+        cols = [c for c in px if c[0] > c[1] > c[2] and c[0] - c[2] > 50 and c[0] > 120]
+    return np.array(keep or cols or [[230, 160, 110]])
 
 def hand_of(f, head_c, skin):
     """the lead hand: a patch of skin colour that is NOT the face. Skin pixels are grouped into touching patches;
