@@ -382,17 +382,20 @@ def pose(rig, p):
 def idle(t):
     w = math.sin(2 * math.pi * t)
     return {'chest': (1.2 * w, 0, 0), 'neck': (-2 * w, 0, 0), 'head': (-12, 0, 3 * math.sin(2 * math.pi * t + 1)),
-            'upperarm.L': (0, 0, -4), 'upperarm.R': (0, 0, 4), 'forearm.L': (12, 0, 0), 'forearm.R': (12, 0, 0), 'bob': -.004 * (1 - w) / 2}
+            'upperarm.L': (3, 0, -5), 'upperarm.R': (3, 0, 5), 'forearm.L': (20, 0, 0), 'forearm.R': (20, 0, 0),
+            'thigh.L': (7, 0, 0), 'thigh.R': (5, 0, 0), 'shin.L': (-13, 0, 0), 'shin.R': (-10, 0, 0), 'foot.L': (6, 0, 0), 'foot.R': (5, 0, 0),
+            'bob': -.012 - .004 * (1 - w) / 2}   # soft knees so the legs never lock straight
 
 def walk(t):
     ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
     for n, sg in (('L', 1), ('R', -1)):
-        th = 26 * sg * sn; kn = 6 + 46 * max(0.0, sg * cs) ** 1.4
+        th = 28 * sg * sn; kn = 12 + 50 * max(0.0, sg * cs) ** 1.4
         p['thigh.' + n] = (th, 0, 0)                 # + = forward
         p['shin.' + n] = (-kn, 0, 0)                 # - = knee bends (foot goes back)
         p['foot.' + n] = (-(th - kn) * .35 + kn * .45, 0, 0)
-        p['upperarm.' + n] = (-20 * sg * sn, 0, 0)
-        p['forearm.' + n] = (18 + 14 * max(0.0, -sg * sn), 0, 0)
-    p['bob'] = .02 * math.cos(2 * ph) - .008
-    p['pelvis'] = (0, 0, 6 * sn); p['chest'] = (3, 0, -9 * sn); p['head'] = (-12, 0, 4 * sn)
+        p['upperarm.' + n] = (-24 * sg * sn, 0, 0)
+        p['forearm.' + n] = (26 + 20 * max(0.0, -sg * sn), 0, 0)
+    p['bob'] = .016 * math.cos(2 * ph) - .02
+    # twist about the spine (bone-local Y), never a sideways tilt: hips stay level, body stays upright
+    p['pelvis'] = (0, 6 * sn, 0); p['chest'] = (4, -9 * sn, 0); p['head'] = (-12, 4 * sn, 0)
     return p

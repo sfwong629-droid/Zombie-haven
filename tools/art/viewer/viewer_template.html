@@ -96,7 +96,7 @@ function toonize(root) {
   root.traverse(o => {
     if (!o.isMesh) return;
     const src = o.material, ud = src.userData || {};
-    const m = new THREE.MeshToonMaterial({ color: new THREE.Color(ud.zh_base || '#' + src.color.getHexString()).convertSRGBToLinear(), gradientMap: grad });
+    const m = new THREE.MeshToonMaterial({ color: new THREE.Color(ud.zh_base || '#888888'), gradientMap: grad });
     const L = JSON.parse(ud.zh_lines || '[]').slice(0, 2);
     if (L.length) {
       const ax = { X: 'x', Y: 'z', Z: 'y' };
@@ -154,7 +154,8 @@ renderer.setAnimationLoop(() => {
   controls.update();
   // light follows the camera a little so the face never goes fully dark
   const off = new THREE.Vector3().subVectors(cam.position, controls.target).normalize();
-  sun.position.copy(controls.target).add(new THREE.Vector3(off.x + .9, 1.6, off.z - .4).multiplyScalar(4));
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), off).normalize();
+  sun.position.copy(controls.target).add(off.clone().add(right.multiplyScalar(-.7)).add(new THREE.Vector3(0, 1.2, 0)).multiplyScalar(4));
   outline.render(scene, cam);
 });
 </script>

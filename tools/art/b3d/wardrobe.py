@@ -226,8 +226,11 @@ def tool(ctx, kind='hoe', side='R'):
     J = ctx['J']; s = ctx['s']; a, b = J['hand.' + side][:2]; c = (a + b) / 2
     wood = ink('twood', '#9a6a3c'); metal = ink('tmetal', '#8a8c88')
     if kind == 'hoe':
-        _add(ctx, 'tool', tube(c + Vector((0, 0, .62 * s)), c + Vector((0, -.02, -.4 * s)), .017, .017, wood, seg=8), 'hand.' + side)
-        _add(ctx, 'tool', box(c + Vector((0, -.07, -.42 * s)), (.14, .12, .02), metal, rot=(D(-15), 0, 0), bevel=.004), 'hand.' + side)
+        # gripped in front of the fist, leaning forward so the shaft clears the arm
+        g = c + Vector((0, -.05, -.005)) * s; up = Vector((0, -.34, 1)).normalized()
+        _add(ctx, 'tool', tube(g + up * .6 * s, g - up * .42 * s, .017, .017, wood, seg=8), 'hand.' + side)
+        bl = g - up * .44 * s
+        _add(ctx, 'tool', box(bl + Vector((0, -.05, 0)), (.14, .12, .02), metal, rot=(D(-34), 0, 0), bevel=.004), 'hand.' + side)
     elif kind == 'ladle':
         _add(ctx, 'tool', tube(c + Vector((0, -.02, .02)), c + Vector((0, -.04, -.3 * s)), .01, .01, metal, seg=8), 'hand.' + side)
         _add(ctx, 'tool', ellip(c + Vector((0, -.05, -.33 * s)), (.05, .05, .03), metal), 'hand.' + side)
