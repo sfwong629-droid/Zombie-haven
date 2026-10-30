@@ -1,0 +1,26 @@
+{
+ "frame": [
+  256,
+  288
+ ],
+ "anchor": [
+  128.0,
+  237.5
+ ],
+ "ppm": 120,
+ "scale_shown": 0.5,
+ "anims": {
+  "idle": {
+   "frames": 24,
+   "fps": 10
+  },
+  "walk": {
+   "frames": 16,
+   "fps": 16
+  },
+  "punch": {
+   "frames": 14,
+   "fps": 18
+  }
+ }
+}

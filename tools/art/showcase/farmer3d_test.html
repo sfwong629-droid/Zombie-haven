@@ -1,0 +1,222 @@
+<title>Farmer 3D Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column field notebook; the live yard first, then the close-up comparison, then the notes. */
+:root {
+  --bg: #efeee6; --panel: #fbfaf5; --ink: #2a2a21; --muted: #6a6957; --line: #d8d6c6;
+  --accent: #5d7a2c; --straw: #b8892f; --chip: #e6e4d6;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Barlow", system-ui, sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1b1c16; --panel: #24251d; --ink: #e9e7d8; --muted: #a3a18b; --line: #3a3b2e;
+  --accent: #a3c460; --straw: #ddb25a; --chip: #30312666; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1b1c16; --panel: #24251d; --ink: #e9e7d8; --muted: #a3a18b; --line: #3a3b2e;
+  --accent: #a3c460; --straw: #ddb25a; --chip: #30312666; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--f-body); }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font: 500 12px/1.2 var(--f-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 40px/1 var(--f-display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font: 700 22px/1.1 var(--f-display); letter-spacing: .02em; text-transform: uppercase; margin: 0; }
+.lede { margin: 6px 0 0; max-width: 62ch; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.stage { background: #5f7433; border-radius: 6px; overflow: hidden; line-height: 0; }
+.stage canvas { width: 100%; height: auto; display: block; }
+.cap { font: 400 12.5px/1.4 var(--f-data); color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: 600 13px/1 var(--f-body); color: var(--ink); background: var(--panel); border: 0;
+  padding: 9px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--straw); outline-offset: -2px; }
+.lbl { font: 500 11px/1 var(--f-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.card canvas { width: 100%; height: auto; background: #6b7f3a; border-radius: 4px; display: block; }
+.card h3 { margin: 0; font: 600 14px/1.2 var(--f-body); }
+.card p { margin: 0; font: 400 12.5px/1.4 var(--f-data); color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); }
+th { font: 500 11px/1.3 var(--f-data); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); width: 34%; }
+td.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.tw { overflow-x: auto; }
+ul.next { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+@media (max-width: 520px) { .pair { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Zombie Haven · art-direction-b · test 1</span>
+    <h1>Farmer, made in 3D</h1>
+    <p class="lede">A low-poly Farmer built and animated in Blender, then rendered to flat sprite sheets with the game's fixed camera. The game stays 2D; only the images change. Built to judge the Last Day on Earth look and how smooth the movement feels.</p>
+  </header>
+
+  <section aria-labelledby="yard-h">
+    <h2 id="yard-h">In the yard</h2>
+    <div class="stage"><canvas id="yard" width="1200" height="720" aria-label="The 3D Farmer walking a loop around a farm yard, stopping to punch"></canvas></div>
+    <div class="cap">He walks a square in all four directions, stops at each corner, and throws a punch at one. Every direction is the same model turned, never a mirror.</div>
+  </section>
+
+  <section aria-labelledby="cmp-h">
+    <h2 id="cmp-h">Side by side</h2>
+    <div class="controls">
+      <span class="lbl">Animation</span>
+      <div class="seg" id="anim">
+        <button id="a-idle" data-v="idle" aria-pressed="false">Idle</button>
+        <button id="a-walk" data-v="walk" aria-pressed="true">Walk</button>
+        <button id="a-punch" data-v="punch" aria-pressed="false">Punch</button>
+      </div>
+      <span class="lbl">Facing</span>
+      <div class="seg" id="dir">
+        <button id="d-se" data-v="se" aria-pressed="true">SE</button>
+        <button id="d-sw" data-v="sw" aria-pressed="false">SW</button>
+        <button id="d-nw" data-v="nw" aria-pressed="false">NW</button>
+        <button id="d-ne" data-v="ne" aria-pressed="false">NE</button>
+      </div>
+    </div>
+    <div class="pair">
+      <div class="card">
+        <h3>3D render (direction B)</h3>
+        <canvas id="c3d" width="512" height="400"></canvas>
+        <p id="i3d">—</p>
+      </div>
+      <div class="card">
+        <h3>PixelLab Farmer (current, on main)</h3>
+        <canvas id="cpx" width="512" height="400"></canvas>
+        <p id="ipx">—</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="n-h">
+    <h2 id="n-h">What this test is</h2>
+    <div class="tw"><table>
+      <tr><th>Made with</th><td>Blender 5.2 (Python script), in the Claude workspace. No PixelLab credits used.</td></tr>
+      <tr><th>Camera</th><td>Orthographic, 45° turn, 30° tilt, so ground tiles are still an exact 2:1.</td></tr>
+      <tr><th>Frame size</th><td class="num">256 × 288 rendered, shown at 128 × 144 (sharp on phones)</td></tr>
+      <tr><th>Frames</th><td class="num">idle 24 · walk 16 · punch 14, per direction</td></tr>
+      <tr><th>Directions</th><td>SE, SW, NW, NE from one model. Adding all 8 costs only render time.</td></tr>
+      <tr><th>Model</th><td>Rigid parts on a simple joint rig, colours taken from the approved Farmer. A rough stand-in for a proper Meshy/Tripo model with painted textures.</td></tr>
+    </table></div>
+    <h2>Not done yet</h2>
+    <ul class="next">
+      <li>Painted textures and a softer, skinned body (elbows and knees are rigid joints here).</li>
+      <li>Real shadow under the feet; this page draws a soft blob.</li>
+      <li>Not wired into the game yet; buildings are still the pixel versions.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const repo = /\/Zombie-haven\//i.test(location.pathname);
+  const B3 = repo ? '../../../assets/characters/b3d/' : 'b3d/';
+  const PX = repo ? '../../../assets/characters/t56/farmer/' : 't56/';
+  const A3 = { idle: [24, 10], walk: [16, 16], punch: [14, 18] };
+  const APX = { idle: [5, 6], walk: [6, 9], punch: [9, 12] };
+  const FW = 256, FH = 288, AX = 128, AY = 237.5;      // rendered frame and feet point
+  const img = {};
+  function load(key, src) { const i = new Image(); i.src = src; img[key] = i; }
+  for (const a in A3) for (const v of ['se', 'sw', 'nw', 'ne']) load(`3_${a}_${v}`, `${B3}farmer/farmer3d_${a}_${v}.png`);
+  for (const a in APX) for (const v of ['se', 'ne']) load(`p_${a}_${v}`, `${PX}farmer_${a}_${v}.png`);
+  load('ground', `${B3}ground_test.jpg`);
+  const ok = k => img[k] && img[k].complete && img[k].naturalWidth > 0;
+
+  function shadow(g, x, y, s) {
+    const r = g.createRadialGradient(x + 8 * s, y + 3 * s, 2, x + 8 * s, y + 3 * s, 40 * s);
+    r.addColorStop(0, 'rgba(20,24,8,.42)'); r.addColorStop(1, 'rgba(20,24,8,0)');
+    g.save(); g.translate(x + 8 * s, y + 3 * s); g.scale(1, 0.42); g.translate(-(x + 8 * s), -(y + 3 * s));
+    g.fillStyle = r; g.beginPath(); g.arc(x + 8 * s, y + 3 * s, 40 * s, 0, 7); g.fill(); g.restore();
+  }
+  function draw3(g, anim, dir, f, x, y, s) {
+    const k = `3_${anim}_${dir}`; if (!ok(k)) return;
+    shadow(g, x, y, s);
+    g.drawImage(img[k], f * FW, 0, FW, FH, x - AX * s, y - AY * s, FW * s, FH * s);
+  }
+
+  // ---- yard: world metres -> canvas px (canvas is 1200x720, 120 px per metre, origin in the middle)
+  const yard = document.getElementById('yard').getContext('2d');
+  const P = (x, y) => [600 + (x + y) / Math.SQRT2 * 120, 360 + (x - y) / Math.SQRT2 * 60];
+  const C = 1.2, SPEED = 1.35;   // metres; metres per second (one stride per walk cycle)
+  const legs = [
+    { dir: 'se', from: [-C, -C], to: [C, -C] }, { dir: 'ne', from: [C, -C], to: [C, C] },
+    { dir: 'nw', from: [C, C], to: [-C, C] }, { dir: 'sw', from: [-C, C], to: [-C, -C] }];
+  const plan = [];
+  legs.forEach((l, i) => {
+    plan.push({ kind: 'walk', ...l, dur: 2 * C / SPEED });
+    plan.push({ kind: 'idle', dir: legs[(i + 1) % 4].dir, at: l.to, dur: 1.2 });
+    if (i === 1) plan.push({ kind: 'punch', dir: 'nw', at: l.to, dur: A3.punch[0] / A3.punch[1] * 2 });
+  });
+  const total = plan.reduce((s, p) => s + p.dur, 0);
+
+  function drawYard(t) {
+    const g = yard; g.clearRect(0, 0, 1200, 720);
+    if (ok('ground')) g.drawImage(img.ground, 0, 0); else { g.fillStyle = '#6b7f3a'; g.fillRect(0, 0, 1200, 720); }
+    let u = t % total, step = plan[0];
+    for (const p of plan) { if (u < p.dur) { step = p; break; } u -= p.dur; }
+    let x, y, anim = step.kind, f;
+    if (step.kind === 'walk') {
+      const k = u / step.dur; x = step.from[0] + (step.to[0] - step.from[0]) * k; y = step.from[1] + (step.to[1] - step.from[1]) * k;
+    } else [x, y] = step.at;
+    const [n, fps] = A3[anim];
+    f = anim === 'punch' ? Math.min(n - 1, Math.floor(u * fps) % (n + 4)) : Math.floor(u * fps) % n;
+    const [sx, sy] = P(x, y);
+    draw3(g, anim, step.dir, f, sx, sy, 1);
+  }
+
+  // ---- close-up comparison
+  let cmp = { anim: 'walk', dir: 'se' };
+  const c3 = document.getElementById('c3d').getContext('2d'), cp = document.getElementById('cpx').getContext('2d');
+  const i3 = document.getElementById('i3d'), ip = document.getElementById('ipx');
+  function ground(g) { g.fillStyle = '#6b7f3a'; g.fillRect(0, 0, 512, 400);
+    g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+    for (let k = -8; k <= 8; k++) { g.beginPath(); g.moveTo(256 + k * 56, 0 - 0); g.lineTo(256 + k * 56 + 800, 400); g.stroke();
+      g.beginPath(); g.moveTo(256 + k * 56, 0); g.lineTo(256 + k * 56 - 800, 400); g.stroke(); } }
+  function drawCmp(t) {
+    const { anim, dir } = cmp;
+    ground(c3); const [n, fps] = A3[anim];
+    const f3 = anim === 'punch' ? Math.min(n - 1, Math.floor(t * fps) % (n + 6)) : Math.floor(t * fps) % n;
+    draw3(c3, anim, dir, f3, 256, 340, 1.1);
+    i3.textContent = `${anim} · ${dir.toUpperCase()} · frame ${f3 + 1}/${n} · ${fps} fps`;
+
+    ground(cp); cp.imageSmoothingEnabled = false;
+    const pdir = dir === 'se' || dir === 'ne' ? dir : null;
+    if (!pdir) {
+      cp.fillStyle = 'rgba(255,255,255,.85)'; cp.font = '600 22px Barlow, sans-serif'; cp.textAlign = 'center';
+      cp.fillText(`No ${dir.toUpperCase()} view on main`, 256, 190);
+      cp.font = '400 17px Barlow, sans-serif'; cp.fillText('Only SE and NE were generated', 256, 220);
+      ip.textContent = `${anim} · ${dir.toUpperCase()} · not made`;
+    } else {
+      const k = `p_${anim}_${pdir}`, [pn, pf] = APX[anim];
+      const ff = anim === 'punch' ? Math.min(pn - 1, Math.floor(t * pf) % (pn + 4)) : Math.floor(t * pf) % pn;
+      if (ok(k)) { const s = 6, X = 256 - 24 * s, Y = 340 - 40 * s;
+        shadow(cp, 256, 340, 1.1); cp.drawImage(img[k], ff * 48, 0, 48, 48, X, Y, 48 * s, 48 * s); }
+      ip.textContent = `${anim} · ${dir.toUpperCase()} · frame ${ff + 1}/${pn} · 48 px frame, enlarged to match`;
+    }
+  }
+  function seg(id, key) {
+    const el = document.getElementById(id);
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+      cmp[key] = b.dataset.v; el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); t0 = performance.now(); });
+  }
+  seg('anim', 'anim'); seg('dir', 'dir');
+
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t0 = performance.now(); const s0 = t0;
+  function loop(now) {
+    drawYard(still ? 0.5 : (now - s0) / 1000);
+    drawCmp(still ? 0 : (now - t0) / 1000);
+    if (!still) requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  if (still) Object.values(img).forEach(i => i.addEventListener('load', () => requestAnimationFrame(loop)));
+})();
+</script>
