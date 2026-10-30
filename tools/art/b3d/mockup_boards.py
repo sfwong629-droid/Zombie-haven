@@ -49,6 +49,9 @@ STY = {
                 accent='#f08a2c', warn='#e04b3a', radius='18px', clock='Day 12 · 08:40', time='sun',
                 alert=('Visitors!', '4 zombies wandering by the east fence'), sel=('Farm Plot', '2 × 2 tiles · 20 wood · feeds 3')),
 }
+for _k, _t in (('gpt1', 'ChatGPT 1 · Painted survival'), ('gpt2', 'ChatGPT 2 · Overcast scrap fort'),
+               ('gpt3', 'ChatGPT 3 · Autumn evening'), ('gpt4', 'ChatGPT 4 · Grounded detail')):
+    STY[_k] = dict(STY['gritty'], title=_t)
 RES = [('food', 'Food', '46'), ('water', 'Water', '31'), ('wood', 'Wood', '120'), ('scrap', 'Scrap', '58'), ('med', 'Medicine', '9')]
 BUILD = [('house', 'Shelter'), ('farm', 'Farm'), ('tool', 'Workshop'), ('med', 'Medical'), ('wall', 'Defense'), ('box', 'Storage')]
 
@@ -138,7 +141,9 @@ return {{}};
 '''
     return html
 
-names = {'gritty': 'Main.dc.html', 'night': 'Night.dc.html', 'toy': 'Toy.dc.html'}
+names = {'gritty': 'Main.dc.html', 'night': 'Night.dc.html', 'toy': 'Toy.dc.html',
+         'gpt1': 'GptPainted.dc.html', 'gpt2': 'GptScrap.dc.html', 'gpt3': 'GptAutumn.dc.html', 'gpt4': 'GptDetail.dc.html'}
 for k, n in names.items():
+    if k not in URL: continue
     open(os.path.join(ROOT, 'project', n), 'w').write(board(k))
 print('boards written')
