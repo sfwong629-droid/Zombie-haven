@@ -74,3 +74,15 @@ PROFESSIONS['guy_guard'] = {'body': {**_SB, 'skin': '#c48a62'}, 'hair': 'swoop',
     'wear': [('shirt', {'colour': '#6a7a5a', 'sleeves': 'rolled', 'buttons': False}), ('vest', {'colour': '#4a4a36'}), ('pants', {'colour': '#4a4a3a', 'pockets': True}),
              ('boots', {'colour': '#2b2420', 'tall': True}), ('belt', {'pouches': 2}), 'rifle_on_back', 'binoculars']}
 ORDER = ['farmer', 'medic', 'guard', 'cook', 'scavenger', 'engineer']
+
+# Body-shape review: bare figures, same head and face, only the body numbers change.
+_BARE = {'hair': 'swoop', 'hair_colour': '#6a4428', 'seed': 2,
+         'wear': [('shirt', {'colour': '#c9c4b8', 'sleeves': 'short', 'buttons': False, 'collar': False}), ('pants', {'colour': '#6a6e78'}), ('boots', {'colour': '#4a3a2e'})]}
+_SHAPES = {
+    'shape_a': {},                                                                                          # current (too buff)
+    'shape_b': {'bulk': .84, 'shoulders': .82, 'arm_thick': .62, 'belly': .92},                              # slimmer
+    'shape_c': {'bulk': .72, 'shoulders': .72, 'hips': .9, 'arm_thick': .55, 'belly': .88},                  # slight
+    'shape_d': {'bulk': .74, 'shoulders': .74, 'hips': .92, 'arm_thick': .56, 'belly': .9, 'legs': .76, 'torso': .86},   # slight, longer legs
+}
+for _k, _v in _SHAPES.items():
+    PROFESSIONS[_k] = {**_BARE, 'body': {**_GUY['body'], 'smooth': True, **_v}}

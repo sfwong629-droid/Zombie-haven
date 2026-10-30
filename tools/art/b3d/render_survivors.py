@@ -16,7 +16,7 @@ JOBS = [a for a in sys.argv[2:] if a in ('lineup', 'walk')] or ['lineup', 'walk'
 only = [a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('only=')]
 names = only[0] if only else ORDER
 D = math.radians
-FACE = {'se': 90, 'sw': 0, 'nw': -90, 'ne': 180}
+FACE = {'se': 90, 'sw': 0, 'nw': -90, 'ne': 180, 'front': 45, 'side': 135}
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 S = bpy.context.scene
@@ -33,7 +33,8 @@ cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); S.collection.obj
 Z = float(([a.split('=')[1] for a in sys.argv if a.startswith('zoom=')] or ['1'])[0])
 PPM = 300 * Z
 W = int(PPM * (len(names) * gap + .5)); H = int(560 * Z)
-cam.data.type = 'ORTHO'; cam.data.ortho_scale = W / PPM; cam.rotation_euler = (D(45), 0, D(45))
+TILT = float(([a.split('=')[1] for a in sys.argv if a.startswith('tilt=')] or ['45'])[0])
+cam.data.type = 'ORTHO'; cam.data.ortho_scale = W / PPM; cam.rotation_euler = (D(TILT), 0, D(45))
 look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .72)) - look * 30
 cam.data.clip_end = 80; S.camera = cam
 S.render.resolution_x, S.render.resolution_y = W, H
@@ -70,9 +71,14 @@ def on_paper(src, dst, seed=3):
     inkstyle.paper(dst, strength=.6, seed=seed)
 
 if 'lineup' in JOBS:
-    for v in ('se', 'sw', 'nw', 'ne'):
+    VIEWS = ([a.split('=')[1].split(',') for a in sys.argv if a.startswith('views=')] or [('se', 'sw', 'nw', 'ne')])[0]
+    APOSE = float(([a.split('=')[1] for a in sys.argv if a.startswith('apose=')] or ['0'])[0])
+    for v in VIEWS:
         for r in rigs:
-            r['arm'].rotation_euler = (0, 0, D(FACE[v])); survivor.pose(r, survivor.idle(0))
+            r['arm'].rotation_euler = (0, 0, D(FACE[v])); p_ = survivor.idle(0)
+            if TILT > 60: r['head_up'] = 0   # eye-level sheet: head level
+            if APOSE: p_['upperarm.L'] = (p_['upperarm.L'][0], 0, p_['upperarm.L'][2] - APOSE); p_['upperarm.R'] = (p_['upperarm.R'][0], 0, p_['upperarm.R'][2] + APOSE)
+            survivor.pose(r, p_)
         p = os.path.join(OUT, f'lineup_{v}.png'); shot(p); on_paper(p, os.path.join(OUT, f'lineup_{v}_paper.png'))
         print('lineup', v, round(time.time() - t0), flush=True)
 
