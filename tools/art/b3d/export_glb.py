@@ -35,6 +35,15 @@ for role, o in rig['parts']:
         nm['zh_base'] = m['zh_base']; nm['zh_shadow'] = m['zh_shadow']; nm['zh_lines'] = json.dumps(lines)
         o.data.materials[i] = nm
 
+# lighter web meshes: thin out dense smooth surfaces (shading stays smooth)
+for role, o in rig['parts']:
+    if len(o.data.vertices) > 2500 and o.data.polygons and o.data.polygons[0].use_smooth:
+        d = o.modifiers.new('web', 'DECIMATE'); d.ratio = .3
+        o.modifiers.move(len(o.modifiers) - 1, 0)   # before the armature
+        dg = bpy.context.evaluated_depsgraph_get()
+        bpy.context.view_layer.objects.active = o
+        with bpy.context.temp_override(object=o, active_object=o): bpy.ops.object.modifier_apply(modifier='web')
+
 # animation clips pushed to NLA so the exporter writes them as separate animations
 ao.animation_data_create()
 def clip(name, fn, n):

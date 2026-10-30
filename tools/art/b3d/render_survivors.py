@@ -44,7 +44,9 @@ w = bpy.data.worlds.new('w'); S.world = w; w.use_nodes = True
 w.node_tree.nodes['Background'].inputs['Color'].default_value = (.5, .5, .5, 1)
 w.node_tree.nodes['Background'].inputs['Strength'].default_value = .6
 S.render.engine = 'BLENDER_EEVEE'; S.eevee.taa_render_samples = 16
-inkstyle.setup(S, line_px=2.0, wobble=1.0)
+LINE = float(([a.split('=')[1] for a in sys.argv if a.startswith('line=')] or ['2.0'])[0])
+OUTER = [float(a.split('=')[1]) for a in sys.argv if a.startswith('outer=')]
+inkstyle.setup(S, line_px=LINE * Z, wobble=1.0)
 S.render.film_transparent = True
 S.render.image_settings.file_format = 'PNG'; S.render.image_settings.color_mode = 'RGBA'
 PAPER = (236, 222, 190, 255)
@@ -52,8 +54,19 @@ PAPER = (236, 222, 190, 255)
 def shot(path):
     S.render.filepath = path; bpy.ops.render.render(write_still=True)
 
+def outline(im, px):
+    """Bold storybook contour: grow the sprite's silhouette by px and fill the rim with dark ink."""
+    from PIL import ImageFilter
+    a = im.split()[3].point(lambda v: 255 if v > 40 else 0)
+    k = int(px) * 2 + 1
+    rim = a.filter(ImageFilter.MaxFilter(k)).filter(ImageFilter.GaussianBlur(.7))
+    ink_ = Image.new('RGBA', im.size, (34, 24, 18, 255)); ink_.putalpha(rim)
+    ink_.alpha_composite(im); return ink_
+
 def on_paper(src, dst, seed=3):
-    im = Image.open(src); bg = Image.new('RGBA', im.size, PAPER); bg.alpha_composite(im); bg.save(dst)
+    im = Image.open(src).convert('RGBA')
+    if OUTER: im = outline(im, OUTER[0] * Z); im.save(src)
+    bg = Image.new('RGBA', im.size, PAPER); bg.alpha_composite(im); bg.save(dst)
     inkstyle.paper(dst, strength=.6, seed=seed)
 
 if 'lineup' in JOBS:

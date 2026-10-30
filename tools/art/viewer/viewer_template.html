@@ -75,7 +75,7 @@ const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, .01, 50);
 const controls = new OrbitControls(cam, renderer.domElement);
 controls.target.set(0, .66, 0); controls.enablePan = false; controls.enableDamping = true;
 controls.minZoom = .6; controls.maxZoom = 4; controls.autoRotate = true; controls.autoRotateSpeed = 2.2;
-const outline = new OutlineEffect(renderer, { defaultThickness: .0055, defaultColor: [.13, .09, .06], defaultAlpha: 1 });
+const outline = new OutlineEffect(renderer, { defaultThickness: .009, defaultColor: [.13, .09, .06], defaultAlpha: 1 });
 
 scene.add(new THREE.HemisphereLight(0xfff4e0, 0x8a7a60, 1.1));
 const sun = new THREE.DirectionalLight(0xfff2dc, 2.2); scene.add(sun); scene.add(sun.target);

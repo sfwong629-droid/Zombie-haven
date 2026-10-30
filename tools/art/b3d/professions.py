@@ -11,7 +11,7 @@ TEMPLATES = {
     # storybook: about three heads tall, big round head, short torso and legs, stubby arms (ink reference)
     'storybook': {'height': 1.0, 'shoulders': .96, 'hips': 1.02, 'belly': 1.0, 'bulk': 1.12,
                   'head_scale': 1.38, 'legs': .66, 'torso': .8, 'arm_scale': .52, 'nose': .45, 'eye_size': 1.15, 'smile': True, 'head_up': 10,
-                  'eye_y': -.04, 'eye_x': .37, 'mouth_y': .5},
+                  'eye_y': -.04, 'eye_x': .37, 'mouth_y': .5, 'head_shape': (.88, .94, 1.06), 'chin': True},
 }
 SKIN = ['#f2c4a0', '#e8b08a', '#d99a72', '#c98e6a', '#a86a48', '#8e5a3e', '#6a4030']
 HAIR_COLOURS = ['#d8a854', '#c0602a', '#8a4a2a', '#4a3020', '#2a1f18', '#1a1210', '#b8b0a0']
@@ -66,4 +66,11 @@ _GUY = {'body': {'template': 'storybook', 'skin': '#f6d0ae', 'brow': '#3a2516'},
                  ('belt', {'colour': '#4a2e18'}), ('boots', {'colour': '#4a3424'})]}
 PROFESSIONS['guy_smooth'] = {**_GUY, 'body': {**_GUY['body'], 'smooth': True}}
 PROFESSIONS['guy_facet'] = _GUY
+_SB = {**_GUY['body'], 'smooth': True}
+PROFESSIONS['guy_scav'] = {'body': {**_SB, 'skin': '#e8bc96'}, 'hair': 'swoop', 'hair_colour': '#7a3e22', 'seed': 4,
+    'wear': [('jacket', {'colour': '#c8742e'}), ('pants', {'colour': '#6a6a4a', 'pockets': True}), ('boots', {'colour': '#4a3626'}),
+             ('scarf', {'colour': '#5a6a7a'}), ('backpack', {'colour': '#6a5a3a', 'bedroll': '#4a6a3a'}), ('belt', {'pouches': 2}), ('tool', {'kind': 'crowbar'})]}
+PROFESSIONS['guy_guard'] = {'body': {**_SB, 'skin': '#c48a62'}, 'hair': 'swoop', 'hair_colour': '#2a1f18', 'seed': 6,
+    'wear': [('shirt', {'colour': '#6a7a5a', 'sleeves': 'rolled', 'buttons': False}), ('vest', {'colour': '#4a4a36'}), ('pants', {'colour': '#4a4a3a', 'pockets': True}),
+             ('boots', {'colour': '#2b2420', 'tall': True}), ('belt', {'pouches': 2}), 'rifle_on_back', 'binoculars']}
 ORDER = ['farmer', 'medic', 'guard', 'cook', 'scavenger', 'engineer']

@@ -115,7 +115,7 @@ def ink(name, base, shadow=None, speckle=0.18, hatch=None, emit=None, lines=None
     _cache[key] = m
     return m
 
-def setup(S, line_px=2.2, wobble=1.4):
+def setup(S, line_px=2.2, wobble=1.4, outer=None):
     S.view_settings.view_transform = 'Standard'
     S.render.use_freestyle = True
     S.render.line_thickness_mode = 'ABSOLUTE'; S.render.line_thickness = 1.0
@@ -130,6 +130,15 @@ def setup(S, line_px=2.2, wobble=1.4):
     for g in list(lst.geometry_modifiers): lst.geometry_modifiers.remove(g)
     sn = lst.geometry_modifiers.new('wobble', 'SPATIAL_NOISE'); sn.amplitude = wobble; sn.scale = 12; sn.octaves = 2
     tn = lst.thickness_modifiers.new('ink', 'NOISE'); tn.amplitude = line_px * 0.55; tn.period = 18; tn.blend = 'ADD'
+    if outer:   # storybook look: a bold outer contour, and the inner lines (folds, seams, edges) kept thin and quiet
+        ls.select_external_contour = False
+        tn.amplitude = line_px * 0.3
+        lo = fs.linesets.new('outer'); lo.select_by_visibility = True; lo.select_by_edge_types = True
+        lo.select_silhouette = lo.select_border = lo.select_crease = False; lo.select_external_contour = True
+        so = bpy.data.linestyles.new('outer'); lo.linestyle = so
+        so.color = (0.022, 0.014, 0.009); so.thickness = outer; so.thickness_position = 'CENTER'
+        g = so.geometry_modifiers.new('wobble', 'SPATIAL_NOISE'); g.amplitude = wobble; g.scale = 12; g.octaves = 2
+        t = so.thickness_modifiers.new('ink', 'NOISE'); t.amplitude = outer * 0.25; t.period = 24; t.blend = 'ADD'
 
 def paper(path, strength=0.5, seed=3):
     """Multiply a warm paper grain over a rendered image (keeps alpha). Run after rendering."""

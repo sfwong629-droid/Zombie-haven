@@ -117,8 +117,13 @@ def body_mesh(b, J):
 def head_mesh(b, J):
     s = b.get('height', 1.0); hr = .168 * s * b.get('head_scale', 1.0); hz = 1.18 * s + hr * .98
     jaw = b.get('jaw', 1.0); ns = b.get('nose', 1.0)
-    bm = _sphere((0, 0, hz), (hr * .96, hr, hr * 1.03), 32, 24)
-    _merge(bm, _sphere((0, -hr * .25, hz - hr * .48), (hr * .62 * jaw, hr * .62, hr * .52)))      # jaw / cheeks
+    hs = b.get('head_shape', (.96, 1.0, 1.03))
+    bm = _sphere((0, 0, hz), (hr * hs[0], hr * hs[1], hr * hs[2]), 32, 24)
+    if b.get('chin'):   # narrower lower face with a soft chin, so the face reads less like a ball
+        _merge(bm, _sphere((0, -hr * .3, hz - hr * .5), (hr * .55 * jaw, hr * .55, hr * .5)))
+        _merge(bm, _sphere((0, -hr * .52, hz - hr * .72), (hr * .3, hr * .3, hr * .26)))
+    else:
+        _merge(bm, _sphere((0, -hr * .25, hz - hr * .48), (hr * .62 * jaw, hr * .62, hr * .52)))      # jaw / cheeks
     if ns: _capsule(bm, Vector((0, -hr * .86, hz + hr * .02)), Vector((0, -hr * (.86 + .22 * ns), hz - hr * .16)), hr * .1 * ns, hr * .13 * ns, 8)   # nose
     for x in (1, -1):
         _merge(bm, _sphere((x * hr * .95, .01, hz - hr * .05), (hr * .12, hr * .2, hr * .27)))     # ears
