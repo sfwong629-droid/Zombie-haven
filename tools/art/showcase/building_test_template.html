@@ -47,7 +47,9 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
     <div class="grp"><span class="lab">Walk</span><button id="wRig">Clean</button><button id="wCalm">Luma calm</button><button id="wRaw" class="on">Luma raw</button><button id="wOld">Old</button></div>
   </div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Walk side by side</div><canvas id="wcmp" aria-label="Front walks (Old, Luma raw, Luma calm, Clean) and back walks (Old, Luma raw) side by side" style="display:block;width:100%;max-width:420px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
-  <div class="row" style="margin:8px 0"><button id="tWeap" class="on">Weapons in hand</button></div>
+  <div class="row" style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="tWeap" class="on">Weapons in hand</button>
+    <span class="lab" style="margin-left:8px">Melee</span><button data-melee="bat" class="on">Bat</button><button data-melee="axe">Axe</button>
+    <span class="lab" style="margin-left:8px">Gun</span><button data-gun="rifle">Rifle</button><button data-gun="ak47" class="on">AK-47</button></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Farmer (PixelLab): all 13 animations, front and back</div><canvas id="fcmp" aria-label="The farmer's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Medic (PixelLab): all 13 animations, front and back</div><canvas id="mcmp" aria-label="The medic's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
   <div style="margin:8px 0"><div class="lab" style="margin-bottom:4px">Engineer A (PixelLab): all 13 animations, front and back</div><canvas id="ecmp" aria-label="Engineer A's 13 animations, front and back views" style="display:block;width:100%;max-width:768px;height:auto;image-rendering:pixelated;background:#969696;border-radius:6px"></canvas></div>
@@ -229,6 +231,8 @@ tog('tFarmer', () => (showFarmer = !showFarmer));
 tog('tGrid', () => (showGrid = !showGrid));
 tog('tDebris', () => (showDebris = !showDebris));
 tog('tWeap', () => (showWeapons = !showWeapons));
+document.querySelectorAll('[data-melee]').forEach(b => b.onclick = () => { melee = b.dataset.melee; document.querySelectorAll('[data-melee]').forEach(x => x.classList.toggle('on', x === b)); });
+document.querySelectorAll('[data-gun]').forEach(b => b.onclick = () => { gun = b.dataset.gun; document.querySelectorAll('[data-gun]').forEach(x => x.classList.toggle('on', x === b)); });
 tog('tMedic', () => (showMedic = !showMedic));
 tog('tEng', () => (showEng = !showEng));
 tog('tCook', () => (showCook = !showCook));
@@ -265,30 +269,47 @@ requestAnimationFrame(tplCmp);
 // character galleries: every PixelLab animation, front (se) and back (ne), 48-px frames.
 // Weapons and effects are drawn by the game (as on the small-farmer test): a baseball bat or a rifle as pixel
 // strokes in the hand found in each frame (weapon_rig.json), swing trails, a comic hit burst and a muzzle flash.
-const WPN = { bat: { len: 14 }, rifle: { len: 14, body: '#3a3d40', tip: '#7a5230', gun: true } };
+// Weapons as pixel drawings along their length i (0 = the hand, + toward the tip) and across it (offset o;
+// with the weapon pointing forward, - is up, + is down; an axe blade sits on + so it leads the chop). Each part: [from i, to i, offsets, colour per offset].
+// Built once for each of 16 directions and cached, placed on whole pixels, so shapes never wobble.
 function wpx(g, x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
-// A weapon is a fixed pixel drawing for each of 16 directions (22.5 deg apart), built once and cached, and it is
-// placed on whole pixels: so its shape never wobbles from frame to frame, only its direction changes.
+const T = 'tape';
+const SHAPES = {
+  bat: { tip: 14, parts: [
+    [-2, -2, [-1, 0, 1], { '-1': '#8a5a2b', 0: '#6e4520', 1: '#5a3818' }],      // knob
+    [-1, 2, [0], { 0: T }],                                                      // grip tape
+    [3, 6, [0], { 0: '#c8925a' }],                                               // handle
+    [7, 9, [0, 1], { 0: '#d9a465', 1: '#a8743c' }],                              // taper
+    [10, 13, [-1, 0, 1], { '-1': '#f2cf97', 0: '#dba868', 1: '#a8743c' }],       // barrel
+    [14, 14, [0], { 0: '#dba868' }] ] },                                         // rounded end
+  axe: { tip: 13, parts: [
+    [-1, -1, [0], { 0: '#5a3818' }],                                             // butt
+    [0, 8, [0], { 0: '#9a6634' }],                                               // wooden haft
+    [9, 13, [0], { 0: '#7b5129' }],                                              // haft through the head
+    [9, 12, [-1, 1], { '-1': '#5d646b', 1: '#5d646b' }],                         // iron head round the haft
+    [8, 13, [2, 3], { 2: '#8d959c', 3: '#aeb6bc' }],                             // the blade, on the striking side
+    [7, 14, [4], { 4: '#e4e9ec' }] ] },                                          // bright cutting edge, flared
+  rifle: { tip: 9, parts: [
+    [-6, -2, [0, 1], { 0: '#7a5230', 1: '#5c3c20' }],                            // wooden stock
+    [-1, 9, [0], { 0: '#3a3d40' }] ] },                                          // long thin barrel
+  ak47: { tip: 11, parts: [
+    [-7, -3, [0, 1], { 0: '#8a4f24', 1: '#6b3a19' }],                            // wooden stock, dropping
+    [-2, 3, [0, 1], { 0: '#3b3e42', 1: '#2a2c2f' }],                             // receiver
+    [1, 2, [2, 3], { 2: '#2a2c2f', 3: '#2a2c2f' }],                              // curved magazine
+    [3, 3, [3, 4], { 3: '#2a2c2f', 4: '#2a2c2f' }],
+    [4, 7, [0, 1], { 0: '#9a5a2a', 1: '#7a4520' }],                              // wooden handguard
+    [8, 11, [0], { 0: '#3b3e42' }],                                              // barrel
+    [10, 10, [-1], { '-1': '#3b3e42' }] ] },                                     // front sight
+};
+let melee = 'bat', gun = 'ak47';
 const WCACHE = {};
-// Baseball bat, along its length i (0 = hand): a round knob below the hand, a taped grip, a thin handle that
-// swells into a rounded barrel with a lit edge and a shaded edge. Widths are pixel offsets across the bat.
-const BAT = [ // [from i, to i, offsets across, colour by offset (-1 lit, 0 mid, 1 shade)]
-  [-2, -2, [-1, 0, 1], { '-1': '#8a5a2b', 0: '#6e4520', 1: '#5a3818' }],      // knob
-  [-1, 2, [0], { 0: 'tape' }],                                                 // grip tape
-  [3, 6, [0], { 0: '#c8925a' }],                                               // handle
-  [7, 9, [0, 1], { 0: '#d9a465', 1: '#a8743c' }],                              // taper
-  [10, 13, [-1, 0, 1], { '-1': '#f2cf97', 0: '#dba868', 1: '#a8743c' }],       // barrel
-  [14, 14, [0], { 0: '#dba868' }],                                             // rounded end
-];
-function weaponShape(kind, idx, back) {
-  const key = kind + idx + ':' + back; if (WCACHE[key]) return WCACHE[key];
-  const w = WPN[kind], a = idx * Math.PI / 8, c = Math.cos(a), s = Math.sin(a), fill = new Map();
-  const put = (x, y, col) => { const k = x + ',' + y; if (!fill.has(k)) fill.set(k, col); };
-  if (w.gun) for (let i = -back; i <= w.len - back; i++) put(Math.round(c * i), Math.round(s * i), i < 0 ? w.tip : w.body);
-  else for (const [i0, i1, offs, col] of BAT) for (let i = i0; i <= i1 + 0.01; i += 0.5) for (const o of offs) {
-    const x = Math.round(c * i - s * o), y = Math.round(s * i + c * o);
-    const k = x + ',' + y, cc = col[o] === 'tape' ? (Math.floor(i) % 2 ? '#3a3a44' : '#5a5a66') : col[o];
-    if (o === 0) fill.set(k, cc); else put(x, y, cc);                     // the centre line always wins
+function weaponShape(kind, idx) {
+  const key = kind + idx; if (WCACHE[key]) return WCACHE[key];
+  const a = idx * Math.PI / 8, c = Math.cos(a), s = Math.sin(a), fill = new Map();
+  const put = (x, y, col, strong) => { const k = x + ',' + y; if (strong || !fill.has(k)) fill.set(k, col); };
+  for (const [i0, i1, offs, col] of SHAPES[kind].parts) for (let i = i0; i <= i1 + 0.01; i += 0.5) for (const o of offs) {
+    const cc = col[o] === T ? (Math.floor(i) % 2 ? '#3a3a44' : '#5a5a66') : col[o];
+    put(Math.round(c * i - s * o), Math.round(s * i + c * o), cc, o === 0);      // the centre line always wins
   }
   const px = [];
   for (const k of fill.keys()) { const [x, y] = k.split(',').map(Number);
@@ -298,7 +319,7 @@ function weaponShape(kind, idx, back) {
 }
 function drawWeapon(g, hx, hy, dx, dy, kind, back) {
   const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 8)) % 16) + 16) % 16, X = Math.round(hx), Y = Math.round(hy);
-  for (const [x, y, col] of weaponShape(kind, idx, back)) wpx(g, X + x, Y + y, col);
+  for (const [x, y, col] of weaponShape(kind, idx)) wpx(g, X + x, Y + y, col);
 }
 function drawBurst(g, cx, cy, R, r, n, rot, dx = 0, dy = 0, stretch = 1) {   // comic star: yellow, red rim, pale core
   const pts = [];
@@ -329,13 +350,13 @@ function clipFrame(CA, tag, a, f) {   // one frame of a clip with its weapon and
   if (anim === 'hurt' && f < 2) ox = -2;                                                // knocked back
   const body = () => fg.drawImage(im, f * 48, 0, 48, 48, PX + ox, PY, 48, 48);
   if (!r) { body(); return; }
-  const kind = anim === 'fire' ? 'rifle' : 'bat', hx = r[0] + PX + ox, hy = r[1] + PY;
+  const kind = anim === 'fire' ? gun : melee, hx = r[0] + PX + ox, hy = r[1] + PY;
   let dx, dy, behind = false, ang = r[2];
   if (anim.startsWith('swing')) { const q = ang * Math.PI / 180; dx = Math.cos(q); dy = Math.sin(q); const backSwing = Math.abs(ang) > 110; behind = view === 'ne' ? !backSwing : backSwing; }
   else if (anim === 'fire') { dx = 1; dy = 0.15; behind = view === 'ne'; }
   else if (anim === 'hurt') { dx = -0.35; dy = -1; }
   else { dx = 0.22; dy = -1; }                                                          // held ready: nearly upright
-  const back = kind === 'rifle' ? 6 : 2;
+  const back = 0;
   if (behind) { drawWeapon(fg, hx, hy, dx, dy, kind, back); body(); } else { body(); drawWeapon(fg, hx, hy, dx, dy, kind, back); }
   if (anim.startsWith('swing') && f > 0) {
     const p = rig[(f - 1) % rig.length];
@@ -344,7 +365,7 @@ function clipFrame(CA, tag, a, f) {   // one frame of a clip with its weapon and
       for (let i = 2; i < 13; i++) for (const o of [-2, 2]) if ((i + o) % 3) wpx(fg, hx + Math.cos(q) * i + nx * o, hy + Math.sin(q) * i + ny * o, '#bff4ff');
     }
   }
-  if (anim === 'fire' && (f === 2 || f === 3)) { const L = WPN.rifle.len - back + 2, n2 = Math.hypot(dx, dy); const tx = hx + dx / n2 * L, ty = hy + dy / n2 * L;
+  if (anim === 'fire' && (f === 2 || f === 3)) { const L = SHAPES[kind].tip + 2, n2 = Math.hypot(dx, dy); const tx = hx + dx / n2 * L, ty = hy + dy / n2 * L;
     if (f === 2) drawBurst(fg, tx + dx * 4, ty + dy * 4, 5, 2.4, 6, 0.3, dx / n2, dy / n2, 1.6); else drawBurst(fg, tx + dx * 2, ty + dy * 2, 3.5, 1.8, 5, 0.6, dx / n2, dy / n2, 1.4); }
   if (anim === 'hurt' && f < 3) { const R = [8, 6, 4][f]; drawBurst(fg, PX + 30, PY + 20, R, R * 0.5, 7, f * 0.4); }
 }
