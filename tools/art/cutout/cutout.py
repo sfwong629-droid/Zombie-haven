@@ -14,7 +14,8 @@ from scipy import ndimage as nd
 ORDER = ['head', 'torso', 'arm_a', 'arm_b', 'thigh', 'shin', 'tool']
 VIEWS = ['front', 'side', 'back']
 
-def cut_parts(path):
+def cut_parts(path, views=None):
+    views = views or VIEWS
     im = np.asarray(Image.open(path).convert('RGB')).astype(int)
     bg = np.median(np.concatenate([im[:20, :20].reshape(-1, 3), im[-20:, -20:].reshape(-1, 3)]), axis=0)
     mask = np.sqrt(((im - bg) ** 2).sum(-1)) > 28
@@ -23,38 +24,40 @@ def cut_parts(path):
     objs = [(sl, i + 1) for i, sl in enumerate(nd.find_objects(lab)) if (lab[sl] == i + 1).sum() > 1500]
     rows = {}
     for sl, lid in objs:
-        rows.setdefault(min(2, int((sl[0].start + sl[0].stop) / 2 * 3 / im.shape[0])), []).append((sl, lid))
+        nv = len(views); rows.setdefault(min(nv - 1, int((sl[0].start + sl[0].stop) / 2 * nv / im.shape[0])), []).append((sl, lid))
     out = {}
     for r, items in rows.items():
         items.sort(key=lambda t: t[0][1].start)
         for name, (sl, lid) in zip(ORDER, items):
             sub = im[sl].copy(); m = lab[sl] == lid
-            sub = _paint_out_discs(sub, m)
+            sub, discs = _paint_out_discs(sub, m)
             rgba = np.dstack([sub, (m * 255)]).astype(np.uint8)
-            out[(VIEWS[r], name)] = Image.fromarray(rgba, 'RGBA')
+            img = Image.fromarray(rgba, 'RGBA'); img.info['discs'] = discs
+            out[(views[r], name)] = img
     return out
 
 def _paint_out_discs(sub, m):
     """Remove the round joint markers (flat tan discs at part ends) by filling from the surrounding paint."""
     r, g, b = sub[..., 0], sub[..., 1], sub[..., 2]
-    tan = m & (r > 180) & (r < 236) & (g > 118) & (g < 180) & (b > 60) & (b < 135) & (r - b > 70)
+    tan = m & (r > 185) & (r < 248) & (g > 120) & (g < 200) & (b > 60) & (b < 155) & (r - b > 60) & (g - b > 25)
     lab, n = nd.label(tan)
-    h = sub.shape[0]; kill = np.zeros_like(m)
+    h = sub.shape[0]; kill = np.zeros_like(m); discs = []
     for i, sl in enumerate(nd.find_objects(lab)):
         reg = lab[sl] == i + 1; a = reg.sum(); cy = (sl[0].start + sl[0].stop) / 2
         hh, ww = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
-        round_ = a > .55 * hh * ww and .6 < hh / max(ww, 1) < 1.6
-        if a > 100 and round_ and (cy < h * .36 or cy > h * .64): kill[sl] |= reg
-    if not kill.any(): return sub
+        round_ = a > .42 * hh * ww and .55 < hh / max(ww, 1) < 1.8
+        if a > 100 and round_ and (cy < h * .36 or cy > h * .64):
+            kill[sl] |= reg; discs.append(((sl[1].start + sl[1].stop) / 2 / sub.shape[1], cy / h))
+    if not kill.any(): return sub, discs
     kill = nd.binary_dilation(kill, iterations=6) & m
     dark = (sub.sum(-1) < 260)
     good = m & ~kill & ~dark
-    if not good.any(): return sub
+    if not good.any(): return sub, discs
     out = sub.copy(); kl, kn = nd.label(kill)
     for i in range(1, kn + 1):   # each disc: flat fill with the average paint just around it
         k = kl == i; ring = nd.binary_dilation(k, iterations=14) & good
         if ring.any(): out[k] = np.median(sub[ring], axis=0)
-    return out
+    return out, discs
 
 # ---------------------------------------------------------------- rig
 def bbox_alpha(img):
@@ -63,9 +66,10 @@ def bbox_alpha(img):
 class Part:
     def __init__(self, img, pivot, scale=1.0, flip=False):
         if flip: img = img.transpose(Image.FLIP_LEFT_RIGHT); pivot = (img.width - pivot[0], pivot[1])
-        if scale != 1.0:
-            img = img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))), Image.LANCZOS)
-            pivot = (pivot[0] * scale, pivot[1] * scale)
+        sx, sy = (scale, scale) if not isinstance(scale, tuple) else scale
+        if (sx, sy) != (1.0, 1.0):
+            img = img.resize((max(1, round(img.width * sx)), max(1, round(img.height * sy))), Image.LANCZOS)
+            pivot = (pivot[0] * sx, pivot[1] * sy)
         self.img, self.pivot = img, pivot
     def local(self, fx, fy):   # a point given as a fraction of the part's box, in pivot-relative pixels
         return (fx * self.img.width - self.pivot[0], fy * self.img.height - self.pivot[1])
@@ -172,3 +176,72 @@ def to_sprite(img, char_h, ref_h=56, canvas=64, foot=None):
     out = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
     out.alpha_composite(sm, (int(round(canvas / 2 - fx)), int(round(canvas - 3 - fy))))
     return out
+
+
+# ---------------------------------------------------------------- three-quarter (isometric) rig
+def end_point(img, frac=.1, top=True):
+    """Centre of the part's top (or bottom) end, as a fraction of its box."""
+    a = np.asarray(img)[..., 3] > 128; h = a.shape[0]
+    ys = np.nonzero(a.any(1))[0]; y0, y1 = ys.min(), ys.max()
+    band = a[y0:y0 + int(h * frac)] if top else a[y1 - int(h * frac):y1 + 1]
+    yy, xx = np.nonzero(band)
+    return (xx.mean() / a.shape[1], ((y0 if top else y1 - int(h * frac)) + yy.mean()) / h)
+
+SC3 = dict(head=.92, torso=(.98, .8), arm=.78, thigh=(.66, .4), shin=(.66, .44), tool=.62)
+
+def build_rig3q(P, view, sc=None):
+    sc = dict(SC3, **(sc or {})); g = lambda n: P[(view, n)]; R = {}
+    T = g('torso'); R['torso'] = Part(T, (T.width * .5, T.height * .88), sc['torso'])
+    nx, ny = end_point(T, .06, True); R['_neck'] = (nx, ny + .04)
+    H = g('head'); hx, hy = end_point(H, .06, False); R['head'] = Part(H, (H.width * hx, H.height * (hy - .03)), sc['head'])
+    for k, name in (('arm_far', 'arm_b' if view == 'se' else 'arm_a'), ('arm_near', 'arm_a' if view == 'se' else 'arm_b')):
+        A = g(name); ax, ay = end_point(A, .12, True); R[k] = Part(A, (A.width * ax, A.height * (ay + .03)), sc['arm'])
+        gx, gy = end_point(A, .14, False); R[k + '_grip'] = (gx, gy - .05)
+    th, sh = g('thigh'), g('shin')
+    tx, ty = end_point(th, .1, True); kx, ky = end_point(th, .1, False)
+    sx, sy = end_point(sh, .1, True)
+    for side in ('far', 'near'):
+        R['thigh_' + side] = Part(th, (th.width * tx, th.height * (ty + .03)), sc['thigh']); R['_knee'] = (kx, ky - .05)
+        R['shin_' + side] = Part(sh, (sh.width * sx, sh.height * (sy + .03)), sc['shin'])
+    tl = g('tool'); gx, gy = tool_grip(tl); R['tool'] = Part(tl, (tl.width * gx, tl.height * gy), sc['tool'])
+    return R
+
+def pose3q(R, view, p, size=(900, 1000), root=(450, 600), tool=True):
+    c = Image.new('RGBA', size, (0, 0, 0, 0)); D = math.radians
+    T = R['torso']; ta = D(p.get('torso', 0)); root = (root[0], root[1] + p.get('bob', 0))
+    neck = joint(T, root, ta, *R['_neck'])
+    sh_far, sh_near = joint(T, root, ta, .16, .2), joint(T, root, ta, .86, .22)
+    hip_far, hip_near = joint(T, root, ta, .34, .86), joint(T, root, ta, .66, .88)
+    if view == 'ne': sh_far, sh_near, hip_far, hip_near = joint(T, root, ta, .84, .2), joint(T, root, ta, .14, .22), joint(T, root, ta, .66, .86), joint(T, root, ta, .34, .88)
+    def leg(side, hip):
+        th, sn = R['thigh_' + side], R['shin_' + side]; a1 = D(p.get('thigh_' + side, 0))
+        hp = (hip[0], hip[1] - p.get('lift_' + side, 0))
+        knee = joint(th, hp, a1, *R['_knee']); return [(th, hp, a1), (sn, knee, a1 + D(p.get('shin_' + side, 0)))]
+    def arm(side, sh):
+        A = R['arm_' + side]; a = D(p.get('arm_' + side, 0)); return (A, sh, a), joint(A, sh, a, *R['arm_' + side + '_grip']), a
+    Lf, Ln = leg('far', hip_far), leg('near', hip_near)
+    af, hand_f, aa_f = arm('far', sh_far); an, hand_n, aa_n = arm('near', sh_near)
+    td = (R['tool'], hand_n, aa_n + D(p.get('wrist', 0)))
+    head = (R['head'], neck, D(p.get('head', 0)))
+    if view == 'se':   # facing the viewer: far limbs behind the body, near limbs and tool in front
+        layers = [af] + Lf + [(T, root, ta)] + Ln + [head] + ([td] if tool else []) + [an]
+    else:              # facing away: the tool and near arm are hidden behind the body
+        layers = ([td] if tool else []) + [an] + Ln + [(T, root, ta)] + Lf + [af, head]
+    for part, at, ang in layers: place(c, part, at, ang)
+    return c
+
+def walk3q(t, view):
+    s = math.sin(2 * math.pi * t); cs = math.cos(2 * math.pi * t)
+    d = 1 if view == 'se' else -1
+    return {'thigh_near': 18 * s * d, 'thigh_far': -18 * s * d, 'shin_near': -22 * max(0, -cs) * d, 'shin_far': -22 * max(0, cs) * d,
+            'lift_near': 6 * max(0, s), 'lift_far': 6 * max(0, -s),
+            'arm_near': -16 * s * d, 'arm_far': 16 * s * d, 'bob': -6 * abs(math.cos(2 * math.pi * t)), 'torso': 2 * d}
+
+def swing3q(t, view):
+    def ease(x): return x * x * (3 - 2 * x)
+    d = 1 if view == 'se' else -1
+    K = [(0, 0, 0, 0), (.38, -150, 120, -8), (.48, -158, 128, -9), (.58, -40, 175, 12), (.7, -35, 172, 12), (1, 0, 0, 0)]
+    for (t0, *a0), (t1, *a1) in zip(K, K[1:]):
+        if t0 <= t <= t1:
+            u = ease((t - t0) / (t1 - t0)); arm, wr, tor = [x + (y - x) * u for x, y in zip(a0, a1)]; break
+    return {'arm_near': arm * d, 'arm_far': arm * .9 * d, 'wrist': wr * d, 'torso': tor * d, 'thigh_near': -10 * d, 'thigh_far': 8 * d}
