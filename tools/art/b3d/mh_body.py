@@ -162,12 +162,14 @@ def mh_body(b, name='body'):
         kd.insert(p, n)
         w = sorted(VW.get(i, {'chest': 1.0}).items(), key=lambda t: -t[1])[:4]; tot = sum(x for _, x in w) or 1
         WL.append([(k, x / tot) for k, x in w])
-    kd.balance(); FIELD[0] = (kd, WL)
+    kd.balance(); FIELD[0] = (kd, WL, [p.copy() for p in BV.values()])
     # build the mesh (body group only), smooth, then cut to the triangle budget
     remap = {i: n for n, i in enumerate(body_idx)}
     bm = bmesh.new(); bv = [bm.verts.new(BV[i]) for i in body_idx]; bm.verts.ensure_lookup_table()
+    nohead = not b.get('mh_head', True)
     for g, idx in faces:
         if g != 'body': continue
+        if nohead and all(VW.get(i, {}).get('head', 0) > .5 for i in idx): continue   # stylized head goes here instead
         try: bm.faces.new([bv[remap[i]] for i in idx])
         except ValueError: pass
     me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()

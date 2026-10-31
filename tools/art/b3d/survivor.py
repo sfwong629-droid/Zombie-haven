@@ -115,7 +115,7 @@ def body_mesh(b, J):
 
 # ------------------------------------------------------------------ head & face
 def head_mesh(b, J):
-    s = b.get('height', 1.0); hr = .168 * s * b.get('head_scale', 1.0); hz = 1.18 * s + hr * .98
+    s = b.get('height', 1.0); hr = .168 * s * b.get('head_scale', 1.0); hz = b.get('_neck_z', 1.18 * s) + hr * .98
     jaw = b.get('jaw', 1.0); ns = b.get('nose', 1.0)
     hs = b.get('head_shape', (.96, 1.0, 1.03))
     bm = _sphere((0, 0, hz), (hr * hs[0], hr * hs[1], hr * hs[2]), 32, 24)
@@ -151,8 +151,16 @@ def face(b, hz, hr, parts):
     for x in (1, -1):
         sy = Y(x * ex, ey, -hr * .98)
         eyc = sy + hr * .045 if snap else -hr * .9          # mostly sunk into the face
-        e = _sphere((x * ex, eyc, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
-        parts.append(('eye', _obj(e, 'eye', eye)))
+        if b.get('eye_white'):   # sprite-style eye: white with a coloured iris
+            wy = (sy + hr * .03) if snap else -hr * .92
+            w_ = _sphere((x * ex, wy, ey), (hr * .13 * es, hr * .06, hr * .15 * es), 10, 6)
+            parts.append(('eye', _obj(w_, 'eyewhite', ink('f_white', '#f4efe6', hatch=False, speckle=0))))
+            eyc = wy - hr * .03
+            e = _sphere((x * (ex - hr * .015), eyc, ey - hr * .01), (hr * .075 * es, hr * .05, hr * .11 * es), 10, 6)
+            parts.append(('eye', _obj(e, 'iris', ink('f_iris' + b['eye_white'], b['eye_white'], hatch=False, speckle=0))))
+        else:
+            e = _sphere((x * ex, eyc, ey), (hr * .09 * es, hr * .08, hr * .16 * es), 10, 6)
+            parts.append(('eye', _obj(e, 'eye', eye)))
         hy = (eyc - hr * .08 * .8) if snap else -hr * .985
         h = _sphere((x * ex + hr * .035, hy, ey + hr * .07), hr * .035, 8, 6)
         parts.append(('hi', _obj(h, 'hi', hi)))
@@ -258,7 +266,13 @@ def hair(style, colour, hz, hr, parts, seed=1):
     # cut the face: front below the hairline, and everything below the nape
     fb = bmesh.new(); fb.from_mesh(o.data)
     def gone(c):
-        if c.y < -hr * .25 and c.z < hz + hr * .55 - (abs(c.x) / hr) * .3 and not (c.y < -hr * .9 and c.z > hz + hr * .3): return True
+        if style == 'mop':   # short hair under a hat: hairline above the brows, sides down past the temples
+            side = abs(c.x) > hr * .62
+            if c.y < hr * .25 and c.z < hz + hr * (.05 if side else .3) and not (side and c.y > -hr * .55): return True
+            if c.y < hr * .25 and c.z < hz - hr * .2: return True
+            if c.z < hz - hr * .45: return True
+            return False
+        elif c.y < -hr * .25 and c.z < hz + hr * .55 - (abs(c.x) / hr) * .3 and not (c.y < -hr * .9 and c.z > hz + hr * .3): return True
         if c.z < hz - hr * (.35 if c.y < hr * .3 else .62): return True
         if abs(c.x) > hr * .9 and c.z < hz + hr * .05 and c.y < hr * .2: return True   # keep ears clear
         return False
@@ -440,6 +454,10 @@ def _build(prof, b, J, origin, facing, tag):
         if eye and 'eye_x' not in b.get('_set', ()): b['eye_x'], b['eye_y'] = eye
         body.data.materials.append(skin); parts = [('body', body)]
         b['_snap_obj'] = body; HAIR_Y[0] = mh_body.HEAD_Y[0]; USE_FIELD[0] = True; HAIR_TRIS[0] = b.get('hair_tris', 500)
+        if not b.get('mh_head', True):   # MakeHuman limbs, our clean stylized head on the neck
+            b['_neck_z'] = J['head'][0].z - b.get('head_drop', 0); hy = J['head'][0].y - .01
+            head, hz, hr = head_mesh(b, J); head.data.transform(Matrix.Translation((0, hy, 0)))
+            head.data.materials.append(skin); parts.append(('head', head)); b['_snap_obj'] = head; HAIR_Y[0] = hy
     else:
         HAIR_Y[0] = 0.0; USE_FIELD[0] = False; HAIR_TRIS[0] = 0
         body = body_mesh(b, J); body.name = tag + '_body'
@@ -452,6 +470,9 @@ def _build(prof, b, J, origin, facing, tag):
     for item in prof.get('wear', []):
         kind, opts = (item, {}) if isinstance(item, str) else (item[0], item[1])
         getattr(wardrobe, kind)(ctx, **opts)
+    if HAIR_Y[0]:
+        for role, o in parts:
+            if role in ('hat', 'goggles'): o.data.transform(Matrix.Translation((0, HAIR_Y[0], 0)))
     hide_covered(body, dom)
     # Look E proportions: shorter legs. Squash everything below the hips, shift the rest down.
     # Proportions: legs squashed below the hip, torso between hip and neck; head and neck top only shift.
@@ -485,8 +506,31 @@ def _build(prof, b, J, origin, facing, tag):
                 elif role not in ('head', 'eye', 'hi', 'brow', 'cheek', 'mouth', 'beard', 'hair', 'hat'): side = near_arm(v.co)
             v.co = arm_map(v.co, side) if side else core(v.co)
         o.data.update()
+    if USE_FIELD[0]:   # keep MakeHuman's weight field in step with the reshaped body
+        import mh_body
+        from mathutils.kdtree import KDTree
+        kd0, WL, P = mh_body.FIELD[0]; P2 = []
+        for p_, w_ in zip(P, WL):
+            top = w_[0][0]; P2.append(arm_map(p_, top.split('.')[1]) if (af and top in ARM) else core(p_))
+        kd = KDTree(len(P2))
+        for n, p_ in enumerate(P2): kd.insert(p_, n)
+        kd.balance(); mh_body.FIELD[0] = (kd, WL, P2)
+    gx = b.get('girth', 1.0)
+    if gx != 1.0:   # stylized chunkiness: widen and deepen everything below the head
+        for role, o in parts:
+            if role in ('head', 'eye', 'hi', 'brow', 'cheek', 'mouth', 'beard', 'hair', 'hat'): continue
+            for v in o.data.vertices: v.co.x *= gx; v.co.y *= gx
+            o.data.update()
+        if USE_FIELD[0]:
+            import mh_body
+            from mathutils.kdtree import KDTree
+            kd0, WL0, P0 = mh_body.FIELD[0]; P0 = [Vector((p_.x * gx, p_.y * gx, p_.z)) for p_ in P0]
+            kd = KDTree(len(P0))
+            for n_, p_ in enumerate(P0): kd.insert(p_, n_)
+            kd.balance(); mh_body.FIELD[0] = (kd, WL0, P0)
     def mp(k, p): return arm_map(p, k.split('.')[1]) if (af and k in ARM) else core(p)
     J = {k: (mp(k, h), mp(k, t), p) for k, (h, t, p) in J.items()}
+    if gx != 1.0: J = {k: (Vector((h.x * gx, h.y * gx, h.z)), Vector((t.x * gx, t.y * gx, t.z)), p) for k, (h, t, p) in J.items()}
     ao = armature(J, tag + '_rig', origin, facing)
     # bind: body/garments by distance, head pieces rigid to the head bone, others as declared
     for role, o in parts:

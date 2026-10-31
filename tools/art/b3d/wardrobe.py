@@ -21,6 +21,20 @@ def _mat(name, colour, pattern=None, accent=None, **kw):
         lines = [('Z', .25, .03, None, .6)]
     return ink(name + colour + str(pattern), colour, lines=lines, coord='Generated', **kw)
 
+def _surf(ctx, x, z, side=-1, pad=.006):
+    """Point on the body surface at (x, z), seen from the front (side=-1) or back (side=+1)."""
+    if '_bvh' not in ctx:
+        from mathutils.bvhtree import BVHTree
+        me = ctx['body'].data
+        ctx['_bvh'] = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+    hit = ctx['_bvh'].ray_cast(Vector((x, side * 2.0, z)), Vector((0, -side, 0)))
+    y = hit[0].y if hit[0] is not None else side * .12
+    return Vector((x, y + side * pad, z))
+
+def _strap(ctx, pts, r, mat, name='strap', bone='chest'):
+    for a_, b_ in zip(pts, pts[1:]):
+        _add(ctx, name, tube(a_, b_, r, r, mat, seg=6), bone)
+
 def _add(ctx, role, o, bone=None):
     if bone: o['bone'] = bone
     ctx['parts'].append((role, o)); return o
@@ -95,16 +109,24 @@ def pants(ctx, colour='#7a4a26', pattern=None, pockets=False):
 def overalls(ctx, colour='#3f5a8a'):
     pants(ctx, colour)
     J = ctx['J']; s = ctx['s']
-    def keep(bone, co): return bone in ('chest', 'pelvis') and .78 * s < co.z < 1.0 * s and co.y < 0 and abs(co.x) < .11 * s
+    c0, c1 = J['chest'][0], J['chest'][1]; top = c0.z + (c1.z - c0.z) * .55; w = abs(J['upperarm.L'][0].x) * .55
+    def keep(bone, co): return bone in ('chest', 'pelvis') and c0.z - .05 * s < co.z < top and co.y < 0 and abs(co.x) < w
     _add(ctx, 'bib', garment(ctx['body'], ctx['dom'], keep, .03, 'bib', _mat('bib', colour, 'seams')))
+    ctx['_bibtop'] = top; ctx['_bibw'] = w
     suspenders(ctx, colour)
 
 def suspenders(ctx, colour='#5a3519'):
-    s = ctx['s']; m = ink('susp' + colour, colour)
+    """Straps from the bib (or waist) up over the shoulders and down the back, laid on the body surface."""
+    J = ctx['J']; s = ctx['s']; m = ink('susp' + colour, colour)
+    c0, c1 = J['chest'][0], J['chest'][1]
+    lo = ctx.get('_bibtop', c0.z + (c1.z - c0.z) * .3); sh = J['upperarm.L'][0]
     for x in (1, -1):
-        _add(ctx, 'strap', box((x * .08 * s, -.132 * s, .95 * s), (.035, .012, .32 * s), m, rot=(D(6), 0, 0), bevel=0), 'chest')
-        _add(ctx, 'strap', box((x * .08 * s, .132 * s, .95 * s), (.035, .012, .32 * s), m, rot=(D(-6), 0, 0), bevel=0), 'chest')
-        _add(ctx, 'button', ellip((x * .08 * s, -.145 * s, .82 * s), (.012, .006, .012), ink('btn', '#c9b27a')), 'chest')
+        xa = x * ctx.get('_bibw', abs(sh.x) * .5) * .75; xs = x * abs(sh.x) * .62
+        tz = sh.z + .015
+        front = [_surf(ctx, xa + (xs - xa) * t, lo + (tz - lo) * t, -1, .012) for t in (0, .35, .7, 1)]
+        back = [_surf(ctx, xs + (xa - xs) * t, tz - (tz - lo) * t, 1, .012) for t in (0, .35, .7, 1)]
+        _strap(ctx, front + back, .014 * s, m, 'strap')
+        _add(ctx, 'button', ellip(front[0] + Vector((0, -.004, 0)), (.011, .006, .011), ink('btn', '#c9b27a')), 'chest')
 
 def boots(ctx, colour='#47291a', tall=False):
     """Chunky work boots: shaft on the shin, rounded foot with a raised toe, thick sole, folded top."""
@@ -160,9 +182,10 @@ def hat(ctx, kind='straw', colour=None):
     hz, hr = ctx['hz'], ctx['hr']; tilt = D(-14)
     if kind == 'straw':
         c = colour or '#e6c46c'; m = ink('straw' + c, c, lines=[('X', .04, .2, '#a8823a', .55)], coord='Generated')
-        _add(ctx, 'hat', ragged_disc((0, hr * .05, hz + hr * .72), hr * 1.55, hr * 1.5, m, tilt=tilt))
-        _add(ctx, 'hat', tube((0, hr * .12, hz + hr * .74), (0, hr * .2, hz + hr * 1.2), hr * .92, hr * .78, m, seg=16))
-        _add(ctx, 'hat', ring((0, hr * .11, hz + hr * .86), hr * .95, hr * .16, ink('band', '#3b7a2f'), thick=.012, axis=(0, math.sin(-tilt), 1)))
+        bb = ctx.get('b', {}); band = bb.get('hat_band', '#3b7a2f'); low = bb.get('hat_low', 1.0); wide = bb.get('hat_wide', 1.0)
+        _add(ctx, 'hat', ragged_disc((0, hr * .05, hz + hr * .72), hr * 1.55 * wide, hr * 1.5 * wide, m, tilt=tilt))
+        _add(ctx, 'hat', tube((0, hr * .12, hz + hr * .74), (0, hr * .2, hz + hr * (.74 + .46 * low)), hr * .92, hr * .78, m, seg=16))
+        _add(ctx, 'hat', ring((0, hr * .11, hz + hr * .86), hr * .95, hr * .16, ink('band' + band, band), thick=.012, axis=(0, math.sin(-tilt), 1)))
     elif kind == 'cap':
         c = colour or '#5a5038'; m = ink('cap' + c, c, lines=[('Z', .2, .03, None, .5)], coord='Generated')
         _add(ctx, 'hat', ellip((0, hr * .1, hz + hr * .62), (hr * 1.1, hr * 1.12, hr * .62), m, seg=20))
@@ -203,13 +226,21 @@ def backpack(ctx, colour='#6a5a3a', bedroll='#4a6a3a', size=1.0):
         _add(ctx, 'strap', box((x * .1 * ctx['s'], -.02, 1.11 * ctx['s']), (.04, .24 * ctx['s'], .015), st, bevel=0), 'chest')
 
 def satchel(ctx, colour='#7a5a34', side='R', cross=None):
-    s = ctx['s']; x = .2 if side == 'R' else -.2; x = -x
+    J = ctx['J']; s = ctx['s']; sx = -1 if side == 'R' else 1
     m = _mat('satchel', colour, 'seams')
-    _add(ctx, 'bag', box((x * s, -.03, .74 * s), (.08, .2 * s, .17 * s), m, bevel=.02), 'pelvis')
-    if cross:
-        _add(ctx, 'bag', box((x * s + (.042 if x > 0 else -.042), -.03, .76 * s), (.01, .05, .05), ink('bx' + cross, cross), bevel=0), 'pelvis')
-        _add(ctx, 'bag', box((x * s + (.042 if x > 0 else -.042), -.03, .76 * s), (.01, .016, .1), ink('bx' + cross, cross), bevel=0), 'pelvis')
-    _add(ctx, 'strap', box((0, -.128 * s, .95 * s), (.032, .012, .34 * s), ink('sstrap', '#4a3018'), rot=(0, D(38 if x > 0 else -38), 0), bevel=0), 'chest')
+    pz = J['pelvis'][0].z; hipx = abs(J['thigh.L'][0].x) * 1.9
+    x = sx * hipx
+    x = sx * hipx * 1.15
+    _add(ctx, 'bag', ellip((x, -.05 * s, pz), (.06 * s, .04 * s, .065 * s), m, seg=12), 'pelvis')                    # rounded pouch
+    _add(ctx, 'bag', ellip((x, -.066 * s, pz + .03 * s), (.062 * s, .03 * s, .038 * s), m, seg=10), 'pelvis')       # flap
+    sh = J['upperarm.L'][0]; shx = -sx * abs(sh.x) * .55; tz = sh.z + .015
+    pts = [_surf(ctx, shx + (x * .85 - shx) * t, tz - (tz - pz - .04 * s) * t, -1, .014) for t in (0, .25, .5, .75, 1)]
+    pts = [_surf(ctx, shx * .9, tz - .02, 1, .014)] + pts
+    _strap(ctx, pts, .014 * s, ink('sstrap' + ctx.get('b', {}).get('strap', '#9f5f32'), ctx.get('b', {}).get('strap', '#9f5f32')), 'strap')
+    if cross:   # red cross on the outer face of the bag
+        cx = x + sx * .037 * s
+        _add(ctx, 'bag', box((cx, -.02, pz), (.01, .05, .05), ink('bx' + cross, cross), bevel=0), 'pelvis')
+        _add(ctx, 'bag', box((cx, -.02, pz), (.01, .016, .1), ink('bx' + cross, cross), bevel=0), 'pelvis')
 
 def binoculars(ctx):
     s = ctx['s']; m = ink('bino', '#2e2e2a')

@@ -12,7 +12,7 @@ inkstyle.DEFAULTS.update(bands=3, hatch=False)   # Look E: faceted, four flat to
 from professions import PROFESSIONS, ORDER
 
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)
-JOBS = [a for a in sys.argv[2:] if a in ('lineup', 'walk')] or ['lineup', 'walk']
+JOBS = [a for a in sys.argv[2:] if a in ('lineup', 'walk', 'pixel')] or ['lineup', 'walk']
 only = [a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('only=')]
 names = only[0] if only else ORDER
 D = math.radians
@@ -80,6 +80,50 @@ if 'lineup' in JOBS:
             survivor.pose(r, p_)
         p = os.path.join(OUT, f'lineup_{v}.png'); shot(p); on_paper(p, os.path.join(OUT, f'lineup_{v}_paper.png'))
         print('lineup', v, round(time.time() - t0), flush=True)
+
+def pixel_passes(tag):
+    """Two clean passes for sprite conversion: flat base colours, and lighting only (white clay)."""
+    S.render.use_freestyle = False
+    saved = {}
+    for o in S.objects:
+        if o.type != 'MESH': continue
+        saved[o.name] = list(o.data.materials)
+        for i, m in enumerate(o.data.materials):
+            if m is None or 'zh_base' not in m: continue
+            key = 'flat' + m['zh_base']
+            fm = bpy.data.materials.get(key)
+            if not fm:
+                fm = bpy.data.materials.new(key); fm.use_nodes = True; nt = fm.node_tree
+                for n in list(nt.nodes): nt.nodes.remove(n)
+                em = nt.nodes.new('ShaderNodeEmission'); em.inputs[0].default_value = inkstyle.lin(m['zh_base'])
+                out = nt.nodes.new('ShaderNodeOutputMaterial'); nt.links.new(em.outputs[0], out.inputs[0])
+            o.data.materials[i] = fm
+    S.eevee.taa_render_samples = 1
+    shot(os.path.join(OUT, f'flat_{tag}.png'))
+    for o in S.objects:
+        if o.name in saved:
+            for i, m in enumerate(saved[o.name]): o.data.materials[i] = m
+    clay = bpy.data.materials.get('clay') or bpy.data.materials.new('clay')
+    clay.use_nodes = True; clay.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (.8, .8, .8, 1)
+    clay.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value = 1
+    S.view_layers[0].material_override = clay; S.eevee.taa_render_samples = 8
+    shot(os.path.join(OUT, f'lit_{tag}.png'))
+    S.view_layers[0].material_override = None; S.render.use_freestyle = True; S.eevee.taa_render_samples = 16
+
+if 'pixel' in JOBS:
+    VIEWS = ([a.split('=')[1].split(',') for a in sys.argv if a.startswith('views=')] or [('front', 'se', 'sw', 'ne')])[0]
+    for v in VIEWS:
+        for r in rigs:
+            r['arm'].rotation_euler = (0, 0, D(FACE[v])); survivor.pose(r, survivor.idle(0))
+        pixel_passes(v); print('pixel', v, round(time.time() - t0), flush=True)
+    if 'walk' in sys.argv[2:]:
+        for v in ('se',):
+            for r in rigs: r['arm'].rotation_euler = (0, 0, D(FACE[v]))
+            for i in range(12):
+                for r in rigs: survivor.pose(r, survivor.walk(i / 12))
+                pixel_passes(f'walk_{v}_{i:02d}')
+            print('pixel walk', round(time.time() - t0), flush=True)
+    JOBS = [j for j in JOBS if j != 'walk']
 
 if 'walk' in JOBS:
     NF = 12; frames = []

@@ -103,3 +103,13 @@ PROFESSIONS['human_plain'] = {'body': {'template': 'human', 'skin': '#e3b08c', '
     'wear': [('shirt', {'colour': '#9a9488', 'sleeves': 'short', 'buttons': False, 'collar': False}), ('pants', {'colour': '#4e5560'}), ('boots', {'colour': '#3e3026'})]}
 PROFESSIONS['human_bare'] = {'body': {'template': 'human', 'skin': '#e3b08c', 'brow': '#3a2516'}, 'hair': 'short', 'hair_colour': '#4a3020', 'seed': 7,
     'wear': [('pants', {'colour': '#4e5560'})]}
+
+# Farmer matched to the pixel-art sprite: about 4.3 heads, short legs, wide shoulders, sprite-style eyes
+TEMPLATES['sprite'] = {'mh': True, 'mh_head': False, 'male': 1.0, 'mh_weight': .45, 'mh_muscle': .9, 'smile': True, 'head_drop': .03, 'hat_band': '#7a5230', 'hat_low': .55, 'hat_wide': 1.15, 'mh_ideal': .3, 'tris': 3000,
+    'legs': .62, 'torso': 1.0, 'arm_scale': .8, 'arm_thick': 1.0, 'head_scale': 1.1, 'girth': 1.2, 'nose': .55, 'eye_size': .9, 'eye_white': '#3a6a8a',
+    'eye_x': .34, 'eye_y': .0, 'mouth_y': .5, 'snap_face': True, 'smooth': True, 'cloth': .55, 'boot_scale': .8, 'limb': .85,
+    'pants_low': .1, 'head_up': -9, 'arm_out': 14, 'head_shape': (.95, .95, 1.0), 'chin': True}
+PROFESSIONS['farmer_sprite'] = {'body': {'template': 'sprite', 'skin': '#f4b990', 'brow': '#4d3930'},
+    'hair': 'mop', 'hair_colour': '#5e4534', 'seed': 3,
+    'wear': [('shirt', {'colour': '#839a6c', 'sleeves': 'rolled', 'buttons': False, 'collar': False}), ('overalls', {'colour': '#7d5d3c'}),
+             ('boots', {'colour': '#633d2c'}), ('satchel', {'colour': '#c78841'}), ('hat', {'kind': 'straw', 'colour': '#e1a659'})]}
