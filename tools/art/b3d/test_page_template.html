@@ -1,0 +1,204 @@
+<title>Survivor 3D Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Silkscreen&display=swap">
+<style>
+/* Layout: control strip, then the four-direction player, the town walk-around, every frame as sheets, and the source images. One dusk look, matching the earlier asset test pages. */
+:root {
+  --bg: #1d2321; --panel: #262e2b; --line: #3a4541; --fg: #e8e4d8; --muted: #a3a99d;
+  --accent: #e2b04a; --accent-ink: #2a1f08; --stage: #969a8e; --shadow: rgba(20, 16, 10, .28);
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 15px; margin: 0; letter-spacing: .02em; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 70ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.grp { display: flex; gap: 4px; align-items: center; padding-right: 10px; border-right: 1px solid var(--line); flex-wrap: wrap; }
+.grp:last-child { border-right: 0; }
+.grp .lab { margin-right: 2px; }
+button { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+section { display: grid; gap: 8px; min-width: 0; }
+.stage { background: var(--stage); border: 1px solid var(--line); border-radius: 8px; overflow: auto; padding: 8px; max-width: 100%; }
+.stage.town { background: var(--panel); padding: 0; }
+canvas { display: block; }
+.fit { width: 100%; height: auto; }
+.dirs { color: #2c2f28; display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
+.sheets { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.sheet .rows { display: grid; grid-template-columns: 26px 1fr; gap: 0 6px; align-items: center; }
+.sheet canvas { background: var(--stage); border-radius: 4px; }
+.src { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.src figure { align-content: start; margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 6px; }
+.src img { background: #ece2cc; border-radius: 4px; width: 100%; height: auto; }
+.src figcaption { font-size: 13px; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); max-width: 75ch; line-height: 1.5; }
+.note code { font-size: 12px; color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Survivor 3D Test</h1>
+    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to 128-px sprites. Weapons are attached to the hand bone, so switching them re-equips every frame of every animation.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Playback controls">
+    <div class="grp"><span class="lab">Equip</span><span id="weapons" style="display:flex;gap:4px"></span></div>
+    <div class="grp"><span class="lab">Animation</span><button id="aWalk" class="on">Walk</button><button id="aChop">Chop</button></div>
+    <div class="grp"><span class="lab">Speed</span><button id="s1" class="on">1×</button><button id="s05">½×</button><button id="s025">¼×</button><button id="pause">Pause</button></div>
+    <div class="grp"><span class="lab">Zoom</span><button id="z1" class="on">Fit</button><button id="z2">1:1</button><button id="z3">2×</button></div>
+  </div>
+
+  <section>
+    <h2>Four directions</h2>
+    <div class="stage"><canvas id="four" class="zoomable" aria-label="The farmer animating in four directions"></canvas>
+      <div class="dirs lab" id="dirlabels"><span>SE · front</span><span>SW · front</span><span>NE · back</span><span>NW · back</span></div></div>
+  </section>
+
+  <section>
+    <h2>In the town</h2>
+    <div class="stage town"><canvas id="town" class="zoomable" aria-label="Farmers walking and chopping in the ink town mockup"></canvas></div>
+    <p class="note">Two Farmers walk loops, turning at each corner so all four directions show; two more chop in place. The town is the ink mockup at the scale where its own villagers match the sprites. Equip changes every Farmer at once.</p>
+  </section>
+
+  <section>
+    <h2>Every frame</h2>
+    <div class="sheets" id="sheets"></div>
+  </section>
+
+  <section>
+    <h2>Where it came from</h2>
+    <div class="src" id="src"></div>
+  </section>
+
+  <p class="note" id="notes"></p>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+const VIEWS = ['se', 'sw', 'ne', 'nw'];
+const S = D.size, AX = D.anchor[0], AY = D.anchor[1];
+const NAMES = { pickaxe: 'Pickaxe', club: 'Club', axe: 'Axe', none: 'Empty' };
+const st = { weapon: Object.keys(D.sprites)[0], anim: 'walk', speed: 1, paused: false, zoom: 'fit' };
+try { const s = JSON.parse(localStorage.getItem('s3d') || '{}'); if (s.weapon && D.sprites[s.weapon]) st.weapon = s.weapon; if (s.anim) st.anim = s.anim; } catch (e) {}
+const save = () => { try { localStorage.setItem('s3d', JSON.stringify({ weapon: st.weapon, anim: st.anim })); } catch (e) {} };
+
+// load strips
+const IM = {}; let pending = 0;
+for (const w in D.sprites) for (const c in D.sprites[w]) for (const v in D.sprites[w][c]) {
+  const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = D.sprites[w][c][v].src;
+  ((IM[w] ||= {})[c] ||= {})[v] = im;
+}
+let townIm = null;
+if (D.town) { townIm = new Image(); pending++; townIm.onload = () => { if (--pending === 0) ready(); }; townIm.src = D.town; }
+
+function frameAt(clip, t) {   // t in ms of clip time -> frame index
+  const ms = D.ms[clip], tot = ms.reduce((a, b) => a + b, 0); let x = t % tot;
+  for (let i = 0; i < ms.length; i++) { if (x < ms[i]) return i; x -= ms[i]; }
+  return 0;
+}
+function drawSprite(g, w, clip, view, f, x, y, shadow = true) {
+  if (shadow) { g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--shadow'); g.beginPath(); g.ellipse(x, y, 22, 9, 0, 0, Math.PI * 2); g.fill(); }
+  const im = IM[w][clip][view]; g.drawImage(im, f * S, 0, S, S, Math.round(x - AX), Math.round(y - AY), S, S);
+}
+
+// ---- controls
+const wb = document.getElementById('weapons');
+for (const w in D.sprites) { const b = document.createElement('button'); b.textContent = NAMES[w] || w; b.dataset.w = w; b.id = 'w_' + w; wb.appendChild(b); b.onclick = () => { st.weapon = w; save(); sync(); }; }
+const on = (id, v) => document.getElementById(id).classList.toggle('on', v);
+document.getElementById('aWalk').onclick = () => { st.anim = 'walk'; save(); sync(); };
+document.getElementById('aChop').onclick = () => { st.anim = 'chop'; save(); sync(); };
+[['s1', 1], ['s05', .5], ['s025', .25]].forEach(([id, v]) => document.getElementById(id).onclick = () => { st.speed = v; sync(); });
+document.getElementById('pause').onclick = () => { st.paused = !st.paused; sync(); };
+[['z1', 'fit'], ['z2', 1], ['z3', 2]].forEach(([id, v]) => document.getElementById(id).onclick = () => { st.zoom = v; sync(); });
+function sync() {
+  wb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.w === st.weapon));
+  on('aWalk', st.anim === 'walk'); on('aChop', st.anim === 'chop');
+  on('s1', st.speed === 1); on('s05', st.speed === .5); on('s025', st.speed === .25); on('pause', st.paused);
+  document.getElementById('pause').textContent = st.paused ? 'Play' : 'Pause';
+  on('z1', st.zoom === 'fit'); on('z2', st.zoom === 1); on('z3', st.zoom === 2);
+  document.querySelectorAll('canvas.zoomable').forEach(c => {
+    if (st.zoom === 'fit') { c.style.width = '100%'; c.style.height = 'auto'; c.style.maxWidth = c.width * (c.id === 'four' ? 2 : 1) + 'px'; }
+    else { c.style.width = c.width * st.zoom + 'px'; c.style.height = 'auto'; c.style.maxWidth = 'none'; }
+  });
+  document.getElementById('dirlabels').style.width = document.getElementById('four').getBoundingClientRect().width + 'px';
+}
+addEventListener('resize', () => sync());
+
+// ---- four-direction player
+const four = document.getElementById('four'); four.width = S * 4; four.height = S + 4;
+// ---- town actors: corners of loops in town pixels; walkers turn at each corner
+const LOOPS = [
+  { pts: [[330, 470], [450, 530], [390, 560], [270, 500]], speed: 40, phase: 0 },
+  { pts: [[560, 330], [680, 390], [620, 420], [500, 360]], speed: 40, phase: 2.5 },
+];
+const CHOPPERS = [{ x: 430, y: 650, view: 'ne', phase: 0 }, { x: 990, y: 690, view: 'sw', phase: 420 }];
+function onLoop(L, d) {
+  const segs = L.pts.map((p, i) => { const q = L.pts[(i + 1) % L.pts.length]; return [p, q, Math.hypot(q[0] - p[0], q[1] - p[1])]; });
+  const tot = segs.reduce((a, s) => a + s[2], 0); let x = ((d % tot) + tot) % tot;
+  for (const [p, q, len] of segs) {
+    if (x <= len) { const u = x / len, dx = q[0] - p[0], dy = q[1] - p[1];
+      return { x: p[0] + dx * u, y: p[1] + dy * u, view: (dy > 0 ? 's' : 'n') + (dx > 0 ? 'e' : 'w') }; }
+    x -= len;
+  }
+}
+const town = document.getElementById('town');
+if (D.town) { town.width = 1080; town.height = 810; } else town.parentElement.parentElement.hidden = true;
+
+// ---- sheets (static, every frame)
+function buildSheets() {
+  const box = document.getElementById('sheets');
+  for (const w in D.sprites) for (const clip of ['walk', 'chop']) {
+    if (!D.sprites[w][clip]) continue;
+    const n = D.sprites[w][clip].se.n;
+    const card = document.createElement('div'); card.className = 'sheet';
+    card.innerHTML = `<h2>${NAMES[w] || w} · ${clip === 'walk' ? 'Walk' : 'Chop'}</h2><div class="lab">${n} frames · ${D.ms[clip].reduce((a, b) => a + b, 0)} ms loop</div>`;
+    const rows = document.createElement('div'); rows.className = 'rows';
+    const c = document.createElement('canvas'); c.width = n * S; c.height = 4 * S; c.className = 'fit';
+    c.setAttribute('aria-label', `${NAMES[w] || w} ${clip}: every frame, four directions`);
+    const g = c.getContext('2d');
+    VIEWS.forEach((v, r) => g.drawImage(IM[w][clip][v], 0, r * S));
+    const labs = document.createElement('div'); labs.style.display = 'grid'; labs.style.gridTemplateRows = 'repeat(4, 1fr)'; labs.style.height = '100%';
+    labs.innerHTML = VIEWS.map(v => `<span class="lab" style="display:grid;align-items:center">${v.toUpperCase()}</span>`).join('');
+    rows.append(labs, c); card.appendChild(rows); box.appendChild(card);
+  }
+  const src = document.getElementById('src');
+  for (const e of D.extras) { const f = document.createElement('figure'); f.innerHTML = `<img alt="${e.name}" src="${e.src}"><figcaption>${e.name}</figcaption>`; src.appendChild(f); }
+  if (!D.extras.length) src.parentElement.hidden = true;
+}
+
+let clock = 0, last = 0;
+function tick(now) {
+  const dt = last ? Math.min(100, now - last) : 0; last = now;
+  if (!st.paused) clock += dt * st.speed;
+  // four directions
+  const g = four.getContext('2d'); g.clearRect(0, 0, four.width, four.height); g.imageSmoothingQuality = 'high';
+  const f = frameAt(st.anim, clock);
+  VIEWS.forEach((v, i) => drawSprite(g, st.weapon, st.anim, v, f, i * S + AX, AY));
+  // town
+  if (townIm) {
+    const t = town.getContext('2d'); t.imageSmoothingQuality = 'high'; t.drawImage(townIm, 0, 0);
+    const actors = [];
+    for (const L of LOOPS) { const p = onLoop(L, clock / 1000 * L.speed + L.phase * 100); actors.push({ ...p, clip: 'walk', f: frameAt('walk', clock) }); }
+    for (const c of CHOPPERS) actors.push({ x: c.x, y: c.y, view: c.view, clip: 'chop', f: frameAt('chop', clock + c.phase) });
+    actors.sort((a, b) => a.y - b.y).forEach(a => drawSprite(t, st.weapon, a.clip, a.view, a.f, a.x, a.y));
+  }
+  requestAnimationFrame(tick);
+}
+function ready() {
+  buildSheets(); sync(); requestAnimationFrame(tick);
+  document.getElementById('notes').innerHTML =
+    `Frames: walk ${D.ms.walk.length} at ${D.ms.walk[0]} ms; chop ${D.ms.chop.length} with timings ${D.ms.chop.join(', ')} ms (fast strike, held impact). ` +
+    `Sprites are ${S}×${S} px with the feet on the ground point at (${AX.toFixed(0)}, ${AY.toFixed(0)}). ` +
+    `Pipeline: ChatGPT front drawing → Hunyuan3D model → <code>ai_model.py</code> (shared skeleton) → <code>ai_render.py</code> (toon shading, four directions, weapon on the hand bone) → <code>spritify.py smooth</code>. Branch <code>art-direction-b</code>.`;
+}
+</script>

@@ -165,8 +165,13 @@ if __name__ == '__main__':
         kinds = ([a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('weapon=')] or [['pickaxe']])[0]
         scale = float(([a.split('=')[1] for a in sys.argv if a.startswith('scale=')] or ['1.0'])[0])
         cam = setup_scene(px=256); cam.data.ortho_scale = scale
-        look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .55)) - look * 20
+        look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .5)) - look * 20
         bpy.context.scene.eevee.taa_render_samples = 8
+        from bpy_extras.object_utils import world_to_camera_view
+        bpy.context.view_layer.update()
+        g = world_to_camera_view(bpy.context.scene, cam, Vector((0, 0, 0)))   # ground point under the feet
+        import json; os.makedirs(out, exist_ok=True)
+        json.dump({'ground_x': g.x, 'ground_y': 1 - g.y}, open(os.path.join(out, 'anchor.json'), 'w'))
         clips = {'walk': [dict(survivor.walk(i / 8), **{'hand.R': (15, 0, 0)}) for i in range(8)],   # tool tipped up while walking
                  'chop': [chop(t) for t in (0, .2, .38, .46, .54, .6, .66, .82)]}
         for kind in kinds:
