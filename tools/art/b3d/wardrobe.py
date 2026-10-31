@@ -106,7 +106,8 @@ def suspenders(ctx, colour='#5a3519'):
 
 def boots(ctx, colour='#47291a', tall=False):
     """Chunky work boots: shaft on the shin, rounded foot with a raised toe, thick sole, folded top."""
-    s = ctx['s']; top = (.28 if tall else .2) * s
+    bs = ctx.get('b', {}).get('boot_scale', 1.0)
+    s = ctx['s'] * bs; top = (.28 if tall else .2) * s
     def keep(bone, co): return (bone.startswith('foot') or bone.startswith('shin')) and co.z < top
     COVERS.append(keep)
     m = ink('boot' + colour, colour); sole = ink('sole', '#2a1a10')

@@ -417,7 +417,7 @@ def _build(prof, b, J, origin, facing, tag):
     head, hz, hr = head_mesh(b, J); head.data.materials.append(body.data.materials[0]); parts.append(('head', head))
     face(b, hz, hr, parts)
     hair(prof.get('hair'), prof.get('hair_colour', '#6a4a2a'), hz, hr, parts, seed=prof.get('seed', 1))
-    ctx = dict(J=J, body=body, dom=dom, hz=hz, hr=hr, s=b.get('height', 1.0), parts=parts, prof=prof)
+    ctx = dict(J=J, body=body, dom=dom, hz=hz, hr=hr, s=b.get('height', 1.0), parts=parts, prof=prof, b=b)
     for item in prof.get('wear', []):
         kind, opts = (item, {}) if isinstance(item, str) else (item[0], item[1])
         getattr(wardrobe, kind)(ctx, **opts)
