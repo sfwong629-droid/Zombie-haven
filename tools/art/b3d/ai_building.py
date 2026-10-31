@@ -41,7 +41,7 @@ def render(blend, out, px=708):
     import ai_render
     bpy.ops.wm.open_mainfile(filepath=os.path.abspath(blend))
     o = bpy.data.objects['building']
-    ai_render.toonify(o, tex_px=640, colors=0, median=3)
+    ai_render.toonify(o, tex_px=640, colors=0, median=5, light=(.48, .76, .94))   # building look (user pick 2026-10-31): deeper shadows
     o.rotation_mode = 'XYZ'
     fx, fy = o['footprint']
     ppu = CHAR_PPU * px / 354          # px=708 renders at 2x; spritify smooth size=354 gives character scale

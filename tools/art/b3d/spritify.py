@@ -96,12 +96,15 @@ def sheets(done, out, scale=4, bg=(236, 222, 190, 255)):
             gif.append(fr.resize((fr.width * scale, fr.height * scale), Image.NEAREST).convert('RGB'))
         gif[0].save(os.path.join(out, f'{c}.gif'), save_all=True, append_images=gif[1:], duration=dur, loop=0)
 
-def smooth(raw, out, size=128, line=1):
+def smooth(raw, out, size=128, line=1, punch=False):
     """No pixel-art step: a clean anti-aliased shrink of the 3D render with a thin ink outline (soft edges kept)."""
     from PIL import ImageFilter
     os.makedirs(out, exist_ok=True); done = {}
     for p in sorted(glob.glob(os.path.join(raw, '*.png'))):
         im = Image.open(p).convert('RGBA')
+        if punch:   # buildings: richer colour and contrast so big pale surfaces don't look faded next to the survivors
+            rgb = ImageEnhance.Contrast(ImageEnhance.Color(im.convert('RGB')).enhance(1.2)).enhance(1.1).convert('RGBA')
+            rgb.putalpha(im.getchannel('A')); im = rgb
         a = np.asarray(im).astype(np.float32) / 255
         pre = Image.fromarray((np.dstack([a[..., :3] * a[..., 3:], a[..., 3:]]) * 255).astype(np.uint8), 'RGBA')
         sm = np.asarray(pre.resize((size, size), Image.LANCZOS)).astype(np.float32) / 255
@@ -114,6 +117,10 @@ def smooth(raw, out, size=128, line=1):
     return done
 
 if __name__ == '__main__':
+    if 'building' in sys.argv:   # building sprites: 354 px, 2-px outline, richer colour
+        o = dict(a.split('=') for a in sys.argv[3:] if '=' in a)
+        d = smooth(sys.argv[1], sys.argv[2], int(o.get('size', 354)), line=2, punch=True)
+        import shutil; shutil.copy(os.path.join(sys.argv[1], 'anchor.json'), sys.argv[2]); print('building', len(d)); sys.exit()
     if 'smooth' in sys.argv:
         o = dict(a.split('=') for a in sys.argv[3:] if '=' in a)
         d = smooth(sys.argv[1], sys.argv[2], int(o.get('size', 128))); sheets(d, sys.argv[2], scale=2); print('smooth', len(d)); sys.exit()
