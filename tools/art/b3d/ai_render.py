@@ -20,7 +20,7 @@ def load(path):
     ao.show_in_front = False; ao.hide_render = True
     return ao, body
 
-def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08)):
+def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08), colors=28, median=5):
     """Pixel-art friendly surface: a simplified copy of the colour texture (small, smoothed, posterised so fabric
     noise and hair strands become flat patches) times a few hard light bands, emitted so nothing else shades it."""
     import numpy as np
@@ -31,8 +31,8 @@ def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08)):
         im = texn.image; w, h = im.size
         a = (np.array(im.pixels[:]).reshape(h, w, 4) * 255).astype(np.uint8)
         pil = Image.fromarray(a[..., :3]).resize((tex_px, tex_px), Image.LANCZOS)
-        pil = pil.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.ModeFilter(3))
-        pil = pil.quantize(28, method=Image.Quantize.MEDIANCUT).convert('RGB')
+        pil = pil.filter(ImageFilter.MedianFilter(median)).filter(ImageFilter.ModeFilter(3))
+        if colors: pil = pil.quantize(colors, method=Image.Quantize.MEDIANCUT).convert('RGB')
         fn = os.path.join(bpy.app.tempdir or '/tmp', 'tex_simple.png')
         pil.transpose(Image.FLIP_TOP_BOTTOM).save(fn)          # blender pixel rows run bottom-up
         new = bpy.data.images.load(fn); new.pack(); new.colorspace_settings.name = 'sRGB'
@@ -164,7 +164,8 @@ if __name__ == '__main__':
         # big renders per frame; spritify.py turns them into 64px pixel sprites
         kinds = ([a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('weapon=')] or [['pickaxe']])[0]
         scale = float(([a.split('=')[1] for a in sys.argv if a.startswith('scale=')] or ['1.0'])[0])
-        cam = setup_scene(px=256); cam.data.ortho_scale = scale
+        tilt = float(([a.split('=')[1] for a in sys.argv if a.startswith('tilt=')] or ['60'])[0])   # 60 = game's exact 2:1 tiles
+        cam = setup_scene(px=256, tilt=tilt); cam.data.ortho_scale = scale
         look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .5)) - look * 20
         bpy.context.scene.eevee.taa_render_samples = 8
         from bpy_extras.object_utils import world_to_camera_view

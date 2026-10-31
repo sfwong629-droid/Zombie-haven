@@ -29,7 +29,7 @@ button.on { background: var(--accent); color: var(--accent-ink); border-color: v
 section { display: grid; gap: 8px; min-width: 0; }
 .stage { background: var(--stage); border: 1px solid var(--line); border-radius: 8px; overflow: auto; padding: 8px; max-width: 100%; }
 .stage.town { background: var(--panel); padding: 0; }
-canvas { display: block; }
+canvas { display: block; margin-inline: auto; }
 .fit { width: 100%; height: auto; }
 .dirs { color: #2c2f28; display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
 .sheets { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
@@ -68,6 +68,14 @@ canvas { display: block; }
     <h2>In the town</h2>
     <div class="stage town"><canvas id="town" class="zoomable" aria-label="Farmers walking and chopping in the ink town mockup"></canvas></div>
     <p class="note">Two Farmers walk loops, turning at each corner so all four directions show; two more chop in place. The town is the ink mockup at the scale where its own villagers match the sprites. Equip changes every Farmer at once.</p>
+  </section>
+
+  <section id="bsec">
+    <h2 id="btitle">Building</h2>
+    <div class="bar2" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span class="lab">Rotate</span><button id="bRot">Turn 90°</button><button id="bGrid" class="on">Tile grid</button><span class="lab" id="bInfo"></span></div>
+    <div class="stage town"><canvas id="bscene" class="zoomable" aria-label="The building on its tile with the farmer walking around it"></canvas></div>
+    <div class="stage"><canvas id="brots" class="zoomable" aria-label="The building's four rotations"></canvas></div>
+    <p class="note">Same camera and lighting as the Farmer (the game's exact 2:1 tile angle), same pixels per metre, so the size against him is what the game would show. Each rotation is the 3D model turned, so the back view is a real back. Tap the scene or Turn 90° to rotate.</p>
   </section>
 
   <section>
@@ -176,6 +184,38 @@ function buildSheets() {
   if (!D.extras.length) src.parentElement.hidden = true;
 }
 
+// ---- building scene: the building on its tile, the Farmer walking a loop around it
+const B = (D.buildings || [])[0]; const BIM = []; let brot = 0, bgrid = true;
+const bscene = document.getElementById('bscene'), brots = document.getElementById('brots');
+let TW = 0, TH = 0, BX = 0, BY = 0;
+if (B) {
+  document.getElementById('btitle').textContent = B.name;
+  B.rots.forEach((src, i) => { const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = src; BIM[i] = im; });
+  TW = B.tile * Math.SQRT2 * B.ppu; TH = TW / 2;
+  bscene.width = Math.round(TW * 2.2); bscene.height = Math.round(B.size * 1.05 + TH * .6); BX = bscene.width / 2; BY = B.anchor[1] + 20;
+  brots.width = B.size * 4; brots.height = B.size;
+  document.getElementById('bInfo').textContent = `1×1 tile · ${(B.tile).toFixed(2)} m side`;
+  const turn = () => { brot = (brot + 1) % 4; };
+  document.getElementById('bRot').onclick = turn; bscene.onclick = turn;
+  document.getElementById('bGrid').onclick = () => { bgrid = !bgrid; document.getElementById('bGrid').classList.toggle('on', bgrid); };
+} else document.getElementById('bsec').hidden = true;
+function diamond(g, cx, cy, w, h) { g.beginPath(); g.moveTo(cx, cy - h / 2); g.lineTo(cx + w / 2, cy); g.lineTo(cx, cy + h / 2); g.lineTo(cx - w / 2, cy); g.closePath(); }
+function drawBuildingScene() {
+  const g = bscene.getContext('2d'); g.imageSmoothingQuality = 'high';
+  g.fillStyle = '#b89a68'; g.fillRect(0, 0, bscene.width, bscene.height);
+  if (bgrid) { g.strokeStyle = 'rgba(60,40,20,.28)'; g.lineWidth = 1;
+    for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) { diamond(g, BX + (i - j) * TW / 2, BY + (i + j) * TH / 2, TW, TH); g.stroke(); }
+    g.strokeStyle = 'rgba(226,176,74,.9)'; g.lineWidth = 2; diamond(g, BX, BY, TW, TH); g.stroke(); }
+  // farmer loop: just outside the tile, along the four diagonals (all four walk directions)
+  const k = .78, P = [[BX, BY - TH * k], [BX + TW * k, BY], [BX, BY + TH * k], [BX - TW * k, BY]];
+  const p = onLoop({ pts: P }, clock / 1000 * 45);
+  const drawB = () => { const im = BIM[brot]; g.drawImage(im, Math.round(BX - B.anchor[0]), Math.round(BY - B.anchor[1])); };
+  const drawF = () => drawSprite(g, st.weapon, 'walk', p.view, frameAt('walk', clock), p.x, p.y);
+  if (p.y < BY) { drawF(); drawB(); } else { drawB(); drawF(); }
+  const r = brots.getContext('2d'); r.clearRect(0, 0, brots.width, brots.height);
+  BIM.forEach((im, i) => r.drawImage(im, i * B.size, 0));
+}
+
 let clock = 0, last = 0;
 function tick(now) {
   const dt = last ? Math.min(100, now - last) : 0; last = now;
@@ -192,6 +232,7 @@ function tick(now) {
     for (const c of CHOPPERS) actors.push({ x: c.x, y: c.y, view: c.view, clip: 'chop', f: frameAt('chop', clock + c.phase) });
     actors.sort((a, b) => a.y - b.y).forEach(a => drawSprite(t, st.weapon, a.clip, a.view, a.f, a.x, a.y));
   }
+  if (B) drawBuildingScene();
   requestAnimationFrame(tick);
 }
 function ready() {

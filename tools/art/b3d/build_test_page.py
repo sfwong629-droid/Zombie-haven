@@ -27,7 +27,7 @@ def strips(root):
             out[w].setdefault(clip, {})[view] = {'src': b64(st, optimize=True), 'n': len(ims), 'size': S}
     return out
 
-def build(sprites, out_html, town=None, extras=()):
+def build(sprites, out_html, town=None, extras=(), buildings=()):
     data = strips(sprites)
     anchor = json.load(open(os.path.join(sprites, 'anchor.json')))
     S = next(iter(next(iter(data.values())).values()))['se']['size']
@@ -40,7 +40,13 @@ def build(sprites, out_html, town=None, extras=()):
     for name, path in extras:
         im = Image.open(path).convert('RGBA'); im.thumbnail((640, 640))
         ex.append({'name': name, 'src': b64(im, optimize=True)})
-    payload = {'sprites': data, 'anchor': [anchor['ground_x'] * S, anchor['ground_y'] * S], 'size': S,
+    bl = []
+    for name, d in buildings:
+        an = json.load(open(os.path.join(d, 'anchor.json'))); n = an['size_final']
+        bl.append({'name': name, 'rots': [b64(Image.open(os.path.join(d, f'rot{r}.png')), optimize=True) for r in (0, 90, 180, 270)],
+                   'anchor': [an['ground_x'] * n, an['ground_y'] * n], 'size': n, 'ppu': an['ppu_final'],
+                   'tile': max(an['footprint']) * 1.02})
+    payload = {'buildings': bl, 'sprites': data, 'anchor': [anchor['ground_x'] * S, anchor['ground_y'] * S], 'size': S,
                'town': town_src, 'extras': ex,
                'ms': {'walk': [110] * 8, 'chop': [160, 130, 120, 160, 60, 60, 200, 160]}}
     html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_page_template.html')).read()
@@ -49,8 +55,10 @@ def build(sprites, out_html, town=None, extras=()):
     print('page', out_html, round(len(html) / 1e6, 2), 'MB')
 
 if __name__ == '__main__':
-    a = sys.argv[1:]; town = None; extras = []
+    a = sys.argv[1:]; town = None; extras = []; bls = []
+    while '--building' in a:
+        i = a.index('--building'); n, p = a[i + 1].split('=', 1); bls.append((n, p)); del a[i:i + 2]
     if '--town' in a: i = a.index('--town'); town = a[i + 1]; del a[i:i + 2]
     while '--extra' in a:
         i = a.index('--extra'); n, p = a[i + 1].split('=', 1); extras.append((n, p)); del a[i:i + 2]
-    build(a[0], a[1], town, extras)
+    build(a[0], a[1], town, extras, bls)
