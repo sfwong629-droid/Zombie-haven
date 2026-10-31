@@ -68,6 +68,20 @@ def flat_material(o):
         bsdf.inputs['Metallic'].default_value = 0; bsdf.inputs['Roughness'].default_value = 1
         if 'Specular IOR Level' in bsdf.inputs: bsdf.inputs['Specular IOR Level'].default_value = 0
 
+def fill_unweighted(o):
+    """Vertices the heat weighting missed (stray hair bits) would stay behind and stretch: copy the nearest weighted vertex."""
+    from mathutils.kdtree import KDTree
+    vs = o.data.vertices; ok = [v for v in vs if sum(g.weight for g in v.groups) > .01]
+    kd = KDTree(len(ok))
+    for i, v in enumerate(ok): kd.insert(v.co, i)
+    kd.balance(); n = 0
+    for v in vs:
+        if sum(g.weight for g in v.groups) > .01: continue
+        _, i, _ = kd.find(v.co); src = ok[i]
+        for g in src.groups: o.vertex_groups[g.group].add([v.index], g.weight, 'REPLACE')
+        n += 1
+    print('filled unweighted verts', n)
+
 def prep(src, out, tris=40000):
     import survivor
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -103,6 +117,7 @@ def prep(src, out, tris=40000):
     dt.layers_vgroup_select_src = 'ALL'; dt.layers_vgroup_select_dst = 'NAME'
     bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_apply(modifier='dt')
     bpy.data.objects.remove(px)
+    fill_unweighted(o)
     survivor.attach(o, ao)
     ao['info'] = str(info)
     bpy.ops.wm.save_as_mainfile(filepath=out)

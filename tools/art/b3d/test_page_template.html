@@ -48,12 +48,12 @@ canvas { display: block; margin-inline: auto; }
 <div class="wrap">
   <header>
     <h1>Survivor 3D Test</h1>
-    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to 128-px sprites. Weapons are attached to the hand bone, so switching them re-equips every frame of every animation.</p>
+    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to sprites: all 13 game animations in four directions, with the bat, axe, rifle and AK-47. Melee weapons ride on the hand bone; guns ride on the chest with both hands locked to them. Swooshes, hit sparks, muzzle flash and dust are rendered in 3D with the frames.</p>
   </header>
 
   <div class="bar" role="toolbar" aria-label="Playback controls">
     <div class="grp"><span class="lab">Equip</span><span id="weapons" style="display:flex;gap:4px"></span></div>
-    <div class="grp"><span class="lab">Animation</span><button id="aWalk" class="on">Walk</button><button id="aChop">Chop</button></div>
+    <div class="grp"><span class="lab">Animation</span><span id="anims" style="display:flex;gap:4px;flex-wrap:wrap"></span></div>
     <div class="grp"><span class="lab">Speed</span><button id="s1" class="on">1×</button><button id="s05">½×</button><button id="s025">¼×</button><button id="pause">Pause</button></div>
     <div class="grp"><span class="lab">Zoom</span><button id="z1" class="on">Fit</button><button id="z2">1:1</button><button id="z3">2×</button></div>
   </div>
@@ -67,7 +67,7 @@ canvas { display: block; margin-inline: auto; }
   <section>
     <h2>In the town</h2>
     <div class="stage town"><canvas id="town" class="zoomable" aria-label="Farmers walking and chopping in the ink town mockup"></canvas></div>
-    <p class="note">Two Farmers walk loops, turning at each corner so all four directions show; two more chop in place. The town is the ink mockup at the scale where its own villagers match the sprites. Equip changes every Farmer at once.</p>
+    <p class="note">Two Farmers walk loops, turning at each corner so all four directions show; two more attack in place (swing for melee, fire for guns, punch empty-handed). The town is the ink mockup at the scale where its own villagers match the sprites. Equip changes every Farmer at once.</p>
   </section>
 
   <section id="bsec">
@@ -95,12 +95,26 @@ canvas { display: block; margin-inline: auto; }
 const D = /*__DATA__*/null;
 const VIEWS = ['se', 'sw', 'ne', 'nw'];
 const S = D.size, AX = D.anchor[0], AY = D.anchor[1];
-const NAMES = { pickaxe: 'Pickaxe', club: 'Club', axe: 'Axe', none: 'Empty' };
-const st = { weapon: Object.keys(D.sprites)[0], anim: 'walk', speed: 1, paused: false, zoom: 'fit' };
-try { const s = JSON.parse(localStorage.getItem('s3d') || '{}'); if (s.weapon && D.sprites[s.weapon]) st.weapon = s.weapon; if (s.anim) st.anim = s.anim; } catch (e) {}
-const save = () => { try { localStorage.setItem('s3d', JSON.stringify({ weapon: st.weapon, anim: st.anim })); } catch (e) {} };
+const NAMES = { none: 'Empty hands', bat: 'Bat', axe: 'Axe', rifle: 'Rifle', ak47: 'AK-47', pickaxe: 'Pickaxe', club: 'Club' };
+const CLIPS = [['idle', 'Idle'], ['walk', 'Walk'], ['hold_idle', 'Hold idle'], ['hold_walk', 'Hold walk'], ['rescue', 'Rescue (push cart)'],
+  ['punch', 'Punch'], ['swing_a', 'Swing A · overhead'], ['swing_b', 'Swing B · side'], ['swing_c', 'Swing C · diagonal'], ['fire', 'Fire'],
+  ['hurt', 'Hurt'], ['collapse', 'Collapse'], ['cheer', 'Cheer']];
+const WORDER = ['none', 'bat', 'axe', 'rifle', 'ak47'].filter(w => D.sprites[w]).concat(Object.keys(D.sprites).filter(w => !['none', 'bat', 'axe', 'rifle', 'ak47'].includes(w)));
+const isGun = w => w === 'rifle' || w === 'ak47';
+const st = { weapon: WORDER.includes('bat') ? 'bat' : WORDER[0], anim: 'walk', speed: 1, paused: false, zoom: 'fit' };
+try { const s = JSON.parse(localStorage.getItem('s3d2') || '{}'); if (s.weapon && D.sprites[s.weapon]) st.weapon = s.weapon; if (s.anim) st.anim = s.anim; } catch (e) {}
+const save = () => { try { localStorage.setItem('s3d2', JSON.stringify({ weapon: st.weapon, anim: st.anim })); } catch (e) {} };
 
-// load strips
+// which sheet a (weapon, clip) uses: armed clips from the weapon's set, everything else from the empty-handed set
+function src(w, clip) {
+  if (clip === 'walk' && w !== 'none' && D.sprites[w] && D.sprites[w].hold_walk) clip = 'hold_walk';
+  if (clip === 'idle' && w !== 'none' && D.sprites[w] && D.sprites[w].hold_idle) clip = 'hold_idle';
+  if (D.sprites[w] && D.sprites[w][clip]) return [w, clip];
+  if (D.sprites.none && D.sprites.none[clip]) return ['none', clip];
+  return null;
+}
+const has = (w, clip) => !!(D.sprites[w] && D.sprites[w][clip]) || (!['hold_idle', 'hold_walk', 'swing_a', 'swing_b', 'swing_c', 'fire'].includes(clip) && D.sprites.none && D.sprites.none[clip]);
+
 const IM = {}; let pending = 0;
 for (const w in D.sprites) for (const c in D.sprites[w]) for (const v in D.sprites[w][c]) {
   const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = D.sprites[w][c][v].src;
@@ -109,28 +123,33 @@ for (const w in D.sprites) for (const c in D.sprites[w]) for (const v in D.sprit
 let townIm = null;
 if (D.town) { townIm = new Image(); pending++; townIm.onload = () => { if (--pending === 0) ready(); }; townIm.src = D.town; }
 
-function frameAt(clip, t) {   // t in ms of clip time -> frame index
-  const ms = D.ms[clip], tot = ms.reduce((a, b) => a + b, 0); let x = t % tot;
+const HOLD = 700;   // one-shot clips pause on their last frame before repeating
+function frameAt(clip, t) {
+  const ms = D.ms[clip], tot = ms.reduce((a, b) => a + b, 0), loop = D.loop ? D.loop[clip] !== false : true;
+  let x = loop ? t % tot : t % (tot + HOLD);
+  if (!loop && x >= tot) return ms.length - 1;
   for (let i = 0; i < ms.length; i++) { if (x < ms[i]) return i; x -= ms[i]; }
-  return 0;
+  return ms.length - 1;
 }
-function drawSprite(g, w, clip, view, f, x, y, shadow = true) {
-  if (shadow) { g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--shadow'); g.beginPath(); g.ellipse(x, y, 22, 9, 0, 0, Math.PI * 2); g.fill(); }
-  const im = IM[w][clip][view]; g.drawImage(im, f * S, 0, S, S, Math.round(x - AX), Math.round(y - AY), S, S);
+function drawSprite(g, w, clip, view, t, x, y, shadow = true) {
+  const r = src(w, clip); if (!r) return; const [ww, cc] = r;
+  if (shadow) { g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--shadow'); g.beginPath(); g.ellipse(x, y, 24, 10, 0, 0, Math.PI * 2); g.fill(); }
+  const f = frameAt(cc, t);
+  g.drawImage(IM[ww][cc][view], f * S, 0, S, S, Math.round(x - AX), Math.round(y - AY), S, S);
 }
 
 // ---- controls
-const wb = document.getElementById('weapons');
-for (const w in D.sprites) { const b = document.createElement('button'); b.textContent = NAMES[w] || w; b.dataset.w = w; b.id = 'w_' + w; wb.appendChild(b); b.onclick = () => { st.weapon = w; save(); sync(); }; }
+const wb = document.getElementById('weapons'), ab = document.getElementById('anims');
+for (const w of WORDER) { const b = document.createElement('button'); b.textContent = NAMES[w] || w; b.dataset.w = w; b.id = 'w_' + w; wb.appendChild(b); b.onclick = () => { st.weapon = w; if (!has(w, st.anim)) st.anim = 'walk'; save(); sync(); }; }
+for (const [c, label] of CLIPS) { const b = document.createElement('button'); b.textContent = label; b.dataset.c = c; b.id = 'a_' + c; ab.appendChild(b); b.onclick = () => { st.anim = c; clock = 0; save(); sync(); }; }
 const on = (id, v) => document.getElementById(id).classList.toggle('on', v);
-document.getElementById('aWalk').onclick = () => { st.anim = 'walk'; save(); sync(); };
-document.getElementById('aChop').onclick = () => { st.anim = 'chop'; save(); sync(); };
 [['s1', 1], ['s05', .5], ['s025', .25]].forEach(([id, v]) => document.getElementById(id).onclick = () => { st.speed = v; sync(); });
 document.getElementById('pause').onclick = () => { st.paused = !st.paused; sync(); };
 [['z1', 'fit'], ['z2', 1], ['z3', 2]].forEach(([id, v]) => document.getElementById(id).onclick = () => { st.zoom = v; sync(); });
 function sync() {
+  if (!has(st.weapon, st.anim)) st.anim = 'walk';
   wb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.w === st.weapon));
-  on('aWalk', st.anim === 'walk'); on('aChop', st.anim === 'chop');
+  ab.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.c === st.anim); b.disabled = !has(st.weapon, b.dataset.c); b.style.opacity = b.disabled ? .35 : 1; });
   on('s1', st.speed === 1); on('s05', st.speed === .5); on('s025', st.speed === .25); on('pause', st.paused);
   document.getElementById('pause').textContent = st.paused ? 'Play' : 'Pause';
   on('z1', st.zoom === 'fit'); on('z2', st.zoom === 1); on('z3', st.zoom === 2);
@@ -142,9 +161,7 @@ function sync() {
 }
 addEventListener('resize', () => sync());
 
-// ---- four-direction player
 const four = document.getElementById('four'); four.width = S * 4; four.height = S + 4;
-// ---- town actors: corners of loops in town pixels; walkers turn at each corner
 const LOOPS = [
   { pts: [[330, 470], [450, 530], [390, 560], [270, 500]], speed: 40, phase: 0 },
   { pts: [[560, 330], [680, 390], [620, 420], [500, 360]], speed: 40, phase: 2.5 },
@@ -161,36 +178,35 @@ function onLoop(L, d) {
 }
 const town = document.getElementById('town');
 if (D.town) { town.width = 1080; town.height = 810; } else town.parentElement.parentElement.hidden = true;
+const attackClip = w => w === 'none' ? 'punch' : isGun(w) ? 'fire' : 'swing_a';
 
-// ---- sheets (static, every frame)
 function buildSheets() {
   const box = document.getElementById('sheets');
-  for (const w in D.sprites) for (const clip of ['walk', 'chop']) {
-    if (!D.sprites[w][clip]) continue;
-    const n = D.sprites[w][clip].se.n;
+  for (const w of WORDER) for (const [clip, label] of CLIPS) {
+    if (!(D.sprites[w] && D.sprites[w][clip])) continue;
+    const n = D.sprites[w][clip].se.n, ms = D.ms[clip];
     const card = document.createElement('div'); card.className = 'sheet';
-    card.innerHTML = `<h2>${NAMES[w] || w} · ${clip === 'walk' ? 'Walk' : 'Chop'}</h2><div class="lab">${n} frames · ${D.ms[clip].reduce((a, b) => a + b, 0)} ms loop</div>`;
+    card.innerHTML = `<h2>${NAMES[w] || w} · ${label}</h2><div class="lab">${n} frames · ${ms.reduce((a, b) => a + b, 0)} ms${D.loop && D.loop[clip] === false ? ' · plays once' : ' · loops'}</div>`;
     const rows = document.createElement('div'); rows.className = 'rows';
     const c = document.createElement('canvas'); c.width = n * S; c.height = 4 * S; c.className = 'fit';
-    c.setAttribute('aria-label', `${NAMES[w] || w} ${clip}: every frame, four directions`);
+    c.setAttribute('aria-label', `${NAMES[w] || w} ${label}: every frame, four directions`);
     const g = c.getContext('2d');
     VIEWS.forEach((v, r) => g.drawImage(IM[w][clip][v], 0, r * S));
     const labs = document.createElement('div'); labs.style.display = 'grid'; labs.style.gridTemplateRows = 'repeat(4, 1fr)'; labs.style.height = '100%';
     labs.innerHTML = VIEWS.map(v => `<span class="lab" style="display:grid;align-items:center">${v.toUpperCase()}</span>`).join('');
     rows.append(labs, c); card.appendChild(rows); box.appendChild(card);
   }
-  const src = document.getElementById('src');
-  for (const e of D.extras) { const f = document.createElement('figure'); f.innerHTML = `<img alt="${e.name}" src="${e.src}"><figcaption>${e.name}</figcaption>`; src.appendChild(f); }
-  if (!D.extras.length) src.parentElement.hidden = true;
+  const srcEl = document.getElementById('src');
+  for (const e of D.extras) { const f = document.createElement('figure'); f.innerHTML = `<img alt="${e.name}" src="${e.src}"><figcaption>${e.name}</figcaption>`; srcEl.appendChild(f); }
+  if (!D.extras.length) srcEl.parentElement.hidden = true;
 }
 
-// ---- building scene: the building on its tile, the Farmer walking a loop around it
 const B = (D.buildings || [])[0]; const BIM = []; let brot = 0, bgrid = true;
 const bscene = document.getElementById('bscene'), brots = document.getElementById('brots');
 let TW = 0, TH = 0, BX = 0, BY = 0;
 if (B) {
   document.getElementById('btitle').textContent = B.name;
-  B.rots.forEach((src, i) => { const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = src; BIM[i] = im; });
+  B.rots.forEach((s2, i) => { const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = s2; BIM[i] = im; });
   TW = B.tile * Math.SQRT2 * B.ppu; TH = TW / 2;
   bscene.width = Math.round(TW * 2.2); bscene.height = Math.round(B.size * 1.05 + TH * .6); BX = bscene.width / 2; BY = B.anchor[1] + 20;
   brots.width = B.size * 4; brots.height = B.size;
@@ -206,12 +222,11 @@ function drawBuildingScene() {
   if (bgrid) { g.strokeStyle = 'rgba(60,40,20,.28)'; g.lineWidth = 1;
     for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) { diamond(g, BX + (i - j) * TW / 2, BY + (i + j) * TH / 2, TW, TH); g.stroke(); }
     g.strokeStyle = 'rgba(226,176,74,.9)'; g.lineWidth = 2; diamond(g, BX, BY, TW, TH); g.stroke(); }
-  // farmer loop: just outside the tile, along the four diagonals (all four walk directions)
   const k = .78, P = [[BX, BY - TH * k], [BX + TW * k, BY], [BX, BY + TH * k], [BX - TW * k, BY]];
   const p = onLoop({ pts: P }, clock / 1000 * 45);
   const bf = Math.floor(clock / (B.ms || 140)) % (B.frames || 1);
-  const drawB = () => { const im = BIM[brot]; g.drawImage(im, bf * B.size, 0, B.size, B.size, Math.round(BX - B.anchor[0]), Math.round(BY - B.anchor[1]), B.size, B.size); };
-  const drawF = () => drawSprite(g, st.weapon, 'walk', p.view, frameAt('walk', clock), p.x, p.y);
+  const drawB = () => g.drawImage(BIM[brot], bf * B.size, 0, B.size, B.size, Math.round(BX - B.anchor[0]), Math.round(BY - B.anchor[1]), B.size, B.size);
+  const drawF = () => drawSprite(g, st.weapon, 'walk', p.view, clock, p.x, p.y);
   if (p.y < BY) { drawF(); drawB(); } else { drawB(); drawF(); }
   const r = brots.getContext('2d'); r.clearRect(0, 0, brots.width, brots.height);
   BIM.forEach((im, i) => r.drawImage(im, bf * B.size, 0, B.size, B.size, i * B.size, 0, B.size, B.size));
@@ -221,26 +236,23 @@ let clock = 0, last = 0;
 function tick(now) {
   const dt = last ? Math.min(100, now - last) : 0; last = now;
   if (!st.paused) clock += dt * st.speed;
-  // four directions
   const g = four.getContext('2d'); g.clearRect(0, 0, four.width, four.height); g.imageSmoothingQuality = 'high';
-  const f = frameAt(st.anim, clock);
-  VIEWS.forEach((v, i) => drawSprite(g, st.weapon, st.anim, v, f, i * S + AX, AY));
-  // town
+  VIEWS.forEach((v, i) => drawSprite(g, st.weapon, st.anim, v, clock, i * S + AX, AY));
   if (townIm) {
     const t = town.getContext('2d'); t.imageSmoothingQuality = 'high'; t.drawImage(townIm, 0, 0);
     const actors = [];
-    for (const L of LOOPS) { const p = onLoop(L, clock / 1000 * L.speed + L.phase * 100); actors.push({ ...p, clip: 'walk', f: frameAt('walk', clock) }); }
-    for (const c of CHOPPERS) actors.push({ x: c.x, y: c.y, view: c.view, clip: 'chop', f: frameAt('chop', clock + c.phase) });
-    actors.sort((a, b) => a.y - b.y).forEach(a => drawSprite(t, st.weapon, a.clip, a.view, a.f, a.x, a.y));
+    for (const L of LOOPS) { const p = onLoop(L, clock / 1000 * L.speed + L.phase * 100); actors.push({ ...p, clip: 'walk', t: clock }); }
+    for (const c of CHOPPERS) actors.push({ x: c.x, y: c.y, view: c.view, clip: attackClip(st.weapon), t: clock + c.phase });
+    actors.sort((a, b) => a.y - b.y).forEach(a => drawSprite(t, st.weapon, a.clip, a.view, a.t, a.x, a.y));
   }
   if (B) drawBuildingScene();
   requestAnimationFrame(tick);
 }
 function ready() {
   buildSheets(); sync(); requestAnimationFrame(tick);
+  const tot = Object.values(D.sprites).reduce((a, w) => a + Object.values(w).reduce((b, c) => b + c.se.n * 4, 0), 0);
   document.getElementById('notes').innerHTML =
-    `Frames: walk ${D.ms.walk.length} at ${D.ms.walk[0]} ms; chop ${D.ms.chop.length} with timings ${D.ms.chop.join(', ')} ms (fast strike, held impact). ` +
-    `Sprites are ${S}×${S} px with the feet on the ground point at (${AX.toFixed(0)}, ${AY.toFixed(0)}). ` +
-    `Pipeline: ChatGPT front drawing → Hunyuan3D model → <code>ai_model.py</code> (shared skeleton) → <code>ai_render.py</code> (toon shading, four directions, weapon on the hand bone) → <code>spritify.py smooth</code>. Branch <code>art-direction-b</code>.`;
+    `${tot} frames in all. Sprites are ${S}×${S} px with the feet on the ground point at (${AX.toFixed(0)}, ${AY.toFixed(0)}); swings use uneven timing (${D.ms.swing_a.join(', ')} ms) so the wind-up is slow and the strike fast. ` +
+    `Pipeline: ChatGPT front drawing → Hunyuan3D model → <code>ai_model.py</code> (shared skeleton) → <code>anims.py</code> (13 clips, weapons, effects, four directions) → <code>spritify.py smooth</code>. Branch <code>art-direction-b</code>.`;
 }
 </script>

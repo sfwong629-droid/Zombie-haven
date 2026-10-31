@@ -16,7 +16,7 @@ def strips(root):
     for wdir in sorted(glob.glob(os.path.join(root, '*/'))):
         w = os.path.basename(wdir.rstrip('/')); frames = {}
         for p in glob.glob(os.path.join(wdir, '*.png')):
-            m = re.match(r'(walk|chop)_(se|sw|ne|nw)_(\d+)\.png$', os.path.basename(p))
+            m = re.match(r'(\w+?)_(se|sw|ne|nw)_(\d+)\.png$', os.path.basename(p))
             if m: frames.setdefault((m.group(1), m.group(2)), {})[int(m.group(3))] = p
         if not frames: continue
         out[w] = {}
@@ -55,7 +55,7 @@ def build(sprites, out_html, town=None, extras=(), buildings=()):
                    'tile': max(an['footprint']) * 1.02})
     payload = {'buildings': bl, 'sprites': data, 'anchor': [anchor['ground_x'] * S, anchor['ground_y'] * S], 'size': S,
                'town': town_src, 'extras': ex,
-               'ms': {'walk': [110] * 8, 'chop': [160, 130, 120, 160, 60, 60, 200, 160]}}
+               'ms': anchor.get('ms', {'walk': [110] * 8, 'chop': [160, 130, 120, 160, 60, 60, 200, 160]}), 'loop': anchor.get('loop', {})}
     html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_page_template.html')).read()
     html = html.replace('/*__DATA__*/null', json.dumps(payload))
     open(out_html, 'w').write(html)

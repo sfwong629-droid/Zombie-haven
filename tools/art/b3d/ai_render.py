@@ -29,7 +29,8 @@ def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08), colors=28
         nt = m.node_tree; N, L = nt.nodes, nt.links
         texn = next(n for n in N if n.type == 'TEX_IMAGE' and 'normal' not in n.image.name and 'metal' not in n.image.name)
         im = texn.image; w, h = im.size
-        a = (np.array(im.pixels[:]).reshape(h, w, 4) * 255).astype(np.uint8)
+        buf = np.empty(w * h * 4, np.float32); im.pixels.foreach_get(buf)      # no Python list: a 4K texture would take GBs
+        a = (buf.reshape(h, w, 4) * 255).astype(np.uint8); del buf
         pil = Image.fromarray(a[..., :3]).resize((tex_px, tex_px), Image.LANCZOS)
         pil = pil.filter(ImageFilter.MedianFilter(median)).filter(ImageFilter.ModeFilter(3))
         if colors: pil = pil.quantize(colors, method=Image.Quantize.MEDIANCUT).convert('RGB')
