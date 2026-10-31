@@ -42,12 +42,13 @@ def shirt(ctx, colour='#4a9640', pattern=None, accent=None, sleeves='long', tuck
         side = bone[-1]
         if bone.startswith(('upperarm', 'forearm')) and cut > 0: return co.z > zl[side]
         return False
-    o = garment(ctx['body'], ctx['dom'], keep, .012 + .012 * layer, 'shirt', _mat('shirt', colour, pattern, accent))
+    o = garment(ctx['body'], ctx['dom'], keep, .017 + .012 * layer, 'shirt', _mat('shirt', colour, pattern, accent))   # sits over the trouser waist
     _add(ctx, 'shirt', o)
     if sleeves == 'rolled':     # chunky rolled cuffs
         for side in 'LR':
             a, b = J['forearm.' + side][:2]; c = a + (b - a) * ((cut - .5) / .5 if cut > .5 else 0)
-            _add(ctx, 'cuff', tube(c + Vector((0, 0, .028)), c - Vector((0, 0, .028)), .07 * s, .066 * s, _mat('cuff', colour, pattern, accent), seg=8))
+            lm = ctx.get('b', {}).get('limb', 1.0)
+            _add(ctx, 'cuff', tube(c + Vector((0, 0, .028)), c - Vector((0, 0, .028)), .07 * s * lm, .066 * s * lm, _mat('cuff', colour, pattern, accent), seg=8))
     if collar and layer == 0:   # pointed shirt collar, open at the neck
         cm = _mat('collar', colour, pattern, accent)
         for x in (1, -1):
@@ -75,14 +76,15 @@ def vest(ctx, colour='#5a5a3a', plates=True):
 
 def pants(ctx, colour='#7a4a26', pattern=None, pockets=False):
     J = ctx['J']; s = ctx['s']
+    lim = ctx.get('b', {}).get('limb', 1.0)
     def keep(bone, co):
-        if bone == 'pelvis': return co.z < .82 * s
-        if bone.startswith(('thigh', 'shin')): return co.z > .16 * s
+        if bone in ('pelvis', 'chest'): return co.z < .86 * s
+        if bone.startswith(('thigh', 'shin')): return co.z > ctx.get('b', {}).get('pants_low', .16) * s
         return False
     _add(ctx, 'pants', garment(ctx['body'], ctx['dom'], keep, .012, 'pants', _mat('pants', colour, pattern)))
     for side in 'LR':   # bunched hems over the boots
         a, b = J['shin.' + side][:2]; c = a + (b - a) * .72
-        _add(ctx, 'hem', tube(c + Vector((0, 0, .03)), c - Vector((0, 0, .02)), .072 * s, .08 * s, _mat('hem', colour), seg=8), 'shin.' + side)
+        _add(ctx, 'hem', tube(c + Vector((0, 0, .03)), c - Vector((0, 0, .02)), .072 * s * lim, .08 * s * lim, _mat('hem', colour), seg=8), 'shin.' + side)
     if pockets:
         for side, x in (('L', 1), ('R', -1)):
             a, b = J['thigh.' + side][:2]; c = a + (b - a) * .55

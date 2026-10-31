@@ -16,6 +16,9 @@ TEMPLATES = {
     'survival': {'height': 1.0, 'shoulders': 1.06, 'hips': .84, 'belly': .84, 'bulk': .86, 'delt': .8, 'cloth': .55, 'boot_scale': .78,
                  'head_scale': .76, 'legs': 1.0, 'torso': 1.0, 'nose': .8, 'eye_size': 1.0, 'eye_y': .0, 'eye_x': .32,
                  'mouth_y': .5, 'snap_face': True, 'smooth': True, 'chin': True, 'head_shape': (.9, .96, 1.05)},
+    # MakeHuman body: real human proportions, about 3000 triangles. Small painted-on eyes only; the sculpt carries the face.
+    'human': {'mh': True, 'male': 1.0, 'mh_weight': -.35, 'mh_muscle': 0.0, 'mh_ideal': .6, 'mh_height': 0.0, 'tris': 3000,
+              'legs': 1.0, 'torso': 1.0, 'smooth': True, 'snap_face': True, 'no_mouth': True, 'eye_size': .55, 'cloth': .5, 'boot_scale': .64, 'arm_out': 7, 'limb': .7, 'pants_low': .1, 'head_up': -9},
 }
 SKIN = ['#f2c4a0', '#e8b08a', '#d99a72', '#c98e6a', '#a86a48', '#8e5a3e', '#6a4030']
 HAIR_COLOURS = ['#d8a854', '#c0602a', '#8a4a2a', '#4a3020', '#2a1f18', '#1a1210', '#b8b0a0']
@@ -95,3 +98,8 @@ for _k, _v in _SHAPES.items():
 PROFESSIONS['surv_plain'] = {'body': {'template': 'survival', 'skin': '#e3b08c', 'brow': '#3a2516'},
     'hair': 'swoop', 'hair_colour': '#4a3020', 'seed': 7,
     'wear': [('shirt', {'colour': '#9a9488', 'sleeves': 'short', 'buttons': False, 'collar': False}), ('pants', {'colour': '#4e5560'}), ('boots', {'colour': '#3e3026'})]}
+PROFESSIONS['human_plain'] = {'body': {'template': 'human', 'skin': '#e3b08c', 'brow': '#3a2516'},
+    'hair': 'short', 'hair_colour': '#4a3020', 'seed': 7,
+    'wear': [('shirt', {'colour': '#9a9488', 'sleeves': 'short', 'buttons': False, 'collar': False}), ('pants', {'colour': '#4e5560'}), ('boots', {'colour': '#3e3026'})]}
+PROFESSIONS['human_bare'] = {'body': {'template': 'human', 'skin': '#e3b08c', 'brow': '#3a2516'}, 'hair': 'short', 'hair_colour': '#4a3020', 'seed': 7,
+    'wear': [('pants', {'colour': '#4e5560'})]}

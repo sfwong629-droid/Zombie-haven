@@ -141,7 +141,7 @@ def face(b, hz, hr, parts):
     snap = b.get('snap_face')
     if snap:
         from mathutils.bvhtree import BVHTree
-        head = dict(parts)['head']; me = head.data
+        head = b.get('_snap_obj') or dict(parts)['head']; me = head.data
         tree = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
         def Y(x, z, default):
             hit = tree.ray_cast(Vector((x, -3 * hr, z)), Vector((0, 1, 0)))
@@ -168,7 +168,8 @@ def face(b, hz, hr, parts):
             c = _sphere((x * hr * .52, cy, cz), (hr * .13, hr * .05, hr * .08), 10, 6)
             parts.append(('cheek', _obj(c, 'cheek', cheek)))
     my = b.get('mouth_y', .5)
-    if b.get('smile'):   # small curved mouth: a bent capsule sitting on the face
+    if b.get('no_mouth'): pass
+    elif b.get('smile'):   # small curved mouth: a bent capsule sitting on the face
         mb = bmesh.new(); pts = []
         for x in (-1, -.5, 0, .5, 1):
             px, pz = x * hr * .17, hz - hr * my + hr * .07 * x * x
@@ -263,11 +264,19 @@ def hair(style, colour, hz, hr, parts, seed=1):
         return False
     bmesh.ops.delete(fb, geom=[v for v in fb.verts if gone(v.co)], context='VERTS')
     fb.to_mesh(o.data); fb.free(); _facet(o, FACET['hair'])
+    if HAIR_TRIS[0]:   # game budget: hair is a simple shell, it does not need the remesh density
+        n = sum(len(p.vertices) - 2 for p in o.data.polygons)
+        if n > HAIR_TRIS[0]: _facet(o, HAIR_TRIS[0] / n)
+        for p in o.data.polygons: p.use_smooth = True
     so = o.modifiers.new('t', 'SOLIDIFY'); so.thickness = .006
     o.data.materials.append(ink('hair' + colour, colour, hatch=False, speckle=.08))
+    if HAIR_Y[0]: o.data.transform(Matrix.Translation((0, HAIR_Y[0], 0)))
     parts.append(('hair', o))
 
 # ------------------------------------------------------------------ garments cut from the body
+USE_FIELD = [False]   # skin with MakeHuman weights (set while building a MakeHuman body)
+HAIR_TRIS = [0]   # triangle cap for hair on game-budget bodies (0 = no cap)
+HAIR_Y = [0.0]   # front/back offset of the head centre (MakeHuman heads sit ahead of the spine)
 CLOTH = [1.0]   # garment offset/thickness factor for the body being built
 COVERS = []   # keep() rules of every garment on the survivor being built: the body under them is removed
 
@@ -336,8 +345,18 @@ def ragged_disc(c, rx, ry, mat, tilt=0, name='brim', seed=2):
     o = _obj(bm, name, mat); so = o.modifiers.new('t', 'SOLIDIFY'); so.thickness = .018; return o
 
 # ------------------------------------------------------------------ binding
+def _field(p):
+    import mh_body
+    F = mh_body.FIELD[0] if USE_FIELD[0] else None
+    if not F: return None
+    co, n, d = F[0].find(p); return F[1][n]
+
 def dominant(body, J):
-    """Weights by distance to bone segments (smooth falloff), plus the dominant bone per vertex."""
+    """Weights by distance to bone segments (smooth falloff), plus the dominant bone per vertex.
+    MakeHuman bodies use MakeHuman's own skin weights instead."""
+    if USE_FIELD[0]:
+        W = [_field(v.co) for v in body.data.vertices]
+        return W, [w[0][0] for w in W]
     segs = {k: (J[k][0], J[k][1]) for k in BODY_BONES}
     W, dom = [], []
     for v in body.data.vertices:
@@ -359,6 +378,10 @@ def bind_weights(obj, J, rigid=None, body=None, bodyW=None):
         return groups[k]
     if rigid:
         g(rigid).add(list(range(len(obj.data.vertices))), 1.0, 'REPLACE'); return
+    if USE_FIELD[0]:
+        for v in obj.data.vertices:
+            for k, w in _field(v.co): g(k).add([v.index], w, 'REPLACE')
+        return
     segs = {k: (J[k][0], J[k][1]) for k in BODY_BONES}
     for v in obj.data.vertices:
         p = v.co; ds = []
@@ -409,12 +432,20 @@ def build(prof, origin=(0, 0, 0), facing=90, tag='s'):
 
 def _build(prof, b, J, origin, facing, tag):
     import wardrobe
-    body = body_mesh(b, J); body.name = tag + '_body'
-    W, dom = dominant(body, J)
     import inkstyle as _ik
-    body.data.materials.append(ink(tag + 'skin' + b['skin'], b['skin'], shadow=_ik.shade_of(b['skin'], k=.84, hue_shift=-.012, sat=.95), hatch=False, speckle=.05))
-    parts = [('body', body)]
-    head, hz, hr = head_mesh(b, J); head.data.materials.append(body.data.materials[0]); parts.append(('head', head))
+    skin = ink(tag + 'skin' + b['skin'], b['skin'], shadow=_ik.shade_of(b['skin'], k=.84, hue_shift=-.012, sat=.95), hatch=False, speckle=.05)
+    if b.get('mh'):   # MakeHuman body: real proportions, head and face sculpt included, skeleton from its game rig
+        import mh_body
+        body, J, hz, hr, eye = mh_body.mh_body(b, tag + '_body')
+        if eye and 'eye_x' not in b.get('_set', ()): b['eye_x'], b['eye_y'] = eye
+        body.data.materials.append(skin); parts = [('body', body)]
+        b['_snap_obj'] = body; HAIR_Y[0] = mh_body.HEAD_Y[0]; USE_FIELD[0] = True; HAIR_TRIS[0] = b.get('hair_tris', 500)
+    else:
+        HAIR_Y[0] = 0.0; USE_FIELD[0] = False; HAIR_TRIS[0] = 0
+        body = body_mesh(b, J); body.name = tag + '_body'
+        body.data.materials.append(skin); parts = [('body', body)]
+        head, hz, hr = head_mesh(b, J); head.data.materials.append(skin); parts.append(('head', head))
+    W, dom = dominant(body, J)
     face(b, hz, hr, parts)
     hair(prof.get('hair'), prof.get('hair_colour', '#6a4a2a'), hz, hr, parts, seed=prof.get('seed', 1))
     ctx = dict(J=J, body=body, dom=dom, hz=hz, hr=hr, s=b.get('height', 1.0), parts=parts, prof=prof, b=b)
