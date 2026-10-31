@@ -574,3 +574,20 @@ def walk(t):
     # twist about the spine (bone-local Y), never a sideways tilt: hips stay level, body stays upright
     p['pelvis'] = (0, 6 * sn, 0); p['chest'] = (4, -9 * sn, 0); p['head'] = (-12, 4 * sn, 0)
     return p
+
+
+def swing(t):
+    """Overhead axe chop, right hand: big wind-up behind the head, fast strike ending low in front, hold, recover."""
+    def ease(x): return x * x * (3 - 2 * x)
+    p = idle(0)
+    K = [  # (time, upperarm fwd, forearm bend, chest lean, chest twist, wrist turn)
+        (0.0, 5, 20, 0, 0, 0), (.38, 165, 60, -8, -16, 155), (.46, 172, 65, -9, -18, 160),   # wind up, axe over the head
+        (.56, 70, 10, 16, 14, 40), (.66, 55, 8, 18, 12, 30), (1.0, 5, 20, 0, 0, 0)]          # strike, hold low, recover
+    for (t0, *a0), (t1, *a1) in zip(K, K[1:]):
+        if t0 <= t <= t1:
+            u = ease((t - t0) / (t1 - t0)); ua, fa, lean, tw, wr = [x + (y - x) * u for x, y in zip(a0, a1)]; break
+    p['upperarm.R'] = (ua, 0, 4); p['forearm.R'] = (fa, 0, 0); p['hand.R'] = (wr, 0, 0)
+    p['upperarm.L'] = (20 + .25 * ua, 0, -6); p['forearm.L'] = (45, 0, 0)
+    p['chest'] = (lean, tw, 0); p['pelvis'] = (0, tw * .3, 0); p['head'] = (-12 + lean * .3, 0, 0)
+    p['thigh.L'] = (16, 0, 0); p['shin.L'] = (-14, 0, 0); p['thigh.R'] = (-10, 0, 0); p['shin.R'] = (-10, 0, 0)
+    return p

@@ -113,3 +113,4 @@ PROFESSIONS['farmer_sprite'] = {'body': {'template': 'sprite', 'skin': '#f4b990'
     'hair': 'mop', 'hair_colour': '#5e4534', 'seed': 3,
     'wear': [('shirt', {'colour': '#839a6c', 'sleeves': 'rolled', 'buttons': False, 'collar': False}), ('overalls', {'colour': '#7d5d3c'}),
              ('boots', {'colour': '#633d2c'}), ('satchel', {'colour': '#c78841'}), ('hat', {'kind': 'straw', 'colour': '#e1a659'})]}
+PROFESSIONS['farmer_axe'] = {**PROFESSIONS['farmer_sprite'], 'wear': [w for w in PROFESSIONS['farmer_sprite']['wear'] if w[0] != 'satchel'] + [('tool', {'kind': 'axe'})]}

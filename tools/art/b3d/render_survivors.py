@@ -116,6 +116,13 @@ if 'pixel' in JOBS:
         for r in rigs:
             r['arm'].rotation_euler = (0, 0, D(FACE[v])); survivor.pose(r, survivor.idle(0))
         pixel_passes(v); print('pixel', v, round(time.time() - t0), flush=True)
+    if 'swing' in sys.argv[2:]:
+        for v in ('se', 'sw'):
+            for r in rigs: r['arm'].rotation_euler = (0, 0, D(FACE[v]))
+            for i in range(12):
+                for r in rigs: survivor.pose(r, survivor.swing(i / 12))
+                pixel_passes(f'swing_{v}_{i:02d}')
+            print('pixel swing', v, round(time.time() - t0), flush=True)
     if 'walk' in sys.argv[2:]:
         for v in ('se',):
             for r in rigs: r['arm'].rotation_euler = (0, 0, D(FACE[v]))
