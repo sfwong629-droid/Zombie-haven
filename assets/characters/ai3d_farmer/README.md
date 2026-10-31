@@ -8,3 +8,9 @@
   in SE/SW/NE/NW; weapons are bound to the hand.R bone so they never float.
 - `tools/art/b3d/spritify.py RAW OUT` shrinks to 64px, one shared palette, 1px ink outline.
 - `source/farmer_rigged.glb` — the rigged, decimated model (1024px texture).
+
+## Two outputs from the same renders
+- `smooth128/` — straight from the 3D render: anti-aliased 128px frames, thin ink outline (recommended; matches the painted town).
+- `pixel64/` — 64px pixel-art version (majority-colour shrink, 32-colour shared palette).
+  `python3 spritify.py RAW OUT smooth` / `python3 spritify.py RAW OUT`
+Materials are toon-shaded (simplified texture x 3 hard light bands) so the look stays flat and cartoon.

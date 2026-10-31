@@ -21,7 +21,7 @@ def shrink(im, size):
     return Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8), 'RGBA')
 
 def punch(im):
-    rgb = im.convert('RGB'); rgb = ImageEnhance.Color(rgb).enhance(1.25); rgb = ImageEnhance.Contrast(rgb).enhance(1.12)
+    rgb = im.convert('RGB'); rgb = ImageEnhance.Color(rgb).enhance(1.15); rgb = ImageEnhance.Contrast(rgb).enhance(1.05)
     out = rgb.convert('RGBA'); out.putalpha(im.getchannel('A')); return out
 
 def outline(im):
@@ -47,14 +47,30 @@ def apply_palette(f, pal):
     q = f.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE).convert('RGBA')
     q.putalpha(f.getchannel('A')); return q
 
-def run(raw, out, size=64, colors=40):
+def majority(big, pal, size):
+    """Crisp shrink: map the big render to the palette, then each output pixel takes the most common colour
+    of its block (no averaging, so no in-between blur colours)."""
+    f = big.width // size
+    a = np.asarray(big); alpha = a[..., 3] > 127
+    idx = np.asarray(big.convert('RGB').quantize(palette=pal, dither=Image.Dither.NONE)).astype(np.int32)
+    idx[~alpha] = -1
+    blk = idx.reshape(size, f, size, f).transpose(0, 2, 1, 3).reshape(size, size, f * f)
+    n = len(pal.getpalette()) // 3
+    cnt = np.stack([(blk == c).sum(-1) for c in range(n)], -1)
+    opaque = (blk >= 0).sum(-1) >= f * f * .45
+    best = cnt.argmax(-1)
+    rgb = np.array(pal.getpalette()[:n * 3], np.uint8).reshape(n, 3)[best]
+    out = np.dstack([rgb, np.where(opaque, 255, 0).astype(np.uint8)])
+    return Image.fromarray(out, 'RGBA')
+
+def run(raw, out, size=64, colors=32):
     os.makedirs(out, exist_ok=True)
     paths = sorted(glob.glob(os.path.join(raw, '*.png')))
-    small = {os.path.basename(p)[:-4]: punch(shrink(Image.open(p), size)) for p in paths}
-    pal = build_palette(list(small.values()), colors)
+    big = {os.path.basename(p)[:-4]: punch(Image.open(p).convert('RGBA')) for p in paths}
+    pal = build_palette(list(big.values())[::3], colors)
     done = {}
-    for k, f in small.items():
-        s = outline(apply_palette(f, pal)); s.save(os.path.join(out, k + '.png')); done[k] = s
+    for k, f in big.items():
+        s = outline(majority(f, pal, size)); s.save(os.path.join(out, k + '.png')); done[k] = s
     return done
 
 def key(name):
@@ -80,9 +96,29 @@ def sheets(done, out, scale=4, bg=(236, 222, 190, 255)):
             gif.append(fr.resize((fr.width * scale, fr.height * scale), Image.NEAREST).convert('RGB'))
         gif[0].save(os.path.join(out, f'{c}.gif'), save_all=True, append_images=gif[1:], duration=dur, loop=0)
 
+def smooth(raw, out, size=128, line=1):
+    """No pixel-art step: a clean anti-aliased shrink of the 3D render with a thin ink outline (soft edges kept)."""
+    from PIL import ImageFilter
+    os.makedirs(out, exist_ok=True); done = {}
+    for p in sorted(glob.glob(os.path.join(raw, '*.png'))):
+        im = Image.open(p).convert('RGBA')
+        a = np.asarray(im).astype(np.float32) / 255
+        pre = Image.fromarray((np.dstack([a[..., :3] * a[..., 3:], a[..., 3:]]) * 255).astype(np.uint8), 'RGBA')
+        sm = np.asarray(pre.resize((size, size), Image.LANCZOS)).astype(np.float32) / 255
+        al = np.clip(sm[..., 3:], 0, 1); rgb = np.clip(sm[..., :3] / np.maximum(al, 1e-4), 0, 1)
+        body = Image.fromarray((np.dstack([rgb, al]) * 255).astype(np.uint8), 'RGBA')
+        rim = body.getchannel('A').filter(ImageFilter.MaxFilter(2 * line + 1))
+        ink = Image.new('RGBA', body.size, (*INK, 0)); ink.putalpha(rim)
+        ink.alpha_composite(body)
+        k = os.path.basename(p)[:-4]; ink.save(os.path.join(out, k + '.png')); done[k] = ink
+    return done
+
 if __name__ == '__main__':
+    if 'smooth' in sys.argv:
+        o = dict(a.split('=') for a in sys.argv[3:] if '=' in a)
+        d = smooth(sys.argv[1], sys.argv[2], int(o.get('size', 128))); sheets(d, sys.argv[2], scale=2); print('smooth', len(d)); sys.exit()
     raw, out = sys.argv[1], sys.argv[2]
     opt = dict(a.split('=') for a in sys.argv[3:] if '=' in a)
-    done = run(raw, out, int(opt.get('size', 64)), int(opt.get('colors', 40)))
+    done = run(raw, out, int(opt.get('size', 64)), int(opt.get('colors', 32)))
     sheets(done, out)
     print('sprites', len(done), '->', out)

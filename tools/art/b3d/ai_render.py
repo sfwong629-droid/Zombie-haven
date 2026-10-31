@@ -20,11 +20,50 @@ def load(path):
     ao.show_in_front = False; ao.hide_render = True
     return ao, body
 
+def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08)):
+    """Pixel-art friendly surface: a simplified copy of the colour texture (small, smoothed, posterised so fabric
+    noise and hair strands become flat patches) times a few hard light bands, emitted so nothing else shades it."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    for m in body.data.materials:
+        nt = m.node_tree; N, L = nt.nodes, nt.links
+        texn = next(n for n in N if n.type == 'TEX_IMAGE' and 'normal' not in n.image.name and 'metal' not in n.image.name)
+        im = texn.image; w, h = im.size
+        a = (np.array(im.pixels[:]).reshape(h, w, 4) * 255).astype(np.uint8)
+        pil = Image.fromarray(a[..., :3]).resize((tex_px, tex_px), Image.LANCZOS)
+        pil = pil.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.ModeFilter(3))
+        pil = pil.quantize(28, method=Image.Quantize.MEDIANCUT).convert('RGB')
+        fn = os.path.join(bpy.app.tempdir or '/tmp', 'tex_simple.png')
+        pil.transpose(Image.FLIP_TOP_BOTTOM).save(fn)          # blender pixel rows run bottom-up
+        new = bpy.data.images.load(fn); new.pack(); new.colorspace_settings.name = 'sRGB'
+        texn.image = new; texn.interpolation = 'Closest'
+        for n in list(N):
+            if n not in (texn,) and n.type != 'UVMAP' and n.type != 'TEX_COORD': N.remove(n)
+        out = N.new('ShaderNodeOutputMaterial'); em = N.new('ShaderNodeEmission')
+        dif = N.new('ShaderNodeBsdfDiffuse'); s2r = N.new('ShaderNodeShaderToRGB'); bw = N.new('ShaderNodeRGBToBW')
+        ramp = N.new('ShaderNodeValToRGB'); ramp.color_ramp.interpolation = 'CONSTANT'
+        el = ramp.color_ramp.elements
+        el[0].position = 0; el[0].color = (light[0],) * 3 + (1,)
+        el[1].position = bands[0]; el[1].color = (light[1],) * 3 + (1,)
+        e3 = el.new(bands[1]); e3.color = (light[2],) * 3 + (1,)
+        mul = N.new('ShaderNodeMix'); mul.data_type = 'RGBA'; mul.blend_type = 'MULTIPLY'; mul.inputs['Factor'].default_value = 1
+        L.new(dif.outputs[0], s2r.inputs[0]); L.new(s2r.outputs['Color'], bw.inputs[0]); L.new(bw.outputs[0], ramp.inputs[0])
+        L.new(texn.outputs['Color'], mul.inputs['A']); L.new(ramp.outputs['Color'], mul.inputs['B'])
+        L.new(mul.outputs['Result'], em.inputs['Color']); L.new(em.outputs[0], out.inputs['Surface'])
+
 def _mat(name, hexc):
     m = bpy.data.materials.new(name); m.use_nodes = True
-    b = m.node_tree.nodes['Principled BSDF']
+    N, L = m.node_tree.nodes, m.node_tree.links
+    for n in list(N): N.remove(n)
     c = tuple(int(hexc[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    b.inputs['Base Color'].default_value = (*[x ** 2.2 for x in c], 1); b.inputs['Roughness'].default_value = 1
+    out = N.new('ShaderNodeOutputMaterial'); em = N.new('ShaderNodeEmission')
+    dif = N.new('ShaderNodeBsdfDiffuse'); s2r = N.new('ShaderNodeShaderToRGB'); bw = N.new('ShaderNodeRGBToBW')
+    ramp = N.new('ShaderNodeValToRGB'); ramp.color_ramp.interpolation = 'CONSTANT'
+    el = ramp.color_ramp.elements; lin = [x ** 2.2 for x in c]
+    el[0].position = 0; el[0].color = (*[x * .62 for x in lin], 1)
+    el[1].position = .4; el[1].color = (*[min(1, x * 1.05) for x in lin], 1)
+    L.new(dif.outputs[0], s2r.inputs[0]); L.new(s2r.outputs['Color'], bw.inputs[0]); L.new(bw.outputs[0], ramp.inputs[0])
+    L.new(ramp.outputs['Color'], em.inputs['Color']); L.new(em.outputs[0], out.inputs['Surface'])
     return m
 
 def weapon(ao, kind):
@@ -35,22 +74,22 @@ def weapon(ao, kind):
     g = a.lerp(b, .55)                                  # fist centre
     fwd = Vector((0, -1, 0))                            # model front
     up = (fwd + Vector((0, 0, .08))).normalized()     # hammer grip: handle runs forward out of the fist (wrist angle aims it)
-    wood = _mat('wood', '#8a5a32'); metal = _mat('metal', '#9a9c98'); dark = _mat('grip', '#4a3020')
+    wood = _mat('wood', '#a8703c'); metal = _mat('metal', '#a9afb5'); dark = _mat('grip', '#5a3a22')
     bm_objs = []
     def tube(p0, p1, r0, r1, m, seg=8):
         o = survivor.tube(p0, p1, r0, r1, m, seg=seg); bm_objs.append(o)
     def box(c, size, m, rot=(0, 0, 0)):
         o = survivor.box(c, size, m, rot=rot, bevel=.004); bm_objs.append(o)
-    L = .42
+    L = .36
     if kind == 'pickaxe':
-        tube(g - up * .06, g + up * L, .016, .014, wood)
+        tube(g - up * .07, g + up * L, .026, .024, wood)
         hd = g + up * (L - .02); side = fwd.cross(up).normalized(); across = up.cross(side).normalized()
         for sg in (1, -1):
-            tip = hd + across * sg * .16 - up * .045
-            tube(hd, tip, .022, .006, metal, seg=6)
+            tip = hd + across * sg * .19 - up * .05
+            tube(hd, tip, .04, .012, metal, seg=6)
     elif kind == 'club':
-        tube(g - up * .05, g + up * .12, .018, .018, dark)
-        tube(g + up * .12, g + up * (L + .02), .02, .042, wood, seg=10)
+        tube(g - up * .06, g + up * .12, .028, .028, dark)
+        tube(g + up * .12, g + up * (L + .04), .032, .068, wood, seg=10)
     elif kind == 'axe':
         tube(g - up * .06, g + up * L, .016, .014, wood)
         hd = g + up * (L - .05); side = fwd.cross(up).normalized(); across = up.cross(side).normalized()
@@ -120,6 +159,7 @@ if __name__ == '__main__':
     blend, out, job = sys.argv[1], sys.argv[2], sys.argv[3]
     os.makedirs(out, exist_ok=True)
     ao, body = load(blend)
+    toonify(body)
     if job == 'sprites':
         # big renders per frame; spritify.py turns them into 64px pixel sprites
         kinds = ([a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('weapon=')] or [['pickaxe']])[0]
@@ -127,7 +167,7 @@ if __name__ == '__main__':
         cam = setup_scene(px=256); cam.data.ortho_scale = scale
         look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .55)) - look * 20
         bpy.context.scene.eevee.taa_render_samples = 8
-        clips = {'walk': [dict(survivor.walk(i / 8), **{'hand.R': (40, 0, 0)}) for i in range(8)],   # tool tipped up while walking
+        clips = {'walk': [dict(survivor.walk(i / 8), **{'hand.R': (15, 0, 0)}) for i in range(8)],   # tool tipped up while walking
                  'chop': [chop(t) for t in (0, .2, .38, .46, .54, .6, .66, .82)]}
         for kind in kinds:
             w = weapon(ao, kind)
