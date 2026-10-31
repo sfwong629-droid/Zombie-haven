@@ -11,9 +11,19 @@ from collections import Counter
 from PIL import Image
 
 LUM = [None]   # shared shade thresholds for every frame of an animation (set from the standing pose)
-PRIORITY = {'#1a1310': 3, '#f4efe6': 2, '#3a6a8a': 3, '#5a2a1e': 2, '#4d3930': 2, '#fff8e8': 1}   # eyes, mouth, brows
+PRIORITY = {'#1a1310': 3, '#f4efe6': 2, '#3a6a8a': 3, '#5a2a1e': 2, '#4d3930': 2, '#2a1a10': 2, '#3a2516': 2, '#fff8e8': 1, '#e08a72': 1}   # eyes, mouth, brows
 
 def hexrgb(h): return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+_PRI = {k: hexrgb(k) for k in PRIORITY}
+_canon_cache = {}
+def _canon(rgb):
+    """Rendered colours come out a shade off; snap anything close to a face-feature colour onto it."""
+    if rgb in _canon_cache: return _canon_cache[rgb]
+    out = '#%02x%02x%02x' % rgb
+    for k, v in _PRI.items():
+        if sum((a - b) ** 2 for a, b in zip(rgb, v)) < 150: out = k; break
+    _canon_cache[rgb] = out; return out
 
 def palette_of(ref):
     im = ref.convert('RGBA')
@@ -61,7 +71,7 @@ def pixelize(flat, lit, pal, height=60, canvas=64, outline=(0, 0, 0), ref_bb=Non
                 for xx in range(x0, min(x1, flat.width)):
                     r, g, b, a = F[xx, yy]; n += 1
                     if a < 128: cnt[None] += 1; continue
-                    c = '#%02x%02x%02x' % (r, g, b); cnt[c] += 1; lum.setdefault(c, []).append(L[xx, yy])
+                    c = _canon((r, g, b)); cnt[c] += 1; lum.setdefault(c, []).append(L[xx, yy])
             if not n or cnt[None] > n * .55: continue
             pick = None
             for c, m in cnt.items():   # small face features survive the shrink

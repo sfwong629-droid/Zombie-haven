@@ -114,3 +114,17 @@ PROFESSIONS['farmer_sprite'] = {'body': {'template': 'sprite', 'skin': '#f4b990'
     'wear': [('shirt', {'colour': '#839a6c', 'sleeves': 'rolled', 'buttons': False, 'collar': False}), ('overalls', {'colour': '#7d5d3c'}),
              ('boots', {'colour': '#633d2c'}), ('satchel', {'colour': '#c78841'}), ('hat', {'kind': 'straw', 'colour': '#e1a659'})]}
 PROFESSIONS['farmer_axe'] = {**PROFESSIONS['farmer_sprite'], 'wear': [w for w in PROFESSIONS['farmer_sprite']['wear'] if w[0] != 'satchel'] + [('tool', {'kind': 'axe'})]}
+
+# Adopted style (ChatGPT character sheet): chibi, about 2.5 heads, dot eyes, chunky hands; made for 56 px sprites
+TEMPLATES['chibi'] = {**TEMPLATES['sprite'], 'head_scale': 1.55, 'legs': .5, 'torso': .78, 'arm_scale': .68, 'girth': 1.15,
+    'eye_white': None, 'eye_size': 1.25, 'eye_x': .36, 'eye_y': -.08, 'smile': False, 'mouth_y': .5, 'nose': .35,
+    'head_up': -4, 'arm_out': 12, 'limb': .9, 'boot_scale': .85, 'head_drop': .05}
+PROFESSIONS['farmer_chibi'] = {'body': {'template': 'chibi', 'skin': '#f3b07a', 'brow': '#3a2516'},
+    'hair': 'mop', 'hair_colour': '#4a2e1c', 'seed': 3,
+    'wear': [('shirt', {'colour': '#6e8a3c', 'sleeves': 'rolled', 'buttons': False, 'collar': False}), ('overalls', {'colour': '#7a5232'}),
+             ('boots', {'colour': '#5a3a22'}), ('hat', {'kind': 'straw', 'colour': '#eaa95e'}), ('tool', {'kind': 'pickaxe'})]}
+
+TEMPLATES['chibi2'] = {**TEMPLATES['storybook'], 'head_scale': 1.5, 'legs': .58, 'torso': .78, 'arm_scale': .55, 'bulk': .95, 'shoulders': .9,
+    'eye_size': 1.35, 'eye_y': -.1, 'eye_x': .38, 'smile': False, 'mouth_y': .55, 'head_up': 8, 'boot_scale': .9, 'cheeks': True,
+    'hat_band': '#8b4a22', 'hat_low': .7, 'hat_wide': 1.1}
+PROFESSIONS['farmer_chibi2'] = {**PROFESSIONS['farmer_chibi'], 'body': {'template': 'chibi2', 'skin': '#f3b07a', 'brow': '#2a1a10'}, 'hair': 'tousled'}
