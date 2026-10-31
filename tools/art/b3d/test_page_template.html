@@ -75,7 +75,7 @@ canvas { display: block; margin-inline: auto; }
     <div class="bar2" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span class="lab">Rotate</span><button id="bRot">Turn 90°</button><button id="bGrid" class="on">Tile grid</button><span class="lab" id="bInfo"></span></div>
     <div class="stage town"><canvas id="bscene" class="zoomable" aria-label="The building on its tile with the farmer walking around it"></canvas></div>
     <div class="stage"><canvas id="brots" class="zoomable" aria-label="The building's four rotations"></canvas></div>
-    <p class="note">Same camera and lighting as the Farmer (the game's exact 2:1 tile angle), same pixels per metre, so the size against him is what the game would show. Each rotation is the 3D model turned, so the back view is a real back. Tap the scene or Turn 90° to rotate.</p>
+    <p class="note">Same camera and lighting as the Farmer (the game's exact 2:1 tile angle), same pixels per metre, so the size against him is what the game would show. Each rotation is the 3D model turned, so the back view is a real back. Tap the scene or Turn 90° to rotate. The flag waves in 8 frames at 140 ms.</p>
   </section>
 
   <section>
@@ -209,11 +209,12 @@ function drawBuildingScene() {
   // farmer loop: just outside the tile, along the four diagonals (all four walk directions)
   const k = .78, P = [[BX, BY - TH * k], [BX + TW * k, BY], [BX, BY + TH * k], [BX - TW * k, BY]];
   const p = onLoop({ pts: P }, clock / 1000 * 45);
-  const drawB = () => { const im = BIM[brot]; g.drawImage(im, Math.round(BX - B.anchor[0]), Math.round(BY - B.anchor[1])); };
+  const bf = Math.floor(clock / (B.ms || 140)) % (B.frames || 1);
+  const drawB = () => { const im = BIM[brot]; g.drawImage(im, bf * B.size, 0, B.size, B.size, Math.round(BX - B.anchor[0]), Math.round(BY - B.anchor[1]), B.size, B.size); };
   const drawF = () => drawSprite(g, st.weapon, 'walk', p.view, frameAt('walk', clock), p.x, p.y);
   if (p.y < BY) { drawF(); drawB(); } else { drawB(); drawF(); }
   const r = brots.getContext('2d'); r.clearRect(0, 0, brots.width, brots.height);
-  BIM.forEach((im, i) => r.drawImage(im, i * B.size, 0));
+  BIM.forEach((im, i) => r.drawImage(im, bf * B.size, 0, B.size, B.size, i * B.size, 0, B.size, B.size));
 }
 
 let clock = 0, last = 0;

@@ -43,7 +43,14 @@ def build(sprites, out_html, town=None, extras=(), buildings=()):
     bl = []
     for name, d in buildings:
         an = json.load(open(os.path.join(d, 'anchor.json'))); n = an['size_final']
-        bl.append({'name': name, 'rots': [b64(Image.open(os.path.join(d, f'rot{r}.png')), optimize=True) for r in (0, 90, 180, 270)],
+        rots, nf = [], 1
+        for r in (0, 90, 180, 270):
+            fs = sorted(glob.glob(os.path.join(d, f'rot{r}_f*.png')), key=lambda q: int(re.search(r'_f(\d+)', q).group(1)))
+            ims = [Image.open(q) for q in fs] or [Image.open(os.path.join(d, f'rot{r}.png'))]; nf = len(ims)
+            st = Image.new('RGBA', (n * nf, n))
+            for i, im in enumerate(ims): st.paste(im, (i * n, 0))
+            rots.append(b64(st, optimize=True))
+        bl.append({'name': name, 'rots': rots, 'frames': nf, 'ms': 140,
                    'anchor': [an['ground_x'] * n, an['ground_y'] * n], 'size': n, 'ppu': an['ppu_final'],
                    'tile': max(an['footprint']) * 1.02})
     payload = {'buildings': bl, 'sprites': data, 'anchor': [anchor['ground_x'] * S, anchor['ground_y'] * S], 'size': S,
