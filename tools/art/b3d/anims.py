@@ -1,6 +1,6 @@
 """Full survivor animation set on the shared skeleton, with real weapons on the hand bone and baked effects.
 
-  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview]
+  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview] [actions=WORKBENCH.blend]
 Writes RAW_DIR/<weapon>/<clip>_<view>_<i>.png and RAW_DIR/anchor.json; spritify.py RAW/<weapon> OUT smooth makes 128-px frames.
 
 Pose angles are degrees, survivor.pose convention: x = forward swing (upperarm, thigh), bend (forearm), lean (chest/pelvis);
@@ -368,8 +368,12 @@ class FX:
 
 def world(ob): return ob.matrix_world.translation.copy()
 
-def render_all(blend, out, clips, weapons, views, px=256, preview=False):
+def render_all(blend, out, clips, weapons, views, px=256, preview=False, actions=None):
     ao, body = ai_render.load(blend); ai_render.toonify(body)
+    acts = {}
+    if actions:                      # hand-made poses from a workbench .blend (workbench.py): Actions named like the clips
+        import workbench; acts = workbench.load_actions(actions); print('actions', sorted(acts), flush=True)
+    ms_out = {}
     # same pixels per unit as the 128-px walk frames and the buildings (98.46 px/unit at final size = px/2),
     # but a bigger frame so raised weapons never leave it
     cam = ai_render.setup_scene(px=px, tilt=60); cam.data.ortho_scale = (px / 2) / (128 / 1.3) if not preview else 1.6
@@ -392,6 +396,14 @@ def render_all(blend, out, clips, weapons, views, px=256, preview=False):
             if need is None and W and clip not in ('walk', 'idle', 'hurt', 'collapse', 'cheer'): continue   # unarmed-only clips
             if need is None and W: continue   # unarmed clips are rendered once, without a weapon
             fn = pose_fn(clip, wcls); ts = times(clip)
+            calc = fn; aname = clip + '_' + wcls if clip in ('hold_idle', 'hold_walk', 'hold_hurt') and wcls else clip
+            if aname in acts:
+                import workbench
+                drive, ts, ms = workbench.action_clip(ao, acts[aname], clip)
+                ms_out[clip] = ms
+                def fn(t, drive=drive, calc=calc):
+                    drive(t); P = calc(t); return {'recoil': P.get('recoil', 0), '_drive': True}
+            elif ao.animation_data: ao.animation_data.action = None
             two = W is not None and W['cls'] == 'gun'          # melee is one-handed; guns take both hands
             if W: left_hand_ik(ao, W['grip2'] or W['tip'], two)
             if W and W['cls'] == 'gun': hand_ik(ao, 'R', W['grip1'], True)
@@ -404,10 +416,10 @@ def render_all(blend, out, clips, weapons, views, px=256, preview=False):
                         if t - t0 > .05 and .3 < t < .75:
                             heads, roots = [], []
                             for k in range(9):
-                                tt = t0 + (t - t0) * k / 8; ai_render.apply_pose(ao, fn(tt)); bpy.context.view_layer.update()
+                                tt = t0 + (t - t0) * k / 8; pose_at(ao, fn(tt)); bpy.context.view_layer.update()
                                 heads.append(world(W['tip'])); roots.append(world(W['obj']))
                             fx.trail(heads, roots)
-                    P = fn(t); ai_render.apply_pose(ao, P)
+                    P = fn(t); pose_at(ao, P)
                     if W and W['cls'] == 'gun':
                         k = P.get('recoil', 0); W['obj'].delta_location = (0, 0, 0); W['obj'].delta_rotation_euler = (0, 0, 0)
                         W['obj'].delta_location = (0, .04 * k, 0)        # chest-bone space: +Y runs up the spine; small kick
@@ -424,13 +436,20 @@ def render_all(blend, out, clips, weapons, views, px=256, preview=False):
             if W: left_hand_ik(ao, W['grip2'] or W['tip'], False)
             if W and W['cls'] == 'gun': hand_ik(ao, 'R', W['grip1'], False)
         if W:
+            if ao.animation_data: ao.animation_data.action = None
             for k in ('tip', 'grip2', 'grip1', 'obj'):
                 if W[k]: bpy.data.objects.remove(W[k], do_unlink=True)
     fx.clear()
+    if ms_out:                       # hand-made timing replaces the built-in timing in anchor.json
+        A = json.load(open(os.path.join(out, 'anchor.json'))); A['ms'].update(ms_out)
+        json.dump(A, open(os.path.join(out, 'anchor.json'), 'w'))
+
+def pose_at(ao, P):
+    if not P.get('_drive'): ai_render.apply_pose(ao, P)   # Action-driven frames are already posed
 
 if __name__ == '__main__':
     a = sys.argv[1:]; opt = dict(x.split('=', 1) for x in a if '=' in x); pos = [x for x in a if '=' not in x and x != 'preview']
     clips = list(CLIPS) if opt.get('clips', 'all') == 'all' else opt['clips'].split(',')
     weapons = opt.get('weapons', 'none,bat,axe,rifle,ak47').split(',')
     views = opt.get('views', 'se,sw,ne,nw').split(',')
-    render_all(pos[0], pos[1], clips, weapons, views, int(opt.get('px', 300)), 'preview' in a)
+    render_all(pos[0], pos[1], clips, weapons, views, int(opt.get('px', 300)), 'preview' in a, opt.get('actions'))
