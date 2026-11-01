@@ -48,7 +48,7 @@ canvas { display: block; margin-inline: auto; }
 <div class="wrap">
   <header>
     <h1>Survivor 3D Test</h1>
-    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to sprites: all 13 game animations in four directions, with the bat, axe, rifle and AK-47. Melee weapons ride on the hand bone; guns ride on the chest with both hands locked to them. Swooshes, hit sparks, muzzle flash and dust are rendered in 3D with the frames.</p>
+    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to sprites: all 13 game animations (plus hurt while armed) in four directions, with the bat, axe, rifle and AK-47. Melee weapons are one-handed and ride on the hand bone; guns ride on the chest with both hands locked to them. Swooshes, hit sparks and muzzle flash are rendered in 3D with the frames.</p>
   </header>
 
   <div class="bar" role="toolbar" aria-label="Playback controls">
@@ -98,7 +98,7 @@ const S = D.size, AX = D.anchor[0], AY = D.anchor[1];
 const NAMES = { none: 'Empty hands', bat: 'Bat', axe: 'Axe', rifle: 'Rifle', ak47: 'AK-47', pickaxe: 'Pickaxe', club: 'Club' };
 const CLIPS = [['idle', 'Idle'], ['walk', 'Walk'], ['hold_idle', 'Hold idle'], ['hold_walk', 'Hold walk'], ['rescue', 'Rescue (push cart)'],
   ['punch', 'Punch'], ['swing_a', 'Swing A · overhead'], ['swing_b', 'Swing B · side'], ['swing_c', 'Swing C · diagonal'], ['fire', 'Fire'],
-  ['hurt', 'Hurt'], ['collapse', 'Collapse'], ['cheer', 'Cheer']];
+  ['hurt', 'Hurt'], ['hold_hurt', 'Hurt (armed)'], ['collapse', 'Collapse'], ['cheer', 'Cheer']];
 const WORDER = ['none', 'bat', 'axe', 'rifle', 'ak47'].filter(w => D.sprites[w]).concat(Object.keys(D.sprites).filter(w => !['none', 'bat', 'axe', 'rifle', 'ak47'].includes(w)));
 const isGun = w => w === 'rifle' || w === 'ak47';
 const st = { weapon: WORDER.includes('bat') ? 'bat' : WORDER[0], anim: 'walk', speed: 1, paused: false, zoom: 'fit' };
@@ -113,7 +113,7 @@ function src(w, clip) {
   if (D.sprites.none && D.sprites.none[clip]) return ['none', clip];
   return null;
 }
-const has = (w, clip) => !!(D.sprites[w] && D.sprites[w][clip]) || (!['hold_idle', 'hold_walk', 'swing_a', 'swing_b', 'swing_c', 'fire'].includes(clip) && D.sprites.none && D.sprites.none[clip]);
+const has = (w, clip) => !!(D.sprites[w] && D.sprites[w][clip]) || (!['hold_idle', 'hold_walk', 'hold_hurt', 'swing_a', 'swing_b', 'swing_c', 'fire'].includes(clip) && D.sprites.none && D.sprites.none[clip]);
 
 const IM = {}; let pending = 0;
 for (const w in D.sprites) for (const c in D.sprites[w]) for (const v in D.sprites[w][c]) {
