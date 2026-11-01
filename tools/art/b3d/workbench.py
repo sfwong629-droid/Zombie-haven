@@ -83,6 +83,10 @@ def make(rig, out):
     S.frame_start, S.frame_end = 0, int(walk.frame_end) - 1; S.frame_set(0)
     for o in bpy.data.objects: o.select_set(False)
     bpy.context.view_layer.objects.active = ao; ao.select_set(True)   # the Action Editor only lists actions for the selected rig
+    for sc in bpy.data.screens:                            # show every bone's keys, not only the selected bones'
+        for ar in sc.areas:
+            for sp in ar.spaces:
+                if sp.type in ('DOPESHEET_EDITOR', 'GRAPH_EDITOR', 'NLA_EDITOR'): sp.dopesheet.show_only_selected = False
     ai_render.face(ao, 'se')                               # facing the game's front-right view through the camera
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(out), compress=True)
     print('saved', out, round(os.path.getsize(out) / 1e6, 1), 'MB')

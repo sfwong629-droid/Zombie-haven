@@ -21,7 +21,8 @@ You change the poses. Claude renders them with the same camera, outline and effe
 1. **Select the rig first.** Click `rig` in the Outliner (top right) or click one of the thin sticks in the 3D view. The Action Editor only shows actions for the selected rig, so with nothing selected its header is empty.
 2. Find the **Dope Sheet** at the bottom of the Animation tab.
 3. Change its mode from *Dope Sheet* to **Action Editor**. The header now shows the current action, `swing_a`.
-4. Click the small icon just left of that name to open the list of all actions, and pick the one you want. The names are:
+4. **No diamonds?** The Action Editor's *Only Show Selected* filter is on. That's the small arrow-cursor icon at the right end of its header, next to the funnel; it shows blue when on. Click it to turn it off. While it's on, the editor only shows keys for the bones you've selected, so with no bones selected the rows are empty.
+5. Click the small icon just left of that name to open the list of all actions, and pick the one you want. The names are:
 
 | Action | What it is |
 |---|---|
