@@ -47,16 +47,23 @@ canvas { display: block; margin-inline: auto; }
 
 <div class="wrap">
   <header>
-    <h1>Survivor 3D Test</h1>
-    <p class="sub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to sprites: all 13 game animations (plus hurt while armed) in four directions, with the bat, axe, rifle and AK-47. Melee weapons are one-handed and ride on the hand bone; guns ride on the chest with both hands locked to them. Swooshes, hit sparks and muzzle flash are rendered in 3D with the frames.</p>
+    <h1 id="ptitle">Survivor 3D Test</h1>
+    <p class="sub" id="psub">The Farmer, made from one ChatGPT drawing turned into a 3D model, rigged and rendered to sprites: all 13 game animations (plus hurt while armed) in four directions, with the bat, axe, rifle and AK-47. Melee weapons are one-handed and ride on the hand bone; guns ride on the chest with both hands locked to them. Swooshes, hit sparks and muzzle flash are rendered in 3D with the frames.</p>
   </header>
 
   <div class="bar" role="toolbar" aria-label="Playback controls">
+    <div class="grp" id="ogrp" hidden><span class="lab">Outfit</span><span id="outfits" style="display:flex;gap:4px"></span></div>
     <div class="grp"><span class="lab">Equip</span><span id="weapons" style="display:flex;gap:4px"></span></div>
     <div class="grp"><span class="lab">Animation</span><span id="anims" style="display:flex;gap:4px;flex-wrap:wrap"></span></div>
     <div class="grp"><span class="lab">Speed</span><button id="s1" class="on">1×</button><button id="s05">½×</button><button id="s025">¼×</button><button id="pause">Pause</button></div>
     <div class="grp"><span class="lab">Zoom</span><button id="z1" class="on">Fit</button><button id="z2">1:1</button><button id="z3">2×</button></div>
   </div>
+
+  <section id="cmpsec" hidden>
+    <h2>Side by side</h2>
+    <div class="stage"><canvas id="cmp" class="zoomable" aria-label="The same animation in each outfit, front views"></canvas>
+      <div class="dirs lab" id="cmplabels"></div></div>
+  </section>
 
   <section>
     <h2>Four directions</h2>
@@ -115,11 +122,13 @@ function src(w, clip) {
 }
 const has = (w, clip) => !!(D.sprites[w] && D.sprites[w][clip]) || (!['hold_idle', 'hold_walk', 'hold_hurt', 'swing_a', 'swing_b', 'swing_c', 'fire'].includes(clip) && D.sprites.none && D.sprites.none[clip]);
 
-const IM = {}; let pending = 0;
-for (const w in D.sprites) for (const c in D.sprites[w]) for (const v in D.sprites[w][c]) {
-  const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = D.sprites[w][c][v].src;
-  ((IM[w] ||= {})[c] ||= {})[v] = im;
+const OUT = D.outfits || { default: D.sprites }, ONAMES = Object.keys(OUT), IMS = {}; let pending = 0;
+for (const o of ONAMES) for (const w in OUT[o]) for (const c in OUT[o][w]) for (const v in OUT[o][w][c]) {
+  const im = new Image(); pending++; im.onload = () => { if (--pending === 0) ready(); }; im.src = OUT[o][w][c][v].src;
+  (((IMS[o] ||= {})[w] ||= {})[c] ||= {})[v] = im;
 }
+let IM = IMS[ONAMES[0]]; st.outfit = ONAMES[0];
+function setOutfit(o) { st.outfit = o; D.sprites = OUT[o]; IM = IMS[o]; document.getElementById('sheets').innerHTML = ''; buildSheets(true); sync(); }
 let townIm = null;
 if (D.town) { townIm = new Image(); pending++; townIm.onload = () => { if (--pending === 0) ready(); }; townIm.src = D.town; }
 
@@ -141,6 +150,11 @@ function drawSprite(g, w, clip, view, t, x, y, shadow = true) {
 // ---- controls
 const wb = document.getElementById('weapons'), ab = document.getElementById('anims');
 for (const w of WORDER) { const b = document.createElement('button'); b.textContent = NAMES[w] || w; b.dataset.w = w; b.id = 'w_' + w; wb.appendChild(b); b.onclick = () => { st.weapon = w; if (!has(w, st.anim)) st.anim = 'walk'; save(); sync(); }; }
+if (D.outfits) {
+  document.getElementById('ogrp').hidden = false; document.getElementById('cmpsec').hidden = false;
+  const ob = document.getElementById('outfits');
+  for (const o of ONAMES) { const b = document.createElement('button'); b.textContent = o; b.dataset.o = o; ob.appendChild(b); b.onclick = () => setOutfit(o); }
+}
 for (const [c, label] of CLIPS) { const b = document.createElement('button'); b.textContent = label; b.dataset.c = c; b.id = 'a_' + c; ab.appendChild(b); b.onclick = () => { st.anim = c; clock = 0; save(); sync(); }; }
 const on = (id, v) => document.getElementById(id).classList.toggle('on', v);
 [['s1', 1], ['s05', .5], ['s025', .25]].forEach(([id, v]) => document.getElementById(id).onclick = () => { st.speed = v; sync(); });
@@ -149,19 +163,24 @@ document.getElementById('pause').onclick = () => { st.paused = !st.paused; sync(
 function sync() {
   if (!has(st.weapon, st.anim)) st.anim = 'walk';
   wb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.w === st.weapon));
+  document.querySelectorAll('#outfits button').forEach(b => b.classList.toggle('on', b.dataset.o === st.outfit));
   ab.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.c === st.anim); b.disabled = !has(st.weapon, b.dataset.c); b.style.opacity = b.disabled ? .35 : 1; });
   on('s1', st.speed === 1); on('s05', st.speed === .5); on('s025', st.speed === .25); on('pause', st.paused);
   document.getElementById('pause').textContent = st.paused ? 'Play' : 'Pause';
   on('z1', st.zoom === 'fit'); on('z2', st.zoom === 1); on('z3', st.zoom === 2);
   document.querySelectorAll('canvas.zoomable').forEach(c => {
-    if (st.zoom === 'fit') { c.style.width = '100%'; c.style.height = 'auto'; c.style.maxWidth = c.width * (c.id === 'four' ? 2 : 1) + 'px'; }
+    if (st.zoom === 'fit') { c.style.width = '100%'; c.style.height = 'auto'; c.style.maxWidth = c.width * (c.id === 'four' || c.id === 'cmp' ? 2 : 1) + 'px'; }
     else { c.style.width = c.width * st.zoom + 'px'; c.style.height = 'auto'; c.style.maxWidth = 'none'; }
   });
   document.getElementById('dirlabels').style.width = document.getElementById('four').getBoundingClientRect().width + 'px';
+  if (D.outfits) document.getElementById('cmplabels').style.width = document.getElementById('cmp').getBoundingClientRect().width + 'px';
 }
 addEventListener('resize', () => sync());
 
 const four = document.getElementById('four'); four.width = S * 4; four.height = S + 4;
+const cmp = document.getElementById('cmp');
+if (D.outfits) { cmp.width = S * 2 * ONAMES.length; cmp.height = S + 4;
+  document.getElementById('cmplabels').innerHTML = ['SE', 'SW'].flatMap(v => ONAMES.map(o => `<span>${o} · ${v}</span>`)).join(''); }
 const LOOPS = [
   { pts: [[330, 470], [450, 530], [390, 560], [270, 500]], speed: 40, phase: 0 },
   { pts: [[560, 330], [680, 390], [620, 420], [500, 360]], speed: 40, phase: 2.5 },
@@ -180,7 +199,7 @@ const town = document.getElementById('town');
 if (D.town) { town.width = 1080; town.height = 810; } else town.parentElement.parentElement.hidden = true;
 const attackClip = w => w === 'none' ? 'punch' : isGun(w) ? 'fire' : 'swing_a';
 
-function buildSheets() {
+function buildSheets(sheetsOnly) {
   const box = document.getElementById('sheets');
   for (const w of WORDER) for (const [clip, label] of CLIPS) {
     if (!(D.sprites[w] && D.sprites[w][clip])) continue;
@@ -196,6 +215,7 @@ function buildSheets() {
     labs.innerHTML = VIEWS.map(v => `<span class="lab" style="display:grid;align-items:center">${v.toUpperCase()}</span>`).join('');
     rows.append(labs, c); card.appendChild(rows); box.appendChild(card);
   }
+  if (sheetsOnly) return;
   const srcEl = document.getElementById('src');
   for (const e of D.extras) { const f = document.createElement('figure'); f.innerHTML = `<img alt="${e.name}" src="${e.src}"><figcaption>${e.name}</figcaption>`; srcEl.appendChild(f); }
   if (!D.extras.length) srcEl.parentElement.hidden = true;
@@ -238,6 +258,12 @@ function tick(now) {
   if (!st.paused) clock += dt * st.speed;
   const g = four.getContext('2d'); g.clearRect(0, 0, four.width, four.height); g.imageSmoothingQuality = 'high';
   VIEWS.forEach((v, i) => drawSprite(g, st.weapon, st.anim, v, clock, i * S + AX, AY));
+  if (D.outfits) {   // each outfit, SE then SW, same weapon / animation / clock
+    const c = cmp.getContext('2d'); c.clearRect(0, 0, cmp.width, cmp.height); c.imageSmoothingQuality = 'high';
+    const keep = [D.sprites, IM]; let i = 0;
+    for (const v of ['se', 'sw']) for (const o of ONAMES) { D.sprites = OUT[o]; IM = IMS[o]; drawSprite(c, st.weapon, st.anim, v, clock, i++ * S + AX, AY); }
+    [D.sprites, IM] = keep;
+  }
   if (townIm) {
     const t = town.getContext('2d'); t.imageSmoothingQuality = 'high'; t.drawImage(townIm, 0, 0);
     const actors = [];
@@ -249,6 +275,8 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 function ready() {
+  if (D.title) { document.title = D.title; document.getElementById('ptitle').textContent = D.title; }
+  if (D.sub) document.getElementById('psub').textContent = D.sub;
   buildSheets(); sync(); requestAnimationFrame(tick);
   const tot = Object.values(D.sprites).reduce((a, w) => a + Object.values(w).reduce((b, c) => b + c.se.n * 4, 0), 0);
   document.getElementById('notes').innerHTML =

@@ -1,6 +1,6 @@
 """Full survivor animation set on the shared skeleton, with real weapons on the hand bone and baked effects.
 
-  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview] [actions=WORKBENCH.blend]
+  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview] [actions=WORKBENCH.blend] [outfit=armor]
 Writes RAW_DIR/<weapon>/<clip>_<view>_<i>.png and RAW_DIR/anchor.json; spritify.py RAW/<weapon> OUT smooth makes 128-px frames.
 
 Pose angles are degrees, survivor.pose convention: x = forward swing (upperarm, thigh), bend (forearm), lean (chest/pelvis);
@@ -368,8 +368,10 @@ class FX:
 
 def world(ob): return ob.matrix_world.translation.copy()
 
-def render_all(blend, out, clips, weapons, views, px=256, preview=False, actions=None):
+def render_all(blend, out, clips, weapons, views, px=256, preview=False, actions=None, outfit=None):
     ao, body = ai_render.load(blend); ai_render.toonify(body)
+    if outfit == 'armor':            # equipment: plate armour riding on the bones (armor.py)
+        import armor; armor.build(ao, body)
     acts = {}
     if actions:                      # hand-made poses from a workbench .blend (workbench.py): Actions named like the clips
         import workbench; acts = workbench.load_actions(actions); print('actions', sorted(acts), flush=True)
@@ -452,4 +454,4 @@ if __name__ == '__main__':
     clips = list(CLIPS) if opt.get('clips', 'all') == 'all' else opt['clips'].split(',')
     weapons = opt.get('weapons', 'none,bat,axe,rifle,ak47').split(',')
     views = opt.get('views', 'se,sw,ne,nw').split(',')
-    render_all(pos[0], pos[1], clips, weapons, views, int(opt.get('px', 300)), 'preview' in a, opt.get('actions'))
+    render_all(pos[0], pos[1], clips, weapons, views, int(opt.get('px', 300)), 'preview' in a, opt.get('actions'), opt.get('outfit'))
