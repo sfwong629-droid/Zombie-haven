@@ -81,6 +81,8 @@ def make(rig, out):
     walk = bpy.data.actions['swing_a']; ao.animation_data.action = walk
     ao.animation_data.action_slot = walk.slots[0]
     S.frame_start, S.frame_end = 0, int(walk.frame_end) - 1; S.frame_set(0)
+    for o in bpy.data.objects: o.select_set(False)
+    bpy.context.view_layer.objects.active = ao; ao.select_set(True)   # the Action Editor only lists actions for the selected rig
     ai_render.face(ao, 'se')                               # facing the game's front-right view through the camera
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(out), compress=True)
     print('saved', out, round(os.path.getsize(out) / 1e6, 1), 'MB')

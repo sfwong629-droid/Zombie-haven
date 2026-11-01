@@ -18,9 +18,10 @@ You change the poses. Claude renders them with the same camera, outline and effe
 5. Press **Space** to play and Space again to stop. The file opens on **Swing A** with the bat.
 
 ## 2. Pick an animation
-1. Find the **Dope Sheet** at the bottom of the Animation tab.
-2. Change its mode from *Dope Sheet* to **Action Editor**.
-3. Click the action list next to the action name and pick the one you want. The names are:
+1. **Select the rig first.** Click `rig` in the Outliner (top right) or click one of the thin sticks in the 3D view. The Action Editor only shows actions for the selected rig, so with nothing selected its header is empty.
+2. Find the **Dope Sheet** at the bottom of the Animation tab.
+3. Change its mode from *Dope Sheet* to **Action Editor**. The header now shows the current action, `swing_a`.
+4. Click the small icon just left of that name to open the list of all actions, and pick the one you want. The names are:
 
 | Action | What it is |
 |---|---|
