@@ -106,6 +106,10 @@ class Parts {
 const PAD = 14;
 let groundMesh = null, groundKey = '';
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const regrow = (x, y) => {   // town tiles where grass creeps back: near the town edge and in a few clumps
+  const B = G.Wd.BUILD, d = Math.min(x - B.x0, B.x1 - x, y - B.y0, B.y1 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3);
+  return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55);
+};
 let _gmat = null;
 function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
   if (_gmat) return _gmat;
@@ -125,10 +129,9 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
         vec3 g = diffuseColor.rgb * mix(vec3(1.), patchTint, grass);
         g *= .86 + .26 * mid;                                                            // soft light and dark clumps
         g *= 1. - .16 * smoothstep(.58, .78, gn(p * 3.1 + 9.)) * grass;                   // dark grass clumps
-        g = mix(g, g * vec3(1.18, 1.14, .95), smoothstep(.70, .86, fleck) * grass);      // sunlit blades
-        g *= 1. - .10 * (fine - .5) * (1. - grass);                                      // dirt grain
+        g = mix(g, g * vec3(1.08, 1.06, .97), smoothstep(.72, .90, fleck) * grass);      // sunlit blades (subtle)
+        g *= 1. - .08 * (gn(p * 2.2 + 4.) - .5) * (1. - grass);                       // dirt: soft mottling, no specks
         g = mix(g, g * .80, smoothstep(.66, .80, gn(vec2(p.x * 1.6, p.y * 5.) + 11.)) * (1. - grass) * .7);   // ruts
-        g = mix(g, vec3(.80, .74, .62), smoothstep(.80, .90, fleck) * (1. - grass) * .55);   // pebbles
         diffuseColor.rgb = g;
       }`);
   };
@@ -147,6 +150,7 @@ function buildGround() {
     const edge = Math.max(0, B.x0 - x, x - B.x1, B.y0 - y, y - B.y1);
     let k;
     if (G.Wd.isRoad(W, x, y)) k = r < .5 ? '#94703f' : '#987442';
+    else if (inB && regrow(x, y)) k = r < .5 ? '#9c9442' : '#a39a48';   // V3D.6: grass growing back into the town dirt
     else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
     else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
     else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#7f8a36' : '#7a8634';
@@ -180,6 +184,11 @@ function inst(geo, list, colorFn, th) {
 }
 const tuftG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry(.035, .3 + (i % 3) * .07, 3, 1, true).translate(0, .15, 0).rotateZ((i - 2) * .22).rotateY(i * 1.3).translate(Math.cos(i * 2.4) * .06, 0, Math.sin(i * 2.4) * .06)));
 const bushG = merge([new THREE.IcosahedronGeometry(.3, 0).scale(1, .95, 1).translate(0, .2, 0), new THREE.IcosahedronGeometry(.22, 0).scale(1, .75, 1).translate(.24, .14, .08), new THREE.IcosahedronGeometry(.2, 0).scale(1, .7, 1).translate(-.2, .13, -.1)]);
+const plankG = box(.9, .05, .16).translate(0, .025, 0);
+const planksG = merge([box(.95, .05, .15).translate(0, .025, 0), box(.85, .05, .15).rotateY(.18).translate(.05, .075, .2), box(.7, .05, .14).rotateY(-.3).translate(-.1, .025, -.24)]);
+const smallCrateG = merge([box(.34, .3, .34).translate(0, .15, 0), box(.26, .22, .26).rotateY(.5).translate(.36, .11, .1)]);
+const barrelG = cyl(.15, .15, .42, 10).translate(0, .21, 0);
+const tyreG = new THREE.TorusGeometry(.17, .07, 6, 12).rotateX(Math.PI / 2).translate(0, .07, 0);
 const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
 function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
   const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
@@ -201,16 +210,31 @@ function buildForest() {
   }
   for (const [x, y] of wr) if (!blocked(x, y)) rubble.push([(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]);
   for (const [x, y] of G.CRATE_SPOTS) if (!blocked(x, y)) crates.push([(x + .5) * T, (y + .5) * T, 1, hash(x, y)]);
-  const tufts = [], bushes = [], pebbles = [], B = G.Wd.BUILD;
+  const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], B = G.Wd.BUILD;
   for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {   // V3D.5: grass tufts, autumn bushes, pebbles
     if (blocked(x, y)) continue;
     const inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9);
     const at = (a, b) => [(x + a) * T, (y + b) * T];
-    const nt = inB ? (h1 < .12 ? 1 : 0) : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+    const rg = inB && regrow(x, y);
+    const nt = inB ? (rg ? (h1 < .7 ? 2 : 1) : h1 < .1 ? 1 : 0) : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+    if (inB && !rg) {   // V3D.6: survivor clutter on the town dirt
+      const h4 = hash(x * 41 + 7, y * 23 + 5);
+      if (h4 < .09) planks.push([...at(.2 + .6 * h2, .2 + .6 * h3), 1, h1]);
+      else if (h4 < .14) junk.push([...at(.25 + .5 * h3, .25 + .5 * h1), 1, h2]);
+      else if (h4 < .175) barrels.push([...at(.3 + .4 * h1, .3 + .4 * h2), 1 + h3 * .15, h3]);
+      else if (h4 < .205) tyres.push([...at(.3 + .4 * h2, .3 + .4 * h1), 1, h1]);
+      else if (h4 < .26) lone.push([...at(.2 + .6 * h1, .2 + .6 * h3), 1, h2]);
+    }
     for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(.1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
     if (!inB && h2 < .10) bushes.push([...at(.2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]);
     if (h3 < (inB ? .3 : .12)) pebbles.push([...at(.15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]);
   }
+  for (const t of [...planks, ...junk, ...barrels, ...tyres, ...lone]) t[2] *= 1.45;   // sized against the survivors
+  forest.push(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true));
+  forest.push(instD(plankG, lone, (r) => ['#8a6a44', '#9a7a52', '#7a6248'][(r * 3) | 0]));
+  forest.push(instD(smallCrateG, junk, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true));
+  forest.push(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
+  forest.push(instD(tyreG, tyres, () => '#2e2c2a', true));
   forest.push(instD(tuftG, tufts, (r) => ['#7d8a34', '#8f9a3c', '#a39a40', '#6f7d30'][(r * 4) | 0]));
   forest.push(instD(bushG, bushes, (r) => ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'][(r * 5) | 0], true));
   forest.push(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]));
