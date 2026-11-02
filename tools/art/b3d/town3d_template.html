@@ -79,7 +79,8 @@ const hex = c => new THREE.Color(c);
 // ---------------------------------------------------------------- renderer, camera, light
 const stage = document.getElementById('stage'), hud = document.getElementById('hud');
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: /[?&]still/.test(location.search) });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+const DPR_MAX = Math.min(1.5, devicePixelRatio); let dpr = DPR_MAX;     // adaptive: drops toward 1 when the frame rate sags
+renderer.setPixelRatio(dpr); renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stage.prepend(renderer.domElement);
 const scene = new THREE.Scene();
@@ -104,7 +105,8 @@ new ResizeObserver(resize).observe(stage); resize();
 
 const hemi = new THREE.HemisphereLight(0xfff4dc, 0x5a5236, 1.25); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff0d0, 1.9); sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 120 });
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 140 });
+renderer.shadowMap.autoUpdate = false;   // buildings and trees never move: draw the shadow map once (again only when the light changes)
 sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
 scene.add(sun); scene.add(sun.target);
 
@@ -132,7 +134,7 @@ function addHull(mesh, th = 0.022) {
   if (mesh.isSkinnedMesh) { h = new THREE.SkinnedMesh(mesh.geometry, hullMat(th)); h.bind(mesh.skeleton, mesh.bindMatrix); }
   else if (mesh.isInstancedMesh) { h = new THREE.InstancedMesh(mesh.geometry, hullMat(th), mesh.count); h.instanceMatrix = mesh.instanceMatrix; }
   else h = new THREE.Mesh(mesh.geometry, hullMat(th));
-  h.frustumCulled = false; h.castShadow = false; h.userData.hull = true;
+  h.frustumCulled = mesh.isSkinnedMesh; h.castShadow = false; h.userData.hull = true;
   if (mesh.isSkinnedMesh) { h.position.copy(mesh.position); h.quaternion.copy(mesh.quaternion); h.scale.copy(mesh.scale); mesh.parent.add(h); }
   else mesh.add(h);
   return h;
@@ -346,11 +348,15 @@ function toonify(root, tint) {
     const m = o.material, map = m.map || null;
     if (map) { map.colorSpace = THREE.SRGBColorSpace; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; }
     o.material = new THREE.MeshToonMaterial({ color: tint && o.isSkinnedMesh ? tint : m.color, map, gradientMap: grad });
-    o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; });
+    const actorMesh = o.isSkinnedMesh || root.userData.isActor;
+    o.castShadow = !actorMesh; o.receiveShadow = true;
+    if (o.isSkinnedMesh) { o.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, .6, 0), 1.1); o.frustumCulled = true; }   // a sphere that covers every pose
+    else o.frustumCulled = !actorMesh; });
   const meshes = []; root.traverse(o => { if (o.isMesh && !o.userData.hull) meshes.push(o); });
   for (const o of meshes) addHull(o, o.isSkinnedMesh ? .022 : .018);
 }
-const [male, lite, tent] = await Promise.all([load(D.male), load(D.lite), load(D.tent)]);
+const [male, lite, tent] = await Promise.all([load(D.mid || D.male), load(D.lite), load(D.tent)]);   // town survivors use the 14k-triangle model, zombies the 6k one
+male.scene.userData.isActor = true; lite.scene.userData.isActor = true;
 document.getElementById('msg').remove();
 toonify(male.scene); toonify(tent.scene);
 const zombieSrc = lite.scene; toonify(zombieSrc, new THREE.Color(0.58, 0.78, 0.52));
@@ -455,8 +461,12 @@ function stepActor(a, dt) {
   } else {
   }
   a.sh.position.set(a.o.position.x, a.o.position.y + .006, a.o.position.z);
-  a.mixer.update(dt);
+  // animation: on-screen actors every frame; off-screen ones a few times a second; big zombie crowds every other frame
+  a.acc = (a.acc || 0) + dt; _sph.center.set(a.o.position.x, a.o.position.y + .6, a.o.position.z);
+  const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.zombie && zombies.length > 40 ? 1 / 30 : 0);
+  if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
 }
+const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.1), _pm = new THREE.Matrix4();
 
 // ---------------------------------------------------------------- light presets
 const LIGHT = {
@@ -472,6 +482,8 @@ function setLight(k) {
   sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
   for (const g of glows) g.material.color.set(L.glow ? g.userData.glow : 0x4a3a28);
   for (const l of lampLights) l.intensity = L.lamps;
+  sun.position.set(L.dir[0] * 50, L.dir[1] * 50, L.dir[2] * 50); sun.target.position.set(0, 0, 0); sun.target.updateMatrixWorld();
+  renderer.shadowMap.needsUpdate = true;
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === k));
 }
 setLight('day');
@@ -496,7 +508,7 @@ document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => setLight(b.
 $('zn').oninput = e => setZombies(+e.target.value);
 $('cut').onclick = () => { cutOn = !cutOn; $('cut').classList.toggle('on', cutOn); };
 $('grid').onclick = () => { gridLines.visible = !gridLines.visible; $('grid').classList.toggle('on', gridLines.visible); };
-$('shadows').onclick = () => { sun.castShadow = !sun.castShadow; $('shadows').classList.toggle('on', sun.castShadow); };
+$('shadows').onclick = () => { sun.castShadow = !sun.castShadow; renderer.shadowMap.needsUpdate = true; $('shadows').classList.toggle('on', sun.castShadow); };
 let lines = true; $('lines').onclick = () => { lines = !lines; for (const m of hullMats.values()) m.visible = lines; $('lines').classList.toggle('on', lines); };
 let showHud = true; $('hudb').onclick = () => { showHud = !showHud; hud.hidden = !showHud; $('hudb').classList.toggle('on', showHud); };
 window.addEventListener('keydown', e => { if (e.key === 'q' || e.key === 'Q') $('rotL').click(); if (e.key === 'e' || e.key === 'E') $('rotR').click(); });
@@ -511,18 +523,20 @@ function frame(dtIn) {
   const dt = dtIn ?? Math.min(.1, clock.getDelta()); simT += dt; const t = simT;
   if (!free) { az += (azGoal - az) * Math.min(1, dt * 8); if (Math.abs(azGoal - az) < 1e-3) az = azGoal; controls.target.clamp(LIM.min, LIM.max); controls.target.y = 0; placeCam(); }
   cutaway(dt);
+  _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   for (const a of actors) stepActor(a, dt);
   const fl = 1 + Math.sin(t * 17) * .08 + Math.sin(t * 7.3) * .07;
   fire.f.scale.set(fl, fl * (1 + Math.sin(t * 11) * .1), fl); fire.f2.scale.setScalar(2 - fl); fire.L.intensity = LIGHT[light].fire * fl;
   for (const m of puffs) { const u = (m.userData.t + t * .12) % 1; m.position.copy(m.userData.base).add(new THREE.Vector3(u * .5, u * 1.6, -u * .3)); m.scale.setScalar(.6 + u * 1.6); m.material.opacity = .55 * (1 - u); }
   // sun follows the view target so the shadow map always covers what you see
-  const d = LIGHT[light].dir; sun.position.set(controls.target.x + d[0] * 40, d[1] * 40, controls.target.z + d[2] * 40); sun.target.position.copy(controls.target);
   controls.update();
   renderer.render(scene, cam);
   frames++; fpsT += dt; if (fpsT > .5) { fps = frames / fpsT; frames = 0; fpsT = 0;
-    const i = renderer.info.render; hud.textContent = `${fps.toFixed(0)} fps\n${i.calls} draw calls\n${(i.triangles / 1000).toFixed(0)}k triangles\n${actors.length - zombies.length} survivors, ${zombies.length} zombies`; }
+    if (!STILL) { const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr;
+      if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); resize(); } }
+    const i = renderer.info.render; hud.textContent = `${fps.toFixed(0)} fps · ${dpr.toFixed(2)}× res\n${i.calls} draw calls\n${(i.triangles / 1000).toFixed(0)}k triangles\n${actors.length - zombies.length} survivors, ${zombies.length} zombies`; }
 }
-if (STILL) window.T = { controls, cam, zombies, actors };
+if (STILL) window.T = { controls, cam, zombies, actors, scene };
 if (STILL) window.step = (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) frame(dt); const i = renderer.info.render; return `${i.calls} calls ${(i.triangles / 1000).toFixed(0)}k tris`; };
 else renderer.setAnimationLoop(() => frame());
 document.getElementById('notes').innerHTML = D.notes || '';
