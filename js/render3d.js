@@ -185,18 +185,90 @@ const merge = (list) => mergeGeometries(list.map(ni));
 // V3D.8 trees: layered pines, lumpy leaf crowns, bare dead trees; they sway in the wind (vertex shader, phase from position)
 const pineG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry([.95, .8, .64, .48, .3][i], [1.1, 1.0, .9, .8, .7][i], 9).rotateY(i * .41).translate(Math.sin(i * 2.1) * .04, [.75, 1.2, 1.6, 1.98, 2.32][i], Math.cos(i * 1.7) * .04)));
 const pineTrunkG = cyl(.09, .13, .8, 6).translate(0, .4, 0);
-const trunkG = merge([cyl(.1, .15, 1.4, 7).translate(0, .7, 0), cyl(.035, .06, .62, 5).rotateZ(.75).translate(.24, 1.12, 0), cyl(.03, .05, .55, 5).rotateZ(-.7).rotateY(.9).translate(-.15, 1.18, -.14)]);
+const branch = (len, r0, r1, tilt, yaw, y, s = 5) => cyl(r1, r0, len, s).translate(0, len / 2, 0).rotateZ(-tilt).rotateY(yaw).translate(0, y, 0);   // grows out of the trunk at height y
+const trunkG = merge([cyl(.1, .15, 1.4, 7).translate(0, .7, 0), branch(.6, .06, .035, .8, 0, 1.0), branch(.55, .05, .03, .75, 2.3, 1.1)]);
 const crownG = merge([new THREE.IcosahedronGeometry(.62, 1).translate(0, 1.78, 0), new THREE.IcosahedronGeometry(.48, 0).translate(.44, 1.52, .16), new THREE.IcosahedronGeometry(.46, 0).translate(-.4, 1.56, -.2),
   new THREE.IcosahedronGeometry(.42, 0).translate(.08, 1.46, -.44), new THREE.IcosahedronGeometry(.4, 0).translate(-.12, 2.16, .14), new THREE.IcosahedronGeometry(.36, 0).translate(.28, 2.0, .32), new THREE.IcosahedronGeometry(.38, 0).translate(-.3, 1.42, .34)]);
-const deadG = merge([cyl(.07, .13, 1.7, 6).translate(0, .85, 0), cyl(.03, .055, .8, 5).rotateZ(.8).translate(.3, 1.35, 0), cyl(.025, .05, .7, 5).rotateZ(-.75).rotateY(1.2).translate(-.12, 1.2, -.25),
-  cyl(.02, .04, .6, 5).rotateZ(.6).rotateY(2.4).translate(-.2, 1.6, .18), cyl(.015, .03, .45, 4).rotateZ(-.5).translate(-.12, 1.85, 0), cyl(.015, .025, .35, 4).rotateZ(.9).translate(.5, 1.62, 0)]);
+const deadG = merge([cyl(.07, .13, 1.7, 6).translate(0, .85, 0), branch(.8, .055, .03, .85, .3, 1.05), branch(.7, .05, .025, .8, 2.6, .95), branch(.6, .04, .02, .6, 4.4, 1.3), branch(.45, .03, .015, .5, 1.4, 1.55, 4), branch(.35, .025, .012, .9, 5.3, 1.45, 4)]);
+
+// V3D.9 foliage made of leaf cards: painted leaf clusters / pine-needle sprays with cut-out gaps, laid around each crown.
+// Cards lean toward the (fixed) camera so few are seen edge-on; normals point out from the crown centre for soft round shading.
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function leafTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), R = rng(7);
+  for (let i = 0; i < 70; i++) {
+    const x = 30 + R() * 196, y = 30 + R() * 196, a = R() * 6.28, L = 26 + R() * 22, W = L * .42, v = 150 + R() * 105 | 0;
+    if (Math.hypot(x - 128, y - 128) > 108) continue;
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.moveTo(-L / 2, 0); g.quadraticCurveTo(0, -W, L / 2, 0); g.quadraticCurveTo(0, W, -L / 2, 0); g.fill();
+    g.strokeStyle = `rgba(0,0,0,.25)`; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-L / 2, 0); g.lineTo(L / 2, 0); g.stroke();
+    g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function needleTexture() {   // a fluffy pine spray: soft body + thick needle strokes along a stem, tip at the right
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d'), R = rng(11);
+  g.fillStyle = 'rgb(150,150,150)'; g.beginPath(); g.moveTo(2, 64); g.quadraticCurveTo(110, 4, 252, 60); g.quadraticCurveTo(110, 124, 2, 64); g.fill();
+  g.lineCap = 'round';
+  for (let i = 0; i < 260; i++) {
+    const u = R(), x = 4 + u * 240, half = (1 - u * .75) * 54, y = 64 + (R() * 2 - 1) * half * .55, len = (1 - u * .6) * (16 + R() * 14), s = y < 64 ? -1 : 1, v = 165 + R() * 90 | 0;
+    g.strokeStyle = `rgb(${v},${v},${v})`; g.lineWidth = 3.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x + len * .6, y + s * len * .8); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const LEAF_TEX = leafTexture(), NEEDLE_TEX = needleTexture();
+function cardGeometry(cards) {   // cards: [centre(Vector3), normal-for-light(Vector3), u-axis, v-axis] -> one BufferGeometry with uvs
+  const P = [], N = [], U = [], I = [];
+  cards.forEach(([c, n, ua, va], k) => {
+    const corners = [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]];
+    for (const [a, b, u, v] of corners) { const q = c.clone().addScaledVector(ua, a).addScaledVector(va, b); P.push(q.x, q.y, q.z); N.push(n.x, n.y, n.z); U.push(u, v); }
+    const o = k * 4; I.push(o, o + 1, o + 2, o, o + 2, o + 3);
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); return g;
+}
+const CAM_DIR = new THREE.Vector3(Math.cos(Math.PI / 6) / Math.SQRT2, Math.sin(Math.PI / 6), Math.cos(Math.PI / 6) / Math.SQRT2);
+const BLOBS = [[0, 1.8, 0, .66], [.46, 1.54, .16, .5], [-.42, 1.58, -.2, .48], [.08, 1.46, -.46, .44], [-.12, 2.2, .14, .44], [.3, 2.04, .32, .4], [-.32, 1.44, .36, .4]];
+const crownCardsG = (() => {
+  const R = rng(3), cards = [], ctr = new THREE.Vector3(0, 1.75, 0);
+  for (const [x, y, z, r] of BLOBS) {
+    const n = Math.round(22 * (r / .45) ** 2);
+    for (let i = 0; i < n; i++) {
+      const d = new THREE.Vector3(R() * 2 - 1, R() * 2 - 1, R() * 2 - 1); if (d.lengthSq() < .01) continue; d.normalize();
+      const c = new THREE.Vector3(x, y, z).addScaledVector(d, r * (.55 + R() * .4));
+      const face = d.clone().multiplyScalar(.45).addScaledVector(CAM_DIR, .55).normalize();
+      const t1 = new THREE.Vector3(0, 1, 0).cross(face).normalize(), t2 = face.clone().cross(t1).normalize(), a = R() * 6.28, sz = .26 + R() * .14;
+      const ua = t1.clone().multiplyScalar(Math.cos(a)).addScaledVector(t2, Math.sin(a)).multiplyScalar(sz), va = t2.clone().multiplyScalar(Math.cos(a)).addScaledVector(t1, -Math.sin(a)).multiplyScalar(sz);
+      cards.push([c, c.clone().sub(ctr).normalize(), ua, va]);
+    }
+  }
+  return cardGeometry(cards);
+})();
+const crownCoreG = merge(BLOBS.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r * .62, 0).translate(x, y, z)));
+const TIERS = [[.75, .98], [1.2, .82], [1.6, .66], [1.98, .5], [2.32, .34]];
+const pineCardsG = (() => {
+  const R = rng(5), cards = [];
+  TIERS.forEach(([y, rad], ti) => {
+    const nb = 11 + (ti < 2 ? 4 : 0);
+    for (let i = 0; i < nb; i++) {
+      const a = i / nb * 6.28 + ti * .5 + R() * .3, out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      const base = new THREE.Vector3(0, y + .3, 0), tip = new THREE.Vector3(out.x * rad * 1.05, y - .28, out.z * rad * 1.05);
+      const along = tip.clone().sub(base), c = base.clone().add(tip).multiplyScalar(.5), half = along.clone().multiplyScalar(.5);
+      const side = along.clone().cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(.24 + rad * .26);
+      const n = out.clone().multiplyScalar(.7).add(new THREE.Vector3(0, .7, 0)).normalize();
+      cards.push([c, n, half, side]);
+    }
+  });
+  return cardGeometry(cards);
+})();
+const pineCoreG = merge(TIERS.map(([y, rad]) => new THREE.ConeGeometry(rad * .62, .75, 7).translate(0, y + .02, 0)));
+
 const SWAY = { uTime: { value: 0 } };
 const swayCode = (lo, hi) => `
   { vec3 ip = instanceMatrix[3].xyz; float ph = ip.x * .37 + ip.z * .53, h = max(transformed.y - .5, 0.);
     float w = sin(uTime * 1.3 + ph) * .7 + sin(uTime * 2.3 + ph * 1.7) * .3;
     transformed.x += w * h * h * .03; transformed.z += w * h * h * .018; vShade = clamp((position.y - ${lo.toFixed(2)}) / ${(hi - lo).toFixed(2)}, 0., 1.); }`;
-function swayMats(lo, hi, th) {   // the toon material and its outline both bend the same way
-  const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad });
+function swayMats(lo, hi, th, map) {   // the toon material and its outline both bend the same way
+  const m = new THREE.MeshToonMaterial(map ? { color: 0xffffff, gradientMap: grad, map, alphaTest: .45, side: THREE.DoubleSide } : { color: 0xffffff, gradientMap: grad });
   m.onBeforeCompile = (sh) => { sh.uniforms.uTime = SWAY.uTime;
     sh.vertexShader = 'uniform float uTime; varying float vShade;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + swayCode(lo, hi));
     sh.fragmentShader = 'varying float vShade;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= mix(.7, 1.12, vShade);'); };
@@ -206,11 +278,12 @@ function swayMats(lo, hi, th) {   // the toon material and its outline both bend
       .replace('#include <project_vertex>', '#include <project_vertex>\n  gl_Position.z += 0.0004 * gl_Position.w;'); };
   return [m, hm];
 }
-function instSway(geo, list, colorFn, th, lo, hi) {
-  const [mat, hm] = swayMats(lo, hi, th), im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length)), m = new THREE.Matrix4();
+function instSway(geo, list, colorFn, th, lo, hi, map) {
+  const [mat, hm] = swayMats(lo, hi, th, map), im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length)), m = new THREE.Matrix4();
   im.count = list.length;
   list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
   im.castShadow = true; im.receiveShadow = true; scene.add(im);
+  if (map) { im.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .45, side: THREE.DoubleSide }); return im; }
   const h = new THREE.InstancedMesh(geo, hm, im.count); h.instanceMatrix = im.instanceMatrix; h.userData.hull = true; h.castShadow = false; h.frustumCulled = false; im.add(h);
   return im;
 }
@@ -282,9 +355,13 @@ function buildForest() {
   for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
   const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t));
   forest.push(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8));
-  forest.push(instSway(pineG, pines, (r) => ['#2f5a3c', '#2c5236', '#36603f', '#2a4c33', '#3a6440'][(r * 5) | 0], .04, .3, 2.7));
+  const PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'];
+  const dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
+  forest.push(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7));
+  forest.push(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
   forest.push(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4));
-  forest.push(instSway(crownG, leafy, (r) => ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'][(r * 6) | 0], .04, 1.0, 2.5));
+  forest.push(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5));
+  forest.push(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX));
   forest.push(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
   forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
   forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
