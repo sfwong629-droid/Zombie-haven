@@ -453,6 +453,65 @@ function tickMixer(a, dt, vis) {
   if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
 }
 
+
+// ---------------------------------------------------------------- ink lines (V3D.4): the ink-town mockup's thick outlines
+// One extra pass: the scene is drawn into a texture with its depth; a full-screen shader then inks every place where the
+// depth surface bends or jumps (outer silhouettes, roof/wall corners, the base of walls, tree facets). The camera is
+// orthographic, so a flat surface has zero second derivative of depth and only real edges light up. A slow noise
+// nudges the lookup so the lines wobble a little, like a pen. Toggle: the pen button, ?ink=0, ZH3D.setInk(bool).
+let INK = new URLSearchParams(location.search).get('ink') !== '0';
+try { const v = localStorage.getItem('zh3d_ink'); if (v != null && !new URLSearchParams(location.search).has('ink')) INK = v === '1'; } catch (e) {}
+let inkRT = null;
+const inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), inkScene = new THREE.Scene();
+const inkMat = new THREE.ShaderMaterial({
+  uniforms: { tCol: { value: null }, tDep: { value: null }, px: { value: new THREE.Vector2() }, near: { value: .1 }, far: { value: 400 },
+    r: { value: 2 }, pixW: { value: .03 }, bend: { value: 1.3 }, wob: { value: 1.2 }, ink: { value: new THREE.Color(0x1e140f) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+  fragmentShader: `uniform sampler2D tCol, tDep; uniform vec2 px; uniform float near, far, r, pixW, bend, wob; uniform vec3 ink; varying vec2 vUv;
+    float D(vec2 u){ return near + texture2D(tDep, u).x * (far - near); }
+    float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h(i), h(i + vec2(1., 0.)), f.x), mix(h(i + vec2(0., 1.)), h(i + 1.), f.x), f.y); }
+    void main(){
+      vec2 q = vUv / px / 36.;
+      vec2 uv = vUv + (vec2(n(q), n(q + 17.3)) - .5) * px * wob * r;
+      uv = (floor(uv / px) + .5) * px;                 // whole pixels: a flat surface then gives exactly zero
+      float R = floor(r + .5), c = D(uv), e = 0.;
+      vec2 o0 = vec2(R, 0.) * px, o1 = vec2(0., R) * px, o2 = vec2(R, R) * px, o3 = vec2(R, -R) * px;
+      e = max(e, abs(D(uv + o0) + D(uv - o0) - 2. * c));
+      e = max(e, abs(D(uv + o1) + D(uv - o1) - 2. * c));
+      e = max(e, abs(D(uv + o2) + D(uv - o2) - 2. * c));
+      e = max(e, abs(D(uv + o3) + D(uv - o3) - 2. * c));
+      float t = R * pixW * bend;                       // only strong bends (~50 deg): corners, roof edges, silhouettes; not roof ribs
+      float a = smoothstep(t, t * 2.2, e) * (.75 + .25 * n(q * 3. + 5.));
+      vec4 col = texture2D(tCol, vUv);
+      gl_FragColor = vec4(mix(col.rgb, ink, a * .92), 1.);
+      #include <colorspace_fragment>
+    }`,
+  depthTest: false, depthWrite: false,
+});
+inkScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), inkMat));
+const _db = new THREE.Vector2();
+function renderInk() {
+  renderer.getDrawingBufferSize(_db);
+  if (!inkRT || inkRT.width !== _db.x || inkRT.height !== _db.y) {
+    if (inkRT) inkRT.dispose();
+    inkRT = new THREE.WebGLRenderTarget(_db.x, _db.y, { type: THREE.HalfFloatType, samples: 4 });
+    inkRT.depthTexture = new THREE.DepthTexture(_db.x, _db.y); inkRT.depthTexture.type = THREE.UnsignedIntType;
+  }
+  renderer.setRenderTarget(inkRT); renderer.render(scene, cam); renderer.setRenderTarget(null);
+  const u = inkMat.uniforms, ppu = (G.BASE_TW / 2 * G.cam.z) / (T / SQ2);   // CSS px per world unit
+  u.tCol.value = inkRT.texture; u.tDep.value = inkRT.depthTexture; u.px.value.set(1 / _db.x, 1 / _db.y);
+  u.near.value = cam.near; u.far.value = cam.far; u.r.value = Math.max(1.5, 1.6 * dpr); u.pixW.value = 1 / (ppu * dpr);
+  renderer.render(inkScene, inkCam);
+}
+function inkButton() {
+  const bar = document.getElementById('bottom'); if (!bar || document.getElementById('btnInk')) return;
+  const b = document.createElement('button'); b.className = 'bb frame out'; b.id = 'btnInk'; b.title = 'Ink outlines'; b.textContent = '✒️';
+  const paint = () => { b.style.opacity = INK ? '1' : '.45'; }; paint();
+  b.onclick = () => { INK = !INK; paint(); try { localStorage.setItem('zh3d_ink', INK ? '1' : '0'); } catch (e) {} };
+  const before = document.getElementById('btnCenter'); bar.insertBefore(b, before ? before.nextSibling : null);
+}
+
 // ---------------------------------------------------------------- frame
 let ready = false, lastT = 0, frames = 0, fpsT = 0;
 function frame() {
@@ -466,11 +525,12 @@ function frame() {
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
   syncPeople(adt, true); syncZombies(adt, true);
-  renderer.render(scene, cam);
+  if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
 }
-window.ZH3D = { frame, ready: false, fps: 0 };
+window.ZH3D = { frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
   const [m, l, t] = await Promise.all([load(base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
