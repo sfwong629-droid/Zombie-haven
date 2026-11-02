@@ -186,7 +186,7 @@ if __name__ == '__main__':
     a = sys.argv[1:]
     if a[0] == 'preview':
         import ai_render, anims
-        ao, body = ai_render.load(a[1]); ai_render.toonify(body)
+        ai_render.TEX_PX = int(a[3]) if len(a) > 3 else ai_render.TEX_PX; ao, body = ai_render.load(a[1]); ai_render.toonify(body)
         cam = ai_render.setup_scene(px=300, tilt=60); cam.data.ortho_scale = 150 / (128 / 1.3)
         look = Vector((0, 0, -1)); look.rotate(cam.rotation_euler); cam.location = Vector((0, 0, .58)) - look * 20
         S = bpy.context.scene; S.eevee.taa_render_samples = 8

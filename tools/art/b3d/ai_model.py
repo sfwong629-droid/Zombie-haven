@@ -22,10 +22,13 @@ def landmarks(co):
     zs = np.arange(.01, zmax, .005)
     S = {round(z, 3): segs(slice_(z)) for z in zs if len(slice_(z))}
     # crotch: highest z (lower half) with a clear gap between the legs at x = 0
-    crotch = max(z for z in S if z < zmax * .45 and not np.any(np.abs(slice_(z)[:, 0]) < .012))
+    # (legs can nearly touch: any clear gap at the centre line counts)
+    crotch = max(z for z in S if z < zmax * .45 and not np.any(np.abs(slice_(z)[:, 0]) < .003))
     # arms hang apart from the body: slices with a piece entirely beyond 0.2 x height from the centre
-    free = lambda s: [p for p in s if min(abs(p[0]), abs(p[1])) > zmax * .2 and p[0] * p[1] > 0]
-    three = [z for z, s in S.items() if zmax * .15 < z < zmax * .7 and len(free(s)) >= 2]
+    # arms hang apart from the body: slices with a separate piece on each side of the torso
+    free = lambda s: [p for p in s if p[0] * p[1] > 0 and min(abs(p[0]), abs(p[1])) > .06]
+    three = [z for z, s in S.items() if zmax * .15 < z < zmax * .7 and len(free(s)) >= 2
+             and any(p[0] < 0 for p in free(s)) and any(p[0] > 0 for p in free(s))]
     hand_lo, arm_join = min(three), max(three)
     # neck: narrowest torso width above the arm junction, below 75% height
     cand = [(s[0][1] - s[0][0], z) for z, s in S.items() if arm_join < z < zmax * .8 and len(s) == 1]
@@ -93,18 +96,18 @@ def prep(src, out, tris=40000):
         if ob is not o: bpy.data.objects.remove(ob)
     o.parent = None
     n0 = len(o.data.polygons)
+    co_full = np.array([v.co[:] for v in o.data.vertices])   # joints from the full mesh: a decimated one is too sparse to slice
     if n0 > tris:
         dm = o.modifiers.new('dec', 'DECIMATE'); dm.ratio = tris / n0
         bpy.ops.object.modifier_apply(modifier=dm.name)
     print('tris', n0, '->', len(o.data.polygons), flush=True)
     flat_material(o)
-    co = np.array([v.co[:] for v in o.data.vertices])
-    J, info = landmarks(co)
+    J, info = landmarks(co_full); del co_full
     print('landmarks', {k: (tuple(round(c, 3) for c in v) if isinstance(v, tuple) else round(v, 3)) for k, v in info.items()}, flush=True)
     ao = survivor.armature(J, 'rig', (0, 0, 0), 0)
     # skin: heat weights on a watertight proxy, then copy to the real mesh
     px = o.copy(); px.data = o.data.copy(); px.name = 'proxy'; bpy.context.scene.collection.objects.link(px)
-    rm = px.modifiers.new('rm', 'REMESH'); rm.mode = 'VOXEL'; rm.voxel_size = .01
+    rm = px.modifiers.new('rm', 'REMESH'); rm.mode = 'VOXEL'; rm.voxel_size = .006   # fine enough to keep close legs apart
     bpy.context.view_layer.objects.active = px; bpy.ops.object.modifier_apply(modifier='rm')
     print('proxy verts', len(px.data.vertices), flush=True)
     bpy.ops.object.select_all(action='DESELECT'); px.select_set(True); ao.select_set(True)

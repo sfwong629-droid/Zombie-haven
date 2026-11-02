@@ -1,6 +1,6 @@
 """Full survivor animation set on the shared skeleton, with real weapons on the hand bone and baked effects.
 
-  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview] [actions=WORKBENCH.blend] [outfit=armor]
+  python3 anims.py RIG.blend RAW_DIR [clips=all|idle,walk,...] [weapons=none,bat,axe,rifle,ak47] [views=se,sw,ne,nw] [px=256] [preview] [actions=WORKBENCH.blend] [outfit=armor] [tex=1024]
 Writes RAW_DIR/<weapon>/<clip>_<view>_<i>.png and RAW_DIR/anchor.json; spritify.py RAW/<weapon> OUT smooth makes 128-px frames.
 
 Pose angles are degrees, survivor.pose convention: x = forward swing (upperarm, thigh), bend (forearm), lean (chest/pelvis);
@@ -29,24 +29,32 @@ def keys(K, t, loop=False):
     return dict(K[-1][1])
 
 def soft_legs(p, k=1.0):
-    """Knees always a little bent (an athletic, game-like stance)."""
-    p.update({'thigh.L': (14 * k, 0, 0), 'thigh.R': (11 * k, 0, 0), 'shin.L': (-26 * k, 0, 0), 'shin.R': (-22 * k, 0, 0),
-              'foot.L': (12 * k, 0, 0), 'foot.R': (11 * k, 0, 0)})
-    p['bob'] = p.get('bob', 0) - .025 * k
+    """Knees always bent (an athletic, game-like stance)."""
+    p.update({'thigh.L': (20 * k, 0, 0), 'thigh.R': (16 * k, 0, 0), 'shin.L': (-36 * k, 0, 0), 'shin.R': (-30 * k, 0, 0),
+              'foot.L': (16 * k, 0, 0), 'foot.R': (14 * k, 0, 0)})
+    p['bob'] = p.get('bob', 0) - .035 * k
+    return p
+
+def stance(p, w=0.0, k=1.0):
+    """Fighting stance: left foot forward, right foot back, both knees bent.
+    w = weight shift, -1 (on the back foot: wind-up) .. +1 (on the front foot: strike)."""
+    p.update({'thigh.L': ((32 + 16 * w) * k, 0, -4), 'shin.L': (-(42 + 22 * w) * k, 0, 0), 'foot.L': ((12 + 8 * w) * k, 0, 0),
+              'thigh.R': (-(26 + 12 * w) * k, 0, 4), 'shin.R': (-(34 - 18 * w) * k, 0, 0), 'foot.R': ((26 + 6 * w) * k, 0, 0)})
+    p['bob'] = p.get('bob', 0) - (.07 + .03 * max(0, w) + .015 * max(0, -w)) * k
     return p
 
 def walk_legs(t, stride=1.0):
-    """Walk cycle with strong knee bend: the lifting leg folds high, the planted leg stays soft."""
+    """Walk cycle, exaggerated: big stride and arm swing, high knee lift, bouncy body, hips and shoulders counter-twist."""
     ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
     for n, sg in (('L', 1), ('R', -1)):
-        th = 32 * sg * sn * stride; kn = 22 + 62 * max(0.0, sg * cs) ** 1.3
-        p['thigh.' + n] = (th + 8, 0, 0)
+        th = 40 * sg * sn * stride; kn = 26 + 74 * max(0.0, sg * cs) ** 1.3
+        p['thigh.' + n] = (th + 10, 0, 0)
         p['shin.' + n] = (-kn, 0, 0)
         p['foot.' + n] = (-(th - kn) * .35 + kn * .45, 0, 0)
-        p['upperarm.' + n] = (-26 * sg * sn, 0, 0)
-        p['forearm.' + n] = (28 + 22 * max(0.0, -sg * sn), 0, 0)
-    p['bob'] = .02 * math.cos(2 * ph) - .045
-    p['pelvis'] = (0, 6 * sn, 0); p['chest'] = (5, -9 * sn, 0); p['head'] = (-12, 4 * sn, 0)
+        p['upperarm.' + n] = (-36 * sg * sn, 0, 0)
+        p['forearm.' + n] = (32 + 30 * max(0.0, -sg * sn), 0, 0)
+    p['bob'] = .032 * math.cos(2 * ph) - .055
+    p['pelvis'] = (0, 10 * sn, 0); p['chest'] = (7, -14 * sn, 0); p['head'] = (-12, 6 * sn, 0)
     return p
 
 def legs_walk(p, t, stride=1.0):
@@ -57,137 +65,146 @@ def legs_walk(p, t, stride=1.0):
     return p
 
 # ------------------------------------------------------------------ clips: f(t) -> pose dict;  (frames, ms, loop, needs)
+# Melee rule: the weapon stays (almost) perpendicular to the forearm (hammer grip, hand.R x near 0), so its angle
+# above 'forward' is about upperarm + forearm; twisting the hand (y) turns it around the forearm.
 def idle(t):
     w = math.sin(2 * math.pi * t)
-    p = soft_legs({'chest': (1.5 * w, 0, 0), 'neck': (-1.5 * w, 0, 0), 'head': (-6 - 1.5 * w, 0, 3 * math.sin(2 * math.pi * t + 1)),
-                   'upperarm.L': (3, 0, 4 + 2 * w), 'upperarm.R': (3, 0, -4 - 2 * w), 'forearm.L': (18 + 4 * w, 0, 0), 'forearm.R': (18 + 4 * w, 0, 0)})
-    p['bob'] = -.012 - .006 * (1 - w) / 2
+    p = soft_legs({'chest': (3 * w, 0, 0), 'neck': (-2 * w, 0, 0), 'head': (-6 - 2.5 * w, 0, 5 * math.sin(2 * math.pi * t + 1)),
+                   'upperarm.L': (4, 0, 6 + 4 * w), 'upperarm.R': (4, 0, -6 - 4 * w), 'forearm.L': (22 + 8 * w, 0, 0), 'forearm.R': (22 + 8 * w, 0, 0)})
+    p['bob'] = -.035 - .014 * (1 - w) / 2
     return p
 
 def walk(t):
     return walk_legs(t)
 
+READY = {'ua': -4, 'fa': 52, 'wr': 0, 'wy': 18}   # low ready: hand at the hip, forearm forward, weapon pointing forward-up, tilted out
+
 def hold_idle_melee(t):
-    """Weapon ready: two hands on the handle in front of the chest, head of the weapon up, a little bounce."""
-    w = math.sin(2 * math.pi * t)
-    p = soft_legs({'upperarm.R': (6 + 2 * w, 0, -18), 'forearm.R': (18, 0, 0), 'hand.R': (-78, 0, 0),   # held down at the side, head forward
-                   'chest': (4 + w, -6, 0), 'head': (-8, 4, 0)}, 1.2)
-    p['thigh.L'] = (20, 0, 0); p['shin.L'] = (-28, 0, 0)
-    p['bob'] -= .006 * (1 - w) / 2
+    """Weapon ready at the right side, held upright (perpendicular to the forearm), knees bent, breathing bounce."""
+    w = math.sin(2 * math.pi * t); r = READY
+    p = soft_legs({'upperarm.R': (r['ua'] + 3 * w, 0, -22), 'forearm.R': (r['fa'] - 3 * w, 0, 0), 'hand.R': (r['wr'], r['wy'], 0),
+                   'upperarm.L': (10, 0, 10), 'forearm.L': (40, 0, 0),
+                   'chest': (6 + 2 * w, -10, 0), 'pelvis': (0, -4, 0), 'head': (-8, 6, 0)}, 1.25)
+    p['thigh.L'] = (28, 0, -4); p['shin.L'] = (-40, 0, 0); p['thigh.R'] = (-6, 0, 4); p['shin.R'] = (-34, 0, 0)
+    p['bob'] -= .012 * (1 - w) / 2
     return p
 
 def hold_walk_melee(t):
     p = legs_walk({}, t)
-    s = math.sin(2 * math.pi * t)
-    p.update({'upperarm.R': (6 - 10 * s, 0, -18), 'forearm.R': (18, 0, 0), 'hand.R': (-78, 0, 0), 'chest': (6, -6 + 4 * s, 0), 'head': (-10, 4, 0)})
+    s = math.sin(2 * math.pi * t); r = READY
+    p.update({'upperarm.R': (r['ua'] - 10 * s, 0, -22), 'forearm.R': (r['fa'] + 6 * s, 0, 0), 'hand.R': (r['wr'], r['wy'], 0),
+              'chest': (9, -10 + 8 * s, 0), 'head': (-10, 6, 0)})
     return p
 
 GUN = (65, 55)    # upper arm, forearm: rifle at chest height
 
 def hold_idle_gun(t):
-    """Rifle at the shoulder, aimed forward, small breathing sway."""
+    """Rifle at the shoulder, aimed forward, in a low stance."""
     w = math.sin(2 * math.pi * t)
     ua, fa = GUN
-    p = soft_legs({'upperarm.R': (ua + w, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 2 * w, 0, 0),
-                   'chest': (5, 0, 0), 'head': (-8, 0, 0), 'thigh.L': (14, 0, 0), 'shin.L': (-14, 0, 0)}, 1.2)
-    p['bob'] = -.025 - .005 * (1 - w) / 2
+    p = stance({'upperarm.R': (ua + 2 * w, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 3 * w, 0, 0),
+                'chest': (3 + 2 * w, 0, 0), 'head': (-10, 0, 0), 'pelvis': (0, -8, 0)}, 0, .8)
+    p['bob'] -= .01 * (1 - w) / 2
     return p
 
 def hold_walk_gun(t):
     p = legs_walk({}, t, .85)
     s = math.sin(4 * math.pi * t)
     ua, fa = GUN
-    p.update({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 2 * s, 0, 0), 'chest': (7, 0, 0), 'head': (-9, 0, 0)})
+    p.update({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 3 * s, 0, 0), 'chest': (10, 0, 0), 'head': (-10, 0, 0)})
     return p
 
 def fire(t):
-    """Shot at t=0: recoil kick up and back, settle."""
-    ua, fa = GUN
-    kick = math.exp(-t * 9) * (1 if t < .9 else 0)
+    """Shot at t=0 from a braced stance: big recoil kick up and back through the body, settle."""
+    kick = math.exp(-t * 7) * (1 if t < .9 else 0)
     p = hold_idle_gun(0)
-    p['chest'] = (5 - 6 * kick, 0, 0); p['head'] = (-8 - 3 * kick, 0, 0); p['recoil'] = kick
+    p = stance(p, -.6 * kick, .9)
+    p['chest'] = (3 - 16 * kick, 0, 0); p['head'] = (-10 - 8 * kick, 0, 0); p['pelvis'] = (-4 * kick, -8, 0); p['recoil'] = kick * 1.5
     return p
 
 def punch(t):
-    K = [(0, {'ua': 30, 'fa': 110, 'tw': -12, 'lean': 0}), (.3, {'ua': 20, 'fa': 120, 'tw': -22, 'lean': -2}),
-         (.5, {'ua': 85, 'fa': 5, 'tw': 18, 'lean': 10}), (.65, {'ua': 85, 'fa': 5, 'tw': 18, 'lean': 10}), (1, {'ua': 30, 'fa': 110, 'tw': -12, 'lean': 0})]
+    """Boxing stance (left foot forward), right cross: hips and shoulders whip round, weight drives onto the front foot."""
+    K = [(0, {'ua': 30, 'fa': 115, 'tw': -16, 'lean': 4, 'w': 0}), (.3, {'ua': 18, 'fa': 125, 'tw': -34, 'lean': 0, 'w': -.6}),
+         (.5, {'ua': 88, 'fa': 4, 'tw': 30, 'lean': 18, 'w': 1}), (.65, {'ua': 88, 'fa': 4, 'tw': 30, 'lean': 18, 'w': 1}),
+         (1, {'ua': 30, 'fa': 115, 'tw': -16, 'lean': 4, 'w': 0})]
     k = keys(K, t)
-    p = soft_legs({'upperarm.R': (k['ua'], 0, 6), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
-                   'upperarm.L': (45, 0, -10), 'forearm.L': (115, 0, 0),
-                   'chest': (k['lean'], k['tw'], 0), 'pelvis': (0, k['tw'] * .4, 0), 'head': (-8, -k['tw'] * .5, 0),
-                   }, 1)
-    p.update({'thigh.L': (34, 0, -4), 'shin.L': (-34, 0, 0), 'foot.L': (8, 0, 0),
-              'thigh.R': (-26, 0, 4), 'shin.R': (-30, 0, 0), 'foot.R': (30, 0, 0)})
-    p['bob'] = -.06
+    p = stance({'upperarm.R': (k['ua'], 0, 6), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+                'upperarm.L': (50, 0, -10), 'forearm.L': (120, 0, 0),
+                'chest': (k['lean'], k['tw'], 0), 'pelvis': (0, k['tw'] * .5, 0), 'head': (-10, -k['tw'] * .5, 0)}, k['w'])
     return p
+
+def _swing(t, K, ab=False):
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ua'], 0, k.get('ab', 0)), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], k.get('wy', 0), 0),
+                'upperarm.L': (k.get('la', 30), 0, 18), 'forearm.L': (60, 0, 0),
+                'chest': (k['lean'], k['tw'], 0), 'pelvis': (k['lean'] * .25, k['tw'] * .45, 0),
+                'head': (-10 - k['lean'] * .6, -k['tw'] * .5, 0)}, k['w'])
+    return p
+
+R0 = {'ua': -4, 'fa': 52, 'wr': 0, 'wy': 18, 'lean': 6, 'tw': -10, 'w': 0, 'ab': -22}   # = the ready pose
 
 def swing_a(t):
-    """Overhead chop: wind-up beside the head, fast strike low in front, hold, recover."""
-    K = [(0, {'ua': 35, 'fa': 70, 'wr': -15, 'lean': 4, 'tw': -8}), (.36, {'ua': 170, 'fa': 50, 'wr': -10, 'lean': -5, 'tw': -14}),
-         (.46, {'ua': 175, 'fa': 55, 'wr': -5, 'lean': -6, 'tw': -16}), (.56, {'ua': 95, 'fa': 10, 'wr': -75, 'lean': 5, 'tw': 10}),
-         (.66, {'ua': 55, 'fa': 5, 'wr': -90, 'lean': 8, 'tw': 12}), (1, {'ua': 35, 'fa': 70, 'wr': -15, 'lean': 4, 'tw': -8})]
-    k = keys(K, t)
-    p = soft_legs({'upperarm.R': (k['ua'], 0, 0), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], 0, 0),
-                   'chest': (k['lean'], k['tw'], 0), 'pelvis': (0, k['tw'] * .3, 0), 'head': (-10 - k['lean'] * .6, -k['tw'] * .4, 0),
-                   'thigh.L': (14, 0, 0), 'shin.L': (-14, 0, 0), 'thigh.R': (-8, 0, 0), 'shin.R': (-10, 0, 0)})
-    p['bob'] = -.02 - .015 * max(0, k['lean']) / 8
-    return p
+    """Overhead chop: rock back onto the rear foot with the weapon cocked behind the head, then drive forward onto the
+    front knee and chop down; the weapon stays square to the forearm the whole way."""
+    K = [(0, R0),
+         (.36, {'ua': 168, 'fa': 72, 'wr': 4, 'wy': 0, 'lean': -14, 'tw': -22, 'w': -1, 'ab': -6, 'la': 70}),
+         (.46, {'ua': 174, 'fa': 78, 'wr': 4, 'wy': 0, 'lean': -16, 'tw': -24, 'w': -1, 'ab': -6, 'la': 75}),
+         (.56, {'ua': 80, 'fa': 12, 'wr': -10, 'wy': 0, 'lean': 16, 'tw': 12, 'w': .8, 'ab': -4, 'la': 20}),
+         (.62, {'ua': 34, 'fa': 4, 'wr': -18, 'wy': 0, 'lean': 26, 'tw': 18, 'w': 1, 'ab': -4, 'la': 0}),
+         (.7, {'ua': 22, 'fa': 8, 'wr': -18, 'wy': 0, 'lean': 28, 'tw': 20, 'w': 1, 'ab': -4, 'la': -5}),
+         (1, R0)]
+    return _swing(t, K)
 
 def swing_b(t):
-    """Side swing: wind back to the right, sweep across in front to the left at chest height, follow through."""
-    K = [(0, {'ua': 35, 'fa': 70, 'wr': -15, 'wy': 0, 'tw': -8, 'ab': 0}), (.35, {'ua': 80, 'fa': 40, 'wr': -40, 'wy': 80, 'tw': -55, 'ab': -35}),
-         (.45, {'ua': 82, 'fa': 35, 'wr': -40, 'wy': 85, 'tw': -60, 'ab': -38}), (.58, {'ua': 88, 'fa': 5, 'wr': -80, 'wy': 85, 'tw': 30, 'ab': 15}),
-         (.7, {'ua': 80, 'fa': 15, 'wr': -80, 'wy': 85, 'tw': 50, 'ab': 25}), (1, {'ua': 35, 'fa': 70, 'wr': -15, 'wy': 0, 'tw': -8, 'ab': 0})]
-    k = keys(K, t)
-    p = soft_legs({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], k['wy'], 0),
-                   'chest': (6, k['tw'], 0), 'pelvis': (0, k['tw'] * .35, 0), 'head': (-10, -k['tw'] * .45, 0),
-                   'thigh.L': (14, 0, 0), 'shin.L': (-14, 0, 0), 'thigh.R': (-8, 0, 0), 'shin.R': (-10, 0, 0)}, 1.2)
-    p['bob'] = -.025
-    return p
+    """Side swing: coil to the right on the back foot, uncoil hips then shoulders, sweep across at chest height onto
+    the front foot. The hand is turned 90 degrees so the weapon lies flat, still square to the forearm."""
+    K = [(0, R0),
+         (.35, {'ua': 78, 'fa': 70, 'wr': 0, 'wy': 88, 'lean': -6, 'tw': -62, 'w': -1, 'ab': -62, 'la': 55}),
+         (.45, {'ua': 80, 'fa': 74, 'wr': 0, 'wy': 90, 'lean': -6, 'tw': -66, 'w': -1, 'ab': -66, 'la': 55}),
+         (.58, {'ua': 86, 'fa': 18, 'wr': -8, 'wy': 90, 'lean': 10, 'tw': 34, 'w': .9, 'ab': 10, 'la': 10}),
+         (.7, {'ua': 80, 'fa': 26, 'wr': -8, 'wy': 90, 'lean': 14, 'tw': 58, 'w': 1, 'ab': 30, 'la': 0}),
+         (1, R0)]
+    return _swing(t, K)
 
 def swing_c(t):
-    """Diagonal slash: from high over the right shoulder down across to the left hip."""
-    K = [(0, {'ua': 35, 'fa': 70, 'wr': -15, 'wy': 0, 'tw': -8, 'ab': 0, 'lean': 4}),
-         (.35, {'ua': 150, 'fa': 60, 'wr': -20, 'wy': 30, 'tw': -35, 'ab': -45, 'lean': -4}),
-         (.45, {'ua': 155, 'fa': 62, 'wr': -15, 'wy': 30, 'tw': -40, 'ab': -48, 'lean': -5}),
-         (.58, {'ua': 75, 'fa': 10, 'wr': -80, 'wy': 30, 'tw': 12, 'ab': -30, 'lean': 10}),
-         (.7, {'ua': 45, 'fa': 10, 'wr': -85, 'wy': 30, 'tw': 16, 'ab': -35, 'lean': 10}),
-         (1, {'ua': 35, 'fa': 70, 'wr': -15, 'wy': 0, 'tw': -8, 'ab': 0, 'lean': 4})]
-    k = keys(K, t)
-    p = soft_legs({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], k['wy'], 0),
-                   'chest': (k['lean'], k['tw'], 0), 'pelvis': (0, k['tw'] * .35, 0), 'head': (-10 - k['lean'] * .5, -k['tw'] * .45, 0),
-                   'thigh.L': (16, 0, 0), 'shin.L': (-16, 0, 0), 'thigh.R': (-8, 0, 0), 'shin.R': (-10, 0, 0)}, 1.2)
-    p['bob'] = -.025 - .01 * max(0, k['lean']) / 10
-    return p
+    """Diagonal slash: weapon cocked over the right shoulder on the back foot, cut down across the body to the left
+    hip while stepping onto the front knee."""
+    K = [(0, R0),
+         (.35, {'ua': 152, 'fa': 74, 'wr': 0, 'wy': 35, 'lean': -10, 'tw': -40, 'w': -1, 'ab': -48, 'la': 60}),
+         (.45, {'ua': 158, 'fa': 78, 'wr': 0, 'wy': 35, 'lean': -12, 'tw': -44, 'w': -1, 'ab': -50, 'la': 60}),
+         (.58, {'ua': 66, 'fa': 14, 'wr': -12, 'wy': 35, 'lean': 18, 'tw': 18, 'w': .9, 'ab': -22, 'la': 10}),
+         (.7, {'ua': 36, 'fa': 12, 'wr': -15, 'wy': 35, 'lean': 24, 'tw': 26, 'w': 1, 'ab': -26, 'la': 0}),
+         (1, R0)]
+    return _swing(t, K)
 
 def rescue(t):
-    """Pushing the rescue cart: lean in, both arms forward low, slow heavy steps."""
-    p = legs_walk({}, t, .8)
-    p.update({'upperarm.R': (62, 0, 6), 'upperarm.L': (62, 0, -6), 'forearm.R': (25, 0, 0), 'forearm.L': (25, 0, 0),
-              'chest': (16, 0, 0), 'head': (-20, 0, 0)})
-    p['pelvis'] = (8, p['pelvis'][1] * .5, 0)
+    """Pushing the rescue cart: lean in hard, both arms forward low, heavy steps."""
+    p = legs_walk({}, t, .9)
+    p.update({'upperarm.R': (66, 0, 6), 'upperarm.L': (66, 0, -6), 'forearm.R': (25, 0, 0), 'forearm.L': (25, 0, 0),
+              'chest': (22, 0, 0), 'head': (-26, 0, 0)})
+    p['pelvis'] = (12, p['pelvis'][1] * .5, 0)
     return p
 
 def hurt(t):
-    K = [(0, {'lean': 0, 'hd': -6, 'ua': 3, 'fa': 18, 'bob': -.012, 'th': 7}),
-         (.25, {'lean': -18, 'hd': 10, 'ua': 25, 'fa': 70, 'bob': -.035, 'th': -6}),
-         (.5, {'lean': -12, 'hd': 4, 'ua': 20, 'fa': 60, 'bob': -.03, 'th': -2}),
-         (1, {'lean': 0, 'hd': -6, 'ua': 3, 'fa': 18, 'bob': -.012, 'th': 7})]
+    K = [(0, {'lean': 0, 'hd': -6, 'ua': 4, 'fa': 22, 'bob': -.035, 'th': 16, 'sh': -30}),
+         (.25, {'lean': -28, 'hd': 18, 'ua': 40, 'fa': 85, 'bob': -.07, 'th': -14, 'sh': -46}),
+         (.5, {'lean': -18, 'hd': 8, 'ua': 30, 'fa': 70, 'bob': -.06, 'th': -6, 'sh': -40}),
+         (1, {'lean': 0, 'hd': -6, 'ua': 4, 'fa': 22, 'bob': -.035, 'th': 16, 'sh': -30})]
     k = keys(K, t)
-    p = soft_legs({'chest': (k['lean'], 0, 0), 'head': (k['hd'], 0, 0), 'upperarm.L': (k['ua'], 0, 18), 'upperarm.R': (k['ua'], 0, -18),
+    p = soft_legs({'chest': (k['lean'], 0, 0), 'head': (k['hd'], 0, 0), 'upperarm.L': (k['ua'], 0, 26), 'upperarm.R': (k['ua'], 0, -26),
                    'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0)})
-    p['thigh.R'] = (k['th'], 0, 0); p['bob'] = k['bob']
+    p['thigh.R'] = (k['th'], 0, 0); p['shin.R'] = (k['sh'], 0, 0); p['bob'] = k['bob']
     return p
 
 def hold_hurt(t, wclass):
-    """Hit while armed: flinch back from the ready pose, weapon kept in hand."""
+    """Hit while armed: big flinch back from the ready pose, weapon kept in hand."""
     base = (hold_idle_gun if wclass == 'gun' else hold_idle_melee)(0)
-    K = [(0, {'lean': 0, 'hd': 0, 'bob': 0, 'th': 0}), (.25, {'lean': -16, 'hd': 12, 'bob': -.025, 'th': -14}),
-         (.5, {'lean': -10, 'hd': 6, 'bob': -.02, 'th': -8}), (1, {'lean': 0, 'hd': 0, 'bob': 0, 'th': 0})]
+    K = [(0, {'lean': 0, 'hd': 0, 'bob': 0, 'th': 0}), (.25, {'lean': -26, 'hd': 18, 'bob': -.04, 'th': -22}),
+         (.5, {'lean': -16, 'hd': 9, 'bob': -.03, 'th': -12}), (1, {'lean': 0, 'hd': 0, 'bob': 0, 'th': 0})]
     k = keys(K, t); p = dict(base)
     c = p.get('chest', (0, 0, 0)); p['chest'] = (c[0] + k['lean'], c[1], c[2])
     h = p.get('head', (0, 0, 0)); p['head'] = (h[0] + k['hd'], h[1], h[2])
-    r = p.get('thigh.R', (0, 0, 0)); p['thigh.R'] = (r[0] + k['th'], 0, 0)
+    r = p.get('thigh.R', (0, 0, 0)); p['thigh.R'] = (r[0] + k['th'], r[1], r[2])
     p['bob'] = p.get('bob', 0) + k['bob']
     return p
 
@@ -210,7 +227,7 @@ def cheer(t):
     s = abs(math.sin(2 * math.pi * t))
     p = soft_legs({'upperarm.L': (8, 0, 168), 'upperarm.R': (8, 0, -168), 'forearm.L': (-5 + 10 * s, 0, 0), 'forearm.R': (-5 + 10 * s, 0, 0),
                    'chest': (-6, 0, 0), 'head': (-18, 0, 4 * math.sin(4 * math.pi * t))}, 1 - s)
-    p['bob'] = -.01 + .05 * s
+    p['bob'] = -.02 + .08 * s
     return p
 
 CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'melee'/'gun')
@@ -454,4 +471,5 @@ if __name__ == '__main__':
     clips = list(CLIPS) if opt.get('clips', 'all') == 'all' else opt['clips'].split(',')
     weapons = opt.get('weapons', 'none,bat,axe,rifle,ak47').split(',')
     views = opt.get('views', 'se,sw,ne,nw').split(',')
+    if 'tex' in opt: ai_render.TEX_PX = int(opt['tex'])
     render_all(pos[0], pos[1], clips, weapons, views, int(opt.get('px', 300)), 'preview' in a, opt.get('actions'), opt.get('outfit'))

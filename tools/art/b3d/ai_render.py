@@ -20,11 +20,13 @@ def load(path):
     ao.show_in_front = False; ao.hide_render = True
     return ao, body
 
-def toonify(body, tex_px=384, bands=(.35, .7), light=(.62, .86, 1.08), colors=28, median=5):
+TEX_PX = 384   # simplified texture size; flat-colour models with many small UV islands need 1024 to avoid seam speckles
+def toonify(body, tex_px=None, bands=(.35, .7), light=(.62, .86, 1.08), colors=28, median=5):
     """Pixel-art friendly surface: a simplified copy of the colour texture (small, smoothed, posterised so fabric
     noise and hair strands become flat patches) times a few hard light bands, emitted so nothing else shades it."""
     import numpy as np
     from PIL import Image, ImageFilter
+    tex_px = tex_px or TEX_PX
     for m in body.data.materials:
         nt = m.node_tree; N, L = nt.nodes, nt.links
         texn = next(n for n in N if n.type == 'TEX_IMAGE' and 'normal' not in n.image.name and 'metal' not in n.image.name)
