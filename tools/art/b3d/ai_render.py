@@ -135,6 +135,8 @@ def apply_pose(ao, p):
         x, y, z = p.get('upperarm.' + side, (0, 0, 0)); p['upperarm.' + side] = (x, y, z + sg * ARM_DOWN)
     hx, hy, hz = p.get('head', (0, 0, 0)); p['head'] = (hx + HEAD_UP, hy, hz)
     survivor.pose({'arm': ao}, p)
+    if 'gun' in ao.pose.bones:                        # two-hand guns ride on their own bone: rotation 'gun', offset 'gun_loc'
+        ao.pose.bones['gun'].location = p.get('gun_loc', (0, 0, 0))
 
 def chop(t):
     """Overhead chop for a big-headed chibi (short arms): wind-up beside/behind the head, fast strike low in front.

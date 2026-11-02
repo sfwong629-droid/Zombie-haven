@@ -118,12 +118,12 @@ canvas { display: block; margin-inline: auto; }
 const D = /*__DATA__*/null;
 const VIEWS = ['se', 'sw', 'ne', 'nw'];
 const S = D.size, AX = D.anchor[0], AY = D.anchor[1];
-const NAMES = { none: 'Empty hands', bat: 'Bat', axe: 'Axe', rifle: 'Rifle', ak47: 'AK-47', pickaxe: 'Pickaxe', club: 'Club' };
+const NAMES = { none: 'Empty hands', bat: 'Bat', axe: 'Axe', rifle: 'Rifle', ak47: 'AK-47', pistol: 'Pistol', pickaxe: 'Pickaxe', club: 'Club' };
 const CLIPS = [['idle', 'Idle'], ['walk', 'Walk'], ['hold_idle', 'Hold idle'], ['hold_walk', 'Hold walk'], ['rescue', 'Rescue (push cart)'],
   ['punch', 'Punch'], ['swing_a', 'Swing A · overhead'], ['swing_b', 'Swing B · side'], ['swing_c', 'Swing C · diagonal'], ['fire', 'Fire'],
   ['hurt', 'Hurt'], ['hold_hurt', 'Hurt (armed)'], ['collapse', 'Collapse'], ['cheer', 'Cheer']];
-const WORDER = ['none', 'bat', 'axe', 'rifle', 'ak47'].filter(w => D.sprites[w]).concat(Object.keys(D.sprites).filter(w => !['none', 'bat', 'axe', 'rifle', 'ak47'].includes(w)));
-const isGun = w => w === 'rifle' || w === 'ak47';
+const WORDER = ['none', 'bat', 'axe', 'pistol', 'rifle', 'ak47'].filter(w => D.sprites[w]).concat(Object.keys(D.sprites).filter(w => !['none', 'bat', 'axe', 'pistol', 'rifle', 'ak47'].includes(w)));
+const isGun = w => w === 'rifle' || w === 'ak47' || w === 'pistol';
 const st = { weapon: WORDER.includes('bat') ? 'bat' : WORDER[0], anim: 'walk', speed: 1, paused: false, zoom: 'fit' };
 try { const s = JSON.parse(localStorage.getItem('s3d2') || '{}'); if (s.weapon && D.sprites[s.weapon]) st.weapon = s.weapon; if (s.anim) st.anim = s.anim; } catch (e) {}
 const save = () => { try { localStorage.setItem('s3d2', JSON.stringify({ weapon: st.weapon, anim: st.anim })); } catch (e) {} };
@@ -377,9 +377,10 @@ if (D.glb) {
   const ONCE = new Set(['punch', 'fire', 'hurt', 'hold_hurt', 'collapse', 'swing_a', 'swing_b', 'swing_c']);
   let cur = null, curName = '', armorOn = /armou?r/i.test(st.outfit || ''), spin = false, wait = 0;
   function pick() {
-    const w = st.weapon, cls = { bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun' }[w];
-    let name = cls && acts[cls + '_' + st.anim] ? cls + '_' + st.anim : st.anim, armed = name !== st.anim;
-    if (!acts[name]) name = cls && acts[cls + '_hold_idle'] ? cls + '_hold_idle' : 'idle', armed = !!cls;
+    const w = st.weapon, cls = { bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun', pistol: 'pistol' }[w];
+    const pre = cls && (acts[cls + '_' + st.anim] ? cls : cls === 'pistol' && acts['melee_' + st.anim] ? 'melee' : null);   // pistol holds like a melee weapon
+    let name = pre ? pre + '_' + st.anim : st.anim, armed = name !== st.anim;
+    if (!acts[name]) name = cls ? (cls === 'gun' ? 'gun' : 'melee') + '_hold_idle' : 'idle', armed = !!cls;
     for (const k in weapons) weapons[k].visible = armed && k === w;
     return name;
   }

@@ -102,30 +102,50 @@ def hold_walk_melee(t):
               'chest': (9, -10 + 8 * s, 0), 'head': (-10, 0, 0)})
     return steady_head(p, -4)
 
-GUN = (65, 55)    # upper arm, forearm: rifle at chest height
+GUN = (65, 55)    # upper arm, forearm (the hands are locked to the rifle grips by IK; these only seed the elbows)
+# The rifle rides on its own 'gun' bone (child of the chest, at the grip, pointing forward). Bone axes: x = pitch
+# (+ muzzle up), z = yaw, y = roll; gun_loc is an offset in that bone's space (x = side, y = along the barrel, z = up).
+CARRY = {'gun': (-34, -25, 82), 'gun_loc': (.08, -.06, -.08)}          # low diagonal carry: muzzle down and across to the left
+AIM = {'gun': (2, 0, 24), 'gun_loc': (.0, .02, .075)}               # yaw undoes the bladed chest twist so it aims straight ahead                  # shouldered at cheek height, level
 
 def hold_idle_gun(t):
-    """Rifle at the shoulder, aimed forward, in a low stance."""
+    """Rifle carried low and diagonal across the body (muzzle down-left), relaxed stance, breathing."""
     w = math.sin(2 * math.pi * t)
     ua, fa = GUN
-    p = stance({'upperarm.R': (ua + 2 * w, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 3 * w, 0, 0),
-                'chest': (3 + 2 * w, 0, 0), 'head': (-10, 0, 0), 'pelvis': (0, -8, 0)}, 0, .8)
+    p = stance({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'upperarm.L': (40, 0, 0), 'forearm.L': (70, 0, 0),
+                'chest': (5 + 2 * w, 0, 0), 'head': (-8, 0, 0), 'pelvis': (0, -6, 0)}, 0, .55)
+    p.update(CARRY); g = p['gun']; p['gun'] = (g[0] + 2 * w, g[1], g[2])
     p['bob'] -= .01 * (1 - w) / 2
     return p
 
 def hold_walk_gun(t):
-    p = legs_walk({}, t, .85)
-    s = math.sin(4 * math.pi * t)
+    p = legs_walk({}, t, .9)
+    s = math.sin(4 * math.pi * t); s2 = math.sin(2 * math.pi * t)
     ua, fa = GUN
-    p.update({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 3 * s, 0, 0), 'chest': (10, 0, 0), 'head': (-10, 0, 0)})
+    p.update({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'upperarm.L': (40, 0, 0), 'forearm.L': (70, 0, 0),
+              'chest': (8, -6 * s2, 0), 'head': (-10, 0, 0)})
+    p.update(CARRY); g = p['gun']; p['gun'] = (g[0] + 3 * s, g[1] + 4 * s2, g[2])
     return steady_head(p)
 
 def fire(t):
-    """Shot at t=0 from a braced stance: big recoil kick up and back through the body, settle."""
+    """Rifle shouldered and aimed (cheek to the stock, elbows out), bladed stance with the weight forward; the shot at
+    t=0 kicks the muzzle up and the shoulder back, then it settles back on target."""
     kick = math.exp(-t * 7) * (1 if t < .9 else 0)
-    p = hold_idle_gun(0)
-    p = stance(p, -.6 * kick, .9)
-    p['chest'] = (3 - 16 * kick, 0, 0); p['head'] = (-10 - 8 * kick, 0, 0); p['pelvis'] = (-4 * kick, -8, 0); p['recoil'] = kick * 1.5
+    ua, fa = GUN
+    p = stance({'upperarm.R': (ua, 0, -30), 'forearm.R': (fa, 0, 0), 'upperarm.L': (60, 0, 0), 'forearm.L': (40, 0, 0),
+                'chest': (8 - 12 * kick, -14, 0), 'pelvis': (-3 * kick, -10, 0), 'head': (4 - 6 * kick, 18, 0)}, .35 - .7 * kick, .9)
+    p.update(AIM); g = p['gun']; p['gun'] = (g[0] + 14 * kick, g[1], g[2])
+    l = p['gun_loc']; p['gun_loc'] = (l[0], l[1] - .05 * kick, l[2] + .015 * kick)
+    p['recoil'] = 0                        # the kick is in the gun bone now
+    return p
+
+def fire_pistol(t):
+    """One-handed pistol shot: right arm straight out at shoulder height, left arm down, side-on bladed stance; the
+    muzzle flips up and the arm rides back on the shot, then returns on target."""
+    kick = math.exp(-t * 8) * (1 if t < .9 else 0)
+    p = stance({'upperarm.R': (80 + 12 * kick, 0, 90), 'forearm.R': (4 + 8 * kick, 0, 0), 'hand.R': (-12 + 10 * kick, -77, -12 + 20 * kick),
+                'upperarm.L': (6, 0, 6), 'forearm.L': (24, 0, 0),
+                'chest': (4 - 8 * kick, 4, 0), 'pelvis': (-2 * kick, 4, 0), 'head': (-6 - 4 * kick, -8, 0)}, .3 - .6 * kick, .8)
     return p
 
 def punch(t):
@@ -266,16 +286,17 @@ CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'mel
     'hold_idle': (None, 8, 160, True, 'any'), 'hold_walk': (None, 8, 110, True, 'any'),
     'rescue': (rescue, 8, 140, True, None), 'punch': (punch, 6, 80, False, None),
     'swing_a': (swing_a, 8, 0, False, 'melee'), 'swing_b': (swing_b, 8, 0, False, 'melee'), 'swing_c': (swing_c, 8, 0, False, 'melee'),
-    'fire': (fire, 6, 70, False, 'gun'), 'hurt': (hurt, 5, 110, False, None), 'hold_hurt': (None, 5, 110, False, 'any'), 'collapse': (collapse, 8, 140, False, None),
+    'fire': (fire, 6, 70, False, 'shoot'), 'hurt': (hurt, 5, 110, False, None), 'hold_hurt': (None, 5, 110, False, 'any'), 'collapse': (collapse, 8, 140, False, None),
     'cheer': (cheer, 10, 100, True, None)}
 SWING_T = [0, .2, .38, .46, .54, .6, .66, .82]          # uneven times: slow wind-up, fast strike
 SWING_MS = [160, 130, 120, 160, 60, 60, 200, 160]
-WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun'}
+WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun', 'pistol': 'pistol'}   # pistol: one-handed gun
 
 def pose_fn(clip, wclass):
     if clip == 'hold_idle': return hold_idle_gun if wclass == 'gun' else hold_idle_melee
     if clip == 'hold_walk': return hold_walk_gun if wclass == 'gun' else hold_walk_melee
     if clip == 'hold_hurt': return lambda t: hold_hurt(t, wclass)
+    if clip == 'fire' and wclass == 'pistol': return fire_pistol
     return CLIPS[clip][0]
 
 def times(clip):
@@ -354,19 +375,41 @@ def build_weapon(ao, kind):
         else:
             T(rec + up * .05 + Vector((0, 0, .045)), rec + up * .17 + Vector((0, 0, .045)), .016, .016, gun, seg=6)  # scope
         tip = rec + up * (.52 if kind == 'rifle' else .42); grip2 = rec + up * .27 - Vector((0, 0, .03))
+        ensure_gun_bone(ao, g, g + fwd * .12)
+    elif kind == 'pistol':
+        # one-handed: the barrel runs along the hand (so with a straight wrist it points where the forearm points),
+        # the slide sits on the thumb side of the fist and the grip goes down through it
+        dirB = (b - a).normalized(); dirU = fwd; side2 = dirB.cross(dirU).normalized()
+        top = g + dirU * .038
+        T(top - dirB * .045, top + dirB * .11, .022, .022, gun, seg=4)                                       # slide
+        T(g + dirU * .012 - dirB * .03, g - dirU * .055 - dirB * .045, .017, .019, gunwood, seg=4)           # grip
+        T(top + dirB * .11, top + dirB * .125, .008, .008, gun, seg=6)                                       # muzzle
+        tip = top + dirB * .13; grip2 = None
     w = _join(parts, 'weapon_' + kind)
     isgun = WEAPONS[kind] == 'gun'
     def bone_parent(ob, bone):
         mw = ob.matrix_world.copy(); ob.parent = ao; ob.parent_type = 'BONE'; ob.parent_bone = bone
         bpy.context.view_layer.update(); ob.matrix_world = mw
-    bone_parent(w, 'chest' if isgun else 'hand.R')
+    bone_parent(w, 'gun' if isgun else 'hand.R')
     def empty(name, at):
         e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e); e.location = at
         bpy.context.view_layer.update(); mw = e.matrix_world.copy(); e.parent = w; bpy.context.view_layer.update(); e.matrix_world = mw
         return e
     out = {'obj': w, 'tip': empty('tip', tip), 'grip2': empty('grip2', grip2) if grip2 else None,
-           'grip1': empty('grip1', g) if isgun else None, 'cls': WEAPONS[kind], 'kind': kind}
+           'grip1': empty('grip1', g) if isgun or kind == 'pistol' else None,   # pistol: reference only (no IK)
+           'cls': WEAPONS[kind], 'kind': kind}
     return out
+
+def ensure_gun_bone(ao, head, tail):
+    """A bone for two-hand guns (child of the chest, at the right-hand grip, pointing down the barrel), so a clip can
+    carry the rifle low across the body or shoulder it, and the hands follow by IK. Unweighted: it moves no skin."""
+    if 'gun' in ao.data.bones: return
+    vl = bpy.context.view_layer; prev = vl.objects.active
+    vl.objects.active = ao; ao.select_set(True); bpy.ops.object.mode_set(mode='EDIT')
+    inv = ao.matrix_world.inverted(); eb = ao.data.edit_bones.new('gun')
+    eb.head = inv @ head; eb.tail = inv @ tail; eb.roll = 0; eb.parent = ao.data.edit_bones['chest']; eb.use_deform = False
+    bpy.ops.object.mode_set(mode='OBJECT'); vl.objects.active = prev
+    ao.pose.bones['gun'].rotation_mode = 'XYZ'
 
 def hand_ik(ao, side, target, on):
     pb = ao.pose.bones['forearm.' + side]
@@ -442,7 +485,8 @@ def render_all(blend, out, clips, weapons, views, px=256, preview=False, actions
         for clip in clips:
             need = CLIPS[clip][4]
             if need == 'any' and not W: continue
-            if need in ('melee', 'gun') and wcls != need: continue
+            if need == 'melee' and wcls != 'melee': continue
+            if need == 'shoot' and wcls not in ('gun', 'pistol'): continue
             if need is None and W and clip not in ('walk', 'idle', 'hurt', 'collapse', 'cheer'): continue   # unarmed-only clips
             if need is None and W: continue   # unarmed clips are rendered once, without a weapon
             fn = pose_fn(clip, wcls); ts = times(clip)

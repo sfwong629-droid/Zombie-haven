@@ -4,7 +4,8 @@
 
 Animations are sampled from the same pose functions as the sprites (anims.py), at 30 fps, with the sprite timing
 (swings keep their slow wind-up and fast strike). Constraints (the two-hand gun grip) are baked, so the GLB needs
-no IK. Action names: '<clip>' for empty hands, 'melee_<clip>' (bat, axe), 'gun_<clip>' (rifle, AK-47).
+no IK. Action names: '<clip>' for empty hands, 'melee_<clip>' (bat, axe), 'gun_<clip>' (rifle, AK-47), 'pistol_fire' (the pistol
+uses the melee hold clips).
 Nodes: 'weapon_bat|axe|rifle|ak47' (toggle visibility), each with a 'tip' child (muzzle / striking end);
 'armor_*' meshes for the plate armour. Materials are plain base colour + texture; the viewer does the toon look.
 """
@@ -33,7 +34,7 @@ def clip_plan():
     """[(action name, clip, weapon class or None, duration s, t(time) -> pose t)]"""
     plan = []
     for clip, (fn, n, ms, loop, need) in anims.CLIPS.items():
-        classes = [None] if need is None else (['melee', 'gun'] if need == 'any' else [need])
+        classes = [None] if need is None else {'any': ['melee', 'gun'], 'shoot': ['gun', 'pistol']}.get(need, [need])   # the pistol holds like a melee weapon
         if clip.startswith('swing'):
             T, M = anims.SWING_T + [1.0], anims.SWING_MS
             cum = [0]
@@ -191,7 +192,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
     arm = armor.build(ao, body)
     for i, o in enumerate(arm): o.name = f'armor_{i}'
     W = {}
-    for k in ('bat', 'axe', 'rifle', 'ak47'):
+    for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol'):
         W[k] = anims.build_weapon(ao, k)
         for e in ('grip1', 'grip2'):
             if W[k][e]: W[k][e].name = f'{k}_{e}'

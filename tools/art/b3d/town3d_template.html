@@ -402,16 +402,17 @@ const KITS = {       // what each kind of survivor does when they stop
   none:  { walk: 'walk', idle: 'idle', acts: ['idle', 'cheer', 'punch', 'idle'] },
   melee: { walk: 'melee_hold_walk', idle: 'melee_hold_idle', acts: ['melee_hold_idle', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c'] },
   gun:   { walk: 'gun_hold_walk', idle: 'gun_hold_idle', acts: ['gun_hold_idle', 'gun_fire', 'gun_hold_idle'] },
+  pistol: { walk: 'melee_hold_walk', idle: 'melee_hold_idle', acts: ['melee_hold_idle', 'pistol_fire'] },
 };
-const ONCE = new Set(['punch', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'gun_fire', 'hurt', 'collapse']);
+const ONCE = new Set(['punch', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'gun_fire', 'pistol_fire', 'hurt', 'collapse']);
 const tileOf = v => [Math.floor(v.x / T + CX), Math.floor(v.z / T + CY)];
 function wanderer(weapon, armor, x, y) {
-  const kit = KITS[{ bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun' }[weapon] || 'none'];
+  const kit = KITS[{ bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun', pistol: 'pistol' }[weapon] || 'none'];
   const a = actor(male.scene, A, { clip: kit.idle, weapon, armor, at: W(x + .5, y + .5), face: rnd() * 6, kit, wander: true, speed: 1.05 + rnd() * .3 });
   a.wait = rnd() * 3; return a;
 }
 wanderer(null, false, 3, 10); wanderer(null, false, 7, 15); wanderer(null, false, 10, 9); wanderer('bat', false, 4, 14);
-wanderer('axe', false, 10, 7); wanderer('rifle', true, 9, 9); wanderer(null, false, 6, 8);
+wanderer('axe', false, 10, 7); wanderer('rifle', true, 9, 9); wanderer('pistol', false, 6, 8); wanderer('ak47', false, 12, 13);
 { const p = W(5.5, 9.5); actor(male.scene, A, { clip: 'idle', at: p.clone().add(new THREE.Vector3(-.75, 0, .3)), face: 1.9 }); }
 actor(male.scene, A, { clip: 'gun_hold_idle', weapon: 'ak47', armor: true, at: towerTop, face: -Math.PI * .75 });
 
