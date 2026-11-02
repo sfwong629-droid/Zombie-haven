@@ -16,6 +16,9 @@ const HD0 = (() => { try { const q = QS.get('hd'); if (q === '1' || q === '0') l
 /* V2.52 C64 character preview: people redrawn on PixelLab's 64 canvas (about 58 px tall, the town mock-up's size) at the normal
    pixel size, so faces and expressions read. ?c64=1 turns it on (remembered), ?c64=0 off; it replaces the HD preview. */
 const C64 = (() => { try { const q = QS.get('c64'); if (q === '1' || q === '0') localStorage.setItem('zhC64', q); return localStorage.getItem('zhC64') === '1'; } catch (e) { return QS.get('c64') === '1'; } })();
+/* V2.56 real-time 3D world (three.js, js/render3d.js): ?3d=1 turns it on (remembered), ?3d=0 off. The simulation, UI and camera are unchanged; only the world is drawn in 3D underneath. */
+const G3D = window.ZH_FORCE3D || (() => { try { const q = QS.get('3d'); if (q === '1' || q === '0') localStorage.setItem('zh3D', q); return localStorage.getItem('zh3D') === '1'; } catch (e) { return QS.get('3d') === '1'; } })();
+window.ZH_3D = G3D;
 window.ZH_HD = HD0 && !C64; window.ZH_C64 = C64; const HD = window.ZH_HD;
 const HD_BUILD = { medic: { ax: 96, ay: 170, res: 2 } };
 const C64_BUILD = { medic: { ax: 58, ay: 105, dir: 't106' } };   /* V2.54: buildings drawn for the 106 grid (ChatGPT + footprint guides; read onto the game pixel grid, never straightened). ax, ay = south corner */   /* tools/art/sources/medic_tent_hd_src.png via fix_iso.py; ax, ay in HD px */
@@ -24,7 +27,7 @@ const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS
 /* V2.53: the C64 standard also has a 10% bigger map grid: tiles 106 x 53 art px (V7: 96 x 48), every pixel the same size.
    Buildings and walls are drawn for it (assets/buildings|map/t106, tools/art/templates); older 96-px building art stands smaller on its plot until redrawn. */
 const TILE_PX = C64 ? 106 : 96;
-const CHAR_H = (C64 ? 58 : 42) / TILE_PX;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = (G3D ? 52 : C64 ? 58 : 42) / TILE_PX;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
@@ -324,6 +327,7 @@ function humanAnim(o, st) {
   return ['idle', Math.floor((tick + (o.phase || 0)) / ANIM_T.idle)];
 }
 function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head */
+  if (G3D) return p.y - CHAR_H * TWs();   /* drawn by the 3D renderer */
   const CM = ZHChars.dims(sheetCv), fc = facing(o), view = fc.up ? 1 : 0, [anim, i] = humanAnim(o, fc), f = ZHChars.frame(anim, i, sheetCv);
   const tw = TWs(), sc = tw / ART_TILE, flip = fc.right, sp = sc / CM.res;   /* sp = screen px per sheet px (V2.50: HD sheets have 2 per V7 px) */
   const pose = ZHChars.wpose(f, sheetCv), wcell = weaponId && pose !== 'none' && anim !== 'carry' && window.ZHItems && ZHItems.cell(weaponId, ITEMS[weaponId] && (ITEMS[weaponId].kind === 'gun' || ITEMS[weaponId].kind === 'bow') && pose !== 'aim' && pose !== 'fire' ? 'rest' : pose);
@@ -351,6 +355,7 @@ function drawChar(o, sheetCv, p, weaponId) {   /* returns the top y of the head 
   return p.y - CHAR_H * tw;
 }
 function drawCart(s, p) {   /* V2.33: the rescuer pushes a hand cart with the injured person lying in it */
+  if (G3D) return true;
   const L = ZHChars.look(s), sheet = ZHChars.sheetFor(s), c = sheet && ZHChars.cart(sheet.zhTag, L.sex), q = s.carrying; if (!c) return false;
   const fc = facing(s), view = fc.up ? 1 : 0, flip = fc.right, f = s.moving ? Math.floor((tick + (s.phase || 0)) / 8) % 4 : 0, M = c.m, tw = TWs(), sc = tw / ART_TILE;
   const m = pxm(sc * DPR), big = pixelUp(c.key, c.im, m), snap = (v) => Math.round(v * DPR) / DPR, w = M.fw * sc, h = M.fh * sc;
@@ -422,6 +427,7 @@ function zFrame(zm, zmeta) {
   return { f, view: fc.up ? 1 : 0, flip: fc.right };
 }
 function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
+  if (G3D) return zm.dead != null ? null : p.y - CHAR_H * TWs() * (ZSCALE[zm.type] || 1);
   const t = zm.type === 'raider' ? null : zm.type, zmeta = t && window.ZHChars && ZHChars.zmeta(t), sh = zmeta && ZHChars.zsheet(t); if (!sh) return null;
   const { f, view, flip } = zFrame(zm, zmeta), tw = TWs(), sc = tw / ART_TILE, want = sc * DPR, m = pxm(want), big = pixelUp('z7' + t, sh, m), snap = (v) => Math.round(v * DPR) / DPR;
   const w = zmeta.fw * sc, h = zmeta.fh * sc, y = snap(p.y - (zmeta.foot + 1) * sc);
@@ -482,8 +488,10 @@ function drawWreck(tx, ty) {
 }
 const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17], [5, 18], [11, 18], [15, 6], [15, 18]];
 function draw() {
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH);
-  drawGround();   /* V2.18: the build-zone outline is baked into the ground image (stroking it every frame was ~half the frame time) */
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (G3D) { ctx.clearRect(0, 0, VW, VH); if (window.ZH3D) ZH3D.frame(); }   /* the 3D canvas underneath draws the world; this canvas keeps the overlays */
+  else { ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH); drawGround(); }
+  /* V2.18: the build-zone outline is baked into the ground image (stroking it every frame was ~half the frame time) */
   if (sel && (sel.kind === 'wall' || sel.kind === 'post')) {
     for (let y = Wd.WALLZONE.y0; y <= Wd.WALLZONE.y1; y++) for (let x = Wd.WALLZONE.x0; x <= Wd.WALLZONE.x1; x++) {
       const occ = Wd.buildingAt(world, x, y), road = Wd.isRoad(world, x, y), wl = Wd.wallAt(world, x, y);
@@ -503,22 +511,22 @@ function draw() {
   const box = (x, y, r) => ({ x1: x - r, y1: y - r, x2: x + r, y2: y + r });
   /* V2.36: only what is on screen is drawn and depth-sorted (props and wreckage off screen were ~60% of the frame) */
   const mg = TWs() * 2.6, vis = (wx, wy) => { const p = project(wx, wy); return p.x > -mg && p.x < VW + mg && p.y > -mg * .6 && p.y < VH + mg * 1.6; };
-  TREE_SPOTS.forEach(([x, y]) => { if (vis(x + .5, y + .5) && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y)) items.push({ ...box(x + .5, y + .5, .22), fn: () => drawProp('tree', x, y) }); });
-  CRATE_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('crate', x, y) }));
-  DEBRIS_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('debris', x, y) }));
-  CAR_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawProp('car', x, y) }));
-  wreckSpots().forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawWreck(x, y) }));
-  for (const wl of world.walls.values()) if (vis(wl.x + .5, wl.y + .5)) items.push({ x1: wl.x, y1: wl.y, x2: wl.x + 1, y2: wl.y + 1, fn: () => drawWall(wl) });
+  if (!G3D) TREE_SPOTS.forEach(([x, y]) => { if (vis(x + .5, y + .5) && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y)) items.push({ ...box(x + .5, y + .5, .22), fn: () => drawProp('tree', x, y) }); });
+  if (!G3D) CRATE_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('crate', x, y) }));
+  if (!G3D) DEBRIS_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .2), fn: () => drawProp('debris', x, y) }));
+  if (!G3D) CAR_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawProp('car', x, y) }));
+  if (!G3D) wreckSpots().forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawWreck(x, y) }));
+  if (!G3D) for (const wl of world.walls.values()) if (vis(wl.x + .5, wl.y + .5)) items.push({ x1: wl.x, y1: wl.y, x2: wl.x + 1, y2: wl.y + 1, fn: () => drawWall(wl) });
   for (const gp of S.posts || []) if (vis(gp.x + .5, gp.y + .5)) items.push({ x1: gp.x + .1, y1: gp.y + .1, x2: gp.x + .9, y2: gp.y + .9, fn: () => drawPost(gp) });
-  world.buildings.forEach((b) => vis(b.x + b.w / 2, b.y + b.h / 2) && items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { drawBuilding(b); if (b.fire || b.burnt) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
-  if (preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
+  world.buildings.forEach((b) => vis(b.x + b.w / 2, b.y + b.h / 2) && items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { if (!G3D) drawBuilding(b); if (b.fire || b.burnt) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
+  if (!G3D && preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
   S.z.forEach((z) => { if (z.hp > 0 && vis(z.w.x, z.w.y)) items.push({ ...box(z.w.x, z.w.y, .12), fn: () => drawZombie(z) }); });
   corpses.forEach((c) => vis(c.w.x, c.w.y) && items.push({ ...box(c.w.x, c.w.y, .12), fn: () => drawZSprite(c, project(c.w.x, c.w.y)) }));
   S.sv.forEach((s) => vis(s.w.x, s.w.y) && items.push({ ...box(s.w.x, s.w.y, .12), fn: () => drawHuman(s) }));
   S.sv.forEach((s) => { if (!s.pet || s.mode === 'away' || insideBuilding(s)) return; const pp = petPos(s); items.push({ ...box(pp.w.x, pp.w.y, .06), fn: () => drawPet(s, pp) }); });
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
-  drawCombatFocus(); drawDaylight(); drawNightLights(); drawObjMarks(); drawAlertMarks();
+  drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
   for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
@@ -3224,6 +3232,8 @@ function simTick() {
   if (tick % 1000 === 0) { S.hour++; hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
+/* what the 3D renderer (js/render3d.js) reads each frame */
+window.ZHG = { world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];
