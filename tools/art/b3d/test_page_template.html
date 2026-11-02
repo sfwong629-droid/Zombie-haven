@@ -312,12 +312,21 @@ if (D.glb) {
   const THREE = await import('three');
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-  const { OutlineEffect } = await import('three/addons/effects/OutlineEffect.js');
   const box = document.getElementById('v3d'), msg = document.getElementById('v3msg'), hud = document.getElementById('v3hud');
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   box.prepend(renderer.domElement);
-  const outline = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.019, 0.010, 0.007], defaultAlpha: 1 });
+  // ink outline: back-face hulls pushed out along the normals and slightly back in depth, so creases in the
+  // scanned model never show the outline through the front surface (the dark scratches OutlineEffect gave)
+  const inkMat = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
+  inkMat.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', 'vec3 transformed = position + normalize(normal) * 0.008;')
+    .replace('#include <project_vertex>', '#include <project_vertex>\n  gl_Position.z += 0.0008 * gl_Position.w;'); };
+  function ink(mesh) {
+    let h; if (mesh.isSkinnedMesh) { h = new THREE.SkinnedMesh(mesh.geometry, inkMat); h.bind(mesh.skeleton, mesh.bindMatrix);
+      h.position.copy(mesh.position); h.quaternion.copy(mesh.quaternion); h.scale.copy(mesh.scale); mesh.parent.add(h); }
+    else { h = new THREE.Mesh(mesh.geometry, inkMat); mesh.add(h); }
+    h.frustumCulled = false; h.userData.hull = true;
+  }
   const scene = new THREE.Scene();
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
   const TARGET = new THREE.Vector3(0, 0.55, 0), GAME_DIR = new THREE.Vector3(0.612, 0.5, 0.612).normalize();
@@ -351,12 +360,13 @@ if (D.glb) {
   const buf = Uint8Array.from(atob(D.glb.split(',')[1]), c => c.charCodeAt(0)).buffer;
   const gltf = await new Promise((ok, bad) => new GLTFLoader().parse(buf, '', ok, bad));
   const root = gltf.scene; scene.add(root); msg.remove();
+  { const ms = []; root.traverse(o => { if (o.isMesh) ms.push(o); }); ms.forEach(ink); }
   const weapons = {}, armour = [], tips = {};
   root.traverse(o => {
     if (o.name.startsWith('weapon_')) weapons[o.name.slice(7)] = o;
     if (/_tip$/.test(o.name)) tips[o.name.replace('_tip', '')] = o;
     if (o.name.startsWith('armor_')) armour.push(o);
-    if (o.isMesh) {
+    if (o.isMesh && !o.userData.hull) {
       const m = o.material; o.material = new THREE.MeshToonMaterial({ color: m.color, map: m.map || null, gradientMap: grad });
       if (o.material.map) { const t = o.material.map; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; }   // no mipmaps: they bleed the gaps between UV islands into seams
       o.frustumCulled = false;
@@ -407,7 +417,7 @@ if (D.glb) {
     const off = cam.position.clone().sub(controls.target).normalize();
     const left = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), off).normalize();
     key.position.copy(controls.target).addScaledVector(off, 4).addScaledVector(left, 2.5).add(new THREE.Vector3(0, 3, 0)); key.target.position.copy(controls.target);
-    controls.update(); outline.render(scene, cam);
+    controls.update(); renderer.render(scene, cam);
     hud.textContent = (st.paused ? 'paused · ' : '') + (st.speed !== 1 ? st.speed + '× · ' : '') + (armorOn ? 'armour' : 'shirt');
   });
 }

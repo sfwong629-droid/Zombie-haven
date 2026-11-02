@@ -58,7 +58,6 @@ input[type=range] { accent-color: var(--accent); width: 130px; }
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -83,7 +82,6 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffe
 renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stage.prepend(renderer.domElement);
-const outline = new OutlineEffect(renderer, { defaultThickness: 0.005, defaultColor: [0.019, 0.010, 0.007] });
 const scene = new THREE.Scene();
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
 const controls = new OrbitControls(cam, renderer.domElement);
@@ -115,20 +113,29 @@ grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
 const MATS = {};
 const toon = (c, extra = {}) => MATS[c + JSON.stringify(extra)] ||= new THREE.MeshToonMaterial({ color: hex(c), gradientMap: grad, ...extra });
 
-// world-space ink hull for static and instanced meshes (OutlineEffect only handles plain meshes, so props draw their own)
+// Ink outline: every mesh gets a back-face "hull" pushed out along its normals (characters too, skinned with the
+// same skeleton). The hull is also pushed slightly back in depth, so in creases of the scanned character models it
+// cannot poke through the front surface as dark scratches; it still shows around the silhouette.
+const INK_BIAS = 0.0005;                                            // NDC depth push (~0.08 units at this camera)
 const hullMats = new Map();
 function hullMat(th) {
   if (hullMats.has(th)) return hullMats.get(th);
   const m = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
-  m.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normal * ${th.toFixed(4)};`); };
+  m.onBeforeCompile = s => {
+    s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normalize(normal) * ${th.toFixed(4)};`)
+      .replace('#include <project_vertex>', `#include <project_vertex>\n  gl_Position.z += ${INK_BIAS.toFixed(5)} * gl_Position.w;`);
+  };
   hullMats.set(th, m); return m;
 }
-const hulls = [];
 function addHull(mesh, th = 0.022) {
-  const h = mesh.isInstancedMesh ? new THREE.InstancedMesh(mesh.geometry, hullMat(th), mesh.count) : new THREE.Mesh(mesh.geometry, hullMat(th));
-  if (mesh.isInstancedMesh) h.instanceMatrix = mesh.instanceMatrix;
-  h.matrixAutoUpdate = false; h.matrix = mesh.matrix; h.userData.outlineParameters = { visible: false };
-  mesh.userData.outlineParameters = { visible: false }; mesh.add(h); h.matrix = new THREE.Matrix4(); hulls.push(h); return h;
+  let h;
+  if (mesh.isSkinnedMesh) { h = new THREE.SkinnedMesh(mesh.geometry, hullMat(th)); h.bind(mesh.skeleton, mesh.bindMatrix); }
+  else if (mesh.isInstancedMesh) { h = new THREE.InstancedMesh(mesh.geometry, hullMat(th), mesh.count); h.instanceMatrix = mesh.instanceMatrix; }
+  else h = new THREE.Mesh(mesh.geometry, hullMat(th));
+  h.frustumCulled = false; h.castShadow = false; h.userData.hull = true;
+  if (mesh.isSkinnedMesh) { h.position.copy(mesh.position); h.quaternion.copy(mesh.quaternion); h.scale.copy(mesh.scale); mesh.parent.add(h); }
+  else mesh.add(h);
+  return h;
 }
 
 // ---------------------------------------------------------------- ground: one mesh, one colour per tile
@@ -340,6 +347,8 @@ function toonify(root, tint) {
     if (map) { map.colorSpace = THREE.SRGBColorSpace; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; }
     o.material = new THREE.MeshToonMaterial({ color: tint && o.isSkinnedMesh ? tint : m.color, map, gradientMap: grad });
     o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; });
+  const meshes = []; root.traverse(o => { if (o.isMesh && !o.userData.hull) meshes.push(o); });
+  for (const o of meshes) addHull(o, o.isSkinnedMesh ? .022 : .018);
 }
 const [male, lite, tent] = await Promise.all([load(D.male), load(D.lite), load(D.tent)]);
 document.getElementById('msg').remove();
@@ -487,7 +496,7 @@ $('zn').oninput = e => setZombies(+e.target.value);
 $('cut').onclick = () => { cutOn = !cutOn; $('cut').classList.toggle('on', cutOn); };
 $('grid').onclick = () => { gridLines.visible = !gridLines.visible; $('grid').classList.toggle('on', gridLines.visible); };
 $('shadows').onclick = () => { sun.castShadow = !sun.castShadow; $('shadows').classList.toggle('on', sun.castShadow); };
-let lines = true; $('lines').onclick = () => { lines = !lines; for (const h of hulls) h.visible = lines; $('lines').classList.toggle('on', lines); };
+let lines = true; $('lines').onclick = () => { lines = !lines; for (const m of hullMats.values()) m.visible = lines; $('lines').classList.toggle('on', lines); };
 let showHud = true; $('hudb').onclick = () => { showHud = !showHud; hud.hidden = !showHud; $('hudb').classList.toggle('on', showHud); };
 window.addEventListener('keydown', e => { if (e.key === 'q' || e.key === 'Q') $('rotL').click(); if (e.key === 'e' || e.key === 'E') $('rotR').click(); });
 
@@ -508,7 +517,7 @@ function frame(dtIn) {
   // sun follows the view target so the shadow map always covers what you see
   const d = LIGHT[light].dir; sun.position.set(controls.target.x + d[0] * 40, d[1] * 40, controls.target.z + d[2] * 40); sun.target.position.copy(controls.target);
   controls.update();
-  if (lines) outline.render(scene, cam); else renderer.render(scene, cam);
+  renderer.render(scene, cam);
   frames++; fpsT += dt; if (fpsT > .5) { fps = frames / fpsT; frames = 0; fpsT = 0;
     const i = renderer.info.render; hud.textContent = `${fps.toFixed(0)} fps\n${i.calls} draw calls\n${(i.triangles / 1000).toFixed(0)}k triangles\n${actors.length - zombies.length} survivors, ${zombies.length} zombies`; }
 }

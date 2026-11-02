@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ai_render, anims, armor
 
 FPS = 30
+FLAT = True          # flat colour regions (see flat_regions); False = the filtered texture
 COLORS = {'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
           'w_tape': '#d8cfb8', 'a_steel': armor.STEEL, 'a_trim': armor.TRIM, 'a_leather': armor.LEATHER}
 
@@ -101,11 +102,87 @@ def clean_texture(body, tex=1024, median=5, colors=24):
     new.pixels.foreach_set(np.dstack([a, np.ones(a.shape[:2], np.float32)]).ravel()); new.pack()
     return new
 
+def flat_regions(body, tex=1024, k=10, min_patch=40, detail_h=.62):
+    """Clean the body's colours for close-up 3D. Hunyuan bakes blotches into the texture (skin colour on the shirt,
+    dark specks along seams). Each face gets one colour class (k-means over the texture under it), stray patches are
+    voted away by their mesh neighbours, then every face is painted flat in its class colour. Faces on the front of
+    the head above `detail_h` x height keep the texture, so the eyes, brows and mouth stay drawn."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+    from scipy import ndimage
+    from collections import Counter, defaultdict
+    texn = next(n for m in body.data.materials for n in m.node_tree.nodes
+                if n.type == 'TEX_IMAGE' and 'normal' not in n.image.name and 'metal' not in n.image.name)
+    im = texn.image; w, h = im.size
+    buf = np.empty(w * h * 4, np.float32); im.pixels.foreach_get(buf); px = buf.reshape(h, w, 4)[..., :3].copy(); del buf
+    me = body.data; uv = me.uv_layers.active.data; P = me.polygons; nP = len(P)
+    # colour under each face: median of samples between the centroid and each corner
+    col = np.zeros((nP, 3), np.float32)
+    for f in P:
+        u = np.array([uv[i].uv[:] for i in f.loop_indices]); c = u.mean(0)
+        pts = np.vstack([c, c + (u - c) * .55])
+        xs = np.clip((pts[:, 0] * w).astype(int), 0, w - 1); ys = np.clip((pts[:, 1] * h).astype(int), 0, h - 1)
+        col[f.index] = np.median(px[ys, xs], 0)
+    # k-means (k colours) in a perceptual-ish space
+    X = np.sqrt(col); rng = np.random.default_rng(1); C = X[rng.choice(nP, k, replace=False)]
+    for _ in range(25):
+        lab = ((X[:, None] - C[None]) ** 2).sum(-1).argmin(1)
+        C = np.array([X[lab == j].mean(0) if (lab == j).any() else C[j] for j in range(k)])
+    # face adjacency through shared edges
+    ef = defaultdict(list)
+    for f in P:
+        for e in f.edge_keys: ef[e].append(f.index)
+    nb = [[] for _ in range(nP)]
+    for fs in ef.values():
+        for a in fs:
+            nb[a] += [b for b in fs if b != a]
+    co = np.array([v.co[:] for v in me.vertices]); zt = co[:, 2].max(); z0 = co[:, 2].min()
+    detail = np.array([f.center.z > z0 + detail_h * (zt - z0) and f.normal.y < -.15 for f in P])
+    for _ in range(4):                                   # majority vote: lone faces take their neighbours' colour
+        new = lab.copy()
+        for i in range(nP):
+            if detail[i] or not nb[i]: continue
+            c = Counter(lab[j] for j in nb[i]); top, n = c.most_common(1)[0]
+            if top != lab[i] and n >= max(2, len(nb[i]) * .6): new[i] = top
+        lab = new
+    for _ in range(3):                                   # small same-colour islands merge into what surrounds them
+        seen = np.zeros(nP, bool)
+        for s0 in range(nP):
+            if seen[s0] or detail[s0]: continue
+            comp, stack = [], [s0]; seen[s0] = True
+            while stack:
+                a = stack.pop(); comp.append(a)
+                for b in nb[a]:
+                    if not seen[b] and lab[b] == lab[s0] and not detail[b]: seen[b] = True; stack.append(b)
+            if len(comp) < min_patch:
+                c = Counter(lab[b] for a in comp for b in nb[a] if lab[b] != lab[s0])
+                if c: lab[comp] = c.most_common(1)[0][0]
+    pal = np.array([np.median(col[lab == j], 0) if (lab == j).any() else [0, 0, 0] for j in range(k)])
+    # paint: padded original underneath (for the detail faces), flat class colours on top
+    S = tex; base = Image.fromarray((px * 255).astype(np.uint8)).resize((S, S), Image.LANCZOS).filter(ImageFilter.MedianFilter(3))
+    flat = Image.new('RGB', (S, S)); df = ImageDraw.Draw(flat); m = Image.new('L', (S, S)); dm = ImageDraw.Draw(m)
+    for f in P:
+        q = [(uv[i].uv.x * S, uv[i].uv.y * S) for i in f.loop_indices]
+        dm.polygon(q, fill=255, outline=255)
+        if not detail[f.index]:
+            c = tuple(int(v * 255) for v in pal[lab[f.index]]); df.polygon(q, fill=c, outline=c)
+    dmask = Image.new('L', (S, S)); dd = ImageDraw.Draw(dmask)
+    for f in P:
+        if detail[f.index]: dd.polygon([(uv[i].uv.x * S, uv[i].uv.y * S) for i in f.loop_indices], fill=255, outline=255)
+    out = np.where(np.asarray(dmask)[..., None] > 0, np.asarray(base), np.asarray(flat))
+    inside = np.asarray(m) > 0
+    idx = ndimage.distance_transform_edt(~inside, return_distances=False, return_indices=True)
+    out = out[idx[0], idx[1]].astype(np.float32) / 255                        # pad gaps so seams never sample black
+    new = bpy.data.images.new('body_tex', S, S); new.colorspace_settings.name = 'sRGB'
+    new.pixels.foreach_set(np.dstack([out, np.ones(out.shape[:2], np.float32)]).ravel()); new.pack()
+    print('flat colours', [tuple(int(v * 255) for v in c) for c in pal], 'detail faces', int(detail.sum()), flush=True)
+    return new
+
 def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
     ai_render.TEX_PX = tex
     ao, body = ai_render.load(blend)
     bpy.context.scene.render.fps = FPS
-    img = clean_texture(body, tex, median, colors)
+    img = flat_regions(body, tex) if FLAT else clean_texture(body, tex, median, colors)
     for m in body.data.materials: plain(m, image=img)
     if decimate < 1.0:
         d = body.modifiers.new('dec', 'DECIMATE'); d.ratio = decimate
