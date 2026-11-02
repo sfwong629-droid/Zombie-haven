@@ -27,7 +27,7 @@ const COLS = Wd.COLS, ROWS = Wd.ROWS, DEFS = Wd.DEFS, STAFF_JOBS = Wd.STAFF_JOBS
 /* V2.53: the C64 standard also has a 10% bigger map grid: tiles 106 x 53 art px (V7: 96 x 48), every pixel the same size.
    Buildings and walls are drawn for it (assets/buildings|map/t106, tools/art/templates); older 96-px building art stands smaller on its plot until redrawn. */
 const TILE_PX = C64 ? 106 : 96;
-const CHAR_H = (G3D ? 52 : C64 ? 58 : 42) / TILE_PX;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
+const CHAR_H = (G3D ? 52 * 1.3 / 1.6 : C64 ? 58 : 42) / TILE_PX;   /* V2.52: taller people in the C64 preview (labels, bars and tap areas follow) */   // = 30 art px on the 42-px tile grid: characters and map share one pixel size                                         // character content height in tile-widths (chibi, tunable)
 const $ = (id) => document.getElementById(id);
 const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;

@@ -10,7 +10,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const G = window.ZHG;
-const T = 1.3;                                                    // world units per tile (the character scale)
+const T = 1.6;                                                    // world units per tile; the survivor is 1.09 tall. V3D.2: 1.3 -> 1.6 so a door can be ~1.2 survivor heights and buildings still fit their footprint
 const SQ2 = Math.SQRT2, ELEV = Math.asin(.5);
 const DIR = new THREE.Vector3(Math.cos(ELEV) / SQ2, Math.sin(ELEV), Math.cos(ELEV) / SQ2);   // toward the camera: 30° up, from the +x +y corner
 
