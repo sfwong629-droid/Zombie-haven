@@ -110,13 +110,15 @@ const regrow = (x, y) => {   // town tiles where grass creeps back: near the tow
   const B = G.Wd.BUILD, d = Math.min(x - B.x0, B.x1 - x, y - B.y0, B.y1 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3);
   return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55);
 };
+const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T } };
 let _gmat = null;
 function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
   if (_gmat) return _gmat;
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
   m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, RU);
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz;');
-    sh.fragmentShader = `varying vec3 vWP;
+    sh.fragmentShader = `varying vec3 vWP; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT;
       float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1., 0.)), f.x), mix(gh(i + vec2(0., 1.)), gh(i + 1.), f.x), f.y); }
       float gf(vec2 p){ return .5 * gn(p) + .25 * gn(p * 2.03 + 7.1) + .125 * gn(p * 4.1 + 3.3) + .125 * gn(p * 8.3 + 1.7); }
@@ -132,6 +134,12 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
         g = mix(g, g * vec3(1.08, 1.06, .97), smoothstep(.72, .90, fleck) * grass);      // sunlit blades (subtle)
         g *= 1. - .08 * (gn(p * 2.2 + 4.) - .5) * (1. - grass);                       // dirt: soft mottling, no specks
         g = mix(g, g * .80, smoothstep(.66, .80, gn(vec2(p.x * 1.6, p.y * 5.) + 11.)) * (1. - grass) * .7);   // ruts
+        float rm = texture2D(uRoad, (p / uT - uRO) / uRN).r + (gn(p * 1.7) - .5) * .12;   // wobbly road edge
+        float rw = smoothstep(.42, .56, rm), rim = smoothstep(.36, .46, rm) * (1. - smoothstep(.5, .6, rm));
+        vec3 road = vec3(.215, .118, .045) * (.85 + .3 * gf(p * 1.3 + 2.));             // packed earth (#7f5f3b, linear), mottled
+        road = mix(road, road * .78, smoothstep(.80, .90, gn(p * 9. + 21.)) * .6);       // a few dark stones
+        g = mix(g, g * .82, rim);                                                        // darker trodden edge
+        g = mix(g, road, rw);
         diffuseColor.rgb = g;
       }`);
   };
@@ -149,8 +157,7 @@ function buildGround() {
     const r = hash(x, y), inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1;
     const edge = Math.max(0, B.x0 - x, x - B.x1, B.y0 - y, y - B.y1);
     let k;
-    if (G.Wd.isRoad(W, x, y)) k = r < .5 ? '#94703f' : '#987442';
-    else if (inB && regrow(x, y)) k = r < .5 ? '#9c9442' : '#a39a48';   // V3D.6: grass growing back into the town dirt
+    if (inB && regrow(x, y) && !G.Wd.isRoad(W, x, y)) k = r < .5 ? '#9c9442' : '#a39a48';   // V3D.6: grass growing back into the town dirt
     else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
     else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
     else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#7f8a36' : '#7a8634';
@@ -162,6 +169,11 @@ function buildGround() {
     for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tc[i]; g += tc[i + 1]; b += tc[i + 2]; n++; }
     return [r / n, g / n, b / n];
   };
+  const rm = new Uint8Array(NX * NY);   // V3D.7: roads as a smooth mask (bilinear between tile centres): ~1 tile wide, rounded corners, soft edges
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) if (G.Wd.isRoad(W, x, y)) rm[(y - Y0) * NX + (x - X0)] = 255;
+  if (RU.uRoad.value) RU.uRoad.value.dispose();
+  const rt = new THREE.DataTexture(rm, NX, NY, THREE.RedFormat); rt.magFilter = rt.minFilter = THREE.LinearFilter; rt.needsUpdate = true;
+  RU.uRoad.value = rt; RU.uRO.value.set(X0, Y0); RU.uRN.value.set(NX, NY);
   for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++)
     for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((x + dx) * T, 0, (y + dz) * T); col.push(...corner(x + dx, y + dz)); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
