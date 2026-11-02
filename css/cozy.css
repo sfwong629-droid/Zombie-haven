@@ -1,0 +1,133 @@
+/* Zombie Haven V2.56 "Cozy Apocalypse" UI theme (chosen 2026-11-02 for the 3D look; mockup: claude.ai artifact
+   "Zombie Haven UI Directions", direction 3). Cream clay capsules, cocoa outlines, sage / honey / coral accents,
+   Fredoka headings and Nunito text. Applied when <html> has class "cozy" (the 3D mode sets it); every rule is
+   scoped to html.cozy so the pixel-art UI stays as it was without it. Same layout and element ids as the old UI. */
+html.cozy {
+  --cream: #F5E8D2; --cream2: #FFF8EC; --sage: #8DAB83; --sageD: #6f9166; --honey: #D79B57; --honeyD: #b8783a;
+  --cocoa: #735A4C; --cocoaD: #4f3d33; --coral: #D87964; --coralD: #b85a47; --line: #e2cfb0;
+  --wood: var(--cream); --woodL: var(--line); --woodD: var(--cocoa); --panel: var(--cream); --panel2: var(--cream2);
+  --ink: var(--cocoa); --muted: #9a8170; --gold: var(--honeyD); --good: #5f9a52; --bad: var(--coralD); --blue: #4f86a8;
+  --f: 'Nunito', system-ui, sans-serif; --fh: 'Fredoka', 'Nunito', system-ui, sans-serif;
+}
+html.cozy, html.cozy body { font-size: 16px; letter-spacing: 0; font-weight: 700; }
+html.cozy button, html.cozy input { letter-spacing: 0; font-weight: 800; }
+html.cozy #app { background: #2f3a2c; }
+html.cozy .out { text-shadow: none; }
+
+/* the shared "frame" becomes a soft clay capsule */
+html.cozy .frame { background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 18px; box-shadow: 0 4px 0 rgba(79, 61, 51, .45); color: var(--cocoa); }
+
+/* top: resource capsules, then day + goal capsules */
+html.cozy #plaque { background: none; border: 0; box-shadow: none; padding: 0; top: 8px; left: 8px; }
+html.cozy #plaque .res { gap: 6px; font-size: 18px; line-height: 20px; }
+html.cozy #plaque .res > span { background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 999px; padding: 4px 10px 4px 6px; margin: 0; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); }
+html.cozy #plaque .res i { font-size: 16px; }
+html.cozy #plaque .res b { color: var(--cocoa); font-weight: 800; }
+html.cozy #quest { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; font-size: 13px; line-height: 16px; color: var(--cocoa); }
+html.cozy #quest b#clock, html.cozy #quest #qt { display: inline-block; background: var(--cream); border: 2px solid var(--cocoa); border-radius: 999px; padding: 2px 9px; color: var(--cocoa); font-weight: 800; max-width: 230px; }
+html.cozy #quest #qt { background: var(--cream2); }
+html.cozy #quest span::after { color: var(--honeyD); }
+html.cozy #adv { background: var(--cream2); border: 2px solid var(--honey); border-radius: 14px; padding: 4px 8px; color: var(--cocoa); font-size: 13px; margin-top: 6px; }
+html.cozy #advX { color: var(--muted); }
+
+/* left column: rounded toy buttons with big icons */
+html.cozy #lmenu { left: 8px; top: 104px; gap: 9px; }
+html.cozy .lm { width: 62px; height: 62px; border-radius: 20px; font-family: var(--fh); font-weight: 500; font-size: 12px; gap: 1px; }
+html.cozy .lm i { font-size: 25px; line-height: 28px; }
+html.cozy #mBuild { background: var(--honey); color: #fff; }
+html.cozy .lm:active, html.cozy .bb:active, html.cozy .act:active { transform: translateY(3px) scale(.96); box-shadow: 0 1px 0 rgba(79, 61, 51, .45); filter: none; }
+html.cozy #btnHome { top: 8px; right: 8px; width: 46px; height: 46px; border-radius: 16px; font-size: 22px; }
+
+/* Renown: a little card with a leafy progress bar */
+html.cozy #gauge { width: 132px; height: 70px; right: 8px; bottom: 8px; background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 18px; box-shadow: 0 4px 0 rgba(79, 61, 51, .45); overflow: visible; }
+html.cozy #gauge .wheel { display: none; }
+html.cozy #gauge .glabel { right: auto; left: 10px; bottom: auto; top: 5px; font-family: var(--fh); font-weight: 500; font-size: 14px; color: var(--sageD); }
+html.cozy #gauge .gval { right: 8px; bottom: auto; top: 5px; background: var(--sage); color: #fff; border: 0; border-radius: 999px; font-family: var(--fh); font-size: 16px; line-height: 20px; padding: 1px 9px; }
+html.cozy #gauge .grank { right: auto; left: 10px; bottom: 21px; font-size: 12px; color: var(--muted); }
+html.cozy #gauge .gbar { right: 8px; left: 8px; width: auto; bottom: 8px; height: 10px; background: #eadbc3; border: 0; border-radius: 999px; }
+html.cozy #gauge .gbar i { background: linear-gradient(90deg, var(--sage), #a9c49f); border-radius: 999px; }
+
+/* bottom dock */
+html.cozy #bottom { background: var(--cream); border-top: 2.5px solid var(--cocoa); border-radius: 22px 22px 0 0; box-shadow: 0 -3px 0 rgba(79, 61, 51, .25); height: calc(62px + env(safe-area-inset-bottom)); }
+html.cozy .bb { height: 44px; border-radius: 15px; font-size: 18px; background: var(--cream2); box-shadow: 0 3px 0 rgba(79, 61, 51, .4); }
+html.cozy #btnSave { font-family: var(--fh); font-weight: 500; min-width: 84px; }
+html.cozy #btnSpeed, html.cozy .bb.on { background: var(--sage); color: #fff; }
+html.cozy #gauge + * { }
+
+/* panels */
+html.cozy .panel { background: var(--cream); border-radius: 22px; }
+html.cozy .ph h3 { font-family: var(--fh); font-weight: 500; font-size: 22px; color: #fff; background: var(--honey); border: 2.5px solid var(--cocoa); border-radius: 999px; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); padding: 3px 22px; }
+html.cozy .ph .x, html.cozy .ph .back { border: 2.5px solid var(--cocoa); border-radius: 50%; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); width: 40px; height: 40px; font-size: 18px; }
+html.cozy .ph .x { background: var(--coral); }
+html.cozy .ph .back { background: var(--cream2); color: var(--cocoa); }
+html.cozy .pb { font-size: 15px; line-height: 1.35; color: var(--cocoa); }
+html.cozy .pb small, html.cozy .pb .sm { font-size: 13px; color: var(--muted); }
+html.cozy .pb b { color: var(--honeyD); font-weight: 800; }
+html.cozy .tabs { background: var(--cream); }
+html.cozy .tabs button { background: var(--cream2); color: var(--cocoa); border: 2px solid var(--line); border-radius: 14px; font-size: 14px; font-weight: 800; }
+html.cozy .tabs button.on { background: var(--sage); color: #fff; border-color: var(--sageD); }
+html.cozy .act { background: var(--cream2); color: var(--cocoa); border: 2.5px solid var(--cocoa); border-radius: 16px; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); font-size: 15px; }
+html.cozy .act.go { background: var(--honey); color: #fff; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); }
+html.cozy .act.danger { background: var(--coral); color: #fff; box-shadow: 0 3px 0 rgba(79, 61, 51, .45); }
+html.cozy .card, html.cozy .bcard { background: var(--cream2); border: 2px solid var(--line); border-radius: 16px; color: var(--cocoa); }
+html.cozy .bcard { font-size: 13px; line-height: 15px; }
+html.cozy .bcard .co { color: var(--honeyD); font-size: 13px; }
+html.cozy .bdetail .big { background: radial-gradient(#cfe0c4, #a9c49f 70%); border: 2px solid var(--line); border-radius: 16px; }
+html.cozy .icon { background: #f7dccf; border: 2px solid var(--coral); border-radius: 12px; }
+html.cozy .portrait { background: radial-gradient(#cfe0c4, #8dab83); border: 2px solid var(--line); border-radius: 14px; }
+html.cozy .bar { background: #eadbc3; border: 0; border-radius: 999px; height: 9px; }
+html.cozy .bar i { border-radius: 999px; }
+html.cozy .conds, html.cozy .crow { border-color: var(--line); border-radius: 14px; }
+html.cozy .conds { background: var(--cream2); color: var(--cocoa); }
+html.cozy .conds .ctitle { color: var(--cocoa); font-family: var(--fh); font-weight: 500; }
+html.cozy .crow { background: #fff; font-size: 15px; }
+html.cozy .ribbon .rname { color: var(--cocoa); font-family: var(--fh); }
+html.cozy .ribbon .rstars { background: var(--honey); border: 2.5px solid var(--cocoa); box-shadow: 0 3px 0 rgba(79, 61, 51, .45); border-radius: 999px; color: #fff; }
+html.cozy .statC { background: var(--cream2); border-color: var(--line); color: var(--cocoa); font-size: 17px; border-radius: 14px; }
+html.cozy .nbar { background: #eadbc3; }
+html.cozy #confirmBar { border-radius: 22px; }
+html.cozy #confirmName { font-size: 15px; color: var(--cocoa); }
+html.cozy #nudge button { background: var(--cream2); color: var(--cocoa); border: 2px solid var(--cocoa); border-radius: 10px; }
+
+/* alerts, speech, toasts, events */
+html.cozy #alerts { left: 80px; top: 104px; }
+html.cozy .alert { background: var(--cream); border: 2.5px solid var(--coral); border-radius: 16px; color: var(--cocoa); font-size: 13px; line-height: 16px; box-shadow: 0 4px 0 rgba(216, 121, 100, .45); }
+html.cozy .alert .ago { color: var(--coral); }
+html.cozy .alert .aa { background: var(--honey); color: #fff; border: 2px solid var(--cocoa); border-radius: 12px; font-size: 13px; }
+html.cozy .alert .ax { color: var(--coralD); }
+html.cozy .alert.more { background: var(--cream2); }
+html.cozy #say, html.cozy .toast { background: var(--cream); color: var(--cocoa); border: 2.5px solid var(--cocoa); border-radius: 999px; box-shadow: 0 4px 0 rgba(79, 61, 51, .45); font-size: 15px; }
+html.cozy .toast { font-family: var(--fh); font-weight: 500; font-size: 17px; }
+html.cozy .evBox { background: var(--cream); color: var(--cocoa); border-radius: 22px; }
+html.cozy .evTitle { font-family: var(--fh); font-weight: 600; color: var(--honeyD); font-size: 24px; }
+html.cozy .evText { font-size: 15px; line-height: 21px; }
+html.cozy .evGain { color: var(--good); font-size: 15px; }
+html.cozy .evBox button { font-size: 17px; }
+html.cozy .request { background: var(--cream); color: var(--cocoa); font-size: 15px; }
+html.cozy .request b { color: var(--honeyD); font-size: 18px; }
+
+/* opening page */
+html.cozy #title { background: linear-gradient(180deg, rgba(255, 214, 150, .35), rgba(255, 214, 150, 0) 40%, rgba(60, 40, 30, .35)); }
+html.cozy .tLogo { line-height: .95; }
+html.cozy .tLogo .t1, html.cozy .tLogo .t2 { font-family: var(--fh); font-weight: 600; font-size: min(18vw, 84px); letter-spacing: 0;
+  text-shadow: 0 5px 0 var(--cocoa), 4px 0 0 var(--cocoa), -4px 0 0 var(--cocoa), 0 -4px 0 var(--cocoa), 4px 4px 0 var(--cocoa), -4px 4px 0 var(--cocoa), 4px -4px 0 var(--cocoa), -4px -4px 0 var(--cocoa), 0 10px 14px rgba(0, 0, 0, .25); }
+html.cozy .tLogo .t1 { color: var(--sage); }
+html.cozy .tLogo .t2 { color: var(--honey); }
+html.cozy .tLogo .tsub { display: inline-block; margin-top: 14px; font-size: 14px; color: var(--cocoa); background: var(--cream); border: 2px solid var(--cocoa); border-radius: 999px; padding: 3px 14px; text-shadow: none; }
+html.cozy .tMenu { background: none; border: 0; box-shadow: none; gap: 12px; }
+html.cozy .tbtn { font-family: var(--fh); font-weight: 500; font-size: 22px !important; min-height: 56px; border-radius: 22px !important; border-width: 3px !important; box-shadow: 0 5px 0 rgba(79, 61, 51, .55) !important; }
+html.cozy .tbtn small { font-family: var(--f); font-size: 12px; }
+html.cozy .tVer { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-size: 13px; }
+html.cozy #slots { background: rgba(60, 40, 30, .45); }
+html.cozy .sPanel { background: var(--cream); border-radius: 24px; }
+html.cozy .sHead { font-family: var(--fh); font-weight: 600; color: var(--honeyD); font-size: 24px; }
+html.cozy .slot { background: var(--cream2); border: 2.5px solid var(--line); border-radius: 18px; color: var(--cocoa); }
+html.cozy .slot .snum { background: var(--sage); color: #fff; }
+html.cozy .slot .sinfo b { color: var(--cocoa); font-weight: 800; font-size: 17px; }
+html.cozy .slot .sinfo small { font-size: 12px; color: var(--muted); }
+html.cozy .ngOpt { border-color: var(--line); border-radius: 14px; }
+html.cozy .ngOpt.on { border-color: var(--sage); background: #eef4e8; }
+html.cozy .ngOpt b { font-size: 15px; font-weight: 800; }
+html.cozy .ngOpt small { font-size: 12px; }
+html.cozy .sdel { background: var(--cream2); border-color: var(--cocoa); border-radius: 12px; }
+html.cozy #loading { background: var(--cream); color: var(--cocoa); font-family: var(--fh); font-size: 22px; }
