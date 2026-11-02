@@ -106,27 +106,62 @@ class Parts {
 const PAD = 14;
 let groundMesh = null, groundKey = '';
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+let _gmat = null;
+function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
+  if (_gmat) return _gmat;
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz;');
+    sh.fragmentShader = `varying vec3 vWP;
+      float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1., 0.)), f.x), mix(gh(i + vec2(0., 1.)), gh(i + 1.), f.x), f.y); }
+      float gf(vec2 p){ return .5 * gn(p) + .25 * gn(p * 2.03 + 7.1) + .125 * gn(p * 4.1 + 3.3) + .125 * gn(p * 8.3 + 1.7); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        vec2 p = vWP.xz;
+        float grass = smoothstep(-.10, .0, diffuseColor.g - diffuseColor.r);           // 1 on grass, 0 on dirt and roads
+        float big = gf(p * .09), mid = gf(p * .45), fine = gn(p * 7.), fleck = gn(p * 19. + 3.);
+        vec3 patchTint = mix(vec3(1.10, 1.02, .78), vec3(.86, 1.02, .92), smoothstep(.35, .65, big));   // dry yellow vs fresh green
+        vec3 g = diffuseColor.rgb * mix(vec3(1.), patchTint, grass);
+        g *= .86 + .26 * mid;                                                            // soft light and dark clumps
+        g *= 1. - .16 * smoothstep(.58, .78, gn(p * 3.1 + 9.)) * grass;                   // dark grass clumps
+        g = mix(g, g * vec3(1.18, 1.14, .95), smoothstep(.70, .86, fleck) * grass);      // sunlit blades
+        g *= 1. - .10 * (fine - .5) * (1. - grass);                                      // dirt grain
+        g = mix(g, g * .80, smoothstep(.66, .80, gn(vec2(p.x * 1.6, p.y * 5.) + 11.)) * (1. - grass) * .7);   // ruts
+        g = mix(g, vec3(.80, .74, .62), smoothstep(.80, .90, fleck) * (1. - grass) * .55);   // pebbles
+        diffuseColor.rgb = g;
+      }`);
+  };
+  return (_gmat = m);
+}
 function buildGround() {
   const W = G.world, B = G.Wd.BUILD, WZ = G.Wd.WALLZONE;
   const key = [B.x0, B.y0, B.x1, B.y1, W.roads.size, W.ver].join(',');
   if (key === groundKey) return false; groundKey = key;
   if (groundMesh) { scene.remove(groundMesh); groundMesh.geometry.dispose(); }
   const pos = [], col = [], c = new THREE.Color();
-  const GR = ['#7f8f3a', '#83913c', '#7c8c39', '#86933d', '#8a933e', '#7d8b38'], DIRT = ['#ad8850', '#aa864e', '#b08a52', '#a9854d'];
-  for (let y = -PAD; y < G.ROWS + PAD; y++) for (let x = -PAD; x < G.COLS + PAD; x++) {
+  const GR = ['#8a923c', '#8e963e', '#86903a', '#939a40', '#9a9a42', '#878f39'], DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
+  const X0 = -PAD, Y0 = -PAD, NX = G.COLS + 2 * PAD, NY = G.ROWS + 2 * PAD, tc = new Float32Array(NX * NY * 3);
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) {   // one colour per tile ...
     const r = hash(x, y), inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1;
     const edge = Math.max(0, B.x0 - x, x - B.x1, B.y0 - y, y - B.y1);
     let k;
-    if (G.Wd.isRoad(W, x, y)) k = r < .5 ? '#8f6b3f' : '#94703f';
+    if (G.Wd.isRoad(W, x, y)) k = r < .5 ? '#94703f' : '#987442';
     else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
-    else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#9a8c4c';
-    else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#748634' : '#6f8132';
+    else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
+    else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#7f8a36' : '#7a8634';
     else k = GR[(r * 6) | 0];
-    c.set(k);
-    for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((x + dx) * T, 0, (y + dz) * T); col.push(c.r, c.g, c.b); }
+    c.set(k); const i = ((y - Y0) * NX + (x - X0)) * 3; tc[i] = c.r; tc[i + 1] = c.g; tc[i + 2] = c.b;
   }
+  const corner = (x, y) => {   // ... and every tile corner takes the average of the tiles around it: soft painted edges, no checkerboard
+    let r = 0, g = 0, b = 0, n = 0;
+    for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tc[i]; g += tc[i + 1]; b += tc[i + 2]; n++; }
+    return [r / n, g / n, b / n];
+  };
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++)
+    for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((x + dx) * T, 0, (y + dz) * T); col.push(...corner(x + dx, y + dz)); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
-  groundMesh = new THREE.Mesh(g, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad })); groundMesh.receiveShadow = true; scene.add(groundMesh);
+  groundMesh = new THREE.Mesh(g, groundMat()); groundMesh.receiveShadow = true; scene.add(groundMesh);
   return true;
 }
 const ni = (g) => { const n = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal') n.deleteAttribute(k); return n; };
@@ -143,6 +178,15 @@ function inst(geo, list, colorFn, th) {
   list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
   im.castShadow = true; im.receiveShadow = true; scene.add(im); addHull(im, th); return im;
 }
+const tuftG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry(.035, .3 + (i % 3) * .07, 3, 1, true).translate(0, .15, 0).rotateZ((i - 2) * .22).rotateY(i * 1.3).translate(Math.cos(i * 2.4) * .06, 0, Math.sin(i * 2.4) * .06)));
+const bushG = merge([new THREE.IcosahedronGeometry(.3, 0).scale(1, .95, 1).translate(0, .2, 0), new THREE.IcosahedronGeometry(.22, 0).scale(1, .75, 1).translate(.24, .14, .08), new THREE.IcosahedronGeometry(.2, 0).scale(1, .7, 1).translate(-.2, .13, -.1)]);
+const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
+function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
+  const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
+  im.count = list.length;
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 9, 0)), new THREE.Vector3(s, s * (.8 + r * .4), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  im.castShadow = !!shadow; im.receiveShadow = true; scene.add(im); return im;
+}
 function buildForest() {
   const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length;
   if (key === forestKey) return false; forestKey = key;
@@ -157,6 +201,20 @@ function buildForest() {
   }
   for (const [x, y] of wr) if (!blocked(x, y)) rubble.push([(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]);
   for (const [x, y] of G.CRATE_SPOTS) if (!blocked(x, y)) crates.push([(x + .5) * T, (y + .5) * T, 1, hash(x, y)]);
+  const tufts = [], bushes = [], pebbles = [], B = G.Wd.BUILD;
+  for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {   // V3D.5: grass tufts, autumn bushes, pebbles
+    if (blocked(x, y)) continue;
+    const inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9);
+    const at = (a, b) => [(x + a) * T, (y + b) * T];
+    const nt = inB ? (h1 < .12 ? 1 : 0) : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+    for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(.1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
+    if (!inB && h2 < .10) bushes.push([...at(.2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]);
+    if (h3 < (inB ? .3 : .12)) pebbles.push([...at(.15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]);
+  }
+  forest.push(instD(tuftG, tufts, (r) => ['#7d8a34', '#8f9a3c', '#a39a40', '#6f7d30'][(r * 4) | 0]));
+  forest.push(instD(bushG, bushes, (r) => ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'][(r * 5) | 0], true));
+  forest.push(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]));
+  for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
   forest.push(inst(pineG, pines, (r) => ['#2f5a3c', '#2c5236', '#36603f', '#2a4c33'][(r * 4) | 0], .045));
   forest.push(inst(trunkG, rounds, () => '#5a3b23', .035));
   forest.push(inst(crownG, rounds, (r) => ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'][(r * 6) | 0], .045));
@@ -459,8 +517,7 @@ function tickMixer(a, dt, vis) {
 // depth surface bends or jumps (outer silhouettes, roof/wall corners, the base of walls, tree facets). The camera is
 // orthographic, so a flat surface has zero second derivative of depth and only real edges light up. A slow noise
 // nudges the lookup so the lines wobble a little, like a pen. Toggle: the pen button, ?ink=0, ZH3D.setInk(bool).
-let INK = new URLSearchParams(location.search).get('ink') !== '0';
-try { const v = localStorage.getItem('zh3d_ink'); if (v != null && !new URLSearchParams(location.search).has('ink')) INK = v === '1'; } catch (e) {}
+let INK = new URLSearchParams(location.search).get('ink') === '1';   // set aside for now: off unless ?ink=1
 let inkRT = null;
 const inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), inkScene = new THREE.Scene();
 const inkMat = new THREE.ShaderMaterial({
@@ -530,7 +587,7 @@ function frame() {
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
 }
 window.ZH3D = { frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
-inkButton();
+if (INK) inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
   const [m, l, t] = await Promise.all([load(base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
