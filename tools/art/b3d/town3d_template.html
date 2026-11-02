@@ -1,0 +1,519 @@
+<title>Town 3D Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Silkscreen&display=swap">
+<style>
+/* Real-time 3D town: one big WebGL stage with a control strip above and notes below. Dusk palette shared with the other asset test pages. */
+:root {
+  --bg: #1d2321; --panel: #262e2b; --line: #3a4541; --fg: #e8e4d8; --muted: #a3a99d;
+  --accent: #e2b04a; --accent-ink: #2a1f08;
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); margin: 0; }
+body { font-family: var(--body); font-size: 15px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 15px; margin: 0; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 72ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.grp { display: flex; gap: 4px; align-items: center; padding-right: 10px; border-right: 1px solid var(--line); flex-wrap: wrap; }
+.grp:last-child { border-right: 0; }
+.lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+button { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+input[type=range] { accent-color: var(--accent); width: 130px; }
+.stage { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: min(78vh, 760px); min-height: 360px; background: #2b3a2c; touch-action: none; }
+.stage canvas { display: block; width: 100% !important; height: 100% !important; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg); pointer-events: none; }
+.hud { position: absolute; left: 8px; top: 8px; background: rgba(20, 24, 22, .72); color: var(--fg); font: 12px/1.45 ui-monospace, Menlo, monospace; padding: 6px 8px; border-radius: 6px; pointer-events: none; white-space: pre; }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; line-height: 1.5; margin: 0; }
+.note code { font-size: 12px; color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Town 3D Test</h1>
+    <p class="sub" id="psub">The town rebuilt as a live 3D scene, drawn in the browser with three.js. The camera is locked to the game's 2:1 tile angle and turns in 90° steps; drag to pan, pinch or scroll to zoom.</p>
+  </header>
+  <div class="bar" role="toolbar" aria-label="Scene controls">
+    <div class="grp"><span class="lab">View</span><button id="rotL" aria-label="Turn the view left 90 degrees">⟲ 90°</button><button id="rotR" aria-label="Turn the view right 90 degrees">⟳ 90°</button><button id="home">Home</button><button id="free">Free camera</button></div>
+    <div class="grp"><span class="lab">Light</span><button data-t="day" class="on">Day</button><button data-t="dusk">Dusk</button><button data-t="night">Night</button></div>
+    <div class="grp"><span class="lab">Zombies</span><input type="range" id="zn" min="0" max="120" value="8" aria-label="Number of zombies"><span id="znv" class="lab">8</span></div>
+    <div class="grp"><span class="lab">Show</span><button id="grid">Tile grid</button><button id="cut">Lower front walls</button><button id="shadows" class="on">Shadows</button><button id="lines" class="on">Outlines</button><button id="hudb" class="on">Stats</button></div>
+  </div>
+  <div class="stage" id="stage"><div class="msg" id="msg">Loading the town…</div><div class="hud" id="hud"></div></div>
+  <p class="note" id="notes"></p>
+</div>
+
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<script>const D = /*__DATA__*/null;</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ---------------------------------------------------------------- world layout (tile units, same map as js/world.js)
+const T = 1.3, COLS = 28, ROWS = 30, PAD = 16;
+const ROADS = [[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],
+  [7,6],[7,7],[7,8],[7,9],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],
+  [3,14],[4,14],[5,14],[6,14],[8,14],[9,14],[10,14],[11,14],[12,14],
+  [4,8],[5,8],[6,8],[8,8],[9,8],[10,8],[11,8],[4,11],[4,12],[4,13],[10,11],[10,12],[10,13]];
+const ROADSET = new Set(ROADS.map(([x, y]) => x + ',' + y));
+const TOWN = { x0: 2, y0: 6, x1: 13, y1: 17 }, WALL = { x0: 1, y0: 5, x1: 14, y1: 18 };
+const CX = 7.5, CY = 11.5;                                          // town centre (tile units)
+const W = (x, y) => new THREE.Vector3((x - CX) * T, 0, (y - CY) * T); // tile coords -> world (game +x = three +X, +y = +Z)
+const inTown = (x, y) => x >= TOWN.x0 && x <= TOWN.x1 && y >= TOWN.y0 && y <= TOWN.y1;
+const inWall = (x, y) => x >= WALL.x0 && x <= WALL.x1 && y >= WALL.y0 && y <= WALL.y1;
+let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const hex = c => new THREE.Color(c);
+
+// ---------------------------------------------------------------- renderer, camera, light
+const stage = document.getElementById('stage'), hud = document.getElementById('hud');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: /[?&]still/.test(location.search) });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+const outline = new OutlineEffect(renderer, { defaultThickness: 0.005, defaultColor: [0.019, 0.010, 0.007] });
+const scene = new THREE.Scene();
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.enableDamping = true; controls.screenSpacePanning = true; controls.minZoom = 0.35; controls.maxZoom = 5;
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+const ELEV = Math.asin(0.5);                                         // 30° down: the exact 2:1 tile angle
+let az = Math.PI / 4, azGoal = az, free = false, VIEW_H = 13;
+function placeCam() {
+  const t = controls.target, d = 60;
+  cam.position.set(t.x + Math.sin(az) * Math.cos(ELEV) * d, t.y + Math.sin(ELEV) * d, t.z + Math.cos(az) * Math.cos(ELEV) * d);
+  cam.lookAt(t);
+}
+controls.target.set(0, 0, 0); placeCam();
+controls.enableRotate = false;
+function resize() { const w = stage.clientWidth, h = stage.clientHeight, a = w / h;
+  VIEW_H = w < 600 ? 15 : 13;
+  cam.left = -VIEW_H * a / 2; cam.right = VIEW_H * a / 2; cam.top = VIEW_H / 2; cam.bottom = -VIEW_H / 2; cam.updateProjectionMatrix(); renderer.setSize(w, h, false); }
+new ResizeObserver(resize).observe(stage); resize();
+
+const hemi = new THREE.HemisphereLight(0xfff4dc, 0x5a5236, 1.25); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 1.9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 120 });
+sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
+scene.add(sun); scene.add(sun.target);
+
+const grad = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const MATS = {};
+const toon = (c, extra = {}) => MATS[c + JSON.stringify(extra)] ||= new THREE.MeshToonMaterial({ color: hex(c), gradientMap: grad, ...extra });
+
+// world-space ink hull for static and instanced meshes (OutlineEffect only handles plain meshes, so props draw their own)
+const hullMats = new Map();
+function hullMat(th) {
+  if (hullMats.has(th)) return hullMats.get(th);
+  const m = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
+  m.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normal * ${th.toFixed(4)};`); };
+  hullMats.set(th, m); return m;
+}
+const hulls = [];
+function addHull(mesh, th = 0.022) {
+  const h = mesh.isInstancedMesh ? new THREE.InstancedMesh(mesh.geometry, hullMat(th), mesh.count) : new THREE.Mesh(mesh.geometry, hullMat(th));
+  if (mesh.isInstancedMesh) h.instanceMatrix = mesh.instanceMatrix;
+  h.matrixAutoUpdate = false; h.matrix = mesh.matrix; h.userData.outlineParameters = { visible: false };
+  mesh.userData.outlineParameters = { visible: false }; mesh.add(h); h.matrix = new THREE.Matrix4(); hulls.push(h); return h;
+}
+
+// ---------------------------------------------------------------- ground: one mesh, one colour per tile
+function ground() {
+  const pos = [], col = [], c = new THREE.Color();
+  const GR = ['#7f8f3a', '#83913c', '#7c8c39', '#86933d', '#8a933e', '#7d8b38'], DIRT = ['#ad8850', '#aa864e', '#b08a52', '#a9854d'];   // close shades: a soft patchwork, not a checkerboard
+  for (let y = -PAD; y < ROWS + PAD; y++) for (let x = -PAD; x < COLS + PAD; x++) {
+    const n = Math.sin(x * 0.7 + y * 0.3) + Math.sin(y * 0.9 - x * 0.2) + rnd() * 1.4;
+    const edge = Math.max(0, Math.max(TOWN.x0 - x, x - TOWN.x1, TOWN.y0 - y, y - TOWN.y1));
+    let k;
+    if (ROADSET.has(x + ',' + y)) k = rnd() < .5 ? '#8f6b3f' : '#94703f';
+    else if (inTown(x, y) || (edge === 1 && rnd() < .55)) k = DIRT[(rnd() * DIRT.length) | 0];
+    else if (inWall(x, y) && rnd() < .4) k = '#9a8c4c';
+    else k = GR[Math.abs(Math.floor(n * 2)) % GR.length];
+    c.set(k);
+    const p = W(x, y), q = [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]];   // counter-clockwise from above: normals point up
+    for (const [dx, dz] of q) { pos.push(p.x + dx * T, 0, p.z + dz * T); col.push(c.r, c.g, c.b); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad }));
+  m.receiveShadow = true; m.userData.outlineParameters = { visible: false }; scene.add(m);
+  // tile grid over the map
+  const lp = [];
+  for (let x = 0; x <= COLS; x++) { const a = W(x, 0), b = W(x, ROWS); lp.push(a.x, .01, a.z, b.x, .01, b.z); }
+  for (let y = 0; y <= ROWS; y++) { const a = W(0, y), b = W(COLS, y); lp.push(a.x, .01, a.z, b.x, .01, b.z); }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+  const grid = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x2a2110, transparent: true, opacity: .35 }));
+  grid.visible = false; grid.userData.outlineParameters = { visible: false }; scene.add(grid); return grid;
+}
+const gridLines = ground();
+
+// ---------------------------------------------------------------- static props: merged per colour, then one ink hull each
+const parts = {};          // colour -> [geometry in world space]
+function put(geo, colr, m) { geo = geo.toNonIndexed ? geo.index ? geo.toNonIndexed() : geo : geo; geo.applyMatrix4(m); (parts[colr] ||= []).push(geo); }
+const M = (x, y, z, ry = 0, rx = 0, rz = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(s, s, s));
+const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const cyl = (r0, r1, h, s = 8) => new THREE.CylinderGeometry(r0, r1, h, s);
+const glows = [];          // things that light up at night
+function addGlow(mesh) { glows.push(mesh); scene.add(mesh); }
+
+function cabin(cx, cz, w, d, roofC, ry = 0, chimney = false) {
+  const base = new THREE.Matrix4().compose(new THREE.Vector3(cx, 0, cz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(1, 1, 1));
+  const at = (m) => base.clone().multiply(m);
+  const H = 1.25, r = 0.085, n = Math.round(H / (2 * r));
+  for (let i = 0; i < n; i++) {           // stacked logs, ends poking past the corners
+    const y = r + i * 2 * r, c = i % 2 ? '#7b5232' : '#6f4a2c';
+    put(cyl(r, r, w + 0.22, 7), c, at(M(0, y, d / 2, 0, 0, Math.PI / 2)));
+    put(cyl(r, r, w + 0.22, 7), c, at(M(0, y, -d / 2, 0, 0, Math.PI / 2)));
+    put(cyl(r, r, d + 0.22, 7), c, at(M(w / 2, y + r * .5, 0, 0, Math.PI / 2)));
+    put(cyl(r, r, d + 0.22, 7), c, at(M(-w / 2, y + r * .5, 0, 0, Math.PI / 2)));
+  }
+  put(box(w, H, d), '#5a3b23', at(M(0, H / 2, 0)));                       // inner block keeps it solid
+  const rise = 0.75, half = d / 2 + 0.25, len = Math.hypot(half, rise), ang = Math.atan2(rise, half);
+  put(box(w + 0.45, 0.09, len), roofC, at(M(0, H + rise / 2, half / 2, 0, ang)));
+  put(box(w + 0.45, 0.09, len), roofC, at(M(0, H + rise / 2, -half / 2, 0, -ang)));
+  const gable = new THREE.BufferGeometry();                                // triangular end walls
+  const gv = [], hw = w / 2;
+  for (const sx of [hw, -hw]) gv.push(sx, H, -d / 2, sx, H, d / 2, sx, H + rise, 0, sx, H, d / 2, sx, H, -d / 2, sx, H + rise, 0);
+  gable.setAttribute('position', new THREE.Float32BufferAttribute(gv, 3)); gable.computeVertexNormals();
+  put(gable, '#6f4a2c', at(M(0, 0, 0)));
+  put(box(0.42, 0.78, 0.06), '#3d2817', at(M(-w * .18, 0.39, d / 2 + 0.09)));   // door
+  put(box(0.6, 0.12, 0.45), '#6a5a48', at(M(-w * .18, 0.06, d / 2 + 0.3)));    // step
+  for (const wx of [w * .22]) {                                                  // window with a warm glow at night
+    put(box(0.42, 0.36, 0.06), '#3b2a1a', at(M(wx, 0.72, d / 2 + 0.09)));
+    const g = new THREE.Mesh(box(0.32, 0.26, 0.04), new THREE.MeshBasicMaterial({ color: 0x4a3a28 }));
+    g.applyMatrix4(at(M(wx, 0.72, d / 2 + 0.115))); g.userData.glow = 0xffc864; g.userData.outlineParameters = { visible: false }; addGlow(g);
+  }
+  if (chimney) { put(box(0.32, 0.9, 0.32), '#8c8478', at(M(w * .3, H + 0.55, -d * .18))); smokeAt.push(new THREE.Vector3().setFromMatrixPosition(at(M(w * .3, H + 1.05, -d * .18)))); }
+}
+const smokeAt = [];
+
+function tower(cx, cz) {
+  const h = 2.6, s = 0.62;
+  for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) put(cyl(.07, .08, h + .9, 6), '#6a4528', M(cx + x * s, (h + .9) / 2, cz + z * s));
+  for (const y of [0.9, 1.8]) for (const [a, b, ry] of [[0, s, 0], [0, -s, 0], [s, 0, Math.PI / 2], [-s, 0, Math.PI / 2]])
+    put(box(2 * s + .1, .07, .07), '#7a5232', M(cx + a, y, cz + b, ry));
+  put(box(2 * s + .5, .1, 2 * s + .5), '#7d5534', M(cx, h, cz));
+  for (const [a, b, ry] of [[0, s + .22, 0], [0, -s - .22, 0], [s + .22, 0, Math.PI / 2], [-s - .22, 0, Math.PI / 2]])
+    put(box(2 * s + .5, .32, .06), '#6f4a2c', M(cx + a, h + .2, cz + b, ry));
+  const roof = new THREE.ConeGeometry(1.25, .85, 4); put(roof, '#8a4a2a', M(cx, h + 1.32, cz, Math.PI / 4));
+  for (let y = .3; y < h; y += .3) put(box(.5, .05, .07), '#5a3b23', M(cx, y, cz + s + .05));   // ladder rungs
+  return new THREE.Vector3(cx, h + .05, cz);
+}
+
+function garden(cx, cz) {
+  put(box(2.2, .16, 1.0), '#5a3e25', M(cx, .08, cz - .62)); put(box(2.2, .16, 1.0), '#5a3e25', M(cx, .08, cz + .62));
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) {
+    put(new THREE.IcosahedronGeometry(.14, 0), j ? '#7fae4a' : '#6f9e3f', M(cx - .85 + i * .42, .27, cz - .78 + j * .32));
+    for (let k = 0; k < 2; k++) put(new THREE.ConeGeometry(.04, .22, 4), '#5f8f38', M(cx - .85 + i * .42 + k * .1, .3, cz + .45 + j * .32));
+  }
+}
+
+function campfire(cx, cz) {
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; put(new THREE.DodecahedronGeometry(.09, 0), '#8f8a80', M(cx + Math.cos(a) * .33, .06, cz + Math.sin(a) * .33, a)); }
+  for (let i = 0; i < 3; i++) put(cyl(.05, .05, .55, 6), '#5a3b23', M(cx, .08, cz, i * 1.05, 0, Math.PI / 2 - .3));
+  put(cyl(.11, .11, 1.1, 7), '#7b5232', M(cx - 1.0, .11, cz + .2, .5, 0, Math.PI / 2));     // log bench
+  const f = new THREE.Mesh(new THREE.ConeGeometry(.2, .55, 6), new THREE.MeshBasicMaterial({ color: 0xffa630 }));
+  f.position.set(cx, .32, cz); f.userData.outlineParameters = { visible: false }; scene.add(f);
+  const f2 = new THREE.Mesh(new THREE.ConeGeometry(.11, .34, 6), new THREE.MeshBasicMaterial({ color: 0xfff0a0 }));
+  f2.position.set(cx, .24, cz); f2.userData.outlineParameters = { visible: false }; scene.add(f2);
+  const L = new THREE.PointLight(0xff9a40, 0, 9, 1.6); L.position.set(cx, .8, cz); scene.add(L);
+  return { f, f2, L };
+}
+
+function lamp(cx, cz) {
+  put(cyl(.04, .05, 1.6, 6), '#3d2817', M(cx, .8, cz)); put(box(.34, .05, .05), '#3d2817', M(cx + .15, 1.58, cz));
+  const g = new THREE.Mesh(box(.15, .2, .15), new THREE.MeshBasicMaterial({ color: 0x6a5838 }));
+  g.position.set(cx + .28, 1.45, cz); g.userData.glow = 0xffd27a; g.userData.outlineParameters = { visible: false }; addGlow(g);
+  const L = new THREE.PointLight(0xffc06a, 0, 7, 1.7); L.position.set(cx + .28, 1.35, cz); scene.add(L); lampLights.push(L);
+}
+const lampLights = [];
+
+function props() {
+  const crate = (x, z, s = .32, r = 0) => put(box(s, s, s), '#9a6d3e', M(x, s / 2, z, r));
+  crate(...W(9.2, 5.2).toArray().filter((_, i) => i !== 1));
+  const p = W(4.1, 13.2); crate(p.x, p.z); crate(p.x + .36, p.z + .05, .3, .3); crate(p.x + .15, p.z, .26, .1);
+  const b = W(10.3, 6.3); put(cyl(.17, .17, .48, 9), '#7a4a2a', M(b.x, .24, b.z)); put(cyl(.17, .17, .48, 9), '#7a4a2a', M(b.x + .38, .24, b.z + .1));
+  const wp = W(4.6, 12.9); for (let i = 0; i < 4; i++) put(cyl(.07, .07, .5, 6), '#8a6038', M(wp.x + .5, .07 + (i % 2) * .12, wp.z - .5 + i * .1, 0, 0, Math.PI / 2));
+}
+
+// ---------------------------------------------------------------- walls: tall palisade at the back (north, west), low fence at the front
+// Palisade on all four sides. The sides facing the camera drop to stubs (a cutaway, like a dollhouse) so the town
+// inside stays visible from any of the four views; they grow back when the view turns away.
+const wallSides = [];
+function palisade() {
+  const gates = new Set(['7,5', '7,18', '1,10', '14,10']);
+  const SIDES = { N: [0, 0, -1], S: [0, 0, 1], W: [-1, 0, 0], E: [1, 0, 0] };
+  const sg = mergeGeometries([cyl(.11, .12, 1, 7).translate(0, .5, 0), new THREE.ConeGeometry(.12, .3, 7).translate(0, 1.15, 0)]);
+  for (const [side, n] of Object.entries(SIDES)) {
+    const stakes = [], gateParts = [];
+    for (let x = WALL.x0; x <= WALL.x1; x++) for (let y = WALL.y0; y <= WALL.y1; y++) {
+      const s = y === WALL.y0 ? 'N' : y === WALL.y1 ? 'S' : x === WALL.x0 ? 'W' : x === WALL.x1 ? 'E' : null;
+      if (s !== side) continue;
+      const c = W(x + .5, y + .5), alongX = side === 'N' || side === 'S';
+      if (gates.has(x + ',' + y)) {
+        for (const k of [-1, 1]) gateParts.push(cyl(.1, .11, 2.3, 7).applyMatrix4(M(c.x + (alongX ? k * .62 : 0), 1.15, c.z + (alongX ? 0 : k * .62))));
+        gateParts.push(box(1.55, .14, .14).toNonIndexed().applyMatrix4(M(c.x, 2.15, c.z, alongX ? 0 : Math.PI / 2)));
+        continue;
+      }
+      for (let k = 0; k < 5; k++) { const o = (k - 2) * T / 5; stakes.push([alongX ? c.x + o : c.x, alongX ? c.z : c.z + o, 1.9 + rnd() * .35]); }
+    }
+    const g = new THREE.Group(); scene.add(g);
+    const sm = new THREE.InstancedMesh(sg, toon('#7a5232'), stakes.length), m = new THREE.Matrix4();
+    stakes.forEach(([x, z, h], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rnd() * 3, (rnd() - .5) * .06)), new THREE.Vector3(1, h, 1)); sm.setMatrixAt(i, m); });
+    sm.castShadow = sm.receiveShadow = true; g.add(sm); addHull(sm, .03);
+    if (gateParts.length) {
+      const gm = new THREE.Mesh(mergeGeometries(gateParts.map(q => { const n2 = q.index ? q.toNonIndexed() : q; n2.deleteAttribute('uv'); return n2; })), toon('#5a3b23'));
+      gm.castShadow = true; g.add(gm); addHull(gm, .035);
+    }
+    wallSides.push({ g, n: new THREE.Vector3(...n), h: 1 });
+  }
+}
+let cutOn = false;
+function cutaway(dt) {
+  const v = cam.position.clone().sub(controls.target); v.y = 0; v.normalize();
+  for (const s of wallSides) { const goal = cutOn && s.n.dot(v) > .2 ? .28 : 1; s.h += (goal - s.h) * Math.min(1, dt * 6); s.g.scale.y = s.h; }
+}
+
+// ---------------------------------------------------------------- forest: instanced pines, round trees, rocks
+function forest() {
+  const pines = [], rounds = [], rocks = [];
+  for (let y = -PAD + 1; y < ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < COLS + PAD - 1; x++) {
+    const dx = Math.max(WALL.x0 - 2 - x, x - WALL.x1 - 2, 0), dy = Math.max(WALL.y0 - 2 - y, y - WALL.y1 - 2, 0), d = Math.max(dx, dy);
+    if (d < 1) continue;
+    const dens = Math.min(.55, .12 + d * .05);
+    if (rnd() < dens) { const p = W(x + rnd(), y + rnd()); (rnd() < .55 ? pines : rounds).push([p.x, p.z, .75 + rnd() * .6, rnd()]); }
+    else if (rnd() < .04) { const p = W(x + rnd(), y + rnd()); rocks.push([p.x, p.z, .6 + rnd() * .8, rnd()]); }
+  }
+  const pineG = mergeGeometries([cyl(.08, .1, .5, 6).translate(0, .25, 0), new THREE.ConeGeometry(.75, 1.2, 8).translate(0, 1.0, 0),
+    new THREE.ConeGeometry(.6, 1.0, 8).translate(0, 1.55, 0), new THREE.ConeGeometry(.42, .85, 8).translate(0, 2.05, 0)]);
+  const trunk = cyl(.09, .12, 1.1, 6).translate(0, .55, 0);
+  const crown = mergeGeometries([new THREE.IcosahedronGeometry(.7, 0).translate(0, 1.55, 0), new THREE.IcosahedronGeometry(.5, 0).translate(.35, 1.25, .2),
+    new THREE.IcosahedronGeometry(.48, 0).translate(-.35, 1.3, -.15)]);
+  const rockG = new THREE.DodecahedronGeometry(.28, 0).scale(1, .6, 1);
+  const inst = (geo, list, colorFn, th) => {
+    const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), list.length), m = new THREE.Matrix4();
+    list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, hex(colorFn(r))); });
+    im.castShadow = true; im.receiveShadow = true; scene.add(im); addHull(im, th); return im;
+  };
+  inst(pineG, pines, r => ['#2f5a3c', '#2c5236', '#36603f', '#2a4c33'][(r * 4) | 0], .045);
+  inst(trunk, rounds, () => '#5a3b23', .035);
+  inst(crown, rounds, r => ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'][(r * 6) | 0], .045);
+  inst(rockG, rocks, r => r < .5 ? '#8f8c84' : '#a19d92', .02);
+}
+
+// ---------------------------------------------------------------- build the static town
+const tentSpot = W(9, 12);                                  // 2x2 footprint: tiles (8..9, 11..12)
+cabin(...[W(6, 12)].map(p => [p.x, p.z])[0], 2.0, 1.7, '#b5532e', 0, false);   // house west of the main road
+cabin(...[W(9, 7)].map(p => [p.x, p.z])[0], 1.9, 1.6, '#7a4a2e', 0, true);     // storage cabin with chimney
+cabin(...[W(12, 16.2)].map(p => [p.x, p.z])[0], 1.6, 1.3, '#8a4a2a', -Math.PI / 2, false);
+const towerTop = tower(...[W(2.5, 6.5)].map(p => [p.x, p.z])[0]);
+garden(...[W(12, 12)].map(p => [p.x, p.z])[0]);
+const fire = campfire(...[W(5.5, 9.5)].map(p => [p.x, p.z])[0]);
+for (const [x, y] of [[6.8, 9.8], [8.2, 13.8], [3.2, 9.8], [11.8, 9.8], [6.8, 16.2]]) { const p = W(x, y); lamp(p.x, p.z); }
+props(); palisade(); forest();
+for (const [c, list] of Object.entries(parts)) {
+  const g = mergeGeometries(list.map(x => { const n = x.index ? x.toNonIndexed() : x; for (const k of Object.keys(n.attributes)) if (!['position', 'normal'].includes(k)) n.deleteAttribute(k); return n; }));
+  g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, toon(c)); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh); addHull(mesh, .035);
+}
+
+// ---------------------------------------------------------------- GLB models
+const b64 = s => Uint8Array.from(atob(s.split(',')[1]), c => c.charCodeAt(0)).buffer;
+const load = s => new Promise((ok, bad) => new GLTFLoader().parse(b64(s), '', ok, bad));
+function toonify(root, tint) {
+  root.traverse(o => { if (!o.isMesh) return;
+    const m = o.material, map = m.map || null;
+    if (map) { map.colorSpace = THREE.SRGBColorSpace; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; }
+    o.material = new THREE.MeshToonMaterial({ color: tint && o.isSkinnedMesh ? tint : m.color, map, gradientMap: grad });
+    o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; });
+}
+const [male, lite, tent] = await Promise.all([load(D.male), load(D.lite), load(D.tent)]);
+document.getElementById('msg').remove();
+toonify(male.scene); toonify(tent.scene);
+const zombieSrc = lite.scene; toonify(zombieSrc, new THREE.Color(0.58, 0.78, 0.52));
+tent.scene.position.copy(tentSpot); scene.add(tent.scene);
+
+const blob = new THREE.Mesh(new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false }));
+blob.userData.outlineParameters = { visible: false };
+const actors = [];
+function actor(src, anims, opts) {
+  const o = SkeletonUtils.clone(src); scene.add(o);
+  const mixer = new THREE.AnimationMixer(o), acts = {}; for (const c of anims) acts[c.name] = mixer.clipAction(c);
+  const w = {}; o.traverse(n => { if (n.name.startsWith('weapon_')) w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) n.visible = !!opts.armor; });
+  for (const k in w) w[k].visible = k === opts.weapon;
+  if (opts.at) { o.position.copy(opts.at); o.rotation.y = opts.face || 0; }
+  const sh = blob.clone(); scene.add(sh);
+  const a = { o, mixer, acts, cur: null, sh, ...opts }; actors.push(a); play(a, opts.clip); a.mixer.update(rnd() * 2); return a;
+}
+function play(a, name, once = false) {
+  if (a.curName === name) return; const n = a.acts[name]; if (!n) return;
+  if (a.cur) a.cur.fadeOut(.15); n.reset().fadeIn(a.cur ? .15 : 0); n.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); n.clampWhenFinished = true; n.play();
+  a.cur = n; a.curName = name;
+}
+const A = male.animations;
+// survivors: patrols along roads, a woodcutter, people at the fire, a lookout on the tower, someone in the garden
+// Survivors move freely: each picks a free tile anywhere inside the walls, walks a tile path there (A* around
+// buildings, garden, fire and tower), then does something for a moment (idle, cheer, punch, a swing or a shot).
+const BLOCK = new Set();
+const block = (x0, y0, x1, y1) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) BLOCK.add(x + ',' + y); };
+block(5, 11, 6, 12); block(8, 6, 9, 7); block(11, 15, 12, 16); block(8, 11, 9, 12); block(11, 11, 12, 12); block(4, 9, 5, 9); block(2, 6, 2, 6); block(10, 6, 10, 6);
+const walkable = (x, y) => x > WALL.x0 && x < WALL.x1 && y > WALL.y0 && y < WALL.y1 && !BLOCK.has(x + ',' + y);
+function findPath(sx, sy, gx, gy) {                       // 8-way A* on tiles, no corner cutting
+  const key = (x, y) => x + ',' + y, open = [[sx, sy]], came = new Map([[key(sx, sy), null]]), g = new Map([[key(sx, sy), 0]]);
+  const h = (x, y) => Math.hypot(gx - x, gy - y);
+  while (open.length) {
+    open.sort((p, q) => (g.get(key(...q)) + h(...q)) - (g.get(key(...p)) + h(...p)));
+    const [x, y] = open.pop(); if (x === gx && y === gy) break;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+      const nx = x + dx, ny = y + dy; if (!walkable(nx, ny)) continue;
+      if (dx && dy && (!walkable(x + dx, y) || !walkable(x, y + dy))) continue;
+      const ng = g.get(key(x, y)) + Math.hypot(dx, dy), k = key(nx, ny);
+      if (!g.has(k) || ng < g.get(k)) { g.set(k, ng); came.set(k, [x, y]); open.push([nx, ny]); }
+    }
+  }
+  if (!came.has(key(gx, gy))) return null;
+  const path = []; let c = [gx, gy]; while (c) { path.unshift(c); c = came.get(key(...c)); }
+  return path.map(([x, y]) => W(x + .2 + rnd() * .6, y + .2 + rnd() * .6));
+}
+const KITS = {       // what each kind of survivor does when they stop
+  none:  { walk: 'walk', idle: 'idle', acts: ['idle', 'cheer', 'punch', 'idle'] },
+  melee: { walk: 'melee_hold_walk', idle: 'melee_hold_idle', acts: ['melee_hold_idle', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c'] },
+  gun:   { walk: 'gun_hold_walk', idle: 'gun_hold_idle', acts: ['gun_hold_idle', 'gun_fire', 'gun_hold_idle'] },
+};
+const ONCE = new Set(['punch', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'gun_fire', 'hurt', 'collapse']);
+const tileOf = v => [Math.floor(v.x / T + CX), Math.floor(v.z / T + CY)];
+function wanderer(weapon, armor, x, y) {
+  const kit = KITS[{ bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun' }[weapon] || 'none'];
+  const a = actor(male.scene, A, { clip: kit.idle, weapon, armor, at: W(x + .5, y + .5), face: rnd() * 6, kit, wander: true, speed: 1.05 + rnd() * .3 });
+  a.wait = rnd() * 3; return a;
+}
+wanderer(null, false, 3, 10); wanderer(null, false, 7, 15); wanderer(null, false, 10, 9); wanderer('bat', false, 4, 14);
+wanderer('axe', false, 10, 7); wanderer('rifle', true, 9, 9); wanderer(null, false, 6, 8);
+{ const p = W(5.5, 9.5); actor(male.scene, A, { clip: 'idle', at: p.clone().add(new THREE.Vector3(-.75, 0, .3)), face: 1.9 }); }
+actor(male.scene, A, { clip: 'gun_hold_idle', weapon: 'ak47', armor: true, at: towerTop, face: -Math.PI * .75 });
+
+// zombies: placeholder = the survivor model, low-poly, tinted, with a shambling walk (arms out, one leg dragging)
+const ZA = lite.animations, zombies = [];
+function zombiePoint() { for (;;) { const x = -6 + rnd() * (COLS + 12), y = -6 + rnd() * (ROWS + 12); if (!(x > WALL.x0 - 1.5 && x < WALL.x1 + 2.5 && y > WALL.y0 - 1.5 && y < WALL.y1 + 2.5)) return W(x, y); } }
+function setZombies(n) {
+  while (zombies.length < n) { const a = actor(zombieSrc, ZA, { clip: 'zombie_walk', speed: .32 + rnd() * .16, zombie: true, at: zombiePoint() }); a.goal = zombiePoint(); a.acts.zombie_walk.timeScale = .85 + rnd() * .3; zombies.push(a); }
+  while (zombies.length > n) { const a = zombies.pop(); scene.remove(a.o); scene.remove(a.sh); actors.splice(actors.indexOf(a), 1); }
+  document.getElementById('znv').textContent = n;
+}
+setZombies(8);
+
+// ---------------------------------------------------------------- per-frame actor logic
+const up = new THREE.Vector3(0, 1, 0);
+function face(a, dir) { const want = Math.atan2(dir.x, dir.z); let d = want - a.o.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); a.o.rotation.y += d * .2; }
+function stepActor(a, dt) {
+  if (a.wander) {
+    if (a.route && a.route.length) {                       // walking a tile path
+      const to = a.route[0], d = to.clone().sub(a.o.position); d.y = 0; const L = d.length(), s = a.speed * dt;
+      if (L <= s) { a.o.position.copy(to); a.route.shift(); }
+      else { a.o.position.addScaledVector(d.normalize(), s); face(a, d); }
+      play(a, a.kit.walk);
+      if (!a.route.length) { a.doing = a.kit.acts[(rnd() * a.kit.acts.length) | 0]; a.wait = ONCE.has(a.doing) ? 0 : 1.5 + rnd() * 3; a.reps = ONCE.has(a.doing) ? 1 + ((rnd() * 2) | 0) : 0; a.curName = ''; play(a, a.doing, ONCE.has(a.doing)); }
+    } else if (a.reps > 0) {                              // one-shot moves, repeated a couple of times
+      if (!a.cur.isRunning()) { a.gap = (a.gap || 0) + dt; if (a.gap > .35) { a.gap = 0; a.reps--; a.curName = ''; if (a.reps > 0) play(a, a.doing, true); else { play(a, a.kit.idle); a.wait = .6; } } }
+    } else if ((a.wait -= dt) <= 0) {                     // pick somewhere new
+      const [sx, sy] = tileOf(a.o.position);
+      for (let k = 0; k < 20; k++) {
+        const gx = WALL.x0 + 1 + ((rnd() * (WALL.x1 - WALL.x0 - 1)) | 0), gy = WALL.y0 + 1 + ((rnd() * (WALL.y1 - WALL.y0 - 1)) | 0);
+        if (!walkable(gx, gy) || (gx === sx && gy === sy)) continue;
+        const r = walkable(sx, sy) ? findPath(sx, sy, gx, gy) : [W(gx + .5, gy + .5)];
+        if (r && r.length) { a.route = r.slice(1).length ? r.slice(1) : r; break; }
+      }
+      a.wait = 1;
+    } else if (!a.reps) play(a, a.doing && !ONCE.has(a.doing) ? a.doing : a.kit.idle);
+  } else if (a.zombie) {
+    const d = a.goal.clone().sub(a.o.position), L = d.length();
+    if (L < .3) a.goal = zombiePoint(); else { a.o.position.addScaledVector(d.normalize(), a.speed * dt); face(a, d); }
+  } else {
+  }
+  a.sh.position.set(a.o.position.x, a.o.position.y + .006, a.o.position.z);
+  a.mixer.update(dt);
+}
+
+// ---------------------------------------------------------------- light presets
+const LIGHT = {
+  day:   { sky: 0x9fb7c2, hemi: [0xfff4dc, 0x5a5236, 1.25], sun: [0xfff0d0, 1.9], dir: [-.55, 1, .35], glow: 0, lamps: 0, fire: 2, bg: '#9fb7c2' },
+  dusk:  { sky: 0xd99a6c, hemi: [0xffc896, 0x4a3a40, 1.0], sun: [0xff9a5a, 1.5], dir: [-.9, .45, .2], glow: .6, lamps: 3, fire: 5, bg: '#c98d66' },
+  night: { sky: 0x1c2638, hemi: [0x5a6a9a, 0x1a1a24, .75], sun: [0x8aa0d0, .45], dir: [.3, 1, -.4], glow: 1, lamps: 7, fire: 9, bg: '#1c2638' },
+};
+let light = 'day';
+function setLight(k) {
+  light = k; const L = LIGHT[k];
+  scene.background = hex(L.sky); stage.style.background = L.bg;
+  hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
+  sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
+  for (const g of glows) g.material.color.set(L.glow ? g.userData.glow : 0x4a3a28);
+  for (const l of lampLights) l.intensity = L.lamps;
+  document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === k));
+}
+setLight('day');
+
+// ---------------------------------------------------------------- smoke puffs from the chimney
+const puffs = [], puffG = new THREE.IcosahedronGeometry(.16, 0);
+for (const p of smokeAt) for (let i = 0; i < 7; i++) {
+  const m = new THREE.Mesh(puffG, new THREE.MeshBasicMaterial({ color: 0xe8e2d6, transparent: true, opacity: .6, depthWrite: false }));
+  m.userData = { base: p, t: i / 7, outlineParameters: { visible: false } }; scene.add(m); puffs.push(m);
+}
+
+// ---------------------------------------------------------------- controls
+const $ = id => document.getElementById(id);
+$('rotL').onclick = () => { azGoal -= Math.PI / 2; };
+$('rotR').onclick = () => { azGoal += Math.PI / 2; };
+$('home').onclick = () => { azGoal = Math.round((az - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4; controls.target.set(0, 0, 0); cam.zoom = 1; cam.updateProjectionMatrix(); if (free) $('free').click(); };
+$('free').onclick = () => { free = !free; controls.enableRotate = free; $('free').classList.toggle('on', free);
+  controls.mouseButtons.LEFT = free ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN; controls.mouseButtons.RIGHT = free ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.touches.ONE = free ? THREE.TOUCH.ROTATE : THREE.TOUCH.PAN;
+  if (!free) { const off = cam.position.clone().sub(controls.target); az = Math.atan2(off.x, off.z); azGoal = Math.round((az - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4; } };
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => setLight(b.dataset.t));
+$('zn').oninput = e => setZombies(+e.target.value);
+$('cut').onclick = () => { cutOn = !cutOn; $('cut').classList.toggle('on', cutOn); };
+$('grid').onclick = () => { gridLines.visible = !gridLines.visible; $('grid').classList.toggle('on', gridLines.visible); };
+$('shadows').onclick = () => { sun.castShadow = !sun.castShadow; $('shadows').classList.toggle('on', sun.castShadow); };
+let lines = true; $('lines').onclick = () => { lines = !lines; for (const h of hulls) h.visible = lines; $('lines').classList.toggle('on', lines); };
+let showHud = true; $('hudb').onclick = () => { showHud = !showHud; hud.hidden = !showHud; $('hudb').classList.toggle('on', showHud); };
+window.addEventListener('keydown', e => { if (e.key === 'q' || e.key === 'Q') $('rotL').click(); if (e.key === 'e' || e.key === 'E') $('rotR').click(); });
+
+// keep the camera over the map
+const LIM = new THREE.Box3(W(-4, -4), W(COLS + 4, ROWS + 4));
+const clock = new THREE.Clock(); let frames = 0, fpsT = 0, fps = 0;
+const STILL = /[?&]still/.test(location.search);          // test hook: step frames by hand (headless screenshots)
+if (STILL) renderer.setPixelRatio(1);
+let simT = 0;
+function frame(dtIn) {
+  const dt = dtIn ?? Math.min(.1, clock.getDelta()); simT += dt; const t = simT;
+  if (!free) { az += (azGoal - az) * Math.min(1, dt * 8); if (Math.abs(azGoal - az) < 1e-3) az = azGoal; controls.target.clamp(LIM.min, LIM.max); controls.target.y = 0; placeCam(); }
+  cutaway(dt);
+  for (const a of actors) stepActor(a, dt);
+  const fl = 1 + Math.sin(t * 17) * .08 + Math.sin(t * 7.3) * .07;
+  fire.f.scale.set(fl, fl * (1 + Math.sin(t * 11) * .1), fl); fire.f2.scale.setScalar(2 - fl); fire.L.intensity = LIGHT[light].fire * fl;
+  for (const m of puffs) { const u = (m.userData.t + t * .12) % 1; m.position.copy(m.userData.base).add(new THREE.Vector3(u * .5, u * 1.6, -u * .3)); m.scale.setScalar(.6 + u * 1.6); m.material.opacity = .55 * (1 - u); }
+  // sun follows the view target so the shadow map always covers what you see
+  const d = LIGHT[light].dir; sun.position.set(controls.target.x + d[0] * 40, d[1] * 40, controls.target.z + d[2] * 40); sun.target.position.copy(controls.target);
+  controls.update();
+  if (lines) outline.render(scene, cam); else renderer.render(scene, cam);
+  frames++; fpsT += dt; if (fpsT > .5) { fps = frames / fpsT; frames = 0; fpsT = 0;
+    const i = renderer.info.render; hud.textContent = `${fps.toFixed(0)} fps\n${i.calls} draw calls\n${(i.triangles / 1000).toFixed(0)}k triangles\n${actors.length - zombies.length} survivors, ${zombies.length} zombies`; }
+}
+if (STILL) window.T = { controls, cam, zombies, actors };
+if (STILL) window.step = (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) frame(dt); const i = renderer.info.render; return `${i.calls} calls ${(i.triangles / 1000).toFixed(0)}k tris`; };
+else renderer.setAnimationLoop(() => frame());
+document.getElementById('notes').innerHTML = D.notes || '';
+</script>

@@ -2,7 +2,7 @@
 with weapon swapping and a walk-around in the ink town.
 
   python3 build_test_page.py SPRITES_DIR OUT.html [--town TOWN.jpg] [--extra name=path ...] [--building Name=DIR]
-      [--outfit Name=DIR ...] [--title T] [--sub S]   # outfits: one sprite set each, switchable, plus a side-by-side view
+      [--outfit Name=DIR ...] [--title T] [--sub S] [--glb MODEL.glb]   # outfits: one sprite set each, switchable, plus a side-by-side view
 SPRITES_DIR/<weapon>/<clip>_<view>_<i>.png (smooth 128px frames), SPRITES_DIR/anchor.json (ground point).
 """
 import base64, glob, io, json, os, re, sys
@@ -28,7 +28,7 @@ def strips(root, webp=False):
             out[w].setdefault(clip, {})[view] = {'src': b64(st, 'WEBP', lossless=True, quality=100, method=6) if webp else b64(st, optimize=True), 'n': len(ims), 'size': S}
     return out
 
-def build(sprites, out_html, town=None, extras=(), buildings=(), outfits=(), title=None, sub=None):
+def build(sprites, out_html, town=None, extras=(), buildings=(), outfits=(), title=None, sub=None, glb=None):
     outs = {n: strips(d, webp=bool(outfits)) for n, d in outfits}   # two sets: lossless WebP keeps the page small
     data = next(iter(outs.values())) if outs else strips(sprites)
     anchor = json.load(open(os.path.join(sprites, 'anchor.json')))
@@ -58,6 +58,7 @@ def build(sprites, out_html, town=None, extras=(), buildings=(), outfits=(), tit
     payload = {'buildings': bl, 'sprites': data, 'anchor': [anchor['ground_x'] * S, anchor['ground_y'] * S], 'size': S,
                'town': town_src, 'extras': ex,
                'outfits': outs or None, 'title': title, 'sub': sub,
+               'glb': ('data:model/gltf-binary;base64,' + base64.b64encode(open(glb, 'rb').read()).decode()) if glb else None,
                'ms': anchor.get('ms', {'walk': [110] * 8, 'chop': [160, 130, 120, 160, 60, 60, 200, 160]}), 'loop': anchor.get('loop', {})}
     html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_page_template.html')).read()
     html = html.replace('/*__DATA__*/null', json.dumps(payload))
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     a = sys.argv[1:]; town = None; extras = []; bls = []; outs = []; kw = {}
     while '--outfit' in a:
         i = a.index('--outfit'); n, p = a[i + 1].split('=', 1); outs.append((n, p)); del a[i:i + 2]
-    for k in ('title', 'sub'):
+    for k in ('title', 'sub', 'glb'):
         if '--' + k in a: i = a.index('--' + k); kw[k] = a[i + 1]; del a[i:i + 2]
     while '--building' in a:
         i = a.index('--building'); n, p = a[i + 1].split('=', 1); bls.append((n, p)); del a[i:i + 2]

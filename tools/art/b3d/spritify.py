@@ -88,7 +88,7 @@ def sheets(done, out, scale=4, bg=(236, 222, 190, 255)):
             for i in range(n): sheet.alpha_composite(vs[v][i], (i * S, r * S))
         sheet.resize((sheet.width * scale, sheet.height * scale), Image.NEAREST).save(os.path.join(out, f'sheet_{c}.png'))
         # one GIF per clip: four directions side by side
-        dur = [110] * n if c == 'walk' else [160, 130, 120, 160, 60, 60, 200, 160][:n]
+        dur = [110] * n if c == 'walk' else ([160, 130, 120, 160, 60, 60, 200, 160] + [120] * n)[:n]   # clips can have more than 8 frames (cheer: 10)
         gif = []
         for i in range(n):
             fr = Image.new('RGBA', (len(views) * S, S), bg)

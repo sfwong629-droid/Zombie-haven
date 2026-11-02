@@ -54,7 +54,13 @@ def walk_legs(t, stride=1.0):
         p['upperarm.' + n] = (-36 * sg * sn, 0, 0)
         p['forearm.' + n] = (32 + 30 * max(0.0, -sg * sn), 0, 0)
     p['bob'] = .032 * math.cos(2 * ph) - .055
-    p['pelvis'] = (0, 10 * sn, 0); p['chest'] = (7, -14 * sn, 0); p['head'] = (-12, 6 * sn, 0)
+    p['pelvis'] = (0, 10 * sn, 0); p['chest'] = (7, -14 * sn, 0); p['head'] = (-12, 0, 0)
+    return steady_head(p, 0, 0)
+
+def steady_head(p, base=0.0, k=.15):
+    """Keep the head facing where he walks: cancel most of the hip/shoulder twist (world yaw = base + k * twist)."""
+    tw = sum(p.get(b, (0, 0, 0))[1] for b in ('pelvis', 'chest', 'neck'))
+    h = p.get('head', (0, 0, 0)); p['head'] = (h[0], base - (1 - k) * tw, h[2])
     return p
 
 def legs_walk(p, t, stride=1.0):
@@ -93,8 +99,8 @@ def hold_walk_melee(t):
     p = legs_walk({}, t)
     s = math.sin(2 * math.pi * t); r = READY
     p.update({'upperarm.R': (r['ua'] - 10 * s, 0, -22), 'forearm.R': (r['fa'] + 6 * s, 0, 0), 'hand.R': (r['wr'], r['wy'], 0),
-              'chest': (9, -10 + 8 * s, 0), 'head': (-10, 6, 0)})
-    return p
+              'chest': (9, -10 + 8 * s, 0), 'head': (-10, 0, 0)})
+    return steady_head(p, -4)
 
 GUN = (65, 55)    # upper arm, forearm: rifle at chest height
 
@@ -112,7 +118,7 @@ def hold_walk_gun(t):
     s = math.sin(4 * math.pi * t)
     ua, fa = GUN
     p.update({'upperarm.R': (ua, 0, -12), 'forearm.R': (fa, 0, 0), 'hand.R': (-(ua + fa) + 3 * s, 0, 0), 'chest': (10, 0, 0), 'head': (-10, 0, 0)})
-    return p
+    return steady_head(p)
 
 def fire(t):
     """Shot at t=0 from a braced stance: big recoil kick up and back through the body, settle."""
@@ -147,9 +153,9 @@ def swing_a(t):
     """Overhead chop: rock back onto the rear foot with the weapon cocked behind the head, then drive forward onto the
     front knee and chop down; the weapon stays square to the forearm the whole way."""
     K = [(0, R0),
-         (.36, {'ua': 168, 'fa': 72, 'wr': 4, 'wy': 0, 'lean': -14, 'tw': -22, 'w': -1, 'ab': -6, 'la': 70}),
-         (.46, {'ua': 174, 'fa': 78, 'wr': 4, 'wy': 0, 'lean': -16, 'tw': -24, 'w': -1, 'ab': -6, 'la': 75}),
-         (.56, {'ua': 80, 'fa': 12, 'wr': -10, 'wy': 0, 'lean': 16, 'tw': 12, 'w': .8, 'ab': -4, 'la': 20}),
+         (.36, {'ua': 150, 'fa': 74, 'wr': 4, 'wy': -22, 'lean': -14, 'tw': -26, 'w': -1, 'ab': -34, 'la': 70}),
+         (.46, {'ua': 156, 'fa': 80, 'wr': 4, 'wy': -24, 'lean': -16, 'tw': -28, 'w': -1, 'ab': -36, 'la': 75}),
+         (.56, {'ua': 84, 'fa': 14, 'wr': -10, 'wy': -16, 'lean': 16, 'tw': 12, 'w': .8, 'ab': -34, 'la': 20}),
          (.62, {'ua': 34, 'fa': 4, 'wr': -18, 'wy': 0, 'lean': 26, 'tw': 18, 'w': 1, 'ab': -4, 'la': 0}),
          (.7, {'ua': 22, 'fa': 8, 'wr': -18, 'wy': 0, 'lean': 28, 'tw': 20, 'w': 1, 'ab': -4, 'la': -5}),
          (1, R0)]
@@ -183,7 +189,7 @@ def rescue(t):
     p.update({'upperarm.R': (66, 0, 6), 'upperarm.L': (66, 0, -6), 'forearm.R': (25, 0, 0), 'forearm.L': (25, 0, 0),
               'chest': (22, 0, 0), 'head': (-26, 0, 0)})
     p['pelvis'] = (12, p['pelvis'][1] * .5, 0)
-    return p
+    return steady_head(p)
 
 def hurt(t):
     K = [(0, {'lean': 0, 'hd': -6, 'ua': 4, 'fa': 22, 'bob': -.035, 'th': 16, 'sh': -30}),
@@ -224,10 +230,35 @@ def collapse(t):
     return p
 
 def cheer(t):
-    s = abs(math.sin(2 * math.pi * t))
-    p = soft_legs({'upperarm.L': (8, 0, 168), 'upperarm.R': (8, 0, -168), 'forearm.L': (-5 + 10 * s, 0, 0), 'forearm.R': (-5 + 10 * s, 0, 0),
-                   'chest': (-6, 0, 0), 'head': (-18, 0, 4 * math.sin(4 * math.pi * t))}, 1 - s)
-    p['bob'] = -.02 + .08 * s
+    """Crouch, spring high with both fists up, hang at the top, land and absorb."""
+    t = t % 1.0
+    if t < .14 or t >= .86:                       # on the ground: deep crouch before take-off / after landing
+        u = (t - .86) / .28 if t >= .86 else .5 + t / .28
+        c = math.sin(math.pi * u)                 # crouch depth 0..1..0
+        p = soft_legs({'chest': (14 * c, 0, 0), 'head': (-10 - 6 * c, 0, 0),
+                       'upperarm.L': (-20 * c, 0, 30 + 20 * c), 'upperarm.R': (-20 * c, 0, -30 - 20 * c),
+                       'forearm.L': (40, 0, 0), 'forearm.R': (40, 0, 0)}, 1 + 1.2 * c)
+        p['bob'] = -.035 - .07 * c
+        return p
+    u = (t - .14) / .72                           # 0..1 in the air
+    h = math.sin(math.pi * u) ** .45              # flat top = hang time
+    tuck = math.sin(math.pi * u) ** 2
+    p = {'chest': (-8, 0, 0), 'head': (-20, 0, 4 * math.sin(4 * math.pi * u)),
+         'upperarm.L': (8, 0, 142), 'upperarm.R': (8, 0, -142), 'forearm.L': (-5 + 15 * tuck, 0, 0), 'forearm.R': (-5 + 15 * tuck, 0, 0),
+         'thigh.L': (10 + 45 * tuck, 0, 0), 'thigh.R': (5 + 35 * tuck, 0, 0), 'shin.L': (-15 - 70 * tuck, 0, 0), 'shin.R': (-12 - 60 * tuck, 0, 0),
+         'foot.L': (20 * tuck, 0, 0), 'foot.R': (20 * tuck, 0, 0)}
+    p['bob'] = .22 * h
+    return p
+
+def zombie_walk(t):
+    """Placeholder zombie shamble (3D only, not in CLIPS): short dragging steps, arms out straight, head lolling."""
+    p = legs_walk({}, t, .55)
+    s = math.sin(2 * math.pi * t)
+    p['shin.R'] = (p['shin.R'][0] * .5 - 8, 0, 0)            # stiff right leg drags
+    p.update({'upperarm.L': (84 + 6 * s, 0, 10), 'upperarm.R': (80 - 6 * s, 0, -10), 'forearm.L': (8, 0, 0), 'forearm.R': (14, 0, 0),
+              'hand.L': (-10, 0, 0), 'hand.R': (-10, 0, 0),
+              'chest': (16, 0, 6 * s), 'pelvis': (0, 8 * s, 5 * s), 'head': (6, 0, 16 + 5 * s)})
+    p['bob'] = p.get('bob', 0) - .02
     return p
 
 CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'melee'/'gun')
@@ -236,7 +267,7 @@ CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'mel
     'rescue': (rescue, 8, 140, True, None), 'punch': (punch, 6, 80, False, None),
     'swing_a': (swing_a, 8, 0, False, 'melee'), 'swing_b': (swing_b, 8, 0, False, 'melee'), 'swing_c': (swing_c, 8, 0, False, 'melee'),
     'fire': (fire, 6, 70, False, 'gun'), 'hurt': (hurt, 5, 110, False, None), 'hold_hurt': (None, 5, 110, False, 'any'), 'collapse': (collapse, 8, 140, False, None),
-    'cheer': (cheer, 8, 120, True, None)}
+    'cheer': (cheer, 10, 100, True, None)}
 SWING_T = [0, .2, .38, .46, .54, .6, .66, .82]          # uneven times: slow wind-up, fast strike
 SWING_MS = [160, 130, 120, 160, 60, 60, 200, 160]
 WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun'}

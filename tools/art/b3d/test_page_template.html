@@ -42,6 +42,11 @@ canvas { display: block; margin-inline: auto; }
 .src figcaption { font-size: 13px; color: var(--muted); }
 .note { font-size: 13px; color: var(--muted); max-width: 75ch; line-height: 1.5; }
 .note code { font-size: 12px; color: var(--fg); }
+.v3d { position: relative; background: radial-gradient(ellipse at 50% 70%, #a9ad9f, #7f8478); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: min(62vh, 520px); min-height: 320px; touch-action: none; }
+.v3d canvas { width: 100% !important; height: 100% !important; cursor: grab; }
+.v3d canvas:active { cursor: grabbing; }
+.v3d .msg { position: absolute; inset: 0; display: grid; place-items: center; color: #2c2f28; font-size: 14px; pointer-events: none; }
+.v3d .hud { position: absolute; left: 10px; bottom: 8px; color: #2c2f28; font-size: 12px; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
 
@@ -58,6 +63,17 @@ canvas { display: block; margin-inline: auto; }
     <div class="grp"><span class="lab">Speed</span><button id="s1" class="on">1×</button><button id="s05">½×</button><button id="s025">¼×</button><button id="pause">Pause</button></div>
     <div class="grp"><span class="lab">Zoom</span><button id="z1" class="on">Fit</button><button id="z2">1:1</button><button id="z3">2×</button></div>
   </div>
+
+  <section id="sec3d" hidden>
+    <h2>Real-time 3D · drag to turn</h2>
+    <div class="bar2" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+      <button id="v3game">Game view</button><button id="v3spin">Auto-turn</button><button id="v3top">Top</button><button id="v3side">Side</button>
+      <button id="v3armor">Armour</button><button id="v3grid" class="on">Tile</button>
+      <span class="lab" id="v3info"></span>
+    </div>
+    <div class="v3d" id="v3d"><div class="msg" id="v3msg">Loading the 3D model…</div><div class="hud" id="v3hud"></div></div>
+    <p class="note">The same rigged model, animations and weapons as the sprites, drawn live in the browser with three.js: toon shading in hard bands and an ink outline. Drag (or one finger) to turn all the way round, scroll or pinch to zoom, right-drag or two fingers to pan. Game view snaps back to the game's 2:1 tile angle. The Equip, Animation and Speed controls above drive it too.</p>
+  </section>
 
   <section id="cmpsec" hidden>
     <h2>Side by side</h2>
@@ -282,5 +298,117 @@ function ready() {
   document.getElementById('notes').innerHTML =
     `${tot} frames in all. Sprites are ${S}×${S} px with the feet on the ground point at (${AX.toFixed(0)}, ${AY.toFixed(0)}); swings use uneven timing (${D.ms.swing_a.join(', ')} ms) so the wind-up is slow and the strike fast. ` +
     `Pipeline: ChatGPT front drawing → Hunyuan3D model → <code>ai_model.py</code> (shared skeleton) → <code>anims.py</code> (13 clips, weapons, effects, four directions) → <code>spritify.py smooth</code>. Branch <code>art-direction-b</code>.`;
+}
+</script>
+
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<script type="module">
+// Real-time 3D viewer: the GLB holds the rig, body, weapons (weapon_*), armour (armor_*) and every clip as an action:
+// '<clip>' empty-handed, 'melee_<clip>' for bat/axe, 'gun_<clip>' for rifle/AK-47. Follows st (weapon, anim, speed, pause).
+if (D.glb) {
+  document.getElementById('sec3d').hidden = false;
+  const THREE = await import('three');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+  const { OutlineEffect } = await import('three/addons/effects/OutlineEffect.js');
+  const box = document.getElementById('v3d'), msg = document.getElementById('v3msg'), hud = document.getElementById('v3hud');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  box.prepend(renderer.domElement);
+  const outline = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.019, 0.010, 0.007], defaultAlpha: 1 });
+  const scene = new THREE.Scene();
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+  const TARGET = new THREE.Vector3(0, 0.55, 0), GAME_DIR = new THREE.Vector3(0.612, 0.5, 0.612).normalize();
+  const controls = new OrbitControls(cam, renderer.domElement);
+  controls.target.copy(TARGET); controls.enableDamping = true; controls.minZoom = 0.4; controls.maxZoom = 6;
+  function view(dir) { cam.position.copy(TARGET).addScaledVector(dir.clone().normalize(), 10); cam.zoom = 1; cam.updateProjectionMatrix(); controls.update(); }
+  view(GAME_DIR);
+  function resize() { const w = box.clientWidth, h = box.clientHeight, a = w / h, half = 0.95;
+    cam.left = -half * a; cam.right = half * a; cam.top = half; cam.bottom = -half; cam.updateProjectionMatrix(); renderer.setSize(w, h, false); }
+  new ResizeObserver(resize).observe(box); resize();
+  // light: a key that rides with the camera (upper left of the view) so the front is always lit, plus soft fill
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x6b6250, 1.1));
+  const key = new THREE.DirectionalLight(0xfff4e2, 1.6); scene.add(key); scene.add(key.target);
+  const grad = new THREE.DataTexture(new Uint8Array([90, 90, 90, 255, 175, 175, 175, 255, 255, 255, 255, 255]), 3, 1);
+  grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+  // ground: one 2:1 tile (1.3 units, the farmer tile scale) and a soft shadow
+  const tile = new THREE.Group(); scene.add(tile);
+  const tg = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ color: 0xb79a68 }));
+  tg.rotation.x = -Math.PI / 2; tile.add(tg);
+  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.3, 1.3)), new THREE.LineBasicMaterial({ color: 0x6b5634 }));
+  edge.rotation.x = -Math.PI / 2; edge.position.y = 0.002; tile.add(edge);
+  const sh = new THREE.Mesh(new THREE.CircleGeometry(0.26, 32), new THREE.MeshBasicMaterial({ color: 0x2a2116, transparent: true, opacity: 0.28, depthWrite: false }));
+  sh.rotation.x = -Math.PI / 2; sh.position.y = 0.004; sh.userData.outlineParameters = { visible: false }; scene.add(sh);
+  tile.traverse(o => o.userData.outlineParameters = { visible: false });
+  // muzzle flash: a camera-facing star at the gun tip for the first moments of a shot
+  const fc = document.createElement('canvas'); fc.width = fc.height = 64; const fg = fc.getContext('2d');
+  fg.fillStyle = '#ffd25a'; fg.beginPath(); for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, r = i % 2 ? 9 : 30; fg.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } fg.fill();
+  fg.fillStyle = '#fff6d0'; fg.beginPath(); fg.arc(32, 32, 8, 0, 7); fg.fill();
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(fc), depthTest: false })); flash.scale.setScalar(0.22); flash.visible = false; scene.add(flash);
+
+  const buf = Uint8Array.from(atob(D.glb.split(',')[1]), c => c.charCodeAt(0)).buffer;
+  const gltf = await new Promise((ok, bad) => new GLTFLoader().parse(buf, '', ok, bad));
+  const root = gltf.scene; scene.add(root); msg.remove();
+  const weapons = {}, armour = [], tips = {};
+  root.traverse(o => {
+    if (o.name.startsWith('weapon_')) weapons[o.name.slice(7)] = o;
+    if (/_tip$/.test(o.name)) tips[o.name.replace('_tip', '')] = o;
+    if (o.name.startsWith('armor_')) armour.push(o);
+    if (o.isMesh) {
+      const m = o.material; o.material = new THREE.MeshToonMaterial({ color: m.color, map: m.map || null, gradientMap: grad });
+      if (o.material.map) { const t = o.material.map; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; }   // no mipmaps: they bleed the gaps between UV islands into seams
+      o.frustumCulled = false;
+    }
+  });
+  const mixer = new THREE.AnimationMixer(root), acts = {};
+  for (const c of gltf.animations) acts[c.name] = mixer.clipAction(c);
+  const ONCE = new Set(['punch', 'fire', 'hurt', 'hold_hurt', 'collapse', 'swing_a', 'swing_b', 'swing_c']);
+  let cur = null, curName = '', armorOn = /armou?r/i.test(st.outfit || ''), spin = false, wait = 0;
+  function pick() {
+    const w = st.weapon, cls = { bat: 'melee', axe: 'melee', rifle: 'gun', ak47: 'gun' }[w];
+    let name = cls && acts[cls + '_' + st.anim] ? cls + '_' + st.anim : st.anim, armed = name !== st.anim;
+    if (!acts[name]) name = cls && acts[cls + '_hold_idle'] ? cls + '_hold_idle' : 'idle', armed = !!cls;
+    for (const k in weapons) weapons[k].visible = armed && k === w;
+    return name;
+  }
+  function play(name) {
+    const a = acts[name]; if (cur && cur !== a) cur.fadeOut(0.12);
+    a.reset(); a.setLoop(ONCE.has(st.anim) ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = true;
+    a.fadeIn(cur && cur !== a ? 0.12 : 0).play(); cur = a; curName = name; wait = 0;
+    document.getElementById('v3info').textContent = name.replace(/_/g, ' ') + ' · ' + a.getClip().duration.toFixed(2) + ' s';
+  }
+  const B = id => document.getElementById(id);
+  function marks() { B('v3armor').classList.toggle('on', armorOn); B('v3spin').classList.toggle('on', spin); B('v3grid').classList.toggle('on', tile.visible); }
+  B('v3game').onclick = () => { spin = false; controls.autoRotate = false; view(GAME_DIR); marks(); };
+  B('v3top').onclick = () => view(new THREE.Vector3(0.001, 1, 0.001));
+  B('v3side').onclick = () => view(new THREE.Vector3(1, 0.12, 0));
+  B('v3spin').onclick = () => { spin = !spin; controls.autoRotate = spin; controls.autoRotateSpeed = 3; marks(); };
+  B('v3armor').onclick = () => { armorOn = !armorOn; marks(); };
+  B('v3grid').onclick = () => { tile.visible = !tile.visible; marks(); };
+  let lastOutfit = st.outfit; marks();
+  const clockT = new THREE.Clock(), tmp = new THREE.Vector3();
+  renderer.setAnimationLoop(() => {
+    const dt = Math.min(0.1, clockT.getDelta());
+    if (st.outfit !== lastOutfit) { lastOutfit = st.outfit; armorOn = /armou?r/i.test(st.outfit || ''); marks(); }
+    for (const o of armour) o.visible = armorOn;
+    const want = pick(); if (want !== curName) play(want);
+    if (!st.paused) {
+      mixer.update(dt * st.speed);
+      if (ONCE.has(st.anim) && cur.time >= cur.getClip().duration - 1e-3) { wait += dt * st.speed; if (wait > 0.6) play(curName); }
+    }
+    const tip = tips[st.weapon]; flash.visible = false;
+    if (tip && st.anim === 'fire' && weapons[st.weapon].visible && cur.time < 0.09) {
+      tip.getWorldPosition(tmp); weapons[st.weapon].getWorldPosition(flash.position);
+      flash.position.lerp(tmp, 1.15); flash.visible = true; flash.material.rotation = Math.random();
+    }
+    // key light from the upper left of whatever angle you're looking from
+    const off = cam.position.clone().sub(controls.target).normalize();
+    const left = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), off).normalize();
+    key.position.copy(controls.target).addScaledVector(off, 4).addScaledVector(left, 2.5).add(new THREE.Vector3(0, 3, 0)); key.target.position.copy(controls.target);
+    controls.update(); outline.render(scene, cam);
+    hud.textContent = (st.paused ? 'paused · ' : '') + (st.speed !== 1 ? st.speed + '× · ' : '') + (armorOn ? 'armour' : 'shirt');
+  });
 }
 </script>
