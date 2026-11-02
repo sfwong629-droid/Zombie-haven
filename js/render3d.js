@@ -182,9 +182,38 @@ function buildGround() {
 }
 const ni = (g) => { const n = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal') n.deleteAttribute(k); return n; };
 const merge = (list) => mergeGeometries(list.map(ni));
-const pineG = merge([cyl(.08, .1, .5, 6).translate(0, .25, 0), new THREE.ConeGeometry(.75, 1.2, 8).translate(0, 1.0, 0), new THREE.ConeGeometry(.6, 1.0, 8).translate(0, 1.55, 0), new THREE.ConeGeometry(.42, .85, 8).translate(0, 2.05, 0)]);
-const trunkG = cyl(.09, .12, 1.1, 6).translate(0, .55, 0);
-const crownG = merge([new THREE.IcosahedronGeometry(.7, 0).translate(0, 1.55, 0), new THREE.IcosahedronGeometry(.5, 0).translate(.35, 1.25, .2), new THREE.IcosahedronGeometry(.48, 0).translate(-.35, 1.3, -.15)]);
+// V3D.8 trees: layered pines, lumpy leaf crowns, bare dead trees; they sway in the wind (vertex shader, phase from position)
+const pineG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry([.95, .8, .64, .48, .3][i], [1.1, 1.0, .9, .8, .7][i], 9).rotateY(i * .41).translate(Math.sin(i * 2.1) * .04, [.75, 1.2, 1.6, 1.98, 2.32][i], Math.cos(i * 1.7) * .04)));
+const pineTrunkG = cyl(.09, .13, .8, 6).translate(0, .4, 0);
+const trunkG = merge([cyl(.1, .15, 1.4, 7).translate(0, .7, 0), cyl(.035, .06, .62, 5).rotateZ(.75).translate(.24, 1.12, 0), cyl(.03, .05, .55, 5).rotateZ(-.7).rotateY(.9).translate(-.15, 1.18, -.14)]);
+const crownG = merge([new THREE.IcosahedronGeometry(.62, 1).translate(0, 1.78, 0), new THREE.IcosahedronGeometry(.48, 0).translate(.44, 1.52, .16), new THREE.IcosahedronGeometry(.46, 0).translate(-.4, 1.56, -.2),
+  new THREE.IcosahedronGeometry(.42, 0).translate(.08, 1.46, -.44), new THREE.IcosahedronGeometry(.4, 0).translate(-.12, 2.16, .14), new THREE.IcosahedronGeometry(.36, 0).translate(.28, 2.0, .32), new THREE.IcosahedronGeometry(.38, 0).translate(-.3, 1.42, .34)]);
+const deadG = merge([cyl(.07, .13, 1.7, 6).translate(0, .85, 0), cyl(.03, .055, .8, 5).rotateZ(.8).translate(.3, 1.35, 0), cyl(.025, .05, .7, 5).rotateZ(-.75).rotateY(1.2).translate(-.12, 1.2, -.25),
+  cyl(.02, .04, .6, 5).rotateZ(.6).rotateY(2.4).translate(-.2, 1.6, .18), cyl(.015, .03, .45, 4).rotateZ(-.5).translate(-.12, 1.85, 0), cyl(.015, .025, .35, 4).rotateZ(.9).translate(.5, 1.62, 0)]);
+const SWAY = { uTime: { value: 0 } };
+const swayCode = (lo, hi) => `
+  { vec3 ip = instanceMatrix[3].xyz; float ph = ip.x * .37 + ip.z * .53, h = max(transformed.y - .5, 0.);
+    float w = sin(uTime * 1.3 + ph) * .7 + sin(uTime * 2.3 + ph * 1.7) * .3;
+    transformed.x += w * h * h * .03; transformed.z += w * h * h * .018; vShade = clamp((position.y - ${lo.toFixed(2)}) / ${(hi - lo).toFixed(2)}, 0., 1.); }`;
+function swayMats(lo, hi, th) {   // the toon material and its outline both bend the same way
+  const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad });
+  m.onBeforeCompile = (sh) => { sh.uniforms.uTime = SWAY.uTime;
+    sh.vertexShader = 'uniform float uTime; varying float vShade;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + swayCode(lo, hi));
+    sh.fragmentShader = 'varying float vShade;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= mix(.7, 1.12, vShade);'); };
+  const hm = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
+  hm.onBeforeCompile = (sh) => { sh.uniforms.uTime = SWAY.uTime;
+    sh.vertexShader = 'uniform float uTime; varying float vShade;\n' + sh.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normalize(normal) * ${th.toFixed(4)};` + swayCode(lo, hi))
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  gl_Position.z += 0.0004 * gl_Position.w;'); };
+  return [m, hm];
+}
+function instSway(geo, list, colorFn, th, lo, hi) {
+  const [mat, hm] = swayMats(lo, hi, th), im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length)), m = new THREE.Matrix4();
+  im.count = list.length;
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im);
+  const h = new THREE.InstancedMesh(geo, hm, im.count); h.instanceMatrix = im.instanceMatrix; h.userData.hull = true; h.castShadow = false; h.frustumCulled = false; im.add(h);
+  return im;
+}
 const rubbleG = merge([new THREE.DodecahedronGeometry(.22, 0).scale(1.4, .5, 1).translate(0, .06, 0), box(.36, .1, .14).rotateY(.6).translate(.12, .12, .05), box(.3, .08, .1).rotateY(-.4).translate(-.15, .1, -.08)]);
 const crateG = box(.36, .36, .36).translate(0, .18, 0);
 let forest = [], forestKey = '';
@@ -251,9 +280,12 @@ function buildForest() {
   forest.push(instD(bushG, bushes, (r) => ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'][(r * 5) | 0], true));
   forest.push(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]));
   for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
-  forest.push(inst(pineG, pines, (r) => ['#2f5a3c', '#2c5236', '#36603f', '#2a4c33'][(r * 4) | 0], .045));
-  forest.push(inst(trunkG, rounds, () => '#5a3b23', .035));
-  forest.push(inst(crownG, rounds, (r) => ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'][(r * 6) | 0], .045));
+  const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t));
+  forest.push(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8));
+  forest.push(instSway(pineG, pines, (r) => ['#2f5a3c', '#2c5236', '#36603f', '#2a4c33', '#3a6440'][(r * 5) | 0], .04, .3, 2.7));
+  forest.push(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4));
+  forest.push(instSway(crownG, leafy, (r) => ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'][(r * 6) | 0], .04, 1.0, 2.5));
+  forest.push(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
   forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
   forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
   return true;
@@ -610,6 +642,7 @@ let ready = false, lastT = 0, frames = 0, fpsT = 0;
 function frame() {
   if (!ready) return;
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
+  SWAY.uTime.value = now / 1000;
   placeCamera();
   let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) renderer.shadowMap.needsUpdate = true;
