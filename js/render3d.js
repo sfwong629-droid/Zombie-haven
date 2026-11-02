@@ -10,7 +10,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const G = window.ZHG;
-const T = 1.6;                                                    // world units per tile; the survivor is 1.09 tall. V3D.2: 1.3 -> 1.6 so a door can be ~1.2 survivor heights and buildings still fit their footprint
+const T = 2.4;                                                    // world units per tile; the survivor is 1.09 tall. V3D.3: 1.6 -> 2.4 (buildings 1.5x vs survivors, the ink-town mockup proportions)
 const SQ2 = Math.SQRT2, ELEV = Math.asin(.5);
 const DIR = new THREE.Vector3(Math.cos(ELEV) / SQ2, Math.sin(ELEV), Math.cos(ELEV) / SQ2);   // toward the camera: 30° up, from the +x +y corner
 
@@ -276,12 +276,15 @@ const BUILD = {
   barracks: (P, w, d) => { cabin(P, w * .86, d * .62, '#3e5a3e', { windows: [w * .05, w * .25, w * .4] }); crates(P, -w * .36, d * .38, 2); },
 };
 let tentScene = null;
+const BGLB = { house: 'assets/buildings/ai3d/house/house_realtime.glb' }, glbB = {};   // V3D.3: Hunyuan models from export_prop3d.py (origin = footprint centre, door faces +Z = front-left); scaled to fill the footprint
 const bGroups = new Map();
 function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, b.rot ? 1 : 0, b.burnt ? 1 : 0].join(','); }
 function makeBuilding(b) {
   const g = new THREE.Group(), w = (b.rot ? b.h : b.w) * T, d = (b.rot ? b.w : b.h) * T;
   if (b.type === 'medic' && tentScene) {
     const t = tentScene.clone(); const s = Math.min(w / 2.2, d / 2.4) * .95; t.scale.setScalar(s); g.add(t);
+  } else if (glbB[b.type]) {
+    const m = glbB[b.type], t = m.scene.clone(); t.scale.setScalar(Math.min(w / m.sx, d / m.sz) * .95); g.add(t);
   } else {
     const P = new Parts(); (BUILD[b.type] || ((P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {})))(P, w, d); P.build(g, .028);
   }
@@ -476,5 +479,7 @@ window.ZH3D = { frame, ready: false, fps: 0 };
   toonScene(m.scene); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage;
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
+  await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
+  bGroups.forEach((v) => scene.remove(v.g)); bGroups.clear();
   ready = true; window.ZH3D.ready = true;
 })().catch((e) => { console.error('3D load failed', e); const b = document.getElementById('crash'); if (b) { b.style.display = 'block'; b.textContent = '3D: ' + e.message; } });
