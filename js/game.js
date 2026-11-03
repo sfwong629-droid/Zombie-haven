@@ -304,7 +304,7 @@ function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a 
     if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
   ctx.imageSmoothingEnabled = !!c.smooth; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.h) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true;
 }
-function bubble(p, txt) { stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
+function bubble(p, txt) { const ic = G3D && window.ZHIcons && ZHIcons.EMOJI[txt.replace(/\uFE0F/g, '')] , im = ic && ZHIcons.img(ic); if (im && im.complete) { const u = hudU(), r = 10 * u; ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y - r, r, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.drawImage(im, p.x - 7 * u, p.y - r - 7 * u, 14 * u, 14 * u); ctx.restore(); return; } stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
 const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right, up }
 function facing(o) {   // screen-space facing from movement (or from the target while fighting)
   let st = FACE.get(o); if (!st) { st = { lx: o.w.x, ly: o.w.y, right: false, up: false }; FACE.set(o, st); }
@@ -711,6 +711,15 @@ function drawPostRange(p, strong) {   /* the watch radius: zombies inside it go 
   ctx.fillStyle = strong ? 'rgba(120,170,255,.10)' : 'rgba(120,170,255,.05)'; ctx.fill(); ctx.setLineDash([6 * cam.z, 5 * cam.z]); ctx.strokeStyle = strong ? 'rgba(160,200,255,.85)' : 'rgba(160,200,255,.45)'; ctx.lineWidth = Math.max(1, 1.5 * cam.z); ctx.stroke(); ctx.setLineDash([]);
 }
 const FAM_ICON = { water: ['💧', '#6fb3e0'], farm: ['🍖', '#e0b84a'], scrap: ['⚙', '#8fc6d8'], research: ['🔬', '#a993e8'] };
+const FAC_ICON = { medical: 'medic', kitchen: 'meal' }, TYPE_ICON = { inn: 'bed', house: 'home', gym: 'train', library: 'guide', lounge: 'couple', range: 'train', track: 'train', sparring: 'train', armory: 'shield', storage: 'box', bonfire: 'fire', barracks: 'shield' };
+function clayBadge(cx, cy, z, icon, dot, count) {   /* V3D.14 Clay marker: cream disc, cocoa outline, icon, optional status dot and count chip */
+  const R2 = 10.5 * z, im = window.ZHIcons && ZHIcons.img(icon);
+  ctx.beginPath(); ctx.arc(cx, cy + 2 * z, R2, 0, 7); ctx.fillStyle = 'rgba(79,61,51,.4)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, R2, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2.4 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
+  if (im && im.complete) ctx.drawImage(im, cx - 7.5 * z, cy - 7.5 * z, 15 * z, 15 * z);
+  if (dot) { ctx.beginPath(); ctx.arc(cx + R2 * .8, cy - R2 * .8, 4.2 * z, 0, 7); ctx.fillStyle = dot; ctx.fill(); ctx.lineWidth = 2 * z; ctx.stroke(); }
+  if (count) { const tx = String(count), w = (7 + 6 * tx.length) * z, x0 = cx - R2 - w + 3 * z, y0 = cy - 7 * z; ctx.beginPath(); ctx.roundRect(x0, y0, w, 14 * z, 7 * z); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * z; ctx.stroke(); hudText(tx, x0 + w / 2, y0 + 11 * z, `600 ${Math.round(11 * z)}px Fredoka, sans-serif`, '#5a3f31'); }
+}
 function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring that fills with real output toward the next unit (bright while worked);
    facilities show how many are inside; problems get a marker. Everything comes from the simulation state. */
   const d = DEFS[b.type], r = spriteRect(b); if (!d || !r || b.burnt) return;
@@ -731,6 +740,11 @@ function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring th
     stampText(fi[0], cx, cy + 4.5 * z, `${Math.round(10 * z)}px sans-serif`, '#fff');
     if (d.slot) { ctx.beginPath(); ctx.arc(cx + R * .78, cy - R * .78, 3.6 * z, 0, 7); ctx.fillStyle = b.staff ? (on ? '#4fd36a' : '#2f8f48') : 'rgba(240,176,48,.95)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#102418'; ctx.stroke(); }
     if ((d.fam === 'farm' && b.dry) || b.unpaid) stampText(b.unpaid ? '½' : '💧✗', cx + R * 1.9, cy + 4 * z, `bold ${Math.round(11 * z)}px sans-serif`, '#ff9a84');
+  } else if (COZY_HUD && window.ZHIcons && (d.slot || facilityRules[b.type] || TYPE_ICON[b.type])) {   /* V3D.14: Clay markers for medical, canteen, inn, houses, training */
+    const icon = FAC_ICON[d.fam] || TYPE_ICON[b.type] || 'person', n = d.fam === 'medical' ? S.sv.filter((q) => q.mode === 'hospital' && (q.careAt === b || (!q.careAt && medSite() === b))).length : S.sv.filter((q) => q.facility === b && q.mode === 'useFacility').length;
+    const sl = (b.type === 'house' || b.type === 'inn') && S.sv.some((q) => q.facility === b && q.sleeping);
+    clayBadge(cx, cy, z, sl ? 'sleep' : icon, d.slot ? (b.staff ? (isWorking(b) ? '#7cc95a' : '#a9c49f') : '#f2c14e') : null, n || 0);
+    ctx.restore(); return;
   } else if (d.slot) {   // staffed non-producers (medical, kitchen): the old dot
     if (d.fam === 'medical') { const n = S.sv.filter((q) => q.mode === 'hospital' && (q.careAt === b || (!q.careAt && medSite() === b))).length; if (n) stampText(`✚${n}`, cx + 14 * z, cy + 4 * z, `bold ${Math.round(12 * z)}px 'Jersey 15', Arial`, '#ff9a9a'); }
     ctx.beginPath(); ctx.arc(cx, cy, 5.5 * z, 0, 7); ctx.fillStyle = b.staff ? (isWorking(b) ? '#4fd36a' : '#2f8f48') : 'rgba(240,176,48,.9)'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#102418'; ctx.stroke();
@@ -3601,6 +3615,7 @@ if (COZY_HUD && window.ZHIcons) {
   const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'parts'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 22); });
   [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
   set('#btnHome', 'home', 30); set('#btnLog', 'log', 26); set('#btnCenter', 'locate', 26);
+  ZHIcons.watch(['ib', 'eventModal', 'alerts', 'requestBox', 'confirmBar', 'quest', 'say', 'fx', 'infoPanel', 'adv', 'slots']);   /* panels, cards, alerts: emoji -> Clay icons */
 }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if (COZY_HUD && window.ZHIcons) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });

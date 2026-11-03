@@ -197,3 +197,6 @@ html.cozy #btnHome .zi, html.cozy .bb .zi { margin: auto; }
 html.cozy #btnSound, html.cozy #btnLog, html.cozy #btnCenter { display: inline-flex; align-items: center; justify-content: center; }
 html.cozy .lm { background: var(--cream2); color: var(--cocoa); }
 html.cozy #mBuild { background: var(--cream2); color: var(--cocoa); }
+html.cozy .zi-t { display: inline-block; vertical-align: -.22em; line-height: 0; margin: 0 .06em; }
+html.cozy .zi-t .zi { width: 1.15em; height: 1.15em; }
+html.cozy .evStage .glow .ic .zi-t .zi { width: 46px; height: 46px; }
