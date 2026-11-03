@@ -55,9 +55,9 @@ Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, n
 sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
 sun.position.copy(MC).add(new THREE.Vector3(-30, 52, 18)); sun.target.position.copy(MC); scene.add(sun, sun.target);
 const KEYS = [   // hour: sky, hemi colour, hemi intensity, sun colour, sun intensity, window glow 0..1
-  [0, 0x1c2638, 0x5a6a9a, .7, 0x8aa0d0, .35, 1], [4.5, 0x1c2638, 0x5a6a9a, .7, 0x8aa0d0, .35, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
+  [0, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [4.5, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
   [8, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [17, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [19, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.4, .6],
-  [20.5, 0x1c2638, 0x5a6a9a, .7, 0x8aa0d0, .35, 1], [24, 0x1c2638, 0x5a6a9a, .7, 0x8aa0d0, .35, 1]];
+  [20.5, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [24, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1]];   // V3D.12: nights brighter (were .7 / .35)
 const cA = new THREE.Color(), cB = new THREE.Color();
 let glowNow = -1;
 function light(h) {
@@ -66,7 +66,7 @@ function light(h) {
   const mix = (k) => cA.set(a[k]).lerp(cB.set(b[k]), u).clone(), num = (k) => a[k] + (b[k] - a[k]) * u;
   scene.background = mix(1); hemi.color.copy(mix(2)); hemi.intensity = num(3); sun.color.copy(mix(4)); sun.intensity = num(5);
   const g = Math.round(num(6) * 10) / 10;
-  if (g !== glowNow) { glowNow = g; winMat.color.set(0x4a3a28).lerp(new THREE.Color(0xffc864), g); }
+  if (g !== glowNow) { glowNow = g; winMat.color.set(0x4a3a28).lerp(new THREE.Color(0xffc864), g); poolMat.opacity = .8 * g; lampSprite.opacity = .9 * g; beamMat.opacity = .45 * g; haloMat.opacity = .5 * g; for (const m of charMats) m.emissive.setScalar(m.userData.nightGlow * g); }
 }
 
 // ---------------------------------------------------------------- materials, ink outline
@@ -121,6 +121,30 @@ const regrow = (x, y) => {   // town tiles where grass creeps back: near the tow
 };
 const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T } };
 let _gmat = null;
+// ---------------------------------------------------------------- night lights (V3D.12): warm light pools at every
+// door, a lantern glow above it, and a flashlight beam ahead of each survivor outside. Additive ground decals, so they
+// cost nothing like real lights do on a phone.
+function lightTex(cone) {
+  const S2 = 128, c = document.createElement('canvas'); c.width = c.height = S2; const g = c.getContext('2d');
+  if (!cone) { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.45, 'rgba(255,255,255,.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, S2, S2); }
+  else {   // a beam from the bottom centre widening upwards, brightest along its axis
+    const img = g.createImageData(S2, S2);
+    for (let y = 0; y < S2; y++) for (let x = 0; x < S2; x++) { const v = 1 - y / S2, half = .08 + .42 * v, dx = Math.abs(x / S2 - .5) / half;
+      const a = dx < 1 ? (1 - dx * dx) * Math.min(1, v * 6) * (1 - v * v * .85) : 0, i = (y * S2 + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = a * 255; }
+    g.putImageData(img, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const addM = (map, col) => new THREE.MeshBasicMaterial({ map, color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+const glowT = lightTex(false), poolMat = addM(glowT, 0xffb860), beamMat = addM(lightTex(true), 0xfff0c8);
+const poolG = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), beamG = new THREE.PlaneGeometry(1.5, 2.6).rotateX(-Math.PI / 2).translate(0, 0, -1.3);
+function doorLight(b) {   // world group: a pool on the ground at the door and a small lantern halo above it
+  const d = G.Wd.doorPoint(b), g = new THREE.Group(), pool = new THREE.Mesh(poolG, poolMat), lamp = new THREE.Sprite(lampSprite);
+  pool.scale.set(4.2, 1, 4.2); pool.position.y = .03; pool.renderOrder = 2; lamp.scale.set(.9, .9, 1); lamp.position.y = 1.35; g.add(pool, lamp);
+  g.position.set(d.x * T, 0, d.y * T); return g;
+}
+const haloMat = addM(glowT, 0xffe2b0);   // the light a survivor's lamp throws around them
+const lampSprite = new THREE.SpriteMaterial({ map: glowT, color: 0xffd890, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
 function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
   if (_gmat) return _gmat;
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
@@ -136,7 +160,7 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
         vec2 p = vWP.xz;
         float grass = smoothstep(-.10, .0, diffuseColor.g - diffuseColor.r);           // 1 on grass, 0 on dirt and roads
         float big = gf(p * .09), mid = gf(p * .45), fine = gn(p * 7.), fleck = gn(p * 19. + 3.);
-        vec3 patchTint = mix(vec3(1.10, 1.02, .78), vec3(.86, 1.02, .92), smoothstep(.35, .65, big));   // dry yellow vs fresh green
+        vec3 patchTint = mix(vec3(1.06, 1.03, .80), vec3(.88, 1.04, .90), smoothstep(.35, .65, big));   // dry yellow vs fresh green
         vec3 g = diffuseColor.rgb * mix(vec3(1.), patchTint, grass);
         g *= .86 + .26 * mid;                                                            // soft light and dark clumps
         g *= 1. - .16 * smoothstep(.58, .78, gn(p * 3.1 + 9.)) * grass;                   // dark grass clumps
@@ -160,16 +184,16 @@ function buildGround() {
   if (key === groundKey) return false; groundKey = key;
   if (groundMesh) { scene.remove(groundMesh); groundMesh.geometry.dispose(); }
   const pos = [], col = [], c = new THREE.Color();
-  const GR = ['#8a923c', '#8e963e', '#86903a', '#939a40', '#9a9a42', '#878f39'], DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
+  const GR = ['#7c9e42', '#80a245', '#78993f', '#85a547', '#8ba649', '#7a9b40']   /* V3D.12: greener, so the town and people stand out */, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
   const X0 = -PAD, Y0 = -PAD, NX = G.COLS + 2 * PAD, NY = G.ROWS + 2 * PAD, tc = new Float32Array(NX * NY * 3);
   for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) {   // one colour per tile ...
     const r = hash(x, y), inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1;
     const edge = Math.max(0, B.x0 - x, x - B.x1, B.y0 - y, y - B.y1);
     let k;
-    if (inB && regrow(x, y) && !G.Wd.isRoad(W, x, y)) k = r < .5 ? '#9c9442' : '#a39a48';   // V3D.6: grass growing back into the town dirt
+    if (inB && regrow(x, y) && !G.Wd.isRoad(W, x, y)) k = r < .5 ? '#90a046' : '#97a44a';   // V3D.6: grass growing back into the town dirt
     else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
     else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
-    else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#7f8a36' : '#7a8634';
+    else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#73923a' : '#6f8d38';
     else k = GR[(r * 6) | 0];
     c.set(k); const i = ((y - Y0) * NX + (x - X0)) * 3; tc[i] = c.r; tc[i + 1] = c.g; tc[i + 2] = c.b;
   }
@@ -509,10 +533,11 @@ function syncBuildings() {
   for (const b of G.world.buildings) {
     seen.add(b); const k = buildingKey(b), cur = bGroups.get(b);
     if (cur && cur.key === k) continue;
-    if (cur) scene.remove(cur.g);
-    const g = makeBuilding(b); scene.add(g); bGroups.set(b, { g, key: k }); changed = true;
+    if (cur) { scene.remove(cur.g); if (cur.lit) scene.remove(cur.lit); }
+    const g = makeBuilding(b); scene.add(g); let lit = null; try { if (!b.burnt) { lit = doorLight(b); scene.add(lit); } } catch (e) { lit = null; }
+    bGroups.set(b, { g, key: k, lit }); changed = true;
   }
-  for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); bGroups.delete(b); changed = true; }
+  for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); if (v.lit) scene.remove(v.lit); bGroups.delete(b); changed = true; }
   return changed;
 }
 
@@ -560,6 +585,8 @@ const EXPR_OF_CLIP = { punch: 'angry', melee_swing_a: 'angry', melee_swing_b: 'a
 const FACE_OVL = {};       // expr -> THREE.Texture
 function imgTex(img) { const t = new THREE.Texture(img); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; }
 const jobTex = {}, jobMats = {};
+const charMats = [];   // characters glow faintly from their own texture at night (lit by their lamps), so they don't turn to silhouettes
+function nightLit(m, k) { m.emissiveMap = m.map; m.emissive = new THREE.Color(0, 0, 0); m.userData.nightGlow = k; charMats.push(m); if (glowNow > 0) m.emissive.setScalar(k * glowNow); return m; }
 function jobBase(job) {
   if (jobTex[job]) return jobTex[job]; const img = MALE.bodyImage;
   return (jobTex[job] = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : MALE.body.material.map);
@@ -574,7 +601,7 @@ function jobMaterial(job, expr = 'neutral') {
       sh.fragmentShader = 'uniform sampler2D faceMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n{ vec4 fo = texture2D(faceMap, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, fo.rgb, fo.a); }'); };
     m.customProgramCacheKey = () => 'face';
   }
-  return (jobMats[key] = m);
+  return (jobMats[key] = nightLit(m, .32));
 }
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
@@ -584,7 +611,7 @@ function zombieMaterial(type, v = 0) {
   const key = type + '|' + v; if (zMats[key]) return zMats[key];
   if (LITE.zTex && LITE.zTex.length) {
     const t = ZSKIN_TINT[type] || [1, 1, 1];
-    return (zMats[key] = new THREE.MeshToonMaterial({ map: LITE.zTex[v % LITE.zTex.length], color: new THREE.Color(...t), gradientMap: grad }));
+    return (zMats[key] = nightLit(new THREE.MeshToonMaterial({ map: LITE.zTex[v % LITE.zTex.length], color: new THREE.Color(...t), gradientMap: grad }), .2));
   }
   const t = ZTINT[type] || ZTINT.walker; return (zMats[key] = new THREE.MeshToonMaterial({ map: LITE.zombieMap || LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
 }
@@ -599,6 +626,7 @@ class Actor {
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
     this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite;
     this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
+    if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
   }
   play(name, once = false, restart = false) {
     if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
@@ -618,9 +646,10 @@ class Actor {
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
     this.o.position.set(x, 0, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
     this.sh.position.set(x, .006, z); this.sh.scale.setScalar(scale);
+    if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, .035, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
   }
-  show(v) { this.o.visible = v; this.sh.visible = v; }
-  dispose() { scene.remove(this.o); scene.remove(this.sh); }
+  show(v) { this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
+  dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
 }
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
