@@ -3039,7 +3039,9 @@ const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt
 const meter = (v, cls = '') => `<div class="bar ${cls}"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></div>`;
 const SLOT_EMOJI = { weapon: '🗡️', armor: '🦺', acc: '💍' };
 function itemIcon(id, slot) { const it = ITEMS[id]; const src = it && window.ZHItems && ZHItems.icon(id); return `<div class="icon">${src ? `<img class="pix" src="${src}" alt="">` : `<span style="font-size:24px">${SLOT_EMOJI[slot || (it && it.slot)] || '❔'}</span>`}</div>`; }
-function portrait(s) { const u = window.ZHChars && ZHChars.portrait(s); return `<div class="portrait">${u ? `<img class="pix" src="${u}" alt="">` : '<span style="font-size:30px">🧑</span>'}</div>`; }
+function portrait(s) {   /* V3D.12: in 3D mode a chest-up shot of the survivor's own 3D model (outfit, hat, weapon, armour) */
+  const u3 = G3D && window.ZH3D && ZH3D.portrait && ZH3D.portrait(s); if (u3) return `<div class="portrait p3d"><img src="${u3}" alt=""></div>`;
+  const u = window.ZHChars && ZHChars.portrait(s); return `<div class="portrait">${u ? `<img class="pix" src="${u}" alt="">` : '<span style="font-size:30px">🧑</span>'}</div>`; }
 /* V2.36 what a survivor is doing, where, and why it comes first (used by the survivor panel) */
 const PRIO = { emergency: ['Emergency', '#ff8a7a'], fight: ['Defending', '#ff8a7a'], shift: ['Shift work', '#7fd35a'], urgent: ['Urgent need', '#ffb36b'], sleep: ['Sleep', '#9fb8ff'], care: ['Recovering', '#9fb8ff'], free: ['Free time', '#e6d3a8'], away: ['Expedition', '#e6d3a8'] };
 function unitNow(u) {

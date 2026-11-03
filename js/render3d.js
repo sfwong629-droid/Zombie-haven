@@ -679,6 +679,33 @@ class Actor {
   show(v) { this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
   dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
 }
+// ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
+// bone, sized from the rig's head (bone at y .73, hair top 1.14, about .47 wide, centred slightly back)
+const HEAD = { x: .004, z: -.02, top: 1.14, r: .245 };
+function hatFor(job) {
+  const g = new THREE.Group(), M = (c) => toon(c), add = (geo, c, x, y, z, hull = .012) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); if (hull) addHull(m, hull); return m; };
+  const dome = (r, sy) => new THREE.SphereGeometry(r, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, sy, 1), cyl = (r1, r2, h) => new THREE.CylinderGeometry(r1, r2, h, 22);
+  const T0 = HEAD.top;
+  switch (job) {
+    case 'Farmer': add(cyl(.37, .37, .018), '#e3c472', 0, T0 - .13, 0); add(cyl(.18, .205, .13), '#e8cc7c', 0, T0 - .06, 0); add(cyl(.207, .207, .035), '#8a5a2a', 0, T0 - .105, 0, 0); break;
+    case 'Engineer': add(dome(.262, .82), '#f2b632', 0, T0 - .14, 0); add(cyl(.3, .3, .02), '#e8a822', 0, T0 - .14, .02); add(new THREE.BoxGeometry(.05, .2, .04).translate(0, .08, 0), '#ffd25a', 0, T0 - .14, .19, 0); break;
+    case 'Cook': add(cyl(.235, .235, .1), '#f7f3ea', 0, T0 - .08, 0); add(new THREE.SphereGeometry(.24, 16, 12).scale(1, .75, 1), '#ffffff', 0, T0 + .07, 0); break;
+    case 'Scavenger': add(dome(.258, .92), '#6b6a3a', 0, T0 - .15, 0); add(new THREE.TorusGeometry(.252, .03, 8, 24).rotateX(Math.PI / 2), '#5a5930', 0, T0 - .15, 0, 0); add(new THREE.SphereGeometry(.05, 8, 6), '#7d7c45', 0, T0 + .08, 0); break;
+    case 'Guard': add(dome(.27, .85), '#5d6b44', 0, T0 - .15, 0); add(cyl(.29, .29, .025), '#4e5a39', 0, T0 - .15, 0); break;
+    case 'Police Officer': add(cyl(.245, .225, .11), '#2f4a7a', 0, T0 - .07, 0); add(cyl(.255, .255, .03), '#1f2f50', 0, T0 - .12, 0, 0); add(new THREE.CylinderGeometry(.2, .2, .015, 18, 1, false, -Math.PI / 2, Math.PI).scale(1, 1, .7), '#141c30', 0, T0 - .13, .17, 0); add(new THREE.CircleGeometry(.035, 6), '#ffd45c', 0, T0 - .06, .245, 0); break;
+    case 'SWAT': add(dome(.275, .9), '#2a2f36', 0, T0 - .155, 0); add(cyl(.285, .285, .03), '#20242a', 0, T0 - .155, 0); break;
+    case 'Medic': add(new THREE.TorusGeometry(.243, .028, 8, 26).rotateX(Math.PI / 2), '#f7f7f2', 0, T0 - .17, 0, 0); { const c1 = add(new THREE.BoxGeometry(.07, .022, .02), '#d9443a', 0, T0 - .17, .27, 0), c2 = add(new THREE.BoxGeometry(.022, .07, .02), '#d9443a', 0, T0 - .17, .27, 0); } break;
+    case 'Raider': add(new THREE.TorusGeometry(.243, .034, 8, 26).rotateX(Math.PI / 2), '#a8322a', 0, T0 - .16, 0, 0); add(new THREE.SphereGeometry(.05, 8, 6), '#8a2a22', 0, T0 - .16, -.26, 0); break;
+    default: return null;
+  }
+  g.position.set(HEAD.x, 0, HEAD.z); g.rotation.x = -.06; return g;
+}
+function addHat(a, job) {   // parent to the head bone, placed at the rest pose
+  if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
+  const h = hatFor(job); if (!h) return; let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, head.matrixWorld).invert();
+  h.updateMatrix(); h.applyMatrix4(m); head.add(h); a.hat = h;
+}
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']);
@@ -710,8 +737,8 @@ function syncPeople(dt, vis) {
   const seen = new Set();
   for (const s of G.S.sv) {
     seen.add(s); let a = people.get(s);
-    if (!a) { a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); people.set(s, a); a.job = s.job; }
-    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); people.set(s, a); a.job = s.job; }
+    if (!a) { a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || (s.mode === 'down' && G.beingCarried(s));
     a.show(!hidden); if (hidden) continue;
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
@@ -732,7 +759,7 @@ function syncZombies(dt, vis) {
   for (const z of G.S.z) {
     if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
     if (!a) {
-      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
+      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
       else { a = new Actor(LITE, zombieMaterial(z.type, (Math.random() * 4) | 0), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
@@ -865,7 +892,30 @@ function frame() {
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
 }
-window.ZH3D = { frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+// ---------------------------------------------------------------- portraits (V3D.12): the People page's chest-up shots
+// rendered from the real 3D survivor in their outfit, weapon and armour (cached per look)
+const portraits = new Map(); let pRig = null;
+function portraitOf(s) {
+  if (!ready || !MALE) return null;
+  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), key = [s.job, model, arm ? 1 : 0].join('|');
+  if (portraits.has(key)) return portraits.get(key);
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
+    const rt = new THREE.WebGLRenderTarget(256, 256, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace;
+    pRig = { sc, rt, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), buf: new Uint8Array(256 * 256 * 4), cv: Object.assign(document.createElement('canvas'), { width: 256, height: 256 }) }; }
+  const a = new Actor(MALE, jobMaterial(s.job), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  a.setWeapon(model); a.setArmor(arm); a.play(cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(.35); a.o.rotation.y = -.5; a.o.updateMatrixWorld(true);   // turned so the weapon hand is away from the face
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
+  // framed from the hair down to the chest
+  const c = pRig.cam, half = .46, tgt = new THREE.Vector3(hp.x, hp.y - .03, hp.z); c.left = -half; c.right = half; c.top = half; c.bottom = -half; c.updateProjectionMatrix();
+  c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
+  const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(pRig.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(pRig.rt, 0, 0, 256, 256, pRig.buf);
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
+  const g2 = pRig.cv.getContext('2d'), im = g2.createImageData(256, 256); for (let y = 0; y < 256; y++) im.data.set(pRig.buf.subarray((255 - y) * 1024, (256 - y) * 1024), y * 1024);
+  g2.putImageData(im, 0, 0); const url = pRig.cv.toDataURL('image/png'); portraits.set(key, url); return url;
+}
+window.ZH3D = { portrait: portraitOf, frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 if (INK) inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

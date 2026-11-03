@@ -75,6 +75,8 @@ html.cozy .bcard .co { color: var(--honeyD); font-size: 13px; }
 html.cozy .bdetail .big { background: radial-gradient(#cfe0c4, #a9c49f 70%); border: 2px solid var(--line); border-radius: 16px; }
 html.cozy .icon { background: #f7dccf; border: 2px solid var(--coral); border-radius: 12px; }
 html.cozy .portrait { background: radial-gradient(#cfe0c4, #8dab83); border: 2px solid var(--line); border-radius: 14px; }
+html.cozy .portrait.p3d { overflow: hidden; align-items: stretch; padding: 0; }
+html.cozy .portrait.p3d img { width: 100%; height: 100%; object-fit: cover; display: block; }
 html.cozy .bar { background: #eadbc3; border: 0; border-radius: 999px; height: 9px; }
 html.cozy .bar i { border-radius: 999px; }
 html.cozy .conds, html.cozy .crow { border-color: var(--line); border-radius: 14px; }
