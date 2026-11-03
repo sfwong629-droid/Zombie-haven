@@ -895,27 +895,33 @@ function frame() {
 // ---------------------------------------------------------------- portraits (V3D.12): the People page's chest-up shots
 // rendered from the real 3D survivor in their outfit, weapon and armour (cached per look)
 const portraits = new Map(); let pRig = null;
-function portraitOf(s) {
+function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
-  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), key = [s.job, model, arm ? 1 : 0].join('|');
+  const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), key = [o.key, s.job, model, arm ? 1 : 0, o.face || ''].join('|');
   if (portraits.has(key)) return portraits.get(key);
+  const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
-    const rt = new THREE.WebGLRenderTarget(256, 256, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace;
-    pRig = { sc, rt, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), buf: new Uint8Array(256 * 256 * 4), cv: Object.assign(document.createElement('canvas'), { width: 256, height: 256 }) }; }
-  const a = new Actor(MALE, jobMaterial(s.job), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
-  a.setWeapon(model); a.setArmor(arm); a.play(cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(.35); a.o.rotation.y = -.5; a.o.updateMatrixWorld(true);   // turned so the weapon hand is away from the face
+    pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk], a = new Actor(MALE, jobMaterial(s.job, o.face || 'neutral'), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  a.setWeapon(model); a.setArmor(arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
-  // framed from the hair down to the chest
-  const c = pRig.cam, half = .46, tgt = new THREE.Vector3(hp.x, hp.y - .03, hp.z); c.left = -half; c.right = half; c.top = half; c.bottom = -half; c.updateProjectionMatrix();
-  c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
+  const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
+  c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
   const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
-  renderer.setRenderTarget(pRig.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(pRig.rt, 0, 0, 256, 256, pRig.buf);
+  renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
   renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
-  const g2 = pRig.cv.getContext('2d'), im = g2.createImageData(256, 256); for (let y = 0; y < 256; y++) im.data.set(pRig.buf.subarray((255 - y) * 1024, (256 - y) * 1024), y * 1024);
-  g2.putImageData(im, 0, 0); const url = pRig.cv.toDataURL('image/png'); portraits.set(key, url); return url;
+  const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+  g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); portraits.set(key, url); return url;
 }
-window.ZH3D = { portrait: portraitOf, frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+// People page: framed from the hair down to the chest, turned so the weapon hand is away from the face
+const portraitOf = (s) => snapActor(s, { key: 'bust', half: .46 });
+// event-card stage figures, full body: wave (arriving), cheer, ready (danger), down (mourning)
+const POSE = { wave: { clip: () => 'cheer', t: .25, face: 'happy', noWeapon: true, yaw: .35 }, cheer: { clip: () => 'cheer', t: .5, face: 'happy', noWeapon: true, yaw: -.35 },
+  ready: { clip: (c) => (c === 'gun' ? 'gun_hold_idle' : c ? 'melee_hold_idle' : 'idle'), t: .3, face: 'angry', yaw: -.4 }, down: { clip: () => 'idle', t: .3, face: 'ko', noWeapon: true, yaw: 0 } };
+const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
+window.ZH3D = { portrait: portraitOf, figure: figureOf, frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 if (INK) inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

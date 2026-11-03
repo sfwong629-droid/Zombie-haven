@@ -939,7 +939,7 @@ const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; retu
 function note(level, text, o = {}) {
   logEvent(o.log || text, level);
   if (level === 'routine') { const at = o.at && (typeof o.at === 'function' ? o.at() : o.at); if (at && o.float) floats.push({ w: { x: at.x, y: at.y }, t: o.float, col: o.col || '#e8e0c8', a: 70 }); return; }
-  if (level === 'important') { banner(o.banner || text); return; }
+  if (level === 'important') { banner(o.banner || text, o.who); return; }
   const key = o.key || text, a = alerts.get(key);
   if (a) { a.text = text; if (o.at) a.at = o.at; renderAlerts(); return; }
   const first = ![...alerts.values()].some((q) => !q.dismissed);
@@ -948,14 +948,22 @@ function note(level, text, o = {}) {
   if (first && OPTS.autoSlow && simSpeed > 1 && performance.now() - lastSlow > 60000) { lastSlow = performance.now(); simSpeed = 1; $('btnSpeed').textContent = '1×'; banner('⏸ Back to 1× speed: emergency'); }
   renderAlerts();
 }
-function banner(t) {
-  const now = performance.now(); if (now - (lastBanner.get(t) || -1e9) < 8000 || bannerQ.includes(t)) return; lastBanner.set(t, now);
+function banner(t, who) {
+  if (COZY_HUD && who) t = { t, who };
+  const now = performance.now(); if (typeof t === 'object') { bannerQ.push(t); if (bannerQ.length > 4) bannerQ.shift(); nextBanner(); return; } if (now - (lastBanner.get(t) || -1e9) < 8000 || bannerQ.includes(t)) return; lastBanner.set(t, now);
   if (lastBanner.size > 80) lastBanner.clear(); bannerQ.push(t); if (bannerQ.length > 4) bannerQ.shift(); nextBanner();
 }
 function nextBanner() {
   const fx = $('fx'); if (bannerOn || !bannerQ.length || !fx) return; const t = bannerQ.shift(); bannerOn = true;
-  const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; fx.appendChild(d);
-  setTimeout(() => { d.remove(); bannerOn = false; nextBanner(); }, 1700);
+  const d = document.createElement('div'); d.className = 'toast';
+  if (COZY_HUD) {   /* V3D.12 portrait pop: a round picture (the person, or the message's icon) and a few words */
+    const who = typeof t === 'object' ? t.who : null, txt = typeof t === 'object' ? t.t : t, m = txt.match(/^\s*(\p{Extended_Pictographic}\uFE0F?|[☠★⚠⚙⏸🕯])\s*/u), icon = m ? m[1] : '📣';
+    let body = m ? txt.slice(m[0].length) : txt; if (body === body.toUpperCase() && /[A-Z]{3}/.test(body)) body = body.charAt(0) + body.slice(1).toLowerCase();
+    const pic = who && window.ZH3D && ZH3D.portrait ? ZH3D.portrait(who) : null; d.className = 'toast pop';
+    d.innerHTML = `<div class="pp">${pic ? `<img src="${pic}" alt="">` : icon}</div><div class="pt">${esc(body)}</div>`;
+  } else d.textContent = t;
+  fx.appendChild(d);
+  setTimeout(() => { d.remove(); bannerOn = false; nextBanner(); }, d.classList.contains('pop') ? 2400 : 1700);
 }
 function alertsTick() {   // every half second of game time: drop resolved alerts, refresh live text
   let ch = false;
@@ -1571,7 +1579,7 @@ function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24; finaleHour();
   if (S.day >= 2 && now >= S.nextRaid) { if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; note('important', '☠ The horde holds back tonight', { log: 'The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.' }); }
-  if (S.day === S.nextBoss && S.hour === 18) { note('important', '☠ A BOSS ATTACKS AT 21:00', { log: 'Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.' }); }
+  if (S.day === S.nextBoss && S.hour === 18) { if (COZY_HUD) { logEvent('Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.', 'important'); const f = S.sv.filter(isFighter); showEventPopup({ stage: { scene: 'danger', head: 'Danger!', icon: '☠️', badge: '21:00', hero: f[0] || S.sv[0], crowd: f.slice(1, 3) }, short: 'A boss attacks tonight!', title: 'BOSS' }); } else note('important', '☠ A BOSS ATTACKS AT 21:00', { log: 'Scouts report a huge mutant gathering a horde. It will hit the Haven at 21:00.' }); }
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
@@ -1688,8 +1696,8 @@ function autoRepair() {   // every second: the most damaged segment that can be 
 const xpNeed = (s) => { const p = professions[s.job]; const b = (p && p.master) || 60, l = s.l || 1; return Math.round(l < 5 ? b : b * (1 + (l - 4) * .6)); };
 function masteryCheck(s) {      // experience: each level raises the work boost and the daily ration; capped at LEVEL_CAP
   const p = professions[s.job]; if (!p || s.mastery < xpNeed(s)) return;
-  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); if (COZY_HUD) levelUpFx(s); else floats.push({ w: { ...s.w }, t: 'LV ' + s.l + '!', col: '#ffe38a', a: 80 }); learnSkills(s); }
-  else if (!s.mastered) { syncClass(s); s.mastered = true; renownGain(2, s.name + ' mastered ' + s.job); note('important', s.name + ' MASTERED ' + s.job); }
+  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); if (COZY_HUD) { levelUpFx(s); banner(`${s.name} reached Lv.${s.l}!`, s); } else floats.push({ w: { ...s.w }, t: 'LV ' + s.l + '!', col: '#ffe38a', a: 80 }); learnSkills(s); }
+  else if (!s.mastered) { syncClass(s); s.mastered = true; renownGain(2, s.name + ' mastered ' + s.job); note('important', '🎓 ' + s.name + ' mastered ' + s.job + '!', { who: s }); }
 }
 
 /* ---------------- supplies: production, staffing, rations, upgrades ---------------- */
@@ -2146,7 +2154,7 @@ function visitorArrival() {
   if (S.finale) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
-  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.' + (TRAITS[v.trait] ? `<br><br>${TRAITS[v.trait].icon} <b>${TRAITS[v.trait].name}</b>: ${traitGood(v)}. <i>${TRAITS[v.trait].bad}.</i>` : ''), gains: job + ' · Lv.' + lv + traitTag(v) }); say(name + ' arrived at the Haven.', true); ui();
+  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ stage: { scene: 'arrive', head: 'New face!', icon: '🏡', badge: job + ' Lv.' + lv, hero: v, crowd: others(v) }, short: `${name} moved in!`, chips: TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : null, title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.' + (TRAITS[v.trait] ? `<br><br>${TRAITS[v.trait].icon} <b>${TRAITS[v.trait].name}</b>: ${traitGood(v)}. <i>${TRAITS[v.trait].bad}.</i>` : ''), gains: job + ' · Lv.' + lv + traitTag(v) }); say(name + ' arrived at the Haven.', true); ui();
 }
 /* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */
 const GUIDE = [
@@ -2400,10 +2408,27 @@ function triggerTownEvent() {   /* once a day: a due chain step first, else a ra
   let tot = pool.reduce((a, [, e]) => a + e.w, 0), r = rnd() * tot; for (const [k, e] of pool) { r -= e.w; if (r <= 0) { S.lastStory = k; if (k === 'radio1') S.radioDone = true; if (k === 'rival1') S.rivalDone = true; e.run(); return; } }
 }
 const eventQueue = []; let modalOpen = false;
+/* stage: { scene: 'arrive' | 'party' | 'danger' | 'sad', head, icon, badge, hero (survivor), crowd: [survivors] } */
+function stageHtml(st) {
+  const fig = (s, pose) => (window.ZH3D && ZH3D.figure && s ? ZH3D.figure(s, pose) : null), img = (u, cls) => (u ? `<div class="sa ${cls}"><img src="${u}" alt=""></div>` : '');
+  const crowd = (st.crowd || []).slice(0, 2), sc = st.scene || 'arrive';
+  const heroPose = sc === 'arrive' ? 'wave' : sc === 'danger' ? 'ready' : sc === 'sad' ? 'down' : 'cheer', crowdPose = sc === 'danger' ? 'ready' : sc === 'sad' ? 'down' : 'cheer';
+  const conf = sc === 'arrive' || sc === 'party' ? Array.from({ length: 14 }, (_, i) => `<i class="conf" style="left:${(i * 7.3 + 3) % 100}%;background:${['#ffd45c', '#ff9ab0', '#9be2ff', '#a8e08a'][i % 4]};animation-delay:${(i * .37) % 2.2}s"></i>`).join('') : '';
+  return `<div class="evStage ${sc}"><div class="cloud" style="left:10%"></div><div class="cloud" style="left:62%;animation-delay:-7s;top:30px"></div><div class="hills"></div><div class="fence"></div><div class="ground"></div>
+    <div class="glow"><div class="ic">${st.icon || '★'}</div>${st.badge ? `<div class="bd">${st.badge}</div>` : ''}</div>
+    ${crowd.map((s, i) => img(fig(s, crowdPose), `l${i} ${sc === 'danger' ? 'shake' : sc === 'sad' ? '' : 'hop d' + (i + 1)}`)).join('')}
+    ${img(fig(st.hero, heroPose), 'r0 ' + (sc === 'arrive' ? 'walkin' : sc === 'danger' ? 'shake' : sc === 'party' ? 'hop' : ''))}${conf}</div>`;
+}
+const others = (s, n = 2) => S.sv.filter((q) => q !== s && q.hp > 0).slice(0, n);
 function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
 function nextEventPopup() {
   const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); modalOpen = true;
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
+  if (COZY_HUD && e.stage) {   /* V3D.12: DV2-style stage card */
+    m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}>${b.label}</button>`).join('')}</div>`;
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
+    SFX(e.stage.scene === 'sad' || e.stage.scene === 'danger' ? 'alarm' : 'event'); return;
+  }
   m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}>${b.label}</button>`).join('')}</div>`;
   m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
 }
@@ -2437,7 +2462,7 @@ function checkRank() {
 }
 function upgradeTown() {
   const c = rankConds(); if (!c || !c.every((r) => r.ok)) return false;
-  S.rank++; S.threat++; S.rankReady = false; SFX('rankup'); S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads.<br>' + rankUnlocks(S.rank).filter((x) => !x.startsWith('+')).map((x) => '• ' + esc(x)).join('<br>'), gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.', true); ui(); return true;
+  S.rank++; S.threat++; S.rankReady = false; SFX('rankup'); S.mat += 4 + S.rank; renownGain(5, 'Haven Rank ' + S.rank); showEventPopup({ stage: { scene: 'party', head: 'Town rank up!', icon: '⭐', badge: 'Rank ' + S.rank, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Rank ${S.rank}!`, chips: rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')), title: '★ HAVEN RANK ' + S.rank + ' ★', text: 'Word of the Haven spreads.<br>' + rankUnlocks(S.rank).filter((x) => !x.startsWith('+')).map((x) => '• ' + esc(x)).join('<br>'), gains: '+' + (4 + S.rank) + ' parts' }); say('HAVEN RANK ' + S.rank + '! New threats and opportunities.', true); ui(); return true;
 }
 /* V2.33 town events (like DV2's): cost supplies, run for a few hours, give Renown and mood, and count toward the next star */
 const TOWN_EVENTS = {
@@ -2821,7 +2846,7 @@ function killSurvivor(s, cause) {
   for (const q of S.sv) { const close = dist(q.w, s.w) < 6 || (q.job === s.job); const d = close ? 6 : 2; q.sat = Math.max(0, q.sat - d); if (close) near++; }
   S.fallen = S.fallen || []; S.fallen.push({ name: s.name, job: s.job, l: s.l, day: S.day, cause, trait: s.trait });
   autoStaff();
-  showEventPopup({ title: 'LOST: ' + s.name.toUpperCase(), text: `${s.name}, a level ${s.l} ${s.job}, ${cause}. ${near ? near + ' survivors are shaken.' : ''} Their name is added to the memorial in the Town panel.`, gains: S.sv.length + ' survivors remain' });
+  showEventPopup({ stage: { scene: 'sad', head: 'Farewell', icon: '🕯️', badge: s.job + ' Lv.' + s.l, hero: s, crowd: others(s) }, short: `${s.name} has died.`, chips: [S.sv.length + ' survivors remain'], title: 'LOST: ' + s.name.toUpperCase(), text: `${s.name}, a level ${s.l} ${s.job}, ${cause}. ${near ? near + ' survivors are shaken.' : ''} Their name is added to the memorial in the Town panel.`, gains: S.sv.length + ' survivors remain' });
   ui();
 }
 function giveSpare(v) {

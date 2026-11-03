@@ -144,3 +144,47 @@ html.cozy #gauge .glabel { left: 50%; right: auto; top: auto; bottom: -22px; tra
 html.cozy #gauge.ready .glabel::after { color: var(--sageD); }
 html.cozy #gauge .grank, html.cozy #gauge .gbar { display: none; }
 html.cozy #gauge.ready { animation: renPulse 1.2s infinite; }
+
+/* V3D.12 event cards (DV2 style): a little outdoor stage with the people involved acting it out, a glowing panel with
+   the reward, one short line. Scenes: arrive, party, danger, sad. */
+html.cozy .evBox.stageCard { padding: 0 0 12px; overflow: hidden; top: 16%; }
+html.cozy .evBox.stageCard .evTitle { margin: 0; padding: 7px 0 6px; background: linear-gradient(#b8783a, #a0662e); color: #fff8ec; font-size: 20px; border-bottom: 2.5px solid var(--cocoa); }
+.evStage { position: relative; height: 170px; margin: 10px 12px 0; border: 2.5px solid var(--cocoa); border-radius: 14px; overflow: hidden; background: linear-gradient(#9fd3ef, #cfeaf5 62%); }
+.evStage .hills { position: absolute; left: -10%; right: -10%; bottom: 34px; height: 70px; background: radial-gradient(ellipse 30% 60% at 20% 100%, #8fbf6a 98%, transparent 100%), radial-gradient(ellipse 34% 70% at 62% 100%, #7fb05e 98%, transparent 100%), radial-gradient(ellipse 26% 55% at 92% 100%, #93c26f 98%, transparent 100%); }
+.evStage .cloud { position: absolute; top: 14px; width: 54px; height: 16px; background: #fff; border-radius: 99px; opacity: .9; animation: evCloud 16s linear infinite; }
+.evStage .cloud::before { content: ''; position: absolute; left: 12px; top: -9px; width: 26px; height: 20px; background: #fff; border-radius: 50%; }
+.evStage .fence { position: absolute; left: 0; right: 0; bottom: 34px; height: 22px; background: repeating-linear-gradient(90deg, transparent 0 16px, #b98a56 16px 21px), linear-gradient(transparent 6px, #c99a63 6px 10px, transparent 10px 14px, #c99a63 14px 18px, transparent 18px); }
+.evStage .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(#d8b98a, #c9a676); border-top: 2px solid #a8865a; }
+.evStage .glow { position: absolute; left: 50%; top: 22px; width: 112px; height: 104px; transform: translateX(-50%); border-radius: 10px; background: radial-gradient(#fffbe0, #ffe98a 60%, rgba(255, 233, 138, .6)); box-shadow: 0 0 22px 8px rgba(255, 240, 160, .8); display: flex; flex-direction: column; align-items: center; justify-content: center; animation: evGlow 1.6s ease-in-out infinite; }
+.evStage .glow .ic { font-size: 40px; line-height: 44px; animation: evPop .5s cubic-bezier(.3, 1.6, .5, 1) both .25s; }
+.evStage .glow .bd { margin-top: 4px; font: 600 13px Fredoka, Nunito, sans-serif; color: #5a3f31; background: #fff8ec; border: 2px solid #5a3f31; border-radius: 99px; padding: 0 8px; white-space: nowrap; animation: evPop .5s cubic-bezier(.3, 1.6, .5, 1) both .45s; }
+.evStage .sa { position: absolute; bottom: 10px; width: 72px; height: 96px; border: 0; padding: 0; background: none; box-shadow: none; }
+.evStage .sa img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 3px 0 rgba(60, 40, 20, .25)); }
+.evStage .sa.l0 { left: 4%; } .evStage .sa.l1 { left: 19%; } .evStage .sa.r0 { right: 5%; }
+.evStage .sa.walkin { animation: evWalkIn 1.1s ease-out both, evBob .45s ease-in-out 1.1s infinite alternate; }
+.evStage .sa.hop { animation: evHop .55s ease-in-out infinite alternate; } .evStage .sa.hop.d1 { animation-delay: .18s; } .evStage .sa.hop.d2 { animation-delay: .32s; }
+.evStage .sa.shake { animation: evShake .25s linear infinite; }
+.evStage .conf { position: absolute; top: -10px; width: 7px; height: 11px; border-radius: 2px; animation: evFall 2.2s linear infinite; }
+.evStage.danger { background: linear-gradient(#3b3550, #6b4a5a 62%); } .evStage.danger .hills { filter: brightness(.5) saturate(.6); } .evStage.danger .ground { background: linear-gradient(#7a6650, #5e4e3d); }
+.evStage.danger .glow { background: radial-gradient(#ffe0d0, #ff8a6a 60%, rgba(255, 120, 90, .6)); box-shadow: 0 0 22px 8px rgba(255, 110, 80, .7); }
+.evStage.sad { background: linear-gradient(#8a96a8, #b8c0cc 62%); } .evStage.sad .hills { filter: saturate(.4); } .evStage.sad .glow { background: radial-gradient(#fff, #e6e0f0 60%, rgba(230, 224, 240, .6)); box-shadow: 0 0 18px 6px rgba(240, 236, 255, .7); }
+.evStage.sad .act img { filter: grayscale(.7) brightness(1.05); opacity: .85; }
+html.cozy .evLine { margin: 10px 14px 4px; font: 600 19px/1.25 Fredoka, Nunito, sans-serif; color: var(--cocoa); }
+html.cozy .evChips { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 2px 12px 6px; }
+html.cozy .evChips span { font-size: 12px; background: var(--cream2); border: 2px solid var(--line); border-radius: 99px; padding: 1px 8px; color: var(--cocoa); }
+@keyframes evWalkIn { from { transform: translateX(160px); } to { transform: none; } }
+@keyframes evBob { to { transform: translateY(-5px); } }
+@keyframes evHop { to { transform: translateY(-14px); } }
+@keyframes evShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+@keyframes evGlow { 50% { box-shadow: 0 0 30px 12px rgba(255, 240, 160, .95); } }
+@keyframes evPop { from { transform: scale(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes evFall { to { transform: translateY(200px) rotate(540deg); } }
+@keyframes evCloud { from { transform: translateX(-80px); } to { transform: translateX(420px); } }
+
+/* V3D.12 portrait pops for small news: a round picture (the person, or an icon) with a few words; slides in and leaves */
+html.cozy #fx .toast.pop { top: 21%; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 4px 14px 4px 4px; border-radius: 999px; animation: popIn .35s cubic-bezier(.3, 1.5, .5, 1) both, popOut .3s ease-in 2.1s forwards; }
+html.cozy #fx .toast.pop .pp { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: radial-gradient(#cfe0c4, #8dab83); border: 2px solid var(--cocoa); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+html.cozy #fx .toast.pop .pp img { width: 100%; height: 100%; object-fit: cover; }
+html.cozy #fx .toast.pop .pt { font-size: 16px; line-height: 19px; text-align: left; }
+@keyframes popIn { from { transform: translate(-50%, -50%) translateY(-14px) scale(.7); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+@keyframes popOut { to { transform: translate(-50%, -50%) translateY(-10px); opacity: 0; } }
