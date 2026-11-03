@@ -555,10 +555,17 @@ function jobMaterial(job, expr = 'neutral') {
   const tex = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : neutral ? MALE.body.material.map : imgTex(img);
   return (jobMats[key] = new THREE.MeshToonMaterial({ map: tex, gradientMap: grad }));
 }
+// zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
+// picks one at random; a few types keep a light tint on top so they still read apart.
+const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9] };
 const zMats = {};
-function zombieMaterial(type) {
-  if (zMats[type]) return zMats[type];
-  const t = ZTINT[type] || ZTINT.walker; return (zMats[type] = new THREE.MeshToonMaterial({ map: LITE.zombieMap || LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
+function zombieMaterial(type, v = 0) {
+  const key = type + '|' + v; if (zMats[key]) return zMats[key];
+  if (LITE.zTex && LITE.zTex.length) {
+    const t = ZSKIN_TINT[type] || [1, 1, 1];
+    return (zMats[key] = new THREE.MeshToonMaterial({ map: LITE.zTex[v % LITE.zTex.length], color: new THREE.Color(...t), gradientMap: grad }));
+  }
+  const t = ZTINT[type] || ZTINT.walker; return (zMats[key] = new THREE.MeshToonMaterial({ map: LITE.zombieMap || LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
 }
 const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', knife: 'axe', machete: 'axe', axe: 'axe', katana: 'axe',
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47' };
@@ -614,6 +621,9 @@ function personAnim(a, s, dt) {
   if (a.attacking && a.cur && a.cur.isRunning()) return;    // let the strike finish
   a.attacking = false;
   if (s.mode === 'rescueCarry') { a.play('rescue'); return; }
+  // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
+  const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || (s.mode === 'chase' && !hold));
+  if (anim === 'walk' && rush) { a.play('run'); return; }
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
@@ -634,8 +644,9 @@ function syncPeople(dt, vis) {
 function zombieAnim(a, z) {
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack') { if (!a.attacking || !a.cur.isRunning()) { a.play('punch', true, true); a.attacking = true; } return; }
   a.attacking = false;
-  if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : 'melee_hold_walk'); return; }
-  a.play('zombie_walk'); a.cur.timeScale = z.type === 'runner' ? 1.7 : z.type === 'brute' || z.type === 'bloated' ? .7 : 1;
+  if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
+  if (z.type === 'runner') { a.play('zombie_run'); a.cur.timeScale = 1.1; return; }
+  a.play('zombie_walk'); a.cur.timeScale = z.type === 'brute' || z.type === 'bloated' ? .7 : 1;
 }
 function syncZombies(dt, vis) {
   const seen = new Set();
@@ -643,7 +654,7 @@ function syncZombies(dt, vis) {
     if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
     if (!a) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
-      else { a = new Actor(LITE, zombieMaterial(z.type), true); a.setWeapon(null); a.setArmor(false); }
+      else { a = new Actor(LITE, zombieMaterial(z.type, (Math.random() * 4) | 0), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : null;
@@ -751,7 +762,8 @@ if (INK) inkButton();
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage;
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.webp').then((img) => { FACE_IMG[e] = img; }).catch(() => {})));
-  try { LITE.zombieMap = imgTex(await il.loadAsync(base + 'male_lite_face_angry.webp')); } catch (e) {}   // zombies scowl rather than smile
+  try { LITE.zombieMap = imgTex(await il.loadAsync(base + 'male_lite_face_angry.webp')); } catch (e) {}   // fallback: scowl rather than smile
+  LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
   bGroups.forEach((v) => scene.remove(v.g)); bGroups.clear();

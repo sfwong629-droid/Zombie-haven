@@ -2,9 +2,9 @@
 (per-texel positions) so it follows the head however the UV islands are cut."""
 import numpy as np
 SKIN_REF = np.array([250, 195, 159]); EYES = ((-.0779, .8807), (.0843, .8795)); EYE_R = (.0291, .0335); FACE_CX = .0032; MOUTH_Z = .806
-EYE_DARK = np.array([30, 21, 16]); EYE_SHINE = np.array([252, 250, 244])
+EYE_DARK = np.array([30, 21, 16]); EYE_MILK = np.array([226, 224, 196]); EYE_RIM = np.array([40, 22, 18]); EYE_SHINE = np.array([252, 250, 244])
 HAIR_REF = np.array([52, 37, 31]); INK = np.array([72, 42, 36])
-EXPRESSIONS = ('neutral', 'angry', 'hurt', 'ko', 'happy')
+EXPRESSIONS = ('neutral', 'angry', 'hurt', 'ko', 'happy', 'zombie')   # 'zombie': base for zombie_tex.py, not a clip face
 # which face each animation shows (anything not listed: neutral)
 EXPR_OF_CLIP = {'punch': 'angry', 'melee_swing_a': 'angry', 'melee_swing_b': 'angry', 'melee_swing_c': 'angry',
                 'gun_fire': 'angry', 'pistol_fire': 'angry', 'hurt': 'hurt', 'melee_hold_hurt': 'hurt',
@@ -44,10 +44,12 @@ def face_paint(pos, nrm, out, expr='neutral', narrow=.74, log=print):
     for ex, eze in eyes:
         face_paint.cover |= front & (((X - ex) / rx) ** 2 + ((Z - eze) / rz) ** 2 < 1.8 ** 2)
         m = front & (((X - ex) / rx) ** 2 + ((Z - eze) / rz) ** 2 < 1.3 ** 2)   # the whole eye incl. its soft pale edge
-        if expr in ('neutral', 'angry'):
-            k = narrow * (.88 if expr == 'angry' else 1)
+        if expr in ('neutral', 'angry', 'zombie'):
+            k = narrow * (.88 if expr == 'angry' else 1.12 if expr == 'zombie' else 1)
             e2 = ((X - ex) / rx) ** 2 + ((Z - eze) / (rz * k)) ** 2
             out[m & (e2 > 1)] = skin_col
+            if expr == 'zombie':                                            # milky, no pupil, dark rim
+                out[m & (e2 <= 1)] = EYE_RIM; out[m & (e2 <= .62)] = EYE_MILK; continue
             out[m & (e2 <= 1)] = EYE_DARK                                   # clean redraw: dark oval + two highlights
             for hx, hz, hr in ((-.32, .38, .30), (.34, -.42, .13)):
                 out[front & (np.hypot((X - ex - hx * rx) / rx, (Z - eze - hz * rz * k) / rx) < hr)] = EYE_SHINE
@@ -65,15 +67,15 @@ def face_paint(pos, nrm, out, expr='neutral', narrow=.74, log=print):
     # mouth
     zm = MOUTH_Z; xx = X - cx
     old = face & (np.abs(xx) < .03) & (np.abs(Z - zm) < .008); out[old & (lum < 140)] = skin_col   # cover the old slit line
-    bend = {'neutral': .42, 'angry': .0, 'hurt': -.45, 'ko': -.15, 'happy': .6}[expr]                      # + smile, - frown
-    hw = {'neutral': .15, 'angry': .11, 'hurt': .12, 'ko': .08, 'happy': .2}[expr] * sep
+    bend = {'neutral': .42, 'angry': .0, 'hurt': -.45, 'ko': -.15, 'happy': .6, 'zombie': -.3}[expr]                      # + smile, - frown
+    hw = {'neutral': .15, 'angry': .11, 'hurt': .12, 'ko': .08, 'happy': .2, 'zombie': .14}[expr] * sep
     curve = zm + bend * (xx / hw) ** 2 * hw - (bend < 0) * bend * hw * .5
     mouth = face & (np.abs(xx) < hw) & (np.abs(Z - curve) < th * (1 - .35 * (xx / hw) ** 2))
     out[mouth] = INK
     # brows
     for ex, eze in eyes:
         s = 1 if ex > cx else -1; bx = X - ex; bw = .25 * sep; o = s * bx / bw            # o: -1 inner end .. +1 outer end
-        if expr == 'angry':      # straight, thick, steep: inner end low by the nose
+        if expr in ('angry', 'zombie'):      # straight, thick, steep: inner end low by the nose
             base = eze + rz + .006; a_ = (ex - s * bw, base - .010); b_ = (ex + s * bw, base + .009)
             brow = face & (_seg(X, Z, a_, b_) < .0058 * (1 - .25 * ((o + 1) / 2)))
         elif expr == 'happy':    # raised, round
