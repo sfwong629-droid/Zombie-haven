@@ -871,7 +871,8 @@ const SLOTS = ['weapon', 'armor', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor:
 const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
-const weaponOf = (s) => itemOf(s, 'weapon') || ITEMS.pipe;
+const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
+const weaponOf = (s) => itemOf(s, 'weapon') || (G3D ? FISTS : ITEMS.pipe);
 const RANGE = { pistol: 4, revolver: 4.2, shotgun: 3, smg: 4.2, rifle: 6, assault: 5.2, bow: 5, crossbow: 5.5 };   /* V2.33: ranged weapons fire from a distance (tiles) */
 const MELEE_R = G3D ? .45 : .9, ZREACH = G3D ? .45 : .8;   /* V3D.12: 3D bodies are bigger than the sprites; at .9 a bat swung at air two body-lengths away */
 const weaponRange = (w) => (w && w.ranged ? RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
@@ -884,7 +885,7 @@ const stashTake = (id) => { if (!S.inv || !S.inv[id]) return false; S.inv[id]--;
 function equip(s, id) {   // move an item from the stash into its slot; the old item goes back to the stash
   const it = ITEMS[id]; if (!it || !stashTake(id)) return false; s.eq = s.eq || {}; const old = s.eq[it.slot]; if (old && old !== 'pipe') stashAdd(old); s.eq[it.slot] = id; setMaxHp(s); return true;
 }
-function unequip(s, slot) { s.eq = s.eq || {}; const old = s.eq[slot]; if (!old || old === 'pipe') return false; stashAdd(old); s.eq[slot] = slot === 'weapon' ? 'pipe' : null; setMaxHp(s); return true; }
+function unequip(s, slot) { s.eq = s.eq || {}; const old = s.eq[slot]; if (!old || old === 'pipe') return false; stashAdd(old); s.eq[slot] = slot === 'weapon' && !G3D ? 'pipe' : null; setMaxHp(s); return true; }
 const FIGHTERS = new Set(['Guard', 'Police Officer', 'Scavenger', 'SWAT']);   // everyone else hides from zombies unless cornered
 const isFighter = (s) => FIGHTERS.has(s.job);
 /* V2.43 personalities: one trait per survivor, fixed for life. Each bends a decision the AI already makes (fight range, falling back, rescues, breaks, sleep, food, friendships,
@@ -1132,7 +1133,7 @@ function moveSlide(o, t, sp) {                // free movement that cannot enter
 
 /* ---------------- survivors ---------------- */
 function mk(name, job, l, x, y, i) {
-  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: 'pipe', armor: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.max = baseMax(o); o.hp = o.max; return o;
+  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: G3D ? null : 'pipe', armor: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.max = baseMax(o); o.hp = o.max; return o;
 }
 function mk0(name, job, l, x, y, i) {
   return { id: ++S.seq, name, job, l, mastery: 0, w: tc(x, y), hp: 58 + l * 8, max: 58 + l * 8, post: null, mode: 'free', target: null, cool: 20 + i * 23, stateTicks: 30 + i * 11, sat: 8 + i * 3, resident: false, i, phase: i * 37, dest: null, moving: false, hunger: 15 + i * 8, thirst: 10 + i * 6, fatigue: 8 + i * 5, activity: null, facility: null, rescuer: null, rescuing: null, carrying: null, lastFacility: null, why: 'Settling in', purpose: null, idleBubble: '' };
@@ -1147,6 +1148,9 @@ function enterFree(s, d = 110) { s.sleeping = false; s.mode = 'free'; s.target =
 function enterPost(s) { s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + s.i * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
 function needScore(s, b) {
   const r = facilityRules[b.type]; if (!r || b.fire || b.burnt) return -999; if (b.type === 'house' && b.owner && b.owner !== s.id) return -999; let sc = 0;
+  if ((r.need === 'hunger' && S.food < .5) || (r.need === 'thirst' && S.water < .5)) return -999;   /* V3D.15: no trips to an empty canteen or water point */
+  if (s.avoid && (s.avoid[b.type] || 0) > tick) return -999;   /* V3D.15: recently looped here: give it a rest */
+  if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * 1.2 + (isNight() && s.fatigue > 15 ? 45 : 0);   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1);
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
@@ -1443,6 +1447,8 @@ function chooseLifePurpose(s) {
   if (rnd() < .38 && startChat(s)) return;
   const r = rnd();
   if ((s.job === 'Guard' || s.job === 'Police Officer') && r < (policy() === 'defend' ? .6 : .35)) { s.dest = patrolDest(); s.mode = 'walk'; s.purpose = 'patrol'; s.why = (S.posts || []).length ? 'Patrolling between the guard posts' : 'Patrolling the north road'; s.stateTicks = 700; return; }
+  if ((S.food < 1 || S.water < 1) && activeZ() <= 2 && !isNight() && (s.hunger > 50 || s.thirst > 50 || s.job === 'Scavenger') && rnd() < .7) {   /* V3D.15: nothing in stock → go out and look for some */
+    s.forage = S.food < 1 ? 'food' : 'water'; s.dest = tc(2 + Math.floor(rnd() * 11), 2 + Math.floor(rnd() * 3)); s.mode = 'walk'; s.purpose = 'scav-out'; s.why = `Out looking for ${s.forage === 'food' ? '🍖' : '💧'}`; s.stateTicks = 900; emote(s, s.forage === 'food' ? '🍖❓' : '💧❓', 100, true); return; }
   if (s.job === 'Scavenger' && r < .30 && activeZ() <= 3) { s.dest = tc(2 + Math.floor(rnd() * 11), 2 + Math.floor(rnd() * 3)); s.mode = 'walk'; s.purpose = 'scav-out'; s.why = 'Scavenging outside the walls'; s.stateTicks = 900; return; }
   if (r < .66) { settlePause(s); return; }
   s.dest = roamDest(); s.mode = 'walk'; s.purpose = 'roam'; s.why = 'Strolling through town'; s.stateTicks = 600;
@@ -1479,6 +1485,10 @@ function finishFacility(s) {
   if (isWorking(b) && b.staff !== s) gainXp(b.staff, r.need === 'injury' ? 3 : 1);   /* the staff member (medic, cook, farmer, engineer) learns from every visitor served */
   if (!s.resident && s.sat >= 35 && !s.requested) { s.requested = true; queueResidentRequest(s); }
   if (s.sleeping) { s.fatigue = 0; s.sleeping = false; }
+  /* V3D.15: one longer stay instead of in-and-out trips: keep resting / being treated while it is still needed (up to 3 extra rounds) */
+  if (!onShift(s) && !threatOf(s) && (s.stays || 0) < 3 && ((r.need === 'fatigue' && s.fatigue > 30) || (r.need === 'injury' && s.hp < s.max * .7 && s.hunger < 100 && s.thirst < 100))) { s.stays = (s.stays || 0) + 1; s.stateTicks = r.use; s.mode = 'useFacility'; s.activity = r.label; return; }
+  s.stays = 0;
+  { s.visits = (s.visits || []).filter((v) => tick - v[1] < 1500); s.visits.push([b.type, tick]); if (s.visits.filter((v) => v[0] === b.type).length >= 3) { (s.avoid ||= {})[b.type] = tick + 2500; s.visits = []; emote(s, '😩', 90); } }
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
 }
 function ai(s) {
@@ -1575,10 +1585,11 @@ function ai(s) {
 }
 // scavenger leaves 'wait' after searching → head home
 function lootFind(s) {
-  const r = rnd(), bonus = (professions[s.job]?.scav > 2 ? 1 : 0) + (hasSkill(s, 'lootSense') ? 1 : 0), f = (t, col) => floats.push({ w: { ...s.w }, t, col, a: 70 });
-  if (r < .42) { const n = 1 + bonus; S.mat += n; f('+' + n + ' PARTS', '#9fe0ff'); }
-  else if (r < .71) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' FOOD', '#ffe06b'); }
-  else { const n = 1 + bonus; S.water += n; S.produced += n; f('+' + n + ' WATER', '#8fd8ff'); }
+  const r = s.forage ? (s.forage === 'food' ? .45 + rnd() * .26 : .72 + rnd() * .28) : rnd(); s.forage = null; const _r = r;
+  const r2 = _r, bonus = (professions[s.job]?.scav > 2 ? 1 : 0) + (hasSkill(s, 'lootSense') ? 1 : 0), f = (t, col) => floats.push({ w: { ...s.w }, t, col, a: 70 });
+  if (r2 < .42) { const n = 1 + bonus; S.mat += n; f('+' + n + ' ⚙', '#9fe0ff'); }
+  else if (r2 < .71) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' 🍖', '#ffe06b'); }
+  else { const n = 1 + bonus; S.water += n; S.produced += n; f('+' + n + ' 💧', '#8fd8ff'); }
 }
 function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s.mode = 'walk'; s.purpose = 'scav-back'; s.dest = tc(7, 9); s.why = 'Returning with supplies'; s.stateTicks = 900; } }
 
@@ -2372,7 +2383,14 @@ function visitorArrival() {
   if (S.finale) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? 1100 : 2200) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || 'Survivor ' + (S.sv.length + 1), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
-  v.sat = 3; v.stateTicks = 80; giveSpare(v); S.sv.push(v); showEventPopup({ stage: { scene: 'arrive', head: 'New face!', icon: '🏡', badge: job + ' Lv.' + lv, hero: v, crowd: others(v) }, short: `${name} moved in!`, chips: TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : null, title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.' + (TRAITS[v.trait] ? `<br><br>${TRAITS[v.trait].icon} <b>${TRAITS[v.trait].name}</b>: ${traitGood(v)}. <i>${TRAITS[v.trait].bad}.</i>` : ''), gains: job + ' · Lv.' + lv + traitTag(v) }); say(name + ' arrived at the Haven.', true); ui();
+  v.sat = 3; v.stateTicks = 80; if (!G3D) giveSpare(v); S.sv.push(v);
+  if (COZY_HUD) {   /* V3D.15: they walk in and wave; the player decides whether they stay (no party until then) */
+    showEventPopup({ stage: { scene: 'newcomer', head: 'Someone at the gate', hero: v }, short: `${name} wants to join`, chips: [job + ' Lv.' + lv].concat(TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : []), title: 'NEWCOMER',
+      buttons: [{ label: 'Welcome', fn: () => { say(name + ' joined the Haven!', true); emote(v, '😊', 120, true); logEvent(`${name} (${job} Lv.${lv}) joined the Haven.`, 'important'); ui(); } },
+        { label: 'Turn away', fn: () => { S.sv = S.sv.filter((q) => q !== v); logEvent(`${name} was turned away at the gate.`, 'routine'); say(name + ' walks off.', true); ui(); } }] });
+    ui(); return;
+  }
+  showEventPopup({ stage: { scene: 'arrive', head: 'New face!', icon: '🏡', badge: job + ' Lv.' + lv, hero: v, crowd: others(v) }, short: `${name} moved in!`, chips: TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : null, title: 'NEW SURVIVOR', text: name + ', a ' + job + ', has arrived at the Haven and is looking around.' + (TRAITS[v.trait] ? `<br><br>${TRAITS[v.trait].icon} <b>${TRAITS[v.trait].name}</b>: ${traitGood(v)}. <i>${TRAITS[v.trait].bad}.</i>` : ''), gains: job + ' · Lv.' + lv + traitTag(v) }); say(name + ' arrived at the Haven.', true); ui();
 }
 /* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */
 const GUIDE = [
@@ -2629,6 +2647,11 @@ const eventQueue = []; let modalOpen = false;
 /* stage: { scene: 'arrive' | 'party' | 'danger' | 'sad', head, icon, badge, hero (survivor), crowd: [survivors] } */
 function stageHtml(st) {
   const fig = (s, pose) => (window.ZH3D && ZH3D.figure && s ? ZH3D.figure(s, pose) : null), img = (u, cls) => (u ? `<div class="sa ${cls}"><img src="${u}" alt=""></div>` : '');
+  if (st.scene === 'newcomer') {   /* one person walks in from the left to the middle and waves (two frames swap) */
+    const f1 = fig(st.hero, 'wave1'), f2 = fig(st.hero, 'wave2');
+    return `<div class="evStage arrive"><div class="cloud" style="left:10%"></div><div class="cloud" style="left:62%;animation-delay:-7s;top:30px"></div><div class="hills"></div><div class="fence"></div><div class="ground"></div>
+      <div class="sa mid walkL">${f1 ? `<img class="w1" src="${f1}" alt="">` : ''}${f2 ? `<img class="w2" src="${f2}" alt="">` : ''}</div></div>`;
+  }
   const crowd = (st.crowd || []).slice(0, 2), sc = st.scene || 'arrive';
   const heroPose = sc === 'arrive' ? 'wave' : sc === 'danger' ? 'ready' : sc === 'sad' ? 'down' : 'cheer', crowdPose = sc === 'danger' ? 'ready' : sc === 'sad' ? 'down' : 'cheer';
   const conf = sc === 'arrive' || sc === 'party' ? Array.from({ length: 14 }, (_, i) => `<i class="conf" style="left:${(i * 7.3 + 3) % 100}%;background:${['#ffd45c', '#ff9ab0', '#9be2ff', '#a8e08a'][i % 4]};animation-delay:${(i * .37) % 2.2}s"></i>`).join('') : '';
@@ -2731,11 +2754,11 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
-  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
+  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
 function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -2760,6 +2783,7 @@ window.addEventListener('storage', (e) => {   /* another tab wrote (or deleted) 
   if (titleOn || saveBlocked || e.key !== SAVE_KEY) return; const m = e.newValue && /^\{"sid":"(\w+)"/.exec(e.newValue); if (m && m[1] === SID) return; blockSaves('tab');
 });
 function relinkSurvivor(s) {
+  if (G3D && s.eq && s.eq.weapon === 'pipe') s.eq.weapon = null;   /* V3D.15: the old default pipe goes; equipment is shown only when given */
   if (!s.st) s.st = rollStats(s.job, s.l); if (!s.tp) s.tp = {}; if (!s.eq) { const nm = s.weapon && s.weapon[0], id = Object.keys(ITEMS).find((k) => ITEMS[k].name === nm) || 'pipe'; s.eq = { weapon: id, armor: null, acc: null }; } delete s.weapon;   /* V2.14 save upgrade: stats + gear slots */
   if (!s.cls) { s.cls = { [s.job]: { l: s.l || 1, xp: s.mastery || 0 } }; } if (!s.skills) s.skills = []; learnSkills(s, true); syncClass(s); { const m = baseMax(s); if (m > s.max) { s.hp += m - s.max; s.max = m; } }   /* V2.12 save upgrade: class levels + earned skills */
   if (!TRAITS[s.trait]) { s.trait = rollTrait(s); const m = baseMax(s); if (m > s.max) { s.hp += m - s.max; s.max = m; } }   /* V2.43 save upgrade: everyone gets a personality */
@@ -2796,7 +2820,7 @@ function applySave(raw, legacy, prev) {
       delete S.money; delete S.earned; S.sv.forEach((q) => { delete q.money; });
     }
     if (S.produced === undefined) S.produced = 0; delete S.med;
-    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, rot: b.rot ? 1 : 0, w: b.rot ? DEFS[b.type].h : DEFS[b.type].w, h: b.rot ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
+    if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.rot ? DEFS[b.type].h : DEFS[b.type].w, h: b.rot ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
@@ -3114,7 +3138,7 @@ function startTool(tool) {
 }
 function updatePreview(x, y) {
   const d = Wd.rotDef(DEFS[sel.type], sel.rot), chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
-  preview = { type: sel.type, x, y, w: d.w, h: d.h, rot: sel.rot ? 1 : 0, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
+  preview = { type: sel.type, x, y, w: d.w, h: d.h, rot: (sel.rot | 0) & 3, q: d.q, a: d.a, ok: chk.ok, why: chk.why };
   const mat = moving ? 0 : d.mat, afford = S.mat >= mat;
   $('confirmName').textContent = `${d.name.toUpperCase()} · ${d.w}×${d.h}` + (moving ? ' · MOVE (free)' : ` · PARTS ${d.mat}`) + (!chk.ok ? ' · ' + chk.why.toUpperCase() : !afford ? ' · NOT ENOUGH PARTS' : '') + (chk.ok ? (() => { const pv = { type: sel.type, x, y, w: d.w, h: d.h }, c = combos(pv); comboCache.map.delete(pv); return c.names.length ? ' · ★ ' + c.names.map((n) => n.split(' (')[0]).join(', ') : ''; })() : '');
   const go = chk.ok && afford; $('yesBuild').disabled = !go; $('yesBuild').style.opacity = go ? 1 : .45; $('confirmBar').style.display = 'block';
@@ -3127,7 +3151,7 @@ function confirmPreview() {
   if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }
   if (!moving && S.mat < d.mat) { say('Not enough parts.'); return; }
-  const nb = { type: sel.type, x: preview.x, y: preview.y, rot: sel.rot ? 1 : 0, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
+  const nb = { type: sel.type, x: preview.x, y: preview.y, rot: (sel.rot | 0) & 3, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
   if (!moving && COZY_HUD) {   /* V3D.12 (DV2 style): a construction site first; the building joins the town when it is done */
     SFX('build'); S.mat -= d.mat; const dur = Math.round(Math.min(4800, 900 + d.mat * 60));
     (S.sites ||= []).push({ ...nb, cons: dur, dur }); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb);
@@ -3213,7 +3237,7 @@ function checkPerimeter() {
   S.sealed = p.sealed; return p;
 }
 function demolish(b) { const d = DEFS[b.type], refund = Math.floor(d.mat * .5); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); S.mat += refund; selected = null; closeP(); say(`${d.name} demolished · refund ${refund} parts`, true); saveGame(); ui(); }
-function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: b.rot ? 1 : 0 }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
+function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: (b.rot | 0) & 3 }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
 let panelBack = null;
@@ -3600,7 +3624,7 @@ function tapAt(px, py) {
   { const t = unproject(px, py), wl = Wd.wallAt(world, Math.floor(t.x), Math.floor(t.y)); if (wl) { const n = S.z.filter((z) => z.hp > 0 && z.mode === 'zbreak' && z.wallT === wl).length, hot = S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6); say(`${Wd.WALL_DEFS[wl.type].name} · ${Math.ceil(wl.hp)}/${wl.max} HP` + (n ? ` · ${n} zombie${n > 1 ? 's' : ''} hitting it` : '') + (wl.hp < wl.max ? (S.mat < 1 ? ' · no parts to repair' : hot ? ' · repairs wait until zombies leave' : ' · being repaired') : '') + (wl.broken ? ' · BROKEN: zombies can walk through' : '')); return; } }
   selected = null; closeP();
 }
-$('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = sel.rot ? 0 : 1; if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(sel.rot ? 'Entrance on the right-hand wall.' : 'Entrance on the left-hand wall.'); };   /* V2.47: turn the entrance */
+$('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = G3D ? ((sel.rot | 0) + 1) & 3 : (sel.rot ? 0 : 1); if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(['Entrance faces front-left.', 'Entrance faces front-right.', 'Entrance faces back-right.', 'Entrance faces back-left.'][(sel.rot | 0) & 3]); };   /* V2.47: turn the entrance */
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
 $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;

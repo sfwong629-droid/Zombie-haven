@@ -85,13 +85,17 @@
   // approach: the tile just outside that wall, which survivors walk to before stepping in.
   // V2.47 rotation: rot = 1 mirrors a building on screen, which swaps its world x/y. The footprint is transposed (w and h swap) and the
   // entrance moves from the front-left wall (y + h side) to the front-right wall (x + w side).
-  const doorOf = (type, w, h, rot) => { const d = DEFS[type] && DEFS[type].door; return rot ? (d ? [d[1], d[0]] : [w - .35, h / 2]) : (d || [w / 2, h - .35]); };
+  // V3D.15: four entrance directions. rot 0 = door on the +y side (front-left), 1 = +x (front-right), 2 = -y (back-right), 3 = -x (back-left).
+  // Odd rot transposes the footprint (w and h swap). w, h here are the footprint as placed.
+  const doorD = (d, w, h, rot) => { const r = (rot | 0) & 3; if (r === 1) return d ? [d[1], d[0]] : [w - .35, h / 2]; if (r === 2) return d ? [w - d[0], h - d[1]] : [w / 2, .35]; if (r === 3) return d ? [w - d[1], h - d[0]] : [.35, h / 2]; return d || [w / 2, h - .35]; };
+  const doorOf = (type, w, h, rot) => doorD(DEFS[type] && DEFS[type].door, w, h, rot);
+  const apTile = (x, y, w, h, r, d) => (r === 1 ? { x: x + w, y: Math.floor(y + d[1]) } : r === 2 ? { x: Math.floor(x + d[0]), y: y - 1 } : r === 3 ? { x: x - 1, y: Math.floor(y + d[1]) } : { x: Math.floor(x + d[0]), y: y + h });
   function doorPoint(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return { x: b.x + d[0], y: b.y + d[1] }; }
   function doorTile(b) { const p = doorPoint(b); return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
-  function approachTile(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return b.rot ? { x: b.x + b.w, y: Math.floor(b.y + d[1]) } : { x: Math.floor(b.x + d[0]), y: b.y + b.h }; }
-  function approachPoint(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return b.rot ? { x: b.x + b.w + .35, y: b.y + d[1] } : { x: b.x + d[0], y: b.y + b.h + .35 }; }
-  const rotDef = (def, rot) => (rot ? Object.assign({}, def, { w: def.h, h: def.w, rot: 1, door: def.door ? [def.door[1], def.door[0]] : null }) : def);   // def as placed (transposed when rotated)
-  const defApproach = (x, y, def) => (def.rot ? { x: x + def.w, y: Math.floor(y + (def.door ? def.door[1] : def.h / 2)) } : { x: Math.floor(x + (def.door ? def.door[0] : def.w / 2)), y: y + def.h });
+  function approachTile(b) { const r = (b.rot | 0) & 3; return apTile(b.x, b.y, b.w, b.h, r, doorOf(b.type, b.w, b.h, r)); }
+  function approachPoint(b) { const r = (b.rot | 0) & 3, d = doorOf(b.type, b.w, b.h, r); return r === 1 ? { x: b.x + b.w + .35, y: b.y + d[1] } : r === 2 ? { x: b.x + d[0], y: b.y - .35 } : r === 3 ? { x: b.x - .35, y: b.y + d[1] } : { x: b.x + d[0], y: b.y + b.h + .35 }; }
+  const rotDef = (def, rot) => { const r = (rot | 0) & 3; return r ? Object.assign({}, def, { w: r & 1 ? def.h : def.w, h: r & 1 ? def.w : def.h, rot: r, door0: def.door }) : def; };   // def as placed (transposed for odd rot)
+  const defApproach = (x, y, def) => { const r = (def.rot | 0) & 3; return apTile(x, y, def.w, def.h, r, doorD(r ? def.door0 : def.door, def.w, def.h, r)); };
 
   function footprintCheck(w, x, y, def, ignore = null) {
     if (x < BUILD.x0 || y < BUILD.y0 || x + def.w - 1 > BUILD.x1 || y + def.h - 1 > BUILD.y1) return { ok: false, why: 'Outside the build zone' };

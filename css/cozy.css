@@ -200,3 +200,15 @@ html.cozy #mBuild { background: var(--cream2); color: var(--cocoa); }
 html.cozy .zi-t { display: inline-block; vertical-align: -.22em; line-height: 0; margin: 0 .06em; }
 html.cozy .zi-t .zi { width: 1.15em; height: 1.15em; }
 html.cozy .evStage .glow .ic .zi-t .zi { width: 46px; height: 46px; }
+
+/* V3D.15 newcomer: walks in from the left to the middle, then waves (two frames) */
+.evStage .sa.mid { left: calc(50% - 40px); width: 80px; height: 110px; }
+.evStage .sa.mid img { position: absolute; inset: 0; }
+.evStage .sa.walkL { animation: evWalkL 1.6s cubic-bezier(.2, .7, .3, 1) both; }
+.evStage .sa.walkL .w1 { animation: evBobW .32s ease-in-out 0s 5 alternate; }
+.evStage .sa.walkL .w2 { opacity: 0; animation: evWave .7s steps(1) 1.6s infinite; }
+.evStage .sa.walkL .w1 { animation: evBobW .32s ease-in-out 0s 5 alternate, evWave1 .7s steps(1) 1.6s infinite; }
+@keyframes evWalkL { from { transform: translateX(-230px); } to { transform: none; } }
+@keyframes evBobW { to { transform: translateY(-4px); } }
+@keyframes evWave { 0% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes evWave1 { 0% { opacity: 1; } 50% { opacity: 0; } }

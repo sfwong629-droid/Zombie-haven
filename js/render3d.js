@@ -55,9 +55,9 @@ Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, n
 sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
 sun.position.copy(MC).add(new THREE.Vector3(-30, 52, 18)); sun.target.position.copy(MC); scene.add(sun, sun.target);
 const KEYS = [   // hour: sky, hemi colour, hemi intensity, sun colour, sun intensity, window glow 0..1
-  [0, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [4.5, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
+  [0, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [4.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
   [8, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [17, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [19, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.4, .6],
-  [20.5, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1], [24, 0x26324a, 0x7484b8, .95, 0x9fb4e0, .55, 1]];   // V3D.12: nights brighter (were .7 / .35)
+  [20.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [24, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1]];   // V3D.15: nights brighter again (.95 / .55 -> 1.18 / .72)   // V3D.12: nights brighter (were .7 / .35)
 const cA = new THREE.Color(), cB = new THREE.Color();
 let glowNow = -1;
 function light(h) {
@@ -521,9 +521,9 @@ const BUILD = {
 let tentScene = null;
 const BGLB = { house: 'assets/buildings/ai3d/house/house_realtime.glb' }, glbB = {};   // V3D.3: Hunyuan models from export_prop3d.py (origin = footprint centre, door faces +Z = front-left); scaled to fill the footprint
 const bGroups = new Map();
-function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, b.rot ? 1 : 0, b.burnt ? 1 : 0].join(','); }
+function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b.burnt ? 1 : 0].join(','); }
 function makeBuilding(b) {
-  const g = new THREE.Group(), w = (b.rot ? b.h : b.w) * T, d = (b.rot ? b.w : b.h) * T;
+  const g = new THREE.Group(), odd = (b.rot | 0) & 1, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T;
   if (b.type === 'medic' && tentScene) {
     const t = tentScene.clone(); const s = Math.min(w / 2.2, d / 2.4) * .95; t.scale.setScalar(s); g.add(t);
   } else if (glbB[b.type]) {
@@ -532,7 +532,7 @@ function makeBuilding(b) {
     const P = new Parts(); (BUILD[b.type] || ((P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {})))(P, w, d); P.build(g, .028);
   }
   if (b.burnt) g.traverse((o) => { if (o.isMesh && !o.userData.hull && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(.35); } });
-  g.position.set((b.x + b.w / 2) * T, 0, (b.y + b.h / 2) * T); g.rotation.y = b.rot ? Math.PI / 2 : 0;
+  g.position.set((b.x + b.w / 2) * T, 0, (b.y + b.h / 2) * T); g.rotation.y = ((b.rot | 0) & 3) * Math.PI / 2;   // V3D.15: four entrance directions
   return g;
 }
 function syncBuildings() {
@@ -626,18 +626,28 @@ function jobBase(job) {
   if (jobTex[job]) return jobTex[job]; const img = MALE.bodyImage;
   return (jobTex[job] = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : MALE.body.material.map);
 }
-function jobMaterial(job, expr = 'neutral') {
+// V3D.15 looks: skin tone and hair colour recoloured in the shader (the texture stays shared). Skin and hair are found by
+// colour: skin by its chromaticity, hair as dark brown (the darker eyes are left alone). Multipliers keep the shading.
+const lin = (h) => new THREE.Color(h);   // THREE.Color stores linear values
+const SKIN_REF = lin('#fac39f'), HAIR_REF = lin('#34251f');
+const SKINS = ['#fac9a8', '#e0ac82', '#c68c64', '#966446', '#69462f'], HAIRS = ['#34251f', '#1c1818', '#78341e', '#c4964f', '#82807c'];
+const mulOf = (h, ref) => { const c = lin(h); return new THREE.Vector3(c.r / ref.r, c.g / ref.g, c.b / ref.b); };
+const SKIN_MUL = SKINS.map((h) => mulOf(h, SKIN_REF)), HAIR_MUL = HAIRS.map((h) => mulOf(h, HAIR_REF));
+const SN = (() => { const t = SKIN_REF.r + SKIN_REF.g + SKIN_REF.b; return [SKIN_REF.r / t, SKIN_REF.g / t, SKIN_REF.b / t].map((v) => v.toFixed(4)).join(', '); })();
+const LOOK_GLSL = `{ vec3 c = diffuseColor.rgb; vec3 n = c / max(1e-4, c.r + c.g + c.b); float lum = dot(c, vec3(.3, .59, .11)); vec3 sn = vec3(${SN});
+    float isSkin = (1. - smoothstep(.022, .04, distance(n, sn))) * smoothstep(.12, .2, lum);
+    float isHair = (1. - smoothstep(.06, .11, distance(n, sn))) * smoothstep(.011, .016, lum) * (1. - smoothstep(.07, .1, lum));
+    diffuseColor.rgb = mix(c, min(c * skinMul, vec3(1.)), isSkin); diffuseColor.rgb = mix(diffuseColor.rgb, min(c * hairMul, vec3(1.)), isHair); }`;
+function jobMaterial(job, expr = 'neutral', look = null) {
   if (!FACE_OVL[expr]) expr = 'neutral';
-  const key = job + '|' + expr; if (jobMats[key]) return jobMats[key];
-  const m = new THREE.MeshToonMaterial({ map: jobBase(job), gradientMap: grad });
-  if (expr !== 'neutral') {
-    const ovl = FACE_OVL[expr];
-    m.onBeforeCompile = (sh) => { sh.uniforms.faceMap = { value: ovl };
-      sh.fragmentShader = 'uniform sampler2D faceMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n{ vec4 fo = texture2D(faceMap, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, fo.rgb, fo.a); }'); };
-    m.customProgramCacheKey = () => 'face';
-  }
+  const sk = look ? look.sk % SKINS.length : 0, hr = look ? look.hr % HAIRS.length : 0, key = job + '|' + expr + '|' + sk + hr; if (jobMats[key]) return jobMats[key];
+  const m = new THREE.MeshToonMaterial({ map: jobBase(job), gradientMap: grad }), ovl = expr !== 'neutral' && FACE_OVL[expr];
+  m.onBeforeCompile = (sh) => { sh.uniforms.skinMul = { value: SKIN_MUL[sk] }; sh.uniforms.hairMul = { value: HAIR_MUL[hr] }; if (ovl) sh.uniforms.faceMap = { value: ovl };
+    sh.fragmentShader = 'uniform vec3 skinMul; uniform vec3 hairMul;\n' + (ovl ? 'uniform sampler2D faceMap;\n' : '') + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + LOOK_GLSL + (ovl ? '\n{ vec4 fo = texture2D(faceMap, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, fo.rgb, fo.a); }' : '')); };
+  m.customProgramCacheKey = () => (ovl ? 'face+look' : 'look');
   return (jobMats[key] = nightLit(m, .32));
 }
+function lookOf(s) { if (!s.look3) { const r = Math.imul(s.id || 1, 2654435761) >>> 0; s.look3 = { sk: r % SKINS.length, hr: (r >>> 8) % HAIRS.length }; } return s.look3; }
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
 const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9] };
@@ -745,8 +755,8 @@ function syncPeople(dt, vis) {
   const seen = new Set();
   for (const s of G.S.sv) {
     seen.add(s); let a = people.get(s);
-    if (!a) { a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); addHat(a, s.job); people.set(s, a); a.job = s.job; }
-    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (!a) { a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || (s.mode === 'down' && G.beingCarried(s));
     a.show(!hidden); if (hidden) continue;
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
@@ -955,14 +965,14 @@ const portraits = new Map(); let pRig = null;
 function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), key = [o.key, s.job, model, arm ? 1 : 0, o.face || ''].join('|');
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = [o.key, s.job, model, arm ? 1 : 0, o.face || '', lk.sk, lk.hr].join('|');
   if (portraits.has(key)) return portraits.get(key);
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
-  const R = pRig.rts[rk], a = new Actor(MALE, jobMaterial(s.job, o.face || 'neutral'), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
-  a.setWeapon(model); a.setArmor(arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; a.o.updateMatrixWorld(true);
+  const R = pRig.rts[rk], a = new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  a.setWeapon(model); a.setArmor(arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
   c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
@@ -975,10 +985,17 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
 // People page: framed from the hair down to the chest, turned so the weapon hand is away from the face
 const portraitOf = (s) => snapActor(s, { key: 'bust', half: .46 });
 // event-card stage figures, full body: wave (arriving), cheer, ready (danger), down (mourning)
-const POSE = { wave: { clip: () => 'cheer', t: .25, face: 'happy', noWeapon: true, yaw: .35 }, cheer: { clip: () => 'cheer', t: .5, face: 'happy', noWeapon: true, yaw: -.35 },
+const WAVE = (k) => (B) => {   // right arm up beside the head, forearm swinging (k: 0 / 1)
+  const ua = B.upperarmR, fa = B.forearmR; if (!ua) return;
+  ua.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), k ? WAVE_A.z1 : WAVE_A.z);   // the raised arm swings between two angles
+  if (fa) fa.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), WAVE_A.f0);
+};
+const WAVE_A = { z: -2.05, z1: -2.65, f0: .35 };
+const POSE = { wave1: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(0) }, wave2: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(1) }, wave: { clip: () => 'cheer', t: .25, face: 'happy', noWeapon: true, yaw: .35 }, cheer: { clip: () => 'cheer', t: .5, face: 'happy', noWeapon: true, yaw: -.35 },
   ready: { clip: (c) => (c === 'gun' ? 'gun_hold_idle' : c ? 'melee_hold_idle' : 'idle'), t: .3, face: 'angry', yaw: -.4 }, down: { clip: () => 'idle', t: .3, face: 'ko', noWeapon: true, yaw: 0 } };
+window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
-window.ZH3D = { portrait: portraitOf, figure: figureOf, frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { portrait: portraitOf, figure: figureOf, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 if (INK) inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

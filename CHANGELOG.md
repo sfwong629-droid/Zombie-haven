@@ -1,5 +1,14 @@
 # Changelog
 
+## V3D.15 — Feedback round 3 (3D mode, branch art-direction-b)
+- Survivors: emoji moods and reactions, Dungeon Village 2 style chatter, bonfire evenings, pitching in when short, night prep, calls for help, shooters keep distance.
+- Clay icons (style A) across the HUD, building markers, panels, cards and pops.
+- Buildings can face all four directions (rotate cycles front-left, front-right, back-right, back-left).
+- Newcomers: they walk in from the left and wave; Welcome or Turn away. No more starter pipe: everyone starts bare-handed.
+- No more looping between the canteen, clinic and Inn (see docs/AI_BEHAVIOUR.md); starving survivors forage instead.
+- Nights brighter again.
+- Five skin tones and five hair colours, so every survivor looks different.
+
 ## V3D.13 — Feedback round 2 (3D mode, branch art-direction-b)
 - Sound errors never show as GAME ERROR (and the banner closes itself); build tag on the title screen.
 - 3x speed stays; status bubbles 20% smaller; dusk and dawn fade smoothly; first Workshop gives +15 research.

@@ -52,11 +52,21 @@ The one list of how every kind of character reacts. When a behaviour changes, up
 | Shooter with a zombie in their face | Steps back to keep distance before firing again | ✅ |
 | Choosing a target | Fighters prefer zombies on a friend, then ones others are fighting, and now finish off nearly dead ones first | ✅ |
 
+## No more loops (V3D.15)
+
+| Problem seen | Fix | Status |
+|---|---|---|
+| Walking to the canteen / water point when the town has none | Those trips are skipped while the stock is empty | ✅ |
+| In-and-out trips to the Inn or clinic | A rest or treatment keeps going (up to 3 extra rounds) while it is still needed | ✅ |
+| Same kind of building over and over | 3 visits to the same type within ~1.5 game hours → 😩 and they avoid it for ~2.5 hours | ✅ |
+| Starving people bouncing to the clinic (care can't fix hunger) | No clinic for starving people above 35% health; with no 🍖 or 💧 in stock they go out foraging for it instead | ✅ |
+
 ## Daily life
 
 | Who | Behaviour | Status |
 |---|---|---|
 | Everyone | Eat, drink, rest, train, socialise by need; sleep at night | ✅ |
+| Newcomers | Walk to the gate; the player Welcomes them or turns them away. Everyone starts bare-handed (equipment shows when given) | ✅ V3D.15 |
 | Long-time residents | Get their own House: rest 50% better, +2 ♥ there; nobody else uses it | ✅ V3D.12 |
 | Everyone else | Sleep at the Inn (4 beds each); sleep rough if no bed | ✅ V3D.12 |
 | Workers | Work their building on shift; auto-assigned by profession, or picked by the player in the building panel | ✅ V3D.13 |
