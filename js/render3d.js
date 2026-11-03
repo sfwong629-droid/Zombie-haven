@@ -840,6 +840,19 @@ function syncFires(dt, t) {
   for (const [b, f] of fires) if (!want.has(b)) { scene.remove(f.g); fires.delete(b); }
 }
 let fireT = 0;
+// rain (V3D.13): streaks falling in a box around the view, denser in heavy rain; the light greys a little
+const RAIN_N = 900, rainPos = new Float32Array(RAIN_N * 6), rainG = new THREE.BufferGeometry();
+rainG.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0xdce8f4, transparent: true, opacity: .75, depthWrite: false })); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
+const rainSeed = Array.from({ length: RAIN_N }, () => [Math.random(), Math.random(), Math.random()]); let rainK = 0;
+function syncRain(dt) {
+  const w = G.S.weather, target = w ? (w.kind === 'heavy' ? 1 : .5) : 0; rainK += (target - rainK) * Math.min(1, dt * .8); rain.visible = rainK > .02; if (!rain.visible) return;
+  const n = Math.round(RAIN_N * rainK), c = cam.position.clone().addScaledVector(DIR, -120), span = (cam.right - cam.left) * 1.4, L = .55;
+  for (let i = 0; i < n; i++) { const sd = rainSeed[i]; sd[1] = (sd[1] - dt * (1.6 + sd[2] * .6)) % 1; if (sd[1] < 0) { sd[1] += 1; sd[0] = Math.random(); sd[2] = Math.random(); }
+    const x = c.x + (sd[0] - .5) * span, z = c.z + (sd[2] - .5) * span, y = sd[1] * 9; rainPos.set([x, y, z, x - .06, y - L, z - .03], i * 6); }
+  rainG.setDrawRange(0, n * 2); rainG.attributes.position.needsUpdate = true;
+  hemi.intensity *= 1 - .22 * rainK; sun.intensity *= 1 - .6 * rainK; hemi.color.lerp(new THREE.Color(0xb8c4d0), .5 * rainK);   // overcast: flatter, cooler light, soft shadows
+}
 // placement ghost (V3D.12): a see-through copy of the building being placed, tinted red where it can't go
 let ghost = null;
 function syncGhost() {
@@ -929,7 +942,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT); syncRain(dt);
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }

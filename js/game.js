@@ -1765,12 +1765,19 @@ function craft(id) { const c = craftCost(id); if (S.mat < c || !Object.entries(R
 function outPop(b, got, icon, col) {   /* V2.36: each whole unit a building really produced pops above it; the fraction fills its badge ring */
   b.acc = (b.acc || 0) + got; if (b.acc >= 1) { const n = Math.floor(b.acc); b.acc -= n; floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 - .2 }, t: `+${n} ${icon}`, col, a: 80 }); }
 }
+/* V3D.13 weather: now and then it rains for a few hours; Rain Collectors fill 1.5x faster in light rain, 2x in heavy */
+const rainMult = () => (S.weather ? (S.weather.kind === 'heavy' ? 2 : 1.5) : 1);
+function weatherHour() {
+  if (S.weather) { if (--S.weather.h <= 0) { S.weather = null; if (COZY_HUD) banner('🌤 The rain stops'); } return; }
+  if (rnd() < .06) { const heavy = rnd() < .3; S.weather = { kind: heavy ? 'heavy' : 'light', h: 2 + Math.floor(rnd() * 4) };
+    banner(heavy ? '⛈ Heavy rain! Collectors fill 2× faster' : '🌧 Light rain: collectors fill faster'); logEvent(`${heavy ? 'Heavy' : 'Light'} rain for about ${S.weather.h} hours: Rain Collectors make ${heavy ? 'twice' : 'half again'} as much water.`, 'routine'); }
+}
 function hourlyProduction() {   // runs every game hour
   let fi = 0, wi = 0; const cap = supplyCap();
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d) continue; const nm = d.name;
     if (d.slot) { b.wh = b.wh || []; b.wh.push(b.staff ? (b.wsN ? b.wsW / b.wsN : (isWorking(b) ? 1 : 0)) : 0); if (b.wh.length > 24) b.wh.shift(); b.wsN = b.wsW = 0; }   /* V2.35: measured share of the hour the worker was on the job */
-    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = Math.min(cap, S.water + a); wi += got; flow('water', nm, got); outPop(b, got, 'WATER', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
+    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * (b.type === 'water' ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = Math.min(cap, S.water + a); wi += got; flow('water', nm, got); outPop(b, got, 'WATER', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
     if (d.fam === 'scrap') { const a = d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1); S.mat += a; flow('mat', nm, a); outPop(b, a, 'PARTS', '#9fe0ff'); }
     if (d.fam === 'research') { const a = (isWorking(b) ? d.out : 6) / 24 * prodMult(b); S.rp = (S.rp || 0) + a; outPop(b, a, 'RESEARCH', '#c7b6ff'); }
     if (d.fam === 'farm') { const need = d.waterUse / 24, frac = need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = frac < 1; const a = d.out / 24 * frac * prodMult(b), room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = Math.min(cap, S.food + a); fi += got; flow('food', nm, got); outPop(b, got, 'FOOD', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
@@ -3437,7 +3444,7 @@ function simTick() {
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
-  if (tick % 1000 === 0) { S.hour++; if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); rpStarter(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); rpStarter(); weatherHour(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
