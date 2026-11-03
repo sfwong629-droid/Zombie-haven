@@ -769,7 +769,7 @@ function syncZombies(dt, vis) {
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : null;
     a.place(z.w.x, z.w.y, tgt, dt, ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
-  for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped) { a.dispose(); continue; }   // walked off the map: no death fall dead.set(a, 0); a.play('collapse', true, true); }
+  for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped) { a.dispose(); continue; }   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
   for (const [a, t0] of dead) {   // fall, lie still, then sink away (the 2D corpse fades over the same time)
     const t = t0 + dt; dead.set(a, t); tickMixer(a, dt, vis);

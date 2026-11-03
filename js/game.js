@@ -2141,11 +2141,24 @@ function endOfDay() {            // rations: every survivor eats half food, half
   if (fw < 1) note('critical', 'Out of water: rations were short today', { key: 'nowater', icon: '💧', live: () => S.water < rationNeed().w, dyn: () => `Out of water · ${S.water.toFixed(1)} of ${rationNeed().w.toFixed(1)} needed per day`, acts: [{ label: 'Why?', fn: () => showResource('water') }] }); else if (S.water < nw) note('important', '⚠ WATER: under 1 day left');
 }
 function releasePost(b) { if (b.staff) { if (b.staff.post === b) b.staff.post = null; b.staff = null; } }
+function showAssign(b) {   /* V3D.13: pick who works at a building (matching professions first; others work there without the bonus) */
+  const d = DEFS[b.type], jobs = STAFF_JOBS[d.fam] || [], can = S.sv.filter((q) => q.hp > 0 && q.mode !== 'away');
+  can.sort((x, y) => (jobs.includes(y.job) - jobs.includes(x.job)) || (y.l - x.l));
+  const row = (q) => { const m = jobs.includes(q.job), where = q.post && q.post !== b ? `works at the ${DEFS[q.post.type].name}` : q.post === b ? 'works here now' : 'free';
+    return `<div class="card row" data-as="${q.id}" style="cursor:pointer;gap:8px${m ? '' : ';opacity:.75'}">${portrait(q)}<div class="sp"><b>${esc(q.name)}</b> <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${m ? '★ +' + Math.round(workBoost(q) * 100) + '% here' : 'no bonus here'} · ${where}</div></div><span style="color:var(--gold)">›</span></div>`; };
+  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Who works at the ${d.name}? ${jobs.length ? `${jobs.join(' / ')} get a bonus.` : ''}</div><div class="lst">${can.map(row).join('')}<div class="card" data-as="none" style="cursor:pointer;text-align:center">Nobody</div></div>`;
+  showPanel('Assign worker'); $('pBack').style.display = 'block'; panelBack = () => showBuildingInfo(b);
+  $('ib').querySelectorAll('[data-as]').forEach((el) => { el.onclick = () => {
+    if (el.dataset.as === 'none') { releasePost(b); b.noStaff = true; b.manual = false; say(`Nobody works at the ${d.name} now.`, true); }
+    else { const q = S.sv.find((x) => x.id === +el.dataset.as); if (!q) return; if (q.post && q.post !== b) releasePost(q.post); releasePost(b); b.staff = q; q.post = b; b.manual = true; b.noStaff = false; if (q.mode === 'work') { q.mode = 'free'; q.stateTicks = 0; } say(`${q.name} now works at the ${d.name}.`, true); }
+    autoStaff(); saveGame(); showBuildingInfo(b); }; });
+}
 function autoStaff() {           // one slot per building; a matching profession is assigned automatically, the best level first
   for (const q of S.sv) if (q.post && (!world.buildings.includes(q.post) || q.post.staff !== q)) q.post = null;
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || !d.slot) continue; if (b.burnt) { releasePost(b); continue; } const jobs = STAFF_JOBS[d.fam] || [];
-    if (b.staff && (!S.sv.includes(b.staff) || !jobs.includes(b.staff.job))) releasePost(b);
+    if (b.staff && (!S.sv.includes(b.staff) || (!jobs.includes(b.staff.job) && !b.manual))) releasePost(b);
+    if (b.noStaff) continue;   /* V3D.13: the player chose 'nobody' */
     if (b.staff) continue;
     const c = S.sv.filter((q) => !q.post && q.hp > 0 && !['down', 'hospital'].includes(q.mode) && jobs.includes(q.job)).sort((x, y) => (y.l - x.l) || (dist(x.w, Wd.doorPoint(b)) - dist(y.w, Wd.doorPoint(b))));
     if (c.length) { b.staff = c[0]; c[0].post = b; note('routine', `${c[0].name} will staff the ${d.name}.`); }
@@ -3326,10 +3339,11 @@ function showBuildingInfo(b, tab) {
     { const at = Wd.approachTile(b), blk = Wd.buildingAt(world, at.x, at.y); if (blk && blk !== b) status += `<div style="color:var(--bad)">🚪 Entrance blocked by the ${esc(DEFS[blk.type].name)}: move one of them</div>`; }   /* V2.34: older towns can still have this */
     const worker = d.slot ? (b.staff ? `<div class="row" id="bWorker" style="gap:6px;cursor:pointer"><span>👷</span><span class="sp"><b>${esc(b.staff.name)}</b> <span class="sm">${b.staff.job} Lv.${b.staff.l} · on the job ${Math.round(workShare(b) * 100)}% of the day</span></span><span style="color:var(--gold)">›</span></div>`
       : `<div>👷 <span style="color:var(--bad)">No ${(STAFF_JOBS[d.fam] || []).join(' or ')} assigned</span><div class="sm">${sn}</div></div>`) : '';
+    const assignBtn = d.slot ? `<button class="act go" id="bAssign" style="margin-top:6px">👷 ${b.staff ? 'Change worker' : 'Assign a worker'}</button>` : '';
     const fmt = (l, sign) => l.map(([ic, v, what]) => `<div>${ic} <b style="color:${sign > 0 ? 'var(--good)' : '#ffb36b'}">${sign > 0 ? '+' : '−'}${f1(v)}</b> <span class="sm">${what} / day</span></div>`).join('');
     const nt = nextTier(b);
     h += `<div class="card row"><div style="width:84px;height:76px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 84, 76)}</div><div class="sp"><div style="color:${st.c}">● ${st.t}</div>${fmt(io.out, 1)}${fmt(io.use, -1)}${!io.out.length && out ? `<div>${out}</div>` : ''}${cb.names.length ? `<div class="sm">★ ${cb.names.length} neighbour bonus${cb.names.length > 1 ? 'es' : ''}</div>` : ''}</div></div>`
-      + (worker ? `<div class="card">${worker}</div>` : '') + status + (['medic', 'clinic', 'hospital'].includes(b.type) ? patientsHtml(b) : '')
+      + (worker ? `<div class="card">${worker}${assignBtn}</div>` : '') + status + (['medic', 'clinic', 'hospital'].includes(b.type) ? patientsHtml(b) : '')
       + (nt ? `<div class="sm">Better in this family: <b>${nt[1].name}</b>${nt[1].out ? ` (${nt[1].out} / day base vs ${d.out || 0})` : ''}${buildLock(nt[0]) ? ' · needs ' + buildLock(nt[0]) : ' · available in Build'}</div>` : '');
     if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'disabled'}>⚡ Rush · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<div class="sm">${esc(rc.why)}</div>`}`; }
     h += `<div><button class="act" id="bMove">Move</button></div>`;
@@ -3354,6 +3368,7 @@ function showBuildingInfo(b, tab) {
   const rb = $('bRush'); if (rb) rb.onclick = () => { if (rush(b)) showBuildingInfo(b); };
   const rp = $('bRepair'); if (rp) rp.onclick = () => { if (repairBurnt(b)) showBuildingInfo(b); };
   $('ib').querySelectorAll('[data-u]').forEach((el) => { const q = S.sv[+el.dataset.u]; if (q) el.onclick = () => unitPanel(q); });
+  const ba = $('bAssign'); if (ba) ba.onclick = () => showAssign(b);
   const bw = $('bWorker'); if (bw && b.staff) bw.onclick = () => { const q = b.staff; closeP(); selected = { kind: 'unit', ref: q }; unitPanel(q); };   /* V2.35: tap the worker to open their panel */
   const mv = $('bMove'); if (mv) mv.onclick = () => moveBuilding(b); const dm = $('bDem'); if (dm) dm.onclick = () => demolish(b);
 }
