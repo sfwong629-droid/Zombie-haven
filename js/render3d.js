@@ -699,6 +699,7 @@ class Actor {
 }
 // ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
 // bone, sized from the rig's head (bone at y .73, hair top 1.14, about .47 wide, centred slightly back)
+const HATS_ON = false;
 const HEAD = { x: .004, z: -.02, top: 1.14, r: .245 };
 function hatFor(job) {
   const g = new THREE.Group(), M = (c) => toon(c), add = (geo, c, x, y, z, hull = .012) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); if (hull) addHull(m, hull); return m; };
@@ -719,6 +720,7 @@ function hatFor(job) {
   g.position.set(HEAD.x, 0, HEAD.z); g.rotation.x = -.06; return g;
 }
 function addHat(a, job) {   // parent to the head bone, placed at the rest pose
+  if (!HATS_ON) return;   // V3D.16: no job hats (owner's call); hats return later as equipment
   if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
   const h = hatFor(job); if (!h) return; let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
   a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, head.matrixWorld).invert();
