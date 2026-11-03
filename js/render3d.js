@@ -719,8 +719,9 @@ function hatFor(job) {
   }
   g.position.set(HEAD.x, 0, HEAD.z); g.rotation.x = -.06; return g;
 }
-function addHat(a, job) {   // parent to the head bone, placed at the rest pose
-  if (!HATS_ON) return;   // V3D.16: no job hats (owner's call); hats return later as equipment
+const HAT_SHAPE = { bandana: 'Raider', cap: 'Police Officer', beanie: 'Scavenger', straw: 'Farmer', hard: 'Engineer', bike: 'SWAT', football: 'SWAT', army: 'Guard', riot: 'SWAT' };
+function addHat(a, job, equipped = false) {   // parent to the head bone, placed at the rest pose
+  if (!HATS_ON && !equipped) { if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; } return; }   // V3D.16: no job hats; equipped hats (the Hat slot) do show
   if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
   const h = hatFor(job); if (!h) return; let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
   a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, head.matrixWorld).invert();
@@ -763,7 +764,10 @@ function syncPeople(dt, vis) {
     a.show(!hidden); if (hidden) continue;
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
     a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : (!s.moving && s.faceW) || null, dt);   // V3D.14: chatting / at the fire: face them
-    personAnim(a, s, dt); a.setMood(s.emo && s.emo.face); if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
+    { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; if (a.hatId !== (shape || null)) { a.hatId = shape || null; addHat(a, shape ? HAT_SHAPE[shape] : null, !!shape); } }   // V3D.16 equipped hat
+    personAnim(a, s, dt); a.setMood(s.emo && s.emo.face);
+    { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
+        if (s.reloadT > 0) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
   }
   for (const [s, a] of people) if (!seen.has(s)) { a.dispose(); people.delete(s); }
 }
@@ -877,6 +881,7 @@ function syncGhost() {
   ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
 }
 const insideBuilding3 = (s) => false;   // hidden survivors are already not shown
+const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
 let zCount = 0;
 const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
 function tickMixer(a, dt, vis) {

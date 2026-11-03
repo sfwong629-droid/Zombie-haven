@@ -496,6 +496,10 @@ function drawHuman(s) {
   if (s.mode === 'down' && s.bleed != null) bleedRing(s, p);
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
+  if (COZY_HUD && s.reloadT > 0) { const u = hudU(), w = weaponOf(s), k = 1 - s.reloadT / Math.max(1, (w.reload || 1) * 60), cx = p.x - 16 * u, cy = (tagT ? tagY - 16 * u : tagY) - 12 * u;   /* V3D.16 reload timer */
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 11 * u, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
+    ctx.lineWidth = 4 * u; ctx.lineCap = 'round'; ctx.strokeStyle = '#f2a33a'; ctx.beginPath(); ctx.arc(cx, cy, 11 * u, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
+    hudText(String(w.mag || ''), cx, cy + 4 * u, `600 ${Math.round(10 * u)}px Fredoka, sans-serif`, '#5a3f31'); ctx.restore(); }
   if (COZY_HUD && s.emo && !s._lvT) drawEmote(s, p, tagT ? tagY - 16 * hudU() : tagY);
   if (s._lvT > 0) { /* the LEVEL UP burst takes the space above the head */ }
   else if (tagT) statusTag(p.x, tagY, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
@@ -850,40 +854,69 @@ const STATS = ['str', 'end', 'agi', 'per', 'int', 'cha'];
 const STAT_NAME = { str: 'Strength', end: 'Endurance', agi: 'Agility', per: 'Perception', int: 'Intelligence', cha: 'Charisma' };
 const STAT_CAP = 20;
 const JOB_STATS = { Civilian: ['cha', 'int'], Guard: ['str', 'end'], 'Police Officer': ['per', 'end'], Medic: ['int', 'cha'], Scavenger: ['agi', 'per'], Engineer: ['int', 'str'], Cook: ['cha', 'end'], Farmer: ['str', 'end'], Mechanic: ['int', 'str'], Paramedic: ['int', 'agi'], SWAT: ['per', 'str'] };
-const ITEMS = {   // slot, attack (weapons), defence (armor), stat bonuses, parts cost (armory/crafting); kind = how it is swung (blunt/blade/gun/bow); ranged = attacks from ~2.4 tiles
-  pipe: { name: 'Lead Pipe', slot: 'weapon', kind: 'blunt', atk: 6, cost: 0 }, knife: { name: 'Kitchen Knife', slot: 'weapon', kind: 'blade', atk: 9, cost: 2 }, bat: { name: 'Baseball Bat', slot: 'weapon', kind: 'blunt', atk: 14, cost: 4 },
-  crowbar: { name: 'Crowbar', slot: 'weapon', kind: 'blunt', atk: 16, cost: 5 }, nailbat: { name: 'Nail Bat', slot: 'weapon', kind: 'blunt', atk: 18, cost: 6 },
-  machete: { name: 'Machete', slot: 'weapon', kind: 'blade', atk: 19, cost: 6 }, spear: { name: 'Scrap Spear', slot: 'weapon', kind: 'blade', atk: 21, cost: 7, st: { per: 1 } },
-  axe: { name: 'Fire Axe', slot: 'weapon', kind: 'blade', atk: 25, cost: 9, st: { agi: -1 } }, sledge: { name: 'Sledgehammer', slot: 'weapon', kind: 'blunt', atk: 30, cost: 11, st: { agi: -2 } },
-  katana: { name: 'Katana', slot: 'weapon', kind: 'blade', atk: 33, cost: 15, st: { agi: 1 } },
-  pistol: { name: 'Pistol', slot: 'weapon', kind: 'gun', atk: 17, cost: 8, ranged: true }, revolver: { name: 'Revolver', slot: 'weapon', kind: 'gun', atk: 22, cost: 10, ranged: true },
-  shotgun: { name: 'Shotgun', slot: 'weapon', kind: 'gun', atk: 30, cost: 13, ranged: true, st: { agi: -1 } }, smg: { name: 'SMG', slot: 'weapon', kind: 'gun', atk: 26, cost: 13, ranged: true },
-  rifle: { name: 'Hunting Rifle', slot: 'weapon', kind: 'gun', atk: 27, cost: 12, ranged: true }, assault: { name: 'Assault Rifle', slot: 'weapon', kind: 'gun', atk: 36, cost: 18, ranged: true },
-  bow: { name: 'Hunting Bow', slot: 'weapon', kind: 'bow', atk: 18, cost: 7, ranged: true, st: { per: 1 } }, crossbow: { name: 'Crossbow', slot: 'weapon', kind: 'bow', atk: 26, cost: 11, ranged: true },
-  jacket: { name: 'Work Jacket', slot: 'armor', def: 2, cost: 2 }, leather: { name: 'Leather Jacket', slot: 'armor', def: 4, cost: 4 }, hockey: { name: 'Hockey Pads', slot: 'armor', def: 5, cost: 5 },
-  biker: { name: 'Biker Leathers', slot: 'armor', def: 6, cost: 6, st: { cha: 1 } }, riot: { name: 'Riot Vest', slot: 'armor', def: 7, cost: 8, st: { agi: -1 } },
-  kevlar: { name: 'Kevlar Vest', slot: 'armor', def: 9, cost: 10 }, military: { name: 'Military Armor', slot: 'armor', def: 11, cost: 13, st: { agi: -1 } }, plate: { name: 'Scrap Plate', slot: 'armor', def: 12, cost: 11, st: { agi: -2 } },
-  gloves: { name: 'Lifting Gloves', slot: 'acc', st: { str: 2 }, cost: 3 }, belt: { name: 'Back Brace', slot: 'acc', st: { end: 2 }, cost: 3 }, shoes: { name: 'Running Shoes', slot: 'acc', st: { agi: 2 }, cost: 3 },
-  goggles: { name: 'Scope Goggles', slot: 'acc', st: { per: 2 }, cost: 3 }, glasses: { name: 'Reading Glasses', slot: 'acc', st: { int: 2 }, cost: 3 }, charm: { name: 'Lucky Charm', slot: 'acc', st: { cha: 2 }, cost: 3 },
-  dogtags: { name: 'Dog Tags', slot: 'acc', st: { str: 1, end: 1, per: 1 }, cost: 6 },
+const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own combat formulas). atk per hit; rate x attack cycle (lower = faster);
+  // guns: range in tiles, mag rounds, reload seconds (real-gun-like); def = damage cut 3% a point (armor + hat, cap 60%). Balance table: docs/EQUIPMENT.md
+  pipe: { name: "Lead Pipe", slot: "weapon", kind: "blunt", atk: 5, rate: 0.95, cost: 1 },
+  knife: { name: "Kitchen Knife", slot: "weapon", kind: "blade", atk: 1, rate: 0.7, cost: 2 },
+  bat: { name: "Baseball Bat", slot: "weapon", kind: "blunt", atk: 16, rate: 1.0, cost: 4 },
+  crowbar: { name: "Crowbar", slot: "weapon", kind: "blunt", atk: 20, rate: 0.95, cost: 5 },
+  nailbat: { name: "Nail Bat", slot: "weapon", kind: "blunt", atk: 20, rate: 0.92, cost: 6 },
+  machete: { name: "Machete", slot: "weapon", kind: "blade", atk: 14, rate: 0.8, cost: 6 },
+  spear: { name: "Scrap Spear", slot: "weapon", kind: "blade", atk: 27, rate: 1.05, cost: 7, st: { per: 1 } },
+  axe: { name: "Fire Axe", slot: "weapon", kind: "blade", atk: 32, rate: 1.15, cost: 9, st: { agi: -1 } },
+  sledge: { name: "Sledgehammer", slot: "weapon", kind: "blunt", atk: 36, rate: 1.45, cost: 11, st: { agi: -2 } },
+  katana: { name: "Katana", slot: "weapon", kind: "blade", atk: 32, rate: 0.7, cost: 15 },
+  pistol: { name: "Pistol", slot: "weapon", kind: "gun", atk: 7, rate: 1.05, range: 3.4, mag: 12, reload: 1.8, cost: 8, ranged: true },
+  revolver: { name: "Revolver", slot: "weapon", kind: "gun", atk: 16, rate: 1.36, range: 3.6, mag: 6, reload: 3.0, cost: 10, ranged: true },
+  shotgun: { name: "Shotgun", slot: "weapon", kind: "gun", atk: 34, rate: 1.68, range: 2.4, mag: 6, reload: 4.5, cost: 13, ranged: true, st: { agi: -1 } },
+  smg: { name: "SMG", slot: "weapon", kind: "gun", atk: 1, rate: 0.73, range: 3.6, mag: 30, reload: 2.5, cost: 13, ranged: true },
+  rifle: { name: "Hunting Rifle", slot: "weapon", kind: "gun", atk: 30, rate: 1.64, range: 4.8, mag: 5, reload: 3.0, cost: 12, ranged: true },
+  assault: { name: "Assault Rifle", slot: "weapon", kind: "gun", atk: 8, rate: 0.74, range: 4.4, mag: 30, reload: 2.6, cost: 18, ranged: true },
+  bow: { name: "Hunting Bow", slot: "weapon", kind: "bow", atk: 18, rate: 1.6, range: 4.2, cost: 7, ranged: true, st: { per: 1 } },
+  crossbow: { name: "Crossbow", slot: "weapon", kind: "bow", atk: 34, rate: 2.5, range: 4.6, mag: 1, reload: 2.4, cost: 11, ranged: true },
+  jacket: { name: "Work Jacket", slot: "armor", def: 2, cost: 2 },
+  leather: { name: "Leather Jacket", slot: "armor", def: 4, cost: 4 },
+  hockey: { name: "Hockey Pads", slot: "armor", def: 5, cost: 5, st: { agi: -1 } },
+  biker: { name: "Biker Leathers", slot: "armor", def: 5, cost: 6, st: { cha: 1 } },
+  riot: { name: "Riot Vest", slot: "armor", def: 7, cost: 7, st: { agi: -1 } },
+  kevlar: { name: "Kevlar Vest", slot: "armor", def: 8, cost: 10 },
+  military: { name: "Military Armor", slot: "armor", def: 11, cost: 14, st: { agi: -1 } },
+  plate: { name: "Scrap Plate", slot: "armor", def: 10, cost: 11, st: { agi: -2 } },
+  gloves: { name: "Lifting Gloves", slot: "acc", cost: 3, st: { str: 2 } },
+  belt: { name: "Back Brace", slot: "acc", cost: 3, st: { end: 2 } },
+  shoes: { name: "Running Shoes", slot: "acc", cost: 3, st: { agi: 2 } },
+  goggles: { name: "Scope Goggles", slot: "acc", cost: 5, st: { per: 2 } },
+  glasses: { name: "Reading Glasses", slot: "acc", cost: 3, st: { int: 2 } },
+  charm: { name: "Lucky Charm", slot: "acc", cost: 3, st: { cha: 2 } },
+  dogtags: { name: "Dog Tags", slot: "acc", cost: 6, st: { str: 1, end: 1, per: 1 } },
+  bandana: { name: "Bandana", slot: "head", def: 0, cost: 1, st: { cha: 1 }, shape: "bandana" },
+  cap: { name: "Baseball Cap", slot: "head", def: 0, cost: 3, st: { per: 1 }, shape: "cap" },
+  beanie: { name: "Beanie", slot: "head", def: 0, cost: 2, st: { end: 1 }, shape: "beanie" },
+  strawhat: { name: "Straw Hat", slot: "head", def: 0, cost: 2, st: { cha: 1, end: 1 }, shape: "straw" },
+  hardhat: { name: "Hard Hat", slot: "head", def: 2, cost: 2, shape: "hard" },
+  bikehelm: { name: "Bike Helmet", slot: "head", def: 3, cost: 3, shape: "bike" },
+  football: { name: "Football Helmet", slot: "head", def: 4, cost: 5, st: { per: -1 }, shape: "football" },
+  army: { name: "Army Helmet", slot: "head", def: 5, cost: 6, shape: "army" },
+  riothelm: { name: "Riot Helmet", slot: "head", def: 6, cost: 7, st: { per: -1 }, shape: "riot" },
 };
-const SLOTS = ['weapon', 'armor', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', acc: 'Accessory' };
-const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'] };   // what survivors can buy at an Armory with parts
+const SLOTS = ['weapon', 'armor', 'head', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', head: 'Hat', acc: 'Accessory' };
+const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'hardhat', 'bikehelm'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
-const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
+const fairRound = (x) => Math.floor(x) + (rnd() < x - Math.floor(x) ? 1 : 0);   /* V3D.16: 3.7 is 4 seven times in ten, so every point of armor counts */
+const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, rate: .9, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
 const weaponOf = (s) => itemOf(s, 'weapon') || (G3D ? FISTS : ITEMS.pipe);
 const RANGE = { pistol: 4, revolver: 4.2, shotgun: 3, smg: 4.2, rifle: 6, assault: 5.2, bow: 5, crossbow: 5.5 };   /* V2.33: ranged weapons fire from a distance (tiles) */
 const MELEE_R = G3D ? .45 : .9, ZREACH = G3D ? .45 : .8;   /* V3D.12: 3D bodies are bigger than the sprites; at .9 a bat swung at air two body-lengths away */
-const weaponRange = (w) => (w && w.ranged ? RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
+const weaponRange = (w) => (w && w.ranged ? w.range || RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
 function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; return Math.max(1, v); }
 const sMod = (s, k, per) => 1 + (stat(s, k) - 5) * per;   // 5 = average; each point above/below changes the effect by `per`
-function itemScore(it) { return it ? (it.atk || 0) * 1 + (it.def || 0) * 2.2 + Object.values(it.st || {}).reduce((a, v) => a + v * 3, 0) : 0; }
+function itemScore(it) { if (!it) return 0; const w = it.slot === 'weapon' ? ((10 + .55 * (it.atk || 0)) / (it.rate || 1) - 10) * (it.ranged ? 1.6 : 1) : 0; return w + (it.def || 0) * 2.2 + Object.values(it.st || {}).reduce((a, v) => a + v * 3, 0); }   /* V3D.16: speed and range count */
 function rollStats(job, l) { const st = {}; for (const k of STATS) st[k] = 2 + Math.floor(rnd() * 3); for (const k of (JOB_STATS[job] || [])) st[k] += 2 + Math.max(0, (l || 1) - 1); for (const k of STATS) st[k] = Math.min(STAT_CAP, st[k]); return st; }
 const stashAdd = (id, n = 1) => { S.inv = S.inv || {}; S.inv[id] = (S.inv[id] || 0) + n; };
 const stashTake = (id) => { if (!S.inv || !S.inv[id]) return false; S.inv[id]--; if (!S.inv[id]) delete S.inv[id]; return true; };
 function equip(s, id) {   // move an item from the stash into its slot; the old item goes back to the stash
-  const it = ITEMS[id]; if (!it || !stashTake(id)) return false; s.eq = s.eq || {}; const old = s.eq[it.slot]; if (old && old !== 'pipe') stashAdd(old); s.eq[it.slot] = id; setMaxHp(s); return true;
+  const it = ITEMS[id]; if (!it || !stashTake(id)) return false; s.eq = s.eq || {}; const old = s.eq[it.slot]; if (old && old !== 'pipe') stashAdd(old); s.eq[it.slot] = id; if (it.mag) { s.ammo = it.mag; s.reloadT = 0; } setMaxHp(s); return true;
 }
 function unequip(s, slot) { s.eq = s.eq || {}; const old = s.eq[slot]; if (!old || old === 'pipe') return false; stashAdd(old); s.eq[slot] = slot === 'weapon' && !G3D ? 'pipe' : null; setMaxHp(s); return true; }
 const FIGHTERS = new Set(['Guard', 'Police Officer', 'Scavenger', 'SWAT']);   // everyone else hides from zombies unless cornered
@@ -911,7 +944,7 @@ const traitWork = (s) => (hasT(s, 'diligent') ? .15 : 0) - (hasT(s, 'scrounger')
 const traitRetreat = (s) => (hasT(s, 'brave') ? -10 : hasT(s, 'cautious') ? 15 : 0);
 const skillMaxHp = (s) => (hasSkill(s, 'bulwark') ? 20 : 0) + (hasSkill(s, 'hardy') ? 10 : 0) + (hasSkill(s, 'tough') ? 15 : 0) + (hasSkill(s, 'strongBack') ? 10 : 0);
 const baseMax = (s) => 48 + 8 * (s.l || 1) + 2 * stat(s, 'end') + skillMaxHp(s) + (hasT(s, 'eater') ? 12 : 0);   /* V2.14: Endurance adds HP */
-const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, ((itemOf(s, 'armor') || {}).def || 0) * .03 + (stat(s, 'end') - 5) * .012) : 0);   /* armor + Endurance */
+const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, (((itemOf(s, 'armor') || {}).def || 0) + ((itemOf(s, 'head') || {}).def || 0)) * .03 + (stat(s, 'end') - 5) * .012) : 0);   /* armor + Endurance */
 const skillDmg = (s) => (hasSkill(s, 'brawler') ? 3 : 0) + (hasSkill(s, 'steadyAim') ? 4 : 0);
 const xpMult = (s) => (hasSkill(s, 'quickLearner') ? 1.25 : 1) * Math.max(.7, sMod(s, 'int', .03));
 function gainXp(s, n) { if (!s || n <= 0) return; s.mastery = (s.mastery || 0) + n * xpMult(s); masteryCheck(s); }
@@ -1133,7 +1166,7 @@ function moveSlide(o, t, sp) {                // free movement that cannot enter
 
 /* ---------------- survivors ---------------- */
 function mk(name, job, l, x, y, i) {
-  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: G3D ? null : 'pipe', armor: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.max = baseMax(o); o.hp = o.max; return o;
+  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: G3D ? null : 'pipe', armor: null, head: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.max = baseMax(o); o.hp = o.max; return o;
 }
 function mk0(name, job, l, x, y, i) {
   return { id: ++S.seq, name, job, l, mastery: 0, w: tc(x, y), hp: 58 + l * 8, max: 58 + l * 8, post: null, mode: 'free', target: null, cool: 20 + i * 23, stateTicks: 30 + i * 11, sat: 8 + i * 3, resident: false, i, phase: i * 37, dest: null, moving: false, hunger: 15 + i * 8, thirst: 10 + i * 6, fatigue: 8 + i * 5, activity: null, facility: null, rescuer: null, rescuing: null, carrying: null, lastFacility: null, why: 'Settling in', purpose: null, idleBubble: '' };
@@ -1145,7 +1178,7 @@ function facilityUsers(b) { return S.sv.filter((s) => s.facility === b && ['goFa
 const cap = (b) => (DEFS[b.type] ? DEFS[b.type].cap : 1);
 function settlePause(s, min = 150, max = 330) { s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.stateTicks = min + rnd() * (max - min); s.idleBubble = ['💭', '👀', '🙂', '💬'][Math.floor(rnd() * 4)]; if (!s.why.startsWith('Idle')) s.why = 'Idle · taking a breather'; }
 function enterFree(s, d = 110) { s.sleeping = false; s.mode = 'free'; s.target = null; s.activity = null; s.stateTicks = d; s.dest = null; s.path = null; s.moving = false; s.purpose = null; }
-function enterPost(s) { s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + s.i * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
+function enterPost(s) { { const w = weaponOf(s); if (w.mag && (s.ammo == null ? w.mag : s.ammo) <= w.mag / 2 && !(s.reloadT > 0)) s.reloadT = Math.round(w.reload * 60);   /* lull: reload a half-empty gun (keeps the rounds left until it's done) */ } s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + s.i * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
 function needScore(s, b) {
   const r = facilityRules[b.type]; if (!r || b.fire || b.burnt) return -999; if (b.type === 'house' && b.owner && b.owner !== s.id) return -999; let sc = 0;
   if ((r.need === 'hunger' && S.food < .5) || (r.need === 'thirst' && S.water < .5)) return -999;   /* V3D.15: no trips to an empty canteen or water point */
@@ -1492,7 +1525,7 @@ function finishFacility(s) {
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
 }
 function ai(s) {
-  if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s);
+  if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) s.ammo = weaponOf(s).mag;   /* reloads finish out of combat too */
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ s.fatigue = Math.min(100, s.fatigue + (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }
   if (s.fleeT > 0) s.fleeT--;
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
@@ -1555,17 +1588,18 @@ function ai(s) {
   if (['chase', 'attack', 'recover'].includes(s.mode)) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (retreatCheck(s)) return;
-    if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
+    if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
     if (s.mode === 'attack' && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + .6) { s.mode = 'chase'; return; }   /* target slipped out of reach: follow, don't swing at air */
     if (s.mode === 'attack' && weaponOf(s).ranged) {   /* V3D.14: shooters step back from a zombie that gets in close */
       const near = S.z.find((z) => z.hp > 0 && !z.human && z.target === s && dist(z.w, s.w) < .75);
       if (near) { const dx = s.w.x - near.w.x, dy = s.w.y - near.w.y, l = Math.hypot(dx, dy) || 1; moveSlide(s, { x: s.w.x + dx / l, y: s.w.y + dy / l }, CHASE * .9); s.moving = true; if (rnd() < .02) emote(s, '😰', 50); return; }
     }
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; z.hitT = 9; SFX('hit'); floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+    if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { s.ammo = weaponOf(s).mag; emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; if (rnd() < pd[0]) { if (COZY_HUD) dropBag(z.w, pd[1], s); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
-      s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02)); } return; }
-    if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) s.mode = 'chase'; } return;
+      s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }
+    if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) { s.mode = 'chase'; s.stateTicks = Math.round(32 * (weaponOf(s).rate || 1)); } } return;
   }
   if (s.mode === 'postCombat') { s.moving = false; if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
     if (s.hp < s.max * .5 && medSite() && facilityUsers(medSite()) < cap(medSite())) { const m = medSite(); s.facility = m; s.mode = 'goFacility'; s.stateTicks = 9999; s.path = null; s.why = 'Hurt after the fight → ' + DEFS[m.type].name; return; }   /* V2.18: patch up before the next one */ if (s.stateTicks <= 0) enterFree(s, 20); return; }
@@ -1825,7 +1859,7 @@ function zai0(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = 26; } return;
   }
-  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, Math.round((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
@@ -1945,7 +1979,7 @@ const RESEARCH = {
   bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft Riot Vest and Scrap Plate' },
   gadgets: { name: 'Gadgets', rp: 30, mat: 8, desc: 'Craft stat accessories' },
 };
-const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
+const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military', 'football', 'army', 'riothelm'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
 const researched = (k) => !k || !!(S.res && S.res[k]);
 const craftCost = (id) => Math.ceil(ITEMS[id].cost * 1.3) + 1;
 function doResearch(k) { const r = RESEARCH[k]; if (!r || researched(k) || !researched(r.need) || (S.rp || 0) < r.rp || S.mat < r.mat) return false; S.rp -= r.rp; S.mat -= r.mat; S.res = S.res || {}; S.res[k] = true; S.resWeek = (S.resWeek || 0) + 1; banner('🔬 RESEARCHED: ' + r.name.toUpperCase()); SFX('chime'); say(`Research complete: ${r.name} — ${r.desc}.`, true); saveGame(); ui(); return true; }
@@ -2754,7 +2788,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -2969,7 +3003,7 @@ function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null
   if (o.toll) { for (const k in t.loot) t.loot[k] = Math.floor(t.loot[k] * (1 - o.toll)); }
   if (ok && o.win) {
     for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] += n; got.push(`${n} ${k === 'mat' ? 'parts' : k}`); }
-    if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
+    if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun', 'strawhat', 'army', 'football'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
     if (o.win.recruit) { if (popNow() < popCap()) { t.recruitNow = true; got.push('The survivor will follow the squad home.'); } else { const n = r([1, 2]); t.loot.food += n; t.ren = (t.ren || 0) + 3; got.push(`The Haven has no room, so the survivor gave them ${n} food (+3 Renown)`); } }
     if (o.win.gift) { const n = r([1, 2]); t.loot.food += n; t.loot.water += n; got.push(`They threw down ${n} food and ${n} water in thanks.`); }
     if (o.win.ren) { t.ren = (t.ren || 0) + o.win.ren; got.push(`(+${o.win.ren} Renown)`); }
@@ -3307,7 +3341,7 @@ function buildDetail(k) {
 }
 const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const meter = (v, cls = '') => `<div class="bar ${cls}"><i style="width:${Math.max(0, Math.min(100, v))}%"></i></div>`;
-const SLOT_EMOJI = { weapon: '🗡️', armor: '🦺', acc: '💍' };
+const SLOT_EMOJI = { weapon: '🗡️', armor: '🦺', head: '🧢', acc: '💍' };
 function itemIcon(id, slot) { const it = ITEMS[id]; const src = it && window.ZHItems && ZHItems.icon(id); return `<div class="icon">${src ? `<img class="pix" src="${src}" alt="">` : `<span style="font-size:24px">${SLOT_EMOJI[slot || (it && it.slot)] || '❔'}</span>`}</div>`; }
 function portrait(s) {   /* V3D.12: in 3D mode a chest-up shot of the survivor's own 3D model (outfit, hat, weapon, armour) */
   const u3 = G3D && window.ZH3D && ZH3D.portrait && ZH3D.portrait(s); if (u3) return `<div class="portrait p3d"><img src="${u3}" alt=""></div>`;
@@ -3369,7 +3403,7 @@ function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
   const c = (s.cls && s.cls[job]) || { l: 1 }; const nx = Object.values(SKILLS).filter((k) => k.from === job && k.at > c.l).sort((a, b) => a.at - b.at)[0];
   return nx ? `Next skill: ${nx.name} at Lv.${nx.at}` : 'All skills learned';
 }
-const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
+const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.slot === 'weapon' && it.rate ? (it.rate < .85 ? 'Fast' : it.rate > 1.2 ? 'Slow' : '') : '', it.mag ? `${it.mag} ${it.mag > 1 ? 'rounds' : 'bolt'} · ${it.reload}s reload` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
 const STAT_SHORT = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
 function statsHtml(u) {
   const rows = ['str', 'agi', 'int', 'end', 'per', 'cha'].map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);

@@ -1,5 +1,12 @@
 # Changelog
 
+## V3D.16 — Equipment balance and gun reloads (3D mode, branch art-direction-b)
+- New Hat slot: bandana, cap, beanie, straw hat, hard hat, bike / football / army / riot helmets. Equipped hats show on the 3D head; job hats removed.
+- Every weapon, armor, hat and accessory balance-tested (docs/EQUIPMENT.md, tools/balance/): all weapons within ±10% of the cost curve; guns were 2–6× too strong.
+- Guns have real-style magazines and reload times (pistol 12 / 1.8 s, revolver 6 / 3 s, shotgun 6 / 4.5 s, rifle 5 / 3 s, SMG and assault 30 / 2.5 s, crossbow 1 / 2.4 s). Reload animation: the gun tips down and a timer ring fills over the head.
+- Weapons have their own speed (fast knife, katana; slow axe, sledge). Armor points always count (fair rounding).
+- Scope Goggles 3 → 5 parts, Baseball Cap 2 → 3 parts (were overpowered for gunners).
+
 ## V3D.15 — Feedback round 3 (3D mode, branch art-direction-b)
 - Survivors: emoji moods and reactions, Dungeon Village 2 style chatter, bonfire evenings, pitching in when short, night prep, calls for help, shooters keep distance.
 - Clay icons (style A) across the HUD, building markers, panels, cards and pops.
