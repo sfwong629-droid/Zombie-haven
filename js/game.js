@@ -1190,6 +1190,19 @@ function startHide(s, z) {   // non-fighters run for the nearest enclosed buildi
   s.mode = 'hide'; s.hideAt = best; s.stateTicks = 9999; s.why = `Hiding from a ${zombieTypes[z.type].name} → ${DEFS[best.type].name}`;
 }
 const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && dist(z.w, p) < r);
+function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: fighters chase them; others go in pairs on the nearest one */
+  const raiders = S.z.filter((z) => z.human && z.hp > 0 && !z.escaped && z.mode !== 'appear' && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (!raiders.length) return false;
+  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .35 : .5) && !q.rescuing && !q.carrying && !['down', 'away', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire'].includes(q.mode));
+  let n = 0;
+  for (const q of able) {
+    const t = raiders.slice().sort((a, b) => (a.mode === 'rsmash' ? -9 : 0) - (b.mode === 'rsmash' ? -9 : 0) || dist(a.w, q.w) - dist(b.w, q.w))[0];   /* arsonists first */
+    const helpers = S.sv.filter((x) => x.target === t && ['chase', 'attack', 'recover'].includes(x.mode)).length;
+    if (!isFighter(q) && helpers >= 3) continue;   /* enough hands on that one */
+    q.fleeT = 0; q.hideAt = null; engage(q, t); q.why = `${isFighter(q) ? 'Defending' : 'Helping drive off'} a ${RK(t).name.toLowerCase()} raider`; n++;
+  }
+  if (n && !S.repelSaid) { S.repelSaid = tick; note('important', '✊ Everyone turns out against the raiders'); }
+  if (!raiders.length) S.repelSaid = 0; return n > 0;
+}
 function militia() {   /* V2.37: no able fighter left and zombies inside the town → healthy civilians band together (3+) on the weakest zombie */
   if (S.sv.some((q) => isFighter(q) && q.hp >= q.max * .5 && !['down', 'away', 'hospital'].includes(q.mode))) return false;
   if (S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
@@ -1340,7 +1353,7 @@ function ai(s) {
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
   if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
-  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat', 'loot'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (isFighter(s)) engage(s, th); else startHide(s, th); return; } }
+  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat', 'loot'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (isFighter(s) || (th.human && s.hp >= s.max * .5)) engage(s, th); else startHide(s, th); return; } }
   if (s.mode === 'loot') {   /* V3D.12: walking over to a zombie's dropped bag */
     const bag = (S.bags || []).find((b) => b.id === s.lootId && !b.opened); if (!bag) { s.lootId = null; enterPost(s); return; }
     if (tick - bag.t0 < 45) { s.moving = false; return; }   /* let it land first */
@@ -1535,25 +1548,46 @@ function monsterGeneration() {
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
 function spawnRaid() {
   const n = Math.min(7, 3 + Math.floor(S.rank / 2) + (S.terr || 0) + Math.floor(S.day / 6)), a = spawnPoint();
-  for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); }
+  for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); rollRaider(S.z[S.z.length - 1], i); }
   SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
+/* V3D.13 raider personalities (Walking Dead style): most raiders are Thieves; some are Brutes who come to hurt people
+   and never run, and Firebugs who smash a building and set it alight. See docs/AI_BEHAVIOUR.md. */
+const RAIDER_KINDS = {
+  thief:   { name: 'Thief',   icon: '🦝', hp: 1,    atk: 1,   flee: .5, steal: true },
+  brute:   { name: 'Brute',   icon: '💀', hp: 1.6,  atk: 1.5, flee: 0,  hunt: true },
+  firebug: { name: 'Firebug', icon: '🔥', hp: .9,   atk: .9,  flee: .35, burn: true },
+};
+function rollRaider(z, i) {
+  const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
+  z.kind = k; z.hp = z.max = Math.round(z.max * K.hp); z.pw = (z.pw || 1) * K.atk;
+}
+const RK = (z) => RAIDER_KINDS[z.kind] || RAIDER_KINDS.thief;
 function raidTarget(z) { let best = null, bd = 1e9; for (const b of world.buildings) { if (!RAID_TARGETS.includes(b.type)) continue; const d = dist(z.w, Wd.doorPoint(b)); if (d < bd) { bd = d; best = b; } } return best; }
 function rai(z) {
   const d = zombieTypes.raider; if (z.mode === 'idle' || z.mode === 'zmarch') { z.mode = z.carried > 0 ? 'rflee' : 'rsneak'; z.path = null; }
-  if (z.hp < z.max * .5 && z.mode !== 'rflee') { z.mode = 'rflee'; z.path = null; z.target = null; }
+  if (z.hp < z.max * RK(z).flee && z.mode !== 'rflee') { z.mode = 'rflee'; z.path = null; z.target = null; }
+  if (RK(z).hunt && z.mode !== 'rflee') {   /* Brute: goes straight for the nearest person and fights to the end */
+    let t = null, td = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital', 'away'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < td) { td = dd; t = s; } }
+    if (t) { z.target = t; z.mode = 'zchase'; z.path = null; return; }
+  }
   // dodge zombies: step away from any zombie that gets close
   if (z.evadeT > 0) { z.evadeT--; moveSlide(z, z.evadeTo, d.chase * 1.1); return; }
   const zz = S.z.find((o) => !o.human && o.hp > 0 && o.mode !== 'appear' && dist(o.w, z.w) < 2.2)
-    || (z.mode === 'rsneak' && S.sv.find((q) => q.hp > 0 && isFighter(q) && !insideBuilding(q) && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < 2.4));   /* sneaking: steer clear of zombies and fighters */
+    || (z.mode === 'rsneak' && RK(z).steal && S.sv.find((q) => q.hp > 0 && isFighter(q) && !insideBuilding(q) && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < 2.4));   /* sneaking: steer clear of zombies and fighters */
   if (zz) { const dx = z.w.x - zz.w.x, dy = z.w.y - zz.w.y, l = Math.hypot(dx, dy) || 1; z.evadeTo = { x: z.w.x + dx / l * 1.8, y: z.w.y + dy / l * 1.8 }; z.evadeT = 40; z.path = null; return; }
   // fight survivors who come close (or defend the haul)
-  let foe = null, fd = z.mode === 'rsneak' ? 1.1 : 1.7; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < fd) { fd = dd; foe = s; } }
+  let foe = null, fd = z.mode === 'rsneak' && RK(z).steal ? 1.1 : 2.2; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < fd) { fd = dd; foe = s; } }
   if (foe && z.mode !== 'rflee') { z.target = foe; z.mode = 'zchase'; z.path = null; return; }
   if (z.mode === 'rsneak') {
     z.sneakT = (z.sneakT || 0) + 1; if (z.sneakT > 4000) { z.mode = 'rflee'; z.path = null; return; }   /* gives up after ~4 game hours */
     if (!z.goalB || !world.buildings.includes(z.goalB)) z.goalB = raidTarget(z); if (!z.goalB) { z.mode = 'rflee'; return; }
-    const r = followPath(z, Wd.doorPoint(z.goalB), d.chase); if (r === 'arrived') { z.mode = 'rsteal'; z.stateTicks = 0; z.path = null; } else if (r === 'fail') { z.goalB = null; z.mode = 'rflee'; } return;
+    const r = followPath(z, Wd.doorPoint(z.goalB), d.chase); if (r === 'arrived') { z.mode = RK(z).burn ? 'rsmash' : 'rsteal'; z.stateTicks = RK(z).burn ? 260 : 0; z.path = null; if (RK(z).burn) { floats.push({ w: { ...z.w }, t: '🔥 ARSON!', col: '#ff9a5a', a: 80 }); note('critical', `A Firebug is smashing the ${DEFS[z.goalB.type].name}!`, { key: 'arson' + z.goalB.x + ',' + z.goalB.y, icon: '🔥', at: { ...z.w }, live: () => z.hp > 0 && z.mode === 'rsmash', threats: true }); } } else if (r === 'fail') { z.goalB = null; z.mode = 'rflee'; } return;
+  }
+  if (z.mode === 'rsmash') {   /* Firebug: bangs on the building for a few seconds (stop them!), then sets it on fire and runs */
+    z.moving = false; const b = z.goalB; if (!b || !world.buildings.includes(b)) { z.mode = 'rflee'; return; }
+    if (z.stateTicks % 40 === 0) { b.hit = 10; floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, t: 'BANG', col: '#ffd0a0', a: 40 }); SFX('hit'); }
+    if (z.stateTicks <= 0) { startFire(b, 40, 'A raider set it alight'); z.mode = 'rflee'; z.path = null; } return;
   }
   if (z.mode === 'rsteal') {
     z.moving = false; if (z.stateTicks > 0) return; z.stateTicks = 70;
@@ -1594,7 +1628,8 @@ function alertPack(z, target) {   /* V2.12: zombies near one that spots a surviv
 }
 function zai(z) { zai0(z); if (!z.human && z.hp > 0) zPushOut(z); }
 function zai0(z) {
-  if (z.human && z.hp < z.max * .5 && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
+  if (z.human && z.hp < z.max * RK(z).flee && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
+  if (z.human && z.mode === 'idle' && RK(z).hunt) { z.mode = 'rsneak'; }   /* brutes skip the idle wander */
   if (z.human && !['zchase', 'zattack', 'zrecover', 'appear'].includes(z.mode)) return rai(z);
   const d = zombieTypes[z.type] || zombieTypes.walker; if (z.cool > 0) z.cool--; if (z.stateTicks > 0) z.stateTicks--;
   if (z.mode === 'appear') { z.moving = false; if (z.stateTicks <= 0) { z.mode = 'idle'; z.stateTicks = 35 + rnd() * 70; } return; }
@@ -3441,7 +3476,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
-  if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
+  if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
   if (tick % 1000 === 0) { S.hour++; if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); rpStarter(); weatherHour(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
