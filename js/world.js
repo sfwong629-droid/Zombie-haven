@@ -73,7 +73,7 @@
   const isRoad = (w, x, y) => w.roads.has(key(x, y));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
   const inTown = (x, y) => x >= BUILD.x0 && x <= BUILD.x1 && y >= BUILD.y0 && y <= BUILD.y1;
-  function buildingAt(w, x, y) { for (const b of w.buildings) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; return null; }
+  function buildingAt(w, x, y) { for (const b of w.buildings) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; for (const b of w.sites || []) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; return null; }   // V3D.12: construction sites block too
   const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
   const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
   // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
@@ -96,6 +96,7 @@
     for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (isRoad(w, x + xx, y + yy)) return { ok: false, why: 'Blocked by road' };
     const cand = { x, y, w: def.w, h: def.h };
     if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
+    if ((w.sites || []).some(b => Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Under construction' };
     const dt = defApproach(x, y, def);   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
     // V2.34: nor may it sit on ANOTHER building's entrance tile (people then walked through that building)

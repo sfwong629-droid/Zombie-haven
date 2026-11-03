@@ -621,7 +621,7 @@ function draw() {
   drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
-  if (COZY_HUD) { drawBagFx(); for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
+  if (COZY_HUD) { drawSites(); drawBagFx(); for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
   else for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
@@ -2882,10 +2882,43 @@ function confirmPreview() {
   if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }
   if (!moving && S.mat < d.mat) { say('Not enough parts.'); return; }
-  if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); } }
   const nb = { type: sel.type, x: preview.x, y: preview.y, rot: sel.rot ? 1 : 0, w: d.w, h: d.h, q: moving ? moving.q : d.q, a: moving ? moving.a : d.a, staff: moving ? moving.staff : null };
+  if (!moving && COZY_HUD) {   /* V3D.12 (DV2 style): a construction site first; the building joins the town when it is done */
+    SFX('build'); S.mat -= d.mat; const dur = Math.round(Math.min(4800, 900 + d.mat * 60));
+    (S.sites ||= []).push({ ...nb, cons: dur, dur }); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb);
+    say(d.name + ': construction started.', true); sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui(); return;
+  }
+  if (!moving) { SFX('build'); S.mat -= d.mat; S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (sel.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); } }
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
+function sitesTick() {   /* V3D.12: construction counts down; finished sites become real buildings */
+  world.sites = S.sites ||= [];
+  for (const st of [...S.sites]) {
+    if (--st.cons > 0) continue;
+    S.sites.splice(S.sites.indexOf(st), 1); const { cons, dur, ...nb } = st; nb.staff = null; const d = DEFS[nb.type];
+    world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); autoStaff(); SFX('reward'); S.builtCount++; renownGain(1, 'Construction');
+    banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (nb.type === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); }
+    doneFx.push({ b: nb, f: 0 }); ui(); saveGame();
+  }
+}
+const doneFx = [];
+function drawSites() {   /* progress pill + time left over each site, a bouncing hammer, and a burst when one finishes */
+  const u = hudU(), tw = TWs();
+  for (const st of S.sites || []) {
+    const c = project(st.x + st.w / 2, st.y + st.h / 2), top = c.y - (1.1 + .25 * Math.max(st.w, st.h)) * tw * .55, k = 1 - st.cons / st.dur;
+    const o = { hp: k, max: 1 }; o._ghost = k; hpPill(o, c.x + 4 * u, top, { col: '#f2b84a', w: 46 });
+    const secs = Math.ceil(st.cons / 60 / simSpeedNow()), txt = secs >= 60 ? Math.floor(secs / 60) + 'm ' + String(secs % 60).padStart(2, '0') + 's' : secs + 's';
+    hudText(txt, c.x + 4 * u, top - 4 * u, `600 ${Math.round(12 * u)}px Fredoka, Nunito, sans-serif`, '#fff8ec', '#5a3f31', 3.2 * u);
+    const hb = Math.abs(Math.sin(tick / 9)) * 5 * u; ctx.save(); ctx.font = `${Math.round(17 * u)}px sans-serif`; ctx.textAlign = 'center'; ctx.translate(c.x - 24 * u, top + 6 * u - hb); ctx.rotate(-.6 + Math.abs(Math.sin(tick / 9)) * .9); ctx.fillText('🔨', 0, 0); ctx.restore();
+  }
+  for (let i = doneFx.length - 1; i >= 0; i--) {
+    const e = doneFx[i], t = e.f++ / 60; if (t > 1.6) { doneFx.splice(i, 1); continue; }
+    const c = project(e.b.x + e.b.w / 2, e.b.y + e.b.h / 2); ctx.save();
+    for (let j = 0; j < 16; j++) { const a = j / 16 * 6.283, r = (10 + 60 * Math.min(1, t * 1.8)) * u; ctx.globalAlpha = Math.max(0, 1 - t / 1.5); ctx.fillStyle = ['#ffd45c', '#fff6c2', '#9be2ff', '#ffb0d0'][j % 4]; hudStar(c.x + Math.cos(a) * r, c.y - 30 * u + Math.sin(a) * r * .55 - t * 20 * u, 5 * u, t * 4); ctx.fill(); }
+    ctx.globalAlpha = Math.min(1, (1.6 - t) * 2); hudText('DONE!', c.x, c.y - 60 * u - t * 10 * u, `${Math.round(24 * u * (t < .15 ? .6 + t * 2.7 : 1))}px 'Lilita One', Fredoka, sans-serif`, '#ffd45c', '#5a3f31', 6 * u); ctx.restore();
+  }
+}
+const simSpeedNow = () => Math.max(1, simSpeed || 1);
 let demoPick = null;
 let tileConfirm = null;   /* V2.38: removing a wall or road takes a second tap on the same tile (it was instant: easy to do by accident) */
 function confirmTile(kind, x, y, msg) { const k = kind + x + ',' + y, now = performance.now(); if (tileConfirm && tileConfirm.k === k && now - tileConfirm.t < 4000) { tileConfirm = null; return true; } tileConfirm = { k, x, y, t: now }; say(msg); return false; }
@@ -3302,6 +3335,7 @@ function tapAt(px, py) {
   }
   if (hitTrader(px, py)) { showTrader(); return; }
   const u = hitUnit(px, py); if (u) { unitPanel(u); return; }
+  { const t0 = unproject(px, py), st = (S.sites || []).find((q) => t0.x >= q.x && t0.x < q.x + q.w && t0.y >= q.y && t0.y < q.y + q.h); if (st) { const secs = Math.ceil(st.cons / 60 / simSpeedNow()); say(`${DEFS[st.type].name}: under construction, ${secs >= 60 ? Math.ceil(secs / 60) + ' min' : secs + ' s'} left.`, true); return; } }
   const b = hitBuilding(px, py); if (b) { showBuildingInfo(b); return; }
   { const t = unproject(px, py), gp = postAt(Math.floor(t.x), Math.floor(t.y)); if (gp) { showPost(gp); return; } }
   { const t = unproject(px, py), wl = Wd.wallAt(world, Math.floor(t.x), Math.floor(t.y)); if (wl) { const n = S.z.filter((z) => z.hp > 0 && z.mode === 'zbreak' && z.wallT === wl).length, hot = S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6); say(`${Wd.WALL_DEFS[wl.type].name} · ${Math.ceil(wl.hp)}/${wl.max} HP` + (n ? ` · ${n} zombie${n > 1 ? 's' : ''} hitting it` : '') + (wl.hp < wl.max ? (S.mat < 1 ? ' · no parts to repair' : hot ? ' · repairs wait until zombies leave' : ' · being repaired') : '') + (wl.broken ? ' · BROKEN: zombies can walk through' : '')); return; } }
@@ -3324,7 +3358,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }

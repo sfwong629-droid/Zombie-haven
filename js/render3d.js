@@ -541,6 +541,34 @@ function syncBuildings() {
   return changed;
 }
 
+// ---------------------------------------------------------------- construction sites (V3D.12): the building rises out of
+// the ground inside wooden scaffolding on a dug plot with a plank stack; dust puffs drift up while work goes on
+const siteMeshes = new Map();
+const dustT = lightTex(false), dustMat = new THREE.SpriteMaterial({ map: dustT, color: 0xd8c4a0, transparent: true, depthWrite: false, opacity: .6 });
+function makeSite(st) {
+  const W = st.w * T, D = st.h * T, cx = (st.x + st.w / 2) * T, cz = (st.y + st.h / 2) * T, g = new THREE.Group(), wood = toon('#b98a56'), dark = toon('#8a5f36');
+  const plot = new THREE.Mesh(new THREE.PlaneGeometry(W + .3, D + .3).rotateX(-Math.PI / 2), toon('#9c7444')); plot.position.y = .015; plot.receiveShadow = true; g.add(plot);
+  const pole = new THREE.CylinderGeometry(.045, .05, 2.3, 6).translate(0, 1.15, 0), H = 2.3;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const m = new THREE.Mesh(pole, wood); m.position.set(sx * (W / 2 - .05), 0, sz * (D / 2 - .05)); m.castShadow = true; g.add(m); addHull(m, .018); }
+  for (const y of [.85, 1.7]) for (const [len, rx, px, pz] of [[W, 0, 0, -D / 2 + .05], [W, 0, 0, D / 2 - .05], [D, 1, -W / 2 + .05, 0], [D, 1, W / 2 - .05, 0]]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(len, .07, .09), y > 1 ? wood : dark); b.position.set(px, y, pz); if (rx) b.rotation.y = Math.PI / 2; b.castShadow = true; g.add(b); addHull(b, .015); }
+  const diag = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(W, .85), .05, .06), dark); diag.position.set(0, .43, D / 2 - .05); diag.rotation.z = Math.atan2(.85, W); g.add(diag);
+  for (let i = 0; i < 3; i++) { const pl = new THREE.Mesh(new THREE.BoxGeometry(.9, .07, .22), i % 2 ? dark : wood); pl.position.set(W / 2 + .35, .04 + i * .075, D / 2 - .2 - i * .03); pl.rotation.y = .2 * i; pl.castShadow = true; g.add(pl); addHull(pl, .012); }
+  g.position.set(cx, 0, cz); scene.add(g);
+  const model = makeBuilding(st); model.scale.y = .05; scene.add(model);
+  return { g, model, puffs: [], next: 0 };
+}
+function syncSites(dt) {
+  const seen = new Set();
+  for (const st of G.S.sites || []) {
+    seen.add(st); let e = siteMeshes.get(st); if (!e) { e = makeSite(st); siteMeshes.set(st, e); }
+    const k = 1 - st.cons / st.dur; e.model.scale.y = .05 + .95 * k;
+    e.next -= dt; if (e.next <= 0) { e.next = .35 + Math.random() * .4; const sp = new THREE.Sprite(dustMat.clone()); sp.position.set(e.g.position.x + (Math.random() - .5) * st.w * T, .2, e.g.position.z + (Math.random() - .5) * st.h * T); sp.scale.setScalar(.4); scene.add(sp); e.puffs.push({ sp, t: 0 }); }
+    for (let i = e.puffs.length - 1; i >= 0; i--) { const q = e.puffs[i]; q.t += dt; q.sp.position.y += dt * .5; q.sp.scale.setScalar(.4 + q.t * .7); q.sp.material.opacity = .55 * Math.max(0, 1 - q.t / 1.4); if (q.t > 1.4) { scene.remove(q.sp); q.sp.material.dispose(); e.puffs.splice(i, 1); } }
+  }
+  for (const [st, e] of siteMeshes) if (!seen.has(st)) { scene.remove(e.g); scene.remove(e.model); for (const q of e.puffs) scene.remove(q.sp); siteMeshes.delete(st); }
+}
+
 // ---------------------------------------------------------------- characters
 const loader = new GLTFLoader();
 const parse = (buf) => new Promise((ok, bad) => loader.parse(buf, '', ok, bad));
@@ -822,7 +850,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1));
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
