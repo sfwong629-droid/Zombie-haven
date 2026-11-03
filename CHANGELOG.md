@@ -1,5 +1,15 @@
 # Changelog
 
+## V3D.13 — Feedback round 2 (3D mode, branch art-direction-b)
+- Sound errors never show as GAME ERROR (and the banner closes itself); build tag on the title screen.
+- 3x speed stays; status bubbles 20% smaller; dusk and dawn fade smoothly; first Workshop gives +15 research.
+- Boss: walks away at dawn instead of dying; gentler in the first two weeks.
+- Assign / change a building's worker from its panel.
+- 3D flames and smoke on burning buildings; new Bonfire that lights the camp at night.
+- Rain now and then: Rain Collectors make 1.5x (light) or 2x (heavy) water.
+- Raiders: Thieves, Brutes (hunt people, never run) and Firebugs (smash and burn a building); the whole town helps drive them off. Behaviour list in docs/AI_BEHAVIOUR.md.
+- Icons instead of the words food / water / parts in the UI.
+
 ## V3D.12 — Feedback round 1 (3D mode, branch art-direction-b)
 - Phone fixes: iPhone audio refusals no longer show GAME ERROR; a lost graphics context (black world, UI still there) saves and reloads; faces are small shared overlays (far less graphics memory).
 - Nights brighter, warm light pools and lanterns at every door, a flashlight beam and lamp glow for each survivor outside; greener grass so the town and people stand out.
