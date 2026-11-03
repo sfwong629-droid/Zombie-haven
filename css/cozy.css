@@ -131,3 +131,14 @@ html.cozy .ngOpt b { font-size: 15px; font-weight: 800; }
 html.cozy .ngOpt small { font-size: 12px; }
 html.cozy .sdel { background: var(--cream2); border-color: var(--cocoa); border-radius: 12px; }
 html.cozy #loading { background: var(--cream); color: var(--cocoa); font-family: var(--fh); font-size: 22px; }
+
+/* V3D.10: Renown as a round leafy progress ring (mockup direction 3); --p (0-100) is set by the game */
+html.cozy #gauge { width: 74px; height: 74px; right: 12px; bottom: 30px; border-radius: 50%; overflow: visible; padding: 0;
+  background: conic-gradient(var(--sage) calc(var(--p, 0) * 1%), #eadbc3 0); border: 2.5px solid var(--cocoa); }
+html.cozy #gauge::before { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: var(--cream2); border: 2px solid var(--line); }
+html.cozy #gauge::after { content: '🍃'; position: absolute; top: -12px; left: -6px; font-size: 22px; transform: rotate(-20deg); }
+html.cozy #gauge .gval { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: none; color: var(--cocoa); font-family: var(--fh); font-weight: 600; font-size: 24px; padding: 0; border: 0; }
+html.cozy #gauge .glabel { left: 50%; right: auto; top: auto; bottom: -22px; transform: translateX(-50%); white-space: nowrap; background: var(--cream); border: 2px solid var(--cocoa); border-radius: 999px; padding: 0 8px; font-size: 11px; line-height: 16px; color: var(--sageD); }
+html.cozy #gauge.ready .glabel::after { color: var(--sageD); }
+html.cozy #gauge .grank, html.cozy #gauge .gbar { display: none; }
+html.cozy #gauge.ready { animation: renPulse 1.2s infinite; }

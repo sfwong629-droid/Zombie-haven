@@ -285,12 +285,21 @@ function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ct
 const TAGTXT = { Eating: 'Eating', Drinking: 'Drinking', Resting: 'Resting', Treatment: 'Treatment', Shopping: 'Shopping', 'Getting food': 'Foraging', Working: 'Working', Firefighting: 'Firefighting' };
 const tagCache = new Map();
 function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a character */
-  const fs = Math.round(Math.max(13, 13 * cam.z)), key = txt + col + fs + DPR; let c = tagCache.get(key);
+  const fs = Math.round(Math.max(13, 13 * cam.z)), cozy = document.documentElement.classList.contains('cozy'), key = (cozy ? 'z' : '') + txt + col + fs + DPR; let c = tagCache.get(key);
+  if (!c && cozy) {   /* V3D.10 Cozy Apocalypse: cream clay pill, cocoa outline, a dot in the status colour */
+    const f = Math.round(fs * .85), font = `800 ${f}px Nunito, system-ui, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const h = f + 9, w = Math.ceil(m.measureText(txt).width) + h + 6, r = h / 2, cv = document.createElement('canvas'); cv.width = Math.ceil((w + 2) * DPR); cv.height = Math.ceil((h + 4) * DPR);
+    const g = cv.getContext('2d'); g.scale(DPR, DPR); const pill = (dy, fill) => { g.beginPath(); g.roundRect(1, 1 + dy, w - 1, h - 1, r); g.fillStyle = fill; g.fill(); };
+    pill(2, 'rgba(79,61,51,.45)'); pill(0, '#FFF8EC'); g.lineWidth = 2; g.strokeStyle = '#735A4C'; g.stroke();
+    g.beginPath(); g.arc(1 + r, 1 + h / 2 - .5, f * .3, 0, 7); g.fillStyle = col; g.fill(); g.lineWidth = 1.2; g.strokeStyle = 'rgba(79,61,51,.6)'; g.stroke();
+    g.font = font; g.fillStyle = '#4f3d33'; g.textBaseline = 'middle'; g.fillText(txt, r * 2 + 2, 1 + h / 2);
+    c = { cv, w: w + 2, h: h + 4, smooth: true }; tagCache.set(key, c);
+  }
   if (!c) { const font = `${fs}px 'Jersey 15', Arial, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
     const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR);
     g.fillStyle = '#1b2016e6'; g.fillRect(0, 0, w, h); g.strokeStyle = '#6e5638'; g.lineWidth = 1.5; g.strokeRect(.75, .75, w - 1.5, h - 1.5); g.font = font; g.fillStyle = '#000'; g.textAlign = 'center'; g.fillText(txt, w / 2 + 1, fs + 1.5); g.fillStyle = col; g.fillText(txt, w / 2, fs + .5);
     if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
-  ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.h) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = !!c.smooth; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.h) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true;
 }
 function bubble(p, txt) { stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
 const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right, up }
@@ -2219,9 +2228,9 @@ function logEvent(t, lvl = 'routine') { if (!t || /^★ RENOWN|^Goal complete:|^
 let logOnlyKey = false;
 function showLog() {
   endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
-  const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = { critical: '#ff9a84', important: '#ffe08a' };
+  const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = document.documentElement.classList.contains('cozy') ? { critical: '#b85a47', important: '#a8682a' } : { critical: '#ff9a84', important: '#ffe08a' };
   $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button><button class="act" id="logAdv" style="flex:1">Town advisor: ${OPTS.advisor ? 'ON' : 'OFF'}</button></div><button class="act" id="logBak" style="width:100%;margin-bottom:6px">💾 Backup this town</button>`
-    + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid #3e4a56${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
+    + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid ${document.documentElement.classList.contains('cozy') ? '#e2cfb0' : '#3e4a56'}${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
   $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); }; $('logAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); showLog(); }; $('logBak').onclick = () => showBackup();
   showPanel();
 }
@@ -2382,7 +2391,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
 let upTab = 'rank';
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
-  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   $('clock').textContent = `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Collector' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
@@ -3280,6 +3289,7 @@ function showTitle() {
   $('title').style.display = 'flex'; $('slots').style.display = 'none';
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
+  if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
   $('tStart').onclick = showSlots; { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;
