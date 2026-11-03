@@ -30,7 +30,7 @@
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
     house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),   // V3D.12: one long-time resident's own home
     bonfire:  D({ name: 'Bonfire',        mat: 3,  a: 9,  role: 'light' }),   // V3D.13: lights the camp at night (big radius)
-    inn:      D({ name: 'Inn',            mat: 10, a: 10, role: 'inn', cap: 4 }),   // V3D.12: everyone's beds (sleeps 4 at a time)
+    inn:      D({ name: 'Shelter',        mat: 10, a: 10, role: 'inn', cap: 4 }),   // V3D.12: everyone's beds (sleeps 4 at a time)
     workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 12 }),   // V2.16: staffed → research points; crafting
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
     scrapyard: D({ name: 'Scrapyard',     mat: 10, a: 4,  q: 8, role: 'parts', fam: 'scrap', slot: true, out: 3 }),   // V2.15: staffed salvage → parts

@@ -13,7 +13,8 @@ The one list of how every kind of character reacts. When a behaviour changes, up
 | **Raiders in town** | Chase the nearest raider; **arsonists first** | **Help too** (at half health or more), up to 3 per raider; arsonists first | ✅ V3D.13 |
 | Raider attacks them directly | Fight | Fight back if at half health or more, else hide | ✅ V3D.13 |
 | Building on fire | Nearby survivors fight the fire (uses water) | Same | ✅ |
-| Zombie drops a bag | The killer walks over once safe and opens it | — | ✅ V3D.12 |
+| Zombie drops a bag | The killer walks over once safe and opens it; a bag nobody went for is fetched by the nearest idle person | — | ✅ V3D.17 |
+| Zombies pounding on a building (someone inside) | The two nearest free fighters come (guards even get out of bed at night) | Inside: they send an 🆘 (red SOS marker on the building) | ✅ V3D.17 |
 
 ## Raiders ("scavengers")
 
@@ -32,6 +33,9 @@ The one list of how every kind of character reacts. When a behaviour changes, up
 | Runner | Faster, uses the run animation | ✅ V3D.11 |
 | Boss (every 3rd night) | Leads a mob at 21:00; at dawn walks back out (doesn't vanish). First two weeks: 40% less HP, softer hits, smaller mob | ✅ V3D.13 |
 | Bored zombies in daylight | Wander back out of the map | ✅ |
+| Nobody outside, people sheltering in a building | Zombies that sense them (alert radius) pound on the building until it breaks or someone comes out | ✅ V3D.17 |
+| Alert radius (tiles) | Walker 4.5 · Crawler 3.5 · Runner 6 · Bloated 4 · Spitter 5.5 · Brute 5 · Boss 7 | ✅ V3D.17 |
+| Boss kinds | Mutant Zombie, Bloater Queen (slow, tough), Stalker (fast, frail), Butcher (hits hard). No warning beforehand: a card shows the boss walking in when it appears | ✅ V3D.17 |
 
 ## Feelings and talk (V3D.14)
 
@@ -59,16 +63,34 @@ The one list of how every kind of character reacts. When a behaviour changes, up
 | Walking to the canteen / water point when the town has none | Those trips are skipped while the stock is empty | ✅ |
 | In-and-out trips to the Inn or clinic | A rest or treatment keeps going (up to 3 extra rounds) while it is still needed | ✅ |
 | Same kind of building over and over | 3 visits to the same type within ~1.5 game hours → 😩 and they avoid it for ~2.5 hours | ✅ |
+| Hide ↔ come out ↔ walk to a building with zombies at its door (rain collector ↔ house/shelter loops) | They only come out when no zombie is within 6.5 tiles, and for a while skip trips to any door with zombies near it | ✅ V3D.17 |
 | Starving people bouncing to the clinic (care can't fix hunger) | No clinic for starving people above 35% health; with no 🍖 or 💧 in stock they go out foraging for it instead | ✅ |
+
+## Buildings under attack (V3D.17)
+
+| What | How | Status |
+|---|---|---|
+| Building health | Every building has HP (bigger and upgraded buildings have more). A bar shows over it when damaged | ✅ |
+| Who damages them | Zombies (brutes and bosses hit hardest) and raiders smashing before arson | ✅ |
+| At 0 HP | The building is wrecked: people inside spill out, it stops working until repaired | ✅ |
+| Repairs | Tap the building: "Repair now" costs parts. Idle Engineers also patch damage (1 part per 12 HP) | ✅ |
+
+## Errands (V3D.17)
+
+| Event | Who goes | What you see | Status |
+|---|---|---|---|
+| Radio signal | The best scout (Scavengers first) | Card names them; they walk off the map and come back ~2 days later (or hurt, if it was a trap) | ✅ |
+| Supply drop | Two healthy people, fighters first | The crate floats down, they walk out, pry it open (progress ring) while zombies come, carry it home | ✅ |
+| Lost child | Two people | They leave and come back ~5 hours later with the result | ✅ |
 
 ## Daily life
 
 | Who | Behaviour | Status |
 |---|---|---|
-| Everyone | Eat, drink, rest, train, socialise by need; sleep at night | ✅ |
+| Everyone | Eat, drink, rest, train, socialise by need; sleep at night. People never stand in the same spot (they step apart) | ✅ V3D.17 |
 | Newcomers | Walk to the gate; the player Welcomes them or turns them away. Everyone starts bare-handed (equipment shows when given) | ✅ V3D.15 |
 | Long-time residents | Get their own House: rest 50% better, +2 ♥ there; nobody else uses it | ✅ V3D.12 |
-| Everyone else | Sleep at the Inn (4 beds each); sleep rough if no bed | ✅ V3D.12 |
+| Everyone else | Sleep at the Shelter (4 beds each); sleep rough if no bed | ✅ V3D.17 (renamed from Inn) |
 | Workers | Work their building on shift; auto-assigned by profession, or picked by the player in the building panel | ✅ V3D.13 |
 
 ## Ideas not built yet 💡

@@ -212,3 +212,47 @@ html.cozy .evStage .glow .ic .zi-t .zi { width: 46px; height: 46px; }
 @keyframes evBobW { to { transform: translateY(-4px); } }
 @keyframes evWave { 0% { opacity: 0; } 50% { opacity: 1; } }
 @keyframes evWave1 { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+/* V3D.17 boss card: the boss walks in from the right (two walk frames), the ground thumps, the name drops in */
+.evStage.boss { background: linear-gradient(#2a1f33, #6a3346 70%); }
+.evStage .sa.walkR { width: calc(120px * var(--bs, 1)); height: calc(160px * var(--bs, 1)); left: calc(50% - 60px * var(--bs, 1)); bottom: 6px; animation: evWalkR 3.2s linear both; }
+.evStage .sa.walkR.fast { animation-duration: 1.4s; }
+.evStage .sa.walkR .w1 { animation: evWave1 .6s steps(1) infinite; } .evStage .sa.walkR .w2 { opacity: 0; animation: evWave .6s steps(1) infinite; }
+.evStage .sa.walkR.fast .w1, .evStage .sa.walkR.fast .w2 { animation-duration: .3s; }
+@keyframes evWalkR { from { transform: translateX(240px); } to { transform: none; } }
+.evStage.boss .ground { animation: evThump .6s steps(1) infinite; }
+@keyframes evThump { 0% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
+.evStage .bossName { position: absolute; left: 0; right: 0; top: 12px; text-align: center; font: 26px 'Lilita One', Fredoka, sans-serif; color: #ffd9e0; -webkit-text-stroke: 1.5px #3a1420; text-shadow: 0 3px 0 #3a1420; animation: evPop .5s cubic-bezier(.3, 1.6, .5, 1) both 1.2s; }
+
+/* V3D.17 radio card: a crackling radio sends out signal rings; the scout who will go stands ready */
+.evStage.radio { background: linear-gradient(#2e3d63, #6680a8 70%); }
+.evStage .radioSet { position: absolute; left: 22%; bottom: 40px; width: 74px; height: 50px; background: #8a5a36; border: 2.5px solid #5a3f31; border-radius: 10px; box-shadow: inset 0 -6px 0 rgba(0, 0, 0, .15); animation: evShake .18s linear infinite; }
+.evStage .radioSet::before { content: ''; position: absolute; left: 8px; top: 9px; width: 26px; height: 26px; border-radius: 50%; background: repeating-radial-gradient(#3a2a20 0 2px, #6b4a33 2px 4px); border: 2px solid #5a3f31; }
+.evStage .radioSet::after { content: ''; position: absolute; right: 9px; top: 12px; width: 20px; height: 8px; border-radius: 3px; background: #ffe08a; border: 2px solid #5a3f31; box-shadow: 0 0 8px #ffe08a; }
+.evStage .radioSet .ant { position: absolute; right: 12px; bottom: 48px; width: 3px; height: 40px; background: #5a3f31; transform: rotate(18deg); transform-origin: bottom; }
+.evStage .radioSet .sig { position: absolute; right: -2px; top: -60px; width: 30px; height: 30px; border: 3px solid #ffe08a; border-color: #ffe08a #ffe08a transparent transparent; border-radius: 50%; transform: rotate(45deg); opacity: 0; animation: evSig 1.5s ease-out infinite; }
+.evStage .radioSet .sig.s2 { animation-delay: .5s; } .evStage .radioSet .sig.s3 { animation-delay: 1s; }
+@keyframes evSig { from { transform: rotate(45deg) scale(.4); opacity: 1; } to { transform: rotate(45deg) scale(2.4); opacity: 0; } }
+.evStage .who { position: absolute; right: 6%; top: 10px; font: 600 12px Fredoka, sans-serif; color: #5a3f31; background: #fff8ec; border: 2px solid #5a3f31; border-radius: 99px; padding: 0 8px; white-space: nowrap; animation: evPop .4s cubic-bezier(.3, 1.6, .5, 1) both .6s; }
+.evStage .sa.team { bottom: 10px; } .evStage .sa.team.t0 { right: 6%; } .evStage .sa.team.t1 { right: 24%; }
+
+/* V3D.17 supply drop card: a crate swings down on a parachute and thumps into the dirt */
+.evStage .chute { position: absolute; left: calc(36% - 30px); top: 0; width: 60px; height: 120px; animation: evDrop 2.6s cubic-bezier(.3, .1, .5, 1) both; }
+.evStage .chute .canopy { position: absolute; left: -10px; top: 0; width: 80px; height: 34px; border-radius: 80px 80px 10px 10px; background: repeating-linear-gradient(90deg, #f2f0e6 0 16px, #e8584a 16px 32px); border: 2.5px solid #5a3f31; animation: evSway 1.3s ease-in-out infinite alternate; transform-origin: 50% 300%; }
+.evStage .chute .lines { position: absolute; left: 6px; top: 32px; width: 48px; height: 46px; border-left: 2px solid #5a3f31; border-right: 2px solid #5a3f31; clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%); }
+.evStage .chute .crate { position: absolute; left: 14px; top: 76px; width: 32px; height: 28px; background: repeating-linear-gradient(0deg, #c8924f 0 8px, #b07a3e 8px 9px); border: 2.5px solid #5a3f31; border-radius: 3px; }
+@keyframes evDrop { 0% { transform: translateY(-130px); } 80% { transform: translateY(32px); } 100% { transform: translateY(36px); } }
+@keyframes evSway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+.evStage .dust { position: absolute; left: calc(36% - 30px); bottom: 26px; width: 60px; height: 14px; border-radius: 50%; background: rgba(230, 210, 170, .9); opacity: 0; animation: evDust .8s ease-out 2.1s both; }
+@keyframes evDust { 0% { opacity: .9; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.8); } }
+
+/* V3D.17 tap chooser: who or what did you mean? */
+.pick { position: absolute; z-index: 40; min-width: 190px; max-width: 260px; background: var(--cream, #fff8ec); border: 2.5px solid var(--cocoa, #5a3f31); border-radius: 14px; box-shadow: 0 4px 0 rgba(90, 63, 49, .35); padding: 4px; display: flex; flex-direction: column; gap: 3px; animation: evPop .18s ease-out both; }
+.pick button { display: flex; align-items: center; gap: 8px; width: 100%; background: #fffdf6; border: 2px solid #e6d6bd; border-radius: 10px; padding: 3px 8px 3px 4px; text-align: left; color: var(--cocoa, #5a3f31); font: 600 14px Fredoka, Nunito, sans-serif; cursor: pointer; }
+.pick button:active { transform: translateY(1px); background: #f6ead6; }
+.pick .pi { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; background: #f3e4cc; border: 2px solid var(--cocoa, #5a3f31); display: flex; align-items: center; justify-content: center; flex: none; }
+.pick .pi img { width: 100%; height: 100%; object-fit: cover; }
+.pick b { display: block; line-height: 1.1; } .pick small { display: block; font: 500 11px Nunito, sans-serif; opacity: .75; }
+html.cozy .icon.clayItem { display: flex; align-items: center; justify-content: center; background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 12px; }
+html.cozy .icon.clayItem.empty svg { opacity: .28; filter: grayscale(1); }
+html.cozy .evBox button.act:disabled { opacity: .5; filter: grayscale(.6); cursor: not-allowed; box-shadow: none; }

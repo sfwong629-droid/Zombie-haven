@@ -1,5 +1,18 @@
 # Changelog
 
+## V3D.17 — Feedback round 4 (3D mode, branch art-direction-b)
+- Trader shows in 3D (purple, straw hat) and sets up on an open patch, never on a building.
+- Loot bags nobody fetched get picked up by the nearest idle person. People step apart instead of stacking.
+- Fixed the rain collector ↔ house / shelter loops (hide, come out, walk into zombies, hide again). Short pause between chats.
+- Rescue cart in 3D: the rescuer pushes a wooden barrow with the downed person lying in it.
+- Errands: the radio scout, supply drop and lost-child events now send real, named people who walk out and back. Supply crates parachute down in 3D.
+- Building health: zombies and raiders damage buildings, wrecks stop working, repairs cost parts (button, or idle Engineers). Zombies with nobody outside pound on occupied buildings (alert radius per type); people inside send an SOS and fighters answer, at night too.
+- Bosses: no warning; a card shows the boss walking in. Four kinds: Mutant Zombie, Bloater Queen, Stalker, Butcher.
+- Seasons (7 days each, starting in autumn) and a morning weather report. Rain about 7% of the time instead of ~25%; lighter rain effect. Winter snow falls and settles on ground, roofs and trees; gardens grow slower in winter.
+- Inn renamed Shelter. Building markers only when something needs you (or zoomed in / selected); people's tags and HP only when it matters.
+- Clay icons for every weapon, armour, hat and accessory. Tap chooser when people and a building overlap. Everyone has a family name.
+- Bunker and wandering-medic cards: "Invite" is greyed out when the Haven is full.
+
 ## V3D.16 — Equipment balance and gun reloads (3D mode, branch art-direction-b)
 - New Hat slot: bandana, cap, beanie, straw hat, hard hat, bike / football / army / riot helmets. Equipped hats show on the 3D head; job hats removed.
 - Every weapon, armor, hat and accessory balance-tested (docs/EQUIPMENT.md, tools/balance/): all weapons within ±10% of the cost curve; guns were 2–6× too strong.

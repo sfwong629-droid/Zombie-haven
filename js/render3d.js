@@ -178,13 +178,45 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
   };
   return (_gmat = m);
 }
+// V3D.17 seasons: grass, tufts, bushes and tree crowns follow the season (winter crowns are bare twigs)
+const season = () => (G.season ? G.season() : 'autumn');
+const SEASON_PAL = {
+  spring: { grass: ['#7aa846', '#80ae4a', '#76a242', '#86b24c', '#8db650', '#78a444'], tuft: ['#7ea83a', '#8fb446', '#a3c050', '#6f9a34'], bush: ['#e8a8c0', '#8fc25a', '#7fb04a', '#f2c8d8', '#a8c86a'], crown: ['#8fc25a', '#7fb04a', '#e8a8c0', '#a8c86a', '#9ac860', '#f2c8d8'] },
+  summer: { grass: ['#6f9e3e', '#74a442', '#6a983a', '#79a845', '#80ac48', '#6c9a3c'], tuft: ['#6a9a34', '#7aa83c', '#88b044', '#5e8c30'], bush: ['#4f8a3a', '#5a9a42', '#3f7a34', '#68a048', '#4a8238'], crown: ['#4f8a3a', '#5a9a42', '#3f7a34', '#68a048', '#4a8238', '#5c9440'] },
+  autumn: { grass: ['#7c9e42', '#80a245', '#78993f', '#85a547', '#8ba649', '#7a9b40'], tuft: ['#7d8a34', '#8f9a3c', '#a39a40', '#6f7d30'], bush: ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'], crown: ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'] },
+  winter: { grass: ['#8a9a6a', '#8e9e6e', '#869666', '#92a272', '#96a474', '#889868'], tuft: ['#9a9a78', '#a6a482', '#8e8e6e', '#b0ac8a'], bush: ['#7a6a58', '#86765e', '#6e6252', '#8e7e66', '#7a7060'], crown: ['#7a6a5a', '#86745e', '#6e6050', '#8e7c66', '#76685a', '#827260'] },
+};
+// snow settles on whatever faces up (ground, roofs, tree tops): a shader hook on the scenery's toon materials
+const SNOW = { uSnow: { value: 0 } };
+function snowPatch(m) {
+  if (!m || !m.isMeshToonMaterial || m.userData.snowP) return; m.userData.snowP = true;
+  const prev = m.onBeforeCompile, pk = m.customProgramCacheKey && m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey ? m.customProgramCacheKey.bind(m) : null;
+  m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r); sh.uniforms.uSnow = SNOW.uSnow;
+    sh.fragmentShader = 'uniform float uSnow;\n' + sh.fragmentShader.replace('#include <lights_toon_fragment>', '{ vec3 wn = normalize((vec4(normal, 0.0) * viewMatrix).xyz); float sn = uSnow * smoothstep(0.22, 0.7, wn.y); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.95, 1.0), sn * 0.88); }\n#include <lights_toon_fragment>'); };
+  m.customProgramCacheKey = () => (pk ? pk() : '') + '|snow'; m.needsUpdate = true;
+}
+let snowScan = 0;
+function snowWalk(o) { if (o.userData.actor || o.userData.hull) return; if (o.isMesh && !o.isSkinnedMesh) (Array.isArray(o.material) ? o.material : [o.material]).forEach(snowPatch); for (const c of o.children) snowWalk(c); }
+const SNOW_N = 700, snowPos = new Float32Array(SNOW_N * 3), snowG = new THREE.BufferGeometry(); snowG.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowPts = new THREE.Points(snowG, new THREE.PointsMaterial({ color: 0xffffff, size: .16, transparent: true, opacity: .9, depthWrite: false })); snowPts.frustumCulled = false; snowPts.visible = false; scene.add(snowPts);
+const snowSeed = Array.from({ length: SNOW_N }, () => [Math.random(), Math.random(), Math.random(), Math.random() * 6]); let snowFallK = 0;
+function syncSnow(dt) {
+  const target = G.S.snowK || 0; SNOW.uSnow.value += (target - SNOW.uSnow.value) * Math.min(1, dt * .5);
+  if (SNOW.uSnow.value > .01 && (snowScan -= dt) <= 0) { snowScan = 2; snowWalk(scene); }
+  const w = G.S.weather, fk = w && w.kind && w.kind.startsWith('snow') ? (w.kind === 'snow-heavy' ? 1 : .55) : 0; snowFallK += (fk - snowFallK) * Math.min(1, dt * .8); snowPts.visible = snowFallK > .02; if (!snowPts.visible) return;
+  const n = Math.round(SNOW_N * snowFallK), c = cam.position.clone().addScaledVector(DIR, -120), span = (cam.right - cam.left) * 1.4;
+  for (let i = 0; i < n; i++) { const sd = snowSeed[i]; sd[1] = (sd[1] - dt * (.12 + sd[2] * .06)) % 1; if (sd[1] < 0) { sd[1] += 1; sd[0] = Math.random(); sd[2] = Math.random(); } sd[3] += dt;
+    snowPos.set([c.x + (sd[0] - .5) * span + Math.sin(sd[3] * 1.3) * .3, sd[1] * 9, c.z + (sd[2] - .5) * span + Math.cos(sd[3]) * .2], i * 3); }
+  snowG.setDrawRange(0, n); snowG.attributes.position.needsUpdate = true;
+  hemi.intensity *= 1 - .08 * snowFallK; sun.intensity *= 1 - .3 * snowFallK;
+}
 function buildGround() {
   const W = G.world, B = G.Wd.BUILD, WZ = G.Wd.WALLZONE;
-  const key = [B.x0, B.y0, B.x1, B.y1, W.roads.size, W.ver].join(',');
+  const key = [B.x0, B.y0, B.x1, B.y1, W.roads.size, W.ver, season()].join(',');
   if (key === groundKey) return false; groundKey = key;
   if (groundMesh) { scene.remove(groundMesh); groundMesh.geometry.dispose(); }
   const pos = [], col = [], c = new THREE.Color();
-  const GR = ['#7c9e42', '#80a245', '#78993f', '#85a547', '#8ba649', '#7a9b40']   /* V3D.12: greener, so the town and people stand out */, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
+  const GR = SEASON_PAL[season()].grass   /* V3D.12: greener, so the town and people stand out; V3D.17: by season */, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
   const X0 = -PAD, Y0 = -PAD, NX = G.COLS + 2 * PAD, NY = G.ROWS + 2 * PAD, tc = new Float32Array(NX * NY * 3);
   for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) {   // one colour per tile ...
     const r = hash(x, y), inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1;
@@ -344,7 +376,7 @@ function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one
   im.castShadow = !!shadow; im.receiveShadow = true; scene.add(im); return im;
 }
 function buildForest() {
-  const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length;
+  const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length + '|' + season();
   if (key === forestKey) return false; forestKey = key;
   for (const o of forest) { scene.remove(o); } forest = [];
   const pines = [], rounds = [], rubble = [], crates = [];
@@ -382,13 +414,14 @@ function buildForest() {
   forest.push(instD(smallCrateG, junk, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true));
   forest.push(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
   forest.push(instD(tyreG, tyres, () => '#2e2c2a', true));
-  forest.push(instD(tuftG, tufts, (r) => ['#7d8a34', '#8f9a3c', '#a39a40', '#6f7d30'][(r * 4) | 0]));
-  forest.push(instD(bushG, bushes, (r) => ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'][(r * 5) | 0], true));
+  const SP = SEASON_PAL[season()];
+  forest.push(instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0]));
+  forest.push(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true));
   forest.push(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]));
   for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
   const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t));
   forest.push(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8));
-  const PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'];
+  const PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = SP.crown;
   const dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
   forest.push(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7));
   forest.push(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
@@ -521,7 +554,7 @@ const BUILD = {
 let tentScene = null;
 const BGLB = { house: 'assets/buildings/ai3d/house/house_realtime.glb' }, glbB = {};   // V3D.3: Hunyuan models from export_prop3d.py (origin = footprint centre, door faces +Z = front-left); scaled to fill the footprint
 const bGroups = new Map();
-function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b.burnt ? 1 : 0].join(','); }
+function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b.burnt ? 1 : 0, b.wrecked ? 1 : 0].join(','); }
 function makeBuilding(b) {
   const g = new THREE.Group(), odd = (b.rot | 0) & 1, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T;
   if (b.type === 'medic' && tentScene) {
@@ -531,7 +564,7 @@ function makeBuilding(b) {
   } else {
     const P = new Parts(); (BUILD[b.type] || ((P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {})))(P, w, d); P.build(g, .028);
   }
-  if (b.burnt) g.traverse((o) => { if (o.isMesh && !o.userData.hull && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(.35); } });
+  if (b.burnt) g.traverse((o) => { if (o.isMesh && !o.userData.hull && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(b.wrecked ? .55 : .35); } });
   g.position.set((b.x + b.w / 2) * T, 0, (b.y + b.h / 2) * T); g.rotation.y = ((b.rot | 0) & 3) * Math.PI / 2;   // V3D.15: four entrance directions
   return g;
 }
@@ -545,6 +578,7 @@ function syncBuildings() {
     bGroups.set(b, { g, key: k, lit }); changed = true;
   }
   for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); if (v.lit) scene.remove(v.lit); bGroups.delete(b); changed = true; }
+  for (const [b, v] of bGroups) { const bx = (b.x + b.w / 2) * T, bz = (b.y + b.h / 2) * T; if (b.hitT > 0) { b.hitT--; v.g.position.set(bx + Math.sin(b.hitT * 2.3) * .06 * b.hitT / 12, 0, bz + Math.cos(b.hitT * 1.7) * .04 * b.hitT / 12); } else if (v.g.position.x !== bx) v.g.position.set(bx, 0, bz); }   // V3D.17: a hit building shudders
   return changed;
 }
 
@@ -586,8 +620,8 @@ async function load(url) {   // hosts that can't serve .glb get a base64 copy ne
   return parse(u.buffer);
 }
 let MALE = null, LITE = null;
-const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28' };
-const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a' };
+const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
+const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
 const ZSC = { bloated: 1.18, brute: 1.32, crawler: .85, boss: 1.6 };
 function toonScene(root, map) {
@@ -665,7 +699,7 @@ const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge
 const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
 class Actor {
   constructor(src, mat, lite, faces = null) {
-    this.o = SkeletonUtils.clone(src.scene); scene.add(this.o);
+    this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; scene.add(this.o);
     this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
     this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
@@ -754,25 +788,45 @@ function personAnim(a, s, dt) {
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
+function makeCart() {   // V3D.17 rescue cart: a wooden barrow on two wheels with a pushing handle
+  const g = new THREE.Group(), wood = toon('#b07a45'), dark = toon('#6b4a2e'), tyre = toon('#3a302a');
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; addHull(o, .012); g.add(o); return o; };
+  add(box(.56, .06, .92), wood, 0, .3, 0);                                   // bed
+  for (const sx of [-1, 1]) add(box(.05, .16, .92), dark, sx * .28, .38, 0);   // sides
+  add(box(.56, .16, .05), dark, 0, .38, .46); add(box(.56, .16, .05), dark, 0, .38, -.46);
+  for (const sx of [-1, 1]) { add(cyl(.17, .17, .06, 14), tyre, sx * .33, .17, .12, 0, 0, Math.PI / 2); add(cyl(.05, .05, .07, 8), wood, sx * .33, .17, .12, 0, 0, Math.PI / 2); }
+  for (const sx of [-1, 1]) add(box(.04, .04, .42), dark, sx * .2, .4, -.62, -.25);   // handles toward the pusher
+  add(box(.44, .04, .04), dark, 0, .45, -.82);
+  scene.add(g); return g;
+}
 function syncPeople(dt, vis) {
   const seen = new Set();
   for (const s of G.S.sv) {
     seen.add(s); let a = people.get(s);
     if (!a) { a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
-    const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || (s.mode === 'down' && G.beingCarried(s));
-    a.show(!hidden); if (hidden) continue;
+    const carried = s.mode === 'down' && G.beingCarried(s), ra = carried && people.get(s.rescuer);
+    if (carried && ra && ra.cart && ra.cart.visible) {   // V3D.17: ride in the rescuer's cart, lying down
+      a.show(true); const c = ra.cart; a.o.position.set(c.position.x, .34, c.position.z); a.o.rotation.set(0, c.rotation.y + Math.PI, 0); a.yaw = c.rotation.y + Math.PI; a.o.scale.setScalar(.9); a.sh.visible = false;
+      personAnim(a, s, dt); tickMixer(a, dt, vis); continue; }
+    const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || carried;
+    a.show(!hidden); if (hidden) { if (a.cart) a.cart.visible = false; continue; }
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
     a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : (!s.moving && s.faceW) || null, dt);   // V3D.14: chatting / at the fire: face them
     { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; if (a.hatId !== (shape || null)) { a.hatId = shape || null; addHat(a, shape ? HAT_SHAPE[shape] : null, !!shape); } }   // V3D.16 equipped hat
     personAnim(a, s, dt); a.setMood(s.emo && s.emo.face);
+    { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
+      if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
     { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
         if (s.reloadT > 0) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
   }
-  for (const [s, a] of people) if (!seen.has(s)) { a.dispose(); people.delete(s); }
+  const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
+  if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
+    a.show(true); a.place(T.w.x, T.w.y, null, dt); a.play(T.moving ? 'walk' : 'idle'); tickMixer(a, dt, vis); }
+  for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
 }
 function zombieAnim(a, z) {
-  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack') { if (!a.attacking || !a.cur.isRunning()) { a.play('punch', true, true); a.attacking = true; } return; }
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('punch', true, true); a.attacking = true; } return; }
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
   if (z.type === 'runner') { a.play('zombie_run'); a.cur.timeScale = 1.1; return; }
@@ -787,7 +841,7 @@ function syncZombies(dt, vis) {
       else { a = new Actor(LITE, zombieMaterial(z.type, (Math.random() * 4) | 0), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
-    const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : null;
+    const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     a.place(z.w.x, z.w.y, tgt, dt, ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped) { a.dispose(); continue; }   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
@@ -807,6 +861,29 @@ function makeBag() {
   for (const o of [m, k, t]) { o.castShadow = true; g.add(o); } addHull(m, .02); addHull(k, .018);
   const pat = new THREE.Mesh(new THREE.CircleGeometry(.07, 10), toon('#d9a55a')); pat.position.set(.08, .2, .17); pat.lookAt(.3, .2, .8); g.add(pat);   // a patch
   scene.add(g); return g;
+}
+// V3D.17 supply crate: drifts down under a striped parachute, thumps down, the chute folds beside it; carried home overhead
+const crateMeshes = new Map();
+function makeCrate() {
+  const g = new THREE.Group(), wood = toon('#c8924f'), dark = toon('#7a5230');
+  const cr = new THREE.Mesh(box(.62, .5, .62), wood); cr.position.y = .25; cr.castShadow = true; addHull(cr, .014); g.add(cr);
+  for (const [x, z, w, d] of [[0, .32, .66, .06], [0, -.32, .66, .06], [.32, 0, .06, .66], [-.32, 0, .06, .66]]) { const b = new THREE.Mesh(box(w, .1, d), dark); b.position.set(x, .25, z); g.add(b); }
+  const ch = new THREE.Group(), red = toon('#e8584a'), wht = toon('#f2f0e6');
+  for (let i = 0; i < 8; i++) { const seg = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6, i * Math.PI / 4, Math.PI / 4, 0, Math.PI / 2), i % 2 ? red : wht); seg.scale.y = .55; ch.add(seg); }
+  const lm = new THREE.LineBasicMaterial({ color: 0x5a3f31 }); for (const [x, z] of [[.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) ch.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x * .35, -1.6, z * .35)]), lm));
+  ch.position.y = 2.2; g.add(ch); g.userData.chute = ch; scene.add(g); return g;
+}
+function syncCrates(dt) {
+  const seen = new Set();
+  for (const c of G.S.crates || []) {
+    seen.add(c); let g = crateMeshes.get(c); if (!g) { g = makeCrate(); g.userData.t = 0; crateMeshes.set(c, g); }
+    g.userData.t += dt; const t = Math.max(g.userData.t, ((G.tick ? G.tick() : 0) - c.t0) / 60), ch = g.userData.chute; g.position.set(c.w.x * T, 0, c.w.y * T);
+    if (c.taken) { g.position.y = 1.2; g.scale.setScalar(.7); ch.visible = false; continue; }
+    const fall = Math.max(0, 1 - t / 3.2); g.position.y = 9 * fall * fall; g.rotation.z = fall * Math.sin(t * 2.2) * .18;
+    if (fall > 0) { ch.visible = true; ch.position.set(0, 2.2, 0); ch.rotation.set(0, 0, 0); ch.scale.set(1, 1, 1); }
+    else { const k = Math.min(1, (t - 3.2) / .8); ch.position.set(1.1 * k, 2.2 * (1 - k) + .05, .3 * k); ch.rotation.z = -1.4 * k; ch.scale.set(1, 1 - .85 * k, 1); }
+  }
+  for (const [c, g] of crateMeshes) if (!seen.has(c)) { scene.remove(g); crateMeshes.delete(c); }
 }
 function syncBags(dt) {
   const seen = new Set();
@@ -860,15 +937,15 @@ let fireT = 0;
 // rain (V3D.13): streaks falling in a box around the view, denser in heavy rain; the light greys a little
 const RAIN_N = 900, rainPos = new Float32Array(RAIN_N * 6), rainG = new THREE.BufferGeometry();
 rainG.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-const rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0xdce8f4, transparent: true, opacity: .75, depthWrite: false })); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
+const rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0xdce8f4, transparent: true, opacity: .45, depthWrite: false })); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
 const rainSeed = Array.from({ length: RAIN_N }, () => [Math.random(), Math.random(), Math.random()]); let rainK = 0;
 function syncRain(dt) {
-  const w = G.S.weather, target = w ? (w.kind === 'heavy' ? 1 : .5) : 0; rainK += (target - rainK) * Math.min(1, dt * .8); rain.visible = rainK > .02; if (!rain.visible) return;
+  const w = G.S.weather, target = w && w.kind && w.kind.startsWith('rain') ? (w.kind === 'rain-heavy' ? .5 : .26) : 0;   // V3D.17: lighter, so the town stays readable rainK += (target - rainK) * Math.min(1, dt * .8); rain.visible = rainK > .02; if (!rain.visible) return;
   const n = Math.round(RAIN_N * rainK), c = cam.position.clone().addScaledVector(DIR, -120), span = (cam.right - cam.left) * 1.4, L = .55;
   for (let i = 0; i < n; i++) { const sd = rainSeed[i]; sd[1] = (sd[1] - dt * (1.6 + sd[2] * .6)) % 1; if (sd[1] < 0) { sd[1] += 1; sd[0] = Math.random(); sd[2] = Math.random(); }
     const x = c.x + (sd[0] - .5) * span, z = c.z + (sd[2] - .5) * span, y = sd[1] * 9; rainPos.set([x, y, z, x - .06, y - L, z - .03], i * 6); }
   rainG.setDrawRange(0, n * 2); rainG.attributes.position.needsUpdate = true;
-  hemi.intensity *= 1 - .22 * rainK; sun.intensity *= 1 - .6 * rainK; hemi.color.lerp(new THREE.Color(0xb8c4d0), .5 * rainK);   // overcast: flatter, cooler light, soft shadows
+  hemi.intensity *= 1 - .18 * rainK; sun.intensity *= 1 - .45 * rainK; hemi.color.lerp(new THREE.Color(0xb8c4d0), .5 * rainK);   // overcast: flatter, cooler light, soft shadows
 }
 // placement ghost (V3D.12): a see-through copy of the building being placed, tinted red where it can't go
 let ghost = null;
@@ -961,7 +1038,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT); syncRain(dt);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
@@ -972,14 +1049,14 @@ const portraits = new Map(); let pRig = null;
 function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = [o.key, s.job, model, arm ? 1 : 0, o.face || '', lk.sk, lk.hr].join('|');
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, o.face || '', lk.sk, lk.hr].join('|');
   if (portraits.has(key)) return portraits.get(key);
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
-  const R = pRig.rts[rk], a = new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null); addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
-  a.setWeapon(model); a.setArmor(arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
+  const R = pRig.rts[rk], a = o.zt ? new Actor(LITE, zombieMaterial(o.zt, 0), true) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null); if (!o.zt) addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
   c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
@@ -1002,7 +1079,9 @@ const POSE = { wave1: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true
   ready: { clip: (c) => (c === 'gun' ? 'gun_hold_idle' : c ? 'melee_hold_idle' : 'idle'), t: .3, face: 'angry', yaw: -.4 }, down: { clip: () => 'idle', t: .3, face: 'ko', noWeapon: true, yaw: 0 } };
 window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
-window.ZH3D = { portrait: portraitOf, figure: figureOf, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+// V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
+const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
+window.ZH3D = { scene: () => scene, snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 if (INK) inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
