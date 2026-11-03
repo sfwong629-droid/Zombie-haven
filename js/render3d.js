@@ -718,6 +718,31 @@ function syncZombies(dt, vis) {
     if (t > 3) a.o.position.y = -(t - 3) * .4; if (t > 4.2) { a.dispose(); dead.delete(a); }
   }
 }
+// ---------------------------------------------------------------- loot bags (V3D.12): a tied cloth sack that drops in
+// with a bounce, wobbles while it waits, and puffs up then shrinks away when opened (game.js draws the sparkles)
+const bagMeshes = new Map();
+const sackG = (() => { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, y = t * .42; pts.push(new THREE.Vector2(Math.max(.02, Math.sin(Math.min(1, t * 1.15) * Math.PI) * .2 * (1 - t * .25)), y)); } return new THREE.LatheGeometry(pts, 14); })();
+const knotG = new THREE.ConeGeometry(.075, .14, 8).translate(0, .46, 0), tieG = new THREE.TorusGeometry(.06, .018, 6, 12).rotateX(Math.PI / 2).translate(0, .38, 0);
+function makeBag() {
+  const g = new THREE.Group(), cloth = toon('#a8743c'), m = new THREE.Mesh(sackG, cloth), k = new THREE.Mesh(knotG, cloth), t = new THREE.Mesh(tieG, toon('#e2c27a'));
+  for (const o of [m, k, t]) { o.castShadow = true; g.add(o); } addHull(m, .02); addHull(k, .018);
+  const pat = new THREE.Mesh(new THREE.CircleGeometry(.07, 10), toon('#d9a55a')); pat.position.set(.08, .2, .17); pat.lookAt(.3, .2, .8); g.add(pat);   // a patch
+  scene.add(g); return g;
+}
+function syncBags(dt) {
+  const seen = new Set();
+  for (const b of G.S.bags || []) {
+    seen.add(b); let e = bagMeshes.get(b);
+    if (!e) { e = { g: makeBag(), t: 0, spin: Math.random() * 6 }; bagMeshes.set(b, e); }
+    e.t += dt; const g = e.g; g.position.set(b.w.x * T, 0, b.w.y * T); g.rotation.y = e.spin;
+    if (!b.opened) {   // fall in from above with two bounces, then a gentle wobble
+      const t = e.t, fall = t < .35 ? 1.4 * (1 - (t / .35) ** 2) : t < .55 ? .22 * Math.sin((t - .35) / .2 * Math.PI) : t < .68 ? .06 * Math.sin((t - .55) / .13 * Math.PI) : 0;
+      g.position.y = fall; const sq = t > .33 && t < .45 ? 1 - .25 * Math.sin((t - .33) / .12 * Math.PI) : 1; g.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); g.rotation.z = Math.sin(t * 3) * .05;
+      e.ot = 0;
+    } else { e.ot = (e.ot || 0) + dt; const k = e.ot; const s2 = k < .15 ? 1 + 1.6 * k : Math.max(0, 1.24 * (1 - (k - .15) / .35)); g.scale.setScalar(s2); g.position.y = k < .15 ? k * .8 : .12; }
+  }
+  for (const [b, e] of bagMeshes) if (!seen.has(b)) { scene.remove(e.g); bagMeshes.delete(b); }
+}
 let zCount = 0;
 const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
 function tickMixer(a, dt, vis) {
@@ -797,7 +822,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt);
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }

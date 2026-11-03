@@ -418,9 +418,38 @@ function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, l
 const HUD_LIFT = 10;   /* the bars float this many screen px (x zoom) above the head */
 function floatCozy(f, p) {   /* a float's life runs from f.a0 down to 0 (frames) */
   const u = hudU(), k = 1 - f.a / f.a0, num = /^[-+]\d+$/.test(f.t), pop = k < .12 ? 1 + 1.1 * (1 - k / .12) * (k / .12) * 4 : 1;
-  const sz = (num ? 21 : f.big ? 18 : 14) * u * pop, x = p.x + (f.dx || 0) * u * k * 14, y = p.y - CHAR_H * TWs() - HUD_LIFT * u - 14 * u - 26 * u * Math.min(1, k * 2.4) - 10 * u * k;
+  const sz = (num ? 21 : f.big ? 16 : 14) * u * pop, x = p.x + (f.dx || 0) * u * k * 14, y = p.y - CHAR_H * TWs() - HUD_LIFT * u - 14 * u - 26 * u * Math.min(1, k * 2.4) - 10 * u * k;
   const fill = f.col === '#ff6e62' ? '#ff9b8a' : num && f.t[0] === '+' ? '#c9f2a6' : num ? '#fff3d6' : f.col;   /* hurt red, heal green, hits cream; other notes keep their colour */
   ctx.save(); ctx.globalAlpha = k > .75 ? (1 - k) / .25 : 1; hudText(f.t, x, y, `600 ${Math.round(sz)}px Fredoka, Nunito, sans-serif`, fill, '#5a3f31', Math.max(3, sz * .22)); ctx.restore();
+}
+/* V3D.12 loot bags: a zombie's parts drop as a bag (it falls and bounces in 3D), the fighter walks over once no
+   zombie is close, and the bag pops open with a sparkle burst before the parts are counted. Bags nobody fetches open
+   by themselves after ~3 game hours. */
+let bagSeq = 1;
+function dropBag(w, amt, killer) {   /* tossed a little away from the fight, so the fighter has to walk over */
+  let dx = w.x - (killer ? killer.w.x : w.x - 1), dy = w.y - (killer ? killer.w.y : w.y), L = Math.hypot(dx, dy) || 1; const a = (rnd() - .5) * 1.2, c = Math.cos(a), sn = Math.sin(a); [dx, dy] = [(dx * c - dy * sn) / L, (dx * sn + dy * c) / L];
+  let x = w.x + dx * .8, y = w.y + dy * .8; if (!Wd.walkable || Wd.walkable(world, Math.floor(x), Math.floor(y))) { /* ok */ } else { x = w.x; y = w.y; }
+  (S.bags ||= []).push({ id: bagSeq++ + '_' + tick, w: { x, y }, amt, t0: tick });
+}
+function fetchBag(s) {
+  const bag = (S.bags || []).filter((b) => !b.opened && dist(b.w, s.w) < 4).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0];
+  if (!bag || threatOf(s)) return false;
+  s.mode = 'loot'; s.lootId = bag.id; s.path = null; s.target = null; s.why = 'Grabbing the dropped bag'; return true;
+}
+function openBag(bag, s) {
+  if (bag.opened) return; bag.opened = tick; bag.f = 0; S.mat += bag.amt; flow('mat', 'Zombie drops', bag.amt); SFX('reward');
+  floats.push({ w: { ...bag.w }, t: '+' + bag.amt + ' ⚙ PARTS', col: '#9fe0ff', a: 80, big: true }); ui();
+}
+function bagsTick() { for (const b of S.bags || []) if (!b.opened && tick - b.t0 > 3000) openBag(b); if (S.bags && S.bags.length) S.bags = S.bags.filter((b) => !b.opened || tick - b.opened < 120); }
+function drawBagFx() {   /* glints on waiting bags, a burst of stars when one opens */
+  for (const b of S.bags || []) {
+    const p = project(b.w.x, b.w.y), u = hudU();
+    if (!b.opened) { const k = ((tick + b.id.length * 13) % 70) / 70; if (k < .35) { ctx.save(); ctx.globalAlpha = Math.sin(k / .35 * Math.PI); ctx.fillStyle = '#fff6c2'; hudStar(p.x + 5 * u, p.y - 13 * u, 3.6 * u, k * 4); ctx.fill(); ctx.restore(); } continue; }
+    const t = (b.f = (b.f || 0) + 1) / 60; if (t > 1.2) continue;
+    ctx.save(); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .3, r = (6 + 34 * Math.min(1, t * 2.2)) * u, al = Math.max(0, 1 - t / 1.1);
+      ctx.globalAlpha = al; ctx.fillStyle = ['#ffd45c', '#fff6c2', '#9be2ff', '#ffb0d0'][i % 4]; hudStar(p.x + Math.cos(a) * r, p.y - 10 * u + Math.sin(a) * r * .6 - t * 12 * u, 4.5 * u * (1 - t * .6), t * 5); ctx.fill(); }
+    ctx.globalAlpha = Math.max(0, .6 - t); const gl = ctx.createRadialGradient(p.x, p.y - 8 * u, 0, p.x, p.y - 8 * u, 26 * u); gl.addColorStop(0, 'rgba(255,240,170,.9)'); gl.addColorStop(1, 'rgba(255,240,170,0)'); ctx.fillStyle = gl; ctx.fillRect(p.x - 26 * u, p.y - 34 * u, 52 * u, 52 * u); ctx.restore();
+  }
 }
 const lvBursts = [];
 function levelUpFx(s) { s._lvT = 156; lvBursts.push({ s, f: 0, lv: s.l || 1, sp: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, r: .4 + Math.random() * .6, v: .6 + Math.random() * .8, c: ['#ffd45c', '#fff6c2', '#9be2ff', '#ffb0d0'][(Math.random() * 4) | 0] })) }); }
@@ -592,7 +621,7 @@ function draw() {
   drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
-  if (COZY_HUD) { for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
+  if (COZY_HUD) { drawBagFx(); for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
   else for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
@@ -1299,7 +1328,12 @@ function ai(s) {
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
   if (s.hp <= 0 && s.mode !== 'down') { s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
-  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (isFighter(s)) engage(s, th); else startHide(s, th); return; } }
+  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat', 'loot'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (isFighter(s)) engage(s, th); else startHide(s, th); return; } }
+  if (s.mode === 'loot') {   /* V3D.12: walking over to a zombie's dropped bag */
+    const bag = (S.bags || []).find((b) => b.id === s.lootId && !b.opened); if (!bag) { s.lootId = null; enterPost(s); return; }
+    if (tick - bag.t0 < 45) { s.moving = false; return; }   /* let it land first */
+    const r = followPath(s, bag.w, CHASE); if (r === 'arrived') { openBag(bag, s); s.lootId = null; enterPost(s); } else if (r === 'fail') { openBag(bag, s); s.lootId = null; enterPost(s); } return;
+  }
   if (s.mode === 'hide') {   /* running for cover */
     const b = s.hideAt; if (!b || !world.buildings.includes(b)) { s.hideAt = null; enterFree(s, 30); return; }
     const r = followPath(s, Wd.doorPoint(b), CHASE); if (r === 'arrived') { s.mode = 'hiding'; s.stateTicks = 160; s.path = null; s.why = 'Hiding in ' + DEFS[b.type].name; } else if (r === 'fail') { const th = threatOf(s); s.hideAt = null; if (th) { engage(s, th); s.why = 'Cornered — fighting back'; } else enterFree(s, 40); } return;
@@ -1351,8 +1385,8 @@ function ai(s) {
     if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = 32 + s.i * 8; } return; }
     if (s.mode === 'attack' && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + .6) { s.mode = 'chase'; return; }   /* target slipped out of reach: follow, don't swing at air */
     if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; z.hitT = 9; SFX('hit'); floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
-      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; if (rnd() < pd[0]) { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' PARTS', col: '#9fe0ff', a: 70 }); }
-        if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); enterPost(s); return; }
+      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; if (rnd() < pd[0]) { if (COZY_HUD) dropBag(z.w, pd[1], s); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' PARTS', col: '#9fe0ff', a: 70 }); } }
+        if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02)); } return; }
     if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) s.mode = 'chase'; } return;
   }
@@ -2453,7 +2487,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -3290,7 +3324,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; traderTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.sv.forEach(ai); S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
