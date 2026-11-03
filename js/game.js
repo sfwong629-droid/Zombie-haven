@@ -33,7 +33,8 @@ const cv = $('game'), ctx = cv.getContext('2d'), worldEl = $('world');
 let VW = 390, VH = 600, DPR = 1, tick = 0, simSpeed = 1, debug = false;
 
 window.addEventListener('error', (e) => { const b = $('crash'); b.style.display = 'block'; b.textContent = 'GAME ERROR: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno; });
-window.addEventListener('unhandledrejection', (e) => { const b = $('crash'); b.style.display = 'block'; b.textContent = 'GAME ERROR: ' + (e.reason && e.reason.message || e.reason); });
+window.addEventListener('unhandledrejection', (e) => { const m = String(e.reason && e.reason.message || e.reason || ''); if (/audio|AbortError|NotAllowedError|play\(\)/i.test(m)) { e.preventDefault(); return; }   /* sound hiccups are not game errors */
+  const b = $('crash'); b.style.display = 'block'; b.textContent = 'GAME ERROR: ' + m; });
 
 /* ---------------- assets ---------------- */
 const IMG = {}, SPR = {};   // SPR[type] = {img,w,h,ax,ay,grid,tileW}

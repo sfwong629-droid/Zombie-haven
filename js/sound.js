@@ -62,10 +62,12 @@
     if (!ctx || mode !== 'all') return;
     while (nextNote < ctx.currentTime + .4) { nextNote += musicStep(ctx, musBus, Math.max(nextNote, ctx.currentTime + .02), step++, night); }
   }
+  // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
+  const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
     unlock() {
       if (!AC || mode === 'off') return; if (!ctx) { try { ctx = new AC(); const g = build(ctx); master = g.m; sfxBus = g.s; musBus = g.mu; } catch (e) { ctx = null; return; } }
-      if (ctx.state === 'suspended') ctx.resume(); if (!timer) { nextNote = ctx.currentTime + .1; timer = setInterval(scheduler, 150); }
+      if (ctx.state === 'suspended') quiet(ctx.resume()); if (!timer) { nextNote = ctx.currentTime + .1; timer = setInterval(scheduler, 150); }
     },
     play(name) {
       if (!ctx || mode === 'off' || ctx.state !== 'running' || !FX[name]) return; const now = performance.now(); if (now - (last[name] || 0) < (GAP[name] || 80)) return; last[name] = now;
@@ -73,9 +75,9 @@
     },
     music(isNight) { night = !!isNight; },
     get mode() { return mode; },
-    setMode(m) { mode = m; try { localStorage.setItem('zhSound', m); } catch (e) { /* storage blocked */ } if (m === 'off' && ctx) ctx.suspend(); else { SND.unlock(); if (ctx && ctx.state === 'suspended') ctx.resume(); } if (musBus) musBus.gain.value = m === 'all' ? 1.0 : 0; },
+    setMode(m) { mode = m; try { localStorage.setItem('zhSound', m); } catch (e) { /* storage blocked */ } if (m === 'off' && ctx) quiet(ctx.suspend()); else { SND.unlock(); if (ctx && ctx.state === 'suspended') quiet(ctx.resume()); } if (musBus) musBus.gain.value = m === 'all' ? 1.0 : 0; },
     cycle() { SND.setMode(mode === 'all' ? 'sfx' : mode === 'sfx' ? 'off' : 'all'); return mode; },
-    pause(on) { if (!ctx) return; if (on) ctx.suspend(); else if (mode !== 'off') ctx.resume(); },
+    pause(on) { if (!ctx) return; if (on) quiet(ctx.suspend()); else if (mode !== 'off') quiet(ctx.resume()); },
     // offline render for previews/tests: a list of [time, name] effects plus `musicSec` seconds of music
     async render(events, sec, musicSec = 0, dark = false) {
       const c = new OfflineAudioContext(1, Math.ceil(44100 * sec), 44100), g = build(c);

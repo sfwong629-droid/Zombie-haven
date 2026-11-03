@@ -21,6 +21,15 @@ const canvas = renderer.domElement;
 Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', pointerEvents: 'none', zIndex: '0' });
 worldEl.insertBefore(canvas, gameCv);
 Object.assign(gameCv.style, { position: 'relative', zIndex: '1' });
+// phones drop the WebGL context when graphics memory runs short or the tab is backgrounded: the world goes black while
+// the 2D UI keeps drawing. Save, then reload (the most reliable way back on iOS Safari).
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault(); console.warn('WebGL context lost');
+  const b = document.getElementById('crash'); if (b) { b.style.display = 'block'; b.textContent = 'Graphics paused by the phone — restoring…'; }
+  try { window.ZH && ZH.saveGame && ZH.saveGame(); } catch (err) { /* saving is best effort */ }
+  const back = () => location.reload();
+  canvas.addEventListener('webglcontextrestored', back, { once: true }); setTimeout(back, 2500);
+});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
 const DPR_MAX = Math.min(1.5, devicePixelRatio || 1); let dpr = DPR_MAX; renderer.setPixelRatio(dpr);
@@ -546,14 +555,26 @@ function recolor(img, shirt, pants) {   // the flat-colour body texture: shirt p
 // face painted on (tools/art/b3d/facepaint.py). Each clip shows one of them.
 const EXPR_OF_CLIP = { punch: 'angry', melee_swing_a: 'angry', melee_swing_b: 'angry', melee_swing_c: 'angry', gun_fire: 'angry', pistol_fire: 'angry',
   hurt: 'hurt', melee_hold_hurt: 'hurt', gun_hold_hurt: 'hurt', collapse: 'ko', cheer: 'happy' };
-const FACE_IMG = {};       // expr -> HTMLImage of the mid model's texture with that face
+// The faces ship as face-only overlays (<model>_face_<expr>.png, transparent elsewhere) laid over the outfit's texture
+// in the shader, so every job shares one small texture per expression (full recoloured copies ran phones out of memory).
+const FACE_OVL = {};       // expr -> THREE.Texture
 function imgTex(img) { const t = new THREE.Texture(img); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; }
-const jobMats = {};
+const jobTex = {}, jobMats = {};
+function jobBase(job) {
+  if (jobTex[job]) return jobTex[job]; const img = MALE.bodyImage;
+  return (jobTex[job] = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : MALE.body.material.map);
+}
 function jobMaterial(job, expr = 'neutral') {
+  if (!FACE_OVL[expr]) expr = 'neutral';
   const key = job + '|' + expr; if (jobMats[key]) return jobMats[key];
-  const neutral = expr === 'neutral' || !FACE_IMG[expr], img = neutral ? MALE.bodyImage : FACE_IMG[expr];
-  const tex = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : neutral ? MALE.body.material.map : imgTex(img);
-  return (jobMats[key] = new THREE.MeshToonMaterial({ map: tex, gradientMap: grad }));
+  const m = new THREE.MeshToonMaterial({ map: jobBase(job), gradientMap: grad });
+  if (expr !== 'neutral') {
+    const ovl = FACE_OVL[expr];
+    m.onBeforeCompile = (sh) => { sh.uniforms.faceMap = { value: ovl };
+      sh.fragmentShader = 'uniform sampler2D faceMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n{ vec4 fo = texture2D(faceMap, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, fo.rgb, fo.a); }'); };
+    m.customProgramCacheKey = () => 'face';
+  }
+  return (jobMats[key] = m);
 }
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
@@ -762,8 +783,7 @@ if (INK) inkButton();
   toonScene(m.scene); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage;
   const il = new THREE.ImageLoader();
-  await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.webp').then((img) => { FACE_IMG[e] = img; }).catch(() => {})));
-  try { LITE.zombieMap = imgTex(await il.loadAsync(base + 'male_lite_face_angry.webp')); } catch (e) {}   // fallback: scowl rather than smile
+  await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));

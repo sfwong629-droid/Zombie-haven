@@ -189,6 +189,10 @@ def flat_regions(body, tex=1024, k=10, min_patch=40, detail_h=.62):
             if e == 'neutral': out = o
             elif FACE_OUT:
                 Image.fromarray(o).transpose(Image.FLIP_TOP_BOTTOM).save(f'{FACE_OUT}_face_{e}.webp', quality=92)
+                # face-only overlay (transparent elsewhere): the viewer lays it over any outfit's texture, so one small
+                # texture per expression serves every job instead of a full recoloured copy each (phones run out of memory)
+                dm = ndimage.binary_dilation((o != out).any(2), iterations=2)
+                Image.fromarray(np.dstack([o, (dm * 255).astype(np.uint8)])).transpose(Image.FLIP_TOP_BOTTOM).save(f'{FACE_OUT}_face_{e}.png', optimize=True)
     else:
         out = out[idx[0], idx[1]]                                              # pad gaps so seams never sample black
     out = out.astype(np.float32) / 255
