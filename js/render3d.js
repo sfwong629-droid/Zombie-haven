@@ -621,6 +621,7 @@ function personAnim(a, s, dt) {
   if (a.attacking && a.cur && a.cur.isRunning()) return;    // let the strike finish
   a.attacking = false;
   if (s.mode === 'rescueCarry') { a.play('rescue'); return; }
+  if (s._lvT > 24 && !s.carrying) { a.play('cheer'); return; }   // level-up: a happy jump while the LEVEL UP burst plays
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
   const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || (s.mode === 'chase' && !hold));
   if (anim === 'walk' && rush) { a.play('run'); return; }

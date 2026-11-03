@@ -397,6 +397,53 @@ function drawCombatFocus() {   // selected fighter: line to the target, ring on 
     stampText(inR ? 'IN RANGE' : 'CLOSING IN', q.x, q.y + .3 * tw, `${Math.round(Math.max(12, 12 * cam.z))}px 'Jersey 15', Arial`, inR ? '#bff0a0' : '#ffe0a0'); }
   ctx.restore();
 }
+/* V3D.11 cozy combat HUD (3D mode): clay-pill HP bars with a white trail of recent damage, "cozy pop" numbers,
+   and a Dungeon Village 2 style LEVEL UP burst over the head. The 2D look keeps the old flat bars and pixel font. */
+const COZY_HUD = G3D;
+const hudU = () => Math.max(.72, Math.min(1.5, cam.z * .82));
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function hudText(t, x, y, font, fill, stroke, lw) { ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y); }
+function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, lv, col, w } */
+  const u = hudU(), w = (opt.w || 40) * u, h = 8 * u, x0 = x - w / 2, f = Math.max(0, o.hp / o.max);
+  if (o._ghost == null || o._ghost < f) { o._ghost = f; o._ghostHold = 0; } else if (o._ghost > f) { if ((o._ghostHold = (o._ghostHold || 0) + 1) > 18) o._ghost = Math.max(f, o._ghost - .012); }
+  ctx.save(); rrect(x0, y, w, h, h / 2); ctx.fillStyle = '#f6ead6'; ctx.fill(); ctx.save(); rrect(x0, y, w, h, h / 2); ctx.clip();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x0, y, w * o._ghost, h);
+  ctx.fillStyle = opt.col || (opt.zed ? '#d9584c' : f > .55 ? '#7cc95a' : f > .28 ? '#f2c14e' : '#e8574a'); ctx.fillRect(x0, y, w * f, h);
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(x0, y + h * .14, w * f, h * .22); ctx.restore();
+  rrect(x0, y, w, h, h / 2); ctx.lineWidth = Math.max(1.8, 2 * u); ctx.strokeStyle = '#5a3f31'; ctx.stroke();
+  if (opt.lv) { const bx = x0 - 6 * u, r = 7.5 * u; ctx.beginPath(); ctx.arc(bx, y + h / 2, r, 0, 7); ctx.fillStyle = '#ffd45c'; ctx.fill(); ctx.stroke(); hudText(String(opt.lv), bx, y + h / 2 + 3.8 * u, `600 ${Math.round(10.5 * u)}px Fredoka, Nunito, sans-serif`, '#5a3f31'); }
+  ctx.restore(); return y;
+}
+const HUD_LIFT = 10;   /* the bars float this many screen px (x zoom) above the head */
+function floatCozy(f, p) {   /* a float's life runs from f.a0 down to 0 (frames) */
+  const u = hudU(), k = 1 - f.a / f.a0, num = /^[-+]\d+$/.test(f.t), pop = k < .12 ? 1 + 1.1 * (1 - k / .12) * (k / .12) * 4 : 1;
+  const sz = (num ? 21 : f.big ? 18 : 14) * u * pop, x = p.x + (f.dx || 0) * u * k * 14, y = p.y - CHAR_H * TWs() - HUD_LIFT * u - 14 * u - 26 * u * Math.min(1, k * 2.4) - 10 * u * k;
+  const fill = f.col === '#ff6e62' ? '#ff9b8a' : num && f.t[0] === '+' ? '#c9f2a6' : num ? '#fff3d6' : f.col;   /* hurt red, heal green, hits cream; other notes keep their colour */
+  ctx.save(); ctx.globalAlpha = k > .75 ? (1 - k) / .25 : 1; hudText(f.t, x, y, `600 ${Math.round(sz)}px Fredoka, Nunito, sans-serif`, fill, '#5a3f31', Math.max(3, sz * .22)); ctx.restore();
+}
+const lvBursts = [];
+function levelUpFx(s) { s._lvT = 156; lvBursts.push({ s, f: 0, lv: s.l || 1, sp: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, r: .4 + Math.random() * .6, v: .6 + Math.random() * .8, c: ['#ffd45c', '#fff6c2', '#9be2ff', '#ffb0d0'][(Math.random() * 4) | 0] })) }); }
+function hudStar(x, y, r, rot) { ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = rot + i * Math.PI / 5, q = i % 2 ? r * .45 : r; ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } ctx.closePath(); }
+function drawLevelUps() {
+  for (let i = lvBursts.length - 1; i >= 0; i--) {   /* timed in drawn frames (60 a second), like the floats */
+    const b = lvBursts[i], t = b.f++ / 60; if (b.s._lvT > 0) b.s._lvT--; if (t > 2.6 || !S.sv.includes(b.s) || !b.s.w) { lvBursts.splice(i, 1); continue; }
+    if (insideBuilding(b.s)) continue;
+    const u = hudU(), fp = project(b.s.w.x, b.s.w.y), hy = fp.y - CHAR_H * TWs() - HUD_LIFT * u, k = t / 2.6, ring = Math.min(1, t / .35), fade = k > .7 ? (1 - k) / .3 : 1;
+    ctx.save(); ctx.globalAlpha = .55 * fade; ctx.strokeStyle = '#ffe58a'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(fp.x, fp.y, 26 * u * ring, 11 * u * ring, 0, 0, 7); ctx.stroke();
+    const pg = ctx.createLinearGradient(0, hy, 0, fp.y); pg.addColorStop(0, 'rgba(255,240,170,0)'); pg.addColorStop(1, 'rgba(255,230,140,.55)');
+    ctx.globalAlpha = .7 * fade * Math.min(1, t / .25); ctx.fillStyle = pg; ctx.fillRect(fp.x - 17 * u * ring, hy, 34 * u * ring, fp.y - hy);
+    for (const sp of b.sp) { const tt = Math.max(0, t - .1) * sp.v; if (tt > 1.6) continue; ctx.globalAlpha = Math.max(0, 1 - tt / 1.6); ctx.fillStyle = sp.c; hudStar(fp.x + Math.cos(sp.a) * 22 * u * sp.r, fp.y - tt * 64 * u - 8 * u, 4 * u * (1 - tt / 2.2), tt * 3); ctx.fill(); }
+    const word = 'LEVEL UP!', sz = 22 * u, font = `${Math.round(sz)}px 'Lilita One', Fredoka, sans-serif`; ctx.font = font;
+    const ws = [...word].map((c) => ctx.measureText(c).width), tot = ws.reduce((a, c) => a + c, 0), yb = hy - 30 * u + Math.sin(t * 7) * 2 * u; let x = fp.x - tot / 2;
+    ctx.globalAlpha = fade;
+    [...word].forEach((c, j) => { const lt = t - (.08 + j * .05); if (lt >= 0) { const hop = lt < .22 ? -Math.sin(lt / .22 * Math.PI) * 13 * u : 0, sq = lt < .22 ? 1 + .25 * Math.sin(lt / .22 * Math.PI) : 1;
+      ctx.save(); ctx.translate(x + ws[j] / 2, yb + hop); ctx.scale(1 / sq, sq); const gr = ctx.createLinearGradient(0, -sz, 0, 0); gr.addColorStop(0, '#fffbe0'); gr.addColorStop(.55, '#ffd45c'); gr.addColorStop(1, '#ff9a2a');
+      ctx.font = font; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = sz * .28; ctx.strokeStyle = '#5a3f31'; ctx.strokeText(c, 0, 0); ctx.fillStyle = gr; ctx.fillText(c, 0, 0); ctx.restore(); } x += ws[j]; });
+    if (t > .75) { const lt = Math.min(1, (t - .75) / .25), yy = yb + 16 * u - 4 * u * lt, txt = 'Lv ' + (b.lv - 1) + ' ▸ ' + b.lv; ctx.globalAlpha = fade * lt; ctx.font = `600 ${Math.round(12 * u)}px Fredoka, sans-serif`;
+      const tw = ctx.measureText(txt).width + 14 * u; rrect(fp.x - tw / 2, yy - 12 * u, tw, 17 * u, 8.5 * u); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); hudText(txt, fp.x, yy + .5 * u, ctx.font, '#5a3f31'); }
+    ctx.restore();
+  }
+}
 function drawHuman(s) {
   if (insideBuilding(s)) return;   // hidden while inside
   const p = project(s.w.x, s.w.y);
@@ -404,12 +451,16 @@ function drawHuman(s) {
   if (window.ZHChars && ZHChars.ready) { const sc = ZHChars.sheetFor(s); if (sc && !(s.mode === 'rescueCarry' && s.carrying && drawCart(s, p))) drawChar(s, sc, p, s.mode === 'work' ? null : s.eq && s.eq.weapon); }
   const tw = TWs(), top = p.y - CHAR_H * tw - 3; hitSpark(s, p);
   if (underAttack(s)) { ctx.strokeStyle = 'rgba(255,80,60,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .3 * tw, .13 * tw, 0, 0, 7); ctx.stroke(); }
-  if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); }
+  let tagY = top - 2;
+  if (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase') {
+    if (COZY_HUD) { const u = hudU(); tagY = hpPill(s, p.x + 3 * u, top - HUD_LIFT * u, { lv: s.l || 1 }) - 3 * u; }
+    else { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#67c75a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, s.hp / s.max), 2 * cam.z); } }
   if (s.mode === 'down' && s.bleed != null) bleedRing(s, p);
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   const tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
-  if (tagT) statusTag(p.x, top - 2, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
-  else if (ic && s.mode !== 'down') bubble({ x: p.x, y: top - 3 }, ic);
+  if (s._lvT > 0) { /* the LEVEL UP burst takes the space above the head */ }
+  else if (tagT) statusTag(p.x, tagY, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
+  else if (ic && s.mode !== 'down') bubble({ x: p.x, y: tagY - 1 }, ic);
   if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
 }
 const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9 };
@@ -455,16 +506,18 @@ function drawZombie(zm) {
     if (!zm.wpn) zm.wpn = ['bat', 'knife', 'crowbar', 'pistol', 'machete'][Math.floor(rnd() * 5)];
     const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Raider', zm.look.sex);
     if (sc) drawChar(Object.assign(zm, { eq: { weapon: zm.wpn } }), sc, p, zm.wpn);
-    const top = p.y - CHAR_H * tw - 3; hitSpark(zm, p); ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
+    const top = p.y - CHAR_H * tw - 3; hitSpark(zm, p); if (COZY_HUD) hpPill(zm, p.x, top - HUD_LIFT * hudU(), { col: '#ff9a3a' }); else { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z); }
     if (zm.carried) stampText('⚙' + zm.carried, p.x, top - 4, `${Math.round(Math.max(14, 14 * cam.z))}px 'Jersey 15', monospace`, '#ffe06b');
     return;
   }
   const top = drawZSprite(zm, p); if (top == null || zm.dead != null) return;
   if (zm.type === 'boss') {
+    if (COZY_HUD) { const u = hudU(), bt = hpPill(zm, p.x, top - (HUD_LIFT + 6) * u, { col: '#c74bff', w: 70 }); hudText('BOSS', p.x, bt - 4 * u, `600 ${Math.round(14 * u)}px Fredoka, sans-serif`, '#f2c8ff', '#5a3f31', 3.5 * u); return; }
     const bt = top - 10; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 28 * cam.z, bt, 56 * cam.z, 7 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 27 * cam.z, bt + cam.z, 54 * cam.z * Math.max(0, zm.hp / zm.max), 5 * cam.z);
     stampText('BOSS', p.x, bt - 3, `${Math.round(Math.max(16, 16 * cam.z))}px 'Jersey 15', monospace`, '#f2c8ff'); return;
   }
   hitSpark(zm, p); if (!engaged(zm)) return;   /* V2.37: HP bar only once it is hurt or fighting someone */
+  if (COZY_HUD) { hpPill(zm, p.x, top - 3 - HUD_LIFT * hudU(), { zed: true, w: 34 }); return; }
   const hb = top - 5; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, hb, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#d84d48'; ctx.fillRect(p.x - 10 * cam.z, hb + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z);
 }
 
@@ -538,7 +591,8 @@ function draw() {
   drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
-  for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
+  if (COZY_HUD) { for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
+  else for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
   if (debug) drawDebug();
@@ -1597,7 +1651,7 @@ function autoRepair() {   // every second: the most damaged segment that can be 
 const xpNeed = (s) => { const p = professions[s.job]; const b = (p && p.master) || 60, l = s.l || 1; return Math.round(l < 5 ? b : b * (1 + (l - 4) * .6)); };
 function masteryCheck(s) {      // experience: each level raises the work boost and the daily ration; capped at LEVEL_CAP
   const p = professions[s.job]; if (!p || s.mastery < xpNeed(s)) return;
-  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); floats.push({ w: { ...s.w }, t: 'LV ' + s.l + '!', col: '#ffe38a', a: 80 }); learnSkills(s); }
+  if ((s.l || 1) < LEVEL_CAP) { s.l = (s.l || 1) + 1; s.mastery = 0; s.mastered = false; s.st = s.st || rollStats(s.job, 1); for (const k of (JOB_STATS[s.job] || [])) s.st[k] = Math.min(STAT_CAP, s.st[k] + 1); syncClass(s); setMaxHp(s); s.hp = Math.min(s.max, s.hp + 8); renownGain(1, `${s.name} reached ${s.job} Lv.${s.l}`); if (COZY_HUD) levelUpFx(s); else floats.push({ w: { ...s.w }, t: 'LV ' + s.l + '!', col: '#ffe38a', a: 80 }); learnSkills(s); }
   else if (!s.mastered) { syncClass(s); s.mastered = true; renownGain(2, s.name + ' mastered ' + s.job); note('important', s.name + ' MASTERED ' + s.job); }
 }
 
@@ -2397,7 +2451,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;

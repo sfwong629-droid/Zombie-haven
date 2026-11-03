@@ -1,5 +1,11 @@
 # Changelog
 
+## V3D.11 — Cozy combat HUD, faces and zombie looks (3D mode, branch art-direction-b)
+- HP bars are rounded cream pills with a brown outline, sitting a little higher above the head. Survivors' bars go green, yellow, then red and carry a gold level badge; zombies red, raiders orange, the boss a wide purple bar. Health just lost flashes white, then drains away.
+- Damage numbers "pop": a rounded bold font with a thick brown outline that springs up big, then floats away. Hits on zombies are cream, damage taken is red, healing is green.
+- Level up (Dungeon Village 2 style): a ring and a column of light at the feet, rising sparkles, gold "LEVEL UP!" letters that hop in one by one, a "Lv 3 ▸ 4" badge, and the survivor cheers with a happy face.
+- Faces per move (smile, angry for attacks, >< hurt, - - collapse, ^ ^ cheer); zombies have grey-green skin, milky eyes and four bloody outfits; runner zombies and fleeing survivors run.
+
 ## V2.55.0 — The approved farmer in the C64 preview
 - With `?c64=1`, farmers use the owner-approved slim farmer from PixelLab: 58–62 px tall, same pixel size as the 106 grid and the Medical Tent.
 - Walk: 6 frames for front (South-West) and back (North-West); the game mirrors them for the other two directions.
