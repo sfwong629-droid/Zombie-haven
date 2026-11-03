@@ -771,6 +771,16 @@ function syncBags(dt) {
   }
   for (const [b, e] of bagMeshes) if (!seen.has(b)) { scene.remove(e.g); bagMeshes.delete(b); }
 }
+// placement ghost (V3D.12): a see-through copy of the building being placed, tinted red where it can't go
+let ghost = null;
+function syncGhost() {
+  const pv = G.preview && G.preview(), key = pv && [pv.type, pv.rot, pv.ok].join(',');
+  if (ghost && (!pv || ghost.key !== key)) { scene.remove(ghost.g); ghost = null; }
+  if (!pv) return;
+  if (!ghost) { const g = makeBuilding(pv); g.traverse((o) => { if (!o.isMesh) return; if (o.userData.hull) { o.visible = false; return; } o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .55; o.material.depthWrite = false; if (!pv.ok) o.material.color.lerp(new THREE.Color('#ff6a5a'), .55); o.castShadow = false; });
+    scene.add(g); ghost = { g, key }; }
+  ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
+}
 let zCount = 0;
 const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
 function tickMixer(a, dt, vis) {
@@ -850,7 +860,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1));
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost();
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }

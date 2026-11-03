@@ -596,6 +596,7 @@ function draw() {
       else diamond(x, y, road ? 'rgba(113,129,138,.35)' : (occ ? 'rgba(183,90,85,.40)' : 'rgba(95,174,97,.22)'), 'rgba(155,220,133,.35)');
     }
     if (preview && sel.kind === 'building') for (let yy = 0; yy < preview.h; yy++) for (let xx = 0; xx < preview.w; xx++) diamond(preview.x + xx, preview.y + yy, preview.ok ? 'rgba(114,217,223,.62)' : 'rgba(226,91,85,.62)', preview.ok ? '#d7ffff' : '#ffb0a8');
+    if (COZY_HUD && preview && sel.kind === 'building') entranceArrow(preview);
   }
   drawTileConfirm();
   for (const p of S.posts || []) if ((sel && sel.kind === 'post') || (selected && selected.kind === 'post' && selected.ref === p)) drawPostRange(p, !!(selected && selected.ref === p));
@@ -2918,6 +2919,14 @@ function drawSites() {   /* progress pill + time left over each site, a bouncing
     ctx.globalAlpha = Math.min(1, (1.6 - t) * 2); hudText('DONE!', c.x, c.y - 60 * u - t * 10 * u, `${Math.round(24 * u * (t < .15 ? .6 + t * 2.7 : 1))}px 'Lilita One', Fredoka, sans-serif`, '#ffd45c', '#5a3f31', 6 * u); ctx.restore();
   }
 }
+function entranceArrow(pv) {   /* V3D.12: a bouncing arrow on the ground at the door, pointing out of the entrance */
+  const dp = Wd.doorPoint(pv), ap = Wd.approachPoint(pv); let dx = ap.x - dp.x, dy = ap.y - dp.y; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+  const bob = .12 + .12 * Math.sin(tick / 7), x0 = dp.x + dx * (.15 + bob), y0 = dp.y + dy * (.15 + bob), x1 = x0 + dx * 1.05, y1 = y0 + dy * 1.05;
+  const P = (x, y) => project(x, y), a = P(x0, y0), b = P(x1, y1), ang = Math.atan2(b.y - a.y, b.x - a.x), len = Math.hypot(b.x - a.x, b.y - a.y), u = hudU(), w = 7 * u, hw = 15 * u, hl = Math.min(len * .55, 20 * u);
+  ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(ang); ctx.scale(1, .82);
+  ctx.beginPath(); ctx.moveTo(0, -w); ctx.lineTo(len - hl, -w); ctx.lineTo(len - hl, -hw); ctx.lineTo(len, 0); ctx.lineTo(len - hl, hw); ctx.lineTo(len - hl, w); ctx.lineTo(0, w); ctx.closePath();
+  ctx.lineJoin = 'round'; ctx.lineWidth = 4 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.fillStyle = pv.ok ? '#ffe07a' : '#ff9b8a'; ctx.fill(); ctx.restore();
+}
 const simSpeedNow = () => Math.max(1, simSpeed || 1);
 let demoPick = null;
 let tileConfirm = null;   /* V2.38: removing a wall or road takes a second tap on the same tile (it was instant: easy to do by accident) */
@@ -3366,7 +3375,7 @@ function simTick() {
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
+window.ZHG = { preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];
