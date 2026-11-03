@@ -188,3 +188,12 @@ html.cozy #fx .toast.pop .pp img { width: 100%; height: 100%; object-fit: cover;
 html.cozy #fx .toast.pop .pt { font-size: 16px; line-height: 19px; text-align: left; }
 @keyframes popIn { from { transform: translate(-50%, -50%) translateY(-14px) scale(.7); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
 @keyframes popOut { to { transform: translate(-50%, -50%) translateY(-10px); opacity: 0; } }
+
+/* V3D.14 Clay icons: SVG icons sit centred in their buttons and capsules */
+html.cozy .zi { display: block; }
+html.cozy #plaque .res i { display: inline-flex; align-items: center; }
+html.cozy .lm i { display: flex; align-items: center; justify-content: center; height: 30px; }
+html.cozy #btnHome .zi, html.cozy .bb .zi { margin: auto; }
+html.cozy #btnSound, html.cozy #btnLog, html.cozy #btnCenter { display: inline-flex; align-items: center; justify-content: center; }
+html.cozy .lm { background: var(--cream2); color: var(--cocoa); }
+html.cozy #mBuild { background: var(--cream2); color: var(--cocoa); }

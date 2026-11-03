@@ -422,7 +422,13 @@ function floatCozy(f, p) {   /* a float's life runs from f.a0 down to 0 (frames)
   const u = hudU(), k = 1 - f.a / f.a0, num = /^[-+]\d+$/.test(f.t), pop = k < .12 ? 1 + 1.1 * (1 - k / .12) * (k / .12) * 4 : 1;
   const sz = (num ? 21 : f.big ? 16 : 14) * u * pop, x = p.x + (f.dx || 0) * u * k * 14, y = p.y - CHAR_H * TWs() - HUD_LIFT * u - 14 * u - 26 * u * Math.min(1, k * 2.4) - 10 * u * k;
   const fill = f.col === '#ff6e62' ? '#ff9b8a' : num && f.t[0] === '+' ? '#c9f2a6' : num ? '#fff3d6' : f.col;   /* hurt red, heal green, hits cream; other notes keep their colour */
-  ctx.save(); ctx.globalAlpha = k > .75 ? (1 - k) / .25 : 1; hudText(f.t, x, y, `600 ${Math.round(sz)}px Fredoka, Nunito, sans-serif`, fill, '#5a3f31', Math.max(3, sz * .22)); ctx.restore();
+  ctx.save(); ctx.globalAlpha = k > .75 ? (1 - k) / .25 : 1;
+  const ic = window.ZHIcons && Object.keys(ZHIcons.EMOJI).find((e) => f.t.includes(e)), im = ic && ZHIcons.img(ZHIcons.EMOJI[ic]);
+  if (im && im.complete) {   /* V3D.14: '+1 💧' is drawn as '+1' and the Clay icon */
+    const txt = f.t.replace(ic, '').replace(/\s+/g, ' ').trim(), font = `600 ${Math.round(sz)}px Fredoka, Nunito, sans-serif`; ctx.font = font; const tw = txt ? ctx.measureText(txt).width : 0, is = sz * 1.15, gap = txt ? sz * .15 : 0, x0 = x - (tw + gap + is) / 2;
+    if (txt) hudText(txt, x0 + tw / 2, y, font, fill, '#5a3f31', Math.max(3, sz * .22)); ctx.drawImage(im, x0 + tw + gap, y - is * .82, is, is);
+  } else hudText(f.t, x, y, `600 ${Math.round(sz)}px Fredoka, Nunito, sans-serif`, fill, '#5a3f31', Math.max(3, sz * .22));
+  ctx.restore();
 }
 /* V3D.12 loot bags: a zombie's parts drop as a bag (it falls and bounces in 3D), the fighter walks over once no
    zombie is close, and the bag pops open with a sparkle burst before the parts are counted. Bags nobody fetches open
@@ -710,7 +716,15 @@ function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring th
   const d = DEFS[b.type], r = spriteRect(b); if (!d || !r || b.burnt) return;
   const z = Math.max(.75, cam.z), cx = r.anchor.x, cy = r.anchor.y - TWs() * (b.w + b.h) * .5 * .62, fi = FAM_ICON[d.fam], R = 9 * z;
   ctx.save();
-  if (fi) {
+  if (fi && COZY_HUD && window.ZHIcons) {   /* V3D.14 Clay badge: cream disc, cocoa outline, a progress ring in the resource colour, a status dot */
+    const on = isWorking(b), R2 = 11 * z, im = ZHIcons.img({ water: 'water', farm: 'food', scrap: 'parts', research: 'research' }[d.fam]);
+    ctx.beginPath(); ctx.arc(cx, cy + 2 * z, R2, 0, 7); ctx.fillStyle = 'rgba(79,61,51,.4)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, R2, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2.4 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
+    ctx.lineCap = 'round'; ctx.lineWidth = 3 * z; ctx.strokeStyle = on ? fi[1] : '#d8c4a6'; ctx.beginPath(); ctx.arc(cx, cy, R2 + 3.2 * z, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.02, Math.min(1, b.acc || 0))); ctx.stroke(); ctx.lineCap = 'butt';
+    if (im && im.complete) ctx.drawImage(im, cx - 8 * z, cy - 8 * z, 16 * z, 16 * z);
+    if (d.slot) { ctx.beginPath(); ctx.arc(cx + R2 * .8, cy - R2 * .8, 4.2 * z, 0, 7); ctx.fillStyle = b.staff ? (on ? '#7cc95a' : '#a9c49f') : '#f2c14e'; ctx.fill(); ctx.lineWidth = 2 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); }
+    if ((d.fam === 'farm' && b.dry) || b.unpaid) hudText(b.unpaid ? '½' : '!', cx + R2 * 1.9, cy + 5 * z, `600 ${Math.round(14 * z)}px Fredoka, sans-serif`, '#e8574a', '#fff8ec', 3 * z);
+  } else if (fi) {
     const on = isWorking(b); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fillStyle = 'rgba(16,24,18,.82)'; ctx.fill();
     ctx.lineWidth = 3 * z; ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(cx, cy, R - 1.5 * z, 0, 7); ctx.stroke();
     ctx.strokeStyle = on ? fi[1] : 'rgba(200,190,160,.55)'; ctx.beginPath(); ctx.arc(cx, cy, R - 1.5 * z, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, b.acc || 0)); ctx.stroke();
@@ -3581,7 +3595,14 @@ $('btnCenter').onclick = () => centerOn(7.5, 10, .9 * (G3D ? 1.25 : 1));   /* V3
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; try { localStorage.setItem('zhSpeed', simSpeed); } catch (e) { /* private mode */ } };
 try { const sp = +localStorage.getItem('zhSpeed'); if (sp >= 1 && sp <= 3) { simSpeed = sp; $('btnSpeed').textContent = sp + '×'; } } catch (e) { /* private mode */ }   /* V3D.13: the chosen speed sticks */
 $('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = () => { if (saveGame()) { say('Saved.'); banner('💾 SAVED'); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); }; }
-{ const sb = $('btnSound'), lab = () => { if (sb && window.SND) sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
+/* V3D.14 Clay icons (style A) on the top bar, left menu, Home and bottom bar */
+if (COZY_HUD && window.ZHIcons) {
+  const I = ZHIcons.svg, set = (sel, n, px) => { const e = document.querySelector(sel); if (e) e.innerHTML = I(n, px); };
+  const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'parts'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 22); });
+  [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
+  set('#btnHome', 'home', 30); set('#btnLog', 'log', 26); set('#btnCenter', 'locate', 26);
+}
+{ const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if (COZY_HUD && window.ZHIcons) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { const k = { food: 'food', water: 'water', mat: 'mat' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
