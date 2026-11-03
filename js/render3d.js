@@ -491,6 +491,9 @@ function fenceRing(P, w, d, h = .55, gapFront = true) {
 }
 const BUILD = {
   house: (P, w, d) => cabin(P, w * .82, d * .78, '#b5532e', { chimney: true }),
+  inn: (P, w, d) => { cabin(P, w * .84, d * .74, '#3f6e8a', { h: 1.85, chimney: true, sign: '#e8c36a', windows: [w * .02, w * .2, w * .34] });   // V3D.12: everyone's beds
+    for (const wx of [-w * .28, w * .02, w * .3]) { P.put(box(.36, .3, .06), '#3b2a1a', M4(wx, 1.45, d * .37 + .08)); P.win(box(.26, .2, .04), M4(wx, 1.45, d * .37 + .105)); }
+    P.put(box(.7, .08, .22), '#7b5232', M4(w * .25, .28, d * .37 + .38)); for (const k of [-1, 1]) P.put(box(.06, .26, .2), '#6f4a2c', M4(w * .25 + k * .3, .13, d * .37 + .38)); },
   water: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.05, .06, 1.1, 6), '#6f4a2c', M4(x * w * .25, .55, z * d * .25)); P.put(box(w * .6, .08, d * .6), '#7d5534', M4(0, 1.1, 0)); P.put(cyl(.38, .38, .7, 12), '#5d7a8c', M4(0, 1.5, 0)); P.put(new THREE.ConeGeometry(.5, .3, 12, 1, true), '#8f9aa6', M4(0, 2.0, 0, 0, Math.PI)); P.put(cyl(.04, .04, .9, 6), '#6f6a62', M4(.3, .5, .3)); },
   well: (P, w, d) => { P.put(cyl(.42, .46, .5, 12), '#8f8a80', M4(0, .25, 0)); P.put(cyl(.32, .32, .52, 12), '#2a3a44', M4(0, .26, 0)); for (const k of [-1, 1]) P.put(box(.08, 1.2, .08), '#6f4a2c', M4(k * .42, .85, 0)); P.put(box(1.1, .07, .07), '#6f4a2c', M4(0, 1.42, 0)); P.put(new THREE.ConeGeometry(.75, .45, 4), '#8a4a2a', M4(0, 1.7, 0, Math.PI / 4)); P.put(cyl(.09, .07, .16, 8), '#7a5232', M4(.1, .9, 0)); },
   farm: (P, w, d) => { beds(P, w * .9, d * .9, 2); },

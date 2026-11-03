@@ -28,7 +28,8 @@
     hospital: D({ res: 'traumaCare', name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, w: 2, h: 2, sprite: 'grid', slot: true, cap: 3 }),
     canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
     armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
-    house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),
+    house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),   // V3D.12: one long-time resident's own home
+    inn:      D({ name: 'Inn',            mat: 10, a: 10, role: 'inn', cap: 4 }),   // V3D.12: everyone's beds (sleeps 4 at a time)
     workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 12 }),   // V2.16: staffed → research points; crafting
     storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
     scrapyard: D({ name: 'Scrapyard',     mat: 10, a: 4,  q: 8, role: 'parts', fam: 'scrap', slot: true, out: 3 }),   // V2.15: staffed salvage → parts
@@ -41,7 +42,7 @@
     sparring: D({ res: 'fitness', name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
     barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 2, h: 2 }),
   };
-  for (const k of ['clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring']) DEFS[k].w = 2;   /* 2x1 */
+  for (const k of ['clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'inn']) DEFS[k].w = 2;   /* 2x1 */
   DEFS.field.w = 2; DEFS.field.h = 2;
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing

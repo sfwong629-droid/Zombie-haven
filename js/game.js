@@ -764,6 +764,7 @@ const professions = {
 const facilityRules = {   // V2.6: no prices. Survivors are fed by the daily ration; visits relieve the need meters (food/water/medicine must be in stock to help).
   canteen: { need: 'hunger', use: 145, sat: 2, benefit: 26, label: 'Eating' },
   house: { need: 'fatigue', use: 175, sat: 1, benefit: 34, label: 'Resting' },
+  inn: { need: 'fatigue', use: 175, sat: 1, benefit: 34, label: 'Resting' },   /* V3D.12 */
   medic: { need: 'injury', use: 190, sat: 2, benefit: 34, label: 'Treatment' },
   clinic: { need: 'injury', use: 205, sat: 2, benefit: 50, label: 'Treatment' },
   hospital: { need: 'injury', use: 220, sat: 3, benefit: 70, label: 'Treatment' },
@@ -1114,7 +1115,7 @@ function settlePause(s, min = 150, max = 330) { s.mode = 'wait'; s.dest = null; 
 function enterFree(s, d = 110) { s.sleeping = false; s.mode = 'free'; s.target = null; s.activity = null; s.stateTicks = d; s.dest = null; s.path = null; s.moving = false; s.purpose = null; }
 function enterPost(s) { s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + s.i * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
 function needScore(s, b) {
-  const r = facilityRules[b.type]; if (!r || b.fire || b.burnt) return -999; let sc = 0;
+  const r = facilityRules[b.type]; if (!r || b.fire || b.burnt) return -999; if (b.type === 'house' && b.owner && b.owner !== s.id) return -999; let sc = 0;
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * 1.2 + (isNight() && s.fatigue > 15 ? 45 : 0);   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1);
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
@@ -1285,9 +1286,9 @@ function chooseLifePurpose(s) {
     s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = `Shift at the ${DEFS[s.post.type].name} (until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00)`; return;
   }
   if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35)) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
-    const bed = world.buildings.find((b) => b.type === 'house' && !b.fire && !b.burnt && facilityUsers(b) < cap(b) && b !== s.lastFacility) || world.buildings.find((b) => b.type === 'house' && !b.fire && !b.burnt && facilityUsers(b) < cap(b));
+    const bed = bedFor(s);
     if (bed) { s.facility = bed; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `Going to bed at the ${DEFS[bed.type].name}`; return; }
-    s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.sleeping = 'rough'; s.stateTicks = Math.min(9000, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000)); s.why = 'Sleeping rough: no free bed (build a House)'; s.idleBubble = '💤'; return;
+    s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.sleeping = 'rough'; s.stateTicks = Math.min(9000, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000)); s.why = 'Sleeping rough: no free bed (build an Inn)'; s.idleBubble = '💤'; return;
   }
   if (rnd() < Math.min(.94, .58 * cfg.town) && chooseTownAction(s)) return;
   if (chooseTownAction(s)) return;
@@ -1314,7 +1315,7 @@ function finishFacility(s) {
   s.sat += (r.sat + combos(b).sat) * Math.max(.6, sMod(s, 'cha', .05)); floats.push({ w: { ...s.w }, t: '♥+' + r.sat, col: '#ff9fbd', a: 70 });
   if (r.need === 'hunger') { if (S.food >= .5) s.hunger = Math.max(0, s.hunger - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1) * (b && isWorking(b) && b.staff.job === 'Cook' ? 1.5 : 1) * (b && isWorking(b) && hasSkill(b.staff, 'headChef') ? 1.3 : 1) * (b && isWorking(b) ? Math.max(.8, sMod(b.staff, 'cha', .03)) : 1) * (1 + combos(b).meal) * (b.unpaid ? .5 : 1)); else floats.push({ w: { ...s.w }, t: 'NO FOOD', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'thirst') { if (S.water >= .5) s.thirst = Math.max(0, s.thirst - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1)); else floats.push({ w: { ...s.w }, t: 'NO WATER', col: '#ff8a7a', a: 70 }); }
-  if (r.need === 'fatigue') s.fatigue = Math.max(0, s.fatigue - r.benefit);
+  if (r.need === 'fatigue') { s.fatigue = Math.max(0, s.fatigue - r.benefit); if (b && b.type === 'house' && b.owner === s.id) { s.fatigue = Math.max(0, s.fatigue - r.benefit * .5); s.sat = Math.min(100, (s.sat || 0) + 2); } }   /* own home: rests 50% better, +2 ♥ */
   if (r.need === 'injury') { s.hp = Math.min(s.max, s.hp + r.benefit); }   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (b.type === 'armory') { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' parts).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
   if (r.need === 'train') {   /* each visit fills a stat's training bar; 100 = +1 permanent point */
@@ -1708,7 +1709,7 @@ const BUILDING_STAT = { farm: 'str', field: 'str', water: 'per', well: 'per', me
 const prodMult = (b, working = isWorking(b)) => (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? workBoost(b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && b.type === 'workshop' ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs parts each day; unpaid buildings run at half output ---------------- */
-const UPKEEP = { house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
+const UPKEEP = { inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
 const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1) * DF().upkeep;
 const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
@@ -2062,7 +2063,22 @@ function friendBoost(s) {   /* damage bonus with a friend fighting within 3 tile
   let best = 0; for (const q of S.sv) if (q !== s && q.hp > 0 && ['chase', 'attack', 'recover'].includes(q.mode) && dist(q.w, s.w) < 3) best = Math.max(best, bondOf(s, q));
   return best >= BOND.close ? 1.15 : best >= BOND.friend ? 1.1 : 1;
 }
-const popCap = () => Math.max(8, Math.min(16, 6 + 2 * bOf('house').length));
+/* V3D.12 Inn and homes: everyone sleeps at the Inn; a House is one long-time resident's own home (they rest faster
+   and get happier there). Houses are handed out to the longest-staying residents who have none. */
+const okBed = (b) => !b.fire && !b.burnt && facilityUsers(b) < cap(b);
+const homeOf = (s) => world.buildings.find((b) => b.type === 'house' && b.owner === s.id);
+function bedFor(s) {
+  const h = homeOf(s); if (h && okBed(h)) return h;
+  const inns = world.buildings.filter((b) => b.type === 'inn' && okBed(b)); if (inns.length) return inns.sort((a, b) => dist(Wd.doorPoint(a), s.w) - dist(Wd.doorPoint(b), s.w))[0];
+  return world.buildings.find((b) => b.type === 'house' && !b.owner && okBed(b) && b !== s.lastFacility) || world.buildings.find((b) => b.type === 'house' && !b.owner && okBed(b)) || null;
+}
+function assignHomes() {
+  for (const b of world.buildings) if (b.type === 'house' && b.owner && !S.sv.some((q) => q.id === b.owner)) b.owner = null;
+  const free = world.buildings.filter((b) => b.type === 'house' && !b.owner && !b.burnt); if (!free.length) return;
+  const want = S.sv.filter((q) => q.hp > 0 && !homeOf(q) && (q.resident || (q.daysHere || 0) >= 3)).sort((a, b) => (b.resident ? 1 : 0) - (a.resident ? 1 : 0) || (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id);
+  for (const b of free) { const q = want.shift(); if (!q) break; b.owner = q.id; if (COZY_HUD) banner(`🏠 ${q.name} has a home now!`, q); logEvent(`${q.name} moved into a House of their own: they rest faster and get happier there.`, 'routine'); }
+}
+const popCap = () => Math.max(8, Math.min(20, 6 + 2 * bOf('house').length + 4 * bOf('inn').length));   /* V3D.12: an Inn makes room for 4 */
 const waitingCouples = () => S.sv.filter((q) => q.partner && q.id < q.partner && !(S.kids || []).some((k) => k.parents.includes(q.id))).length;
 const popNow = () => S.sv.length + (S.trip ? S.trip.members.length : 0) + (S.kids || []).length;
 const KID_NAMES = ['Ivy', 'Finn', 'Nora', 'Kai', 'Wren', 'Juno', 'Milo', 'Pip', 'Remy', 'Tess', 'Zane', 'Bea', 'Ash', 'Lux', 'Rio', 'Sage', 'Cole', 'Dot', 'Fern', 'Hugo'];
@@ -3003,7 +3019,8 @@ function showPanel(title, back) {
   $('infoPanel').classList.add('show'); $('ib').scrollTop = 0;
 }
 const BDESC = {
-  house: 'A place to sleep. Every House makes room for 2 more people.',
+  house: 'A home of their own for one long-time resident: they rest faster and get happier there. Room for 2 more people.',
+  inn: 'Beds for everyone: sleeps 4 at a time and makes room for 4 more people.',
   water: 'Catches rainwater. An Engineer or Mechanic makes it collect more.',
   well: 'Draws groundwater: almost twice a Rain Collector.',
   farm: 'A small vegetable patch. Drinks a little water. A Farmer boosts it.',
@@ -3020,7 +3037,7 @@ const BDESC = {
   range: 'Target practice for Perception (better with guns and bows).', track: 'Obstacle runs for Agility (speed and dodging).', sparring: 'Bouts in the ring for Endurance (more HP).',
   barracks: 'Fighters rest and gear up here. Next to an Armory, gear gets cheaper.',
 };
-const BCAT = [['live', 'Living', ['house', 'water', 'well', 'farm', 'field', 'canteen', 'storage', 'scrapyard', 'workshop']], ['care', 'Care', ['medic', 'clinic', 'hospital']],
+const BCAT = [['live', 'Living', ['inn', 'house', 'water', 'well', 'farm', 'field', 'canteen', 'storage', 'scrapyard', 'workshop']], ['care', 'Care', ['medic', 'clinic', 'hospital']],
   ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:metal', 'wall:gate', 'post', 'armory', 'barracks']]];
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
@@ -3398,7 +3415,7 @@ function simTick() {
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
-  if (tick % 1000 === 0) { S.hour++; hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */

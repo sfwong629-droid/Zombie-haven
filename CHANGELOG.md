@@ -1,5 +1,16 @@
 # Changelog
 
+## V3D.12 — Feedback round 1 (3D mode, branch art-direction-b)
+- Phone fixes: iPhone audio refusals no longer show GAME ERROR; a lost graphics context (black world, UI still there) saves and reloads; faces are small shared overlays (far less graphics memory).
+- Nights brighter, warm light pools and lanterns at every door, a flashlight beam and lamp glow for each survivor outside; greener grass so the town and people stand out.
+- Melee fighters stand right against the zombie (.45 tiles).
+- Loot bags: a zombie's parts drop as a sack that bounces in; the fighter walks over and it pops open with sparkles.
+- Construction time (DV2 style): a new building is a site with scaffolding, the building rising inside, dust, a timer and a hammer; DONE! with a burst when it finishes.
+- Placing a building: a bouncing arrow out of the entrance and a see-through preview.
+- People page: chest-up portraits from each survivor's 3D model; job hats for every profession (in town too).
+- Event cards: stage cards for newcomers, rank ups, boss warnings and deaths (posed 3D figures, glowing reward panel, one line); portrait pops for small news.
+- Inn: everyone's beds (sleeps 4, +4 room). Houses become one long-time resident's own home (rest 50% better, +2 ♥ there).
+
 ## V3D.11 — Cozy combat HUD, faces and zombie looks (3D mode, branch art-direction-b)
 - HP bars are rounded cream pills with a brown outline, sitting a little higher above the head. Survivors' bars go green, yellow, then red and carry a gold level badge; zombies red, raiders orange, the boss a wide purple bar. Health just lost flashes white, then drains away.
 - Damage numbers "pop": a rounded bold font with a thick brown outline that springs up big, then floats away. Hits on zombies are cream, damage taken is red, healing is green.
