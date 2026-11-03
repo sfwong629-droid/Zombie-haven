@@ -281,6 +281,37 @@ def zombie_walk(t):
     p['bob'] = p.get('bob', 0) - .02
     return p
 
+def run(t):
+    """Survivor run (3D only): long strides with a flight phase, high knees, forward lean, bent arms pumping."""
+    ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
+    for n, sg in (('L', 1), ('R', -1)):
+        th = 52 * sg * sn; kn = 34 + 96 * max(0.0, sg * cs) ** 1.2
+        p['thigh.' + n] = (th + 16, 0, 0)
+        p['shin.' + n] = (-kn, 0, 0)
+        p['foot.' + n] = (-(th - kn) * .3 + kn * .4, 0, 0)
+        p['upperarm.' + n] = (-58 * sg * sn + 6, 0, 10 * sg)
+        p['forearm.' + n] = (88 + 10 * max(0.0, -sg * sn), 0, 0)
+        p['hand.' + n] = (10, 0, 0)
+    p['bob'] = .045 * math.cos(2 * ph) - .06
+    p['pelvis'] = (6, 12 * sn, 0); p['chest'] = (16, -18 * sn, 0); p['neck'] = (-6, 0, 0); p['head'] = (-16, 0, 0)
+    return steady_head(p, 0, 0)
+
+def zombie_run(t):
+    """Zombie run (3D only): a lurching, hunched sprint, arms flailing forward and grabbing, head bobbing and lolling."""
+    ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
+    for n, sg in (('L', 1), ('R', -1)):
+        th = 46 * sg * sn; kn = 30 + 80 * max(0.0, sg * cs) ** 1.2
+        p['thigh.' + n] = (th + 22, 0, -6 * sg)
+        p['shin.' + n] = (-kn, 0, 0)
+        p['foot.' + n] = (-(th - kn) * .3 + kn * .35, 0, 0)
+    p['shin.R'] = (p['shin.R'][0] * .7 - 6, 0, 0)                       # the bad leg bends less: a limping gallop
+    p.update({'upperarm.L': (78 + 26 * sn, 0, 18), 'upperarm.R': (74 - 26 * sn, 0, -18),
+              'forearm.L': (14 + 18 * max(0.0, sn), 0, 0), 'forearm.R': (18 + 18 * max(0.0, -sn), 0, 0),
+              'hand.L': (-16, 0, 0), 'hand.R': (-16, 0, 0),
+              'pelvis': (10, 10 * sn, 6 * sn), 'chest': (30, -8 * sn, 8 * cs), 'neck': (10, 0, 0), 'head': (4, 10 * sn, 14 + 6 * cs)})
+    p['bob'] = .04 * math.cos(2 * ph) - .085
+    return p
+
 CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'melee'/'gun')
     'idle': (idle, 8, 160, True, None), 'walk': (walk, 8, 110, True, None),
     'hold_idle': (None, 8, 160, True, 'any'), 'hold_walk': (None, 8, 110, True, 'any'),

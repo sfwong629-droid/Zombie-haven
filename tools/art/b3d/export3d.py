@@ -15,6 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ai_render, anims, armor
 
 FPS = 30
+FACE_OUT = None      # set by main: path stem for the extra expression textures
+FACE = True          # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
+WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
 FLAT = True          # flat colour regions (see flat_regions); False = the filtered texture
 COLORS = {'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
           'w_tape': '#d8cfb8', 'a_steel': armor.STEEL, 'a_trim': armor.TRIM, 'a_leather': armor.LEATHER}
@@ -51,7 +54,9 @@ def clip_plan():
             dur = n * ms / 1000; last = (n - 1) * ms / 1000; tf = lambda s, last=last: min(1.0, s / last)
         for c in classes:
             plan.append(((c + '_' if c else '') + clip, clip, c, dur, tf))
-    plan.append(('zombie_walk', 'zombie_walk', None, 1.4, lambda s: s / 1.4))      # 3D-only extra clip
+    plan.append(('zombie_walk', 'zombie_walk', None, 1.4, lambda s: s / 1.4))      # 3D-only extra clips
+    plan.append(('run', 'run', None, .62, lambda s: s / .62))
+    plan.append(('zombie_run', 'zombie_run', None, .72, lambda s: s / .72))
     return plan
 
 def key_frames(ao, name, frames):
@@ -170,19 +175,41 @@ def flat_regions(body, tex=1024, k=10, min_patch=40, detail_h=.62):
     dmask = Image.new('L', (S, S)); dd = ImageDraw.Draw(dmask)
     for f in P:
         if detail[f.index]: dd.polygon([(uv[i].uv.x * S, uv[i].uv.y * S) for i in f.loop_indices], fill=255, outline=255)
-    out = np.where(np.asarray(dmask)[..., None] > 0, np.asarray(base), np.asarray(flat))
+    out = np.where(np.asarray(dmask)[..., None] > 0, np.asarray(base), np.asarray(flat)).copy()
     inside = np.asarray(m) > 0
     idx = ndimage.distance_transform_edt(~inside, return_distances=False, return_indices=True)
-    out = out[idx[0], idx[1]].astype(np.float32) / 255                        # pad gaps so seams never sample black
+    if FACE:
+        # one texture per facial expression: the GLB carries 'neutral'; the others are saved next to it as
+        # <name>_face_<expr>.webp (same UV layout) for the viewer to swap in while a clip plays (facepaint.EXPR_OF_CLIP)
+        import facepaint
+        pos, nrm = facepaint.head_maps(me, S, detail_h); raw = out
+        for e in facepaint.EXPRESSIONS:
+            o = facepaint.face_paint(pos, nrm, raw.copy(), e, log=lambda *a: print(*a, flush=True))[idx[0], idx[1]]
+            o = facepaint.fix_gutters(o, inside)
+            if e == 'neutral': out = o
+            elif FACE_OUT:
+                Image.fromarray(o).transpose(Image.FLIP_TOP_BOTTOM).save(f'{FACE_OUT}_face_{e}.webp', quality=92)
+    else:
+        out = out[idx[0], idx[1]]                                              # pad gaps so seams never sample black
+    out = out.astype(np.float32) / 255
     new = bpy.data.images.new('body_tex', S, S); new.colorspace_settings.name = 'sRGB'
     new.pixels.foreach_set(np.dstack([out, np.ones(out.shape[:2], np.float32)]).ravel()); new.pack()
     print('flat colours', [tuple(int(v * 255) for v in c) for c in pal], 'detail faces', int(detail.sum()), flush=True)
     return new
 
 def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
-    ai_render.TEX_PX = tex
+    global FACE_OUT
+    ai_render.TEX_PX = tex; FACE_OUT = os.path.splitext(out)[0]
     ao, body = ai_render.load(blend)
     bpy.context.scene.render.fps = FPS
+    if WELD:
+        import bmesh
+        bm = bmesh.new(); bm.from_mesh(body.data); n0 = len(bm.verts)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD); bm.to_mesh(body.data); body.data.update()
+        print('welded', n0 - len(bm.verts), 'vertices', flush=True); bm.free()
+    if FACE:
+        import facepaint
+        facepaint.flatten_eyes(body.data, log=lambda *a: print(*a, flush=True))
     img = flat_regions(body, tex) if FLAT else clean_texture(body, tex, median, colors)
     for m in body.data.materials: plain(m, image=img)
     if decimate < 1.0:

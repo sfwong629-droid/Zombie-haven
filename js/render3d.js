@@ -542,26 +542,32 @@ function recolor(img, shirt, pants) {   // the flat-colour body texture: shirt p
   }
   g.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; return t;
 }
+// facial expressions: the GLB texture has the neutral face; <model>_face_<expr>.webp are the same texture with another
+// face painted on (tools/art/b3d/facepaint.py). Each clip shows one of them.
+const EXPR_OF_CLIP = { punch: 'angry', melee_swing_a: 'angry', melee_swing_b: 'angry', melee_swing_c: 'angry', gun_fire: 'angry', pistol_fire: 'angry',
+  hurt: 'hurt', melee_hold_hurt: 'hurt', gun_hold_hurt: 'hurt', collapse: 'ko', cheer: 'happy' };
+const FACE_IMG = {};       // expr -> HTMLImage of the mid model's texture with that face
+function imgTex(img) { const t = new THREE.Texture(img); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; }
 const jobMats = {};
-function jobMaterial(job) {
-  if (jobMats[job]) return jobMats[job];
-  const body = MALE.body.material, img = MALE.bodyImage;
-  const tex = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : body.map;
-  return (jobMats[job] = new THREE.MeshToonMaterial({ map: tex, gradientMap: grad }));
+function jobMaterial(job, expr = 'neutral') {
+  const key = job + '|' + expr; if (jobMats[key]) return jobMats[key];
+  const neutral = expr === 'neutral' || !FACE_IMG[expr], img = neutral ? MALE.bodyImage : FACE_IMG[expr];
+  const tex = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : neutral ? MALE.body.material.map : imgTex(img);
+  return (jobMats[key] = new THREE.MeshToonMaterial({ map: tex, gradientMap: grad }));
 }
 const zMats = {};
 function zombieMaterial(type) {
   if (zMats[type]) return zMats[type];
-  const t = ZTINT[type] || ZTINT.walker; return (zMats[type] = new THREE.MeshToonMaterial({ map: LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
+  const t = ZTINT[type] || ZTINT.walker; return (zMats[type] = new THREE.MeshToonMaterial({ map: LITE.zombieMap || LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
 }
 const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', knife: 'axe', machete: 'axe', axe: 'axe', katana: 'axe',
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47' };
 const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
 class Actor {
-  constructor(src, mat, lite) {
+  constructor(src, mat, lite, faces = null) {
     this.o = SkeletonUtils.clone(src.scene); scene.add(this.o);
-    this.w = {}; this.arm = [];
-    this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull && mat) n.material = mat; });
+    this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
+    this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
     this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite;
     this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
@@ -573,6 +579,8 @@ class Actor {
     if (this.cur && this.cur !== n) this.cur.fadeOut(.12);
     n.reset(); n.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); n.clampWhenFinished = true; n.fadeIn(this.cur && this.cur !== n ? .12 : 0).play();
     this.cur = n; this.name = name;
+    const e = EXPR_OF_CLIP[name] || 'neutral';
+    if (this.faces && e !== this.expr) { this.expr = e; const m = this.faces(e); for (const k of this.skin) k.material = m; }
   }
   setWeapon(kind) { if (kind === this.weapon) return; this.weapon = kind; for (const k in this.w) this.w[k].visible = k === kind; }
   setArmor(on) { if (on === this.armor) return; this.armor = on; for (const a of this.arm) a.visible = on; }
@@ -613,8 +621,8 @@ function syncPeople(dt, vis) {
   const seen = new Set();
   for (const s of G.S.sv) {
     seen.add(s); let a = people.get(s);
-    if (!a) { a = new Actor(MALE, jobMaterial(s.job)); people.set(s, a); a.job = s.job; }
-    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job)); people.set(s, a); a.job = s.job; }
+    if (!a) { a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); people.set(s, a); a.job = s.job; }
+    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job), false, (e) => jobMaterial(s.job, e)); people.set(s, a); a.job = s.job; }
     const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || (s.mode === 'down' && G.beingCarried(s));
     a.show(!hidden); if (hidden) continue;
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
@@ -634,7 +642,7 @@ function syncZombies(dt, vis) {
   for (const z of G.S.z) {
     if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
     if (!a) {
-      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider')); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
+      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
       else { a = new Actor(LITE, zombieMaterial(z.type), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
@@ -741,6 +749,9 @@ if (INK) inkButton();
   m.bodyImage = m.body.material.map && m.body.material.map.image;
   toonScene(m.scene); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage;
+  const il = new THREE.ImageLoader();
+  await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.webp').then((img) => { FACE_IMG[e] = img; }).catch(() => {})));
+  try { LITE.zombieMap = imgTex(await il.loadAsync(base + 'male_lite_face_angry.webp')); } catch (e) {}   // zombies scowl rather than smile
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
   bGroups.forEach((v) => scene.remove(v.g)); bGroups.clear();
