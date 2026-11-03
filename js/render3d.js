@@ -670,9 +670,10 @@ class Actor {
     if (this.cur && this.cur !== n) this.cur.fadeOut(.12);
     n.reset(); n.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); n.clampWhenFinished = true; n.fadeIn(this.cur && this.cur !== n ? .12 : 0).play();
     this.cur = n; this.name = name;
-    const e = EXPR_OF_CLIP[name] || 'neutral';
-    if (this.faces && e !== this.expr) { this.expr = e; const m = this.faces(e); for (const k of this.skin) k.material = m; }
+    this.setExpr(EXPR_OF_CLIP[name] || this.mood || 'neutral');
   }
+  setExpr(e) { if (this.faces && e !== this.expr) { this.expr = e; const m = this.faces(e); for (const k of this.skin) k.material = m; } }
+  setMood(e) { this.mood = e; if (!EXPR_OF_CLIP[this.name]) this.setExpr(e || 'neutral'); }   // V3D.14: the face follows the survivor's emote between moves
   setWeapon(kind) { if (kind === this.weapon) return; this.weapon = kind; for (const k in this.w) this.w[k].visible = k === kind; }
   setArmor(on) { if (on === this.armor) return; this.armor = on; for (const a of this.arm) a.visible = on; }
   place(wx, wy, faceTo, dt, scale = 1) {
@@ -749,8 +750,8 @@ function syncPeople(dt, vis) {
     const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || (s.mode === 'down' && G.beingCarried(s));
     a.show(!hidden); if (hidden) continue;
     const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
-    a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : null, dt);
-    personAnim(a, s, dt); tickMixer(a, dt, vis);
+    a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : (!s.moving && s.faceW) || null, dt);   // V3D.14: chatting / at the fire: face them
+    personAnim(a, s, dt); a.setMood(s.emo && s.emo.face); if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
   }
   for (const [s, a] of people) if (!seen.has(s)) { a.dispose(); people.delete(s); }
 }
@@ -863,6 +864,7 @@ function syncGhost() {
     scene.add(g); ghost = { g, key }; }
   ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
 }
+const insideBuilding3 = (s) => false;   // hidden survivors are already not shown
 let zCount = 0;
 const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
 function tickMixer(a, dt, vis) {
