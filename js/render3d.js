@@ -491,6 +491,10 @@ function fenceRing(P, w, d, h = .55, gapFront = true) {
 }
 const BUILD = {
   house: (P, w, d) => cabin(P, w * .82, d * .78, '#b5532e', { chimney: true }),
+  bonfire: (P, w, d) => {   // V3D.13: stone ring and a log pyre (the flames are fire FX, lit at night)
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; P.put(new THREE.DodecahedronGeometry(.13, 0), i % 2 ? '#8c8478' : '#7a7368', M4(Math.cos(a) * .42, .08, Math.sin(a) * .42, a)); }
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI + .3; P.put(cyl(.06, .07, .62, 6), i % 2 ? '#6f4a2c' : '#5a3b23', M4(Math.cos(a) * .05, .2, Math.sin(a) * .05, a, 0, .9)); }
+    P.put(new THREE.CircleGeometry(.36, 12).rotateX(-Math.PI / 2), '#3a2a20', M4(0, .02, 0)); },
   inn: (P, w, d) => { cabin(P, w * .84, d * .74, '#3f6e8a', { h: 1.85, chimney: true, sign: '#e8c36a', windows: [w * .02, w * .2, w * .34] });   // V3D.12: everyone's beds
     for (const wx of [-w * .28, w * .02, w * .3]) { P.put(box(.36, .3, .06), '#3b2a1a', M4(wx, 1.45, d * .37 + .08)); P.win(box(.26, .2, .04), M4(wx, 1.45, d * .37 + .105)); }
     P.put(box(.7, .08, .22), '#7b5232', M4(w * .25, .28, d * .37 + .38)); for (const k of [-1, 1]) P.put(box(.06, .26, .2), '#6f4a2c', M4(w * .25 + k * .3, .13, d * .37 + .38)); },
@@ -801,6 +805,41 @@ function syncBags(dt) {
   }
   for (const [b, e] of bagMeshes) if (!seen.has(b)) { scene.remove(e.g); bagMeshes.delete(b); }
 }
+// ---------------------------------------------------------------- fire (V3D.13): 3D flames, embers and smoke on burning buildings
+// and on bonfires at night, with a flickering orange pool of light; burnt shells keep smoking
+const flameT = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 92, 2, 32, 84, 44); r.addColorStop(0, 'rgba(255,255,230,1)'); r.addColorStop(.25, 'rgba(255,214,90,.95)'); r.addColorStop(.6, 'rgba(255,120,30,.75)'); r.addColorStop(1, 'rgba(255,60,10,0)');
+  g.fillStyle = r; g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(52, 46, 62, 74, 54, 98); g.bezierCurveTo(46, 122, 18, 122, 10, 98); g.bezierCurveTo(2, 74, 12, 46, 32, 4); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const flameMat = new THREE.SpriteMaterial({ map: flameT, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const smokeMat = new THREE.SpriteMaterial({ map: glowT, color: 0x5a5048, transparent: true, depthWrite: false, opacity: .5 });
+const firePoolMat = addM(glowT, 0xff8a3a), fires = new Map();
+function makeFire(n) { const g = new THREE.Group(), fl = [], sm = [];
+  for (let i = 0; i < n; i++) { const sp = new THREE.Sprite(flameMat.clone()); sp.userData = { ph: Math.random() * 6, x: (Math.random() - .5), z: (Math.random() - .5), s: .7 + Math.random() * .6 }; g.add(sp); fl.push(sp); }
+  for (let i = 0; i < 6; i++) { const sp = new THREE.Sprite(smokeMat.clone()); sp.userData = { t: Math.random() * 3 }; g.add(sp); sm.push(sp); }
+  const pool = new THREE.Mesh(poolG, firePoolMat.clone()); pool.position.y = .04; pool.renderOrder = 2; g.add(pool); scene.add(g); return { g, fl, sm, pool };
+}
+function syncFires(dt, t) {
+  const want = new Map();
+  for (const b of G.world.buildings) {
+    const bon = b.type === 'bonfire', lvl = bon ? (glowNow > .15 ? 1 : .25) : b.fire ? Math.min(1, .45 + .15 * b.fire) : b.burnt ? 0 : -1;
+    if (lvl < 0) continue; want.set(b, lvl);
+  }
+  for (const [b, lvl] of want) {
+    let f = fires.get(b); const bon = b.type === 'bonfire';
+    if (!f) { f = makeFire(bon ? 5 : 9); f.bon = bon; fires.set(b, f); }
+    const W = b.w * T, D = b.h * T, cx = (b.x + b.w / 2) * T, cz = (b.y + b.h / 2) * T; f.g.position.set(cx, 0, cz);
+    const spread = bon ? .2 : Math.min(W, D) * .32, hgt = bon ? .18 : 1.5;
+    f.fl.forEach((sp, i) => { const u = sp.userData, fk = .8 + .25 * Math.sin(t * 9 + u.ph) + .12 * Math.sin(t * 23 + u.ph * 2);
+      sp.visible = lvl > 0; const sz = (bon ? .85 : 1.35) * u.s * fk * (.5 + .5 * lvl); sp.scale.set(sz * .6, sz, 1); sp.position.set(u.x * spread * 2, hgt + sz * .45 + Math.sin(t * 5 + u.ph) * .04, u.z * spread * 2); sp.material.opacity = .9 * Math.min(1, lvl * 1.2); });
+    f.sm.forEach((sp) => { const u = sp.userData; u.t += dt * (bon ? .5 : .8); if (u.t > 3) { u.t = 0; u.x = (Math.random() - .5) * spread; u.z = (Math.random() - .5) * spread; }
+      const k = u.t / 3; sp.position.set((u.x || 0) + Math.sin(t + u.t) * .1, hgt + .4 + k * (bon ? 1.6 : 2.6), u.z || 0); sp.scale.setScalar(.4 + k * (bon ? .9 : 1.6)); sp.material.opacity = (bon ? .18 : lvl > 0 ? .45 : .3) * (1 - k) * Math.min(1, k * 5); });
+    const fk = .85 + .15 * Math.sin(t * 11) * Math.sin(t * 7.3);
+    const R = bon ? 10 : 5.5 * lvl; f.pool.scale.set(R * fk, 1, R * fk); f.pool.material.opacity = lvl > 0 ? (bon ? (.25 + .55 * glowNow) * Math.min(1, lvl * 1.4) : .55 * lvl) * fk : 0;
+  }
+  for (const [b, f] of fires) if (!want.has(b)) { scene.remove(f.g); fires.delete(b); }
+}
+let fireT = 0;
 // placement ghost (V3D.12): a see-through copy of the building being placed, tinted red where it can't go
 let ghost = null;
 function syncGhost() {
@@ -890,7 +929,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost();
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT);
   if (INK) renderInk(); else renderer.render(scene, cam);
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }

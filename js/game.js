@@ -613,7 +613,7 @@ function draw() {
   if (!G3D) wreckSpots().forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawWreck(x, y) }));
   if (!G3D) for (const wl of world.walls.values()) if (vis(wl.x + .5, wl.y + .5)) items.push({ x1: wl.x, y1: wl.y, x2: wl.x + 1, y2: wl.y + 1, fn: () => drawWall(wl) });
   for (const gp of S.posts || []) if (vis(gp.x + .5, gp.y + .5)) items.push({ x1: gp.x + .1, y1: gp.y + .1, x2: gp.x + .9, y2: gp.y + .9, fn: () => drawPost(gp) });
-  world.buildings.forEach((b) => vis(b.x + b.w / 2, b.y + b.h / 2) && items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { if (!G3D) drawBuilding(b); if (b.fire || b.burnt) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
+  world.buildings.forEach((b) => vis(b.x + b.w / 2, b.y + b.h / 2) && items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { if (!G3D) drawBuilding(b); if ((b.fire || b.burnt) && !G3D) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
   if (!G3D && preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
   S.z.forEach((z) => { if (z.hp > 0 && vis(z.w.x, z.w.y)) items.push({ ...box(z.w.x, z.w.y, .12), fn: () => drawZombie(z) }); });
   corpses.forEach((c) => vis(c.w.x, c.w.y) && items.push({ ...box(c.w.x, c.w.y, .12), fn: () => drawZSprite(c, project(c.w.x, c.w.y)) }));
@@ -1711,7 +1711,7 @@ const BUILDING_STAT = { farm: 'str', field: 'str', water: 'per', well: 'per', me
 const prodMult = (b, working = isWorking(b)) => (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? workBoost(b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && b.type === 'workshop' ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs parts each day; unpaid buildings run at half output ---------------- */
-const UPKEEP = { inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
+const UPKEEP = { bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
 const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1) * DF().upkeep;
 const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
@@ -3038,6 +3038,7 @@ function showPanel(title, back) {
 }
 const BDESC = {
   house: 'A home of their own for one long-time resident: they rest faster and get happier there. Room for 2 more people.',
+  bonfire: 'A big camp fire: burns bright at night and lights the camp around it (about 4 tiles), so you can see your people and the zombies.',
   inn: 'Beds for everyone: sleeps 4 at a time and makes room for 4 more people.',
   water: 'Catches rainwater. An Engineer or Mechanic makes it collect more.',
   well: 'Draws groundwater: almost twice a Rain Collector.',
@@ -3055,7 +3056,7 @@ const BDESC = {
   range: 'Target practice for Perception (better with guns and bows).', track: 'Obstacle runs for Agility (speed and dodging).', sparring: 'Bouts in the ring for Endurance (more HP).',
   barracks: 'Fighters rest and gear up here. Next to an Armory, gear gets cheaper.',
 };
-const BCAT = [['live', 'Living', ['inn', 'house', 'water', 'well', 'farm', 'field', 'canteen', 'storage', 'scrapyard', 'workshop']], ['care', 'Care', ['medic', 'clinic', 'hospital']],
+const BCAT = [['live', 'Living', ['inn', 'house', 'bonfire', 'water', 'well', 'farm', 'field', 'canteen', 'storage', 'scrapyard', 'workshop']], ['care', 'Care', ['medic', 'clinic', 'hospital']],
   ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:metal', 'wall:gate', 'post', 'armory', 'barracks']]];
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
