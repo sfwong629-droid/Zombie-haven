@@ -24,6 +24,7 @@ def landmarks(co):
     # crotch: highest z (lower half) with a clear gap between the legs at x = 0
     # (legs can nearly touch: any clear gap at the centre line counts)
     crotch = max(z for z in S if z < zmax * .45 and not np.any(np.abs(slice_(z)[:, 0]) < .003))
+    if os.environ.get('ZH_CROTCH'): crotch = float(os.environ['ZH_CROTCH'])   # override when thick legs touch (the brute)
     # arms hang apart from the body: slices with a piece entirely beyond 0.2 x height from the centre
     # arms hang apart from the body: slices with a separate piece on each side of the torso
     free = lambda s: [p for p in s if p[0] * p[1] > 0 and min(abs(p[0]), abs(p[1])) > .06]
