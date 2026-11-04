@@ -1076,6 +1076,7 @@ const WAVE = (k) => (B) => {   // right arm up beside the head, forearm swinging
 };
 const WAVE_A = { z: -2.05, z1: -2.65, f0: .35 };
 const POSE = { wave1: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(0) }, wave2: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(1) }, wave: { clip: () => 'cheer', t: .25, face: 'happy', noWeapon: true, yaw: .35 }, cheer: { clip: () => 'cheer', t: .5, face: 'happy', noWeapon: true, yaw: -.35 },
+  walkA: { clip: (c) => (c === 'gun' ? 'gun_hold_walk' : c ? 'melee_hold_walk' : 'walk'), t: .12, face: 'neutral', yaw: Math.PI / 2 }, walkB: { clip: (c) => (c === 'gun' ? 'gun_hold_walk' : c ? 'melee_hold_walk' : 'walk'), t: .52, face: 'neutral', yaw: Math.PI / 2 },   // V3D.18 the exploration bar
   ready: { clip: (c) => (c === 'gun' ? 'gun_hold_idle' : c ? 'melee_hold_idle' : 'idle'), t: .3, face: 'angry', yaw: -.4 }, down: { clip: () => 'idle', t: .3, face: 'ko', noWeapon: true, yaw: 0 } };
 window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });

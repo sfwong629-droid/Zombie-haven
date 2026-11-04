@@ -1,5 +1,11 @@
 # Changelog
 
+## V3D.18 — Exploration, Dungeon Village 2 style (3D mode)
+- Exploring needs a lead: new leads come at 7:00 and 15:00 (not every day), at most two wait, each lasts ~10 game hours. The Explore button greys out with none and shows a red count when there are some.
+- Trips are short and run on game time (pause and speed apply): 2 h low, 3 h medium, 5 h high risk.
+- A bar above the bottom buttons shows the squad walking out, stopping at three search points (loot pops or a shaking zombie for trouble) and walking home. Tap it for details or to recall.
+- Trouble on a trip is a short pop instead of a card that stops the game.
+
 ## V3D.17 — Feedback round 4 (3D mode, branch art-direction-b)
 - Trader shows in 3D (purple, straw hat) and sets up on an open patch, never on a building.
 - Loot bags nobody fetched get picked up by the nearest idle person. People step apart instead of stacking.

@@ -256,3 +256,26 @@ html.cozy .evStage .glow .ic .zi-t .zi { width: 46px; height: 46px; }
 html.cozy .icon.clayItem { display: flex; align-items: center; justify-content: center; background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 12px; }
 html.cozy .icon.clayItem.empty svg { opacity: .28; filter: grayscale(1); }
 html.cozy .evBox button.act:disabled { opacity: .5; filter: grayscale(.6); cursor: not-allowed; box-shadow: none; }
+
+/* V3D.18 exploration bar (DV2 style): the squad walks along the bottom of the screen */
+.expBar { position: fixed; left: 10px; right: 96px; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); height: 58px; z-index: 30; background: linear-gradient(#cfe7f2, #e8f3dc 60%); border: 2.5px solid var(--cocoa, #5a3f31); border-radius: 16px; box-shadow: 0 3px 0 rgba(90, 63, 49, .3); overflow: hidden; cursor: pointer; }
+.expBar .ebPath { position: absolute; left: 8%; right: 10%; bottom: 9px; height: 8px; border-radius: 99px; background: repeating-linear-gradient(90deg, #c9a676 0 10px, #bf9a68 10px 20px); border: 2px solid #a8865a; }
+.expBar .ebEnd { position: absolute; bottom: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.expBar .ebEnd.home { left: 1%; } .expBar .ebEnd.dest { right: 1%; }
+.expBar .ebStop { position: absolute; bottom: 8px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #fff8ec; border: 2.5px solid var(--cocoa, #5a3f31); }
+.expBar .ebStop.done { background: #7fbf5a; }
+.expBar .ebSquad { position: absolute; bottom: 12px; height: 40px; width: 0; transition: left .12s linear; }
+.expBar .ebF { position: absolute; bottom: 0; left: calc(var(--i) * -15px - 14px); width: 30px; height: 40px; }
+.expBar .ebSquad.back .ebF { left: calc(var(--i) * 15px - 14px); transform: scaleX(-1); }
+.expBar .ebF img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 0 rgba(60, 40, 20, .25)); }
+.expBar .ebF .fa { animation: evWave1 .5s steps(1) infinite; } .expBar .ebF .fb { opacity: 0; animation: evWave .5s steps(1) infinite; }
+.expBar .ebF:nth-child(2) img { animation-delay: -.25s; }
+.expBar .ebSquad.stop .ebF img { animation-play-state: paused; }
+.expBar .ebTime { position: absolute; left: 6px; top: 3px; font: 700 11px Nunito, sans-serif; color: var(--cocoa, #5a3f31); background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 99px; padding: 0 6px; }
+.expBar .ebPop { position: absolute; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; font: 700 12px Fredoka, Nunito, sans-serif; color: var(--cocoa, #5a3f31); background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 99px; padding: 1px 7px 1px 3px; white-space: nowrap; animation: ebPop 2.6s ease-out both; }
+.expBar .ebPop.bad { background: #ffe0d8; } .expBar .ebPop.bad svg { animation: evShake .2s linear 6; }
+@keyframes ebPop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.6); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 20% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -10px); } }
+html.cozy .lm.dim { opacity: .55; filter: grayscale(.5); }
+html.cozy .lm[data-badge]:not([data-badge=""])::after { content: attr(data-badge); position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; border-radius: 9px; background: #e8584a; color: #fff8ec; font: 800 11px/18px Nunito, sans-serif; text-align: center; border: 2px solid var(--cocoa, #5a3f31); }
+html.cozy .lm { position: relative; }
+.leadNone { display: flex; gap: 10px; align-items: center; } .leadNone .lnIc { flex: none; }
