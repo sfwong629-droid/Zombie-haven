@@ -1,5 +1,11 @@
 # Changelog
 
+## V3D.19 — Comic ink outlines (3D mode)
+- New outline pass in the style of comic-book / graphic-novel games: bold, even dark lines around every silhouette (people, zombies, buildings, props, rocks) and on strong corners (roof and wall edges, box edges). No pen wobble.
+- Grass tufts, pebbles, leaves, rain, snow and effects are left out, so the ground stays clean.
+- On by default. The pen button in the bottom bar turns it off (remembered); `?ink=0` / `?ink=1` force it.
+- The old thin hull outlines are hidden while ink is on, so edges are not doubled.
+
 ## V3D.18 — Exploration, Dungeon Village 2 style (3D mode)
 - Exploring needs a lead: new leads come at 7:00 and 15:00 (not every day), at most two wait, each lasts ~10 game hours. The Explore button greys out with none and shows a red count when there are some.
 - Trips are short and run on game time (pause and speed apply): 2 h low, 3 h medium, 5 h high risk.

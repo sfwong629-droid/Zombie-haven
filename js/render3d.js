@@ -415,9 +415,9 @@ function buildForest() {
   forest.push(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
   forest.push(instD(tyreG, tyres, () => '#2e2c2a', true));
   const SP = SEASON_PAL[season()];
-  forest.push(instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0]));
+  { const t = instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0]); t.userData.noInk = true; forest.push(t); }   // grass tufts are too thin to ink
   forest.push(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true));
-  forest.push(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]));
+  { const t = instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]); t.userData.noInk = true; forest.push(t); }
   for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
   const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t));
   forest.push(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8));
@@ -968,53 +968,69 @@ function tickMixer(a, dt, vis) {
 }
 
 
-// ---------------------------------------------------------------- ink lines (V3D.4): the ink-town mockup's thick outlines
-// One extra pass: the scene is drawn into a texture with its depth; a full-screen shader then inks every place where the
-// depth surface bends or jumps (outer silhouettes, roof/wall corners, the base of walls, tree facets). The camera is
-// orthographic, so a flat surface has zero second derivative of depth and only real edges light up. A slow noise
-// nudges the lookup so the lines wobble a little, like a pen. Toggle: the pen button, ?ink=0, ZH3D.setInk(bool).
-let INK = new URLSearchParams(location.search).get('ink') === '1';   // set aside for now: off unless ?ink=1
-let inkRT = null;
+// ---------------------------------------------------------------- comic ink (V3D.19): bold, even outlines like a graphic novel
+// Two passes: the scene (colour + depth) and a normals pass (same scene, MeshNormalMaterial). A full-screen shader then inks
+// (1) depth jumps: every silhouette against what is behind it, and (2) normal breaks: roof/wall corners, box edges, folds.
+// Lines are a fixed width on screen (no wobble), dark cocoa, and fade a little with distance so far crowds stay readable.
+// The old inverted-hull outlines are hidden while ink is on, so edges are not doubled. Toggle: the pen button, ?ink=0/1.
+let INK = (() => { const q = new URLSearchParams(location.search).get('ink'); if (q === '0' || q === '1') return q === '1'; try { return localStorage.getItem('zh3d_ink') !== '0'; } catch (e) { return true; } })();
+let inkRT = null, nrmRT = null;
 const inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), inkScene = new THREE.Scene();
+const nrmMat = new THREE.MeshNormalMaterial();
 const inkMat = new THREE.ShaderMaterial({
-  uniforms: { tCol: { value: null }, tDep: { value: null }, px: { value: new THREE.Vector2() }, near: { value: .1 }, far: { value: 400 },
-    r: { value: 2 }, pixW: { value: .03 }, bend: { value: 1.3 }, wob: { value: 1.2 }, ink: { value: new THREE.Color(0x1e140f) } },
+  uniforms: { tCol: { value: null }, tDep: { value: null }, tNrm: { value: null }, px: { value: new THREE.Vector2() }, near: { value: .1 }, far: { value: 400 },
+    r: { value: 1.5 }, dJump: { value: .14 }, nBreak: { value: .5 }, strength: { value: .9 }, ink: { value: new THREE.Color(0x22160f) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-  fragmentShader: `uniform sampler2D tCol, tDep; uniform vec2 px; uniform float near, far, r, pixW, bend, wob; uniform vec3 ink; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tCol, tDep, tNrm; uniform vec2 px; uniform float near, far, r, dJump, nBreak, strength; uniform vec3 ink; varying vec2 vUv;
     float D(vec2 u){ return near + texture2D(tDep, u).x * (far - near); }
-    float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h(i), h(i + vec2(1., 0.)), f.x), mix(h(i + vec2(0., 1.)), h(i + 1.), f.x), f.y); }
+    vec3 N(vec2 u){ return texture2D(tNrm, u).xyz * 2. - 1.; }
     void main(){
-      vec2 q = vUv / px / 36.;
-      vec2 uv = vUv + (vec2(n(q), n(q + 17.3)) - .5) * px * wob * r;
-      uv = (floor(uv / px) + .5) * px;                 // whole pixels: a flat surface then gives exactly zero
-      float R = floor(r + .5), c = D(uv), e = 0.;
-      vec2 o0 = vec2(R, 0.) * px, o1 = vec2(0., R) * px, o2 = vec2(R, R) * px, o3 = vec2(R, -R) * px;
-      e = max(e, abs(D(uv + o0) + D(uv - o0) - 2. * c));
-      e = max(e, abs(D(uv + o1) + D(uv - o1) - 2. * c));
-      e = max(e, abs(D(uv + o2) + D(uv - o2) - 2. * c));
-      e = max(e, abs(D(uv + o3) + D(uv - o3) - 2. * c));
-      float t = R * pixW * bend;                       // only strong bends (~50 deg): corners, roof edges, silhouettes; not roof ribs
-      float a = smoothstep(t, t * 2.2, e) * (.75 + .25 * n(q * 3. + 5.));
+      float c = D(vUv); vec3 nc = N(vUv); float cs = step(.5, length(nc));
+      float de = 0., ne = 0.;
+      for (int i = 0; i < 8; i++) {
+        float a = float(i) * 0.785398;
+        vec2 o = vec2(cos(a), sin(a)) * r * px;
+        float d = D(vUv + o);
+        vec3 n = N(vUv + o); float solid = step(.5, length(n));   // grass, leaves and effects are left out of the normals pass: they never ink
+        de = max(de, (c - d) * solid);                 // a nearer solid surface next to this pixel: the line sits just outside the object
+        ne = max(ne, (1. - dot(nc, n)) * step(abs(d - c), 0.6) * solid * cs);   // a crease inside one solid surface
+      }
+      float e = max(smoothstep(dJump, dJump * 1.8, de), smoothstep(nBreak, nBreak * 1.6, ne));
       vec4 col = texture2D(tCol, vUv);
-      gl_FragColor = vec4(mix(col.rgb, ink, a * .92), 1.);
+      gl_FragColor = vec4(mix(col.rgb, ink, e * strength), 1.);
       #include <colorspace_fragment>
     }`,
   depthTest: false, depthWrite: false,
 });
 inkScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), inkMat));
 const _db = new THREE.Vector2();
+let hullsShown = true, nrmSkip = [], nrmSkipT = 0;
+function showHulls(v, force) { if (hullsShown === v && !force) return; hullsShown = v; scene.traverse((o) => { if (o.userData.hull) o.visible = v; }); }
+function nrmSkipList() {   // things that must not go into the normals pass: sprites, particles, lines, see-through and cut-out leaves
+  const l = []; scene.traverse((o) => { if (!o.visible) return; const m = o.material; if (o.userData.noInk || o.isSprite || o.isPoints || o.isLine || (m && (m.transparent || m.alphaTest > 0 || (Array.isArray(m) && m.some((x) => x.transparent))))) l.push(o); }); return l;
+}
 function renderInk() {
   renderer.getDrawingBufferSize(_db);
   if (!inkRT || inkRT.width !== _db.x || inkRT.height !== _db.y) {
-    if (inkRT) inkRT.dispose();
+    if (inkRT) { inkRT.dispose(); nrmRT.dispose(); }
     inkRT = new THREE.WebGLRenderTarget(_db.x, _db.y, { type: THREE.HalfFloatType, samples: 4 });
     inkRT.depthTexture = new THREE.DepthTexture(_db.x, _db.y); inkRT.depthTexture.type = THREE.UnsignedIntType;
+    nrmRT = new THREE.WebGLRenderTarget(_db.x, _db.y, { type: THREE.UnsignedByteType });
+    nrmRT.depthTexture = new THREE.DepthTexture(_db.x, _db.y); nrmRT.depthTexture.type = THREE.UnsignedIntType;   // depth of the inkable things only
   }
-  renderer.setRenderTarget(inkRT); renderer.render(scene, cam); renderer.setRenderTarget(null);
+  showHulls(false);
+  renderer.setRenderTarget(inkRT); renderer.render(scene, cam);
+  // normals pass: same camera, no shadows, background black
+  if ((nrmSkipT -= 1) <= 0) { showHulls(false, true); nrmSkip = nrmSkipList(); nrmSkipT = 20; }   // new buildings and actors appear all the time
+  const bg = scene.background, fog = scene.fog, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), su = renderer.shadowMap.needsUpdate; scene.background = null; scene.fog = null; renderer.shadowMap.needsUpdate = false;
+  for (const o of nrmSkip) o.visible = false;
+  scene.overrideMaterial = nrmMat; renderer.setRenderTarget(nrmRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.render(scene, cam);
+  scene.overrideMaterial = null; for (const o of nrmSkip) o.visible = true;
+  scene.background = bg; scene.fog = fog; renderer.setClearColor(cc, ca); renderer.shadowMap.needsUpdate = su;
+  renderer.setRenderTarget(null);
   const u = inkMat.uniforms, ppu = (G.BASE_TW / 2 * G.cam.z) / (T / SQ2);   // CSS px per world unit
-  u.tCol.value = inkRT.texture; u.tDep.value = inkRT.depthTexture; u.px.value.set(1 / _db.x, 1 / _db.y);
-  u.near.value = cam.near; u.far.value = cam.far; u.r.value = Math.max(1.5, 1.6 * dpr); u.pixW.value = 1 / (ppu * dpr);
+  u.tCol.value = inkRT.texture; u.tDep.value = nrmRT.depthTexture; u.tNrm.value = nrmRT.texture; u.px.value.set(1 / _db.x, 1 / _db.y);
+  u.near.value = cam.near; u.far.value = cam.far; u.r.value = Math.max(1.2, Math.min(3, ppu * .018)) * dpr;
   renderer.render(inkScene, inkCam);
 }
 function inkButton() {
@@ -1039,7 +1055,7 @@ function frame() {
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
   syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
-  if (INK) renderInk(); else renderer.render(scene, cam);
+  if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
 }
@@ -1083,7 +1099,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 window.ZH3D = { scene: () => scene, snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
-if (INK) inkButton();
+inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
   const [m, l, t] = await Promise.all([load(base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
