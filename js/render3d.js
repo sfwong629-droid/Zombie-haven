@@ -672,7 +672,10 @@ const LOOK_GLSL = `{ vec3 c = diffuseColor.rgb; vec3 n = c / max(1e-4, c.r + c.g
     float isSkin = (1. - smoothstep(.022, .04, distance(n, sn))) * smoothstep(.12, .2, lum);
     float isHair = (1. - smoothstep(.06, .11, distance(n, sn))) * smoothstep(.011, .016, lum) * (1. - smoothstep(.07, .1, lum));
     diffuseColor.rgb = mix(c, min(c * skinMul, vec3(1.)), isSkin); diffuseColor.rgb = mix(diffuseColor.rgb, min(c * hairMul, vec3(1.)), isHair); }`;
-const CHAR_V2 = new URLSearchParams(location.search).get('char') === 'v2' || location.hash === '#v2';   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
+const CHAR_V2 = (() => {   // #v2 turns the new survivor on and remembers it; #v1 turns it off
+  try { if (location.hash === '#v2') localStorage.setItem('zh_char', 'v2'); if (location.hash === '#v1') localStorage.removeItem('zh_char'); } catch (e) {}
+  let ls = false; try { ls = localStorage.getItem('zh_char') === 'v2'; } catch (e) {}
+  return new URLSearchParams(location.search).get('char') === 'v2' || location.hash === '#v2' || ls; })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
 let v2Mat = null;
 function jobMaterial(job, expr = 'neutral', look = null) {
   if (MALE && MALE.v2) return (v2Mat ||= nightLit(new THREE.MeshToonMaterial({ map: MALE.body.material.map, gradientMap: grad }), .32));

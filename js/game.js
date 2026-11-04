@@ -3989,9 +3989,9 @@ function clearSlot(i) { try { const k = SLOT_KEYS[i]; [k, BAK(k), BAD(k)].forEac
 const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
 function playSlot(i, newName, opts) {
   try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { clearSlot(i); localStorage.setItem('zhNewName', newName || 'Zombie Haven'); localStorage.setItem('zhNewOpts', JSON.stringify(opts || {})); } } catch (e) { /* storage blocked: play without saving */ }
-  location.href = location.pathname + '?play=1';
+  location.href = location.pathname + '?play=1' + location.hash;   // V3D.19: keep #v2 (test character) when the game starts
 }
-function backToTitle() { saveGame(); location.href = location.pathname; }
+function backToTitle() { saveGame(); location.href = location.pathname + location.hash; }
 function showTitle() {
   $('title').style.display = 'flex'; $('slots').style.display = 'none';
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
