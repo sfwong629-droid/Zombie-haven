@@ -57,6 +57,9 @@ def clip_plan():
     plan.append(('zombie_walk', 'zombie_walk', None, 1.4, lambda s: s / 1.4))      # 3D-only extra clips
     plan.append(('run', 'run', None, .62, lambda s: s / .62))
     plan.append(('zombie_run', 'zombie_run', None, .72, lambda s: s / .72))
+    for name, dur in (('work_chop', 1.3), ('work_hammer', 1.0), ('work_dig', 1.4), ('work_tinker', 1.6), ('sit', 3.0), ('sleep', 4.0),
+                      ('eat', 2.2), ('talk', 2.4), ('wave', 1.0), ('carry_walk', .9), ('carry_idle', 2.0), ('walk_f', .86)):   # V3D.19 everyday clips
+        plan.append((name, name, None, dur, lambda s, d=dur: s / d))
     return plan
 
 def key_frames(ao, name, frames):

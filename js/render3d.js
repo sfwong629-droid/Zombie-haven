@@ -712,7 +712,7 @@ const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge
 const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
 class Actor {
   constructor(src, mat, lite, faces = null) {
-    this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; scene.add(this.o);
+    this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
     this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
     this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
@@ -778,6 +778,19 @@ function addHat(a, job, equipped = false) {   // parent to the head bone, placed
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']);
+const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
+function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
+  const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path);
+  let c = null;
+  if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
+  else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
+  else if (still && s.mode === 'chat') c = 'talk';
+  else if (still && s.mode === 'campfire') c = 'sit';
+  else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
+  else if (still && s.mode === 'loot') c = 'work_tinker';
+  else if (anim === 'walk' && !hold && a.src === FEMALE3D && s.mode !== 'hide' && s.mode !== 'rescueTo') c = 'walk_f';
+  return c && has(c) ? c : null;
+}
 function personAnim(a, s, dt) {
   const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
   a.setWeapon(model);
@@ -785,6 +798,7 @@ function personAnim(a, s, dt) {
   const [anim] = G.humanAnim(s, G.facing(s));
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
+  const day = everyday(a, s, anim, hold); if (day) { a.play(day); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
       const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][(Math.random() * 3) | 0];

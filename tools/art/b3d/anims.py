@@ -312,6 +312,136 @@ def zombie_run(t):
     p['bob'] = .04 * math.cos(2 * ph) - .085
     return p
 
+
+# ------------------------------------------------------------------ V3D.19 everyday clips (3D only, not in CLIPS): work, rest, social, carrying
+def _crouch(p, depth=1.0):
+    """Both knees deep, hips low (for tinkering)."""
+    p.update({'thigh.L': (95 * depth, 0, -8), 'thigh.R': (90 * depth, 0, 8), 'shin.L': (-125 * depth, 0, 0), 'shin.R': (-120 * depth, 0, 0),
+              'foot.L': (30 * depth, 0, 0), 'foot.R': (30 * depth, 0, 0)})
+    p['bob'] = -.24 * depth
+    return p
+
+def _kneel(p):
+    """Right knee on the ground, left foot planted in front."""
+    p.update({'thigh.L': (85, 0, -6), 'shin.L': (-88, 0, 0), 'foot.L': (4, 0, 0),
+              'thigh.R': (-8, 0, 6), 'shin.R': (-100, 0, 0), 'foot.R': (40, 0, 0)})
+    p['bob'] = -.2
+    return p
+
+def _seated(p):
+    """Sitting on a crate or bench about a shin high: thighs level, shins down, hands on the knees by default."""
+    p.update({'thigh.L': (88, 0, -6), 'thigh.R': (88, 0, 6), 'shin.L': (-86, 0, 0), 'shin.R': (-86, 0, 0), 'foot.L': (0, 0, 0), 'foot.R': (0, 0, 0),
+              'upperarm.L': (34, 0, 8), 'upperarm.R': (34, 0, -8), 'forearm.L': (40, 0, 0), 'forearm.R': (40, 0, 0), 'pelvis': (-4, 0, 0)})
+    p['bob'] = -.2
+    return p
+
+def work_chop(t):
+    """Chopping wood with the axe: big overhead wind-up, fast strike down in front, short recovery."""
+    K = [(0, {'ua': 20, 'fa': 30, 'wr': 10, 'lean': 6, 'tw': 0, 'k': 1.0}),
+         (.42, {'ua': 165, 'fa': 55, 'wr': -10, 'lean': -8, 'tw': -12, 'k': .8}),
+         (.5, {'ua': 168, 'fa': 58, 'wr': -8, 'lean': -9, 'tw': -14, 'k': .8}),
+         (.62, {'ua': 70, 'fa': 10, 'wr': -40, 'lean': 26, 'tw': 8, 'k': 1.5}),
+         (.72, {'ua': 55, 'fa': 8, 'wr': -45, 'lean': 30, 'tw': 10, 'k': 1.6}),
+         (1, {'ua': 20, 'fa': 30, 'wr': 10, 'lean': 6, 'tw': 0, 'k': 1.0})]
+    k = keys(K, t)
+    p = soft_legs({'upperarm.R': (k['ua'], 0, -4), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], 0, 0),
+                   'upperarm.L': (k['ua'] * .95, 0, 10), 'forearm.L': (k['fa'] + 10, 0, 0),
+                   'chest': (k['lean'], k['tw'], 0), 'head': (-6 - k['lean'] * .3, 0, 0)}, k['k'])
+    return p
+
+def work_hammer(t):
+    """Building or fixing: kneeling, quick hammer taps with the right hand, left hand steadying the plank."""
+    s = math.sin(2 * math.pi * t * 2)                       # two taps per loop
+    hit = max(0.0, s)
+    p = _kneel({'chest': (30 + 4 * hit, -8, 0), 'neck': (6, 0, 0), 'head': (8, 4, 0),
+                'upperarm.R': (78 + 32 * s, 0, -10), 'forearm.R': (60 - 40 * s, 0, 0), 'hand.R': (-20 * s, 0, 0),
+                'upperarm.L': (62, 0, 18), 'forearm.L': (50, 0, 0), 'hand.L': (-10, 0, 0)})
+    return p
+
+def work_dig(t):
+    """Farming: bent over, both hands on a hoe, pulling the soil towards the feet."""
+    s = math.sin(2 * math.pi * t)
+    p = soft_legs({'chest': (30 + 12 * s, 0, 0), 'pelvis': (8, 0, 0), 'head': (4 + 6 * s, 0, 0),
+                   'upperarm.R': (58 - 26 * s, 0, -12), 'forearm.R': (28 + 18 * s, 0, 0),
+                   'upperarm.L': (62 - 26 * s, 0, 12), 'forearm.L': (24 + 18 * s, 0, 0)}, 1.4)
+    p['thigh.L'] = (34, 0, -4); p['shin.L'] = (-44, 0, 0); p['thigh.R'] = (-4, 0, 4); p['shin.R'] = (-30, 0, 0)
+    return p
+
+def work_tinker(t):
+    """Repairing or crafting at ground level: crouched, both hands busy in front, small turning motions."""
+    s, c = math.sin(2 * math.pi * t), math.cos(2 * math.pi * t * 2)
+    p = _crouch({'chest': (34, 6 * s, 0), 'neck': (8, 0, 0), 'head': (10, 10 * s, 0),
+                 'upperarm.R': (70 + 6 * c, 0, -8), 'forearm.R': (70 + 10 * s, 0, 0), 'hand.R': (0, 30 * s, 0),
+                 'upperarm.L': (70 - 6 * c, 0, 8), 'forearm.L': (70 - 10 * s, 0, 0), 'hand.L': (0, -20 * s, 0)})
+    return p
+
+def sit(t):
+    """Sitting on a crate or bench, relaxed breathing, looking around a little."""
+    w = math.sin(2 * math.pi * t)
+    p = _seated({'chest': (4 + 2 * w, 0, 0), 'head': (-4 - 2 * w, 14 * math.sin(2 * math.pi * t + 1), 0)})
+    return p
+
+def sleep(t):
+    """Lying on the back asleep: slow breathing, head turned to the side, arms on the belly."""
+    w = math.sin(2 * math.pi * t)
+    p = {'pelvis': (-88, 0, 0), 'chest': (-3 + 2.5 * w, 0, 0), 'neck': (0, 0, 0), 'head': (-6, 32, 0),
+         'thigh.L': (8, 0, -4), 'thigh.R': (14, 0, 6), 'shin.L': (-8, 0, 0), 'shin.R': (-22, 0, 0),
+         'upperarm.L': (-4, 0, 6), 'upperarm.R': (-2, 0, -6), 'forearm.L': (14, 0, 0), 'forearm.R': (16, 0, 0)}   # arms resting along the body
+    p['bob'] = -.215
+    return p
+
+def eat(t):
+    """Sitting and eating: right hand goes from the lap to the mouth, a little chewing nod."""
+    K = [(0, {'ua': 30, 'fa': 50, 'hd': -2}), (.25, {'ua': 46, 'fa': 128, 'hd': 4}), (.45, {'ua': 46, 'fa': 132, 'hd': 6}),
+         (.6, {'ua': 34, 'fa': 70, 'hd': 0}), (1, {'ua': 30, 'fa': 50, 'hd': -2})]
+    k = keys(K, t)
+    p = _seated({'chest': (10, 0, 0), 'head': (k['hd'] + 2 * math.sin(2 * math.pi * t * 4), 0, 0)})
+    p['upperarm.R'] = (k['ua'], 0, -14); p['forearm.R'] = (k['fa'], 0, 0); p['hand.R'] = (-20, 0, 0)
+    p['upperarm.L'] = (40, 0, 10); p['forearm.L'] = (78, 0, 0)          # left hand holds the bowl
+    return p
+
+def talk(t):
+    """Standing and chatting: weight shifts, hands gesture, head nods."""
+    s, c = math.sin(2 * math.pi * t), math.sin(2 * math.pi * t * 2 + .7)
+    p = soft_legs({'chest': (3, 8 * s, 0), 'head': (-6 + 5 * c, 10 * s, 4 * s),
+                   'upperarm.R': (22 + 16 * max(0.0, c), 0, -10), 'forearm.R': (70 + 20 * c, 0, 0), 'hand.R': (0, 40 * c, 0),
+                   'upperarm.L': (14 + 10 * max(0.0, -s), 0, 12), 'forearm.L': (50 + 22 * max(0.0, -s), 0, 0)}, .8)
+    p['thigh.R'] = (10 + 6 * s, 0, 4)
+    return p
+
+def wave(t):
+    """Waving hello: right arm high, forearm swinging side to side."""
+    s = math.sin(2 * math.pi * t * 2)
+    p = soft_legs({'chest': (-2, -6, 0), 'head': (-10, -6, 6),
+                   'upperarm.R': (8, 0, -142 + 10 * s), 'forearm.R': (4 + 10 * s, 0, 0), 'hand.R': (0, 0, 0),
+                   'upperarm.L': (4, 0, 8), 'forearm.L': (24, 0, 0)}, .8)
+    return p
+
+CARRY_ARMS = {'upperarm.R': (42, 0, -14), 'upperarm.L': (42, 0, 14), 'forearm.R': (68, 0, 0), 'forearm.L': (68, 0, 0), 'hand.R': (-10, 0, 0), 'hand.L': (-10, 0, 0)}
+
+def carry_walk(t):
+    """Walking with a crate held against the belly: arms locked, a little lean back, shorter steps."""
+    p = legs_walk({}, t, .8)
+    p.update(CARRY_ARMS); p['chest'] = (-6, 0, 0); p['head'] = (-10, 0, 0)
+    return steady_head(p)
+
+def carry_idle(t):
+    """Standing with the crate."""
+    w = math.sin(2 * math.pi * t)
+    p = soft_legs({'chest': (-6 + 2 * w, 0, 0), 'head': (-10, 0, 0)}, .9)
+    p.update(CARRY_ARMS)
+    return p
+
+def walk_f(t):
+    """Female walk: lighter, narrower steps, hips sway side to side, arms swing closer to the body."""
+    p = legs_walk({}, t, .85)
+    ph = 2 * math.pi * t; sn = math.sin(ph)
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (-26 * sg * sn, 0, -6 * sg); p['forearm.' + n] = (26 + 20 * max(0.0, -sg * sn), 0, 0)
+        th = p['thigh.' + n]; p['thigh.' + n] = (th[0], 0, -5 * sg)
+    p['pelvis'] = (0, 14 * sn, 7 * sn); p['chest'] = (4, -10 * sn, -4 * sn); p['head'] = (-10, 0, 0)
+    return steady_head(p, 0, 0)
+
 CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'melee'/'gun')
     'idle': (idle, 8, 160, True, None), 'walk': (walk, 8, 110, True, None),
     'hold_idle': (None, 8, 160, True, 'any'), 'hold_walk': (None, 8, 110, True, 'any'),
