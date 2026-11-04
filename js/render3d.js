@@ -702,7 +702,8 @@ const zMats = {};
 // V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
 function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
 // V3D.21: each zombie type gets its own Hunyuan model when there is one (ZMODEL); the rest wear reskinned survivor bodies
-const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: .525, zombie_run: 1.197 } } }, ZSRC = {};
+const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: .525, zombie_run: 1.197 } },
+  runner: { url: 'assets/characters/ai3d_v2/zombie_runner.glb', stride: { zombie_walk: .538, zombie_run: 1.273 } } }, ZSRC = {};
 function zombieOwn(type) {
   const src = ZSRC[type]; if (!src) return null;
   const t = ZSKIN_TINT[type] || [1, 1, 1], key = 'own|' + type;

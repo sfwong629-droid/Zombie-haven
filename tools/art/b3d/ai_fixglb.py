@@ -1,4 +1,7 @@
-"""python3 fixglb.py IN.glb OUT.glb [flip]: apply transforms, optionally turn 180 deg to face -Y, drop small loose islands."""
+"""python3 fixglb.py IN.glb OUT.glb [flip]: apply transforms, optionally turn 180 deg to face -Y, drop small loose islands.
+If ai_model.py prep then fails with an empty weight list (fill_unweighted TypeError), prep the original file instead
+(when it already faces -Y: toes at negative y).
+Pipeline: [ai_fixglb.py] -> ai_model.py prep -> ai_solefix.py -> export3d.main(rig, out, 1024, .3, 5, 24), FACE=False."""
 import bpy, math, sys, numpy as np, bmesh
 from mathutils import Matrix
 src, out = sys.argv[1], sys.argv[2]; flip = 'flip' in sys.argv
