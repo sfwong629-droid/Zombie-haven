@@ -782,13 +782,14 @@ const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
   const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path);
+  if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
   else if (still && s.mode === 'campfire') c = 'sit';
   else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
-  else if (still && s.mode === 'loot') c = 'work_tinker';
+  else if (still && s.mode === 'loot') c = 'pickup';
   else if (anim === 'walk' && !hold && a.src === FEMALE3D && s.mode !== 'hide' && s.mode !== 'rescueTo') c = 'walk_f';
   return c && has(c) ? c : null;
 }
@@ -799,7 +800,7 @@ function personAnim(a, s, dt) {
   const [anim] = G.humanAnim(s, G.facing(s));
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
-  const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
       const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][(Math.random() * 3) | 0];

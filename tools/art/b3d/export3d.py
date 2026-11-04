@@ -60,6 +60,7 @@ def clip_plan():
     for name, dur in (('work_chop', 1.3), ('work_hammer', 1.0), ('work_dig', 1.4), ('work_tinker', 1.6), ('sit', 3.0), ('sleep', 4.0),
                       ('eat', 2.2), ('talk', 2.4), ('wave', 1.0), ('carry_walk', .9), ('carry_idle', 2.0), ('walk_f', .86)):   # V3D.19 everyday clips
         plan.append((name, name, None, dur, lambda s, d=dur: s / d))
+    plan.append(('pickup', 'pickup', None, 1.1, lambda s: min(1.0, s / 1.1)))   # one-shot
     return plan
 
 def key_frames(ao, name, frames):
@@ -238,7 +239,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             if base in COLORS: plain(m, COLORS[base], rough=.5 if base.startswith('a_') else .9, metal=.0)
     # animations
     for name, clip, cls, dur, tf in clip_plan():
-        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else True
+        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip != 'pickup'
         fn = anims.pose_fn(clip, cls) if clip in anims.CLIPS else getattr(anims, clip)
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)

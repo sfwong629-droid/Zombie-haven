@@ -442,6 +442,21 @@ def walk_f(t):
     p['pelvis'] = (0, 14 * sn, 7 * sn); p['chest'] = (4, -10 * sn, -4 * sn); p['head'] = (-10, 0, 0)
     return steady_head(p, 0, 0)
 
+def pickup(t):
+    """Picking something up off the ground (loot bag, crate, supplies): squat and bend, both hands reach down,
+    grab, stand back up hugging it. Plays once (about 1.1 s); ends in the carry pose."""
+    K = [(0, {'lean': 3, 'th': 18, 'sh': -33, 'ft': 15, 'bob': -.035, 'ua': 4, 'fa': 22, 'hd': -6}),
+         (.32, {'lean': 52, 'th': 78, 'sh': -105, 'ft': 30, 'bob': -.2, 'ua': 66, 'fa': 12, 'hd': 18}),
+         (.5, {'lean': 56, 'th': 82, 'sh': -110, 'ft': 30, 'bob': -.21, 'ua': 70, 'fa': 16, 'hd': 20}),
+         (.82, {'lean': -4, 'th': 20, 'sh': -34, 'ft': 15, 'bob': -.04, 'ua': 42, 'fa': 68, 'hd': -10}),
+         (1, {'lean': -6, 'th': 18, 'sh': -32, 'ft': 15, 'bob': -.035, 'ua': 42, 'fa': 68, 'hd': -10})]
+    k = keys(K, t)
+    return {'chest': (k['lean'], 0, 0), 'pelvis': (k['lean'] * .35, 0, 0), 'head': (k['hd'], 0, 0),
+            'thigh.L': (k['th'], 0, -6), 'thigh.R': (k['th'] * .9, 0, 6), 'shin.L': (k['sh'], 0, 0), 'shin.R': (k['sh'] * .95, 0, 0),
+            'foot.L': (k['ft'], 0, 0), 'foot.R': (k['ft'], 0, 0),
+            'upperarm.L': (k['ua'], 0, 14), 'upperarm.R': (k['ua'], 0, -14), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0),
+            'hand.L': (-10, 0, 0), 'hand.R': (-10, 0, 0), 'bob': k['bob']}
+
 CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'melee'/'gun')
     'idle': (idle, 8, 160, True, None), 'walk': (walk, 8, 110, True, None),
     'hold_idle': (None, 8, 160, True, 'any'), 'hold_walk': (None, 8, 110, True, 'any'),
