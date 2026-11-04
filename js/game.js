@@ -290,7 +290,7 @@ const tagCache = new Map();
 function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a character */
   const fs = Math.round(Math.max(13, 13 * cam.z)), cozy = document.documentElement.classList.contains('cozy'), key = (cozy ? 'z' : '') + txt + col + fs + DPR; let c = tagCache.get(key);
   if (!c && cozy) {   /* V3D.10 Cozy Apocalypse: cream clay pill, cocoa outline, a dot in the status colour */
-    const f = Math.round(fs * .68), font = `800 ${f}px Nunito, system-ui, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font;   /* V3D.13: 20% smaller */
+    const f = Math.round(fs * .68 * HUD_SMALL), font = `800 ${f}px Nunito, system-ui, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font;   /* V3D.13: 20% smaller */
     const h = f + 7, w = Math.ceil(m.measureText(txt).width) + h + 6, r = h / 2, cv = document.createElement('canvas'); cv.width = Math.ceil((w + 2) * DPR); cv.height = Math.ceil((h + 4) * DPR);
     const g = cv.getContext('2d'); g.scale(DPR, DPR); const pill = (dy, fill) => { g.beginPath(); g.roundRect(1, 1 + dy, w - 1, h - 1, r); g.fillStyle = fill; g.fill(); };
     pill(2, 'rgba(79,61,51,.45)'); pill(0, '#FFF8EC'); g.lineWidth = 2; g.strokeStyle = '#735A4C'; g.stroke();
@@ -503,11 +503,11 @@ function drawHuman(s) {
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   let tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
   if (COZY_HUD && !(selU || near || s.mode === 'goFire')) tagT = '';
-  if (COZY_HUD && s.reloadT > 0) { const u = hudU(), w = weaponOf(s), k = 1 - s.reloadT / Math.max(1, (w.reload || 1) * 60), cx = p.x - 16 * u, cy = (tagT ? tagY - 16 * u : tagY) - 12 * u;   /* V3D.16 reload timer */
+  if (COZY_HUD && s.reloadT > 0) { const u = hudU(), w = weaponOf(s), k = 1 - s.reloadT / Math.max(1, (w.reload || 1) * 60), cx = p.x - 16 * u, cy = (tagT ? tagY - 16 * u * HUD_SMALL : tagY) - 12 * u;   /* V3D.16 reload timer */
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 11 * u, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
     ctx.lineWidth = 4 * u; ctx.lineCap = 'round'; ctx.strokeStyle = '#f2a33a'; ctx.beginPath(); ctx.arc(cx, cy, 11 * u, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
     hudText(String(w.mag || ''), cx, cy + 4 * u, `600 ${Math.round(10 * u)}px Fredoka, sans-serif`, '#5a3f31'); ctx.restore(); }
-  if (COZY_HUD && s.emo && !s._lvT) drawEmote(s, p, tagT ? tagY - 16 * hudU() : tagY);
+  if (COZY_HUD && s.emo && !s._lvT) drawEmote(s, p, tagT ? tagY - 16 * hudU() * HUD_SMALL : tagY);
   if (s._lvT > 0) { /* the LEVEL UP burst takes the space above the head */ }
   else if (tagT && (!COZY_HUD || selU || near || s.mode === 'goFire')) statusTag(p.x, tagY, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
   else if (ic && s.mode !== 'down' && !(COZY_HUD && s.emo)) bubble({ x: p.x, y: tagY - 1 }, ic);
