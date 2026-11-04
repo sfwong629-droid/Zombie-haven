@@ -153,13 +153,13 @@ def punch(t):
     """Boxer's lunging cross (reference: '3D Animation Basic training: punch'): crouched guard with fists at the chin,
     coil, then lunge: front knee deep, back leg straight, body leaning well forward, the right arm driving out along the
     line of the body while the left arm pulls back to the ribs; recover to guard."""
-    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0}),
-         (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02}),
-         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07}),
-         (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07}),
-         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0})]
+    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30}),
+         (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02, 'el': -34}),
+         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07, 'el': -14}),
+         (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07, 'el': -14}),
+         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ua'], 0, 8), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+    p = stance({'upperarm.R': (k['ua'], 0, k['el']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
                 'upperarm.L': (k['la'], 0, -14), 'forearm.L': (k['lf'], 0, 0),
                 'chest': (k['lean'] * .65, k['tw'], 0), 'pelvis': (k['lean'] * .35, k['tw'] * .5, 0), 'head': (-18 - k['lean'] * .45, -k['tw'] * .6, 0)}, k['w'], 1.1)
     p['bob'] -= k['dip']
@@ -173,19 +173,20 @@ def _swing(t, K, ab=False):
                 'head': (-10 - k['lean'] * .6, -k['tw'] * .5, 0)}, k['w'])
     return p
 
+ROLL = -24    # overhead, the chest leans to its left so the raised hands sit over the centre line
 def swing_d(t):
     """Two-handed overhead chop like a katana: both hands on the bat in front of the belly, lift it straight up over
     the head, then cut down the centre line onto the front foot. The left hand follows the grip by IK."""
-    K = [(0, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0}),
-         (.4, {'ua': 165, 'fa': 48, 'wr': 0, 'lean': -10, 'w': -.6}),
-         (.5, {'ua': 168, 'fa': 50, 'wr': 0, 'lean': -12, 'w': -.7}),
-         (.62, {'ua': 78, 'fa': 4, 'wr': -40, 'lean': 26, 'w': 1.1}),
-         (.74, {'ua': 52, 'fa': 6, 'wr': -70, 'lean': 30, 'w': 1.2}),
-         (1, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0})]
+    K = [(0, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0, 'ab': 50, 'roll': 0}),
+         (.4, {'ua': 165, 'fa': 48, 'wr': 0, 'lean': -10, 'w': -.6, 'ab': 40, 'roll': 1}),
+         (.5, {'ua': 168, 'fa': 50, 'wr': 0, 'lean': -12, 'w': -.7, 'ab': 40, 'roll': 1}),
+         (.62, {'ua': 78, 'fa': 4, 'wr': -40, 'lean': 26, 'w': 1.1, 'ab': 26, 'roll': 0}),
+         (.74, {'ua': 52, 'fa': 6, 'wr': -70, 'lean': 30, 'w': 1.2, 'ab': 26, 'roll': 0}),
+         (1, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0, 'ab': 50, 'roll': 0})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ua'], 0, 16), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], 0, 0),
-                'upperarm.L': (k['ua'], 0, -16), 'forearm.L': (k['fa'] + 6, 0, 0),
-                'chest': (k['lean'], 0, 0), 'pelvis': (k['lean'] * .25, 0, 0), 'head': (-8 - k['lean'] * .5, 0, 0)}, k['w'])
+    p = stance({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], -20, 0), 'hand.R': (k['wr'], 0, 0),
+                'upperarm.L': (k['ua'], 0, -k['ab']), 'forearm.L': (k['fa'] + 6, 0, 0),
+                'chest': (k['lean'], -22 * k['roll'], ROLL * k['roll']), 'pelvis': (k['lean'] * .25, 0, 0), 'head': (-8 - k['lean'] * .5, 0, -ROLL * .6 * k['roll'])}, k['w'])
     return p
 
 R0 = {'ua': -4, 'fa': 52, 'wr': 0, 'wy': 18, 'lean': 6, 'tw': -10, 'w': 0, 'ab': -22}   # = the ready pose
