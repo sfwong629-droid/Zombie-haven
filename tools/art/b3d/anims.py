@@ -150,17 +150,18 @@ def fire_pistol(t):
     return p
 
 def punch(t):
-    """Boxer's cross (reference: '3D Animation Basic training: punch'): fists up at the chin in a wide crouched guard,
-    coil back, then lunge: front knee deep, back leg long, whole body leaning in behind a straight right arm; recover."""
-    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 10, 'w': 0, 'dip': 0}),
-         (.28, {'ua': 30, 'fa': 134, 'la': 46, 'lf': 124, 'tw': -36, 'lean': 4, 'w': -.7, 'dip': .02}),
-         (.46, {'ua': 122, 'fa': 2, 'la': 30, 'lf': 128, 'tw': 34, 'lean': 34, 'w': 1.5, 'dip': .06}),
-         (.62, {'ua': 124, 'fa': 2, 'la': 30, 'lf': 128, 'tw': 34, 'lean': 36, 'w': 1.5, 'dip': .06}),
-         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 10, 'w': 0, 'dip': 0})]
+    """Boxer's lunging cross (reference: '3D Animation Basic training: punch'): crouched guard with fists at the chin,
+    coil, then lunge: front knee deep, back leg straight, body leaning well forward, the right arm driving out along the
+    line of the body while the left arm pulls back to the ribs; recover to guard."""
+    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0}),
+         (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02}),
+         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07}),
+         (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07}),
+         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ua'], 0, 10), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
-                'upperarm.L': (k['la'], 0, -12), 'forearm.L': (k['lf'], 0, 0),
-                'chest': (k['lean'], k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .5, 0), 'head': (-14 - k['lean'] * .5, -k['tw'] * .6, 0)}, k['w'], 1.2)
+    p = stance({'upperarm.R': (k['ua'], 0, 8), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+                'upperarm.L': (k['la'], 0, -14), 'forearm.L': (k['lf'], 0, 0),
+                'chest': (k['lean'] * .65, k['tw'], 0), 'pelvis': (k['lean'] * .35, k['tw'] * .5, 0), 'head': (-18 - k['lean'] * .45, -k['tw'] * .6, 0)}, k['w'], 1.1)
     p['bob'] -= k['dip']
     return p
 
@@ -348,11 +349,12 @@ def _kneel(p):
     p['bob'] = -.2
     return p
 
+SIT_TW = 80       # forearm twist so the palms face down onto the thighs
 def _seated(p, apart=14):
     """Sitting on a crate or bench about a shin high: thighs level, shins down, palms resting on the knees.
     apart: how far the knees open (degrees; 0 = knees together)."""
     p.update({'thigh.L': (88, 0, -apart), 'thigh.R': (88, 0, apart), 'shin.L': (-86, 0, 0), 'shin.R': (-86, 0, 0), 'foot.L': (0, 0, apart * .6), 'foot.R': (0, 0, -apart * .6),
-              'upperarm.L': (40, 0, 4), 'upperarm.R': (40, 0, -4), 'forearm.L': (34, 0, 0), 'forearm.R': (34, 0, 0), 'hand.L': (-30, 0, 0), 'hand.R': (-30, 0, 0), 'pelvis': (-4, 0, 0)})
+              'upperarm.L': (26, 0, 6), 'upperarm.R': (26, 0, -6), 'forearm.L': (52, SIT_TW, 0), 'forearm.R': (52, -SIT_TW, 0), 'hand.L': (-8, 0, 0), 'hand.R': (-8, 0, 0), 'pelvis': (-4, 0, 0)})
     p['bob'] = -.2
     return p
 
@@ -375,7 +377,7 @@ def work_hammer(t):
     s = math.sin(2 * math.pi * t * 2)                       # two taps per loop
     hit = max(0.0, s)
     p = _kneel({'chest': (30 + 4 * hit, -8, 0), 'neck': (6, 0, 0), 'head': (8, 4, 0),
-                'upperarm.R': (78 + 32 * s, 0, -10), 'forearm.R': (60 - 40 * s, 0, 0), 'hand.R': (-92 + 10 * s, 0, 0),
+                'upperarm.R': (58 + 10 * s, 0, -10), 'forearm.R': (78 + 52 * s, 0, 0), 'hand.R': (-96 + 24 * s, 0, 0),   # forearm hinges up and down: a real hammer blow
                 'upperarm.L': (62, 0, 18), 'forearm.L': (50, 0, 0), 'hand.L': (-10, 0, 0)})
     return p
 
@@ -451,7 +453,7 @@ def wave(t):
     s = math.sin(2 * math.pi * t * 2)
     p = soft_legs({'chest': (-2, -6, 0), 'head': (-10, -6, 6),
                    'upperarm.R': (8, WAVE_TW, -138 + 18 * s), 'forearm.R': (8, 0, 0), 'hand.R': (0, 0, 0),
-                   'upperarm.L': (4, 0, 8), 'forearm.L': (24, 0, 0)}, .8)
+                   'upperarm.L': (8 + 6 * s, 0, 10 - 4 * s), 'forearm.L': (30 + 10 * s, 0, 0)}, .8)   # the other hand moves a little too
     return p
 
 CARRY_ARMS = {'upperarm.R': (42, 0, -14), 'upperarm.L': (42, 0, 14), 'forearm.R': (68, 0, 0), 'forearm.L': (68, 0, 0), 'hand.R': (-10, 0, 0), 'hand.L': (-10, 0, 0)}
@@ -627,7 +629,9 @@ def build_weapon(ao, kind):
         e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e); e.location = at
         bpy.context.view_layer.update(); mw = e.matrix_world.copy(); e.parent = w; bpy.context.view_layer.update(); e.matrix_world = mw
         return e
+    low = {'bat': .06, 'axe': .06, 'hoe': .24}.get(kind)   # second hand just below the first on the handle (two-hand chops, hoeing)
     out = {'obj': w, 'tip': empty('tip', tip), 'grip2': empty('grip2', grip2) if grip2 else None,
+           'grip_low': empty('grip_low', g - up * low) if low else None,
            'grip1': empty('grip1', g) if isgun or kind == 'pistol' else None,   # pistol: reference only (no IK)
            'cls': WEAPONS[kind], 'kind': kind}
     return out

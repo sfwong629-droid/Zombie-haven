@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ai_render, anims, armor
 
 FPS = 30
-TWO_HAND = {'pistol_fire': 'pistol', 'work_dig': 'hoe', 'melee_swing_d': 'bat'}   # action -> weapon whose grip2 the left hand holds
+TWO_HAND = {'pistol_fire': ('pistol', 'grip2'), 'work_dig': ('hoe', 'grip_low'), 'melee_swing_d': ('bat', 'grip_low'), 'work_chop': ('axe', 'grip_low')}   # action -> weapon whose grip2 the left hand holds
 FACE_OUT = None      # set by main: path stem for the extra expression textures
 FACE = True          # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
 WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
@@ -230,7 +230,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
     W = {}
     for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol', 'hammer', 'hoe', 'wrench', 'bowl', 'crate'):
         W[k] = anims.build_weapon(ao, k)
-        for e in ('grip1', 'grip2'):
+        for e in ('grip1', 'grip2', 'grip_low'):
             if W[k][e]: W[k][e].name = f'{k}_{e}'
         W[k]['tip'].name = f'{k}_tip'
     for o in bpy.data.objects:
@@ -245,7 +245,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)
         two = TWO_HAND.get(name)   # V3D.19: the left hand follows a second grip on these one-weapon clips
-        if two: anims.left_hand_ik(ao, W[two]['grip2'], True)
+        if two: anims.left_hand_ik(ao, W[two[0]][two[1]], True)
         nf = max(2, round(dur * FPS)) + (0 if loop else 1)
         frames = []
         order = [b.name for b in ao.data.bones]
@@ -255,7 +255,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             frames.append({b: ao.pose.bones[b].matrix.copy() for b in order})
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], False); anims.hand_ik(ao, 'R', W['rifle']['grip1'], False)
-        if two: anims.left_hand_ik(ao, W[two]['grip2'], False)
+        if two: anims.left_hand_ik(ao, W[two[0]][two[1]], False)
         key_frames(ao, name, frames)
         print('baked', name, nf, 'frames', flush=True)
     for pb in ao.pose.bones:
