@@ -3,7 +3,8 @@
 Classic horror, low detail: grey-green / pale / blue-grey dead skin with dark wounds, shirt dirtied and torn,
 blood soaking the shirt and jeans, dull grey-brown hair. Four variants per body.
 
-  python3 zombie_tex_v2.py IN.webp OUT_STEM [female]   -> OUT_STEM_0.webp .. OUT_STEM_3.webp
+  python3 zombie_tex_v2.py IN.webp OUT_STEM   -> OUT_STEM_0.webp .. OUT_STEM_3.webp
+then  python3 zombie_eyes.py MODEL.glb IN.webp OUT_STEM_0.webp ..   (blank white eyes)
 """
 import sys
 import numpy as np
