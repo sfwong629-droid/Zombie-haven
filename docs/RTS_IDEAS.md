@@ -52,7 +52,7 @@ Today, fights run themselves: fighters pick targets, rally, answer SOS calls and
 
 ## Suggested first step
 
-Do **1 + 3 + 4**: tap-to-command, stances, and slow-time while planning. Together they give real control with very little screen clutter, and the rest can build on them.
+At home, start with **1 + 4 + 7**: tap-to-command, slow time while planning, and one ability per profession (see the decision below). Stances (3) move to raids.
 
 ## Decision (2026-11-03): two modes
 
