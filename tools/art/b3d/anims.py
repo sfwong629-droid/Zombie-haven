@@ -454,7 +454,7 @@ def wave(t):
     s = math.sin(2 * math.pi * t * 2)
     p = soft_legs({'chest': (-2, -6, 0), 'head': (-10, -6, 6),
                    'upperarm.R': (8, WAVE_TW, -138 + 18 * s), 'forearm.R': (8, 0, 0), 'hand.R': (0, 0, 0),
-                   'upperarm.L': (8 + 6 * s, 0, 10 - 4 * s), 'forearm.L': (30 + 10 * s, 0, 0)}, .8)   # the other hand moves a little too
+                   'upperarm.L': (8 + 2 * s, 0, 10 - 1.5 * s), 'forearm.L': (30 + 3 * s, 0, 0)}, .8)   # the other hand moves a little too
     return p
 
 CARRY_ARMS = {'upperarm.R': (42, 0, -14), 'upperarm.L': (42, 0, 14), 'forearm.R': (68, 0, 0), 'forearm.L': (68, 0, 0), 'hand.R': (-10, 0, 0), 'hand.L': (-10, 0, 0)}
