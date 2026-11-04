@@ -676,7 +676,13 @@ const CHAR_V2 = (() => {   // #v2 turns the new survivor on and remembers it; #v
   try { if (location.hash === '#v2') localStorage.setItem('zh_char', 'v2'); if (location.hash === '#v1') localStorage.removeItem('zh_char'); } catch (e) {}
   let ls = false; try { ls = localStorage.getItem('zh_char') === 'v2'; } catch (e) {}
   return new URLSearchParams(location.search).get('char') === 'v2' || location.hash === '#v2' || ls; })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
-let v2Mat = null;
+let v2Mat = null; const v2MatF = { m: null };
+let FEMALE3D = null;   // V3D.19 test: the female survivor model (only with #v2)
+function isFemale(s) { try { return !!(window.ZHChars && ZHChars.look(s).sex === 'f'); } catch (e) { return false; } }
+function newPerson(s) {   // a survivor's 3D actor: with #v2 women get the female model, each model keeps its own texture
+  if (MALE && MALE.v2 && FEMALE3D && isFemale(s)) { const m = (v2MatF.m ||= nightLit(new THREE.MeshToonMaterial({ map: FEMALE3D.body.material.map, gradientMap: grad }), .32)); return new Actor(FEMALE3D, m, false, () => m); }
+  return new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s)));
+}
 function jobMaterial(job, expr = 'neutral', look = null) {
   if (MALE && MALE.v2) return (v2Mat ||= nightLit(new THREE.MeshToonMaterial({ map: MALE.body.material.map, gradientMap: grad }), .32));
   if (!FACE_OVL[expr]) expr = 'neutral';
@@ -810,8 +816,8 @@ function syncPeople(dt, vis) {
   const seen = new Set();
   for (const s of G.S.sv) {
     seen.add(s); let a = people.get(s);
-    if (!a) { a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
-    if (a.job !== s.job) { a.dispose(); a = new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s))); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (!a) { a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (a.job !== s.job) { a.dispose(); a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     const carried = s.mode === 'down' && G.beingCarried(s), ra = carried && people.get(s.rescuer);
     if (carried && ra && ra.cart && ra.cart.visible) {   // V3D.17: ride in the rescuer's cart, lying down
       a.show(true); const c = ra.cart; a.o.position.set(c.position.x, .34, c.position.z); a.o.rotation.set(0, c.rotation.y + Math.PI, 0); a.yaw = c.rotation.y + Math.PI; a.o.scale.setScalar(.9); a.sh.visible = false;
@@ -1114,6 +1120,7 @@ inkButton();
   m.bodyImage = m.body.material.map && m.body.material.map.image;
   toonScene(m.scene); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2;
+  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene); FEMALE3D = f; } catch (e) { console.warn('female model', e); } }
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
