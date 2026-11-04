@@ -295,7 +295,7 @@ def cheer(t):
 
 def zombie_walk(t):
     """Placeholder zombie shamble (3D only, not in CLIPS): short dragging steps, arms out straight, head lolling."""
-    p = legs_walk({}, t, .55)
+    p = legs_walk({}, t, .8)   # V3D.21 longer shamble: chasing zombies were shuffling 3x too fast to match the ground
     s = math.sin(2 * math.pi * t)
     p['shin.R'] = (p['shin.R'][0] * .5 - 8, 0, 0)            # stiff right leg drags
     p.update({'upperarm.L': (84 + 6 * s, 0, 10), 'upperarm.R': (80 - 6 * s, 0, -10), 'forearm.L': (8, 0, 0), 'forearm.R': (14, 0, 0),
