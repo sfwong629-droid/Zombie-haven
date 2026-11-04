@@ -354,7 +354,7 @@ def work_hammer(t):
     s = math.sin(2 * math.pi * t * 2)                       # two taps per loop
     hit = max(0.0, s)
     p = _kneel({'chest': (30 + 4 * hit, -8, 0), 'neck': (6, 0, 0), 'head': (8, 4, 0),
-                'upperarm.R': (78 + 32 * s, 0, -10), 'forearm.R': (60 - 40 * s, 0, 0), 'hand.R': (-20 * s, 0, 0),
+                'upperarm.R': (78 + 32 * s, 0, -10), 'forearm.R': (60 - 40 * s, 0, 0), 'hand.R': (-92 + 10 * s, 0, 0),
                 'upperarm.L': (62, 0, 18), 'forearm.L': (50, 0, 0), 'hand.L': (-10, 0, 0)})
     return p
 
@@ -362,7 +362,7 @@ def work_dig(t):
     """Farming: bent over, both hands on a hoe, pulling the soil towards the feet."""
     s = math.sin(2 * math.pi * t)
     p = soft_legs({'chest': (30 + 12 * s, 0, 0), 'pelvis': (8, 0, 0), 'head': (4 + 6 * s, 0, 0),
-                   'upperarm.R': (58 - 26 * s, 0, -12), 'forearm.R': (28 + 18 * s, 0, 0),
+                   'upperarm.R': (58 - 26 * s, 0, -12), 'forearm.R': (28 + 18 * s, 0, 0), 'hand.R': (-120 + 8 * s, 0, 0),
                    'upperarm.L': (62 - 26 * s, 0, 12), 'forearm.L': (24 + 18 * s, 0, 0)}, 1.4)
     p['thigh.L'] = (34, 0, -4); p['shin.L'] = (-44, 0, 0); p['thigh.R'] = (-4, 0, 4); p['shin.R'] = (-30, 0, 0)
     return p
@@ -371,7 +371,7 @@ def work_tinker(t):
     """Repairing or crafting at ground level: crouched, both hands busy in front, small turning motions."""
     s, c = math.sin(2 * math.pi * t), math.cos(2 * math.pi * t * 2)
     p = _crouch({'chest': (34, 6 * s, 0), 'neck': (8, 0, 0), 'head': (10, 10 * s, 0),
-                 'upperarm.R': (70 + 6 * c, 0, -8), 'forearm.R': (70 + 10 * s, 0, 0), 'hand.R': (0, 30 * s, 0),
+                 'upperarm.R': (70 + 6 * c, 0, -8), 'forearm.R': (70 + 10 * s, 0, 0), 'hand.R': (-100, 30 * s, 0),
                  'upperarm.L': (70 - 6 * c, 0, 8), 'forearm.L': (70 - 10 * s, 0, 0), 'hand.L': (0, -20 * s, 0)})
     return p
 
@@ -451,7 +451,7 @@ CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'mel
     'cheer': (cheer, 10, 100, True, None)}
 SWING_T = [0, .2, .38, .46, .54, .6, .66, .82]          # uneven times: slow wind-up, fast strike
 SWING_MS = [160, 130, 120, 160, 60, 60, 200, 160]
-WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun', 'pistol': 'pistol'}   # pistol: one-handed gun
+WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun', 'pistol': 'pistol', 'hammer': 'tool', 'hoe': 'tool', 'wrench': 'tool', 'crate': 'tool', 'bowl': 'tool'}   # pistol: one-handed gun
 
 def pose_fn(clip, wclass):
     if clip == 'hold_idle': return hold_idle_gun if wclass == 'gun' else hold_idle_melee
@@ -546,12 +546,27 @@ def build_weapon(ao, kind):
         T(g + dirU * .012 - dirB * .03, g - dirU * .055 - dirB * .045, .017, .019, gunwood, seg=4)           # grip
         T(top + dirB * .11, top + dirB * .125, .008, .008, gun, seg=6)                                       # muzzle
         tip = top + dirB * .13; grip2 = None
+    elif kind == 'hammer':          # claw hammer: short wooden handle, steel head across the end
+        T(g - up * .05, g + up * .22, .014, .016, wood)
+        hd = g + up * .22; T(hd - across * .05, hd + across * .045, .024, .024, metal, seg=8); tip = hd
+    elif kind == 'hoe':             # garden hoe: long handle, flat blade at the end bent back towards the user
+        T(g - up * .3, g + up * .62, .014, .014, wood)
+        hd = g + up * .62; Bx(hd - across * .05, (.012, .11, .07), metal); tip = hd - across * .08
+    elif kind == 'wrench':          # big spanner
+        T(g - up * .04, g + up * .17, .011, .011, metal, seg=6)
+        hd = g + up * .19; Bx(hd, (.018, .05, .03), metal); tip = hd
+    elif kind == 'bowl':            # food bowl in the left hand
+        hl = ao.data.bones['hand.L']; ga = (ao.matrix_world @ hl.head_local).lerp(ao.matrix_world @ hl.tail_local, .6)
+        T(ga + Vector((0, 0, -.02)), ga + Vector((0, 0, .03)), .03, .055, wood, seg=12); tip = ga
+    elif kind == 'crate':           # carried crate, in front of the belly (rides on the chest bone)
+        sh = ao.matrix_world @ ao.data.bones['upperarm.R'].head_local
+        c = Vector((0, sh.y - .19, sh.z - .19)); Bx(c, (.26, .18, .2), toon_mat('w_crate', '#c8924f')); tip = c
     w = _join(parts, 'weapon_' + kind)
     isgun = WEAPONS[kind] == 'gun'
     def bone_parent(ob, bone):
         mw = ob.matrix_world.copy(); ob.parent = ao; ob.parent_type = 'BONE'; ob.parent_bone = bone
         bpy.context.view_layer.update(); ob.matrix_world = mw
-    bone_parent(w, 'gun' if isgun else 'hand.R')
+    bone_parent(w, 'gun' if isgun else 'hand.L' if kind == 'bowl' else 'chest' if kind == 'crate' else 'hand.R')
     def empty(name, at):
         e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e); e.location = at
         bpy.context.view_layer.update(); mw = e.matrix_world.copy(); e.parent = w; bpy.context.view_layer.update(); e.matrix_world = mw

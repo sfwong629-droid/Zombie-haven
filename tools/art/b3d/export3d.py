@@ -19,7 +19,7 @@ FACE_OUT = None      # set by main: path stem for the extra expression textures
 FACE = True          # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
 WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
 FLAT = True          # flat colour regions (see flat_regions); False = the filtered texture
-COLORS = {'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
+COLORS = {'w_crate': '#c8924f', 'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
           'w_tape': '#d8cfb8', 'a_steel': armor.STEEL, 'a_trim': armor.TRIM, 'a_leather': armor.LEATHER}
 
 def plain(m, hexc=None, image=None, rough=.9, metal=0.0):
@@ -226,7 +226,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
     arm = armor.build(ao, body)
     for i, o in enumerate(arm): o.name = f'armor_{i}'
     W = {}
-    for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol'):
+    for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol', 'hammer', 'hoe', 'wrench', 'bowl', 'crate'):
         W[k] = anims.build_weapon(ao, k)
         for e in ('grip1', 'grip2'):
             if W[k][e]: W[k][e].name = f'{k}_{e}'

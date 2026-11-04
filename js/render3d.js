@@ -778,6 +778,7 @@ function addHat(a, job, equipped = false) {   // parent to the head bone, placed
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']);
+const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
   const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path);
@@ -798,7 +799,7 @@ function personAnim(a, s, dt) {
   const [anim] = G.humanAnim(s, G.facing(s));
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
-  const day = everyday(a, s, anim, hold); if (day) { a.play(day); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
       const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][(Math.random() * 3) | 0];
