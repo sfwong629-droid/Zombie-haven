@@ -63,6 +63,8 @@ def clip_plan():
         plan.append((name, name, None, dur, lambda s, d=dur: s / d))
     plan.append(('pickup', 'pickup', None, 1.1, lambda s: min(1.0, s / 1.1)))   # one-shot
     plan.append(('zombie_attack', 'zombie_attack', None, .9, lambda s: min(1.0, s / .9)))   # V3D.20 zombie claw swipe, one-shot
+    plan.append(('bloated_walk', 'bloated_walk', None, 1.5, lambda s: s / 1.5))   # V3D.21 bloated zombie (arms fused to the belly)
+    plan.append(('bloated_attack', 'bloated_attack', None, 1.0, lambda s: min(1.0, s / 1.0)))
     return plan
 
 def key_frames(ao, name, frames):
@@ -241,7 +243,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             if base in COLORS: plain(m, COLORS[base], rough=.5 if base.startswith('a_') else .9, metal=.0)
     # animations
     for name, clip, cls, dur, tf in clip_plan():
-        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack')
+        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack', 'bloated_attack')
         fn = anims.pose_fn(clip, cls) if clip in anims.CLIPS else getattr(anims, clip)
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)

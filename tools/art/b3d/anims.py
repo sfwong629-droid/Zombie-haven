@@ -354,6 +354,34 @@ def zombie_attack(t):
     return p
 
 
+def bloated_walk(t):
+    """Bloated zombie waddle (3D only): short heavy steps, hips rolling side to side, the belly leading, arms kept low
+    beside the belly (his model has the arms fused to the belly: raising them would stretch the skin)."""
+    p = legs_walk({}, t, .6)
+    ph = 2 * math.pi * t; sn = math.sin(ph)
+    for n, sg in (('L', 1), ('R', -1)):
+        th = p['thigh.' + n]; p['thigh.' + n] = (th[0], 0, -6 * sg)            # legs a little apart
+        p['upperarm.' + n] = (4 + 5 * sg * sn, 0, 0); p['forearm.' + n] = (10 + 4 * max(0.0, sg * sn), 0, 0)
+    p.update({'pelvis': (-4, 6 * sn, 9 * sn), 'chest': (-6, -4 * sn, -12 * sn), 'neck': (4, 0, 0), 'head': (6, 6 * sn, 10 + 6 * sn)})
+    p['bob'] = p.get('bob', 0) - .015 * abs(sn) - .02
+    return p
+
+def bloated_attack(t):
+    """Bloated belly slam (3D only, one-shot): rears back with the belly out, then throws himself forward onto the
+    front foot, belly and head first, mouth open to bite; arms stay low."""
+    K = [(0, {'lean': -4, 'w': 0, 'hd': 6, 'ua': 4}),
+         (.36, {'lean': -18, 'w': -.8, 'hd': -10, 'ua': -6}),
+         (.55, {'lean': 26, 'w': 1.5, 'hd': 14, 'ua': 16}),
+         (.7, {'lean': 28, 'w': 1.5, 'hd': 16, 'ua': 16}),
+         (1, {'lean': -4, 'w': 0, 'hd': 6, 'ua': 4})]
+    k = keys(K, t)
+    p = stance({'upperarm.L': (k['ua'], 0, 0), 'upperarm.R': (k['ua'], 0, 0), 'forearm.L': (14, 0, 0), 'forearm.R': (14, 0, 0),
+                'chest': (k['lean'] * .6, 0, 0), 'pelvis': (k['lean'] * .4, 0, 0), 'neck': (4, 0, 0),
+                'head': (k['hd'] - k['lean'] * .3, 0, 10)}, k['w'], .9)
+    p['bob'] -= .02
+    return p
+
+
 # ------------------------------------------------------------------ V3D.19 everyday clips (3D only, not in CLIPS): work, rest, social, carrying
 def _crouch(p, depth=1.0):
     """Both knees deep, hips low (for tinkering)."""
