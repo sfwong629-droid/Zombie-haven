@@ -802,7 +802,7 @@ const ATTACK = new Set(['punch', 'blunt', 'shoot']);
 const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
-  const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path);
+  const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06);   // V3D.21: not actually covering ground = standing
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
@@ -818,7 +818,8 @@ function personAnim(a, s, dt) {
   const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
   a.setWeapon(model);
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
-  const [anim] = G.humanAnim(s, G.facing(s));
+  let [anim] = G.humanAnim(s, G.facing(s));
+  if (anim === 'walk' && a.last && a.spd < .06) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
   const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)

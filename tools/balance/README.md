@@ -22,3 +22,6 @@ runs extra JS after load (here: the gap between newcomers, in ticks; 1000 ticks 
 5 seeds x 14 days, 3D: gate arrivals in 14 days: 1.1 h/2.2 h (old) 42, 6 h/12 h 24, 12 h/24 h 14, 18 h/36 h 6.
 The auto-player loses many people (it no longer keeps up with the 3D economy), so trust the arrival counts more
 than the deaths; with movement at 100% instead of 60% (MOVE_K) it lost 21 instead of 34 in 14 days.
+Work speed (V3D.21, `ZH.TUNE.move` / `ZH.TUNE.work`), deaths in 14 days, 5 seeds, new arrival rate: move 1 / work 1: 14.3,
+move .6 / work 1: 14.5, move .6 / work 1.4: 11.0, move .6 / work 1.7: 14.0. Runs that lose everyone end early, so
+this is noisy; work 1.4 was kept.

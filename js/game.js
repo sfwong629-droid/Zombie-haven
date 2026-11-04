@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.20', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.21', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -304,7 +304,7 @@ function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a 
     if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
   ctx.imageSmoothingEnabled = !!c.smooth; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.h) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true;
 }
-function bubble(p, txt) { const ic = G3D && window.ZHIcons && ZHIcons.EMOJI[txt.replace(/\uFE0F/g, '')] , im = ic && ZHIcons.img(ic); if (im && im.complete) { const u = hudU(), r = 10 * u; ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y - r, r, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.drawImage(im, p.x - 7 * u, p.y - r - 7 * u, 14 * u, 14 * u); ctx.restore(); return; } stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
+function bubble(p, txt) { const ic = G3D && window.ZHIcons && ZHIcons.EMOJI[txt.replace(/\uFE0F/g, '')] , im = ic && ZHIcons.img(ic); if (im && im.complete) { const u = hudU() * HUD_SMALL, r = 10 * u; ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y - r, r, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.drawImage(im, p.x - 7 * u, p.y - r - 7 * u, 14 * u, 14 * u); ctx.restore(); return; } stampText(txt, p.x, p.y, `${Math.round(Math.max(11, 13 * cam.z))}px sans-serif`, '#fff'); }
 const FACE = new WeakMap();   // per-unit facing, kept out of save data: { lx, ly, right, up }
 function facing(o) {   // screen-space facing from movement (or from the target while fighting)
   let st = FACE.get(o); if (!st) { st = { lx: o.w.x, ly: o.w.y, right: false, up: false }; FACE.set(o, st); }
@@ -403,11 +403,11 @@ function drawCombatFocus() {   // selected fighter: line to the target, ring on 
 /* V3D.11 cozy combat HUD (3D mode): clay-pill HP bars with a white trail of recent damage, "cozy pop" numbers,
    and a Dungeon Village 2 style LEVEL UP burst over the head. The 2D look keeps the old flat bars and pixel font. */
 const COZY_HUD = G3D;
-const hudU = () => Math.max(.72, Math.min(1.5, cam.z * .82));
+const hudU = () => Math.max(.72, Math.min(1.5, cam.z * .82)), HUD_SMALL = .8;   /* V3D.21: HP bars, damage numbers, LEVEL UP and emoji bubbles 20% smaller */
 function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function hudText(t, x, y, font, fill, stroke, lw) { ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y); }
 function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, lv, col, w } */
-  const u = hudU(), w = (opt.w || 40) * u, h = 8 * u, x0 = x - w / 2, f = Math.max(0, o.hp / o.max);
+  const u = hudU() * HUD_SMALL, w = (opt.w || 40) * u, h = 8 * u, x0 = x - w / 2, f = Math.max(0, o.hp / o.max);
   if (o._ghost == null || o._ghost < f) { o._ghost = f; o._ghostHold = 0; } else if (o._ghost > f) { if ((o._ghostHold = (o._ghostHold || 0) + 1) > 18) o._ghost = Math.max(f, o._ghost - .012); }
   ctx.save(); rrect(x0, y, w, h, h / 2); ctx.fillStyle = '#f6ead6'; ctx.fill(); ctx.save(); rrect(x0, y, w, h, h / 2); ctx.clip();
   ctx.fillStyle = '#ffffff'; ctx.fillRect(x0, y, w * o._ghost, h);
@@ -419,7 +419,7 @@ function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, l
 }
 const HUD_LIFT = 10;   /* the bars float this many screen px (x zoom) above the head */
 function floatCozy(f, p) {   /* a float's life runs from f.a0 down to 0 (frames) */
-  const u = hudU(), k = 1 - f.a / f.a0, num = /^[-+]\d+$/.test(f.t), pop = k < .12 ? 1 + 1.1 * (1 - k / .12) * (k / .12) * 4 : 1;
+  const u = hudU() * HUD_SMALL, k = 1 - f.a / f.a0, num = /^[-+]\d+$/.test(f.t), pop = k < .12 ? 1 + 1.1 * (1 - k / .12) * (k / .12) * 4 : 1;
   const sz = (num ? 21 : f.big ? 16 : 14) * u * pop, x = p.x + (f.dx || 0) * u * k * 14, y = p.y - CHAR_H * TWs() - HUD_LIFT * u - 14 * u - 26 * u * Math.min(1, k * 2.4) - 10 * u * k;
   const fill = f.col === '#ff6e62' ? '#ff9b8a' : num && f.t[0] === '+' ? '#c9f2a6' : num ? '#fff3d6' : f.col;   /* hurt red, heal green, hits cream; other notes keep their colour */
   ctx.save(); ctx.globalAlpha = k > .75 ? (1 - k) / .25 : 1;
@@ -472,7 +472,7 @@ function drawLevelUps() {
   for (let i = lvBursts.length - 1; i >= 0; i--) {   /* timed in drawn frames (60 a second), like the floats */
     const b = lvBursts[i], t = b.f++ / 60; if (b.s._lvT > 0) b.s._lvT--; if (t > 2.6 || !S.sv.includes(b.s) || !b.s.w) { lvBursts.splice(i, 1); continue; }
     if (insideBuilding(b.s)) continue;
-    const u = hudU(), fp = project(b.s.w.x, b.s.w.y), hy = fp.y - CHAR_H * TWs() - HUD_LIFT * u, k = t / 2.6, ring = Math.min(1, t / .35), fade = k > .7 ? (1 - k) / .3 : 1;
+    const u = hudU() * HUD_SMALL, fp = project(b.s.w.x, b.s.w.y), hy = fp.y - CHAR_H * TWs() - HUD_LIFT * u, k = t / 2.6, ring = Math.min(1, t / .35), fade = k > .7 ? (1 - k) / .3 : 1;
     ctx.save(); ctx.globalAlpha = .55 * fade; ctx.strokeStyle = '#ffe58a'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(fp.x, fp.y, 26 * u * ring, 11 * u * ring, 0, 0, 7); ctx.stroke();
     const pg = ctx.createLinearGradient(0, hy, 0, fp.y); pg.addColorStop(0, 'rgba(255,240,170,0)'); pg.addColorStop(1, 'rgba(255,230,140,.55)');
     ctx.globalAlpha = .7 * fade * Math.min(1, t / .25); ctx.fillStyle = pg; ctx.fillRect(fp.x - 17 * u * ring, hy, 34 * u * ring, fp.y - hy);
@@ -1045,7 +1045,7 @@ function engineerRepairs() {   /* idle Engineers patch damaged buildings: 1 part
 function fixTick(s) {
   const b = s.fixB; if (!b || !world.buildings.includes(b) || b.burnt || bHp(b) >= b.max || threatOf(s)) { s.fixB = null; s.activity = null; enterFree(s, 30); return; }
   const r = followPath(s, Wd.approachPoint(b), WALK); if (r === 'moving') return; if (r === 'fail') { s.fixB = null; enterFree(s, 60); return; }
-  s.moving = false; s.activity = 'Building'; if (tick % 40 === 0) { if (S.mat < 1) { s.fixB = null; s.activity = null; enterFree(s, 60); return; } b.hp = Math.min(b.max, b.hp + 12); S.mat -= 1; flow('mat', 'Repairs', -1); ui(); floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, t: '+12', col: '#9fe08a', a: 40 }); }
+  s.moving = false; s.activity = 'Building'; if (tick % Math.round(40 / TUNE.work) === 0) { if (S.mat < 1) { s.fixB = null; s.activity = null; enterFree(s, 60); return; } b.hp = Math.min(b.max, b.hp + 12); S.mat -= 1; flow('mat', 'Repairs', -1); ui(); floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, t: '+12', col: '#9fe08a', a: 40 }); }
 }
 const zDef = (z) => (z.bk && BOSS_KINDS[z.bk] ? bossDef(z) : zombieTypes[z.type] || zombieTypes.walker);
 const TOWN_EVENT_DEFS = [
@@ -1200,9 +1200,9 @@ function stepToward(o, p, sp) {
   o.w.x += dx / d * sp; o.w.y += dy / d * sp; return false;
 }
 // returns 'arrived' | 'moving' | 'fail'.  goal = live world point.
-const MOVE_K = .6;   /* V3D.20: everyone walks at 60% of the old pace so the steps match the ground covered */
+const TUNE = { move: .6, work: 1.4 };   /* V3D.20 move: everyone walks at 60% of the old pace so the steps match the ground covered; V3D.21 work: on the job they work 40% faster to make up for the longer walks */
 function followPath(o, goal, sp) {
-  sp *= MOVE_K;
+  sp *= TUNE.move;
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;
   if (!o.path || o.pathGoal !== gk + (o.wallCost ? '#w' : '') || o.pathVer !== world.ver) {
@@ -1229,7 +1229,7 @@ function followPath(o, goal, sp) {
   return 'moving';
 }
 function moveSlide(o, t, sp) {                // free movement that cannot enter buildings or walls (zombie roaming)
-  sp *= MOVE_K;
+  sp *= TUNE.move;
   const walk = (x, y) => Wd.walkable(world, x, y, true);
   const dx = t.x - o.w.x, dy = t.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > .02; if (d <= sp) { if (walk(Math.floor(t.x), Math.floor(t.y))) { o.w.x = t.x; o.w.y = t.y; } return true; }
   const nx = o.w.x + dx / d * sp, ny = o.w.y + dy / d * sp;
@@ -1341,7 +1341,8 @@ function spreadOut() {   /* V3D.17: two people never stand in the same spot; a s
   const L = S.sv.filter((s) => s.w && s.hp > 0 && s.mode !== 'away' && s.mode !== 'down' && !insideBuilding(s) && !beingCarried(s)); if (S.trader && S.trader.w) L.push(S.trader);
   for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j], dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, d = Math.hypot(dx, dy), R = (a.chatWith === b || b.chatWith === a) ? .5 : .42;
     if (d >= R) continue; const ux = d > 1e-4 ? dx / d : Math.cos(i + j), uy = d > 1e-4 ? dy / d : Math.sin(i + j), k = (R - d) * .12;
-    for (const [o, sg] of [[a, -1], [b, 1]]) { if (o === S.trader && o.mode === 'stay' && o !== a) continue; const nx = o.w.x + ux * k * sg, ny = o.w.y + uy * k * sg; if (Wd.walkable(world, Math.floor(nx), Math.floor(ny))) { o.w.x = nx; o.w.y = ny; } } }
+    const am = !!a.moving, bm = !!b.moving, only = am !== bm ? (am ? a : b) : null;   /* V3D.21: someone walking past steps around a person standing still (who used to get shoved along) */
+    for (const [o, sg] of [[a, -1], [b, 1]]) { if (o === S.trader && o.mode === 'stay' && o !== a) continue; if (only && o !== only) continue; const kk = only ? k * 2 : k, nx = o.w.x + ux * kk * sg, ny = o.w.y + uy * kk * sg; if (Wd.walkable(world, Math.floor(nx), Math.floor(ny))) { o.w.x = nx; o.w.y = ny; } } }
 }
 const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && dist(z.w, p) < r);
 function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: fighters chase them; others go in pairs on the nearest one */
@@ -1463,7 +1464,7 @@ function emoTick(s) {
   if (pick) emote(s, pick, 100);
 }
 function drawEmote(s, p, y) {   /* cream speech bubble with a tail; pops in, bobs, fades */
-  const e = s.emo; if (!e) return; const u = hudU(), k = 1 - e.f / e.f0, pop = k < .1 ? .5 + k * 6 : 1, al = e.f < 15 ? e.f / 15 : 1;
+  const e = s.emo; if (!e) return; const u = hudU() * HUD_SMALL, k = 1 - e.f / e.f0, pop = k < .1 ? .5 + k * 6 : 1, al = e.f < 15 ? e.f / 15 : 1;
   const r = 13 * u * pop, x = p.x + 14 * u, cy = y - r - 4 * u + Math.sin(tick / 12) * 1.5 * u;
   ctx.save(); ctx.globalAlpha = al; ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.fillStyle = '#fff8ec';
   ctx.beginPath(); ctx.ellipse(x, cy, r * 1.15, r, 0, 0, 7); ctx.moveTo(x - r * .5, cy + r * .75); ctx.lineTo(x - r * .95, cy + r * 1.45); ctx.lineTo(x - r * .05, cy + r * .92); ctx.fill(); ctx.stroke();
@@ -2033,7 +2034,7 @@ const SUPPLY_BASE_CAP = 60, SUPPLY_PER_STORAGE = 40;
 const supplyCap = () => SUPPLY_BASE_CAP + SUPPLY_PER_STORAGE * bOf('storage').length + (researched('stockpile') ? 30 : 0);
 const isWorking = (b) => !!(b.staff && b.staff.mode === 'work' && b.staff.hp > 0);
 const BUILDING_STAT = { farm: 'str', field: 'str', water: 'per', well: 'per', medic: 'int', clinic: 'int', hospital: 'int', canteen: 'cha', workshop: 'int', scrapyard: 'str' };
-const prodMult = (b, working = isWorking(b)) => (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? workBoost(b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && b.type === 'workshop' ? .2 : 0) : 0));
+const prodMult = (b, working = isWorking(b)) => (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (working && b.staff ? TUNE.work : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? workBoost(b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && b.type === 'workshop' ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs parts each day; unpaid buildings run at half output ---------------- */
 const UPKEEP = { bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 };
@@ -4093,7 +4094,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { ARRIVE, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { ARRIVE, TUNE, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
