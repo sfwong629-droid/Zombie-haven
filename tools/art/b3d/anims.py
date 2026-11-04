@@ -153,14 +153,14 @@ def punch(t):
     """Boxer's lunging cross (reference: '3D Animation Basic training: punch'): crouched guard with fists at the chin,
     coil, then lunge: front knee deep, back leg straight, body leaning well forward, the right arm driving out along the
     line of the body while the left arm pulls back to the ribs; recover to guard."""
-    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30}),
-         (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02, 'el': -34}),
-         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07, 'el': -14}),
-         (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07, 'el': -14}),
-         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30})]
+    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30, 'le': 26}),
+         (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02, 'el': -34, 'le': 28}),
+         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07, 'el': -20, 'le': 34}),
+         (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07, 'el': -20, 'le': 34}),
+         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30, 'le': 26})]
     k = keys(K, t)
     p = stance({'upperarm.R': (k['ua'], 0, k['el']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
-                'upperarm.L': (k['la'], 0, -14), 'forearm.L': (k['lf'], 0, 0),
+                'upperarm.L': (k['la'], 0, k['le']), 'forearm.L': (k['lf'], 0, 0),
                 'chest': (k['lean'] * .65, k['tw'], 0), 'pelvis': (k['lean'] * .35, k['tw'] * .5, 0), 'head': (-18 - k['lean'] * .45, -k['tw'] * .6, 0)}, k['w'], 1.1)
     p['bob'] -= k['dip']
     return p
