@@ -171,7 +171,21 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
         float rw = smoothstep(.42, .56, rm), rim = smoothstep(.36, .46, rm) * (1. - smoothstep(.5, .6, rm));
         vec3 road = vec3(.215, .118, .045) * (.85 + .3 * gf(p * 1.3 + 2.));             // packed earth (#7f5f3b, linear), mottled
         road = mix(road, road * .78, smoothstep(.80, .90, gn(p * 9. + 21.)) * .6);       // a few dark stones
+        // V3D.21 road detail (it read as a brown smudge): pale dusty middle, two wheel ruts, a grassy crown, pebbles, footprints of wear
+        road = mix(road, road * vec3(1.28, 1.22, 1.12), smoothstep(.55, .75, gf(p * .7 + 5.)) * .55);          // sun-bleached dusty patches
+        float brk = smoothstep(.25, .45, gn(p * 2.3 + 13.));                                                      // ruts come and go
+        float rut = (1. - smoothstep(.0, .045, abs(rm - .79))) * brk;
+        road = mix(road, road * .62, rut * .85);                                                                  // two dark wheel ruts either side of the middle
+        road = mix(road, road * 1.18, (1. - smoothstep(.0, .03, abs(rm - .755))) * brk * .6);                   // their pale lip
+        float crown = smoothstep(.93, .99, rm) * smoothstep(.62, .82, gn(p * 13. + 31.));
+        road = mix(road, vec3(.16, .23, .05), crown * .75);                                                       // grass blades down the middle
+        { vec2 q = p * 1.3, ci = floor(q), cf = fract(q); vec2 c = vec2(gh(ci), gh(ci + 3.7)) * .7 + .15; float dd = length(cf - c), on = step(.62, gh(ci + 7.3)), rs = .07 + .07 * gh(ci + 9.1);
+          road = mix(road, road * .55, on * (1. - smoothstep(rs, rs + .05, length(cf - c - vec2(.03, -.04)))));   // pebble shadow
+          road = mix(road, mix(vec3(.42, .34, .22), vec3(.30, .26, .21), gh(ci + 2.2)), on * (1. - smoothstep(rs - .02, rs, dd))); }   // pebbles, sandy or grey
+        { vec2 q = p * 4.5, ci = floor(q), cf = fract(q); float dd = length(cf - vec2(gh(ci + 1.3), gh(ci + 5.9)) * .8 - .1);
+          road = mix(road, road * 1.35, step(.7, gh(ci + 4.4)) * (1. - smoothstep(.05, .09, dd))); }             // grit
         g = mix(g, g * .82, rim);                                                        // darker trodden edge
+        g = mix(g, vec3(.12, .19, .04), rim * smoothstep(.6, .8, gn(p * 17. + 8.)) * .8);  // grass tufts along the edge
         g = mix(g, road, rw);
         diffuseColor.rgb = g;
       }`);

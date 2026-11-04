@@ -737,7 +737,7 @@ function clayBadge(cx, cy, z, icon, dot, count) {   /* V3D.14 Clay marker: cream
 function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring that fills with real output toward the next unit (bright while worked);
    facilities show how many are inside; problems get a marker. Everything comes from the simulation state. */
   const d = DEFS[b.type], r = spriteRect(b); if (!d || !r || b.burnt) return;
-  const z = Math.max(.75, cam.z), cx = r.anchor.x, cy = r.anchor.y - TWs() * (b.w + b.h) * .5 * .62, fi = FAM_ICON[d.fam], R = 9 * z;
+  const z = Math.max(.75, cam.z) * (COZY_HUD ? .7 : 1), cx = r.anchor.x, cy = r.anchor.y - TWs() * (b.w + b.h) * .5 * .62, fi = FAM_ICON[d.fam], R = 9 * z;   /* V3D.21: cozy markers 30% smaller */
   if (COZY_HUD) {   /* V3D.17 fewer markers: a building shows nothing unless it needs you (under attack, damaged, no worker, dry, unpaid), is selected, or you zoom right in */
     const hp = bHp(b), hit = tick - (b.lastHit || -9999) < 240, sel = selected && selected.ref === b, prob = (d.slot && !b.staff) || (d.fam === 'farm' && b.dry) || b.unpaid;
     if (hit || hp < b.max) { const w = 46 * z, h = 7 * z, y = cy + 2 * z; ctx.save(); ctx.beginPath(); ctx.roundRect(cx - w / 2, y, w, h, h / 2); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
@@ -1679,7 +1679,14 @@ function ai(s) {
   if (['chase', 'attack', 'recover'].includes(s.mode)) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (retreatCheck(s)) return;
-    if (s.mode === 'chase') { const d = dist(s.w, s.target.w); if (d > weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0)) { const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
+    if (s.mode === 'chase') { const d = dist(s.w, s.target.w), rng = weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0); if (d > rng) {
+      /* V3D.21: close in on a target others are already fighting through your own spot around it (evenly spaced round the
+         target from the first fighter's side), instead of queuing behind the one who is swinging */
+      const mates = d < 2.4 ? S.sv.filter((q) => q.target === s.target && q.hp > 0 && (q.mode === 'chase' || q.mode === 'attack')).sort((a, b) => a.id - b.id) : [];
+      if (mates.length > 1) { const t = s.target.w, f = mates[0] === s ? mates[1] : mates[0], base = Math.atan2(f.w.y - t.y, f.w.x - t.x), k = mates.indexOf(s), n = mates.length, a = base + (k * 2 * Math.PI) / n, rr = Math.max(.35, Math.min(rng * .8, .6));
+        const slot = { x: t.x + Math.cos(a) * rr, y: t.y + Math.sin(a) * rr }, bx = s.w.x, by = s.w.y; moveSlide(s, slot, CHASE); s.moving = true;
+        if (Math.hypot(s.w.x - bx, s.w.y - by) > CHASE * TUNE.move * .2) return; }
+      const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
     if (s.mode === 'attack' && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + .6) { s.mode = 'chase'; return; }   /* target slipped out of reach: follow, don't swing at air */
     if (s.mode === 'attack' && weaponOf(s).ranged) {   /* V3D.14: shooters step back from a zombie that gets in close */
       const near = S.z.find((z) => z.hp > 0 && !z.human && z.target === s && dist(z.w, s.w) < .75);
