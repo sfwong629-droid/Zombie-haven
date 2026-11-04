@@ -742,7 +742,10 @@ function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring th
     const hp = bHp(b), hit = tick - (b.lastHit || -9999) < 240, sel = selected && selected.ref === b, prob = (d.slot && !b.staff) || (d.fam === 'farm' && b.dry) || b.unpaid;
     if (hit || hp < b.max) { const w = 46 * z, h = 7 * z, y = cy + 2 * z; ctx.save(); ctx.beginPath(); ctx.roundRect(cx - w / 2, y, w, h, h / 2); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke();
       const k = hp / b.max; ctx.beginPath(); ctx.roundRect(cx - w / 2 + 1.5 * z, y + 1.5 * z, Math.max(0, (w - 3 * z) * k), h - 3 * z, (h - 3 * z) / 2); ctx.fillStyle = k > .5 ? '#7fbf5a' : k > .25 ? '#f2b84a' : '#e8584a'; ctx.fill(); ctx.restore(); }
-    if (hit && occupied(b)) { const pulse = 1 + .08 * Math.sin(tick / 5), w = 40 * z * pulse, h = 20 * z * pulse, y = cy - 18 * z; ctx.save(); ctx.beginPath(); ctx.roundRect(cx - w / 2, y - h / 2, w, h, h / 2); ctx.fillStyle = '#e8584a'; ctx.fill(); ctx.lineWidth = 2.4 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); hudText('SOS', cx, y + 5 * z * pulse, `800 ${Math.round(13 * z * pulse)}px Nunito, sans-serif`, '#fff8ec'); ctx.restore(); return; }
+    { const inside = S.sv.filter((q) => insideBuilding(q) === b).length, dmg = hp < b.max, by = cy - 27 * z;   /* V3D.21: who is inside, and that it needs repair, at a glance */
+      if (inside) clayBadge(cx - (dmg ? 13 : 0) * z, by, z, 'people', null, inside);
+      if (dmg) clayBadge(cx + (inside ? 13 : 0) * z, by, z, 'wrench', hp < b.max * .5 ? '#e8584a' : '#f2c14e', 0); }
+    if (hit && occupied(b)) { const pulse = 1 + .08 * Math.sin(tick / 5), w = 40 * z * pulse, h = 20 * z * pulse, y = cy - 50 * z; ctx.save(); ctx.beginPath(); ctx.roundRect(cx - w / 2, y - h / 2, w, h, h / 2); ctx.fillStyle = '#e8584a'; ctx.fill(); ctx.lineWidth = 2.4 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); hudText('SOS', cx, y + 5 * z * pulse, `800 ${Math.round(13 * z * pulse)}px Nunito, sans-serif`, '#fff8ec'); ctx.restore(); return; }
     if (hit || (!sel && !prob && cam.z < 1.7)) return;
   }
   ctx.save();
