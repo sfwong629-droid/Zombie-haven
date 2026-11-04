@@ -53,3 +53,33 @@ Today, fights run themselves: fighters pick targets, rally, answer SOS calls and
 ## Suggested first step
 
 Do **1 + 3 + 4**: tap-to-command, stances, and slow-time while planning. Together they give real control with very little screen clutter, and the rest can build on them.
+
+## Decision (2026-11-03): two modes
+
+**At home (the town):** light control only.
+- Tap-to-command orders that expire on their own.
+- Slow time while giving orders.
+- One ability per profession.
+- Boss warning circles.
+- Possibly a rally flag, merged with guard posts.
+- The town AI keeps doing most of the work.
+
+**Raids (new, later in the game):** the full RTS layer. The player attacks other bases with a chosen squad. This is where stances, squads and formations live, and later fog of war, traps and turrets on the enemy side.
+
+## Raids: first sketch
+
+- **Where targets come from.** Raid targets appear like exploration leads: a scout finds a raider camp, a rival town (Ironfield) or a fortified depot. Each target is generated from a seed, so it works offline on iOS. There's no live PvP; async PvP could come much later.
+- **How a raid plays.**
+  - Pick up to 6 fighters.
+  - Set squads, formations and stances on a planning screen.
+  - Enter a separate small map with walls, a gate, guards on patrol, turrets, loot buildings and a leader.
+- **Winning.**
+  - Take the loot buildings, or defeat the leader.
+  - Retreat whenever you like and keep what you carry.
+  - Downed fighters must be carried out, or they are captured. A captured fighter can be rescued later.
+- **Rewards.** Parts in bulk, rare weapons and armour, recruits (freed prisoners), and renown.
+- **Costs and risk.** The raid takes the squad away from home, so the town is weaker that day. Hit targets may send revenge raids later, which fits the existing raider system.
+- **Unlocks.** Raids open at Haven rank 3 or later, with a Barracks. Before that, the light home controls teach the basics.
+- **Reuse.**
+  - The same fighters, gear and abilities, and the same 3D characters and zombies.
+  - Enemy humans reuse the Raider kinds (thief, brute, firebug), plus new defenders.
