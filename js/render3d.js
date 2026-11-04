@@ -672,7 +672,10 @@ const LOOK_GLSL = `{ vec3 c = diffuseColor.rgb; vec3 n = c / max(1e-4, c.r + c.g
     float isSkin = (1. - smoothstep(.022, .04, distance(n, sn))) * smoothstep(.12, .2, lum);
     float isHair = (1. - smoothstep(.06, .11, distance(n, sn))) * smoothstep(.011, .016, lum) * (1. - smoothstep(.07, .1, lum));
     diffuseColor.rgb = mix(c, min(c * skinMul, vec3(1.)), isSkin); diffuseColor.rgb = mix(diffuseColor.rgb, min(c * hairMul, vec3(1.)), isHair); }`;
+const CHAR_V2 = new URLSearchParams(location.search).get('char') === 'v2' || location.hash === '#v2';   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
+let v2Mat = null;
 function jobMaterial(job, expr = 'neutral', look = null) {
+  if (MALE && MALE.v2) return (v2Mat ||= nightLit(new THREE.MeshToonMaterial({ map: MALE.body.material.map, gradientMap: grad }), .32));
   if (!FACE_OVL[expr]) expr = 'neutral';
   const sk = look ? look.sk % SKINS.length : 0, hr = look ? look.hr % HAIRS.length : 0, key = job + '|' + expr + '|' + sk + hr; if (jobMats[key]) return jobMats[key];
   const m = new THREE.MeshToonMaterial({ map: jobBase(job), gradientMap: grad }), ovl = expr !== 'neutral' && FACE_OVL[expr];
@@ -755,6 +758,7 @@ function hatFor(job) {
 }
 const HAT_SHAPE = { bandana: 'Raider', cap: 'Police Officer', beanie: 'Scavenger', straw: 'Farmer', hard: 'Engineer', bike: 'SWAT', football: 'SWAT', army: 'Guard', riot: 'SWAT' };
 function addHat(a, job, equipped = false) {   // parent to the head bone, placed at the rest pose
+  if (MALE && MALE.v2) return;   // V3D.19 test model: hats are fitted to the old head
   if (!HATS_ON && !equipped) { if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; } return; }   // V3D.16: no job hats; equipped hats (the Hat slot) do show
   if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
   const h = hatFor(job); if (!h) return; let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
@@ -1102,11 +1106,11 @@ window.ZH3D = { scene: () => scene, snow: SNOW, portrait: portraitOf, figure: fi
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
-  const [m, l, t] = await Promise.all([load(base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
+  const [m, l, t] = await Promise.all([load(CHAR_V2 ? 'assets/characters/ai3d_v2/survivor_v2.glb' : base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
   for (const src of [m, l]) { src.body = null; src.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') src.body = o; }); if (!src.body) src.scene.traverse((o) => { if (o.isSkinnedMesh && !src.body) src.body = o; }); }
   m.bodyImage = m.body.material.map && m.body.material.map.image;
   toonScene(m.scene); toonScene(l.scene);
-  MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage;
+  MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2;
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
