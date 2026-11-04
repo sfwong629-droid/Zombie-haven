@@ -43,11 +43,12 @@ def stance(p, w=0.0, k=1.0):
     p['bob'] = p.get('bob', 0) - (.07 + .03 * max(0, w) + .015 * max(0, -w)) * k
     return p
 
+WALK_LONG = 1.15   # V3D.20 slightly longer steps (the game walks at 60% of the old pace, legs step quicker)
 def walk_legs(t, stride=1.0):
     """Walk cycle, exaggerated: big stride and arm swing, high knee lift, bouncy body, hips and shoulders counter-twist."""
     ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
     for n, sg in (('L', 1), ('R', -1)):
-        th = 40 * sg * sn * stride; kn = 26 + 74 * max(0.0, sg * cs) ** 1.3
+        th = 40 * WALK_LONG * sg * sn * stride; kn = 26 + 74 * max(0.0, sg * cs) ** 1.3
         p['thigh.' + n] = (th + 10, 0, 0)
         p['shin.' + n] = (-kn, 0, 0)
         p['foot.' + n] = (-(th - kn) * .35 + kn * .45, 0, 0)

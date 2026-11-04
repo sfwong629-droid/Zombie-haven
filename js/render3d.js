@@ -716,7 +716,7 @@ class Actor {
     this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
     this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
-    this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite;
+    this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite; this.spd = 0;
     this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
     if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
   }
@@ -737,6 +737,7 @@ class Actor {
     const x = wx * T, z = wy * T;
     let dx, dz; if (faceTo) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
+    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); }   // V3D.20 ground speed (model units / s) for stride matching
     this.o.position.set(x, 0, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
     this.sh.position.set(x, .006, z); this.sh.scale.setScalar(scale);
     if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, .035, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
@@ -859,8 +860,8 @@ function zombieAnim(a, z) {
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('punch', true, true); a.attacking = true; } return; }
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
-  if (z.type === 'runner') { a.play('zombie_run'); a.cur.timeScale = 1.1; return; }
-  a.play('zombie_walk'); a.cur.timeScale = z.type === 'brute' || z.type === 'bloated' ? .7 : 1;
+  if (z.type === 'runner') { a.play('zombie_run'); return; }
+  a.play('zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer)
 }
 function syncZombies(dt, vis) {
   const seen = new Set();
@@ -991,7 +992,20 @@ const insideBuilding3 = (s) => false;   // hidden survivors are already not show
 const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
 let zCount = 0;
 const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
+// V3D.20 stride matching: how fast the planted foot slides back in each walking clip (model units / s at 1x),
+// measured from the exported models (tools: scratchpad stride/meas.py). Playback speed = ground speed / this,
+// so the feet stay planted instead of skating or running in place.
+const STRIDE = {
+  v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .383, zombie_run: 1.301 },
+  v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .382, zombie_run: 1.291 },
+  v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
+};
+function strideOf(a) {
+  const t = STRIDE[a.src === FEMALE3D && FEMALE3D ? 'v2f' : a.src.v2 ? 'v2m' : 'v1'], n = a.name;
+  return t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
+}
 function tickMixer(a, dt, vis) {
+  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.35, Math.min(3, a.spd / st));
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
   if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
@@ -1135,7 +1149,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { scene: () => scene, snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

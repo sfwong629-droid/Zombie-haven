@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.19', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.20', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenV26', 'zombieHavenV26_s2', 'zombieHavenV26_s3'], QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1200,7 +1200,9 @@ function stepToward(o, p, sp) {
   o.w.x += dx / d * sp; o.w.y += dy / d * sp; return false;
 }
 // returns 'arrived' | 'moving' | 'fail'.  goal = live world point.
+const MOVE_K = .6;   /* V3D.20: everyone walks at 60% of the old pace so the steps match the ground covered */
 function followPath(o, goal, sp) {
+  sp *= MOVE_K;
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;
   if (!o.path || o.pathGoal !== gk + (o.wallCost ? '#w' : '') || o.pathVer !== world.ver) {
@@ -1227,6 +1229,7 @@ function followPath(o, goal, sp) {
   return 'moving';
 }
 function moveSlide(o, t, sp) {                // free movement that cannot enter buildings or walls (zombie roaming)
+  sp *= MOVE_K;
   const walk = (x, y) => Wd.walkable(world, x, y, true);
   const dx = t.x - o.w.x, dy = t.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > .02; if (d <= sp) { if (walk(Math.floor(t.x), Math.floor(t.y))) { o.w.x = t.x; o.w.y = t.y; } return true; }
   const nx = o.w.x + dx / d * sp, ny = o.w.y + dy / d * sp;
