@@ -114,12 +114,35 @@ class Parts {
 // ---------------------------------------------------------------- ground (one colour per tile), forest and wreckage
 const PAD = 14;
 let groundMesh = null, groundKey = '';
+// V3D.21 rolling ground: gentle rises and dips (also under the roads), flat wherever something is built (buildings, walls)
+// so their bases stay on the ground. Heights live on a half-tile grid; groundH() samples it for everything placed on the ground.
+const GH = { a: null, x0: 0, y0: 0, nx: 0, ny: 0, amp: .45 };
+function groundH(wx, wz) {
+  if (!GH.a) return 0; const u = (wx / T - GH.x0) * 2, v = (wz / T - GH.y0) * 2, i = Math.floor(u), j = Math.floor(v);
+  if (i < 0 || j < 0 || i >= GH.nx || j >= GH.ny) return 0; const fu = u - i, fv = v - j, N = GH.nx + 1, A = GH.a;
+  return (A[j * N + i] * (1 - fu) + A[j * N + i + 1] * fu) * (1 - fv) + (A[(j + 1) * N + i] * (1 - fu) + A[(j + 1) * N + i + 1] * fu) * fv;
+}
+function buildHeights(X0, Y0, NX, NY) {
+  const W = G.world, blk = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y);
+  const D = new Float32Array(NX * NY).fill(9);   // distance (tiles) to the nearest built tile, up to 3
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) if (blk(x + X0, y + Y0)) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const d = Math.hypot(dx, dy); if (d < D[yy * NX + xx]) D[yy * NX + xx] = d; }
+  const sm = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const gx = NX * 2, gy = NY * 2, A = new Float32Array((gx + 1) * (gy + 1));
+  for (let j = 0; j <= gy; j++) for (let i = 0; i <= gx; i++) {
+    const u = X0 + i / 2, v = Y0 + j / 2;   // tile coordinates of this grid point
+    // distance to built ground, from the four tiles around this point (tile centres are at +.5)
+    let d = 9; for (const tx of [Math.floor(u - .01), Math.floor(u + .01)]) for (const ty of [Math.floor(v - .01), Math.floor(v + .01)]) { const xx = tx - X0, yy = ty - Y0; if (xx >= 0 && yy >= 0 && xx < NX && yy < NY) d = Math.min(d, D[yy * NX + xx]); }
+    const flat = sm(.9, 2.2, d), n = .5 * Math.sin(u * 1.35 + 1.3) * Math.cos(v * 1.1 + .4) + .32 * Math.sin(u * 2.3 - v * 1.9 + 2.1) + .18 * Math.cos(u * 3.7 + v * 3.1 + .7);
+    A[j * (gx + 1) + i] = GH.amp * flat * n;
+  }
+  Object.assign(GH, { a: A, x0: X0, y0: Y0, nx: gx, ny: gy });
+}
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const regrow = (x, y) => {   // town tiles where grass creeps back: near the town edge and in a few clumps
   const B = G.Wd.BUILD, d = Math.min(x - B.x0, B.x1 - x, y - B.y0, B.y1 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3);
   return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55);
 };
-const ROAD_STYLE = (() => { try { const q = new URLSearchParams(location.search).get('road'); if (q) localStorage.setItem('zh_road', q); return +(q || localStorage.getItem('zh_road') || 0); } catch (e) { return 0; } })();   // V3D.21 road look test: 0 dirt track, 1 gravel, 2 cobbles, 3 flagstones, 4 cracked asphalt
+const ROAD_STYLE = (() => { try { const q = new URLSearchParams(location.search).get('road'); if (q) localStorage.setItem('zh_road', q); return +(q || localStorage.getItem('zh_road') || 1); } catch (e) { return 1; } })();   // V3D.21 road look: 0 dirt track, 1 light gravel (default), 2 cobbles, 3 flagstones, 4 cracked asphalt
 const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T }, uRS: { value: ROAD_STYLE } };
 let _gmat = null;
 // ---------------------------------------------------------------- night lights (V3D.12): warm light pools at every
@@ -151,8 +174,8 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, RU);
-    sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz;');
-    sh.fragmentShader = `varying vec3 vWP; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT; uniform int uRS;
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz; vWN = normalize(mat3(modelMatrix) * normal);');
+    sh.fragmentShader = `varying vec3 vWP; varying vec3 vWN; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT; uniform int uRS;
       vec2 vor(vec2 q){ vec2 i = floor(q), f = fract(q); float d1 = 9., d2 = 9.; for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 o = vec2(x, y), c = o + vec2(fract(sin(dot(i + o, vec2(127.1, 311.7))) * 43758.5), fract(sin(dot(i + o, vec2(269.5, 183.3))) * 43758.5)) * .8 + .1; float d = length(c - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return vec2(d1, d2); }
       float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1., 0.)), f.x), mix(gh(i + vec2(0., 1.)), gh(i + 1.), f.x), f.y); }
@@ -186,10 +209,14 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
           road = mix(road, mix(vec3(.42, .34, .22), vec3(.30, .26, .21), gh(ci + 2.2)), on * (1. - smoothstep(rs - .02, rs, dd))); }   // pebbles, sandy or grey
         { vec2 q = p * 4.5, ci = floor(q), cf = fract(q); float dd = length(cf - vec2(gh(ci + 1.3), gh(ci + 5.9)) * .8 - .1);
           road = mix(road, road * 1.35, step(.7, gh(ci + 4.4)) * (1. - smoothstep(.05, .09, dd))); }             // grit
-        if (uRS == 1) {   // gravel: grey-tan crushed stone, dense small chips, a raked edge
-          vec2 v = vor(p * 7.); float chip = smoothstep(.0, .12, v.y - v.x); float t = gh(floor(p * 7.) + 3.);
-          road = mix(vec3(.23, .21, .17), vec3(.36, .33, .27), t) * (.75 + .35 * chip) * (.9 + .2 * gf(p * .8));
-          road = mix(road, road * .7, (1. - chip) * .6);
+        if (uRS == 1) {   // gravel, light: packed tan dirt with a scatter of grey chips (thicker in the middle, thinning to the edges)
+          vec3 base = mix(vec3(.25, .17, .09), vec3(.32, .24, .14), gf(p * .8)) * (.92 + .16 * gn(p * 3.));
+          vec2 v = vor(p * 4.5); vec2 ci = floor(p * 4.5); float t = gh(ci + 3.), dens = .22 + .2 * smoothstep(.6, .95, rm);
+          float chip = step(1. - dens, gh(ci + 8.1)) * (1. - smoothstep(.14, .2, v.x));
+          vec3 stone = mix(vec3(.26, .24, .21), vec3(.40, .37, .31), t);
+          road = mix(base, base * .78, (1. - smoothstep(.0, .05, abs(rm - .79))) * smoothstep(.25, .45, gn(p * 2.3 + 13.)) * .6);   // faint ruts
+          road = mix(road, road * .7, chip * .5 * (1. - smoothstep(.1, .22, length(v.x - .03))));   // chip shadow
+          road = mix(road, stone, chip);
         } else if (uRS == 2) {   // cobbles: rounded grey-brown stones in dark joints
           vec2 v = vor(p * 2.6); float edge = smoothstep(.03, .14, v.y - v.x), dome = 1. - smoothstep(.0, .45, v.x);
           vec3 st = mix(vec3(.20, .17, .13), vec3(.30, .26, .20), gh(floor(p * 2.6) + 1.)) * (.8 + .35 * dome);
@@ -209,6 +236,8 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
         g = mix(g, g * .82, rim);                                                        // darker trodden edge
         g = mix(g, vec3(.12, .19, .04), rim * smoothstep(.6, .8, gn(p * 17. + 8.)) * .8);  // grass tufts along the edge
         g = mix(g, road, rw);
+        float hs = dot(normalize(vWN), normalize(vec3(-.55, 1., .35)));                    // V3D.21 hill shading: sunny slopes lighter, the far sides darker,
+        g *= mix(1., clamp(.55 + .62 * hs, .7, 1.25), .9) * (.93 + .14 * smoothstep(-.4, .4, vWP.y));   // hollows a touch darker than the tops
         diffuseColor.rgb = g;
       }`);
   };
@@ -275,9 +304,13 @@ function buildGround() {
   if (RU.uRoad.value) RU.uRoad.value.dispose();
   const rt = new THREE.DataTexture(rm, NX, NY, THREE.RedFormat); rt.magFilter = rt.minFilter = THREE.LinearFilter; rt.needsUpdate = true;
   RU.uRoad.value = rt; RU.uRO.value.set(X0, Y0); RU.uRN.value.set(NX, NY);
-  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++)
-    for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((x + dx) * T, 0, (y + dz) * T); col.push(...corner(x + dx, y + dz)); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  buildHeights(X0, Y0, NX, NY);
+  const ccol = (x, y) => { const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, a = corner(x0, y0), b = corner(x0 + 1, y0), c2 = corner(x0, y0 + 1), d2 = corner(x0 + 1, y0 + 1); return [0, 1, 2].map((k) => (a[k] * (1 - fx) + b[k] * fx) * (1 - fy) + (c2[k] * (1 - fx) + d2[k] * fx) * fy); };
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++)   // two by two quads per tile, so the rises are smooth
+    for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { const u = x + (sx + dx) / 2, v = y + (sy + dz) / 2; pos.push(u * T, groundH(u * T, v * T), v * T); col.push(...(sx + dx === 0 || sx + dx === 2) && (sy + dz === 0 || sy + dz === 2) ? corner(u, v) : ccol(u, v)); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  { const nr = new Float32Array(pos.length), e = .25; for (let i = 0; i < pos.length; i += 3) { const x = pos[i], z = pos[i + 2], dx = groundH(x + e, z) - groundH(x - e, z), dz = groundH(x, z + e) - groundH(x, z - e), n = new THREE.Vector3(-dx, 2 * e, -dz).normalize(); nr[i] = n.x; nr[i + 1] = n.y; nr[i + 2] = n.z; }
+    g.setAttribute('normal', new THREE.BufferAttribute(nr, 3)); }   // V3D.21 smooth normals from the height field (face normals showed the tile seams)
   groundMesh = new THREE.Mesh(g, groundMat()); groundMesh.receiveShadow = true; scene.add(groundMesh);
   return true;
 }
@@ -382,7 +415,7 @@ function swayMats(lo, hi, th, map) {   // the toon material and its outline both
 function instSway(geo, list, colorFn, th, lo, hi, map) {
   const [mat, hm] = swayMats(lo, hi, th, map), im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length)), m = new THREE.Matrix4();
   im.count = list.length;
-  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
   im.castShadow = true; im.receiveShadow = true; scene.add(im);
   if (map) { im.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .45, side: THREE.DoubleSide }); return im; }
   const h = new THREE.InstancedMesh(geo, hm, im.count); h.instanceMatrix = im.instanceMatrix; h.userData.hull = true; h.castShadow = false; h.frustumCulled = false; im.add(h);
@@ -394,7 +427,7 @@ let forest = [], forestKey = '';
 function inst(geo, list, colorFn, th) {
   const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
   im.count = list.length;
-  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
   im.castShadow = true; im.receiveShadow = true; scene.add(im); addHull(im, th); return im;
 }
 const tuftG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry(.035, .3 + (i % 3) * .07, 3, 1, true).translate(0, .15, 0).rotateZ((i - 2) * .22).rotateY(i * 1.3).translate(Math.cos(i * 2.4) * .06, 0, Math.sin(i * 2.4) * .06)));
@@ -408,7 +441,7 @@ const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).t
 function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
   const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
   im.count = list.length;
-  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 9, 0)), new THREE.Vector3(s, s * (.8 + r * .4), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 9, 0)), new THREE.Vector3(s, s * (.8 + r * .4), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
   im.castShadow = !!shadow; im.receiveShadow = true; scene.add(im); return im;
 }
 function buildForest() {
@@ -794,9 +827,9 @@ class Actor {
     let dx, dz; if (faceTo) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
     if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); }   // V3D.20 ground speed (model units / s) for stride matching
-    this.o.position.set(x, 0, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
-    this.sh.position.set(x, .006, z); this.sh.scale.setScalar(scale);
-    if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, .035, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
+    const gy = groundH(x, z); this.o.position.set(x, gy, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
+    this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
+    if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
   }
   show(v) { this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
   dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
@@ -965,7 +998,7 @@ function syncCrates(dt) {
   const seen = new Set();
   for (const c of G.S.crates || []) {
     seen.add(c); let g = crateMeshes.get(c); if (!g) { g = makeCrate(); g.userData.t = 0; crateMeshes.set(c, g); }
-    g.userData.t += dt; const t = Math.max(g.userData.t, ((G.tick ? G.tick() : 0) - c.t0) / 60), ch = g.userData.chute; g.position.set(c.w.x * T, 0, c.w.y * T);
+    g.userData.t += dt; const t = Math.max(g.userData.t, ((G.tick ? G.tick() : 0) - c.t0) / 60), ch = g.userData.chute; g.position.set(c.w.x * T, groundH(c.w.x * T, c.w.y * T), c.w.y * T);
     if (c.taken) { g.position.y = 1.2; g.scale.setScalar(.7); ch.visible = false; continue; }
     const fall = Math.max(0, 1 - t / 3.2); g.position.y = 9 * fall * fall; g.rotation.z = fall * Math.sin(t * 2.2) * .18;
     if (fall > 0) { ch.visible = true; ch.position.set(0, 2.2, 0); ch.rotation.set(0, 0, 0); ch.scale.set(1, 1, 1); }
@@ -978,7 +1011,7 @@ function syncBags(dt) {
   for (const b of G.S.bags || []) {
     seen.add(b); let e = bagMeshes.get(b);
     if (!e) { e = { g: makeBag(), t: 0, spin: Math.random() * 6 }; bagMeshes.set(b, e); }
-    e.t += dt; const g = e.g; g.position.set(b.w.x * T, 0, b.w.y * T); g.rotation.y = e.spin;
+    e.t += dt; const g = e.g; g.position.set(b.w.x * T, groundH(b.w.x * T, b.w.y * T), b.w.y * T); g.rotation.y = e.spin;
     if (!b.opened) {   // fall in from above with two bounces, then a gentle wobble
       const t = e.t, fall = t < .35 ? 1.4 * (1 - (t / .35) ** 2) : t < .55 ? .22 * Math.sin((t - .35) / .2 * Math.PI) : t < .68 ? .06 * Math.sin((t - .55) / .13 * Math.PI) : 0;
       g.position.y = fall; const sq = t > .33 && t < .45 ? 1 - .25 * Math.sin((t - .33) / .12 * Math.PI) : 1; g.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); g.rotation.z = Math.sin(t * 3) * .05;

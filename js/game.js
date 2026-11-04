@@ -1020,7 +1020,7 @@ function wreck(b, by) {
 function bashTarget(z, d, any) {   /* the building a zombie goes for: one with people inside within its alert radius, or (marching) whatever it bumps into */
   let best = null, bs = 1e9;
   for (const b of world.buildings) { if (b.burnt) continue; const cx = Math.max(b.x, Math.min(b.x + b.w, z.w.x)), cy = Math.max(b.y, Math.min(b.y + b.h, z.w.y)), dd = Math.hypot(z.w.x - cx, z.w.y - cy);
-    const occ = enclosedB(b) && occupied(b); if (!(occ && dd < (d.alert || 4)) && !(any && dd < 1.6)) continue; const sc = dd - (occ ? 3 : 0); if (sc < bs) { bs = sc; best = b; } }
+    const occ = enclosedB(b) && occupied(b); if (!occ || !(dd < (d.alert || 4) || (any && dd < 1.6))) continue;   /* V3D.21: only a building with someone inside (an empty one is left alone) */ const sc = dd - (occ ? 3 : 0); if (sc < bs) { bs = sc; best = b; } }
   return best;
 }
 function bashSpot(z, b) {   /* a walkable tile next to the building, nearest the zombie */
@@ -1938,7 +1938,7 @@ function zai0(z) {
     zMarchStep(z, z.goal, d.chase * .8); return;
   }
   if (z.mode === 'zbash') {   /* V3D.17: pounding on a building */
-    const b = z.bldT; if (!b || !world.buildings.includes(b) || b.burnt) { z.bldT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 30; return; }
+    const b = z.bldT; if (!b || !world.buildings.includes(b) || b.burnt || !occupied(b)) { z.bldT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 30; return; }
     let best = null, bd = d.aggro * .8; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.bldT = null; z.path = null; alertPack(z, best); return; }
     if (dist(z.w, z.bpt) > .35) { const r = followPath(z, z.bpt, d.chase); if (r === 'fail') { z.bldT = null; z.mode = 'idle'; z.stateTicks = 60; } return; }
