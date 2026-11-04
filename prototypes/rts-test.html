@@ -1,0 +1,339 @@
+<title>Zombie Haven RTS Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one playable arena on top, the command tray under it (the game's Cozy Apocalypse look: cream clay, cocoa ink). Single warm theme on purpose. */
+:root {
+  --cream: #fff8ec; --cream2: #f3e4cc; --cocoa: #5a3f31; --cocoa2: #8a6a55;
+  --grass: #8fb35a; --good: #7cc95a; --bad: #e8584a; --gold: #f2b84a; --sky: #6f9fcf;
+  --display: 'Fredoka', 'Nunito', system-ui, sans-serif; --body: 'Nunito', system-ui, sans-serif;
+  color-scheme: light;
+}
+[hidden] { display: none !important; }
+html, body { background: #e9d8bc; color: var(--cocoa); }
+body { font-family: var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 24px; }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+h1 { font: 700 24px/1.1 var(--display); margin: 0; text-wrap: balance; }
+.sub { font-size: 13px; color: var(--cocoa2); margin: 2px 0 0; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { font: 700 13px var(--body); background: var(--cream); border: 2px solid var(--cocoa); border-radius: 99px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill.slow { background: #d8eef8; }
+.pill.warn { background: #ffe0d8; }
+.stage { position: relative; border: 3px solid var(--cocoa); border-radius: 18px; overflow: hidden; box-shadow: 0 4px 0 rgba(90, 63, 49, .35); background: var(--grass); touch-action: none; }
+canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.banner { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font: 700 15px var(--display); background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 99px; padding: 3px 14px; white-space: nowrap; pointer-events: none; transition: opacity .3s; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(90, 63, 49, .35); }
+.card { background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 16px; padding: 14px 16px; max-width: 340px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 0 rgba(90, 63, 49, .3); }
+.card h2 { font: 700 20px var(--display); margin: 0; }
+.card p { margin: 0; font-size: 14px; line-height: 1.4; }
+.tray { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+@media (max-width: 560px) { .tray { grid-template-columns: minmax(0, 1fr); } }
+.unit { background: var(--cream); border: 2.5px solid var(--cocoa); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.uhead { display: flex; gap: 10px; align-items: center; }
+.tok { width: 42px; height: 42px; border-radius: 50%; border: 2.5px solid var(--cocoa); flex: none; display: flex; align-items: center; justify-content: center; font: 700 16px var(--display); color: var(--cream); }
+.uname { font: 700 17px var(--display); line-height: 1.1; }
+.ujob { font-size: 12px; color: var(--cocoa2); }
+.hp { height: 9px; border: 2px solid var(--cocoa); border-radius: 99px; background: #fff; overflow: hidden; }
+.hp i { display: block; height: 100%; background: var(--good); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.lbl { font: 800 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--cocoa2); width: 100%; }
+button { font: 700 14px var(--body); color: var(--cocoa); background: #fffdf6; border: 2.5px solid var(--cocoa); border-radius: 12px; padding: 6px 12px; cursor: pointer; box-shadow: 0 3px 0 rgba(90, 63, 49, .3); }
+button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(90, 63, 49, .3); }
+button:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+button.on { background: var(--gold); }
+button.go { background: #d99a52; color: var(--cream); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.abil { position: relative; overflow: hidden; }
+.abil .cd { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(90, 63, 49, .22); }
+.side { display: flex; flex-direction: column; gap: 8px; }
+.roster { display: flex; gap: 6px; flex-wrap: wrap; }
+.roster button { padding: 3px 8px 3px 4px; display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.roster .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--cocoa); }
+.roster button.down { opacity: .45; }
+.hint { font-size: 12.5px; color: var(--cocoa2); line-height: 1.45; margin: 0; }
+.hint b { color: var(--cocoa); }
+details { background: var(--cream); border: 2px solid var(--cocoa); border-radius: 14px; padding: 8px 12px; }
+summary { font: 700 14px var(--display); cursor: pointer; }
+details ul { margin: 6px 0 2px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .banner { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Zombie Haven RTS Test</h1>
+      <p class="sub">Command five fighters against three waves and a boss. Nothing here changes the real game.</p>
+    </div>
+    <div class="pills"><span class="pill" id="pWave">Wave 1 / 4</span><span class="pill" id="pShelter">Shelter 200</span><span class="pill" id="pSpeed">Speed 1×</span></div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" width="760" height="520" aria-label="Arena: tap a fighter to select, tap the ground to move, tap a zombie to attack"></canvas>
+    <div class="banner" id="banner">Tap a fighter to start</div>
+    <div class="overlay" id="overlay" hidden><div class="card"><h2 id="oTitle"></h2><p id="oText"></p><button class="go" id="oBtn">Play again</button></div></div>
+  </div>
+
+  <div class="tray">
+    <div class="unit" id="unit">
+      <div class="uhead"><div class="tok" id="uTok">?</div><div style="min-width:0;flex:1"><div class="uname" id="uName">No one selected</div><div class="ujob" id="uJob">Tap a fighter on the map or below</div></div></div>
+      <div class="hp"><i id="uHp" style="width:0%"></i></div>
+      <div class="row"><span class="lbl">Stance</span><button data-st="aggressive">Aggressive</button><button data-st="defensive">Defensive</button><button data-st="hold">Hold fire</button></div>
+      <div class="row"><span class="lbl">Ability</span><button class="abil" id="aBtn"><span class="cd" id="aCd"></span><span id="aTxt">—</span></button><span class="hint" id="aInfo"></span></div>
+    </div>
+    <div class="side">
+      <div class="roster" id="roster"></div>
+      <div class="row"><button id="bRally">Rally flag</button><button id="bSlow" class="on">Slow while ordering</button><button id="bPause">Pause</button></div>
+      <p class="hint"><b>Tap</b> a fighter to select · <b>tap ground</b> to move there · <b>tap a zombie</b> to attack it. Orders last 20 s, then the AI takes over again. When the boss shows a red circle, move people out.</p>
+    </div>
+  </div>
+
+  <details>
+    <summary>What this tests</summary>
+    <ul>
+      <li><b>Tap-to-command</b>: move and attack orders with a flag; fighters go back to their own AI after 20 seconds.</li>
+      <li><b>Rally flag</b>: every free fighter gathers at one spot and holds.</li>
+      <li><b>Stances</b>: Aggressive chases far, Defensive stays near its spot, Hold fire only fights back.</li>
+      <li><b>Slow time</b>: the game runs at 0.3× while a fighter is selected, so you can give orders on a phone.</li>
+      <li><b>Abilities</b>: one per profession, with a cooldown.</li>
+      <li><b>Boss phases</b>: the boss warns before a big smash; move your people out of the circle.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv'), g = cv.getContext('2d');
+  const W = 19, H = 13;                         // arena in tiles
+  let S = 40, DPR = 1;                          // pixels per tile (set by fit)
+  const $ = (id) => document.getElementById(id);
+  const COL = { cocoa: '#5a3f31', cream: '#fff8ec', grass: '#8fb35a', grass2: '#83a650', dirt: '#c9a676', dirt2: '#bf9a68', bad: '#e8584a', good: '#7cc95a', gold: '#f2b84a', sky: '#6f9fcf' };
+  const JOBS = {
+    Guard:   { col: '#5d6b44', range: 0.9, dmg: 13, rate: 1.0, hp: 120, abil: 'taunt' },
+    Police:  { col: '#2f4a7a', range: 3.6, dmg: 9,  rate: 0.8, hp: 95,  abil: 'flash' },
+    SWAT:    { col: '#2a2f36', range: 4.4, dmg: 15, rate: 1.3, hp: 105, abil: 'breach' },
+    Medic:   { col: '#5aa0bd', range: 3.2, dmg: 6,  rate: 0.9, hp: 85,  abil: 'patch' },
+    Engineer:{ col: '#d9822e', range: 0.9, dmg: 11, rate: 1.0, hp: 100, abil: 'wall' },
+  };
+  const ABIL = {
+    taunt:  { name: 'Taunt', cd: 18, info: 'Zombies within 5 tiles go for him; he takes half damage for 6 s' },
+    flash:  { name: 'Flashbang', cd: 16, info: 'Stuns zombies near her target for 2.5 s' },
+    breach: { name: 'Breach', cd: 18, info: 'Next 3 shots deal triple damage' },
+    patch:  { name: 'Field patch', cd: 22, info: 'Heals everyone within 3 tiles by 25% and gets downed friends up' },
+    wall:   { name: 'Barricade', cd: 22, info: 'Drops a barricade in front of him that zombies must break' },
+  };
+  const ZT = { walker: { hp: 34, spd: 0.85, dmg: 6, r: .38, col: '#8fae6e' }, runner: { hp: 26, spd: 1.7, dmg: 5, r: .35, col: '#a6b86a' }, brute: { hp: 110, spd: 0.6, dmg: 14, r: .52, col: '#6f8a5a' }, boss: { hp: 520, spd: 0.55, dmg: 22, r: .75, col: '#8a6aa8' } };
+  const WAVES = [
+    { walker: 6 },
+    { walker: 6, runner: 4 },
+    { walker: 7, runner: 4, brute: 2 },
+    { walker: 4, runner: 2, boss: 1 },
+  ];
+  const shelter = { x: 9.5, y: 6.5, w: 2.2, h: 1.6, hp: 200, max: 200 };
+  let breather = 0, units, zeds, walls, fx, wave, waveT, spawnQ, sel, rally, rallyMode, slowOn = true, paused = false, over = false, time = 0, bannerT = 0;
+
+  function reset() {
+    const start = [['Marcus', 'Guard', 8.2, 8.6], ['Lena', 'Police', 10.8, 8.6], ['Rosa', 'SWAT', 9.5, 4.8], ['Amy', 'Medic', 7.6, 6.2], ['Theo', 'Engineer', 11.6, 6.2]];
+    units = start.map(([name, job, x, y], i) => { const J = JOBS[job]; return { id: i, name, job, x, y, hp: J.hp, max: J.hp, stance: 'defensive', anchor: { x, y }, order: null, orderT: 0, target: null, cd: 0, atkT: 0, abilCd: 0, taunt: 0, breach: 0, face: 0, down: false, shot: 0 }; });
+    zeds = []; walls = []; fx = []; wave = 0; waveT = 2.5; spawnQ = []; sel = null; rally = null; rallyMode = false; over = false; time = 0;
+    shelter.hp = shelter.max; $('overlay').hidden = true; breather = 0; startWave(); say('Wave 1 is coming. Tap a fighter to give orders', 3);
+    roster(); panel();
+  }
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const say = (t, s = 2.4) => { $('banner').textContent = t; $('banner').style.opacity = 1; bannerT = s; };
+
+  // ---------- waves
+  function startWave() {
+    const w = WAVES[wave]; spawnQ = [];
+    for (const [t, n] of Object.entries(w)) for (let i = 0; i < n; i++) spawnQ.push(t);
+    spawnQ.sort(() => Math.random() - .5); if (w.boss) { spawnQ = spawnQ.filter((t) => t !== 'boss'); spawnQ.push('boss'); }
+    say(w.boss ? 'Wave 4: the Mutant comes' : `Wave ${wave + 1}`, 2.5); $('pWave').textContent = `Wave ${wave + 1} / ${WAVES.length}`;
+  }
+  function spawn(type) {
+    const side = Math.floor(Math.random() * 4), t = Math.random();
+    const p = side === 0 ? { x: -0.5, y: t * H } : side === 1 ? { x: W + .5, y: t * H } : side === 2 ? { x: t * W, y: -0.5 } : { x: t * W, y: H + .5 };
+    const z = ZT[type]; zeds.push({ type, x: p.x, y: p.y, hp: z.hp, max: z.hp, target: null, atkT: 0, stun: 0, smash: null, smashCd: 5 });
+  }
+
+  // ---------- fighters
+  const alive = () => units.filter((u) => !u.down);
+  function senseRange(u) { return u.stance === 'aggressive' ? 7 : u.stance === 'defensive' ? 3.2 : 0; }
+  function nearestZ(p, r, f = () => true) { let b = null, bd = r; for (const z of zeds) { if (z.hp <= 0 || !f(z)) continue; const d = dist(p, z); if (d < bd) { bd = d; b = z; } } return b; }
+  function unitAI(u, dt) {
+    if (u.down) return; const J = JOBS[u.job];
+    u.cd = Math.max(0, u.cd - dt); u.abilCd = Math.max(0, u.abilCd - dt); u.taunt = Math.max(0, u.taunt - dt); u.shot = Math.max(0, u.shot - dt);
+    if (u.order) { u.orderT -= dt; if (u.orderT <= 0) { u.order = null; } }
+    let tgt = null, moveTo = null;
+    if (u.order && u.order.kind === 'attack') { tgt = u.order.z.hp > 0 ? u.order.z : null; if (!tgt) u.order = null; }
+    if (u.order && u.order.kind === 'move') { moveTo = u.order; if (dist(u, moveTo) < .15) { u.anchor = { x: moveTo.x, y: moveTo.y }; u.order = null; moveTo = null; } }
+    if (!tgt && !moveTo) {   // the AI by stance: guard the anchor, chase within the stance's reach, Hold fire only answers attackers
+      const attacker = nearestZ(u, J.range + .4, (z) => z.target === u);
+      const r = senseRange(u); const near = r ? nearestZ(u.stance === 'defensive' ? u.anchor : u, r) : null;
+      tgt = attacker || near || (J.range > 1 && u.stance !== 'hold' ? nearestZ(u, J.range) : null);
+      if (!tgt && dist(u, u.anchor) > .2) moveTo = u.anchor;
+    }
+    if (tgt) {
+      const d = dist(u, tgt); u.face = Math.atan2(tgt.y - u.y, tgt.x - u.x);
+      if (u.stance === 'defensive' && !u.order && dist(u.anchor, tgt) > 4.5 && d > J.range) { tgt = null; moveTo = u.anchor; }
+      else if (d > J.range) moveTo = { x: tgt.x, y: tgt.y };
+      else if (u.cd <= 0) { let dmg = J.dmg * (0.85 + Math.random() * .3); if (u.breach > 0) { dmg *= 3; u.breach--; } tgt.hp -= dmg; u.cd = J.rate; u.atkT = .18;
+        fx.push({ k: J.range > 1 ? 'shot' : 'hit', a: { x: u.x, y: u.y }, b: { x: tgt.x, y: tgt.y }, t: .14, big: dmg > J.dmg * 2 });
+        fx.push({ k: 'num', x: tgt.x, y: tgt.y - .5, t: .7, txt: '-' + Math.round(dmg), col: dmg > J.dmg * 2 ? COL.gold : COL.cream }); }
+    }
+    if (moveTo) step(u, moveTo, 2.1 * dt);
+    u.atkT = Math.max(0, u.atkT - dt);
+  }
+  function step(o, p, s) {
+    const dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy); if (d < 1e-3) return;
+    const m = Math.min(d, s); let nx = o.x + dx / d * m, ny = o.y + dy / d * m;
+    for (const w of walls) if (w.hp > 0 && Math.hypot(nx - w.x, ny - w.y) < .55 && o.isZ) { o.blockedBy = w; return; }
+    if (o.isZ || !inShelter(nx, ny)) { o.x = nx; o.y = ny; } else if (!inShelter(nx, o.y)) o.x = nx; else if (!inShelter(o.x, ny)) o.y = ny;   // fighters slide around the Shelter
+    o.x = Math.max(-1, Math.min(W + 1, o.x)); o.y = Math.max(-1, Math.min(H + 1, o.y)); if (!o.isZ) o.face = Math.atan2(dy, dx);
+  }
+  const inShelter = (x, y) => Math.abs(x - shelter.x) < shelter.w / 2 + .25 && Math.abs(y - shelter.y) < shelter.h / 2 + .25;
+
+  // ---------- zombies
+  function zombieAI(z, dt) {
+    const T = ZT[z.type]; z.isZ = true; z.atkT = Math.max(0, z.atkT - dt);
+    if (z.stun > 0) { z.stun -= dt; return; }
+    if (z.type === 'boss') { z.smashCd -= dt;
+      if (z.smash) { z.smash.t -= dt; if (z.smash.t <= 0) { for (const u of alive()) if (dist(u, z.smash) < z.smash.r) hurt(u, 36); if (dist(shelter, z.smash) < z.smash.r + 1) hitShelter(30); fx.push({ k: 'boom', x: z.smash.x, y: z.smash.y, r: z.smash.r, t: .45 }); z.smash = null; z.smashCd = 6; } return; }
+      if (z.smashCd <= 0) { const near = alive().filter((u) => dist(u, z) < 3.2); if (near.length) { z.smash = { x: z.x, y: z.y, r: 2.4, t: 2.2, t0: 2.2 }; say('SMASH incoming! Move out of the red circle', 2.2); return; } }
+    }
+    const taunter = alive().find((u) => u.taunt > 0 && dist(u, z) < 5);
+    let t = taunter || null;
+    if (!t) { let b = null, bd = 6; for (const u of alive()) { const d = dist(u, z); if (d < bd) { bd = d; b = u; } } t = b; }
+    z.target = t;
+    const goal = t ? t : { x: shelter.x, y: shelter.y };
+    const reach = (t ? .55 : 1.25) + T.r * .6;
+    if (z.blockedBy && z.blockedBy.hp > 0) { if (z.atkT <= 0) { z.blockedBy.hp -= T.dmg; z.atkT = 1.1; fx.push({ k: 'num', x: z.blockedBy.x, y: z.blockedBy.y - .4, t: .6, txt: '-' + T.dmg, col: '#ffd0a0' }); } if (dist(z, z.blockedBy) > .9) z.blockedBy = null; return; }
+    z.blockedBy = null;
+    if (dist(z, goal) > reach) step(z, goal, T.spd * dt);
+    else if (z.atkT <= 0) { z.atkT = 1.15; if (t) hurt(t, T.dmg); else hitShelter(T.dmg); fx.push({ k: 'hit', a: { x: z.x, y: z.y }, b: { x: goal.x, y: goal.y }, t: .12 }); }
+  }
+  function hurt(u, d) { if (u.taunt > 0) d *= .5; u.hp -= d; fx.push({ k: 'num', x: u.x, y: u.y - .5, t: .7, txt: '-' + Math.round(d), col: COL.bad }); if (u.hp <= 0) { u.hp = 0; u.down = true; u.order = null; say(`${u.name} is down`, 1.8); if (sel === u) sel = null; roster(); panel(); } }
+  function hitShelter(d) { shelter.hp = Math.max(0, shelter.hp - d); fx.push({ k: 'num', x: shelter.x, y: shelter.y - 1.2, t: .7, txt: '-' + d, col: '#ffb27a' }); }
+
+  // ---------- abilities
+  function useAbility(u) {
+    if (!u || u.down || u.abilCd > 0) return; const k = JOBS[u.job].abil;
+    if (k === 'taunt') { u.taunt = 6; fx.push({ k: 'ring', x: u.x, y: u.y, r: 5, t: .6, col: COL.gold }); say('Marcus: "Over here!"', 1.6); }
+    if (k === 'flash') { const c = (u.order && u.order.z) || nearestZ(u, 8); if (!c) { say('No zombie in sight to flash', 1.4); return; } for (const z of zeds) if (z.type !== 'boss' && dist(z, c) < 2.5) z.stun = 2.5; else if (z.type === 'boss' && dist(z, c) < 2.5) z.stun = .8; fx.push({ k: 'ring', x: c.x, y: c.y, r: 2.5, t: .5, col: '#fffbe0' }); say('Flashbang!', 1.2); }
+    if (k === 'breach') { u.breach = 3; say('Rosa loads breaching rounds', 1.4); }
+    if (k === 'patch') { let n = 0; for (const o of units) if (dist(o, u) < 3) { if (o.down) { o.down = false; o.hp = o.max * .4; n++; } else o.hp = Math.min(o.max, o.hp + o.max * .25); } fx.push({ k: 'ring', x: u.x, y: u.y, r: 3, t: .6, col: COL.good }); say(n ? `Amy got ${n} back on their feet` : 'Field patch', 1.6); roster(); }
+    if (k === 'wall') { const x = u.x + Math.cos(u.face) * 1.1, y = u.y + Math.sin(u.face) * 1.1; walls.push({ x, y, hp: 90, max: 90 }); say('Barricade up', 1.2); }
+    u.abilCd = ABIL[k].cd; panel();
+  }
+
+  // ---------- input
+  function toWorld(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+  cv.addEventListener('pointerdown', (e) => {
+    if (over) return; const p = toWorld(e);
+    if (rallyMode) { rally = { x: p.x, y: p.y, t: 20 }; rallyMode = false; $('bRally').classList.remove('on'); for (const u of alive()) if (!(u.order && u.order.kind === 'attack')) { u.order = { kind: 'move', x: p.x + (u.id - 2) * .45, y: p.y + ((u.id % 2) - .5) * .5 }; u.orderT = 20; } say('Everyone to the flag', 1.6); return; }
+    const hitU = units.filter((u) => dist(u, p) < .6).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    if (hitU && !hitU.down) { sel = sel === hitU ? null : hitU; roster(); panel(); return; }
+    const hitZ = nearestZ(p, .8);
+    if (sel && hitZ) { sel.order = { kind: 'attack', z: hitZ }; sel.orderT = 20; fx.push({ k: 'ring', x: hitZ.x, y: hitZ.y, r: .7, t: .4, col: COL.bad }); return; }
+    if (sel) { sel.order = { kind: 'move', x: p.x, y: p.y }; sel.orderT = 20; fx.push({ k: 'ring', x: p.x, y: p.y, r: .5, t: .4, col: COL.cream }); return; }
+  });
+  document.querySelectorAll('[data-st]').forEach((b) => b.onclick = () => { if (!sel) return; sel.stance = b.dataset.st; if (sel.stance !== 'aggressive') sel.anchor = { x: sel.x, y: sel.y }; panel(); });
+  $('aBtn').onclick = () => useAbility(sel);
+  $('bRally').onclick = () => { rallyMode = !rallyMode; $('bRally').classList.toggle('on', rallyMode); if (rallyMode) say('Tap where everyone should gather', 2); };
+  $('bSlow').onclick = () => { slowOn = !slowOn; $('bSlow').classList.toggle('on', slowOn); };
+  $('bPause').onclick = () => { paused = !paused; $('bPause').textContent = paused ? 'Resume' : 'Pause'; $('bPause').classList.toggle('on', paused); };
+  $('oBtn').onclick = reset;
+
+  // ---------- panels
+  function roster() {
+    $('roster').innerHTML = units.map((u) => `<button data-u="${u.id}" class="${sel === u ? 'on' : ''} ${u.down ? 'down' : ''}"><span class="dot" style="background:${JOBS[u.job].col}"></span>${u.name}</button>`).join('');
+    $('roster').querySelectorAll('[data-u]').forEach((b) => b.onclick = () => { const u = units[+b.dataset.u]; if (u.down) { say(`${u.name} is down: Amy's field patch can get them up`, 2); return; } sel = sel === u ? null : u; roster(); panel(); });
+  }
+  function panel() {
+    const u = sel; document.querySelectorAll('[data-st]').forEach((b) => { b.classList.toggle('on', !!u && u.stance === b.dataset.st); b.disabled = !u; });
+    if (!u) { $('uTok').textContent = '?'; $('uTok').style.background = '#c9b8a4'; $('uName').textContent = 'No one selected'; $('uJob').textContent = 'Tap a fighter on the map or below'; $('uHp').style.width = '0%'; $('aTxt').textContent = '—'; $('aBtn').disabled = true; $('aInfo').textContent = ''; $('aCd').style.width = '0%'; return; }
+    const A = ABIL[JOBS[u.job].abil]; $('uTok').textContent = u.name[0]; $('uTok').style.background = JOBS[u.job].col; $('uName').textContent = u.name; $('uJob').textContent = `${u.job} · ${u.order ? (u.order.kind === 'move' ? 'moving to the flag' : 'attacking your target') : u.stance === 'hold' ? 'holding fire' : 'on their own'}`;
+    $('aTxt').textContent = A.name; $('aInfo').textContent = A.info; tick();
+  }
+  function tick() { const u = sel; if (!u) return; $('uHp').style.width = (u.hp / u.max * 100) + '%'; $('uHp').style.background = u.hp / u.max > .5 ? COL.good : u.hp / u.max > .25 ? COL.gold : COL.bad; const A = ABIL[JOBS[u.job].abil]; $('aCd').style.width = (u.abilCd / A.cd * 100) + '%'; $('aBtn').disabled = u.abilCd > 0 || u.down; $('aTxt').textContent = u.abilCd > 0 ? `${A.name} ${Math.ceil(u.abilCd)}s` : A.name; }
+
+  // ---------- drawing
+  const trees = Array.from({ length: 26 }, (_, i) => { const a = i / 26 * Math.PI * 2, rx = W / 2 + 0.6, ry = H / 2 + 0.6; return { x: W / 2 + Math.cos(a) * rx + Math.sin(i * 7) * .4, y: H / 2 + Math.sin(a) * ry + Math.cos(i * 5) * .4, r: .55 + (i % 3) * .12, c: ['#d06a2a', '#e39a35', '#4a7f50', '#8a9a3a'][i % 4] }; });
+  const tufts = Array.from({ length: 70 }, (_, i) => ({ x: (Math.sin(i * 12.9898) * 43758.5453 % 1 + 1) % 1 * W, y: (Math.sin(i * 78.233) * 12345.678 % 1 + 1) % 1 * H }));
+  function fit() { const r = cv.getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1); const w = Math.round(r.width * DPR), h = Math.round(r.width * H / W * DPR); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } S = cv.width / W; }
+  const P = (v) => v * S;
+  function circle(x, y, r, fill, line = COL.cocoa, lw = 2.2) { g.beginPath(); g.arc(P(x), P(y), P(r), 0, 7); g.fillStyle = fill; g.fill(); if (line) { g.lineWidth = lw * DPR; g.strokeStyle = line; g.stroke(); } }
+  function draw() {
+    g.fillStyle = COL.grass; g.fillRect(0, 0, cv.width, cv.height);
+    for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if ((x + y) % 2) { g.fillStyle = COL.grass2; g.globalAlpha = .35; g.fillRect(P(x), P(y), S, S); g.globalAlpha = 1; }
+    g.fillStyle = COL.dirt; g.beginPath(); g.ellipse(P(shelter.x), P(shelter.y + .3), P(4.2), P(2.9), 0, 0, 7); g.fill();
+    g.strokeStyle = '#6f8f45'; g.lineWidth = 1.5 * DPR; for (const t of tufts) { g.beginPath(); g.moveTo(P(t.x), P(t.y)); g.lineTo(P(t.x - .06), P(t.y - .18)); g.moveTo(P(t.x), P(t.y)); g.lineTo(P(t.x + .07), P(t.y - .16)); g.stroke(); }
+    // shelter
+    const sx = shelter.x - shelter.w / 2, sy = shelter.y - shelter.h / 2;
+    g.fillStyle = 'rgba(60,40,20,.25)'; g.fillRect(P(sx + .12), P(sy + .2), P(shelter.w), P(shelter.h));
+    g.fillStyle = '#e8c9a0'; g.strokeStyle = COL.cocoa; g.lineWidth = 2.5 * DPR; g.beginPath(); g.roundRect(P(sx), P(sy + .35), P(shelter.w), P(shelter.h - .35), P(.12)); g.fill(); g.stroke();
+    g.fillStyle = '#b5532e'; g.beginPath(); g.moveTo(P(sx - .15), P(sy + .55)); g.lineTo(P(shelter.x), P(sy - .25)); g.lineTo(P(sx + shelter.w + .15), P(sy + .55)); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#7a5230'; g.fillRect(P(shelter.x - .18), P(sy + shelter.h - .55), P(.36), P(.55));
+    bar(shelter.x, sy - .55, 1.6, shelter.hp / shelter.max);
+    // trees around the edge
+    for (const t of trees) { circle(t.x + .06, t.y + .1, t.r, 'rgba(40,30,20,.18)', null); circle(t.x, t.y, t.r, t.c); }
+    // barricades
+    for (const w of walls) if (w.hp > 0) { g.fillStyle = '#b98a56'; g.strokeStyle = COL.cocoa; g.lineWidth = 2 * DPR; g.beginPath(); g.roundRect(P(w.x - .45), P(w.y - .22), P(.9), P(.44), P(.08)); g.fill(); g.stroke(); bar(w.x, w.y - .45, .8, w.hp / w.max); }
+    // rally flag and move flags
+    if (rally && rally.t > 0) flag(rally.x, rally.y, COL.gold);
+    for (const u of units) if (u.order && u.order.kind === 'move') { flag(u.order.x, u.order.y, JOBS[u.job].col); g.setLineDash([4 * DPR, 4 * DPR]); g.strokeStyle = 'rgba(90,63,49,.5)'; g.lineWidth = 1.5 * DPR; g.beginPath(); g.moveTo(P(u.x), P(u.y)); g.lineTo(P(u.order.x), P(u.order.y)); g.stroke(); g.setLineDash([]); }
+    // boss smash warnings
+    for (const z of zeds) if (z.smash) { const k = 1 - z.smash.t / z.smash.t0; g.fillStyle = `rgba(232,88,74,${.15 + .25 * k})`; g.beginPath(); g.arc(P(z.smash.x), P(z.smash.y), P(z.smash.r), 0, 7); g.fill(); g.lineWidth = 3 * DPR; g.strokeStyle = COL.bad; g.stroke(); g.beginPath(); g.arc(P(z.smash.x), P(z.smash.y), P(z.smash.r * k), 0, 7); g.stroke(); txt(`SMASH ${z.smash.t.toFixed(1)}`, z.smash.x, z.smash.y - z.smash.r - .25, 15, COL.cream, COL.bad); }
+    // zombies
+    for (const z of zeds) { if (z.hp <= 0) continue; const T = ZT[z.type]; circle(z.x + .05, z.y + .12, T.r, 'rgba(40,30,20,.2)', null); circle(z.x, z.y, T.r, z.stun > 0 ? '#e8f0d0' : T.col);
+      g.fillStyle = COL.cocoa; g.beginPath(); g.arc(P(z.x - T.r * .3), P(z.y - T.r * .15), P(T.r * .12), 0, 7); g.arc(P(z.x + T.r * .3), P(z.y - T.r * .15), P(T.r * .12), 0, 7); g.fill();
+      if (z.stun > 0) txt('★', z.x, z.y - T.r - .2, 14, COL.gold); bar(z.x, z.y - T.r - .18, T.r * 2.2, z.hp / z.max, COL.bad);
+      if (sel && sel.order && sel.order.z === z) { g.strokeStyle = COL.bad; g.lineWidth = 2.5 * DPR; g.beginPath(); g.arc(P(z.x), P(z.y), P(T.r + .16), 0, 7); g.stroke(); } }
+    // fighters
+    for (const u of units) { const J = JOBS[u.job];
+      if (u.down) { circle(u.x, u.y, .3, '#c9b8a4'); txt('✚', u.x, u.y + .12, 13, COL.bad); continue; }
+      if (sel === u) { g.strokeStyle = COL.cream; g.lineWidth = 3 * DPR; g.setLineDash([5 * DPR, 4 * DPR]); g.beginPath(); g.arc(P(u.x), P(u.y), P(.58), time * 1.5, time * 1.5 + 7); g.stroke(); g.setLineDash([]);
+        if (u.stance !== 'hold') { g.strokeStyle = 'rgba(255,248,236,.35)'; g.lineWidth = 1.5 * DPR; g.beginPath(); g.arc(P(u.stance === 'defensive' ? u.anchor.x : u.x), P(u.stance === 'defensive' ? u.anchor.y : u.y), P(senseRange(u)), 0, 7); g.stroke(); } }
+      if (u.taunt > 0) { g.strokeStyle = COL.gold; g.lineWidth = 2 * DPR; g.beginPath(); g.arc(P(u.x), P(u.y), P(.5 + Math.sin(time * 8) * .05), 0, 7); g.stroke(); }
+      circle(u.x + .05, u.y + .12, .42, 'rgba(40,30,20,.2)', null);
+      const wx = u.x + Math.cos(u.face) * (.42 + (u.atkT > 0 ? .12 : 0)), wy = u.y + Math.sin(u.face) * (.42 + (u.atkT > 0 ? .12 : 0));
+      g.strokeStyle = COL.cocoa; g.lineWidth = 5 * DPR; g.lineCap = 'round'; g.beginPath(); g.moveTo(P(u.x), P(u.y)); g.lineTo(P(wx), P(wy)); g.stroke(); g.strokeStyle = J.range > 1 ? '#59626a' : '#c9d3d9'; g.lineWidth = 2.6 * DPR; g.stroke();
+      circle(u.x, u.y, .42, J.col); circle(u.x, u.y - .06, .2, '#f2c9a0', COL.cocoa, 1.6);
+      txt(u.name, u.x, u.y + .66, 11, COL.cocoa, COL.cream); if (u.breach > 0) txt('×3', u.x + .42, u.y - .38, 11, COL.gold, COL.cocoa);
+      if (u.hp < u.max) bar(u.x, u.y - .6, .8, u.hp / u.max); }
+    // effects
+    for (const f of fx) { if (f.k === 'shot') { g.strokeStyle = f.big ? COL.gold : '#ffe9a0'; g.lineWidth = (f.big ? 3 : 2) * DPR; g.globalAlpha = f.t / .14; g.beginPath(); g.moveTo(P(f.a.x), P(f.a.y)); g.lineTo(P(f.b.x), P(f.b.y)); g.stroke(); g.globalAlpha = 1; }
+      if (f.k === 'num') txt(f.txt, f.x, f.y - (.7 - f.t) * .8, 13, f.col, COL.cocoa);
+      if (f.k === 'ring' || f.k === 'boom') { g.globalAlpha = Math.min(1, f.t * 2.5); g.strokeStyle = f.col || COL.bad; g.lineWidth = 3 * DPR; g.beginPath(); g.arc(P(f.x), P(f.y), P(f.r * (f.k === 'boom' ? 1 : 1.2 - f.t)), 0, 7); g.stroke(); if (f.k === 'boom') { g.fillStyle = 'rgba(232,88,74,.3)'; g.fill(); } g.globalAlpha = 1; } }
+    if (curSpeed() < 1) { g.fillStyle = 'rgba(111,159,207,.14)'; g.fillRect(0, 0, cv.width, cv.height); }
+  }
+  function bar(x, y, w, k, col) { g.fillStyle = COL.cream; g.strokeStyle = COL.cocoa; g.lineWidth = 1.6 * DPR; g.beginPath(); g.roundRect(P(x - w / 2), P(y - .07), P(w), P(.14), P(.07)); g.fill(); g.stroke(); g.fillStyle = col || (k > .5 ? COL.good : k > .25 ? COL.gold : COL.bad); g.beginPath(); g.roundRect(P(x - w / 2) + DPR, P(y - .07) + DPR, Math.max(0, (P(w) - 2 * DPR) * k), P(.14) - 2 * DPR, P(.05)); g.fill(); }
+  function flag(x, y, col) { g.strokeStyle = COL.cocoa; g.lineWidth = 2.5 * DPR; g.beginPath(); g.moveTo(P(x), P(y)); g.lineTo(P(x), P(y - .7)); g.stroke(); g.fillStyle = col; g.beginPath(); g.moveTo(P(x), P(y - .7)); g.lineTo(P(x + .45), P(y - .55)); g.lineTo(P(x), P(y - .4)); g.closePath(); g.fill(); g.lineWidth = 1.8 * DPR; g.stroke(); }
+  function txt(t, x, y, px, fill, stroke) { g.font = `700 ${px * DPR}px Fredoka, Nunito, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; if (stroke) { g.lineWidth = 3 * DPR; g.strokeStyle = stroke; g.lineJoin = 'round'; g.strokeText(t, P(x), P(y)); } g.fillStyle = fill; g.fillText(t, P(x), P(y)); }
+
+  // ---------- loop
+  const curSpeed = () => (paused || over ? 0 : sel && slowOn && zeds.some((z) => z.hp > 0) ? .3 : 1);
+  let last = 0;
+  function frame(now) {
+    const rdt = Math.min(.05, last ? (now - last) / 1000 : 0); last = now; const sp = curSpeed(), dt = rdt * sp; time += rdt;
+    if (dt > 0) {
+      if (spawnQ.length) { waveT -= dt; if (waveT <= 0) { spawn(spawnQ.shift()); waveT = .9; } }
+      else if (!zeds.some((z) => z.hp > 0)) {   // wave cleared: a short breather, the downed get up, then the next wave
+        if (wave >= WAVES.length - 1) end(true);
+        else { if (!breather) { breather = 4; say(`Wave ${wave + 1} cleared`, 2); for (const u of units) if (u.down) { u.down = false; u.hp = u.max * .3; } roster(); }
+          breather -= dt; if (breather <= 0) { breather = 0; zeds = []; wave++; startWave(); waveT = 1.2; } } }
+      for (const u of units) unitAI(u, dt); for (const z of zeds) if (z.hp > 0) zombieAI(z, dt);
+      for (const z of zeds) if (z.hp <= 0 && !z.dead) { z.dead = true; fx.push({ k: 'ring', x: z.x, y: z.y, r: .6, t: .35, col: COL.cream }); if (z.type === 'boss') say('The Mutant falls!', 2); }
+      for (const f of fx) f.t -= dt; fx = fx.filter((f) => f.t > 0); walls = walls.filter((w) => w.hp > 0);
+      if (rally) { rally.t -= dt; if (rally.t <= 0) rally = null; }
+      if (shelter.hp <= 0 || !alive().length) end(false);
+    }
+    if (bannerT > 0) { bannerT -= rdt; if (bannerT <= 0) $('banner').style.opacity = 0; }
+    $('pShelter').textContent = `Shelter ${Math.ceil(shelter.hp)}`; $('pShelter').classList.toggle('warn', shelter.hp < 80);
+    $('pSpeed').textContent = sp === 0 ? 'Paused' : sp < 1 ? 'Slowed 0.3×' : 'Speed 1×'; $('pSpeed').classList.toggle('slow', sp > 0 && sp < 1);
+    if (sel) tick(); fit(); draw(); requestAnimationFrame(frame);
+  }
+  function end(win) { if (over) return; over = true; sel = null; panel(); $('oTitle').textContent = win ? 'The Haven holds' : shelter.hp <= 0 ? 'The Shelter fell' : 'Everyone is down'; $('oText').textContent = win ? 'All four waves cleared, the Mutant included. Try again with only stances and abilities, or only orders, and see which part you missed.' : 'Try pulling people back to the Shelter with the rally flag, and use Field patch to get the downed back up.'; $('overlay').hidden = false; }
+  reset(); requestAnimationFrame(frame);
+})();
+</script>
