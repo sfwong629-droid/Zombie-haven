@@ -1201,27 +1201,41 @@ function stepToward(o, p, sp) {
 }
 // returns 'arrived' | 'moving' | 'fail'.  goal = live world point.
 const TUNE = { move: .6, work: 1.4 };   /* V3D.20 move: everyone walks at 60% of the old pace so the steps match the ground covered; V3D.21 work: on the job they work 40% faster to make up for the longer walks */
+/* V3D.21 people walk in soft curves: they turn gradually toward the next point (a turning circle that tightens near the
+   point), cut corners by moving on to the next point early, and each trip's waypoints are nudged a little off the tile
+   centres, so nobody walks the same ruler-straight grid line. Zombies keep the plain stepping. */
+function steer(o, p, sp) {
+  const dx = p.x - o.w.x, dy = p.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > .02;
+  if (d <= sp) { o.w.x = p.x; o.w.y = p.y; return true; }
+  const a = Math.atan2(dy, dx), wrap = (v) => Math.atan2(Math.sin(v), Math.cos(v)); if (o.hd == null || o.hdT !== tick - 1) o.hd = a; o.hdT = tick;
+  const R = Math.max(.12, Math.min(.55, d * .45)), mt = sp / R, df = wrap(a - o.hd); o.hd += Math.max(-mt, Math.min(mt, df)); if (Math.abs(wrap(a - o.hd)) > 1.7) o.hd = a;
+  const nx = o.w.x + Math.cos(o.hd) * sp, ny = o.w.y + Math.sin(o.hd) * sp;
+  if (Wd.walkable(world, Math.floor(nx), Math.floor(ny)) || Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y))) { o.w.x = nx; o.w.y = ny; } else { o.hd = a; o.w.x += dx / d * sp; o.w.y += dy / d * sp; }
+  return false;
+}
 function followPath(o, goal, sp) {
   sp *= TUNE.move;
+  const curvy = o.job !== undefined, go = (p) => curvy ? steer(o, p, sp) : stepToward(o, p, sp);
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;
   if (!o.path || o.pathGoal !== gk + (o.wallCost ? '#w' : '') || o.pathVer !== world.ver) {
     const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human, o.wallCost || 0); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver;
     if (!p) { o.path = null; return 'fail'; }
-    o.path = p.map((q) => tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
+    o.path = p.map((q, i) => curvy && i < p.length - 1 ? { x: q.x + .5 + (rnd() - .5) * .44, y: q.y + .5 + (rnd() - .5) * .44 } : tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
     const fb = o.job !== undefined || o.human ? Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y)) : null;   /* V2.34: leaving a building = step out through its entrance tile first (the path starts AFTER that tile, so people cut across the footprint) */
     if (fb) { const at = Wd.approachTile(fb); if (!p.length || p[0].x !== at.x || p[0].y !== at.y) o.path.unshift(tc(at.x, at.y)); }
   }
   if (o.path.length > 0 && o.path.length === 1) { /* last leg handled below */ }
   const target = o.path.length ? o.path[0] : goal;
   const before = { x: o.w.x, y: o.w.y };
-  if (stepToward(o, o.path.length > 1 ? o.path[0] : (o.path.length === 1 ? o.path[0] : goal), sp)) {
+  if (curvy && o.path.length > 1 && dist(o.w, o.path[0]) < .5) o.path.shift();   /* cut the corner: head for the next point early */
+  if (go(o.path.length > 1 ? o.path[0] : (o.path.length === 1 ? o.path[0] : goal))) {
     if (o.path.length) { o.path.shift(); if (!o.path.length) { /* now on the goal tile centre: finish to exact point */ } }
     else { o.path = null; o.pathGoal = null; return 'arrived'; }
   }
   if (!o.path || !o.path.length) { // final leg: exact goal point (live, so chasing moving targets works)
     if (o.job === undefined && !o.human && !Wd.walkable(world, Math.floor(goal.x), Math.floor(goal.y), true)) { o.path = null; o.pathGoal = null; return 'fail'; }   // zombies never step into a wall tile, even for a survivor standing in the gate
-    if (o.path && !o.path.length) { if (stepToward(o, goal, sp)) { o.path = null; o.pathGoal = null; return 'arrived'; } }
+    if (o.path && !o.path.length) { if (go(goal)) { o.path = null; o.pathGoal = null; return 'arrived'; } }
   }
   const moved = Math.hypot(o.w.x - before.x, o.w.y - before.y);
   o.stuck = moved < sp * .25 ? (o.stuck || 0) + 1 : 0;
@@ -3372,6 +3386,11 @@ function killSurvivor(s, cause) {
   for (const q of S.sv) { const close = dist(q.w, s.w) < 6 || (q.job === s.job); const d = close ? 6 : 2; q.sat = Math.max(0, q.sat - d); if (close) near++; }
   S.griefUntil = nowH() + 18; for (const q of S.sv) emote(q, '😢', 160, true);   /* V3D.14 mourning */
   S.fallen = S.fallen || []; S.fallen.push({ name: s.name, job: s.job, l: s.l, day: S.day, cause, trait: s.trait });
+  if (s.w && !insideBuilding(s)) {   /* V3D.21: the dead rise again: a walker in their clothes gets up where they fell */
+    const n0 = S.z.length; spawn(Math.floor(s.w.x), Math.floor(s.w.y), 'walker'); const z = S.z.length > n0 ? S.z[S.z.length - 1] : null;
+    if (z) { z.w = { x: s.w.x, y: s.w.y }; z.turned = { name: s.name, fem: (() => { try { return window.ZHChars && ZHChars.look(s).sex === 'f'; } catch (e) { return false; } })() }; z.mode = 'appear'; z.stateTicks = 240;
+      note('important', `🧟 ${s.name} rose again as a zombie`, { at: z.w, float: '🧟 TURNED', col: '#a8e07a' }); }
+  }
   autoStaff();
   showEventPopup({ stage: { scene: 'sad', head: 'Farewell', icon: '🕯️', badge: s.job + ' Lv.' + s.l, hero: s, crowd: others(s) }, short: `${s.name} has died.`, chips: [S.sv.length + ' survivors remain'], title: 'LOST: ' + s.name.toUpperCase(), text: `${s.name}, a level ${s.l} ${s.job}, ${cause}. ${near ? near + ' survivors are shaken.' : ''} Their name is added to the memorial in the Town panel.`, gains: S.sv.length + ' survivors remain' });
   ui();
