@@ -99,6 +99,7 @@ def hold_walk_melee(t):
     p = legs_walk({}, t)
     s = math.sin(2 * math.pi * t); r = READY
     p.update({'upperarm.R': (r['ua'] - 10 * s, 0, -22), 'forearm.R': (r['fa'] + 6 * s, 0, 0), 'hand.R': (r['wr'], r['wy'], 0),
+              'upperarm.L': (34 * s, 0, 10), 'forearm.L': (30 + 26 * max(0.0, s), 0, 0),   # the free arm swings with the step
               'chest': (9, -10 + 8 * s, 0), 'head': (-10, 0, 0)})
     return steady_head(p, -4)
 
@@ -140,23 +141,27 @@ def fire(t):
     return p
 
 def fire_pistol(t):
-    """One-handed pistol shot: right arm straight out at shoulder height, left arm down, side-on bladed stance; the
-    muzzle flips up and the arm rides back on the shot, then returns on target."""
+    """Two-handed pistol shot: both arms straight out in front of the chest centre, the left hand cupping the right
+    (IK to the grip), square stance; the muzzle kicks up and the arms ride back, then return on target."""
     kick = math.exp(-t * 8) * (1 if t < .9 else 0)
-    p = stance({'upperarm.R': (80 + 12 * kick, 0, 90), 'forearm.R': (4 + 8 * kick, 0, 0), 'hand.R': (-12 + 10 * kick, -77, -12 + 20 * kick),
-                'upperarm.L': (6, 0, 6), 'forearm.L': (24, 0, 0),
-                'chest': (4 - 8 * kick, 4, 0), 'pelvis': (-2 * kick, 4, 0), 'head': (-6 - 4 * kick, -8, 0)}, .3 - .6 * kick, .8)
+    p = stance({'upperarm.R': (84 + 10 * kick, 0, 14), 'forearm.R': (6 + 10 * kick, 0, 0), 'hand.R': (-8 + 12 * kick, 0, 0),
+                'upperarm.L': (84 + 10 * kick, 0, -14), 'forearm.L': (10, 0, 0),
+                'chest': (6 - 6 * kick, 0, 0), 'pelvis': (0, 0, 0), 'head': (-8 - 4 * kick, 0, 0)}, .2 - .5 * kick, .7)
     return p
 
 def punch(t):
-    """Boxing stance (left foot forward), right cross: hips and shoulders whip round, weight drives onto the front foot."""
-    K = [(0, {'ua': 30, 'fa': 115, 'tw': -16, 'lean': 4, 'w': 0}), (.3, {'ua': 18, 'fa': 125, 'tw': -34, 'lean': 0, 'w': -.6}),
-         (.5, {'ua': 88, 'fa': 4, 'tw': 30, 'lean': 18, 'w': 1}), (.65, {'ua': 88, 'fa': 4, 'tw': 30, 'lean': 18, 'w': 1}),
-         (1, {'ua': 30, 'fa': 115, 'tw': -16, 'lean': 4, 'w': 0})]
+    """Boxer's cross (reference: '3D Animation Basic training: punch'): fists up at the chin in a wide crouched guard,
+    coil back, then lunge: front knee deep, back leg long, whole body leaning in behind a straight right arm; recover."""
+    K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 10, 'w': 0, 'dip': 0}),
+         (.28, {'ua': 30, 'fa': 134, 'la': 46, 'lf': 124, 'tw': -36, 'lean': 4, 'w': -.7, 'dip': .02}),
+         (.46, {'ua': 122, 'fa': 2, 'la': 30, 'lf': 128, 'tw': 34, 'lean': 34, 'w': 1.5, 'dip': .06}),
+         (.62, {'ua': 124, 'fa': 2, 'la': 30, 'lf': 128, 'tw': 34, 'lean': 36, 'w': 1.5, 'dip': .06}),
+         (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 10, 'w': 0, 'dip': 0})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ua'], 0, 6), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
-                'upperarm.L': (50, 0, -10), 'forearm.L': (120, 0, 0),
-                'chest': (k['lean'], k['tw'], 0), 'pelvis': (0, k['tw'] * .5, 0), 'head': (-10, -k['tw'] * .5, 0)}, k['w'])
+    p = stance({'upperarm.R': (k['ua'], 0, 10), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+                'upperarm.L': (k['la'], 0, -12), 'forearm.L': (k['lf'], 0, 0),
+                'chest': (k['lean'], k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .5, 0), 'head': (-14 - k['lean'] * .5, -k['tw'] * .6, 0)}, k['w'], 1.2)
+    p['bob'] -= k['dip']
     return p
 
 def _swing(t, K, ab=False):
@@ -165,6 +170,21 @@ def _swing(t, K, ab=False):
                 'upperarm.L': (k.get('la', 30), 0, 18), 'forearm.L': (60, 0, 0),
                 'chest': (k['lean'], k['tw'], 0), 'pelvis': (k['lean'] * .25, k['tw'] * .45, 0),
                 'head': (-10 - k['lean'] * .6, -k['tw'] * .5, 0)}, k['w'])
+    return p
+
+def swing_d(t):
+    """Two-handed overhead chop like a katana: both hands on the bat in front of the belly, lift it straight up over
+    the head, then cut down the centre line onto the front foot. The left hand follows the grip by IK."""
+    K = [(0, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0}),
+         (.4, {'ua': 165, 'fa': 48, 'wr': 0, 'lean': -10, 'w': -.6}),
+         (.5, {'ua': 168, 'fa': 50, 'wr': 0, 'lean': -12, 'w': -.7}),
+         (.62, {'ua': 78, 'fa': 4, 'wr': -40, 'lean': 26, 'w': 1.1}),
+         (.74, {'ua': 52, 'fa': 6, 'wr': -70, 'lean': 30, 'w': 1.2}),
+         (1, {'ua': 40, 'fa': 62, 'wr': -40, 'lean': 6, 'w': 0})]
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ua'], 0, 16), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], 0, 0),
+                'upperarm.L': (k['ua'], 0, -16), 'forearm.L': (k['fa'] + 6, 0, 0),
+                'chest': (k['lean'], 0, 0), 'pelvis': (k['lean'] * .25, 0, 0), 'head': (-8 - k['lean'] * .5, 0, 0)}, k['w'])
     return p
 
 R0 = {'ua': -4, 'fa': 52, 'wr': 0, 'wy': 18, 'lean': 6, 'tw': -10, 'w': 0, 'ab': -22}   # = the ready pose
@@ -264,7 +284,7 @@ def cheer(t):
     h = math.sin(math.pi * u) ** .45              # flat top = hang time
     tuck = math.sin(math.pi * u) ** 2
     p = {'chest': (-8, 0, 0), 'head': (-20, 0, 4 * math.sin(4 * math.pi * u)),
-         'upperarm.L': (8, 0, 142), 'upperarm.R': (8, 0, -142), 'forearm.L': (-5 + 15 * tuck, 0, 0), 'forearm.R': (-5 + 15 * tuck, 0, 0),
+         'upperarm.L': (8, -CHEER_TW, 142), 'upperarm.R': (8, CHEER_TW, -142), 'forearm.L': (-5 + 15 * tuck, 0, 0), 'forearm.R': (-5 + 15 * tuck, 0, 0),
          'thigh.L': (10 + 45 * tuck, 0, 0), 'thigh.R': (5 + 35 * tuck, 0, 0), 'shin.L': (-15 - 70 * tuck, 0, 0), 'shin.R': (-12 - 60 * tuck, 0, 0),
          'foot.L': (20 * tuck, 0, 0), 'foot.R': (20 * tuck, 0, 0)}
     p['bob'] = .22 * h
@@ -308,7 +328,7 @@ def zombie_run(t):
     p.update({'upperarm.L': (78 + 26 * sn, 0, 18), 'upperarm.R': (74 - 26 * sn, 0, -18),
               'forearm.L': (14 + 18 * max(0.0, sn), 0, 0), 'forearm.R': (18 + 18 * max(0.0, -sn), 0, 0),
               'hand.L': (-16, 0, 0), 'hand.R': (-16, 0, 0),
-              'pelvis': (10, 10 * sn, 6 * sn), 'chest': (30, -8 * sn, 8 * cs), 'neck': (10, 0, 0), 'head': (4, 10 * sn, 14 + 6 * cs)})
+              'pelvis': (10, 10 * sn, 6 * sn), 'chest': (30, -8 * sn, 8 * cs), 'neck': (-6, 0, 0), 'head': (-30, 8 * sn, 8 + 5 * cs)})   # head up: eyes on the target
     p['bob'] = .04 * math.cos(2 * ph) - .085
     return p
 
@@ -328,10 +348,11 @@ def _kneel(p):
     p['bob'] = -.2
     return p
 
-def _seated(p):
-    """Sitting on a crate or bench about a shin high: thighs level, shins down, hands on the knees by default."""
-    p.update({'thigh.L': (88, 0, -6), 'thigh.R': (88, 0, 6), 'shin.L': (-86, 0, 0), 'shin.R': (-86, 0, 0), 'foot.L': (0, 0, 0), 'foot.R': (0, 0, 0),
-              'upperarm.L': (34, 0, 8), 'upperarm.R': (34, 0, -8), 'forearm.L': (40, 0, 0), 'forearm.R': (40, 0, 0), 'pelvis': (-4, 0, 0)})
+def _seated(p, apart=14):
+    """Sitting on a crate or bench about a shin high: thighs level, shins down, palms resting on the knees.
+    apart: how far the knees open (degrees; 0 = knees together)."""
+    p.update({'thigh.L': (88, 0, -apart), 'thigh.R': (88, 0, apart), 'shin.L': (-86, 0, 0), 'shin.R': (-86, 0, 0), 'foot.L': (0, 0, apart * .6), 'foot.R': (0, 0, -apart * .6),
+              'upperarm.L': (40, 0, 4), 'upperarm.R': (40, 0, -4), 'forearm.L': (34, 0, 0), 'forearm.R': (34, 0, 0), 'hand.L': (-30, 0, 0), 'hand.R': (-30, 0, 0), 'pelvis': (-4, 0, 0)})
     p['bob'] = -.2
     return p
 
@@ -359,12 +380,19 @@ def work_hammer(t):
     return p
 
 def work_dig(t):
-    """Farming: bent over, both hands on a hoe, pulling the soil towards the feet."""
-    s = math.sin(2 * math.pi * t)
-    p = soft_legs({'chest': (30 + 12 * s, 0, 0), 'pelvis': (8, 0, 0), 'head': (4 + 6 * s, 0, 0),
-                   'upperarm.R': (58 - 26 * s, 0, -12), 'forearm.R': (28 + 18 * s, 0, 0), 'hand.R': (-120 + 8 * s, 0, 0),
-                   'upperarm.L': (62 - 26 * s, 0, 12), 'forearm.L': (24 + 18 * s, 0, 0)}, 1.4)
-    p['thigh.L'] = (34, 0, -4); p['shin.L'] = (-44, 0, 0); p['thigh.R'] = (-4, 0, 4); p['shin.R'] = (-30, 0, 0)
+    """Hoeing (reference: farmer building a field ridge): feet apart, bent at the waist, both hands on the long handle;
+    lift the hoe up past the shoulder, chop the blade into the ground in front, pull the soil back towards the feet."""
+    K = [(0, {'ua': 40, 'fa': 60, 'wr': -105, 'lean': 40, 'hd': 10}),
+         (.3, {'ua': 125, 'fa': 45, 'wr': -10, 'lean': 22, 'hd': -4}),
+         (.45, {'ua': 128, 'fa': 42, 'wr': -8, 'lean': 20, 'hd': -6}),
+         (.6, {'ua': 66, 'fa': 8, 'wr': -82, 'lean': 46, 'hd': 14}),
+         (.82, {'ua': 34, 'fa': 58, 'wr': -110, 'lean': 42, 'hd': 12}),
+         (1, {'ua': 40, 'fa': 60, 'wr': -105, 'lean': 40, 'hd': 10})]
+    k = keys(K, t)
+    p = soft_legs({'chest': (k['lean'], -6, 0), 'pelvis': (k['lean'] * .35, 0, 0), 'head': (k['hd'], 0, 0),
+                   'upperarm.R': (k['ua'], 0, 6), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (k['wr'], 0, 0),
+                   'upperarm.L': (k['ua'] * .9, 0, -6), 'forearm.L': (k['fa'], 0, 0)}, 1.3)
+    p['thigh.L'] = (40, 0, -10); p['shin.L'] = (-52, 0, 0); p['thigh.R'] = (-6, 0, 10); p['shin.R'] = (-26, 0, 0)
     return p
 
 def work_tinker(t):
@@ -379,6 +407,13 @@ def sit(t):
     """Sitting on a crate or bench, relaxed breathing, looking around a little."""
     w = math.sin(2 * math.pi * t)
     p = _seated({'chest': (4 + 2 * w, 0, 0), 'head': (-4 - 2 * w, 14 * math.sin(2 * math.pi * t + 1), 0)})
+    return p
+
+def sit_f(t):
+    """Female sit: knees and feet together, hands on the knees."""
+    w = math.sin(2 * math.pi * t)
+    p = _seated({'chest': (4 + 2 * w, 0, 0), 'head': (-4 - 2 * w, 14 * math.sin(2 * math.pi * t + 1), 0)}, 0)
+    p['thigh.L'] = (88, 0, 3); p['thigh.R'] = (88, 0, -3)
     return p
 
 def sleep(t):
@@ -409,11 +444,13 @@ def talk(t):
     p['thigh.R'] = (10 + 6 * s, 0, 4)
     return p
 
+WAVE_TW = 90      # twist of the raised arm so the palm faces forward
+CHEER_TW = 90
 def wave(t):
     """Waving hello: right arm high, forearm swinging side to side."""
     s = math.sin(2 * math.pi * t * 2)
     p = soft_legs({'chest': (-2, -6, 0), 'head': (-10, -6, 6),
-                   'upperarm.R': (8, 0, -142 + 10 * s), 'forearm.R': (4 + 10 * s, 0, 0), 'hand.R': (0, 0, 0),
+                   'upperarm.R': (8, WAVE_TW, -138 + 18 * s), 'forearm.R': (8, 0, 0), 'hand.R': (0, 0, 0),
                    'upperarm.L': (4, 0, 8), 'forearm.L': (24, 0, 0)}, .8)
     return p
 
@@ -437,7 +474,7 @@ def walk_f(t):
     p = legs_walk({}, t, .85)
     ph = 2 * math.pi * t; sn = math.sin(ph)
     for n, sg in (('L', 1), ('R', -1)):
-        p['upperarm.' + n] = (-26 * sg * sn, 0, -6 * sg); p['forearm.' + n] = (26 + 20 * max(0.0, -sg * sn), 0, 0)
+        p['upperarm.' + n] = (-26 * sg * sn, 0, 12 * sg); p['forearm.' + n] = (22 + 16 * max(0.0, -sg * sn), 0, 0)   # arms clear of the hips
         th = p['thigh.' + n]; p['thigh.' + n] = (th[0], 0, -5 * sg)
     p['pelvis'] = (0, 14 * sn, 7 * sn); p['chest'] = (4, -10 * sn, -4 * sn); p['head'] = (-10, 0, 0)
     return steady_head(p, 0, 0)
@@ -461,7 +498,7 @@ CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'mel
     'idle': (idle, 8, 160, True, None), 'walk': (walk, 8, 110, True, None),
     'hold_idle': (None, 8, 160, True, 'any'), 'hold_walk': (None, 8, 110, True, 'any'),
     'rescue': (rescue, 8, 140, True, None), 'punch': (punch, 6, 80, False, None),
-    'swing_a': (swing_a, 8, 0, False, 'melee'), 'swing_b': (swing_b, 8, 0, False, 'melee'), 'swing_c': (swing_c, 8, 0, False, 'melee'),
+    'swing_a': (swing_a, 8, 0, False, 'melee'), 'swing_b': (swing_b, 8, 0, False, 'melee'), 'swing_c': (swing_c, 8, 0, False, 'melee'), 'swing_d': (swing_d, 8, 0, False, 'melee'),
     'fire': (fire, 6, 70, False, 'shoot'), 'hurt': (hurt, 5, 110, False, None), 'hold_hurt': (None, 5, 110, False, 'any'), 'collapse': (collapse, 8, 140, False, None),
     'cheer': (cheer, 10, 100, True, None)}
 SWING_T = [0, .2, .38, .46, .54, .6, .66, .82]          # uneven times: slow wind-up, fast strike
@@ -541,16 +578,16 @@ def build_weapon(ao, kind):
         sh = ao.matrix_world @ ao.data.bones['upperarm.R'].head_local
         g = Vector((sh.x * .55, sh.y - .2, sh.z - .1)); up = fwd
         rec = g + up * .02 + Vector((0, 0, .05))
-        T(g - Vector((0, 0, .0)), rec, .022, .022, gun if kind == 'ak47' else gunwood, seg=6)              # grip
-        T(rec - up * .26, rec - up * .02, .035, .042, gunwood)                                             # stock
-        T(rec - up * .03, rec + up * .2, .04, .04, gun, seg=8)                                             # receiver
-        T(rec + up * .2, rec + up * (.5 if kind == 'rifle' else .4), .014, .014, gun, seg=8)              # barrel
-        T(rec + up * .2, rec + up * .34, .03, .028, gunwood if kind == 'rifle' else gunwood, seg=8)       # handguard
+        T(g - Vector((0, 0, .0)), rec, .018, .018, gun if kind == 'ak47' else gunwood, seg=6)              # grip
+        T(rec - up * .2, rec - up * .02, .027, .032, gunwood)                                             # stock
+        T(rec - up * .03, rec + up * .16, .03, .03, gun, seg=8)                                             # receiver
+        T(rec + up * .16, rec + up * (.4 if kind == 'rifle' else .32), .011, .011, gun, seg=8)              # barrel
+        T(rec + up * .16, rec + up * .27, .023, .021, gunwood if kind == 'rifle' else gunwood, seg=8)       # handguard
         if kind == 'ak47':
-            T(rec + up * .08 - Vector((0, 0, .03)), rec + up * .14 - Vector((0, 0, .17)), .022, .018, gun, seg=6)   # curved mag
+            T(rec + up * .06 - Vector((0, 0, .025)), rec + up * .11 - Vector((0, 0, .13)), .017, .014, gun, seg=6)   # curved mag
         else:
-            T(rec + up * .05 + Vector((0, 0, .045)), rec + up * .17 + Vector((0, 0, .045)), .016, .016, gun, seg=6)  # scope
-        tip = rec + up * (.52 if kind == 'rifle' else .42); grip2 = rec + up * .27 - Vector((0, 0, .03))
+            T(rec + up * .04 + Vector((0, 0, .036)), rec + up * .14 + Vector((0, 0, .036)), .012, .012, gun, seg=6)  # scope
+        tip = rec + up * (.42 if kind == 'rifle' else .34); grip2 = rec + up * .22 - Vector((0, 0, .025))
         ensure_gun_bone(ao, g, g + fwd * .12)
     elif kind == 'pistol':
         # one-handed: the barrel runs along the hand (so with a straight wrist it points where the forearm points),
@@ -560,22 +597,26 @@ def build_weapon(ao, kind):
         T(top - dirB * .045, top + dirB * .11, .022, .022, gun, seg=4)                                       # slide
         T(g + dirU * .012 - dirB * .03, g - dirU * .055 - dirB * .045, .017, .019, gunwood, seg=4)           # grip
         T(top + dirB * .11, top + dirB * .125, .008, .008, gun, seg=6)                                       # muzzle
-        tip = top + dirB * .13; grip2 = None
+        tip = top + dirB * .13; grip2 = g - side2 * .035 - dirU * .02   # where the left hand cups the right
     elif kind == 'hammer':          # claw hammer: short wooden handle, steel head across the end
         T(g - up * .05, g + up * .22, .014, .016, wood)
         hd = g + up * .22; T(hd - across * .05, hd + across * .045, .024, .024, metal, seg=8); tip = hd
     elif kind == 'hoe':             # garden hoe: long handle, flat blade at the end bent back towards the user
         T(g - up * .3, g + up * .62, .014, .014, wood)
-        hd = g + up * .62; Bx(hd - across * .05, (.012, .11, .07), metal); tip = hd - across * .08
+        hd = g + up * .62; Bx(hd - across * .05, (.012, .11, .07), metal); tip = hd - across * .08; grip2 = g + up * .3
     elif kind == 'wrench':          # big spanner
         T(g - up * .04, g + up * .17, .011, .011, metal, seg=6)
         hd = g + up * .19; Bx(hd, (.018, .05, .03), metal); tip = hd
     elif kind == 'bowl':            # food bowl in the left hand
         hl = ao.data.bones['hand.L']; ga = (ao.matrix_world @ hl.head_local).lerp(ao.matrix_world @ hl.tail_local, .6)
         T(ga + Vector((0, 0, -.02)), ga + Vector((0, 0, .03)), .03, .055, wood, seg=12); tip = ga
-    elif kind == 'crate':           # carried crate, in front of the belly (rides on the chest bone)
-        sh = ao.matrix_world @ ao.data.bones['upperarm.R'].head_local
-        c = Vector((0, sh.y - .19, sh.z - .19)); Bx(c, (.26, .18, .2), toon_mat('w_crate', '#c8924f')); tip = c
+    elif kind == 'crate':           # carried crate, centred between the hands in the carry pose (rides on the chest bone)
+        import ai_render as _ar
+        _ar.apply_pose(ao, carry_idle(0)); bpy.context.view_layer.update()
+        hl = ao.matrix_world @ ao.pose.bones['hand.L'].head; hr = ao.matrix_world @ ao.pose.bones['hand.R'].head
+        hl2 = ao.matrix_world @ ao.pose.bones['hand.L'].tail; hr2 = ao.matrix_world @ ao.pose.bones['hand.R'].tail
+        c = (hl + hr + hl2 + hr2) / 4; c.x = 0
+        Bx(c, (max(.2, abs(hl.x - hr.x) - .02), .18, .18), toon_mat('w_crate', '#c8924f')); tip = c
     w = _join(parts, 'weapon_' + kind)
     isgun = WEAPONS[kind] == 'gun'
     def bone_parent(ob, bone):

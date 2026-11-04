@@ -787,7 +787,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
-  else if (still && s.mode === 'campfire') c = 'sit';
+  else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';
   else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
   else if (still && s.mode === 'loot') c = 'pickup';
   else if (anim === 'walk' && !hold && a.src === FEMALE3D && s.mode !== 'hide' && s.mode !== 'rescueTo') c = 'walk_f';
@@ -803,7 +803,7 @@ function personAnim(a, s, dt) {
   const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
-      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][(Math.random() * 3) | 0];
+      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : (a.acts.melee_swing_d ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'melee_swing_d'] : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'])[(Math.random() * (a.acts.melee_swing_d ? 4 : 3)) | 0];
       a.play(clip, true, true); a.attacking = true;
     }
     return;

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ai_render, anims, armor
 
 FPS = 30
+TWO_HAND = {'pistol_fire': 'pistol', 'work_dig': 'hoe', 'melee_swing_d': 'bat'}   # action -> weapon whose grip2 the left hand holds
 FACE_OUT = None      # set by main: path stem for the extra expression textures
 FACE = True          # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
 WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
@@ -58,7 +59,7 @@ def clip_plan():
     plan.append(('run', 'run', None, .62, lambda s: s / .62))
     plan.append(('zombie_run', 'zombie_run', None, .72, lambda s: s / .72))
     for name, dur in (('work_chop', 1.3), ('work_hammer', 1.0), ('work_dig', 1.4), ('work_tinker', 1.6), ('sit', 3.0), ('sleep', 4.0),
-                      ('eat', 2.2), ('talk', 2.4), ('wave', 1.0), ('carry_walk', .9), ('carry_idle', 2.0), ('walk_f', .86)):   # V3D.19 everyday clips
+                      ('eat', 2.2), ('talk', 2.4), ('wave', 1.0), ('carry_walk', .9), ('carry_idle', 2.0), ('walk_f', .86), ('sit_f', 3.0)):   # V3D.19 everyday clips
         plan.append((name, name, None, dur, lambda s, d=dur: s / d))
     plan.append(('pickup', 'pickup', None, 1.1, lambda s: min(1.0, s / 1.1)))   # one-shot
     return plan
@@ -243,6 +244,8 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         fn = anims.pose_fn(clip, cls) if clip in anims.CLIPS else getattr(anims, clip)
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)
+        two = TWO_HAND.get(name)   # V3D.19: the left hand follows a second grip on these one-weapon clips
+        if two: anims.left_hand_ik(ao, W[two]['grip2'], True)
         nf = max(2, round(dur * FPS)) + (0 if loop else 1)
         frames = []
         order = [b.name for b in ao.data.bones]
@@ -252,6 +255,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             frames.append({b: ao.pose.bones[b].matrix.copy() for b in order})
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], False); anims.hand_ik(ao, 'R', W['rifle']['grip1'], False)
+        if two: anims.left_hand_ik(ao, W[two]['grip2'], False)
         key_frames(ao, name, frames)
         print('baked', name, nf, 'frames', flush=True)
     for pb in ao.pose.bones:
