@@ -14,3 +14,11 @@ python3 tools/balance/summ.py 'out*.jsonl'
 levels, grade…) and a final line with a parts ledger, every knockdown (what the survivor was doing,
 what hit them) and every death. Needs Python Playwright with Chromium.
 Note: the opening isn't seeded (the game starts before the seed is set), so runs vary; use several seeds.
+
+## Newcomer rate (V3D.21)
+`ZH_OPT='&3d=1'` runs the cozy 3D rules (the gate popup). `ZH_EVAL='ZH.ARRIVE.low=12000;ZH.ARRIVE.high=24000'`
+runs extra JS after load (here: the gap between newcomers, in ticks; 1000 ticks = 1 game hour). Each day's line has
+`cap` (room) and `joins` by source (`gate`, `event`, `trip`, `grown`; `other` = the starting crew).
+5 seeds x 14 days, 3D: gate arrivals in 14 days: 1.1 h/2.2 h (old) 42, 6 h/12 h 24, 12 h/24 h 14, 18 h/36 h 6.
+The auto-player loses many people (it no longer keeps up with the 3D economy), so trust the arrival counts more
+than the deaths; with movement at 100% instead of 60% (MOVE_K) it lost 21 instead of 34 in 14 days.

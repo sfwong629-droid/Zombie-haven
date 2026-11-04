@@ -106,12 +106,14 @@
       if (S.food > Z.supplyCap() * .8) Z.traderTrade(0); if (S.water > Z.supplyCap() * .8) Z.traderTrade(1);
     }
   };
+  AP.seen = new Set(S.sv); AP.joins = {};
   AP.snap = function () {
+    for (const q of S.sv) if (!AP.seen.has(q)) { AP.seen.add(q); { const k = q.src || 'other'; AP.joins[k] = (AP.joins[k] || 0) + 1; } }
     const sv = S.sv, per = Wd.perimeter(W), wl = [...W.walls.values()];
     return { d: S.day, sv: sv.length, fallen: (S.fallen || []).length, down: sv.filter((q) => q.mode === 'down' || q.mode === 'hospital').length,
       food: Math.round(S.food), water: Math.round(S.water), mat: Math.round(S.mat), rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
       leg: Z.legacyDone ? Z.legacyDone() : 0, fin: S.finale ? S.finale.night : null, won: S.won ? S.won.day : null, score: S.won ? S.won.score : null,
-      kills: S.kills, nb: W.buildings.length, walls: wl.length, sealed: per.sealed, wallHp: wl.length ? Math.round(100 * wl.reduce((a, w) => a + w.hp / w.max, 0) / wl.length) : 0,
+      kills: S.kills, cap: Z.popCap(), joins: { ...AP.joins }, nb: W.buildings.length, walls: wl.length, sealed: per.sealed, wallHp: wl.length ? Math.round(100 * wl.reduce((a, w) => a + w.hp / w.max, 0) / wl.length) : 0,
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),
       lvl: +(sv.reduce((a, q) => a + q.l, 0) / Math.max(1, sv.length)).toFixed(1), sat: Math.round(sv.reduce((a, q) => a + (q.sat || 0), 0) / Math.max(1, sv.length)),
       hpAvg: Math.round(100 * sv.reduce((a, q) => a + q.hp / q.max, 0) / Math.max(1, sv.length)), z: S.z.filter((z) => z.hp > 0).length, res: Object.keys(S.res || {}).length,
