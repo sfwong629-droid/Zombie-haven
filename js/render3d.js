@@ -865,7 +865,7 @@ function syncPeople(dt, vis) {
   for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
 }
 function zombieAnim(a, z) {
-  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('punch', true, true); a.attacking = true; } return; }
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play(z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); a.attacking = true; } return; }   // V3D.20 zombies claw-swipe
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
   if (z.type === 'runner') { a.play('zombie_run'); return; }

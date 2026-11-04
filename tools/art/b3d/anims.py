@@ -336,6 +336,24 @@ def zombie_run(t):
     return p
 
 
+def zombie_attack(t):
+    """Zombie claw swipe (3D only, one-shot): from the arms-out shamble the right arm rises high and wide, then
+    rakes down and across the body (note: with the arm raised this high, + upperarm.R z swings it OUT) while the zombie lurches in, head lunging as if to bite; the left arm grabs
+    forward. Recovers to the reaching pose."""
+    K = [(0, {'ua': 80, 'ab': -10, 'fa': 14, 'la': 84, 'le': 10, 'lf': 8, 'tw': 0, 'lean': 16, 'w': 0, 'hd': 6}),
+         (.34, {'ua': 150, 'ab': 40, 'fa': 30, 'la': 70, 'le': 16, 'lf': 20, 'tw': -24, 'lean': 4, 'w': -.5, 'hd': 0}),
+         (.52, {'ua': 60, 'ab': -45, 'fa': 36, 'la': 96, 'le': 6, 'lf': 6, 'tw': 26, 'lean': 26, 'w': 1.3, 'hd': -10}),
+         (.66, {'ua': 55, 'ab': -50, 'fa': 40, 'la': 98, 'le': 6, 'lf': 6, 'tw': 28, 'lean': 28, 'w': 1.3, 'hd': -12}),
+         (1, {'ua': 80, 'ab': -10, 'fa': 14, 'la': 84, 'le': 10, 'lf': 8, 'tw': 0, 'lean': 16, 'w': 0, 'hd': 6})]
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (-24, 0, 0),
+                'upperarm.L': (k['la'], 0, k['le']), 'forearm.L': (k['lf'], 0, 0), 'hand.L': (-16, 0, 0),
+                'chest': (k['lean'] * .7, k['tw'], 6), 'pelvis': (k['lean'] * .3, k['tw'] * .4, 4),
+                'head': (k['hd'] - k['lean'] * .4, -k['tw'] * .5, 14)}, k['w'], 1.0)
+    p['bob'] -= .04
+    return p
+
+
 # ------------------------------------------------------------------ V3D.19 everyday clips (3D only, not in CLIPS): work, rest, social, carrying
 def _crouch(p, depth=1.0):
     """Both knees deep, hips low (for tinkering)."""
