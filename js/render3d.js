@@ -1182,7 +1182,7 @@ inkButton();
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
-  if (CHAR_V2) for (const [src, k] of [[MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp').then(v2Tex).catch(() => null)))).filter(Boolean);
+  if (CHAR_V2) for (const [src, k] of [[MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
