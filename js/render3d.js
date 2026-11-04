@@ -119,7 +119,8 @@ const regrow = (x, y) => {   // town tiles where grass creeps back: near the tow
   const B = G.Wd.BUILD, d = Math.min(x - B.x0, B.x1 - x, y - B.y0, B.y1 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3);
   return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55);
 };
-const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T } };
+const ROAD_STYLE = (() => { try { const q = new URLSearchParams(location.search).get('road'); if (q) localStorage.setItem('zh_road', q); return +(q || localStorage.getItem('zh_road') || 0); } catch (e) { return 0; } })();   // V3D.21 road look test: 0 dirt track, 1 gravel, 2 cobbles, 3 flagstones, 4 cracked asphalt
+const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T }, uRS: { value: ROAD_STYLE } };
 let _gmat = null;
 // ---------------------------------------------------------------- night lights (V3D.12): warm light pools at every
 // door, a lantern glow above it, and a flashlight beam ahead of each survivor outside. Additive ground decals, so they
@@ -151,7 +152,8 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, RU);
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz;');
-    sh.fragmentShader = `varying vec3 vWP; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT;
+    sh.fragmentShader = `varying vec3 vWP; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT; uniform int uRS;
+      vec2 vor(vec2 q){ vec2 i = floor(q), f = fract(q); float d1 = 9., d2 = 9.; for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 o = vec2(x, y), c = o + vec2(fract(sin(dot(i + o, vec2(127.1, 311.7))) * 43758.5), fract(sin(dot(i + o, vec2(269.5, 183.3))) * 43758.5)) * .8 + .1; float d = length(c - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return vec2(d1, d2); }
       float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1., 0.)), f.x), mix(gh(i + vec2(0., 1.)), gh(i + 1.), f.x), f.y); }
       float gf(vec2 p){ return .5 * gn(p) + .25 * gn(p * 2.03 + 7.1) + .125 * gn(p * 4.1 + 3.3) + .125 * gn(p * 8.3 + 1.7); }
@@ -184,6 +186,26 @@ function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow
           road = mix(road, mix(vec3(.42, .34, .22), vec3(.30, .26, .21), gh(ci + 2.2)), on * (1. - smoothstep(rs - .02, rs, dd))); }   // pebbles, sandy or grey
         { vec2 q = p * 4.5, ci = floor(q), cf = fract(q); float dd = length(cf - vec2(gh(ci + 1.3), gh(ci + 5.9)) * .8 - .1);
           road = mix(road, road * 1.35, step(.7, gh(ci + 4.4)) * (1. - smoothstep(.05, .09, dd))); }             // grit
+        if (uRS == 1) {   // gravel: grey-tan crushed stone, dense small chips, a raked edge
+          vec2 v = vor(p * 7.); float chip = smoothstep(.0, .12, v.y - v.x); float t = gh(floor(p * 7.) + 3.);
+          road = mix(vec3(.23, .21, .17), vec3(.36, .33, .27), t) * (.75 + .35 * chip) * (.9 + .2 * gf(p * .8));
+          road = mix(road, road * .7, (1. - chip) * .6);
+        } else if (uRS == 2) {   // cobbles: rounded grey-brown stones in dark joints
+          vec2 v = vor(p * 2.6); float edge = smoothstep(.03, .14, v.y - v.x), dome = 1. - smoothstep(.0, .45, v.x);
+          vec3 st = mix(vec3(.20, .17, .13), vec3(.30, .26, .20), gh(floor(p * 2.6) + 1.)) * (.8 + .35 * dome);
+          road = mix(vec3(.07, .055, .04), st, edge); road = mix(road, vec3(.12, .19, .04), (1. - edge) * smoothstep(.6, .8, gn(p * 6.)) * .7);   // moss in the joints
+        } else if (uRS == 3) {   // flagstones: big flat pale slabs with grass between
+          vec2 v = vor(p * 1.1); float edge = smoothstep(.02, .09, v.y - v.x);
+          vec3 st = mix(vec3(.33, .30, .25), vec3(.42, .38, .31), gh(floor(p * 1.1) + 5.)) * (.85 + .25 * gf(p * 1.7));
+          road = mix(vec3(.12, .17, .05), st, edge);
+        } else if (uRS == 4) {   // cracked asphalt: dark grey, faded patches, cracks with weeds, worn middle line
+          vec3 a = vec3(.075, .075, .08) * (.85 + .35 * gf(p * .9)); a = mix(a, a * 1.5, smoothstep(.6, .8, gf(p * .5 + 3.)) * .6);
+          vec2 v = vor(p * .9); float crack = 1. - smoothstep(.0, .025, v.y - v.x);
+          a = mix(a, vec3(.03, .03, .03), crack * smoothstep(.35, .55, gn(p * 1.4 + 2.)));
+          a = mix(a, vec3(.10, .17, .04), crack * smoothstep(.55, .75, gn(p * 3. + 7.)));
+          float mid = (1. - smoothstep(.0, .025, abs(rm - .985))) * step(.5, fract(gn(p * .2) * 3. + p.x * .25 + p.y * .25)) * smoothstep(.4, .6, gn(p * 2.));
+          road = mix(a, vec3(.55, .42, .10), mid * .7);
+        }
         g = mix(g, g * .82, rim);                                                        // darker trodden edge
         g = mix(g, vec3(.12, .19, .04), rim * smoothstep(.6, .8, gn(p * 17. + 8.)) * .8);  // grass tufts along the edge
         g = mix(g, road, rw);
