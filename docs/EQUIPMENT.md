@@ -122,6 +122,74 @@ Hats show on the head in 3D. Soft hats give a stat; helmets give DEF.
 - **Hat costs** (hard hat 2, bike 3, football 5, army 6, riot 7) were set so a point of DEF costs the same in a hat as in body armour.
 - **Glasses, charm, bandana:** these stay non-combat on purpose. Their value is in work, research and social stats.
 
+## New gear (3D.29) — inspired by Last Day on Earth
+
+25 new items, picked from Last Day on Earth's weapon and armour lists (golf club, cleaver, shovel, road sign, spiked club, magnum; hazmat suit, firefighter coat, ghillie suit, tactical vest, SWAT gear, gas mask, backpacks). All passed the same balance test.
+
+- **Weapons:** −7% to +9% of the cost curve (rule is ±10%).
+- **Hats and accessories:** 0.3–1.1% combat gain per part, the same range as the existing ones. Most of their value is a special effect, not fighting.
+
+### Weapons
+
+| Weapon | Type | ATK | Speed | Cost | Notes |
+|---|---|---|---|---|---|
+| Golf Club | blunt | 7 | fast (.9) | 3 | Starter |
+| Hatchet | blade | 9 | fast (.85) | 4 | Starter |
+| Cleaver | blade | 5 | fast (.7) | 4 | Many quick chops |
+| Shovel | blunt | 27 | normal | 7 | |
+| Road Sign | blunt | 32 | slow (1.3) | 9 | −1 AGI |
+| Spiked Club | blunt | 36 | slow (1.15) | 13 | |
+| Magnum | gun | 27 | slow (1.4) | 14 | range 3.8, 6 rounds, 3.2 s reload |
+
+### Clothing
+
+| Clothing | DEF | Cost | Bonus / effect |
+|---|---|---|---|
+| Hoodie | 1 | 2 | +1 END |
+| Raincoat | 1 | 2 | Happy in rain (no rain mood) |
+| Firefighter Coat | 5 | 6 | Puts out fires 60% faster |
+| Hazmat Suit | 3 | 6 | Spitter and bloated damage −60% |
+| Ghillie Suit | 2 | 6 | +2 AGI |
+| Tactical Vest | 9 | 12 | +1 PER |
+| SWAT Armor | 12 | 16 | −1 AGI |
+
+### Hats
+
+| Hat | DEF | Cost | Bonus / effect |
+|---|---|---|---|
+| Headlamp | 0 | 3 | +2 PER at night |
+| Gas Mask | 1 | 4 | Spitter and bloated damage −60% |
+| Tactical Cap | 2 | 4 | +1 PER |
+| SWAT Helmet | 8 | 9 | −1 PER |
+
+### Accessories
+
+| Accessory | Cost | Bonus / effect |
+|---|---|---|
+| School Backpack | 4 | Carries +1 per trip (haul +2) |
+| Hiking Backpack | 8 | +1 END, carries +2 per trip (haul +4) |
+| Tool Belt | 4 | Builds 30% faster |
+| Medic Pouch | 5 | +1 INT, slowly heals out of a fight (2% HP about every 10 s) |
+| Wristwatch | 4 | +1 AGI, +1 PER |
+| Knee Pads | 3 | DEF 2 (accessory DEF now counts) |
+| Walkie-Talkie | 4 | +2 CHA, help calls reach 18 tiles instead of 9 |
+
+### Where they come from
+
+- **Armory:** golf club, hatchet, cleaver, hoodie, raincoat, headlamp, tactical cap, backpack, watch, knee pads, tool belt.
+- **Crafting:** Blades adds shovel, road sign and spiked club. Firearms adds the magnum. Body Armor adds the firefighter coat, hazmat, ghillie, tactical vest, SWAT armour, gas mask and SWAT helmet. Gadgets adds the hiking pack, medic pouch and walkie.
+- **Loot:** accessory finds and expedition loot can drop the packs, watch, walkie, medic pouch, headlamp, gas mask, the new coats, shovel and road sign.
+- **Trader:** sells anything costing 4 or more, as before.
+
+### Looks
+
+Each item shows on the 3D model and in the portrait:
+- Clothing recolours the shirt. The tactical vest and SWAT armour also add plates.
+- Hats are new toon shapes: a lamp band, a mask with lenses and a filter, a cap, and a helmet with a visor.
+- Accessories are small pieces on the bones: a pack on the back, pouches on the belt, a watch, knee pads, and a radio on the chest.
+
+Sources: [LDoE armour list](https://www.gamerevolution.com/guides/343349-last-day-earth-survival-list-every-armor), [LDoE weapon list](https://www.gamerevolution.com/guides/343341-last-day-earth-survival-weapon-list).
+
 ## Where items come from
 
 - **Armory stock**

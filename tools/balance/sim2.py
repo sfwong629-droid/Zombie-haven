@@ -10,7 +10,7 @@ def fight(w, arm, acc, hat, zs, lv=3, bonus=3, n=300, seed=1):
     for it in (w, arm, acc, hat):
         for k, v in (it or {}).get('st', {}).items():
             if k in S: S[k] += v
-    hpmax = 48 + 8 * lv + 2 * S['end']; dfn = (arm or {}).get('def', 0) + (hat or {}).get('def', 0); red = min(.6, dfn * .03 + (S['end'] - 5) * .012)
+    hpmax = 48 + 8 * lv + 2 * S['end']; dfn = (arm or {}).get('def', 0) + (hat or {}).get('def', 0) + (acc or {}).get('def', 0); red = min(.6, dfn * .03 + (S['end'] - 5) * .012)
     dmg = round(4 + w['atk'] * .55 + (S['per'] if w.get('ranged') else S['str']) * .6 + bonus)
     rate = w.get('rate', 1); rec = 48 * max(.6, 1 - (S['agi'] - 5) * .02) * rate; wind = 32 * rate
     for _ in range(n):

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.28', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.29', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -930,9 +930,35 @@ const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own c
   football: { name: "Football Helmet", slot: "head", def: 4, cost: 5, st: { per: -1 }, shape: "football" },
   army: { name: "Army Helmet", slot: "head", def: 5, cost: 6, shape: "army" },
   riothelm: { name: "Riot Helmet", slot: "head", def: 6, cost: 7, st: { per: -1 }, shape: "riot" },
+  // ---- 3D.28 new gear (Last Day on Earth / State of Decay style), balanced with tools/balance (docs: equipment notes) ----
+  golf: { name: "Golf Club", slot: "weapon", kind: "blunt", atk: 7, rate: 0.9, cost: 3 },
+  hatchet: { name: "Hatchet", slot: "weapon", kind: "blade", atk: 9, rate: 0.85, cost: 4 },
+  cleaver: { name: "Cleaver", slot: "weapon", kind: "blade", atk: 5, rate: 0.7, cost: 4 },
+  shovel: { name: "Shovel", slot: "weapon", kind: "blunt", atk: 27, rate: 1.05, cost: 7 },
+  roadsign: { name: "Road Sign", slot: "weapon", kind: "blunt", atk: 32, rate: 1.3, cost: 9, st: { agi: -1 } },
+  spiked: { name: "Spiked Club", slot: "weapon", kind: "blunt", atk: 36, rate: 1.15, cost: 13 },
+  magnum: { name: "Magnum", slot: "weapon", kind: "gun", atk: 27, rate: 1.4, range: 3.8, mag: 6, reload: 3.2, cost: 14, ranged: true },
+  hoodie: { name: "Hoodie", slot: "armor", def: 1, cost: 2, st: { end: 1 } },
+  raincoat: { name: "Raincoat", slot: "armor", def: 1, cost: 2, fx: "rain" },
+  firecoat: { name: "Firefighter Coat", slot: "armor", def: 5, cost: 6, fx: "fire" },
+  hazmat: { name: "Hazmat Suit", slot: "armor", def: 3, cost: 6, fx: "gas" },
+  ghillie: { name: "Ghillie Suit", slot: "armor", def: 2, cost: 6, st: { agi: 2 } },
+  tactical: { name: "Tactical Vest", slot: "armor", def: 9, cost: 12, st: { per: 1 } },
+  swatarmor: { name: "SWAT Armor", slot: "armor", def: 12, cost: 16, st: { agi: -1 } },
+  headlamp: { name: "Headlamp", slot: "head", def: 0, cost: 3, fx: "night", shape: "headlamp" },
+  gasmask: { name: "Gas Mask", slot: "head", def: 1, cost: 4, fx: "gas", shape: "gasmask" },
+  tactcap: { name: "Tactical Cap", slot: "head", def: 2, cost: 4, st: { per: 1 }, shape: "tactcap" },
+  swathelm: { name: "SWAT Helmet", slot: "head", def: 8, cost: 9, st: { per: -1 }, shape: "swathelm" },
+  backpack: { name: "School Backpack", slot: "acc", cost: 4, fx: "carry1" },
+  hikerpack: { name: "Hiking Backpack", slot: "acc", cost: 8, st: { end: 1 }, fx: "carry2" },
+  toolbelt: { name: "Tool Belt", slot: "acc", cost: 4, fx: "build" },
+  medpouch: { name: "Medic Pouch", slot: "acc", cost: 5, st: { int: 1 }, fx: "regen" },
+  watch: { name: "Wristwatch", slot: "acc", cost: 4, st: { agi: 1, per: 1 } },
+  kneepads: { name: "Knee Pads", slot: "acc", def: 2, cost: 3 },
+  walkie: { name: "Walkie-Talkie", slot: "acc", cost: 4, st: { cha: 2 }, fx: "radio" },
 };
 const SLOTS = ['head', 'acc', 'armor', 'weapon'], SLOT_NAME = { weapon: 'Weapon', armor: 'Clothing', head: 'Hat', acc: 'Accessory' };   /* 3D.28: four gear slots: hat, accessory, clothing (the old armour slot, key kept for saves), weapon; all show on the 3D model */
-const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'strawhat', 'hardhat', 'bikehelm'], acc: ['gloves', 'belt', 'shoes', 'glasses', 'charm'] };   // what survivors can buy at an Armory with parts
+const ARMORY_STOCK = { weapon: ['knife', 'golf', 'hatchet', 'cleaver', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['hoodie', 'raincoat', 'jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'strawhat', 'hardhat', 'headlamp', 'tactcap', 'bikehelm'], acc: ['gloves', 'belt', 'shoes', 'glasses', 'charm', 'backpack', 'watch', 'kneepads', 'toolbelt'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 /* V3D.25 extra drops per zombie type: [chance, resource, amount] */
 const ZDROP = { runner: [[.3, 'cloth', 1]], brute: [[.4, 'cloth', 1], [.15, 'meds', 1]], bloated: [[.35, 'meds', 1]], spitter: [[.3, 'meds', 1]], crawler: [[.15, 'cloth', 1]], raider: [[.45, 'fuel', 1], [.3, 'meds', 1], [.3, 'cloth', 1]] };
@@ -943,7 +969,9 @@ const weaponOf = (s) => itemOf(s, 'weapon') || (G3D ? FISTS : ITEMS.pipe);
 const RANGE = { pistol: 4, revolver: 4.2, shotgun: 3, smg: 4.2, rifle: 6, assault: 5.2, bow: 5, crossbow: 5.5 };   /* V2.33: ranged weapons fire from a distance (tiles) */
 const MELEE_R = G3D ? .45 : .9, ZREACH = G3D ? .45 : .8;   /* V3D.12: 3D bodies are bigger than the sprites; at .9 a bat swung at air two body-lengths away */
 const weaponRange = (w) => (w && w.ranged ? w.range || RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
-function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; return Math.max(1, v); }
+const gearFx = (s, fx) => !!s && SLOTS.some((sl) => { const it = itemOf(s, sl); return it && it.fx === fx; });   /* 3D.28 special gear effects */
+const carryBonus = (s) => (gearFx(s, 'carry2') ? 2 : gearFx(s, 'carry1') ? 1 : 0);
+function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; if (k === 'per' && gearFx(s, 'night') && isNight()) v += 2; return Math.max(1, v); }
 const sMod = (s, k, per) => 1 + (stat(s, k) - 5) * per;   // 5 = average; each point above/below changes the effect by `per`
 function itemScore(it) { if (!it) return 0; const w = it.slot === 'weapon' ? ((10 + .55 * (it.atk || 0)) / (it.rate || 1) - 10) * (it.ranged ? 1.6 : 1) : 0; return w + (it.def || 0) * 2.2 + Object.values(it.st || {}).reduce((a, v) => a + v * 3, 0); }   /* V3D.16: speed and range count */
 function rollStats(job, l) { const st = {}; for (const k of STATS) st[k] = 2 + Math.floor(rnd() * 3); for (const k of (JOB_STATS[job] || [])) st[k] += 2 + Math.max(0, (l || 1) - 1); for (const k of STATS) st[k] = Math.min(STAT_CAP, st[k]); return st; }
@@ -978,7 +1006,7 @@ const traitWork = (s) => (hasT(s, 'diligent') ? .15 : 0) - (hasT(s, 'scrounger')
 const traitRetreat = (s) => (hasT(s, 'brave') ? -10 : hasT(s, 'cautious') ? 15 : 0);
 const skillMaxHp = (s) => (hasSkill(s, 'bulwark') ? 20 : 0) + (hasSkill(s, 'hardy') ? 10 : 0) + (hasSkill(s, 'tough') ? 15 : 0) + (hasSkill(s, 'strongBack') ? 10 : 0);
 const baseMax = (s) => 48 + 8 * (s.l || 1) + 2 * stat(s, 'end') + skillMaxHp(s) + (hasT(s, 'eater') ? 12 : 0);   /* V2.14: Endurance adds HP */
-const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, (((itemOf(s, 'armor') || {}).def || 0) + ((itemOf(s, 'head') || {}).def || 0)) * .03 + (stat(s, 'end') - 5) * .012) : 0);   /* armor + Endurance */
+const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, (((itemOf(s, 'armor') || {}).def || 0) + ((itemOf(s, 'head') || {}).def || 0) + ((itemOf(s, 'acc') || {}).def || 0)) * .03 + (stat(s, 'end') - 5) * .012) : 0);   /* armor + Endurance */
 const skillDmg = (s) => (hasSkill(s, 'brawler') ? 3 : 0) + (hasSkill(s, 'steadyAim') ? 4 : 0);
 const xpMult = (s) => (hasSkill(s, 'quickLearner') ? 1.25 : 1) * Math.max(.7, sMod(s, 'int', .03));
 function gainXp(s, n) { if (!s || n <= 0) return; s.mastery = (s.mastery || 0) + n * xpMult(s); masteryCheck(s); }
@@ -1358,7 +1386,7 @@ function gatherTick(s) {
   const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' || s.job === 'Mechanic' ? 1 : 0) : (s.job === 'Scavenger' || s.job === 'Mechanic' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
   if (s.gatherK === 'wreck' && rnd() < .22) { S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); bark(s, 'fuel', {}, { pri: 1 }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
   if (rnd() < .2) bark(s, { tree: 'chop', rock: 'mine', wreck: 'wreck', bin: 'bin' }[s.gatherK || 'tree']);
-  s.carriedLoot = K.res; s.carryAmt = K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)]; s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
+  s.carriedLoot = K.res; s.carryAmt = (K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)]) + carryBonus(s);   /* 3D.28 backpacks */ s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
   const jb = jobFor(K.res); s.gjob = null;
   if (jb) { jb.j.inb[K.res] = (jb.j.inb[K.res] || 0) + s.carryAmt; s.gjob = jb.j.id; s.dest = jobPt(jb); s.why = `Bringing ${RES_ICON[K.res]} to the ${jobName(jb)}`; }
   else { s.dest = depotPt(s); s.why = { wood: 'Carrying logs home', stone: 'Carrying stone home', mat: 'Carrying scrap home', cloth: 'Bringing cloth home' }[K.res]; }
@@ -1439,7 +1467,7 @@ function tryHaul(s) {
     if (zombieNear(jobPt(x), 5)) continue;
     for (const [r, v] of Object.entries(x.j.need)) {
       const m = v - (x.j.got[r] || 0) - (x.j.inb[r] || 0), have = Math.floor(S[r] || 0); if (m <= 0 || have < 1) continue;
-      const n = Math.min(m, have, 5); S[r] -= n; x.j.inb[r] = (x.j.inb[r] || 0) + n; s.haul = { r, n, id: x.j.id }; if (rnd() < .12) bark(s, 'haul', { b: jobName(x) });
+      const n = Math.min(m, have, 5 + carryBonus(s) * 2); S[r] -= n; x.j.inb[r] = (x.j.inb[r] || 0) + n; s.haul = { r, n, id: x.j.id }; if (rnd() < .12) bark(s, 'haul', { b: jobName(x) });
       s.dest = depotPt(s); s.mode = 'walk'; s.purpose = 'haul-get'; s.path = null; s.stateTicks = 2400; s.why = `Fetching ${n} ${RES_NAME[r]} for the ${jobName(x)}`; return true;
     }
   }
@@ -1454,7 +1482,7 @@ function endHammer(s) { const x = s.hammerJob != null ? jobById(s.hammerJob) : n
 function hammerTick(s) {
   s.moving = false; const x = s.hammerJob != null ? jobById(s.hammerJob) : null; if (!x) { endHammer(s); s.activity = null; enterFree(s, 20); return; }
   s.faceW = { x: x.b.x + x.b.w / 2, y: x.b.y + x.b.h / 2 }; s.activity = 'Building';
-  if (x.j.cons > 0) x.j.cons -= 1.2 * TUNE.work * (s.job === 'Engineer' || s.job === 'Mechanic' ? 1.4 : 1);
+  if (x.j.cons > 0) x.j.cons -= 1.2 * TUNE.work * (s.job === 'Engineer' || s.job === 'Mechanic' ? 1.4 : 1) * (gearFx(s, 'build') ? 1.3 : 1);   /* 3D.28 Tool Belt */
   if (s.stateTicks <= 0 || x.j.cons <= 0) { gainXp(s, 1); endHammer(s); s.activity = null; s.faceW = null; enterFree(s, 20); }
 }
 const hqB = () => world.buildings.find((b) => DEFS[b.type] && DEFS[b.type].role === 'hq') || null;
@@ -1657,13 +1685,14 @@ function emote(s, icon, f = 110, force = false) {
   s.emo = { t: icon, f, f0: f, face: EMO_FACE[icon] || null, pri: force };
 }
 function emoTick(s) {
+  if (tick % 600 === ((s.id || 0) * 13) % 600 && s.hp > 0 && s.hp < s.max && gearFx(s, 'regen') && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + Math.max(1, Math.round(s.max * .02)));   /* 3D.28 Medic Pouch */
   if (s.bark && --s.bark.f <= 0) s.bark = null;
   if (s.emo && --s.emo.f <= 0) s.emo = null;
   if (s.emo || s.bark || tick % 40 !== (s.i * 7) % 40 || rnd() > .16) return;   /* now and then, a mood shows by itself */
   const busy = ['chase', 'attack', 'recover', 'down', 'hospital', 'away'].includes(s.mode); if (busy) return;
   const grief = (S.griefUntil || 0) > nowH(), rain = !!S.weather, out = !insideBuilding(s);
   const pick = grief ? '😢' : s.hp < s.max * .4 ? '😣' : s.hunger > 70 ? (S.food < 1 ? '😟' : '🍖') : s.thirst > 70 ? '💧' : s.fatigue > 75 ? '🥱'
-    : rain && out ? '☔' : isNight() && out && activeZ() > 0 ? '😰' : (s.sat || 0) > 70 ? ['😊', '🎶', '😌'][Math.floor(rnd() * 3)] : (s.sat || 0) < 25 ? '😞' : null;
+    : rain && out && !gearFx(s, 'rain') ? '☔' : isNight() && out && activeZ() > 0 ? '😰' : (s.sat || 0) > 70 ? ['😊', '🎶', '😌'][Math.floor(rnd() * 3)] : (s.sat || 0) < 25 ? '😞' : null;
   const say = { '😢': 'sad', '😣': 'hurt', '😟': 'hungry', '🍖': 'hungry', '💧': 'thirsty', '🥱': 'tired', '☔': 'rain', '😰': 'scared', '😊': 'happy', '🎶': 'happy', '😌': 'happy', '😞': 'sad' }[pick];
   if (pick && say && rnd() < .35 && bark(s, say)) return;   /* 3D.27: sometimes they say it out loud */
   if (!pick && rnd() < .07 && bark(s, isNight() ? 'scared' : 'idle')) return;
@@ -1827,7 +1856,7 @@ function nightPrep(s) {
 /* combat: a survivor under attack shouts for help; the two nearest free fighters come */
 function callHelp(s, z) {
   if ((s.helpT || 0) > tick) return; s.helpT = tick + 240; if (!bark(s, isFighter(s) ? 'engage' : 'help', {}, { pri: 2 })) emote(s, isFighter(s) ? '😤' : '🆘', 90, true);
-  S.sv.filter((q) => q !== s && isFighter(q) && q.hp > q.max * .45 && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < 9)
+  S.sv.filter((q) => q !== s && isFighter(q) && q.hp > q.max * .45 && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < (gearFx(s, 'radio') || gearFx(q, 'radio') ? 18 : 9))
     .sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w)).slice(0, 2).forEach((q) => { engage(q, z); q.why = `Answering ${s.name}'s call for help`; if (!(rnd() < .6 && bark(q, 'answer', { other: s.name }, { pri: 2 }))) emote(q, '💪', 80, true); });
 }
 function chooseLifePurpose(s) {
@@ -2272,7 +2301,7 @@ function zai0(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = 26; } return;
   }
-  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * (1 - dmgReduce(z.target)))); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
@@ -2390,7 +2419,7 @@ const RESEARCH = {
   bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft protective clothing: Riot Vest and Scrap Plate' },
   gadgets: { name: 'Gadgets', rp: 30, mat: 8, desc: 'Craft stat accessories' },
 };
-const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military', 'football', 'army', 'riothelm'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
+const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'shovel', 'axe', 'roadsign', 'sledge', 'spiked', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg', 'magnum'], bodyArmor: ['biker', 'riot', 'firecoat', 'hazmat', 'ghillie', 'kevlar', 'plate', 'tactical', 'military', 'swatarmor', 'football', 'army', 'riothelm', 'gasmask', 'swathelm'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags', 'backpack', 'hikerpack', 'toolbelt', 'medpouch', 'watch', 'kneepads', 'walkie'] };
 const researched = (k) => !k || !!(S.res && S.res[k]);
 const craftCost = (id) => Math.ceil(ITEMS[id].cost * 1.3) + 1;
 function doResearch(k) { const r = RESEARCH[k]; if (!r || researched(k) || !researched(r.need) || (S.rp || 0) < r.rp || S.mat < r.mat) return false; S.rp -= r.rp; S.mat -= r.mat; S.res = S.res || {}; S.res[k] = true; S.resWeek = (S.resWeek || 0) + 1; banner('🔬 RESEARCHED: ' + r.name.toUpperCase()); SFX('chime'); say(`Research complete: ${r.name} — ${r.desc}.`, true); saveGame(); ui(); return true; }
@@ -2522,7 +2551,7 @@ function havenReview() {
   };
   const total = Math.round(Object.values(sc).reduce((a, v) => a + v, 0)), g = total >= 100 ? 'S' : total >= 80 ? 'A' : total >= 60 ? 'B' : total >= 40 ? 'C' : 'D';
   const R = { S: [30, 20, 'Beacon of Hope'], A: [20, 14, 'Thriving Haven'], B: [12, 8, 'Steady Settlement'], C: [6, 4, 'Struggling Camp'], D: [2, 0, 'Barely Holding On'] }[g];
-  let item = null; if (g === 'S' || g === 'A') { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags']; item = pool[Math.floor(rnd() * pool.length)]; stashAdd(item); }
+  let item = null; if (g === 'S' || g === 'A') { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags', 'backpack', 'watch', 'kneepads', 'toolbelt', 'walkie', 'medpouch', 'headlamp', 'gasmask']; item = pool[Math.floor(rnd() * pool.length)]; stashAdd(item); }
   S.mat += R[1]; renownGain(R[0], 'Weekly Haven Review: ' + g); S.titles = S.titles || []; if (!S.titles.includes(R[2])) S.titles.push(R[2]); S.lastReview = { week: Math.floor((S.day - 1) / 7), grade: g, total, sc };
   showEventPopup({ title: `HAVEN REVIEW · WEEK ${Math.floor((S.day - 1) / 7)} · GRADE ${g}`, text: Object.entries(sc).map(([k, v]) => `${k}: <b>${Math.round(v)}</b>/20`).join('<br>') + `<br><b>Total ${total}/120</b> — title: <b>${R[2]}</b>`, gains: `+${R[0]} Renown · +${R[1]} scrap${item ? ' · ' + ITEMS[item].name : ''}` });
   weekStart();
@@ -2598,7 +2627,7 @@ function fireAI(s) {   /* modes goFire / fightFire */
   if (s.mode === 'goFire') { const r = followPath(s, Wd.approachPoint(b), CHASE); if (r === 'arrived') { s.mode = 'fightFire'; s.activity = 'Firefighting'; s.path = null; s.stateTicks = 30; } else if (r === 'fail') { s.fireAt = null; enterFree(s, 60); } return; }
   s.moving = false; if (s.stateTicks > 0) return; s.stateTicks = 30;
   const wet = S.water >= .1; if (wet) { S.water -= .1; flow('water', 'Firefighting', -.1); }   /* without water they beat it out at half speed */
-  b.fire -= (wet ? 2 : 1) * Math.max(.6, sMod(s, 'end', .04)); if (b.fire <= 0) fireOut(b);
+  b.fire -= (wet ? 2 : 1) * Math.max(.6, sMod(s, 'end', .04)) * (gearFx(s, 'fire') ? 1.6 : 1); if (b.fire <= 0) fireOut(b);   /* 3D.28 Firefighter Coat */
 }
 function breakIn() {   /* a zombie gets into a building; whoever is inside is forced out to face it */
   const occ = world.buildings.filter((b) => enclosedB(b) && !b.burnt && S.sv.some((q) => insideBuilding(q) === b)), pool = occ.length ? occ : world.buildings.filter((b) => enclosedB(b) && !b.burnt);
@@ -3541,7 +3570,7 @@ function expResolveStage(t, quiet) {
   const kinds = new Set(ms.map(expKind).filter((k) => k !== 'other')).size, avgL = ms.reduce((a, s) => a + (s.l || 1), 0) / (ms.length || 1), f = rk.mult * (1 + .12 * Math.max(0, kinds - 1)) * (1 + .04 * (avgL - 1)) * (1 + .15 * ms.filter((m) => hasSkill(m, 'lootSense')).length) * (1 + .2 * ms.filter((m) => hasSkill(m, 'treasureHunter')).length) * expTraitLoot(ms);
   const got = [], r = (a) => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
   for (const k in d.loot) { const n = Math.max(1, Math.round(r(d.loot[k]) * f)); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${n} ${RES_NAME[k] || k}`); }
-  if (Math.random() < .2 * Math.sqrt(rk.mult) * (d.gear || 1) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
+  if (Math.random() < .2 * Math.sqrt(rk.mult) * (d.gear || 1) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'backpack', 'hikerpack', 'watch', 'walkie', 'medpouch', 'raincoat', 'firecoat', 'hazmat', 'ghillie', 'tactcap', 'gasmask', 'shovel', 'roadsign', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
   const rm = expRiskMult(t); let trouble = [];
   for (const m of [...ms]) {
     const x = Math.random(), tm = hasT(m, 'cautious') ? .7 : 1, dead = rk.death * rm * tm, collapse = rk.hurt * rm * .35 * tm, hurt = rk.hurt * rm * tm;
@@ -4080,7 +4109,8 @@ function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
   const c = (s.cls && s.cls[job]) || { l: 1 }; const nx = Object.values(SKILLS).filter((k) => k.from === job && k.at > c.l).sort((a, b) => a.at - b.at)[0];
   return nx ? `Next skill: ${nx.name} at Lv.${nx.at}` : 'All skills learned';
 }
-const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.slot === 'weapon' && it.rate ? (it.rate < .85 ? 'Fast' : it.rate > 1.2 ? 'Slow' : '') : '', it.mag ? `${it.mag} ${it.mag > 1 ? 'rounds' : 'bolt'} · ${it.reload}s reload` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`)].filter(Boolean).join(' · ');
+const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.slot === 'weapon' && it.rate ? (it.rate < .85 ? 'Fast' : it.rate > 1.2 ? 'Slow' : '') : '', it.mag ? `${it.mag} ${it.mag > 1 ? 'rounds' : 'bolt'} · ${it.reload}s reload` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`), FX_TEXT[it.fx] || ''].filter(Boolean).join(' · ');
+const FX_TEXT = { carry1: 'Carries +1', carry2: 'Carries +2', build: 'Builds 30% faster', fire: 'Puts out fires faster', gas: 'Spit & gas hurt 60% less', night: '+2 PER at night', rain: 'Happy in rain', regen: 'Slowly heals', radio: 'Calls help from twice as far' };   /* 3D.28 */
 const STAT_SHORT = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
 function statsHtml(u) {
   const rows = ['str', 'agi', 'int', 'end', 'per', 'cha'].map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);

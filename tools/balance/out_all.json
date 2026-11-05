@@ -1,0 +1,1808 @@
+{
+ "pipe": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 6.06,
+    "taken": 8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 13.66,
+    "taken": 48.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.44,
+    "taken": 20,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.07,
+    "taken": 94,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 7.39,
+    "taken": 21.9,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.083,
+  "cost": 1,
+  "slot": "weapon",
+  "name": "Lead Pipe"
+ },
+ "knife": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 5.4,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.99,
+    "taken": 32.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 6.31,
+    "taken": 28.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.04,
+    "taken": 86.0,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 6.06,
+    "taken": 18.7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.092,
+  "cost": 2,
+  "slot": "weapon",
+  "name": "Kitchen Knife"
+ },
+ "bat": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 4,
+  "slot": "weapon",
+  "name": "Baseball Bat"
+ },
+ "crowbar": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.8,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 9.86,
+    "taken": 27.5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.44,
+    "taken": 20,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 13.93,
+    "taken": 75.7,
+    "win": 0.48,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.86,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.116,
+  "cost": 5,
+  "slot": "weapon",
+  "name": "Crowbar"
+ },
+ "nailbat": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 9.69,
+    "taken": 26.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.34,
+    "taken": 20,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 13.75,
+    "taken": 71.3,
+    "win": 0.77,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.79,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.118,
+  "cost": 6,
+  "slot": "weapon",
+  "name": "Nail Bat"
+ },
+ "machete": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.6,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 8.87,
+    "taken": 24,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 4.84,
+    "taken": 17.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 13.52,
+    "taken": 68.6,
+    "win": 0.96,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.53,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.122,
+  "cost": 6,
+  "slot": "weapon",
+  "name": "Machete"
+ },
+ "spear": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.94,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.53,
+    "taken": 31.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.04,
+    "taken": 5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.07,
+    "taken": 84.6,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.13,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.144,
+  "cost": 7,
+  "slot": "weapon",
+  "name": "Scrap Spear"
+ },
+ "axe": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 5.1,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 11.35,
+    "taken": 34.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.21,
+    "taken": 5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.07,
+    "taken": 86,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 3.9,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.153,
+  "cost": 9,
+  "slot": "weapon",
+  "name": "Fire Axe"
+ },
+ "sledge": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.53,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 7.5,
+    "taken": 12.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.63,
+    "taken": 8.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 13.85,
+    "taken": 63.9,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.31,
+    "taken": 8.4,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.174,
+  "cost": 11,
+  "slot": "weapon",
+  "name": "Sledgehammer"
+ },
+ "katana": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.47,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 8.2,
+    "taken": 22.9,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 2.57,
+    "taken": 5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 10.45,
+    "taken": 52.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 3.26,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.196,
+  "cost": 15,
+  "slot": "weapon",
+  "name": "Katana"
+ },
+ "pistol": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.37,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 11.77,
+    "taken": 26.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0.5,
+    "ttk": 15.96,
+    "taken": 87.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.4,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.144,
+  "cost": 8,
+  "slot": "weapon",
+  "name": "Pistol"
+ },
+ "revolver": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 2.55,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 1,
+    "ttk": 9.82,
+    "taken": 16,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 6.18,
+    "taken": 19.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 1,
+    "ttk": 17.29,
+    "taken": 88.6,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.37,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.161,
+  "cost": 10,
+  "slot": "weapon",
+  "name": "Revolver"
+ },
+ "shotgun": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.18,
+    "taken": 1.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 1,
+    "ttk": 12.32,
+    "taken": 36.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.18,
+    "taken": 7.3,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 1.0,
+    "ttk": 12.82,
+    "taken": 82,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 3.18,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.186,
+  "cost": 13,
+  "slot": "weapon",
+  "name": "Shotgun"
+ },
+ "smg": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 2.37,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 8.27,
+    "taken": 10.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.32,
+    "taken": 13.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.18,
+    "taken": 63.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.33,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.182,
+  "cost": 13,
+  "slot": "weapon",
+  "name": "SMG"
+ },
+ "rifle": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.08,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 1,
+    "ttk": 12.68,
+    "taken": 20,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.08,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 1,
+    "ttk": 19.28,
+    "taken": 74.8,
+    "win": 0.94,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.28,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.177,
+  "cost": 12,
+  "slot": "weapon",
+  "name": "Hunting Rifle"
+ },
+ "assault": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 2.4,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 8.4,
+    "taken": 6.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 3.4,
+    "taken": 5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 13.43,
+    "taken": 41.9,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 3.4,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.227,
+  "cost": 18,
+  "slot": "weapon",
+  "name": "Assault Rifle"
+ },
+ "bow": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.0,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 11.53,
+    "taken": 19.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 7.27,
+    "taken": 25.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 18.53,
+    "taken": 88,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.13,
+    "taken": 7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.135,
+  "cost": 7,
+  "slot": "weapon",
+  "name": "Hunting Bow"
+ },
+ "crossbow": {
+  "r": {
+   "S1 walker": {
+    "reloads": 2,
+    "ttk": 3.73,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 6,
+    "ttk": 13.33,
+    "taken": 26.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 2,
+    "ttk": 3.73,
+    "taken": 5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 8,
+    "ttk": 18.13,
+    "taken": 75.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 2,
+    "ttk": 3.73,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.169,
+  "cost": 11,
+  "slot": "weapon",
+  "name": "Crossbow"
+ },
+ "jacket": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 27.3,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 18.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.72,
+    "taken": 82.8,
+    "win": 0.59,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 13.1,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.113,
+  "cost": 2,
+  "slot": "armor",
+  "name": "Work Jacket"
+ },
+ "leather": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 25.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 17.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.85,
+    "taken": 78.3,
+    "win": 0.61,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 12.3,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.115,
+  "cost": 4,
+  "slot": "armor",
+  "name": "Leather Jacket"
+ },
+ "hockey": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.89,
+    "taken": 3.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.28,
+    "taken": 25.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.68,
+    "taken": 17.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.96,
+    "taken": 77.1,
+    "win": 0.61,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.03,
+    "taken": 11.9,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.115,
+  "cost": 5,
+  "slot": "armor",
+  "name": "Hockey Pads"
+ },
+ "biker": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 24.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 17.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.87,
+    "taken": 75.7,
+    "win": 0.72,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 11.9,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.116,
+  "cost": 6,
+  "slot": "armor",
+  "name": "Biker Leathers"
+ },
+ "riot": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.89,
+    "taken": 3.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.28,
+    "taken": 23.5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.68,
+    "taken": 15.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 16.07,
+    "taken": 71.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.03,
+    "taken": 11.0,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.118,
+  "cost": 7,
+  "slot": "armor",
+  "name": "Riot Vest"
+ },
+ "kevlar": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 22.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 15.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.93,
+    "taken": 67.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 10.6,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.12,
+  "cost": 10,
+  "slot": "armor",
+  "name": "Kevlar Vest"
+ },
+ "military": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.89,
+    "taken": 2.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.28,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.68,
+    "taken": 13.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 16.07,
+    "taken": 60.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.03,
+    "taken": 9.3,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.122,
+  "cost": 14,
+  "slot": "armor",
+  "name": "Military Armor"
+ },
+ "plate": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.9,
+    "taken": 2.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.38,
+    "taken": 21.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.73,
+    "taken": 13.9,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 16.23,
+    "taken": 65.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 5.06,
+    "taken": 9.8,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.12,
+  "cost": 11,
+  "slot": "armor",
+  "name": "Scrap Plate"
+ },
+ "gloves": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 3,
+  "slot": "acc",
+  "name": "Lifting Gloves"
+ },
+ "belt": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.9,
+    "win": 1.0,
+    "hpmax": 86
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 28.4,
+    "win": 1.0,
+    "hpmax": 86
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 19.5,
+    "win": 1.0,
+    "hpmax": 86
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.8,
+    "taken": 86.4,
+    "win": 0.6,
+    "hpmax": 86
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 13.6,
+    "win": 1.0,
+    "hpmax": 86
+   }
+  },
+  "power": 0.114,
+  "cost": 3,
+  "slot": "acc",
+  "name": "Back Brace"
+ },
+ "shoes": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.85,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.11,
+    "taken": 28.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.59,
+    "taken": 20,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 82.9,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.96,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.113,
+  "cost": 3,
+  "slot": "acc",
+  "name": "Running Shoes"
+ },
+ "goggles": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 1.97,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 7.57,
+    "taken": 8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.57,
+    "taken": 60.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.4,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.202,
+  "cost": 5,
+  "slot": "acc",
+  "name": "Scope Goggles"
+ },
+ "glasses": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 3,
+  "slot": "acc",
+  "name": "Reading Glasses"
+ },
+ "charm": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 3,
+  "slot": "acc",
+  "name": "Lucky Charm"
+ },
+ "dogtags": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 3.37,
+    "taken": 0,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 11.77,
+    "taken": 25.8,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.0,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S4 brute+2": {
+    "reloads": 1,
+    "ttk": 16.88,
+    "taken": 92.9,
+    "win": 0.0,
+    "hpmax": 84
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.77,
+    "taken": 10.2,
+    "win": 1.0,
+    "hpmax": 84
+   }
+  },
+  "power": 0.145,
+  "cost": 6,
+  "slot": "acc",
+  "name": "Dog Tags"
+ },
+ "bandana": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 1,
+  "slot": "head",
+  "name": "Bandana"
+ },
+ "cap": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 29.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 20.0,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 14.05,
+    "taken": 83.3,
+    "win": 0.0,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 14,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.112,
+  "cost": 3,
+  "slot": "head",
+  "name": "Baseball Cap"
+ },
+ "beanie": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.9,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 28.7,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 19.8,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.31,
+    "taken": 85.8,
+    "win": 0.45,
+    "hpmax": 84
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 13.9,
+    "win": 1.0,
+    "hpmax": 84
+   }
+  },
+  "power": 0.113,
+  "cost": 2,
+  "slot": "head",
+  "name": "Beanie"
+ },
+ "strawhat": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.9,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 28.7,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 19.8,
+    "win": 1.0,
+    "hpmax": 84
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.31,
+    "taken": 85.8,
+    "win": 0.45,
+    "hpmax": 84
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 13.9,
+    "win": 1.0,
+    "hpmax": 84
+   }
+  },
+  "power": 0.113,
+  "cost": 2,
+  "slot": "head",
+  "name": "Straw Hat"
+ },
+ "hardhat": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 27.3,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 18.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.72,
+    "taken": 82.8,
+    "win": 0.59,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 13.1,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.113,
+  "cost": 2,
+  "slot": "head",
+  "name": "Hard Hat"
+ },
+ "bikehelm": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 26.5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 18.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.85,
+    "taken": 81.1,
+    "win": 0.6,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 12.7,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.114,
+  "cost": 3,
+  "slot": "head",
+  "name": "Bike Helmet"
+ },
+ "football": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.5,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 25.6,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 17.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.85,
+    "taken": 78.3,
+    "win": 0.61,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 12.3,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.115,
+  "cost": 5,
+  "slot": "head",
+  "name": "Football Helmet"
+ },
+ "army": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 24.7,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 17.1,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.87,
+    "taken": 75.7,
+    "win": 0.72,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 11.9,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.116,
+  "cost": 6,
+  "slot": "head",
+  "name": "Army Helmet"
+ },
+ "riothelm": {
+  "r": {
+   "S1 walker": {
+    "reloads": 0,
+    "ttk": 4.87,
+    "taken": 3.2,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S2 3 walkers": {
+    "reloads": 0,
+    "ttk": 10.18,
+    "taken": 23.8,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S3 2 runners": {
+    "reloads": 0,
+    "ttk": 5.64,
+    "taken": 16.4,
+    "win": 1.0,
+    "hpmax": 82
+   },
+   "S4 brute+2": {
+    "reloads": 0,
+    "ttk": 15.91,
+    "taken": 73.0,
+    "win": 0.89,
+    "hpmax": 82
+   },
+   "S5 raider": {
+    "reloads": 0,
+    "ttk": 4.99,
+    "taken": 11.4,
+    "win": 1.0,
+    "hpmax": 82
+   }
+  },
+  "power": 0.118,
+  "cost": 7,
+  "slot": "head",
+  "name": "Riot Helmet"
+ }
+}

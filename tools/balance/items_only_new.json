@@ -1,0 +1,208 @@
+{
+ "golf": {
+  "name": "Golf Club",
+  "slot": "weapon",
+  "kind": "blunt",
+  "atk": 7,
+  "rate": 0.9,
+  "cost": 3
+ },
+ "hatchet": {
+  "name": "Hatchet",
+  "slot": "weapon",
+  "kind": "blade",
+  "atk": 9,
+  "rate": 0.85,
+  "cost": 4
+ },
+ "cleaver": {
+  "name": "Cleaver",
+  "slot": "weapon",
+  "kind": "blade",
+  "atk": 5,
+  "rate": 0.7,
+  "cost": 4
+ },
+ "shovel": {
+  "name": "Shovel",
+  "slot": "weapon",
+  "kind": "blunt",
+  "atk": 27,
+  "rate": 1.05,
+  "cost": 7
+ },
+ "roadsign": {
+  "name": "Road Sign",
+  "slot": "weapon",
+  "kind": "blunt",
+  "atk": 32,
+  "rate": 1.3,
+  "cost": 9,
+  "st": {
+   "agi": -1
+  }
+ },
+ "spiked": {
+  "name": "Spiked Club",
+  "slot": "weapon",
+  "kind": "blunt",
+  "atk": 36,
+  "rate": 1.15,
+  "cost": 13
+ },
+ "magnum": {
+  "name": "Magnum",
+  "slot": "weapon",
+  "kind": "gun",
+  "atk": 27,
+  "rate": 1.4,
+  "range": 3.8,
+  "mag": 6,
+  "reload": 3.2,
+  "cost": 14,
+  "ranged": true
+ },
+ "hoodie": {
+  "name": "Hoodie",
+  "slot": "armor",
+  "def": 1,
+  "cost": 2,
+  "st": {
+   "end": 1
+  }
+ },
+ "raincoat": {
+  "name": "Raincoat",
+  "slot": "armor",
+  "def": 1,
+  "cost": 2,
+  "fx": "rain"
+ },
+ "firecoat": {
+  "name": "Firefighter Coat",
+  "slot": "armor",
+  "def": 5,
+  "cost": 6,
+  "fx": "fire"
+ },
+ "hazmat": {
+  "name": "Hazmat Suit",
+  "slot": "armor",
+  "def": 3,
+  "cost": 6,
+  "fx": "gas"
+ },
+ "ghillie": {
+  "name": "Ghillie Suit",
+  "slot": "armor",
+  "def": 2,
+  "cost": 6,
+  "st": {
+   "agi": 2
+  }
+ },
+ "tactical": {
+  "name": "Tactical Vest",
+  "slot": "armor",
+  "def": 9,
+  "cost": 12,
+  "st": {
+   "per": 1
+  }
+ },
+ "swatarmor": {
+  "name": "SWAT Armor",
+  "slot": "armor",
+  "def": 12,
+  "cost": 16,
+  "st": {
+   "agi": -1
+  }
+ },
+ "headlamp": {
+  "name": "Headlamp",
+  "slot": "head",
+  "def": 0,
+  "cost": 3,
+  "fx": "night"
+ },
+ "gasmask": {
+  "name": "Gas Mask",
+  "slot": "head",
+  "def": 1,
+  "cost": 4,
+  "fx": "gas"
+ },
+ "tactcap": {
+  "name": "Tactical Cap",
+  "slot": "head",
+  "def": 2,
+  "cost": 4,
+  "st": {
+   "per": 1
+  }
+ },
+ "swathelm": {
+  "name": "SWAT Helmet",
+  "slot": "head",
+  "def": 8,
+  "cost": 9,
+  "st": {
+   "per": -1
+  }
+ },
+ "backpack": {
+  "name": "School Backpack",
+  "slot": "acc",
+  "cost": 4,
+  "fx": "carry1"
+ },
+ "hikerpack": {
+  "name": "Hiking Backpack",
+  "slot": "acc",
+  "cost": 8,
+  "st": {
+   "end": 1
+  },
+  "fx": "carry2"
+ },
+ "toolbelt": {
+  "name": "Tool Belt",
+  "slot": "acc",
+  "cost": 4,
+  "fx": "build"
+ },
+ "medpouch": {
+  "name": "Medic Pouch",
+  "slot": "acc",
+  "cost": 5,
+  "st": {
+   "int": 1
+  },
+  "fx": "regen"
+ },
+ "watch": {
+  "name": "Wristwatch",
+  "slot": "acc",
+  "cost": 4,
+  "st": {
+   "agi": 1,
+   "per": 1
+  }
+ },
+ "kneepads": {
+  "name": "Knee Pads",
+  "slot": "acc",
+  "def": 2,
+  "cost": 3
+ },
+ "walkie": {
+  "name": "Walkie-Talkie",
+  "slot": "acc",
+  "cost": 4,
+  "st": {
+   "cha": 2
+  },
+  "fx": "radio"
+ }
+}
