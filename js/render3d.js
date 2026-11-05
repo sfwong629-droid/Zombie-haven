@@ -920,11 +920,21 @@ function hatFor(job) {
   g.position.set(HEAD.x, 0, HEAD.z); g.rotation.x = -.06; return g;
 }
 const HAT_SHAPE = { bandana: 'Raider', cap: 'Police Officer', beanie: 'Scavenger', straw: 'Farmer', hard: 'Engineer', bike: 'SWAT', football: 'SWAT', army: 'Guard', riot: 'SWAT' };
+const headFits = new Map();
+function headFit(a) {   // 3D.28: measure this model's head (top of the hair, centre, width) so hats fit any rig, not just the old one
+  if (headFits.has(a.src)) return headFits.get(a.src);
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const m = a.skin[0]; if (!head || !m) return null;
+  a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.updateMatrixWorld(true); const hb = new THREE.Vector3(); head.getWorldPosition(hb);
+  const v = new THREE.Vector3(), n = m.geometry.attributes.position.count; let top = -1e9, x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let i = 0; i < n; i++) { m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld); if (v.y < hb.y + .02) continue; if (v.y > top) top = v.y; if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.z < z0) z0 = v.z; if (v.z > z1) z1 = v.z; }
+  if (top < -1e8) return null; const f = { x: (x0 + x1) / 2, z: (z0 + z1) / 2, top, r: Math.max(x1 - x0, z1 - z0) / 2 }; headFits.set(a.src, f); return f;
+}
 function addHat(a, job, equipped = false) {   // parent to the head bone, placed at the rest pose
-  if (MALE && MALE.v2) return;   // V3D.19 test model: hats are fitted to the old head
   if (!HATS_ON && !equipped) { if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; } return; }   // V3D.16: no job hats; equipped hats (the Hat slot) do show
   if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
-  const h = hatFor(job); if (!h) return; let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
+  const h0 = hatFor(job); if (!h0) return; let h = h0;
+  if (MALE && MALE.v2) { const f = headFit(a); if (!f) return; const k = f.r / HEAD.r * 1.13; h = new THREE.Group(); h0.position.set(h0.position.x - HEAD.x, -HEAD.top, h0.position.z - HEAD.z); h.add(h0); h.scale.setScalar(k); h.position.set(f.x, f.top + .015 * k, f.z); }   /* 3D.28: refit the old hats to the new head */
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
   a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, head.matrixWorld).invert();
   h.updateMatrix(); h.applyMatrix4(m); head.add(h); a.hat = h;
 }
@@ -1275,13 +1285,13 @@ function inkEdge(d, W, H, r) {   // a dark outline r px wide just outside the op
 function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, o.face || '', lk.sk, lk.hr, s.id && isFemale(s) ? 'f' : 'm'].join('|');
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', o.face || '', lk.sk, lk.hr, s.id && isFemale(s) ? 'f' : 'm'].join('|');
   if (portraits.has(key)) return portraits.get(key);
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
-  const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) addHat(a, s.job); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); }   /* 3D.28: the equipped hat shows in the picture */ scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
   a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
