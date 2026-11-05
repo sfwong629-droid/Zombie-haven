@@ -150,3 +150,67 @@ html.glass #bDemo .zi { width: 30px; height: 30px; }
 /* tips and alerts stay left of the renown pill and the right column, so nothing pushes or covers those buttons */
 html.glass #adv { margin-right: 132px; }
 html.glass #alerts { right: 132px; }
+
+/* ---- 3D.30: the "who did you tap?" chooser as a glass list (was white text on a cream card) ---- */
+html.glass .pick { background: rgba(16, 22, 28, .78); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .22); border-radius: 18px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); padding: 5px; }
+html.glass .pick button { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); border-radius: 13px; color: #fff; font-family: Manrope, sans-serif; margin: 2px 0; }
+html.glass .pick button:active { background: rgba(198, 255, 77, .18); }
+html.glass .pick .pi { background: rgba(255, 255, 255, .9); border: 2px solid #fff; }
+html.glass .pick b { color: #fff; font-weight: 800; } html.glass .pick small { color: #C9D1D9; opacity: 1; font-family: Manrope, sans-serif; }
+/* 3D.30 expedition: the reason the squad can't leave, right above the Send button */
+.expWhy { min-height: 0; margin: 6px 2px; font: 700 13px Manrope, sans-serif; color: #FF7A59; text-align: center; }
+.expWhy:empty { display: none; }
+.expWhy.shake { animation: whyShake .35s; } @keyframes whyShake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+/* 3D.30 expedition bar: a hide button, and a small chip when hidden (tap the chip to bring the bar back) */
+.expBar .ebHide { position: absolute; top: -10px; right: -8px; z-index: 3; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: rgba(16,22,28,.8); display: flex; align-items: center; justify-content: center; padding: 0; }
+.expBar .ebMini { display: none; }
+.expBar.mini { left: auto !important; right: 132px !important; width: auto; height: 40px; padding: 0 12px 0 6px; border-radius: 999px; background: rgba(16,22,28,.62) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.22) !important; }
+.expBar.mini > *:not(.ebMini) { display: none !important; }
+.expBar.mini .ebMini { display: flex; align-items: center; gap: 6px; height: 100%; color: #fff; font: 800 14px Manrope, sans-serif; }
+/* ---- 3D.30 Alert hub: one round button on the left, flashing while something new needs you; tap for the list ---- */
+html.glass #alerts, html.glass #adv { display: none !important; }
+.alertBtn { position: absolute; left: 12px; top: 120px; z-index: 26; width: 54px; height: 54px; border-radius: 50%; padding: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(16, 22, 28, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .22); box-shadow: 0 6px 16px rgba(0, 0, 0, .25); }
+.alertBtn .abI { display: flex; } .alertBtn .abI svg { width: 36px; height: 36px; }
+.alertBtn .abN { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #F6C445; color: #14200A; font: 800 12px/22px Manrope, sans-serif; border: 2px solid #fff; }
+.alertBtn.urgent .abN { background: #FF5A4A; color: #fff; }
+.alertBtn.flash { animation: abFlash 1s ease-in-out infinite; }
+.alertBtn.urgent.flash { animation-name: abFlashR; }
+@keyframes abFlash { 0%, 100% { box-shadow: 0 0 0 0 rgba(246, 196, 69, .0), 0 6px 16px rgba(0,0,0,.25); transform: scale(1); } 50% { box-shadow: 0 0 0 8px rgba(246, 196, 69, .45), 0 6px 16px rgba(0,0,0,.25); transform: scale(1.08); } }
+@keyframes abFlashR { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 74, 0), 0 6px 16px rgba(0,0,0,.25); transform: scale(1); } 50% { box-shadow: 0 0 0 9px rgba(255, 90, 74, .5), 0 6px 16px rgba(0,0,0,.25); transform: scale(1.08); } }
+.alertPop { position: absolute; left: 74px; right: 132px; min-width: 220px; max-height: 52vh; overflow: auto; z-index: 27; padding: 8px; border-radius: 18px;
+  background: rgba(16, 22, 28, .82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .22); box-shadow: 0 10px 28px rgba(0,0,0,.35); color: #fff; font-family: Manrope, sans-serif; }
+@media (max-width: 420px) { .alertPop { right: 12px; } }
+.alertPop .apH { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 6px; font-weight: 800; font-size: 15px; }
+.alertPop .apX { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; padding: 0; }
+.alertPop .apRow { display: flex; align-items: center; gap: 8px; padding: 8px; margin: 4px 0; border-radius: 12px; background: rgba(255, 255, 255, .07); border-left: 4px solid #F6C445; font-size: 13px; font-weight: 700; cursor: pointer; }
+.alertPop .apRow.urg { border-left-color: #FF5A4A; background: rgba(255, 90, 74, .12); }
+.alertPop .apI { flex: none; font-size: 20px; display: flex; } .alertPop .apI svg, .alertPop .apI img { width: 24px; height: 24px; }
+.alertPop .apT { flex: 1; line-height: 1.25; }
+.alertPop .apA { flex: none; border: 0; border-radius: 999px; padding: 6px 10px; background: #C6FF4D; color: #14200A; font: 800 12px Manrope, sans-serif; }
+.alertPop .apA:disabled { opacity: .45; }
+/* 3D.30 on/off switch (Gather toggle) */
+.tgl { flex: none; width: 50px; height: 30px; border-radius: 15px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.15); position: relative; padding: 0; }
+.tgl i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.tgl.on { background: #C6FF4D; border-color: #C6FF4D; } .tgl.on i { left: 25px; }
+.gTog b svg { vertical-align: -4px; }
+/* 3D.30 worker picker: people whose profession fits the building stand out */
+html.glass .card.fit { background: rgba(198, 255, 77, .16) !important; border-color: rgba(198, 255, 77, .75) !important; box-shadow: inset 4px 0 0 #C6FF4D; }
+.fitTag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #C6FF4D; color: #14200A; font: 800 11px Manrope, sans-serif; vertical-align: 2px; }
+/* 3D.30 housing residents and camp beds */
+.resRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+.resP { width: 64px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font: 700 11px Manrope, sans-serif; text-align: center; }
+.resP .portrait { width: 52px; height: 52px; margin: 0; }
+.resP.empty .portrait { display: flex; align-items: center; justify-content: center; font: 800 26px Manrope, sans-serif; color: #C6FF4D; border: 2px dashed rgba(198,255,77,.6); background: rgba(255,255,255,.05); border-radius: 50%; }
+.resP.empty span { color: #C9D1D9; }
+.campBeds .cbN { font: 800 20px Manrope, sans-serif; color: #C6FF4D; }
+.campBeds.over { border-color: rgba(255, 90, 74, .7) !important; }
+.campBeds.over .cbN { color: #FF5A4A; }
+/* 3D.30 expedition bar in glass: above the tab bar, under any open panel, overflow visible so the hide button shows */
+html.glass .expBar { left: 12px; right: 132px; bottom: calc(env(safe-area-inset-bottom, 0px) + 104px); height: 54px; z-index: 18; overflow: visible;
+  background: rgba(16, 22, 28, .55) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .22) !important; border-radius: 18px; box-shadow: 0 6px 16px rgba(0, 0, 0, .25) !important; }
+html.glass .expBar .ebPath { background: repeating-linear-gradient(90deg, rgba(255,255,255,.55) 0 10px, rgba(255,255,255,.25) 10px 20px); }
+html.glass .expBar .ebStop { background: rgba(16,22,28,.8); border-color: #fff; } html.glass .expBar .ebStop.done { background: #C6FF4D; }
+html.glass .expBar .ebTime { background: rgba(16,22,28,.85); color: #fff; border: 1px solid rgba(255,255,255,.3); font-family: Manrope, sans-serif; font-weight: 800; }
+html.glass .expBar .ebEnd { filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+html.glass body:has(#infoPanel.show) .expBar { display: none; }

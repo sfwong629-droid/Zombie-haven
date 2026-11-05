@@ -171,7 +171,8 @@ const haloMat = addM(glowT, 0xffe2b0);   // the light a survivor's lamp throws a
 const lampSprite = new THREE.SpriteMaterial({ map: glowT, color: 0xffd890, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
 function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
   if (_gmat) return _gmat;
-  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad });
+  const gs = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 165, 165, 165, 255, 205, 205, 205, 255, 235, 235, 235, 255, 255, 255, 255, 255]), 5, 1); gs.needsUpdate = true;   /* 3D.30: softer light steps on the ground (the 3-step toon ramp banded the slopes) */
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gs });
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, RU);
     sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz; vWN = normalize(mat3(modelMatrix) * normal);');
@@ -309,7 +310,7 @@ function buildGround() {
   for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++)   // two by two quads per tile, so the rises are smooth
     for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { const u = x + (sx + dx) / 2, v = y + (sy + dz) / 2; pos.push(u * T, groundH(u * T, v * T), v * T); col.push(...(sx + dx === 0 || sx + dx === 2) && (sy + dz === 0 || sy + dz === 2) ? corner(u, v) : ccol(u, v)); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  { const nr = new Float32Array(pos.length), e = .25; for (let i = 0; i < pos.length; i += 3) { const x = pos[i], z = pos[i + 2], dx = groundH(x + e, z) - groundH(x - e, z), dz = groundH(x, z + e) - groundH(x, z - e), n = new THREE.Vector3(-dx, 2 * e, -dz).normalize(); nr[i] = n.x; nr[i + 1] = n.y; nr[i + 2] = n.z; }
+  { const nr = new Float32Array(pos.length), e = 1.4; for (let i = 0; i < pos.length; i += 3) { const x = pos[i], z = pos[i + 2], dx = (groundH(x + e, z) - groundH(x - e, z)) * .7, dz = (groundH(x, z + e) - groundH(x, z - e)) * .7, n = new THREE.Vector3(-dx, 2 * e, -dz).normalize();   /* 3D.30: wider, softer slope sample: no diamond banding when zoomed out or at dusk */ nr[i] = n.x; nr[i + 1] = n.y; nr[i + 2] = n.z; }
     g.setAttribute('normal', new THREE.BufferAttribute(nr, 3)); }   // V3D.21 smooth normals from the height field (face normals showed the tile seams)
   groundMesh = new THREE.Mesh(g, groundMat()); groundMesh.receiveShadow = true; scene.add(groundMesh);
   return true;
@@ -906,7 +907,7 @@ class Actor {
     this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
     if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
   }
-  show(v) { this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
+  show(v) { if (!v) { this.spd = 0; this.last = null; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
   dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
 }
 // ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
@@ -1073,6 +1074,7 @@ function personAnim(a, s, dt) {
   if (anim === 'walk' && a.last && a.spd < .06) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
+  if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
   const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
@@ -1083,8 +1085,7 @@ function personAnim(a, s, dt) {
   }
   if (a.attacking && a.cur && a.cur.isRunning()) return;    // let the strike finish
   a.attacking = false;
-  if (s.mode === 'rescueCarry') { a.play('rescue'); return; }
-  if (s._lvT > 24 && !s.carrying) { a.play('cheer'); return; }   // level-up: a happy jump while the LEVEL UP burst plays
+  if (s._lvT > 24 && !s.carrying && anim !== 'walk' && !(a.spd > .14)) { a.play('cheer'); return; }   /* 3D.30: only cheer standing still (cheering while walking looked like a frozen slide) */   // level-up: a happy jump while the LEVEL UP burst plays
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
   const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || (s.mode === 'chase' && !hold));
   if (anim === 'walk' && rush) { a.play('run'); return; }
@@ -1445,7 +1446,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { people: () => people, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
