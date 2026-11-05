@@ -51,6 +51,8 @@
     bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
     armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
     barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8, cloth: 3 }),
+    generator: D({ name: 'Generator',   role: 'power', tier: 3, a: 4, q: 10, stone: 10, mat: 10, fuel: 4 }),   // V3D.26: burns fuel; lights the camp and boosts nearby buildings
+    radio:    D({ name: 'Radio Tower', role: 'radio', tier: 3, a: 6, q: 12, stone: 20, mat: 16, wood: 10, fuel: 6 }),   // V3D.26: needs power; sends the rescue signal (the ending)
     // V2.14 training buildings: each raises one survivor stat when visited
     gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
     library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
@@ -62,6 +64,8 @@
     house:    D({ name: 'House',   role: 'home', tier: 2, a: 8, wood: 5, mat: 2, hidden: true }),
     inn:      D({ name: 'Shelter', role: 'inn', tier: 2, w: 2, cap: 4, a: 10, wood: 8, mat: 4, hidden: true }),
   };
+  /* V3D.26 rebalance: scrap was the choke point, so Camp and Timber buildings lean on wood (scrap -40%); the Stone tier keeps its scrap */
+  for (const d of Object.values(DEFS)) if ((d.tier || 1) < 3 && d.mat > 1) d.mat = Math.max(1, Math.round(d.mat * .6));
   for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
   const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing

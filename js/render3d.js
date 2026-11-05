@@ -625,6 +625,9 @@ function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5
 function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
 function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
 const BUILD = {
+  generator: (P, w, d) => { P.put(box(w * .55, .5, d * .4), '#4e6a4e', M4(0, .32, 0)); P.put(box(w * .6, .08, d * .45), '#3a4a3a', M4(0, .6, 0)); for (const k of [-1, 1]) P.put(cyl(.09, .09, .06, 10), '#2e2e2e', M4(k * w * .2, .09, d * .22, 0, Math.PI / 2)); P.put(cyl(.04, .05, .5, 6), '#5f666e', M4(w * .18, .85, -d * .1)); P.put(cyl(.06, .06, .05, 8), '#2a2a2a', M4(w * .18, 1.1, -d * .1)); P.put(cyl(.025, .03, 1.5, 6), '#5a3b23', M4(-w * .36, .75, d * .3)); P.put(box(.16, .1, .16), '#ffe08a', M4(-w * .36, 1.52, d * .3)); for (let i = 0; i < 3; i++) P.put(box(.08, .12, .02), '#e8c36a', M4(-w * .1 + i * .1, .4, d * .2 + .01)); },
+  radio: (P, w, d) => { const H = 4.2; for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.025, .035, Math.hypot(H, w * .3), 5), '#8f9aa6', M4(x * w * .15, H / 2, z * d * .15, 0, -z * .07, x * .07)); for (let i = 1; i < 6; i++) { const y = i * H / 6, k = 1 - y / H * .7; P.put(box(w * .3 * k + .05, .03, .03), '#c83a32', M4(0, y, d * .15 * k)); P.put(box(.03, .03, d * .3 * k + .05), '#c83a32', M4(w * .15 * k, y, 0)); }
+    P.put(cyl(.2, .02, .12, 12).rotateX(Math.PI / 2), '#e8e2d4', M4(.1, H * .75, .12, .6)); P.put(box(.04, .04, .04), '#ff4a3a', M4(0, H + .05, 0)); P.put(box(w * .5, .55, d * .4), '#7a6a58', M4(-w * .1, .28, d * .25)); P.put(box(.2, .2, .04), '#3b2a1a', M4(-w * .1, .3, d * .45 + .02)); },
   hq: (P, w, d) => { tentG(P, w * .62, d * .55, '#b9a37a', { h: 1.4, col2: '#a8926a' }); flag(P, -w * .38, -d * .3); crates(P, w * .3, d * .3, 3); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; P.put(new THREE.DodecahedronGeometry(.09, 0), '#8c8478', M4(-w * .3 + Math.cos(a) * .22, .06, d * .32 + Math.sin(a) * .22)); } },
   hq2: (P, w, d) => { cabin(P, w * .78, d * .6, '#7a4a2e', { h: 1.6, chimney: true, sign: '#e8c36a', windows: [w * .05, w * .25] }); flag(P, -w * .42, -d * .36, 2.8); P.put(box(w * .7, .08, .5), '#8a6038', M4(0, .32, d * .3 + .3)); logPile(P, w * .38, d * .38); },
   hq3: (P, w, d) => { stoneHall(P, w * .76, d * .66, '#4e555c', { h: 2.1, windows: [w * .05, w * .25] }); for (let i = 0; i < 7; i++) P.put(box(.18, .2, .18), '#9a948a', M4(-w * .38 + i * w * .76 / 6, 2.2, d * .33)); flag(P, 0, -d * .2, 3.4); },
@@ -1103,7 +1106,7 @@ function makeFire(n) { const g = new THREE.Group(), fl = [], sm = [];
 function syncFires(dt, t) {
   const want = new Map();
   for (const b of G.world.buildings) {
-    const bon = b.type === 'bonfire', lvl = bon ? (glowNow > .15 ? 1 : .25) : b.fire ? Math.min(1, .45 + .15 * b.fire) : b.burnt ? 0 : -1;
+    const bon = b.type === 'bonfire' || (b.type === 'generator' && G.S.power), lvl = bon ? (glowNow > .15 ? 1 : .25) : b.fire ? Math.min(1, .45 + .15 * b.fire) : b.burnt ? 0 : -1;
     if (lvl < 0) continue; want.set(b, lvl);
   }
   for (const [b, lvl] of want) {

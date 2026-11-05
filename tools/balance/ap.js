@@ -21,8 +21,8 @@
     if (!best) { AP.full = true; return false; }
     Z.newSite(t, best.x, best.y); AP.built.push(t + '@d' + S.day); return true;
   }
-  const PLAN = ['barrel', 'farm', 'tent', 'scrapyard', 'bench', 'hq2', 'water', 'farm', 'tent', 'lumber', 'armory', 'gym', 'crates', 'quarry', 'library', 'cabin', 'lounge', 'storage'];
-  const LATE = ['hq3', 'field', 'clinic', 'well', 'workshop', 'track', 'range', 'sparring', 'barracks', 'hospital', 'tent', 'cabin', 'stonehouse', 'irrig', 'mess', 'warehouse', 'scrapyard'];
+  const PLAN = ['barrel', 'farm', 'tent', 'bench', 'hq2', 'scrapyard', 'water', 'tent', 'lumber', 'crates', 'farm', 'quarry', 'armory', 'gym', 'cabin', 'library', 'storage', 'field', 'clinic', 'workshop'];
+  const LATE = ['hq3', 'well', 'generator', 'stonehouse', 'irrig', 'radio', 'barracks', 'hospital', 'mess', 'warehouse', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];
   const RES = ['blades', 'salvage', 'walls', 'medicine', 'gadgets', 'bodyArmor', 'firearms', 'stockpile'];
   function ring() {   /* wood ring on the WALLZONE border, gates next to roads */
     const Zn = Wd.WALLZONE, out = [];
@@ -35,7 +35,7 @@
     if ([...W.walls.values()].some((wl) => !set.has(wl.x + ',' + wl.y))) { for (const wl of [...W.walls.values()]) if (!set.has(wl.x + ',' + wl.y)) W.walls.delete(wl.x + ',' + wl.y); Wd.bump(W); AP.ringDone = false; }   /* old inner ring after expanding: removed */
     r.sort((a, b) => a[1] - b[1]);   /* north side first: most zombies come from the north */
     for (const [x, y] of r) {
-      if (S.mat < reserve || (S.wood || 0) < 6 + (AP.saving ? 6 : 0)) break;   /* V3D.23: walls cost wood now; keep wood for the build plan */ const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
+      if (S.mat < reserve || (S.wood || 0) < 4 + Math.min(10, AP.saveW || 0)) break;   /* V3D.23: walls cost wood now; keep wood for the build plan */ const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
       const gate = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => Wd.isRoad(W, x + dx, y + dy));
       if (!ex) { const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat + (S.wood || 0) < m0) n++; }
       else if (S.rank >= 2 && S.mat > reserve + 20) { const m0 = S.mat; Z.tryWall(x, y, 'metal'); if (S.mat < m0) n++; }
@@ -88,7 +88,9 @@
     { const nx = Z.RANK_REQ[S.rank], want = nx && Z.DEFS[nx.build] && Z.DEFS[nx.build].res; let goal = null;   /* V2.38: research toward the next star's building first (its chain), then the usual order */
       if (want && !Z.researched(want)) { let r = want; while (r && !Z.researched(Z.RESEARCH[r].need)) r = Z.RESEARCH[r].need; goal = r; }
       const order = goal ? [goal, ...RES.filter((k) => k !== goal)] : RES;
-      for (const k of order) if (!Z.researched(k)) { if (Z.doResearch(k)) AP.events.push('res ' + k + '@d' + S.day); break; } }
+      if (S.mat > 30 + (AP.saving || 0)) for (const k of order) if (!Z.researched(k)) { if (Z.doResearch(k)) AP.events.push('res ' + k + '@d' + S.day); break; } }   /* V3D.26: research only from spare scrap */
+    // V3D.26 tools: steel first, then power tools once there is fuel to spare
+    if (Z.hqTier() >= 2) for (const k of ['axe', 'bar', 'pick']) { const cur = (S.tools || {})[k] || 0, nx = Z.TOOLS[k].tiers[cur + 1]; if (nx && (nx.cost.fuel || 0) <= Math.max(0, (S.fuel || 0) - 4) && (S.mat - (nx.cost.mat || 0)) >= 12 + (AP.saving || 0) && (S.wood || 0) - (nx.cost.wood || 0) >= (AP.saveW || 0) && Z.canPay(nx.cost)) { if (Z.craftTool(k)) AP.events.push('tool ' + nx.n + '@d' + S.day); break; } }
     // food / water emergencies first
     const st = Z.supplyStats(); const reserve = 6 + 2 * Z.upkeepTotal();
     if (S.hour === 12) { AP.wTrend = S.water - (AP.w12 ?? S.water); AP.fTrend = S.food - (AP.f12 ?? S.food); AP.w12 = S.water; AP.f12 = S.food; }
@@ -101,10 +103,10 @@
     { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
     // build plan
     let next = null; const want = {}; for (const t of PLAN) { want[t] = (want[t] || 0) + 1; if (have(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
-    AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.core = ['barrel', 'farm', 'tent', 'scrapyard', 'bench'].every((t) => have(t) > 0);
+    AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.saveW = next ? D[next].wood || 0 : 0; AP.core = ['barrel', 'farm', 'tent', 'bench'].every((t) => have(t) > 0);
     if (PLAN.every((t, i) => !ok(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
     // walls from day 2
-    if (S.day >= 2 && AP.core && !AP.nowalls) walls(Math.max(reserve + 6, AP.saving));   /* economy first; walls only from spare parts */
+    if (S.day >= 2 && AP.core && Z.hqTier() >= 2 && !AP.nowalls)   /* V3D.26: walls once the Lodge stands (before that, wood goes to buildings) */ walls(Math.max(reserve + 6, AP.saving));   /* V3D.26: walls once the Lodge stands */   /* economy first; walls only from spare parts */
     // territory
     const n = Wd.TERRITORY[(S.terr || 0) + 1]; if (n && S.ren >= n.ren && S.mat >= n.mat + (AP.full ? 4 : reserve + 15)) { if (Z.expandTerritory()) { AP.full = false; AP.ringDone = false; } if (S.terr && !AP.events.includes('expand ' + S.terr)) AP.events.push('expand ' + S.terr + '@d' + S.day); }
     // crafting: weapons for fighters with only a pipe

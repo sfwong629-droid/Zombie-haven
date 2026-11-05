@@ -31,3 +31,10 @@ Buildings are construction jobs (sites and in-place upgrades) that need wood / s
 places tier-1 sites and upgrades families (`get(t)`), keeps 6+ wood back from walls, and caps emergency Rain Barrels /
 Garden Plots. 5 seeds x 10 days: the Lodge on day 2-3 when the town survives, 13-15 buildings, scrap becomes the tight
 resource (upkeep is paid in scrap). Deaths are as noisy as before (most runs lose people on days 4-6).
+
+## Step 4 (V3D.26): tools, generator, radio, rebalance
+The bot now saves wood as well as scrap for the next item, researches only from spare scrap, crafts steel tools after
+the Lodge, and walls up after the Lodge. With scrap at the old prices every run stalled before the Lodge (20+ wood,
+0-8 scrap), so Camp and Timber buildings now cost 40% less scrap. 5 seeds x 14 days after that: the Lodge on day 2-3 in
+4 of 5 runs, rank 3 in 3, 12-19 buildings. Walls from day 2 cost the bot its Lodge in most runs without fewer deaths.
+The bot still loses many people; read build pacing from it, not survival.
