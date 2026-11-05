@@ -1034,7 +1034,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   else if (still && s.mode === 'chat') c = 'talk';
   else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';
   else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
-  else if (still && s.mode === 'loot') c = 'pickup';
+  else if (still && s.mode === 'loot') { const bg = (G.S.bags || []).find((q) => q.id === s.lootId); if (bg && Math.hypot(bg.w.x - s.w.x, bg.w.y - s.w.y) < .7) c = 'pickup'; }   /* 3D.28: only bend down at the bag itself */
   else if (anim === 'walk' && !hold && a.src === FEMALE3D && s.mode !== 'hide' && s.mode !== 'rescueTo') c = 'walk_f';
   return c && has(c) ? c : null;
 }

@@ -752,6 +752,7 @@ function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring th
       if (inside) clayBadge(cx - (dmg ? 13 : 0) * z, by, z, 'people', null, inside);
       if (dmg) clayBadge(cx + (inside ? 13 : 0) * z, by, z, 'wrench', hp < b.max * .5 ? '#e8584a' : '#f2c14e', 0); }
     if (hit && occupied(b)) { const pulse = 1 + .08 * Math.sin(tick / 5), w = 40 * z * pulse, h = 20 * z * pulse, y = cy - 50 * z; ctx.save(); ctx.beginPath(); ctx.roundRect(cx - w / 2, y - h / 2, w, h, h / 2); ctx.fillStyle = '#e8584a'; ctx.fill(); ctx.lineWidth = 2.4 * z; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); hudText('SOS', cx, y + 5 * z * pulse, `800 ${Math.round(13 * z * pulse)}px Nunito, sans-serif`, '#fff8ec'); ctx.restore(); return; }
+    if (COZY_HUD && !hit && !b.burnt) drawBonus(b, cx, cy, z);   /* 3D.28 tap-to-collect bubble */
     if (hit || (!sel && !prob && cam.z < 1.7)) return;
   }
   ctx.save();
@@ -2428,16 +2429,41 @@ function weatherHour() {
   const snowing = S.weather && S.weather.kind.startsWith('snow');
   S.snowK = Math.max(0, Math.min(1, (S.snowK || 0) + (snowing ? (S.weather.kind === 'snow-heavy' ? .35 : .2) : seasonOf().snow ? -.02 : -.18)));
 }
+/* 3D.28 tap-to-collect (Fallout Shelter style): producing buildings also fill a small BONUS (35% of what they make, up to
+   12 hours' worth). When a whole unit is waiting a bubble pops over the building; tap it to collect. Normal production
+   still reaches the stores on its own, so nothing is lost if you never tap. */
+const BONUS = .35, BONUS_H = 12, BONUS_RES = { water: '💧', food: '🍖', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' };
+function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus = Math.min(a * BONUS * BONUS_H, (b.bonus || 0) + a * BONUS); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; say('Tap the bubbles over buildings to collect bonus supplies!', true); } }
+function collectBonus(b) {
+  const r = b.bonusRes, n = Math.floor(b.bonus || 0); if (!r || n < 1) return false;
+  const room = r === 'rp' ? 1e9 : r === 'water' || r === 'food' ? supplyCap() - (S[r] || 0) : r === 'mat' ? 1e9 : resCap(r) - (S[r] || 0), got = Math.max(0, Math.min(n, Math.floor(room)));
+  if (!got) { say(`${RES_TITLE[r] || 'Storage'} is full: build more storage to collect.`); return true; }
+  S[r] = (S[r] || 0) + got; b.bonus -= got; if (r !== 'rp') flow(r, 'Collected bonus', got);
+  floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 - .3 }, t: `+${got} ${BONUS_RES[r]}`, col: '#C6FF4D', a: 90, big: true }); SFX('reward'); S.collected = (S.collected || 0) + 1; ui(); return true;
+}
+function hitBonus(px, py) { for (const b of world.buildings) { const c = b._cb; if (c && tick - c.t < 8 && Math.hypot(px - c.x, py - c.y) < c.r * 1.5) return b; } return null; }
+function drawBonus(b, cx, cy, z) {   /* white glass bubble with the resource icon and the amount, bobbing; tappable */
+  const n = Math.floor(b.bonus || 0); if (n < 1 || !window.ZHIcons) return; const im = ZHIcons.img({ water: 'water', food: 'food', mat: 'parts', wood: 'wood', stone: 'stone', rp: 'research' }[b.bonusRes]);
+  const r = 19 * z, x = cx, y = cy - 58 * z + Math.sin(tick / 10 + b.x) * 2.5 * z;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8 * z; ctx.shadowOffsetY = 3 * z;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 2.5 * z; ctx.strokeStyle = '#C6FF4D'; ctx.beginPath(); ctx.arc(x, y, r + 1.5 * z, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 5 * z, y + r - 1); ctx.lineTo(x, y + r + 7 * z); ctx.lineTo(x + 5 * z, y + r - 1); ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.fill();
+  if (im && im.complete) ctx.drawImage(im, x - 14 * z, y - 15 * z, 28 * z, 28 * z);
+  const t = '+' + n; ctx.font = `800 ${Math.round(13 * z)}px Manrope, system-ui, sans-serif`; const tw = ctx.measureText(t).width + 8 * z;
+  ctx.beginPath(); ctx.roundRect(x + r * .45, y - r - 5 * z, tw, 18 * z, 9 * z); ctx.fillStyle = '#C6FF4D'; ctx.fill(); ctx.fillStyle = '#14200A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, x + r * .45 + tw / 2, y - r + 4 * z);
+  ctx.restore(); b._cb = { x, y, r, t: tick };
+}
 function hourlyProduction() {   // runs every game hour
   let fi = 0, wi = 0; const cap = supplyCap();
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d) continue; const nm = d.name;
     if (d.slot) { b.wh = b.wh || []; b.wh.push(b.staff ? (b.wsN ? b.wsW / b.wsN : (isWorking(b) ? 1 : 0)) : 0); if (b.wh.length > 24) b.wh.shift(); b.wsN = b.wsW = 0; }   /* V2.35: measured share of the hour the worker was on the job */
-    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = Math.min(cap, S.water + a); wi += got; flow('water', nm, got); outPop(b, got, '💧', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
-    if (d.fam === 'scrap') { const a = d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1); S.mat += a; flow('mat', nm, a); outPop(b, a, '⚙', '#9fe0ff'); }
-    if (d.fam === 'lumber' || d.fam === 'quarry') { const r = d.fam === 'lumber' ? 'wood' : 'stone', a = Math.max(0, Math.min(d.out / 24 * prodMult(b), matCap() - (S[r] || 0))); S[r] = (S[r] || 0) + a; flow(r, nm, a); outPop(b, a, RES_ICON[r], '#e8b878'); }   /* V3D.23 */
-    if (d.fam === 'research') { const a = (isWorking(b) ? d.out : 6) / 24 * prodMult(b); S.rp = (S.rp || 0) + a; outPop(b, a, '🔬', '#c7b6ff'); }
-    if (d.fam === 'farm') { const need = d.waterUse / 24, frac = need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = frac < 1; const a = d.out / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(), room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = Math.min(cap, S.food + a); fi += got; flow('food', nm, got); outPop(b, got, '🍖', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
+    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = Math.min(cap, S.water + a); wi += got; flow('water', nm, got); addBonus(b, 'water', a); outPop(b, got, '💧', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
+    if (d.fam === 'scrap') { const a = d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1); S.mat += a; flow('mat', nm, a); addBonus(b, 'mat', a); outPop(b, a, '⚙', '#9fe0ff'); }
+    if (d.fam === 'lumber' || d.fam === 'quarry') { const r = d.fam === 'lumber' ? 'wood' : 'stone', a = Math.max(0, Math.min(d.out / 24 * prodMult(b), matCap() - (S[r] || 0))); S[r] = (S[r] || 0) + a; flow(r, nm, a); addBonus(b, r, d.out / 24 * prodMult(b)); outPop(b, a, RES_ICON[r], '#e8b878'); }   /* V3D.23 */
+    if (d.fam === 'research') { const a = (isWorking(b) ? d.out : 6) / 24 * prodMult(b); S.rp = (S.rp || 0) + a; addBonus(b, 'rp', a); outPop(b, a, '🔬', '#c7b6ff'); }
+    if (d.fam === 'farm') { const need = d.waterUse / 24, frac = need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = frac < 1; const a = d.out / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(), room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = Math.min(cap, S.food + a); fi += got; flow('food', nm, got); addBonus(b, 'food', a); outPop(b, got, '🍖', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
   }
   S.produced += fi + wi; dayLog.foodIn += fi; dayLog.waterIn += wi;
 }
@@ -3010,7 +3036,7 @@ function advisorTips() {
 function layoutTop() {   // the left menu and the alerts sit just under the plaque, whatever its height
   const pl = $('plaque'), w = $('world'); if (!pl || !w) return; const y = Math.round(pl.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6);
   for (const id of GLASS ? ['alerts'] : ['lmenu', 'alerts']) { const e = $(id); if (e && e.style.top !== y + 'px') e.style.top = y + 'px'; }   /* 3D.28 Glass: the menu is the bottom tab bar */
-  if (GLASS) { const g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y + 'px'; if (h) h.style.top = (y + 44) + 'px'; if (bt) bt.style.top = (y + 102) + 'px'; }   /* the right column follows the top cards */
+  if (GLASS) { const ck = $('clock'), y2 = ck ? Math.round(ck.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6) : y, g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y2 + 'px'; if (h) h.style.top = (y2 + 44) + 'px'; if (bt) bt.style.top = (y2 + 102) + 'px'; }   /* the right column hangs off the clock card, so tips and notifications under the mission card never push it down */
 }
 function advisorUpdate() {
   const el = $('adv'); if (!el) return; if (!OPTS.advisor) { el.style.display = 'none'; layoutTop(); return; }
@@ -4324,6 +4350,7 @@ function tapAt(px, py) {
     const d = Wd.rotDef(DEFS[sel.type], sel.rot), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
   closePick();
+  if (COZY_HUD) { const cb = hitBonus(px, py); if (cb && collectBonus(cb)) return; }   /* 3D.28 tap a bonus bubble to collect */
   if (COZY_HUD) {   /* V3D.17: people and a building under the same tap → a small chooser instead of guessing */
     const us = S.sv.filter((s) => !insideBuilding(s) && s.mode !== 'away' && s.w).map((s) => { const p = project(s.w.x, s.w.y); return [s, Math.hypot(px - p.x, py - (p.y - CHAR_H * TWs() * .5))]; }).filter(([, d]) => d < Math.max(26, .45 * TWs())).sort((a, b) => a[1] - b[1]).map(([s]) => s);
     const c = []; if (hitTrader(px, py)) c.push({ kind: 'trader' }); for (const s of us.slice(0, 4)) c.push({ kind: 'unit', ref: s });

@@ -147,3 +147,6 @@ html.glass .newGame .act.go { color: var(--limeInk); }
 html.glass .tabs button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 6px; }
 html.glass .ti.zi-ti, html.glass .si.zi-si { display: inline-flex; vertical-align: middle; line-height: 0; }
 html.glass #bDemo .zi { width: 30px; height: 30px; }
+/* tips and alerts stay left of the renown pill and the right column, so nothing pushes or covers those buttons */
+html.glass #adv { margin-right: 132px; }
+html.glass #alerts { right: 132px; }
