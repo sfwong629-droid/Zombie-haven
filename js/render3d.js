@@ -871,6 +871,7 @@ function zombieMaterial(type, v = 0) {
 const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', knife: 'axe', machete: 'axe', axe: 'axe', katana: 'axe',
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47' };
 const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
+const STAND_OF = { walk: 'idle', walk_f: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle' };
 class Actor {
   constructor(src, mat, lite, faces = null) {
     this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
@@ -882,6 +883,7 @@ class Actor {
     if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
   }
   play(name, once = false, restart = false) {
+    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && this.spd < (this.name === name ? .07 : .14)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
     if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
     if (this.name === name && !restart) return;
     const n = this.acts[name];
@@ -1023,6 +1025,7 @@ const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']);
 const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
+const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
   const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06);   // V3D.21: not actually covering ground = standing
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
@@ -1035,7 +1038,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';
   else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
   else if (still && s.mode === 'loot') { const bg = (G.S.bags || []).find((q) => q.id === s.lootId); if (bg && Math.hypot(bg.w.x - s.w.x, bg.w.y - s.w.y) < .7) c = 'pickup'; }   /* 3D.28: only bend down at the bag itself */
-  else if (anim === 'walk' && !hold && a.src === FEMALE3D && s.mode !== 'hide' && s.mode !== 'rescueTo') c = 'walk_f';
+  else if (anim === 'walk' && !hold && a.src === FEMALE3D && !CALM_NOT.has(s.mode) && !s.target) c = 'walk_f';   /* 3D.28: the relaxed walk only in calm moments; in a fight she runs like everyone */
   return c && has(c) ? c : null;
 }
 function personAnim(a, s, dt) {
