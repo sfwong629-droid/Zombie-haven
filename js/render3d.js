@@ -805,9 +805,10 @@ const LOOK_GLSL = `{ vec3 c = diffuseColor.rgb; vec3 n = c / max(1e-4, c.r + c.g
     float isHair = (1. - smoothstep(.06, .11, distance(n, sn))) * smoothstep(.011, .016, lum) * (1. - smoothstep(.07, .1, lum));
     diffuseColor.rgb = mix(c, min(c * skinMul, vec3(1.)), isSkin); diffuseColor.rgb = mix(diffuseColor.rgb, min(c * hairMul, vec3(1.)), isHair); }`;
 const CHAR_V2 = (() => {   // #v2 turns the new survivor on and remembers it; #v1 turns it off
-  try { if (location.hash === '#v2') localStorage.setItem('zh_char', 'v2'); if (location.hash === '#v1') localStorage.removeItem('zh_char'); } catch (e) {}
-  let ls = false; try { ls = localStorage.getItem('zh_char') === 'v2'; } catch (e) {}
-  return new URLSearchParams(location.search).get('char') === 'v2' || location.hash === '#v2' || ls; })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
+  /* 3D.27: the simple 1:6 survivor is now the default for everyone (it used to need #v2 on each device, so a fresh browser showed the old chibi one). #v1 or ?char=v1 brings the old one back for testing. */
+  try { if (location.hash === '#v1') localStorage.setItem('zh_char', 'v1'); if (location.hash === '#v2') localStorage.removeItem('zh_char'); } catch (e) {}
+  let ls = false; try { ls = localStorage.getItem('zh_char') === 'v1'; } catch (e) {}
+  return !(new URLSearchParams(location.search).get('char') === 'v1' || location.hash === '#v1' || ls); })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
 let v2Mat = null; const v2MatF = { m: null };
 let FEMALE3D = null;   // V3D.19 test: the female survivor model (only with #v2)
 function isFemale(s) { try { return !!(window.ZHChars && ZHChars.look(s).sex === 'f'); } catch (e) { return false; } }
