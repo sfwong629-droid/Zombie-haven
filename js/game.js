@@ -1672,10 +1672,11 @@ function drawEmote(s, p, y) {   /* cream speech bubble with a tail; pops in, bob
   const e = s.emo; if (!e) return; const u = hudU() * HUD_SMALL, k = 1 - e.f / e.f0, pop = k < .1 ? .5 + k * 6 : 1, al = e.f < 15 ? e.f / 15 : 1;
   const parts = window.ZHIcons ? ZHIcons.split(e.t).filter((q) => q.i || q.t.trim()) : [{ t: e.t }], np = Math.max(1, parts.length);
   const r = 13 * u * pop, x = p.x + 14 * u, cy = y - r - 4 * u + Math.sin(tick / 12) * 1.5 * u, rx = r * (np > 1 ? 1.15 + .55 * (np - 1) : 1.15);
-  ctx.save(); ctx.globalAlpha = al; ctx.lineWidth = 2.2 * u; ctx.strokeStyle = '#161616'; ctx.lineJoin = 'round';
+  ctx.save(); ctx.globalAlpha = al; ctx.lineWidth = (GLASS ? 1.1 : 2.2) * u; ctx.strokeStyle = GLASS ? 'rgba(255,255,255,.35)' : '#161616'; ctx.lineJoin = 'round';
   const blob = (ox) => { ctx.beginPath(); ctx.ellipse(x + ox, cy + ox, rx, r, 0, 0, 7); ctx.moveTo(x - r * .5 + ox, cy + r * .75 + ox); ctx.lineTo(x - r * .95 + ox, cy + r * 1.45 + ox); ctx.lineTo(x - r * .05 + ox, cy + r * .92 + ox); };
-  ctx.fillStyle = '#161616'; blob(2 * u); ctx.fill(); ctx.fillStyle = '#FFFDF4'; blob(0); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(x, cy, rx - 1.4 * u, r - 1.4 * u, 0, 0, 7); ctx.fill();
+  const bf = GLASS ? 'rgba(16,22,28,.84)' : '#FFFDF4'; if (!GLASS) { ctx.fillStyle = '#161616'; blob(2 * u); ctx.fill(); } else { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 7 * u; ctx.shadowOffsetY = 2 * u; }
+  ctx.fillStyle = bf; blob(0); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.stroke();
+  if (!GLASS) { ctx.beginPath(); ctx.ellipse(x, cy, rx - 1.4 * u, r - 1.4 * u, 0, 0, 7); ctx.fill(); }
   const sz = r * 1.35, gap = sz * 1.02, x1 = x - gap * (np - 1) / 2;
   parts.forEach((q, i) => { const im = q.i && ZHIcons.img(q.i); if (im && im.complete) ctx.drawImage(im, x1 + i * gap - sz / 2, cy - sz / 2, sz, sz);
     else { ctx.fillStyle = '#161616'; ctx.font = `${Math.round(r * 1.15)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(q.t || '', x1 + i * gap, cy + 1 * u); } });
@@ -1685,6 +1686,7 @@ function drawEmote(s, p, y) {   /* cream speech bubble with a tail; pops in, bob
    bark(s, key, vars, {pri}) shows one line over a survivor. pri 0 = chatter (rate limited, max 2 on screen), 1 = event, 2 = urgent.
    barkSomeone() picks a free survivor (nearest to a point when given). barkWatch() spots zombies and hordes; barkHour() covers the clock. */
 const BARK_LAST = {}; let barkGlobalT = 0, barkSquad = null;
+const GLASS = typeof document !== 'undefined' && document.documentElement.classList.contains('glass');   /* 3D.28 Glass UI: bubbles are dark frosted glass */
 const barkFill = (t, v) => t.replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : k === 'n' ? '' : k === 'b' ? 'building' : k === 'r' ? 'supplies' : k === 'dest' ? 'ruins' : 'friend'));
 function barkLine(key, v) {
   const B = window.ZH_BARKS && ZH_BARKS[key]; const L = B && B.lines; if (!L || !L.length) return null;
@@ -1697,7 +1699,7 @@ function bark(s, key, v = {}, o = {}) {
   if (!pri && ((s.barkNext || 0) > tick || barkGlobalT > tick || S.sv.filter((q) => q.bark).length >= 2)) return false;
   const L = o.line ? { t: barkFill(o.line, v), st: o.style || 'talk' } : barkLine(key, v); if (!L) return false;
   const f = o.f || Math.min(330, 150 + L.t.length * 4);
-  s.bark = { t: L.t.toUpperCase(), st: o.style || L.st, f, f0: f, pri }; s.emo = null;
+  s.bark = { t: GLASS ? L.t : L.t.toUpperCase(), st: o.style || L.st, f, f0: f, pri }; s.emo = null;
   s.barkNext = tick + 1800 + Math.floor(rnd() * 1200); barkGlobalT = tick + (pri ? 60 : 260); return true;
 }
 function barkSomeone(key, v, o = {}, near, not) {
@@ -1724,23 +1726,23 @@ function barkHour() {   /* once a game hour */
 }
 function drawBark(s, p, y) {   /* Bunker Comic speech bubble: cream + hard ink, jagged yellow for shouts, cloud for thoughts, dashed for whispers */
   const e = s.bark; if (!e) return; const u = hudU() * HUD_SMALL, k = 1 - e.f / e.f0, pop = k < .06 ? .6 + k / .06 * .4 : 1, al = e.f < 15 ? e.f / 15 : 1, st = e.st;
-  const fs = 11.5 * u, font = `${st === 'think' ? 'italic ' : ''}700 ${Math.round(fs)}px 'Comic Neue', 'Comic Sans MS', sans-serif`; ctx.save(); ctx.font = font;
+  const fs = (GLASS ? 11 : 11.5) * u, font = GLASS ? `${st === 'think' ? 'italic ' : ''}800 ${Math.round(fs)}px Manrope, system-ui, sans-serif` : `${st === 'think' ? 'italic ' : ''}700 ${Math.round(fs)}px 'Comic Neue', 'Comic Sans MS', sans-serif`; ctx.save(); ctx.font = font;
   const maxW = 128 * u, words = e.t.split(' '), lines = []; let cur = '';
   for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur);
   const tw = Math.max(...lines.map((l) => ctx.measureText(l).width)), lh = fs * 1.12, padX = (st === 'shout' ? 13 : 9) * u, padY = (st === 'shout' ? 9 : 6) * u;
   const bw = tw + padX * 2, bh = lines.length * lh + padY * 2, cx = Math.max(bw / 2 + 4, Math.min(W_() - bw / 2 - 4, p.x)), by = y - bh - 12 * u + Math.sin(tick / 14) * u;
   ctx.globalAlpha = al; ctx.translate(cx, by + bh / 2); ctx.scale(pop, pop); ctx.translate(-cx, -(by + bh / 2));
-  const x0 = cx - bw / 2, ink = '#161616', fill = st === 'shout' ? '#F2B533' : '#FFFDF4', lw = 2.4 * u, tx = Math.max(x0 + 10 * u, Math.min(x0 + bw - 10 * u, p.x));
+  const x0 = cx - bw / 2, ink = GLASS ? 'rgba(255,255,255,.35)' : '#161616', fill = GLASS ? (st === 'shout' ? '#FF7A59' : 'rgba(16,22,28,.84)') : st === 'shout' ? '#F2B533' : '#FFFDF4', lw = (GLASS ? 1.1 : 2.4) * u, tx = Math.max(x0 + 10 * u, Math.min(x0 + bw - 10 * u, p.x));
   const shape = (ox, oy) => { ctx.beginPath();
-    if (st === 'shout') { const n = Math.max(10, Math.round((bw + bh) / (9 * u))), rx = bw / 2 + 4 * u, ry = bh / 2 + 4 * u, mx = cx + ox, my = by + bh / 2 + oy;
+    if (st === 'shout' && !GLASS) { const n = Math.max(10, Math.round((bw + bh) / (9 * u))), rx = bw / 2 + 4 * u, ry = bh / 2 + 4 * u, mx = cx + ox, my = by + bh / 2 + oy;
       for (let i = 0; i <= n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, r = i % 2 ? .86 : 1.06; ctx.lineTo(mx + Math.cos(a) * rx * r, my + Math.sin(a) * ry * r); } ctx.closePath(); return; }
-    const r = Math.min(st === 'think' ? bh / 2 : 9 * u, bh / 2); ctx.roundRect(x0 + ox, by + oy, bw, bh, r);
+    const r = Math.min(st === 'think' || GLASS ? bh / 2 : 9 * u, bh / 2); ctx.roundRect(x0 + ox, by + oy, bw, bh, r);
     if (st !== 'think') { ctx.moveTo(tx - 6 * u + ox, by + bh - 1 + oy); ctx.lineTo(tx - 2 * u + ox, by + bh + 10 * u + oy); ctx.lineTo(tx + 6 * u + ox, by + bh - 1 + oy); } };
-  ctx.fillStyle = ink; shape(2.6 * u, 2.6 * u); ctx.fill();   /* hard drop shadow */
-  shape(0, 0); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = ink; ctx.lineJoin = 'round'; if (st === 'whisper') ctx.setLineDash([4 * u, 3 * u]); ctx.stroke(); ctx.setLineDash([]);
-  if (st !== 'think' && st !== 'shout') { ctx.fillStyle = fill; ctx.fillRect(tx - 4.6 * u, by + bh - lw * 1.2, 9.4 * u, lw * 1.4); }
+  if (GLASS) { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8 * u; ctx.shadowOffsetY = 3 * u; } else { ctx.fillStyle = ink; shape(2.6 * u, 2.6 * u); ctx.fill(); }   /* hard drop shadow (comic) / soft shadow (glass) */
+  shape(0, 0); ctx.fillStyle = fill; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.lineWidth = lw; ctx.strokeStyle = ink; ctx.lineJoin = 'round'; if (st === 'whisper') ctx.setLineDash([4 * u, 3 * u]); ctx.stroke(); ctx.setLineDash([]);
+  if (st !== 'think' && st !== 'shout' && !GLASS) { ctx.fillStyle = fill; ctx.fillRect(tx - 4.6 * u, by + bh - lw * 1.2, 9.4 * u, lw * 1.4); }
   if (st === 'think') for (const [dx, dy, r] of [[-2, 6, 3.4], [-6, 12, 2.2]]) { ctx.beginPath(); ctx.arc(tx + dx * u, by + bh + dy * u, r * u, 0, 7); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 1.8 * u; ctx.stroke(); }
-  ctx.fillStyle = st === 'whisper' ? '#5b5045' : ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = GLASS ? (st === 'whisper' ? '#C9D1D9' : '#FFFFFF') : st === 'whisper' ? '#5b5045' : ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   lines.forEach((l, i) => ctx.fillText(l, cx, by + padY + lh * (i + .5) + 1 * u)); ctx.restore();
 }
 const W_ = () => VW;
@@ -3007,7 +3009,8 @@ function advisorTips() {
 }
 function layoutTop() {   // the left menu and the alerts sit just under the plaque, whatever its height
   const pl = $('plaque'), w = $('world'); if (!pl || !w) return; const y = Math.round(pl.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6);
-  for (const id of ['lmenu', 'alerts']) { const e = $(id); if (e && e.style.top !== y + 'px') e.style.top = y + 'px'; }
+  for (const id of GLASS ? ['alerts'] : ['lmenu', 'alerts']) { const e = $(id); if (e && e.style.top !== y + 'px') e.style.top = y + 'px'; }   /* 3D.28 Glass: the menu is the bottom tab bar */
+  if (GLASS) { const g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y + 'px'; if (h) h.style.top = (y + 44) + 'px'; if (bt) bt.style.top = (y + 102) + 'px'; }   /* the right column follows the top cards */
 }
 function advisorUpdate() {
   const el = $('adv'); if (!el) return; if (!OPTS.advisor) { el.style.display = 'none'; layoutTop(); return; }
@@ -4346,9 +4349,9 @@ $('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = (
 /* V3D.14 Clay icons (style A) on the top bar, left menu, Home and bottom bar */
 if (COZY_HUD && window.ZHIcons) {
   const I = ZHIcons.svg, set = (sel, n, px) => { const e = document.querySelector(sel); if (e) e.innerHTML = I(n, px); };
-  const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'wood', 'stone', 'parts', 'box'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 22); });
+  const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'wood', 'stone', 'parts', 'stash'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 26); });
   [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
-  set('#btnHome', 'home', 30); set('#btnLog', 'log', 26); set('#btnCenter', 'locate', 26);
+  set('#btnHome', 'home', 30); set('#btnLog', 'log', 30); set('#btnCenter', 'locate', 30); if (document.documentElement.classList.contains('glass')) { set('#btnSave', 'save', 30); const sv = $('btnSave'); if (sv) sv.setAttribute('aria-label', 'Save'); }   /* 3D.28 Glass: round icon buttons */
   ZHIcons.watch(['ib', 'eventModal', 'alerts', 'requestBox', 'confirmBar', 'quest', 'say', 'fx', 'infoPanel', 'adv', 'slots']);   /* panels, cards, alerts: emoji -> Clay icons */
 }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if (COZY_HUD && window.ZHIcons) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }

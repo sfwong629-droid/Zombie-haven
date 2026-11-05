@@ -1,4 +1,4 @@
-/* Zombie Haven 3D.27 — "Bunker Comic · Misprint" UI icons (picked 2026-11-05, replaces the Clay set).
+/* Zombie Haven 3D.28 — UI icons, "Sticker" style for the Glass UI (3D.27 drew the same shapes as the Bunker Comic misprint) (picked 2026-11-05, replaces the Clay set).
    Look: cheap comic-book print. Flat colour is printed slightly off the black ink line (misregistered), with
    Ben-Day dot shading on the lower right and white paper gleams. Every icon is hand-written SVG (offline).
    Source format: one self-closing element per shape.
@@ -8,7 +8,9 @@
      class="h"        white paper gleam on top
    ZHIcons.svg(name, px) -> inline SVG for the DOM; ZHIcons.img(name) -> Image for canvas; ZHIcons.EMOJI maps emoji -> icon. */
 (function () {
-  const INK = '#161616';
+  const INK = '#161616', LINE = '#22313A';
+  /* 3D.28: 'sticker' = the picked Glass UI look (full colour, dark inner lines, thick white sticker edge, soft shadow); 'misprint' = the comic kit */
+  const STYLE = (typeof window !== 'undefined' && window.ZH_ICON_STYLE) || 'sticker';
   const PAL = { K: INK, W: '#FFFDF4', P: '#F6ECD2', R: '#E0482F', Y: '#F2B533', B: '#1F3F66', C: '#3DA5D9', G: '#6BB35A', N: '#B9783E', T: '#F0C98A',
     S: '#A9B0B3', D: '#8F897E', O: '#E8853A', V: '#8A6BD1', F: '#F2C29A', Z: '#9DBB6A', L: '#C7DE8E', I: '#BFE3F2', M: '#C4643F', Q: '#F59BB0' };
   const FACE = '<circle fill="Y" cx="16" cy="16" r="12"/>';
@@ -133,9 +135,10 @@
       const c = PAL[a.fill] || a.fill || PAL.W;
       col += `<${tag} ${rest} fill="${c}"/>`; dots += `<${tag} ${rest} fill="url(#${dotsId})"/>`; ink += `<${tag} ${rest} fill="none" stroke="${INK}" stroke-width="${a.sw || 2.8}"/>`;
     }
+    if (STYLE === 'sticker') return `<g filter="url(#${maskId}k)" transform="translate(16 16) scale(.88) translate(-16 -16)"><g>${col}</g><g stroke-linejoin="round" stroke-linecap="round">${ink.split(INK).join(LINE).replace(/stroke-width="(2\.8|3\.2|3)"/g, 'stroke-width="2.1"')}</g></g>`;
     return `<g transform="translate(1.5 1.5)">${col}</g><g mask="url(#${maskId})">${dots}</g><g stroke-linejoin="round" stroke-linecap="round">${ink}</g>`;
   }
-  const DEFS = (d, m) => `<pattern id="${d}" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.7" cy="1.7" r=".85" fill="${INK}" opacity=".5"/></pattern>` +
+  const DEFS = (d, m) => `<filter id="${m}k" x="-15%" y="-15%" width="130%" height="135%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.5" result="d"/><feFlood flood-color="#FFFFFF"/><feComposite in2="d" operator="in" result="w"/><feMerge result="s"><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge><feDropShadow dx="0" dy="1" stdDeviation=".7" flood-color="#000" flood-opacity=".35"/></filter><pattern id="${d}" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="1.7" cy="1.7" r=".85" fill="${INK}" opacity=".5"/></pattern>` +
     `<linearGradient id="${m}g" x1="0" y1="0" x2="1" y2="1"><stop offset=".48" stop-color="#000"/><stop offset=".8" stop-color="#fff"/></linearGradient><mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32"><rect width="32" height="32" fill="url(#${m}g)"/></mask>`;
   const BODY = {}; for (const n in P) BODY[n] = layers(n, 'zhDots', 'zhMask');
   let defsAdded = false;

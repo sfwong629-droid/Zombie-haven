@@ -1,0 +1,134 @@
+/* Zombie Haven 3D.28 "Glass · Sticker icons" UI (picked 2026-11-05; canvas https://claude.ai/artifact/EtfmSW2ZQojrVFjssrQcHQ, pages r7/r8).
+   Dark frosted panels that blur the town, white text, lime for go/Build, coral for danger, sticker icons (js/icons.js).
+   Loaded after cozy.css; html.glass is set together with html.cozy in 3D mode, so every rule here wins over the clay theme.
+   Layout: resource pill top centre, mission card left + clock card right, renown pill, horde/alerts as glass banners,
+   round glass buttons down the right, a floating tab bar at the bottom with a big round lime Build button. */
+@font-face { font-family: 'Manrope'; font-weight: 500 600; src: url('../assets/fonts/Manrope-600.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Manrope'; font-weight: 700 800; src: url('../assets/fonts/Manrope-800.woff2') format('woff2'); font-display: swap; }
+html.glass {
+  --gl: rgba(16, 22, 28, .5); --gl2: rgba(255, 255, 255, .09); --edge: rgba(255, 255, 255, .22); --tx: #FFFFFF; --mu: #C9D1D9;
+  --lime: #C6FF4D; --limeInk: #14200A; --coralG: #FF7A59;
+  /* the clay theme's variables, remapped so its many rules turn into glass */
+  --cream: var(--gl); --cream2: var(--gl2); --line: var(--edge); --cocoa: var(--tx); --cocoaD: var(--tx); --muted: var(--mu);
+  --sage: var(--lime); --sageD: var(--lime); --honey: var(--lime); --honeyD: var(--lime); --coral: var(--coralG); --coralD: var(--coralG);
+  --ink: var(--tx); --gold: var(--lime); --good: #7BD389; --bad: var(--coralG); --blue: #6FD3FF;
+  --f: 'Manrope', system-ui, sans-serif; --fh: 'Manrope', system-ui, sans-serif;
+}
+html.glass, html.glass body { font-family: var(--f); font-weight: 700; letter-spacing: 0; }
+html.glass button, html.glass input { font-family: var(--f); }
+html.glass #app { background: #1d2628; }
+
+/* the glass material */
+html.glass .frame, html.glass .panel, html.glass .evBox, html.glass .request, html.glass .sPanel, html.glass #confirmBar,
+html.glass #plaque .res, html.glass #quest #qt, html.glass #quest #clock, html.glass #gauge, html.glass .alert, html.glass #say, html.glass .toast {
+  background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--edge); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); color: var(--tx); }
+html.glass .lm:active, html.glass .bb:active, html.glass .act:active { transform: scale(.95); box-shadow: none; filter: brightness(1.15); }
+
+/* ---- top: resource pill, mission card (left), clock card (right) ---- */
+html.glass #plaque { left: 0; right: 0; top: calc(10px + env(safe-area-inset-top)); max-width: none; padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.glass #plaque .res { width: fit-content; margin: 0 auto; gap: 9px; padding: 4px 12px 4px 8px; border-radius: 999px; font-size: 15px; line-height: 26px; }
+html.glass #plaque .res > span { background: none; border: 0; box-shadow: none; padding: 0; gap: 2px; }
+html.glass #plaque .res i .zi { width: 26px; height: 26px; }
+html.glass #plaque .res b { color: var(--tx); font-weight: 800; font-variant-numeric: tabular-nums; }
+html.glass #quest { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 8px 12px 0; font-size: 13px; line-height: 16px; }
+html.glass #quest #qt { order: 1; border: 1px solid var(--edge); display: block; flex: 0 1 auto; max-width: 62%; border-radius: 16px; padding: 7px 12px 8px; color: var(--tx); font-weight: 800; white-space: normal; overflow: hidden; }
+html.glass #quest #qt::before { content: 'MISSION'; display: block; font-size: 10px; letter-spacing: .8px; color: var(--mu); font-weight: 700; margin-bottom: 1px; }
+html.glass #quest #qt:empty { display: none; }
+html.glass #quest b#clock { order: 2; border: 1px solid var(--edge); background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); margin-left: auto; border-radius: 16px; padding: 8px 12px; color: var(--tx); font-weight: 800; font-size: 14px; white-space: nowrap; }
+html.glass #quest .trip { order: 3; }
+html.glass #quest span::after { color: var(--lime); }
+html.glass #adv { margin: 6px 12px 0; border-radius: 14px; background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(198, 255, 77, .45); color: var(--tx); }
+html.glass #advX { color: var(--mu); }
+
+/* ---- renown pill (right, under the clock) ---- */
+html.glass #gauge { top: calc(110px + env(safe-area-inset-top)); bottom: auto; right: 12px; width: auto; height: 34px; border-radius: 999px; padding: 0 12px 0 10px; display: flex; align-items: center; gap: 6px; overflow: hidden;
+  background: linear-gradient(90deg, rgba(198, 255, 77, .28) calc(var(--p, 0) * 1%), rgba(16, 22, 28, .5) 0); }
+html.glass #gauge::before, html.glass #gauge::after { display: none; }
+html.glass #gauge .gval { position: static; inset: auto; display: block; font-size: 15px; font-weight: 800; color: var(--tx); }
+html.glass #gauge .glabel { position: static; transform: none; background: none; border: 0; box-shadow: none; padding: 0; font-size: 11px; font-weight: 700; color: var(--mu); }
+html.glass #gauge.ready { animation: glassPulse 1.4s infinite; }
+@keyframes glassPulse { 50% { box-shadow: 0 0 0 3px rgba(198, 255, 77, .55); } }
+
+/* ---- right column: round glass buttons (home, save, speed, sound, log, centre) ---- */
+html.glass #btnHome { top: calc(156px + env(safe-area-inset-top)); right: 12px; width: 48px; height: 48px; border-radius: 50%; }
+html.glass #bottom { position: absolute; z-index: 9; right: 12px; top: calc(214px + env(safe-area-inset-top)); height: auto; width: 48px; padding: 0; flex-direction: column; gap: 10px; background: none; border: 0; box-shadow: none; border-radius: 0; }
+html.glass .bb { width: 48px; height: 48px; min-width: 0; padding: 0; border-radius: 50%; font-size: 15px; font-weight: 800; color: var(--tx); display: inline-flex; align-items: center; justify-content: center; }
+html.glass #btnSave { min-width: 0; font-size: 11px; }
+html.glass #btnSpeed, html.glass .bb.on { background: rgba(198, 255, 77, .25); color: var(--lime); border-color: rgba(198, 255, 77, .6); }
+html.glass .bb .zi, html.glass #btnHome .zi { width: 30px; height: 30px; margin: auto; }
+
+/* ---- bottom: floating tab bar with the big round Build button in the middle ---- */
+html.glass #lmenu { left: 12px; right: 12px; top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); height: 72px; flex-direction: row; justify-content: space-around; align-items: center; gap: 0; padding: 0 4px; border-radius: 26px;
+  background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); border: 1px solid var(--edge); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
+html.glass .lm { width: 60px; height: 64px; border-radius: 16px; background: none !important; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--mu); font-size: 11px; font-weight: 700; gap: 0; }
+html.glass .lm i { height: 36px; }
+html.glass .lm .zi { width: 36px; height: 36px; }
+html.glass #mExp { order: 1; } html.glass #mSurv { order: 2; } html.glass #mBuild { order: 3; } html.glass #mTown { order: 4; } html.glass #mGuide { order: 5; }
+html.glass #mBuild { width: 78px; height: 78px; margin-top: -36px; border-radius: 50%; background: var(--lime) !important; color: var(--limeInk); font-size: 12px; font-weight: 800; box-shadow: 0 8px 22px rgba(0, 0, 0, .35), inset 0 2px 0 rgba(255, 255, 255, .45); }
+html.glass #mBuild .zi { width: 40px; height: 40px; }
+
+/* ---- alerts (horde etc.) as glass banners under the top cards ---- */
+html.glass #alerts { left: 12px; right: 76px; top: calc(110px + env(safe-area-inset-top)); }
+html.glass .alert { border-radius: 16px; border-color: rgba(255, 122, 89, .6); background: rgba(110, 30, 20, .5); color: var(--tx); font-size: 13px; line-height: 16px; padding: 6px 8px; }
+html.glass .alert .ago { color: var(--coralG); }
+html.glass .alert .aa { background: var(--lime); color: var(--limeInk); border: 0; border-radius: 12px; font-weight: 800; }
+html.glass .alert .ax { color: var(--mu); }
+html.glass .alert.more { background: rgba(16, 22, 28, .5); border-color: var(--edge); }
+html.glass #say, html.glass .toast { border-radius: 16px; color: var(--tx); font-weight: 800; }
+html.glass #say { bottom: calc(108px + env(safe-area-inset-bottom)); }
+html.glass .toast { font-size: 16px; }
+html.glass #fx .toast.pop .pp { border: 1px solid var(--edge); background: rgba(255, 255, 255, .12); }
+
+/* ---- panels: a glass bottom sheet ---- */
+html.glass .panel { left: 0; right: 0; bottom: 0; max-height: 82%; border-radius: 26px 26px 0 0; padding-top: 6px; padding-bottom: env(safe-area-inset-bottom); }
+html.glass .panel::before { content: ''; display: block; width: 44px; height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .35); margin: 2px auto 2px; }
+html.glass .ph { height: 46px; margin: 0; justify-content: flex-start; padding: 0 60px 0 16px; }
+html.glass .ph h3 { transform: none; background: none; border: 0; box-shadow: none; padding: 0; font-size: 22px; font-weight: 800; color: var(--tx); }
+html.glass .ph:has(.back[style*="block"]) h3 { margin-left: 44px; }
+html.glass .ph .x, html.glass .ph .back { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--edge); box-shadow: none; background: rgba(255, 255, 255, .12); color: var(--tx); font-size: 17px; top: 3px; }
+html.glass .ph .x { right: 12px; } html.glass .ph .back { left: 12px; }
+html.glass .pb { color: var(--tx); font-size: 14px; padding: 0 14px 16px; }
+html.glass .pb b { color: var(--tx); font-weight: 800; }
+html.glass .pb small, html.glass .pb .sm { color: var(--mu); }
+html.glass .tabs { background: transparent; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 8px; }
+html.glass .tabs button { flex: 0 0 auto; background: rgba(255, 255, 255, .1); color: var(--tx); border: 0; border-radius: 999px; font-size: 12px; font-weight: 800; padding: 6px 12px; white-space: nowrap; }
+html.glass .tabs button.on { background: var(--lime); color: var(--limeInk); }
+html.glass .card, html.glass .conds, html.glass .statC, html.glass .slot, html.glass .crow { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px; color: var(--tx); }
+html.glass .act { background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .25); border-radius: 14px; box-shadow: none; color: var(--tx); font-weight: 800; font-size: 15px; min-height: 44px; }
+html.glass .act.go { background: var(--lime); color: var(--limeInk); border-color: transparent; }
+html.glass .act.danger { background: var(--coralG); color: #2a0d05; border-color: transparent; }
+html.glass .bar, html.glass .nbar { background: rgba(255, 255, 255, .16); }
+html.glass .portrait, html.glass .bdetail .big, html.glass .icon { background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, .16), rgba(255, 255, 255, .03)); border: 1px solid rgba(255, 255, 255, .14); }
+
+/* ---- build menu: two columns of big cards with the iso building picture ---- */
+html.glass .bgrid { grid-template-columns: 1fr 1fr; gap: 10px; }
+html.glass .bcard { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); border-radius: 16px; padding: 8px 8px 9px; min-height: 0; align-items: stretch; color: var(--tx); font-size: 14px; line-height: 17px; text-align: left; }
+html.glass .bcard .im { height: 92px; border-radius: 12px; background: radial-gradient(circle at 50% 62%, rgba(255, 255, 255, .17), rgba(255, 255, 255, .03)); align-items: center; }
+html.glass .bcard .im img { max-height: 86px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); }
+html.glass .bcard .nm { text-align: left; margin-top: 6px; font-weight: 800; font-size: 14px; }
+html.glass .bcard .co { color: var(--mu); font-size: 12px; font-weight: 800; margin-top: 3px; }
+html.glass .bcard.lock { opacity: .55; }
+html.glass .bcard:active { box-shadow: 0 0 0 2px var(--lime); background: rgba(198, 255, 77, .1); }
+
+/* ---- events, requests, title, slots ---- */
+html.glass .evBox { border-radius: 22px; box-shadow: 0 0 0 9999px rgba(6, 10, 14, .45); }
+html.glass .evTitle { color: var(--tx); font-weight: 800; }
+html.glass .evText, html.glass .evLine { color: #E6ECF2; }
+html.glass .evBox.stageCard .evTitle { background: none; color: var(--tx); border: 0; }
+html.glass .evStage { border: 1px solid var(--edge); }
+html.glass .evChips span { background: rgba(255, 255, 255, .12); border: 0; color: var(--tx); }
+html.glass .request { border-radius: 20px; } html.glass .request b { color: var(--lime); }
+html.glass #title { background: linear-gradient(180deg, rgba(6, 10, 14, .1), rgba(6, 10, 14, .45)); }
+html.glass .tLogo .t1, html.glass .tLogo .t2 { font-family: var(--f); font-weight: 800; letter-spacing: -1px; text-shadow: 0 6px 24px rgba(0, 0, 0, .45); }
+html.glass .tLogo .t1 { color: #fff; } html.glass .tLogo .t2 { color: var(--lime); }
+html.glass .tLogo .tsub { background: none; border: 0; box-shadow: none; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
+html.glass .tMenu { background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid var(--edge); border-radius: 22px; padding: 14px; }
+html.glass .tbtn { font-family: var(--f) !important; font-weight: 800; border-radius: 16px !important; border-width: 1px !important; box-shadow: none !important; }
+html.glass #slots { background: rgba(6, 10, 14, .45); }
+html.glass .sHead { color: var(--tx); font-weight: 800; }
+html.glass .slot .snum { background: var(--lime); color: var(--limeInk); }
+html.glass #loading { background: #1d2628; color: #fff; font-family: var(--f); }
+html.glass #confirmBar { border-radius: 22px; bottom: calc(100px + env(safe-area-inset-bottom)); }
+html.glass #nudge button { background: rgba(255, 255, 255, .12); color: var(--tx); border: 1px solid var(--edge); }
+html.glass .zi-t .zi { width: 1.3em; height: 1.3em; }

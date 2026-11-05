@@ -5,11 +5,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2b2219">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="assets/fonts/ComicNeue-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/Manrope-800.woff2" as="font" type="font/woff2" crossorigin>
 <title>Zombie Haven V2.49.0</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lilita+One&family=Nunito:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/cozy.css?v=3d.19">
-<script>/* V2.56: the 3D mode uses the Cozy Apocalypse UI theme (css/cozy.css) */ (function () { try { var q = new URLSearchParams(location.search).get('3d'); var on = window.ZH_FORCE3D || q === '1' || (q !== '0' && localStorage.getItem('zh3D') === '1'); if (on) document.documentElement.classList.add('cozy'); } catch (e) { if (window.ZH_FORCE3D) document.documentElement.classList.add('cozy'); } })();</script>
+<link rel="stylesheet" href="css/cozy.css?v=3d.20">
+<link rel="stylesheet" href="css/glass.css?v=3d.20">
+<script>/* V2.56: the 3D mode uses the Cozy Apocalypse UI theme (css/cozy.css) */ (function () { try { var q = new URLSearchParams(location.search).get('3d'); var on = window.ZH_FORCE3D || q === '1' || (q !== '0' && localStorage.getItem('zh3D') === '1'); if (on) document.documentElement.classList.add('cozy', 'glass'); } catch (e) { if (window.ZH_FORCE3D) document.documentElement.classList.add('cozy', 'glass'); } })();</script>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 @font-face{font-family:'Bangers';src:url('assets/fonts/Bangers-Regular.woff2') format('woff2');font-display:swap}
@@ -176,15 +177,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
  <div id="slots" style="display:none"><div class="sPanel frame"><div class="sHead out">Save Slots</div><div class="slist"></div><div class="sFoot"><span class="sm">Your town saves itself as you play.</span><button class="act" id="sBak">💾 Backups</button><button class="act" id="sBack">Back</button></div></div></div>
  <div id="loading">LOADING ZOMBIE HAVEN…</div>
 </div>
-<script src="js/iso.js?v=3d.19"></script>
-<script src="js/world.js?v=3d.19"></script>
-<script src="js/chars.js?v=3d.19"></script>
-<script src="js/procart.js?v=3d.19"></script>
-<script src="js/icons.js?v=3d.19"></script>
-<script src="js/barks.js?v=3d.19"></script>
-<script src="js/itemicons.js?v=3d.19"></script>
-<script src="js/sound.js?v=3d.19"></script>
-<script src="js/game.js?v=3d.19"></script>
+<script src="js/iso.js?v=3d.20"></script>
+<script src="js/world.js?v=3d.20"></script>
+<script src="js/chars.js?v=3d.20"></script>
+<script src="js/procart.js?v=3d.20"></script>
+<script src="js/icons.js?v=3d.20"></script>
+<script src="js/barks.js?v=3d.20"></script>
+<script src="js/itemicons.js?v=3d.20"></script>
+<script src="js/sound.js?v=3d.20"></script>
+<script src="js/game.js?v=3d.20"></script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
-<script>if (window.ZH_3D) { const s = document.createElement('script'); s.type = 'module'; s.src = 'js/render3d.js?v=3d.19'; document.head.appendChild(s); }</script>
+<script>if (window.ZH_3D) { const s = document.createElement('script'); s.type = 'module'; s.src = 'js/render3d.js?v=3d.20'; document.head.appendChild(s); }</script>
 </body></html>
