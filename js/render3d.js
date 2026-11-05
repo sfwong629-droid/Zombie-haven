@@ -437,6 +437,8 @@ const planksG = merge([box(.95, .05, .15).translate(0, .025, 0), box(.85, .05, .
 const smallCrateG = merge([box(.34, .3, .34).translate(0, .15, 0), box(.26, .22, .26).rotateY(.5).translate(.36, .11, .1)]);
 const barrelG = cyl(.15, .15, .42, 10).translate(0, .21, 0);
 const tyreG = new THREE.TorusGeometry(.17, .07, 6, 12).rotateX(Math.PI / 2).translate(0, .07, 0);
+/* V3D.22 chopped trees: a stump; marked trees: an orange ribbon round the trunk */
+const stumpG = cyl(.15, .2, .26, 8).translate(0, .13, 0), stumpTopG = cyl(.135, .135, .03, 8).translate(0, .275, 0), ribbonG = cyl(.16, .16, .1, 10).translate(0, .42, 0);
 const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
 function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
   const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
@@ -445,12 +447,14 @@ function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one
   im.castShadow = !!shadow; im.receiveShadow = true; scene.add(im); return im;
 }
 function buildForest() {
-  const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length + '|' + season();
+  const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length + '|' + season() + '|' + (G.nodeVer ? G.nodeVer() : 0) + '|' + (G.S.sites || []).length;
   if (key === forestKey) return false; forestKey = key;
   for (const o of forest) { scene.remove(o); } forest = [];
   const pines = [], rounds = [], rubble = [], crates = [];
   const blocked = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y) || G.Wd.isRoad(W, x, y);
-  for (const [x, y] of G.TREE_SPOTS) if (!blocked(x, y)) { const r = hash(x, y); (r < .55 ? pines : rounds).push([(x + .5) * T, (y + .5) * T, .8 + r * .5, r]); }
+  const stumps = [], marks = [];
+  for (const [x, y] of G.TREE_SPOTS) { const st = G.treeState ? G.treeState(x, y) : (blocked(x, y) ? null : 'tree'); if (!st) continue; const r = hash(x, y), t = [(x + .5) * T, (y + .5) * T, .8 + r * .5, r];
+    if (st === 'stump') { stumps.push([t[0], t[1], 1.2 + r * .4, r]); continue; } (r < .55 ? pines : rounds).push(t); if (st === 'marked') marks.push(t); }
   for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {
     const out = Math.max(-x, x - G.COLS + 1, -y, y - G.ROWS + 1); if (out < 1) continue;
     const r = hash(x * 7 + 3, y * 5 + 1); if (r > Math.min(.55, .12 + out * .06)) continue;
@@ -498,6 +502,8 @@ function buildForest() {
   forest.push(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5));
   forest.push(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX));
   forest.push(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
+  forest.push(instD(stumpG, stumps, () => '#6a4a30', true)); forest.push(instD(stumpTopG, stumps, () => '#d9b07a'));
+  { const rb = marks.map((t) => [t[0], t[1], t[2] * 1.35 * (pines.includes(t) ? .8 : 1.05), 0]); forest.push(instD(ribbonG, rb, () => '#ff7a2e')); }
   forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
   forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
   return true;
@@ -875,6 +881,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
+  else if (still && s.mode === 'gather') c = 'work_chop';   // V3D.22 chopping a tree
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
   else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';

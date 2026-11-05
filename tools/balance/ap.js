@@ -6,12 +6,12 @@
   const fam = (f) => W.buildings.filter((b) => D[b.type].fam === f).length;
   const ok = (t) => { const d = D[t]; return d && S.rank >= (d.rank || 1) && Z.researched(d.res); };
   function place(t) {
-    const d = D[t]; if (!ok(t) || S.mat < d.mat) return false;
+    const d = D[t]; if (!ok(t) || S.mat < d.mat || (S.wood || 0) < (d.wood || 0)) return false;
     const B = Wd.BUILD, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2; let best = null, bd = 1e9;
     for (let y = B.y0; y <= B.y1 - d.h + 1; y++) for (let x = B.x0; x <= B.x1 - d.w + 1; x++) {
       if (!Wd.placementCheck(W, x, y, d, null).ok) continue; const dd = Math.hypot(x + d.w / 2 - cx, y + d.h / 2 - cy); if (dd < bd) { bd = dd; best = { x, y }; } }
     if (!best) { AP.full = true; return false; }
-    S.mat -= d.mat; S.builtCount++; const nb = { type: t, x: best.x, y: best.y, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; W.buildings.push(nb); Wd.bump(W); Z.pushUnitsOut(nb); Z.autoStaff();
+    S.mat -= d.mat; S.wood = (S.wood || 0) - (d.wood || 0); S.builtCount++; const nb = { type: t, x: best.x, y: best.y, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; W.buildings.push(nb); Wd.bump(W); Z.pushUnitsOut(nb); Z.autoStaff();
     S.ren += 1; if (t === 'water' && S.stage === 0) { S.stage = 1; S.ren += 5; } AP.built.push(t + '@d' + S.day); return true;
   }
   const PLAN = ['water', 'farm', 'house', 'scrapyard', 'workshop', 'water', 'farm', 'armory', 'gym', 'house', 'library', 'lounge', 'house'];
@@ -30,7 +30,7 @@
     for (const [x, y] of r) {
       if (S.mat < reserve) break; const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
       const gate = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => Wd.isRoad(W, x + dx, y + dy));
-      if (!ex) { const m0 = S.mat; Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat < m0) n++; }
+      if (!ex) { const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat + (S.wood || 0) < m0) n++; }
       else if (S.rank >= 2 && S.mat > reserve + 20) { const m0 = S.mat; Z.tryWall(x, y, 'metal'); if (S.mat < m0) n++; }
     }
     return n;
@@ -111,7 +111,7 @@
     for (const q of S.sv) if (!AP.seen.has(q)) { AP.seen.add(q); { const k = q.src || 'other'; AP.joins[k] = (AP.joins[k] || 0) + 1; } }
     const sv = S.sv, per = Wd.perimeter(W), wl = [...W.walls.values()];
     return { d: S.day, sv: sv.length, fallen: (S.fallen || []).length, down: sv.filter((q) => q.mode === 'down' || q.mode === 'hospital').length,
-      food: Math.round(S.food), water: Math.round(S.water), mat: Math.round(S.mat), rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
+      food: Math.round(S.food), water: Math.round(S.water), mat: Math.round(S.mat), wood: Math.round(S.wood || 0), stumps: Object.values(S.nodes || {}).filter((n) => n.left <= 0).length, rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
       leg: Z.legacyDone ? Z.legacyDone() : 0, fin: S.finale ? S.finale.night : null, won: S.won ? S.won.day : null, score: S.won ? S.won.score : null,
       kills: S.kills, cap: Z.popCap(), joins: { ...AP.joins }, nb: W.buildings.length, walls: wl.length, sealed: per.sealed, wallHp: wl.length ? Math.round(100 * wl.reduce((a, w) => a + w.hp / w.max, 0) / wl.length) : 0,
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),

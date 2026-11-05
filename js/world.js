@@ -8,9 +8,9 @@
   const COLS = 28, ROWS = 30;
   const TERRITORY = [
     { x0: 2, y0: 6, x1: 13, y1: 17, ren: 0, mat: 0 },
-    { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 15 },
-    { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 30 },
-    { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 50 },
+    { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 8, wood: 20 },
+    { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 15, wood: 35 },
+    { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 25, wood: 50 },
   ];
   const BUILD = { x0: 2, y0: 6, x1: 13, y1: 17 };
 
@@ -45,15 +45,17 @@
   };
   for (const k of ['clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'inn']) DEFS[k].w = 2;   /* 2x1 */
   DEFS.field.w = 2; DEFS.field.h = 2;
+  /* V3D.22 resources step 1: buildings cost wood + scrap (stopgap split of the old parts price until the tier ladders land; S.mat is scrap) */
+  for (const d of Object.values(DEFS)) { const old = d.mat; d.wood = Math.max(2, Math.round(old * .75)); d.mat = Math.max(1, Math.round(old * .35)); }
   for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
   const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'] };
-  const ROAD_COST = 1;  // parts per road tile
+  const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {
-    wood:  { name: 'Wood Barricade', mat: 1, hp: 80,  rank: 1 },
-    metal: { name: 'Metal Wall',     mat: 3, hp: 220, rank: 2 },
-    gate:  { name: 'Gate',           mat: 4, hp: 140, rank: 1 },
+    wood:  { name: 'Wood Barricade', mat: 0, wood: 2, hp: 80,  rank: 1 },
+    metal: { name: 'Metal Wall',     mat: 3, wood: 0, hp: 220, rank: 2 },
+    gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1 },
   };
   const WALLZONE = { x0: 1, y0: 5, x1: 14, y1: 18 };   // build zone grown by one tile so a ring can enclose it
   function setTerritory(tier) {   // mutates BUILD and WALLZONE in place (everything reads them live)
