@@ -438,7 +438,8 @@ const smallCrateG = merge([box(.34, .3, .34).translate(0, .15, 0), box(.26, .22,
 const barrelG = cyl(.15, .15, .42, 10).translate(0, .21, 0);
 const tyreG = new THREE.TorusGeometry(.17, .07, 6, 12).rotateX(Math.PI / 2).translate(0, .07, 0);
 /* V3D.22 chopped trees: a stump; marked trees: an orange ribbon round the trunk */
-const stumpG = cyl(.15, .2, .26, 8).translate(0, .13, 0), stumpTopG = cyl(.135, .135, .03, 8).translate(0, .275, 0), ribbonG = cyl(.16, .16, .1, 10).translate(0, .42, 0);
+const rockG = new THREE.DodecahedronGeometry(.42, 0).scale(1.25, .8, 1).translate(0, .2, 0), rockG2 = new THREE.DodecahedronGeometry(.26, 0).scale(1, .9, 1.2).translate(.38, .14, .2), rubbleFlatG = merge([new THREE.DodecahedronGeometry(.16, 0).scale(1.3, .4, 1).translate(0, .04, 0), new THREE.DodecahedronGeometry(.12, 0).scale(1, .4, 1.2).translate(.22, .03, .12), new THREE.DodecahedronGeometry(.1, 0).scale(1.2, .4, 1).translate(-.18, .03, -.1)]);
+const stumpG = cyl(.15, .2, .26, 8).translate(0, .13, 0), stumpTopG = cyl(.135, .135, .03, 8).translate(0, .275, 0), ribbonG = cyl(.16, .16, .1, 10).translate(0, .42, 0), flagG = merge([cyl(.02, .02, .9, 5).translate(0, .45, 0), new THREE.BoxGeometry(.28, .17, .015).translate(.15, .8, 0)]);
 const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
 function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
   const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
@@ -452,7 +453,7 @@ function buildForest() {
   for (const o of forest) { scene.remove(o); } forest = [];
   const pines = [], rounds = [], rubble = [], crates = [];
   const blocked = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y) || G.Wd.isRoad(W, x, y);
-  const stumps = [], marks = [];
+  const stumps = [], marks = [];   // marks: orange ribbons (trees) / flags (rocks, wrecks)
   for (const [x, y] of G.TREE_SPOTS) { const st = G.treeState ? G.treeState(x, y) : (blocked(x, y) ? null : 'tree'); if (!st) continue; const r = hash(x, y), t = [(x + .5) * T, (y + .5) * T, .8 + r * .5, r];
     if (st === 'stump') { stumps.push([t[0], t[1], 1.2 + r * .4, r]); continue; } (r < .55 ? pines : rounds).push(t); if (st === 'marked') marks.push(t); }
   for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {
@@ -460,7 +461,9 @@ function buildForest() {
     const r = hash(x * 7 + 3, y * 5 + 1); if (r > Math.min(.55, .12 + out * .06)) continue;
     const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([(x + hash(x, y + 9)) * T, (y + hash(x + 9, y)) * T, .75 + q * .6, q]);
   }
-  for (const [x, y] of wr) if (!blocked(x, y)) rubble.push([(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]);
+  const rocks = [], rubbleE = [];
+  for (const [x, y] of [...wr, ...(G.CAR_SPOTS || [])]) { const st = G.nodeState ? G.nodeState(x, y) : (blocked(x, y) ? null : 'full'); if (!st) continue; const t = [(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]; if (st === 'empty') rubbleE.push([t[0], t[1], .7, t[3]]); else { rubble.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.6, 0]); } }
+  for (const [x, y] of G.ROCK_SPOTS || []) { const st = G.nodeState(x, y); if (!st) continue; const r = hash(x * 3, y * 7), t = [(x + .5) * T, (y + .5) * T, 1.2 + r * .5, r]; if (st === 'empty') rubbleE.push([t[0], t[1], 1, r]); else { rocks.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.9, 0]); } }
   for (const [x, y] of G.CRATE_SPOTS) if (!blocked(x, y)) crates.push([(x + .5) * T, (y + .5) * T, 1, hash(x, y)]);
   const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], B = G.Wd.BUILD;
   for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {   // V3D.5: grass tufts, autumn bushes, pebbles
@@ -503,7 +506,9 @@ function buildForest() {
   forest.push(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX));
   forest.push(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
   forest.push(instD(stumpG, stumps, () => '#6a4a30', true)); forest.push(instD(stumpTopG, stumps, () => '#d9b07a'));
-  { const rb = marks.map((t) => [t[0], t[1], t[2] * 1.35 * (pines.includes(t) ? .8 : 1.05), 0]); forest.push(instD(ribbonG, rb, () => '#ff7a2e')); }
+  { const tr = marks.filter((t) => pines.includes(t) || rounds.includes(t)), fl = marks.filter((t) => !tr.includes(t)); const rb = tr.map((t) => [t[0], t[1], t[2] * 1.35 * (pines.includes(t) ? .8 : 1.05), 0]); forest.push(instD(ribbonG, rb, () => '#ff7a2e')); forest.push(instD(flagG, fl.map((t) => [t[0] + .35, t[1] - .2, 1, 0]), () => '#ff7a2e')); }
+  forest.push(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); forest.push(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
+  forest.push(instD(rubbleFlatG, rubbleE, () => '#7a7266'));
   forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
   forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
   return true;
@@ -597,7 +602,39 @@ function fenceRing(P, w, d, h = .55, gapFront = true) {
     else P.put(box(w, .05, .05), '#7b5232', M4(0, y, d / 2));
   }
 }
+/* V3D.23 tier looks: canvas tents (camp), log cabins (timber), stone walls (stone) */
+function tentG(P, w, d, col = '#c9b48a', o = {}) {
+  const H = o.h || 1.05, half = w / 2, len = Math.hypot(half, H), ang = Math.atan2(H, half);
+  P.put(box(len, .05, d), col, M4(-half / 2, H / 2, 0, 0, 0, ang)); P.put(box(len, .05, d), o.col2 || col, M4(half / 2, H / 2, 0, 0, 0, -ang));
+  P.put(cyl(.03, .03, d + .3, 6), '#6f4a2c', M4(0, H, 0, 0, Math.PI / 2));
+  const tv = [-half, 0, d / 2, half, 0, d / 2, 0, H, d / 2, half, 0, -d / 2, -half, 0, -d / 2, 0, H, -d / 2], tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tv, 3)); tg.computeVertexNormals();
+  P.put(tg, o.col2 || col, M4(0, 0, 0)); P.put(new THREE.ConeGeometry(.22, H * .62, 3).rotateY(Math.PI / 6), '#3a2c20', M4(0, H * .31, d / 2 + .01));
+  for (const k of [-1, 1]) P.put(cyl(.02, .02, .5, 4), '#6f4a2c', M4(k * (half + .2), .16, d / 2 + .1, 0, 0, k * .6));
+}
+function stoneHall(P, w, d, roof, o = {}) {
+  const H = o.h || 1.3; cabin(P, w, d, roof, { ...o, h: H, plank: true, wall: ['#a8a196', '#9a948a'] });
+  P.put(box(w + .12, .22, d + .12), '#7d776d', M4(0, .11, 0));
+  for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) for (let i = 0; i < 3; i++) P.put(box(.2, .18, .2), i % 2 ? '#b8b2a6' : '#8f8a80', M4(x * w / 2, .3 + i * H * .3, z * d / 2));
+  for (let i = 0; i < 4; i++) P.put(box(w * (.18 + hash(i, 3) * .1), .1, .03), '#8a847a', M4(-w * .3 + i * w * .2, .45 + (i % 2) * .4, d / 2 + .02));
+}
+function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5a3b23', M4(x, h / 2, z)); P.put(box(.5, .3, .02), c, M4(x + .26, h - .2, z)); }
+function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
+function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
 const BUILD = {
+  hq: (P, w, d) => { tentG(P, w * .62, d * .55, '#b9a37a', { h: 1.4, col2: '#a8926a' }); flag(P, -w * .38, -d * .3); crates(P, w * .3, d * .3, 3); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; P.put(new THREE.DodecahedronGeometry(.09, 0), '#8c8478', M4(-w * .3 + Math.cos(a) * .22, .06, d * .32 + Math.sin(a) * .22)); } },
+  hq2: (P, w, d) => { cabin(P, w * .78, d * .6, '#7a4a2e', { h: 1.6, chimney: true, sign: '#e8c36a', windows: [w * .05, w * .25] }); flag(P, -w * .42, -d * .36, 2.8); P.put(box(w * .7, .08, .5), '#8a6038', M4(0, .32, d * .3 + .3)); logPile(P, w * .38, d * .38); },
+  hq3: (P, w, d) => { stoneHall(P, w * .76, d * .66, '#4e555c', { h: 2.1, windows: [w * .05, w * .25] }); for (let i = 0; i < 7; i++) P.put(box(.18, .2, .18), '#9a948a', M4(-w * .38 + i * w * .76 / 6, 2.2, d * .33)); flag(P, 0, -d * .2, 3.4); },
+  tent: (P, w, d) => { tentG(P, w * .78, d * .72, '#c9b48a'); },
+  cabin: (P, w, d) => cabin(P, w * .82, d * .78, '#7a4a2e', { chimney: true }),
+  stonehouse: (P, w, d) => stoneHall(P, w * .8, d * .76, '#6a4a3a', { chimney: true }),
+  barrel: (P, w, d) => { P.put(cyl(.28, .26, .62, 12), '#7a5232', M4(0, .31, 0)); for (const y of [.12, .5]) P.put(cyl(.29, .29, .05, 12), '#4e555c', M4(0, y, 0)); P.put(new THREE.ConeGeometry(.42, .22, 12).rotateX(Math.PI), '#5d7a8c', M4(0, .74, 0)); },
+  irrig: (P, w, d) => { beds(P, w * .86, d * .86, 4); P.put(box(w * .9, .1, d * .92), '#8a847a', M4(0, .03, 0)); for (const z of [-d * .2, d * .2]) P.put(box(w * .8, .04, .08), '#5d8aa8', M4(0, .07, z)); P.put(cyl(.25, .28, .4, 10), '#9a948a', M4(w * .4, .2, -d * .38)); },
+  mess: (P, w, d) => { stoneHall(P, w * .8, d * .7, '#c47a2e', { chimney: true, windows: [w * .05, w * .28] }); P.put(box(w * .5, .05, .45), '#c8a46a', M4(w * .1, 1.25, d * .35 + .25, 0, -.35)); },
+  crates: (P, w, d) => { crates(P, -w * .15, -d * .1, 3); crates(P, w * .12, d * .12, 2); P.put(box(.7, .04, .6), '#5d7a5a', M4(-w * .05, .63, -d * .05, .2, .1)); },
+  warehouse: (P, w, d) => { stoneHall(P, w * .82, d * .76, '#4e555c', { h: 1.5, windows: [] }); crates(P, w * .25, d * .45, 3); },
+  bench: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.04, .05, 1.3, 6), '#6f4a2c', M4(x * w * .36, .65, z * d * .3)); P.put(box(w * .82, .06, d * .72), '#7a6a4e', M4(0, 1.32, 0, 0, .12)); P.put(box(w * .5, .08, .4), '#8a6038', M4(0, .5, 0)); for (const k of [-1, 1]) P.put(box(.06, .5, .34), '#6f4a2c', M4(k * w * .22, .25, 0)); P.put(cyl(.12, .12, .05, 10), '#8f9aa6', M4(w * .12, .58, 0, 0, Math.PI / 2)); crates(P, -w * .3, d * .32, 1); },
+  lumber: (P, w, d) => { logPile(P, -w * .18, d * .1, 3); logPile(P, w * .22, -d * .15, 2); P.put(cyl(.2, .22, .3, 10), '#8a6038', M4(w * .3, .15, d * .3)); P.put(cyl(.02, .02, .5, 4), '#5a3b23', M4(w * .3, .45, d * .3, 0, 0, .4)); for (const [x, z] of [[-1, -1], [1, -1]]) P.put(cyl(.04, .05, 1.1, 6), '#6f4a2c', M4(x * w * .4, .55, z * d * .32)); P.put(box(w * .9, .05, .6), '#7a5a3a', M4(0, 1.1, -d * .28, 0, -.2)); },
+  quarry: (P, w, d) => { rockPile(P, -w * .15, -d * .05, 6, 1.4); rockPile(P, w * .25, d * .2, 3, 1); P.put(box(.5, .22, .34), '#6f4a2c', M4(w * .3, .2, -d * .25)); for (const k of [-1, 1]) P.put(cyl(.1, .1, .04, 10), '#3a3a3a', M4(w * .3 + k * .18, .1, -d * .25 + .2, 0, Math.PI / 2)); P.put(new THREE.DodecahedronGeometry(.4, 0).scale(1.6, .4, 1.2), '#6a6358', M4(0, .02, 0)); },
   house: (P, w, d) => cabin(P, w * .82, d * .78, '#b5532e', { chimney: true }),
   bonfire: (P, w, d) => {   // V3D.13: stone ring and a log pyre (the flames are fire FX, lit at night)
     for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; P.put(new THREE.DodecahedronGeometry(.13, 0), i % 2 ? '#8c8478' : '#7a7368', M4(Math.cos(a) * .42, .08, Math.sin(a) * .42, a)); }
@@ -661,7 +698,7 @@ function syncBuildings() {
 // the ground inside wooden scaffolding on a dug plot with a plank stack; dust puffs drift up while work goes on
 const siteMeshes = new Map();
 const dustT = lightTex(false), dustMat = new THREE.SpriteMaterial({ map: dustT, color: 0xd8c4a0, transparent: true, depthWrite: false, opacity: .6 });
-function makeSite(st) {
+function makeSite(st, upg) {
   const W = st.w * T, D = st.h * T, cx = (st.x + st.w / 2) * T, cz = (st.y + st.h / 2) * T, g = new THREE.Group(), wood = toon('#b98a56'), dark = toon('#8a5f36');
   const plot = new THREE.Mesh(new THREE.PlaneGeometry(W + .3, D + .3).rotateX(-Math.PI / 2), toon('#9c7444')); plot.position.y = .015; plot.receiveShadow = true; g.add(plot);
   const pole = new THREE.CylinderGeometry(.045, .05, 2.3, 6).translate(0, 1.15, 0), H = 2.3;
@@ -671,18 +708,30 @@ function makeSite(st) {
   const diag = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(W, .85), .05, .06), dark); diag.position.set(0, .43, D / 2 - .05); diag.rotation.z = Math.atan2(.85, W); g.add(diag);
   for (let i = 0; i < 3; i++) { const pl = new THREE.Mesh(new THREE.BoxGeometry(.9, .07, .22), i % 2 ? dark : wood); pl.position.set(W / 2 + .35, .04 + i * .075, D / 2 - .2 - i * .03); pl.rotation.y = .2 * i; pl.castShadow = true; g.add(pl); addHull(pl, .012); }
   g.position.set(cx, 0, cz); scene.add(g);
+  if (upg) { plot.visible = false; return { g, model: null, puffs: [], next: 0, upg: true }; }   // V3D.23: an upgrade gets scaffolding round the working building
   const model = makeBuilding(st); model.scale.y = .05; scene.add(model);
   return { g, model, puffs: [], next: 0 };
 }
+const confetti = [], CONF_COL = [0xffd45c, 0xff8a5c, 0x9be2ff, 0xffb0d0, 0x8fe07a, 0xfff6c2];
 function syncSites(dt) {
-  const seen = new Set();
-  for (const st of G.S.sites || []) {
-    seen.add(st); let e = siteMeshes.get(st); if (!e) { e = makeSite(st); siteMeshes.set(st, e); }
-    const k = 1 - st.cons / st.dur; e.model.scale.y = .05 + .95 * k;
-    e.next -= dt; if (e.next <= 0) { e.next = .35 + Math.random() * .4; const sp = new THREE.Sprite(dustMat.clone()); sp.position.set(e.g.position.x + (Math.random() - .5) * st.w * T, .2, e.g.position.z + (Math.random() - .5) * st.h * T); sp.scale.setScalar(.4); scene.add(sp); e.puffs.push({ sp, t: 0 }); }
+  const seen = new Set(), ready = G.jobReady || (() => true);
+  const jobs = [...(G.S.sites || []).map((st) => [st, st, false]), ...G.world.buildings.filter((b) => b.upg).map((b) => [b.upg, b, true])];
+  for (const [j, at, upg] of jobs) {
+    seen.add(j); let e = siteMeshes.get(j); if (!e) { e = makeSite(at, upg); siteMeshes.set(j, e); }
+    const on = ready(j), k = on ? 1 - j.cons / j.dur : 0; if (e.model) e.model.scale.y = .05 + .95 * k;
+    e.next -= dt; if (on && e.next <= 0) { e.next = .35 + Math.random() * .4; const sp = new THREE.Sprite(dustMat.clone()); sp.position.set(e.g.position.x + (Math.random() - .5) * at.w * T, .2, e.g.position.z + (Math.random() - .5) * at.h * T); sp.scale.setScalar(.4); scene.add(sp); e.puffs.push({ sp, t: 0 }); }
     for (let i = e.puffs.length - 1; i >= 0; i--) { const q = e.puffs[i]; q.t += dt; q.sp.position.y += dt * .5; q.sp.scale.setScalar(.4 + q.t * .7); q.sp.material.opacity = .55 * Math.max(0, 1 - q.t / 1.4); if (q.t > 1.4) { scene.remove(q.sp); q.sp.material.dispose(); e.puffs.splice(i, 1); } }
   }
-  for (const [st, e] of siteMeshes) if (!seen.has(st)) { scene.remove(e.g); scene.remove(e.model); for (const q of e.puffs) scene.remove(q.sp); siteMeshes.delete(st); }
+  for (const [st, e] of siteMeshes) if (!seen.has(st)) { scene.remove(e.g); if (e.model) scene.remove(e.model); for (const q of e.puffs) scene.remove(q.sp); siteMeshes.delete(st); }
+  // V3D.23 completion confetti: paper bits shoot up and flutter down, plus a ring of dust
+  const B = window.ZH_BURSTS; while (B && B.length) { const b = B.shift(), x = b.x * T, z = b.y * T;
+    for (let i = 0; i < 46; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(.11, .07), new THREE.MeshBasicMaterial({ color: CONF_COL[i % CONF_COL.length], side: THREE.DoubleSide, transparent: true })); m.position.set(x, 1.2, z); scene.add(m);
+      const a = Math.random() * 6.283, sp = 1.2 + Math.random() * 2.2; confetti.push({ m, v: new THREE.Vector3(Math.cos(a) * sp, 4 + Math.random() * 3, Math.sin(a) * sp), r: new THREE.Vector3(Math.random() * 9, Math.random() * 9, 0), t: 0 }); }
+    for (let i = 0; i < 10; i++) { const sp = new THREE.Sprite(dustMat.clone()); const a = i / 10 * 6.283; sp.position.set(x + Math.cos(a) * .9, .25, z + Math.sin(a) * .9); sp.scale.setScalar(.7); scene.add(sp); confetti.push({ m: sp, v: new THREE.Vector3(Math.cos(a) * 1.2, .5, Math.sin(a) * 1.2), dust: true, t: 0 }); } }
+  for (let i = confetti.length - 1; i >= 0; i--) { const c = confetti[i]; c.t += dt;
+    if (c.dust) { c.m.position.addScaledVector(c.v, dt); c.m.scale.setScalar(.7 + c.t * 1.2); c.m.material.opacity = .6 * Math.max(0, 1 - c.t / 1.2); }
+    else { c.v.y -= 9 * dt; c.v.multiplyScalar(c.v.y < 0 ? .94 : 1); if (c.v.y < -1.6) c.v.y = -1.6; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.r.x * dt; c.m.rotation.y += c.r.y * dt; if (c.m.position.y < .03) { c.m.position.y = .03; c.v.set(0, 0, 0); } c.m.material.opacity = Math.max(0, Math.min(1, (3.2 - c.t) * 1.5)); }
+    if (c.t > (c.dust ? 1.2 : 3.2)) { scene.remove(c.m); c.m.material.dispose(); if (c.m.geometry && !c.dust) c.m.geometry.dispose(); confetti.splice(i, 1); } }
 }
 
 // ---------------------------------------------------------------- characters
@@ -881,7 +930,8 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
-  else if (still && s.mode === 'gather') c = 'work_chop';   // V3D.22 chopping a tree
+  else if (still && s.mode === 'gather') c = s.gatherK === 'rock' ? 'work_dig' : s.gatherK === 'wreck' ? 'work_tinker' : 'work_chop';   // V3D.22/23 gathering
+  else if (still && s.mode === 'hammer') c = 'work_hammer';
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
   else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';

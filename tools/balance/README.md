@@ -25,3 +25,9 @@ than the deaths; with movement at 100% instead of 60% (MOVE_K) it lost 21 instea
 Work speed (V3D.21, `ZH.TUNE.move` / `ZH.TUNE.work`), deaths in 14 days, 5 seeds, new arrival rate: move 1 / work 1: 14.3,
 move .6 / work 1: 14.5, move .6 / work 1.4: 11.0, move .6 / work 1.7: 14.0. Runs that lose everyone end early, so
 this is noisy; work 1.4 was kept.
+
+## Resources step 2 (V3D.23)
+Buildings are construction jobs (sites and in-place upgrades) that need wood / stone / scrap delivered; the auto-player
+places tier-1 sites and upgrades families (`get(t)`), keeps 6+ wood back from walls, and caps emergency Rain Barrels /
+Garden Plots. 5 seeds x 10 days: the Lodge on day 2-3 when the town survives, 13-15 buildings, scrap becomes the tight
+resource (upkeep is paid in scrap). Deaths are as noisy as before (most runs lose people on days 4-6).

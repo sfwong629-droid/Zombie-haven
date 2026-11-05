@@ -17,45 +17,61 @@
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
   // fam/tier/next = building family ladder (footprint fixed per family, so upgrades happen in place). slot = one staff slot (auto-staffed).
-  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
+  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null, wood: 0, mat: 0, stone: 0 }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
+  /* V3D.23 building tiers: Camp (tents, scrap) -> Timber (logs, planks) -> Stone. tier = material tier, unlocked by the HQ tier.
+     A family (fam) upgrades in place along next; its footprint is fixed. wood / mat (= scrap) / stone = the price of THIS step
+     (building it new for a tier-1 type, upgrading into it otherwise). up = only reachable by upgrading.
+     like = behaves like that older type everywhere the game asks for a type (beds, meals, storage, research...). hidden = not in the Build menu. */
   const DEFS = {
-    water:    D({ name: 'Rain Collector', mat: 4,  a: 4,  role: 'water',   fam: 'water',   tier: 1, sprite: 'grid', slot: true, out: 5 }),
-    well:     D({ res: 'deepWells', name: 'Well',           mat: 14, a: 6,  q: 12, role: 'water', fam: 'water', tier: 2, rank: 2, slot: true, out: 9 }),
-    farm:     D({ name: 'Garden Plot',    mat: 5,  a: 5,  role: 'food',    fam: 'farm',    tier: 1, sprite: 'grid', slot: true, out: 4, waterUse: 2 }),
-    field:    D({ res: 'irrigation', name: 'Farm',           mat: 17, a: 7,  q: 12, role: 'food', fam: 'farm', tier: 2, rank: 2, slot: true, out: 8, waterUse: 3 }),
-    medic:    D({ name: 'Medical Tent',   mat: 6,  a: 10, role: 'medical', fam: 'medical', tier: 1, sprite: 'grid', slot: true, cap: 2 }),
-    clinic:   D({ res: 'fieldSurgery', name: 'Clinic',         mat: 20, a: 13, q: 13, role: 'medical', fam: 'medical', tier: 2, rank: 2, slot: true, cap: 3 }),
-    hospital: D({ res: 'traumaCare', name: 'Hospital',       mat: 44, a: 16, q: 16, role: 'medical', fam: 'medical', tier: 3, rank: 3, w: 2, h: 2, sprite: 'grid', slot: true, cap: 3 }),
-    canteen:  D({ name: 'Canteen',        mat: 8,  a: 10, role: 'food',    cap: 2, fam: 'kitchen', slot: true }),   // V2.12: a Cook on shift makes meals 50% more filling
-    armory:   D({ name: 'Armory',         mat: 12, a: 12, role: 'gear' }),
-    house:    D({ name: 'House',          mat: 6,  a: 8,  role: 'home' }),   // V3D.12: one long-time resident's own home
-    bonfire:  D({ name: 'Bonfire',        mat: 3,  a: 9,  role: 'light' }),   // V3D.13: lights the camp at night (big radius)
-    inn:      D({ name: 'Shelter',        mat: 10, a: 10, role: 'inn', cap: 4 }),   // V3D.12: everyone's beds (sleeps 4 at a time)
-    workshop: D({ name: 'Workshop',       mat: 14, q: 12, role: 'engineering', fam: 'research', slot: true, out: 12 }),   // V2.16: staffed → research points; crafting
-    storage:  D({ name: 'Storage',        mat: 10, a: 4,  q: 8, role: 'storage', rank: 2 }),
-    scrapyard: D({ name: 'Scrapyard',     mat: 10, a: 4,  q: 8, role: 'parts', fam: 'scrap', slot: true, out: 3 }),   // V2.15: staffed salvage → parts
-    // V2.14 training buildings: each raises one survivor stat when visited (placeholder art for now)
-    gym:      D({ name: 'Gym',            mat: 9,  a: 9,  role: 'train', cap: 2, train: 'str' }),
-    library:  D({ name: 'Library',        mat: 9,  a: 9,  role: 'train', cap: 2, train: 'int' }),
-    lounge:   D({ name: 'Lounge',         mat: 8,  a: 10, role: 'train', cap: 3, train: 'cha' }),
-    range:    D({ res: 'fitness', name: 'Shooting Range', mat: 12, a: 8,  role: 'train', cap: 2, train: 'per', rank: 2 }),
-    track:    D({ res: 'fitness', name: 'Obstacle Course', mat: 11, a: 8, role: 'train', cap: 2, train: 'agi', rank: 2 }),
-    sparring: D({ res: 'fitness', name: 'Sparring Ring',  mat: 11, a: 8,  role: 'train', cap: 2, train: 'end', rank: 2 }),
-    barracks: D({ name: 'Barracks',       mat: 16, q: 12, role: 'security', rank: 3, w: 2, h: 2 }),
+    hq:       D({ name: 'Camp',  role: 'hq', fam: 'hq', tier: 1, next: 'hq2', w: 2, h: 2, a: 10, hidden: true, icon: 'inn' }),
+    hq2:      D({ name: 'Lodge', role: 'hq', fam: 'hq', tier: 2, next: 'hq3', w: 2, h: 2, a: 12, q: 12, wood: 20, mat: 8, rank: 2, up: true, icon: 'inn' }),
+    hq3:      D({ name: 'Fort',  role: 'hq', fam: 'hq', tier: 3, w: 2, h: 2, a: 16, q: 16, stone: 30, wood: 20, mat: 12, rank: 3, up: true, icon: 'barracks' }),
+    tent:     D({ name: 'Tent',        like: 'inn', role: 'inn', fam: 'housing', tier: 1, next: 'cabin', cap: 2, a: 6, wood: 3, mat: 3, icon: 'inn' }),
+    cabin:    D({ name: 'Cabin',       like: 'inn', role: 'inn', fam: 'housing', tier: 2, next: 'stonehouse', cap: 3, a: 9, wood: 10, mat: 3, up: true, icon: 'house' }),
+    stonehouse: D({ name: 'Stone House', like: 'inn', role: 'inn', fam: 'housing', tier: 3, cap: 4, a: 12, q: 12, stone: 12, wood: 6, mat: 4, up: true, icon: 'house' }),
+    barrel:   D({ name: 'Rain Barrel',    like: 'water', role: 'water', fam: 'water', tier: 1, next: 'water', slot: true, out: 3, a: 3, wood: 3, mat: 2, icon: 'water' }),
+    water:    D({ name: 'Rain Collector', role: 'water', fam: 'water', tier: 2, next: 'well', sprite: 'grid', slot: true, out: 6, a: 4, wood: 8, mat: 2, up: true }),
+    well:     D({ name: 'Stone Well',     role: 'water', fam: 'water', tier: 3, slot: true, out: 10, a: 6, q: 12, stone: 10, wood: 4, mat: 4, up: true }),
+    farm:     D({ name: 'Garden Plot',    role: 'food', fam: 'farm', tier: 1, next: 'field', w: 2, sprite: 'grid', slot: true, out: 4, waterUse: 2, a: 5, wood: 4 }),
+    field:    D({ name: 'Fenced Farm',    role: 'food', fam: 'farm', tier: 2, next: 'irrig', w: 2, slot: true, out: 7, waterUse: 3, a: 7, q: 12, wood: 10, mat: 3, up: true }),
+    irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 2, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
+    canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', w: 2, cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
+    mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
+    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', w: 2, sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3 }),
+    clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, up: true }),
+    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, up: true }),
+    crates:   D({ name: 'Supply Crates', like: 'storage', role: 'storage', fam: 'storage', tier: 1, next: 'storage', a: 3, q: 8, wood: 4, icon: 'storage' }),
+    storage:  D({ name: 'Storehouse',    role: 'storage', fam: 'storage', tier: 2, next: 'warehouse', a: 4, q: 8, wood: 12, mat: 4, up: true }),
+    warehouse: D({ name: 'Warehouse',    like: 'storage', role: 'storage', fam: 'storage', tier: 3, a: 5, q: 9, stone: 16, wood: 8, mat: 6, up: true, icon: 'storage' }),
+    bench:    D({ name: 'Workbench', like: 'workshop', role: 'engineering', fam: 'research', tier: 1, next: 'workshop', w: 2, slot: true, out: 7, wood: 4, mat: 4, icon: 'workshop' }),
+    workshop: D({ name: 'Workshop',  role: 'engineering', fam: 'research', tier: 2, w: 2, slot: true, out: 12, q: 12, wood: 12, mat: 8, up: true }),   // V2.16: staffed → research points; crafting
+    scrapyard: D({ name: 'Scrapyard',   role: 'parts', fam: 'scrap', tier: 1, w: 2, slot: true, out: 3, a: 4, q: 8, wood: 6, mat: 4 }),   // V2.15: staffed salvage → scrap
+    lumber:   D({ name: 'Lumber Camp', role: 'parts', fam: 'lumber', tier: 2, w: 2, slot: true, out: 8, a: 4, q: 8, wood: 10, mat: 4, icon: 'scrapyard' }),   // V3D.23: staffed → wood
+    quarry:   D({ name: 'Quarry',      role: 'parts', fam: 'quarry', tier: 2, w: 2, slot: true, out: 5, a: 3, q: 8, wood: 12, mat: 6, icon: 'scrapyard' }),   // V3D.23: staffed → stone
+    bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
+    armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
+    barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8 }),
+    // V2.14 training buildings: each raises one survivor stat when visited
+    gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
+    library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
+    lounge:   D({ name: 'Lounge',          role: 'train', tier: 2, cap: 3, train: 'cha', a: 10, wood: 8, mat: 2 }),
+    range:    D({ name: 'Archery Range',   role: 'train', tier: 2, w: 2, cap: 2, train: 'per', a: 8, wood: 9, mat: 3 }),
+    track:    D({ name: 'Obstacle Course', role: 'train', tier: 2, w: 2, cap: 2, train: 'agi', a: 8, wood: 8, mat: 3 }),
+    sparring: D({ name: 'Sparring Ring',   role: 'train', tier: 2, w: 2, cap: 2, train: 'end', a: 8, wood: 8, mat: 3 }),
+    // older types the code still knows; not built any more (Housing replaced them)
+    house:    D({ name: 'House',   role: 'home', tier: 2, a: 8, wood: 5, mat: 2, hidden: true }),
+    inn:      D({ name: 'Shelter', role: 'inn', tier: 2, w: 2, cap: 4, a: 10, wood: 8, mat: 4, hidden: true }),
   };
-  for (const k of ['clinic', 'canteen', 'armory', 'workshop', 'scrapyard', 'range', 'track', 'sparring', 'inn']) DEFS[k].w = 2;   /* 2x1 */
-  DEFS.field.w = 2; DEFS.field.h = 2;
-  /* V3D.22 resources step 1: buildings cost wood + scrap (stopgap split of the old parts price until the tier ladders land; S.mat is scrap) */
-  for (const d of Object.values(DEFS)) { const old = d.mat; d.wood = Math.max(2, Math.round(old * .75)); d.mat = Math.max(1, Math.round(old * .35)); }
-  for (const d of Object.values(DEFS)) { d.cost = 0; if (d.next) d.up = DEFS[d.next] ? DEFS[d.next].mat - d.mat : 0; }
+  for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
+  const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'] };
+  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'], lumber: ['Farmer', 'Scavenger'], quarry: ['Engineer', 'Mechanic', 'Scavenger'] };
   const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {
-    wood:  { name: 'Wood Barricade', mat: 0, wood: 2, hp: 80,  rank: 1 },
-    metal: { name: 'Metal Wall',     mat: 3, wood: 0, hp: 220, rank: 2 },
-    gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1 },
+    wood:  { name: 'Wood Barricade', mat: 0, wood: 1, hp: 80,  rank: 1, tier: 1 },
+    metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
+    gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1, tier: 1 },
   };
   const WALLZONE = { x0: 1, y0: 5, x1: 14, y1: 18 };   // build zone grown by one tile so a ring can enclose it
   function setTerritory(tier) {   // mutates BUILD and WALLZONE in place (everything reads them live)
@@ -172,5 +188,5 @@
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
-  return { TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

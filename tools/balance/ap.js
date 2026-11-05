@@ -4,19 +4,26 @@
   const AP = window.AP = { log: [], built: [], events: [] };
   const cnt = (t) => W.buildings.filter((b) => b.type === t).length;
   const fam = (f) => W.buildings.filter((b) => D[b.type].fam === f).length;
-  const ok = (t) => { const d = D[t]; return d && S.rank >= (d.rank || 1) && Z.researched(d.res); };
+  const ok = (t) => { const d = D[t]; return d && S.rank >= (d.rank || 1) && (d.role === 'hq' || (d.tier || 1) <= Z.hqTier()) && Z.researched(d.res); };
+  /* V3D.23: tiers. have(t) = a building of t's family at t's tier or higher; get(t) places a tier-1 site or upgrades the family's best building */
+  const have = (t) => { const d = D[t]; return W.buildings.filter((b) => b.type === t || (!!d.fam && d.fam !== 'hq' && D[b.type].fam === d.fam && (D[b.type].tier || 1) >= (d.tier || 1)) || (d.role === 'hq' && D[b.type].role === 'hq' && D[b.type].tier >= d.tier)).length; };
+  const busy = () => (S.sites || []).length + W.buildings.filter((b) => b.upg).length;
   function place(t) {
-    const d = D[t]; if (!ok(t) || S.mat < d.mat || (S.wood || 0) < (d.wood || 0)) return false;
+    const d = D[t]; if (!ok(t) || busy() >= 2 || (S.sites || []).some((q) => q.type === t) || W.buildings.some((q) => q.upg && q.upg.to === t)) return false;
+    if (d.up) {   // upgrade the lowest building of the family that leads here
+      const prev = Object.keys(D).find((k) => D[k].next === t); const b = prev && W.buildings.find((q) => q.type === prev && !q.upg && !q.burnt);
+      if (!b || !Z.canPay(Z.bCost(d)) || !Z.upgradeCheck(b).ok) return false; Z.upgradeBuilding(b); AP.built.push('^' + t + '@d' + S.day); return true;
+    }
+    if (!Z.canPay(Z.bCost(d))) return false;
     const B = Wd.BUILD, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2; let best = null, bd = 1e9;
     for (let y = B.y0; y <= B.y1 - d.h + 1; y++) for (let x = B.x0; x <= B.x1 - d.w + 1; x++) {
       if (!Wd.placementCheck(W, x, y, d, null).ok) continue; const dd = Math.hypot(x + d.w / 2 - cx, y + d.h / 2 - cy); if (dd < bd) { bd = dd; best = { x, y }; } }
     if (!best) { AP.full = true; return false; }
-    S.mat -= d.mat; S.wood = (S.wood || 0) - (d.wood || 0); S.builtCount++; const nb = { type: t, x: best.x, y: best.y, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; W.buildings.push(nb); Wd.bump(W); Z.pushUnitsOut(nb); Z.autoStaff();
-    S.ren += 1; if (t === 'water' && S.stage === 0) { S.stage = 1; S.ren += 5; } AP.built.push(t + '@d' + S.day); return true;
+    Z.newSite(t, best.x, best.y); AP.built.push(t + '@d' + S.day); return true;
   }
-  const PLAN = ['water', 'farm', 'house', 'scrapyard', 'workshop', 'water', 'farm', 'armory', 'gym', 'house', 'library', 'lounge', 'house'];
-  const LATE = ['well', 'field', 'clinic', 'track', 'range', 'sparring', 'storage', 'barracks', 'hospital', 'house', 'scrapyard'];
-  const RES = ['deepWells', 'irrigation', 'blades', 'salvage', 'fieldSurgery', 'walls', 'medicine', 'gadgets', 'fitness', 'bodyArmor', 'firearms', 'stockpile', 'traumaCare'];
+  const PLAN = ['barrel', 'farm', 'tent', 'scrapyard', 'bench', 'hq2', 'water', 'farm', 'tent', 'lumber', 'armory', 'gym', 'crates', 'quarry', 'library', 'cabin', 'lounge', 'storage'];
+  const LATE = ['hq3', 'field', 'clinic', 'well', 'workshop', 'track', 'range', 'sparring', 'barracks', 'hospital', 'tent', 'cabin', 'stonehouse', 'irrig', 'mess', 'warehouse', 'scrapyard'];
+  const RES = ['blades', 'salvage', 'walls', 'medicine', 'gadgets', 'bodyArmor', 'firearms', 'stockpile'];
   function ring() {   /* wood ring on the WALLZONE border, gates next to roads */
     const Zn = Wd.WALLZONE, out = [];
     for (let x = Zn.x0; x <= Zn.x1; x++) out.push([x, Zn.y0], [x, Zn.y1]);
@@ -28,7 +35,7 @@
     if ([...W.walls.values()].some((wl) => !set.has(wl.x + ',' + wl.y))) { for (const wl of [...W.walls.values()]) if (!set.has(wl.x + ',' + wl.y)) W.walls.delete(wl.x + ',' + wl.y); Wd.bump(W); AP.ringDone = false; }   /* old inner ring after expanding: removed */
     r.sort((a, b) => a[1] - b[1]);   /* north side first: most zombies come from the north */
     for (const [x, y] of r) {
-      if (S.mat < reserve) break; const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
+      if (S.mat < reserve || (S.wood || 0) < 6 + (AP.saving ? 6 : 0)) break;   /* V3D.23: walls cost wood now; keep wood for the build plan */ const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
       const gate = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => Wd.isRoad(W, x + dx, y + dy));
       if (!ex) { const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat + (S.wood || 0) < m0) n++; }
       else if (S.rank >= 2 && S.mat > reserve + 20) { const m0 = S.mat; Z.tryWall(x, y, 'metal'); if (S.mat < m0) n++; }
@@ -63,7 +70,7 @@
     // expeditions: one squad out at a time
     if (AP.exp && !S.trip && S.sv.length >= 5 && S.food > 12 && S.water > 12) {
       const sq = Z.expAutoSquad(3).map((q) => q.id), lvl = S.sv.reduce((a, q) => a + q.l, 0) / S.sv.length;
-      const dest = !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
+      const dest = (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
       if (sq.length >= 2) { const r = Z.startExpedition(dest, risk, sq); if (r.ok) AP.events.push('exp ' + dest + '/' + risk + '@d' + S.day); }
     }
     // bandage the downed
@@ -85,15 +92,16 @@
     const st = Z.supplyStats(); const reserve = 6 + 2 * Z.upkeepTotal();
     if (S.hour === 12) { AP.wTrend = S.water - (AP.w12 ?? S.water); AP.fTrend = S.food - (AP.f12 ?? S.food); AP.w12 = S.water; AP.f12 = S.food; }
     const needW = st.wNet < .5 || (S.water < 25 && (AP.wTrend || 0) < 0), needF = st.fNet < .5 || (S.food < 25 && (AP.fTrend || 0) < 0);
-    if (needW && S.mat >= 4) { if (!place('well')) place('water'); }
-    if (needF && S.mat >= 5) { if (!place('field')) place('farm'); }
+    const famN = (f) => W.buildings.filter((b) => D[b.type].fam === f).length + (S.sites || []).filter((q) => D[q.type].fam === f).length;
+    if (needW) { if (!place('well') && !place('water') && famN('water') < 3) place('barrel'); }
+    if (needF) { if (!place('irrig') && !place('field') && famN('farm') < 4) place('farm'); }
     if (needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
     // the building the next town star needs (Upgrade Town "Build X" condition)
-    { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !cnt(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
+    { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
     // build plan
-    let next = null; const want = {}; for (const t of PLAN) { want[t] = (want[t] || 0) + 1; if (cnt(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
-    AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.core = ['water', 'farm', 'house', 'scrapyard', 'workshop'].every((t) => cnt(t) > 0);
-    if (PLAN.every((t, i) => cnt(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && cnt(t) < (t === 'house' ? 4 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
+    let next = null; const want = {}; for (const t of PLAN) { want[t] = (want[t] || 0) + 1; if (have(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
+    AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.core = ['barrel', 'farm', 'tent', 'scrapyard', 'bench'].every((t) => have(t) > 0);
+    if (PLAN.every((t, i) => !ok(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
     // walls from day 2
     if (S.day >= 2 && AP.core && !AP.nowalls) walls(Math.max(reserve + 6, AP.saving));   /* economy first; walls only from spare parts */
     // territory
