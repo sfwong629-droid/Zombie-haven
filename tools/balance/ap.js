@@ -1,7 +1,7 @@
 // Auto-player: a sensible player's decisions, run once per game hour. Installed as window.AP.
 (() => {
   const Z = window.ZH, S = Z.S, W = Z.world, Wd = Z.Wd, D = Wd.DEFS;
-  const AP = window.AP = { log: [], built: [], events: [] };
+  const AP = window.AP = { log: [], built: [], events: [] }; window.ZH_NO_REVEAL = true;
   const cnt = (t) => W.buildings.filter((b) => b.type === t).length;
   const fam = (f) => W.buildings.filter((b) => D[b.type].fam === f).length;
   const ok = (t) => { const d = D[t]; return d && S.rank >= (d.rank || 1) && (d.role === 'hq' || (d.tier || 1) <= Z.hqTier()) && Z.researched(d.res); };
@@ -70,11 +70,12 @@
     // expeditions: one squad out at a time
     if (AP.exp && !S.trip && S.sv.length >= 5 && S.food > 12 && S.water > 12) {
       const sq = Z.expAutoSquad(3).map((q) => q.id), lvl = S.sv.reduce((a, q) => a + q.l, 0) / S.sv.length;
-      const dest = (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
+      const jn = (r) => Z.jobList().some((x) => (x.j.need[r] || 0) > (x.j.got[r] || 0)) && (S[r] || 0) < 3;
+      const dest = jn('meds') && !Z.expLocked('pharmacy') ? 'pharmacy' : jn('fuel') && !Z.expLocked('gasstation') ? 'gasstation' : (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' || dest === 'gasstation' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
       if (sq.length >= 2) { const r = Z.startExpedition(dest, risk, sq); if (r.ok) AP.events.push('exp ' + dest + '/' + risk + '@d' + S.day); }
     }
     // bandage the downed
-    for (const s of S.sv) if (s.mode === 'down' && S.mat >= Z.BANDAGE() && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
+    for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
     for (const s of S.sv) if (s.mode !== 'down') s.bandaged = 0;
     // repair burnt buildings
     for (const b of W.buildings) if (b.burnt && S.mat >= Math.ceil(D[b.type].mat * .25) + 2) Z.repairBurnt(b);

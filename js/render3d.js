@@ -439,6 +439,7 @@ const barrelG = cyl(.15, .15, .42, 10).translate(0, .21, 0);
 const tyreG = new THREE.TorusGeometry(.17, .07, 6, 12).rotateX(Math.PI / 2).translate(0, .07, 0);
 /* V3D.22 chopped trees: a stump; marked trees: an orange ribbon round the trunk */
 const rockG = new THREE.DodecahedronGeometry(.42, 0).scale(1.25, .8, 1).translate(0, .2, 0), rockG2 = new THREE.DodecahedronGeometry(.26, 0).scale(1, .9, 1.2).translate(.38, .14, .2), rubbleFlatG = merge([new THREE.DodecahedronGeometry(.16, 0).scale(1.3, .4, 1).translate(0, .04, 0), new THREE.DodecahedronGeometry(.12, 0).scale(1, .4, 1.2).translate(.22, .03, .12), new THREE.DodecahedronGeometry(.1, 0).scale(1.2, .4, 1).translate(-.18, .03, -.1)]);
+const binG = merge([new THREE.BoxGeometry(.62, .62, .42).translate(0, .31, 0), new THREE.BoxGeometry(.66, .05, .46).translate(0, .14, 0)]), binLidG = new THREE.BoxGeometry(.66, .06, .46).translate(0, .65, 0), binLidOpenG = new THREE.BoxGeometry(.66, .06, .46).rotateX(-1.1).translate(0, .82, -.3);   // V3D.25 clothes bins
 const stumpG = cyl(.15, .2, .26, 8).translate(0, .13, 0), stumpTopG = cyl(.135, .135, .03, 8).translate(0, .275, 0), ribbonG = cyl(.16, .16, .1, 10).translate(0, .42, 0), flagG = merge([cyl(.02, .02, .9, 5).translate(0, .45, 0), new THREE.BoxGeometry(.28, .17, .015).translate(.15, .8, 0)]);
 const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
 function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
@@ -463,6 +464,8 @@ function buildForest() {
   }
   const rocks = [], rubbleE = [];
   for (const [x, y] of [...wr, ...(G.CAR_SPOTS || [])]) { const st = G.nodeState ? G.nodeState(x, y) : (blocked(x, y) ? null : 'full'); if (!st) continue; const t = [(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]; if (st === 'empty') rubbleE.push([t[0], t[1], .7, t[3]]); else { rubble.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.6, 0]); } }
+  const bins = [], binsE = [];
+  for (const [x, y] of G.BIN_SPOTS || []) { const st = G.nodeState(x, y); if (!st) continue; const r = hash(x * 5, y * 3), t = [(x + .5) * T, (y + .5) * T, 1, r]; if (st === 'empty') binsE.push(t); else { bins.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.6, 0]); } }
   for (const [x, y] of G.ROCK_SPOTS || []) { const st = G.nodeState(x, y); if (!st) continue; const r = hash(x * 3, y * 7), t = [(x + .5) * T, (y + .5) * T, 1.2 + r * .5, r]; if (st === 'empty') rubbleE.push([t[0], t[1], 1, r]); else { rocks.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.9, 0]); } }
   for (const [x, y] of G.CRATE_SPOTS) if (!blocked(x, y)) crates.push([(x + .5) * T, (y + .5) * T, 1, hash(x, y)]);
   const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], B = G.Wd.BUILD;
@@ -509,6 +512,7 @@ function buildForest() {
   { const tr = marks.filter((t) => pines.includes(t) || rounds.includes(t)), fl = marks.filter((t) => !tr.includes(t)); const rb = tr.map((t) => [t[0], t[1], t[2] * 1.35 * (pines.includes(t) ? .8 : 1.05), 0]); forest.push(instD(ribbonG, rb, () => '#ff7a2e')); forest.push(instD(flagG, fl.map((t) => [t[0] + .35, t[1] - .2, 1, 0]), () => '#ff7a2e')); }
   forest.push(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); forest.push(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
   forest.push(instD(rubbleFlatG, rubbleE, () => '#7a7266'));
+  forest.push(instD(binG, bins, (r) => ['#3f7a5a', '#4a6a8a', '#7a5a3a'][(r * 3) | 0], true)); forest.push(instD(binLidG, bins, () => '#2e4a3a')); forest.push(instD(binG, binsE, () => '#5a5a52', true)); forest.push(instD(binLidOpenG, binsE, () => '#3a3a34'));
   forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
   forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
   return true;
@@ -930,7 +934,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
-  else if (still && s.mode === 'gather') c = s.gatherK === 'rock' ? 'work_dig' : s.gatherK === 'wreck' ? 'work_tinker' : 'work_chop';   // V3D.22/23 gathering
+  else if (still && s.mode === 'gather') c = s.gatherK === 'rock' ? 'work_dig' : s.gatherK === 'wreck' || s.gatherK === 'bin' ? 'work_tinker' : 'work_chop';   // V3D.22/23 gathering
   else if (still && s.mode === 'hammer') c = 'work_hammer';
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
@@ -1052,10 +1056,14 @@ function makeCrate() {
   const lm = new THREE.LineBasicMaterial({ color: 0x5a3f31 }); for (const [x, z] of [[.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) ch.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x * .35, -1.6, z * .35)]), lm));
   ch.position.y = 2.2; g.add(ch); g.userData.chute = ch; scene.add(g); return g;
 }
+const RAR_COL = { uncommon: 0x7cc95a, rare: 0x5aa8f0, epic: 0xb072f0 };   // V3D.25: a coloured glow ring under rare crates and bags
+function rarRing(g, rar) { const c = RAR_COL[rar]; if (!c || g.userData.ring) return; const m = new THREE.Mesh(new THREE.RingGeometry(.28, .5, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .7, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.y = .04; g.add(m); const p = new THREE.Mesh(new THREE.CylinderGeometry(.18, .32, 1.6, 12, 1, true).translate(0, .8, 0), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); g.add(p); g.userData.ring = [m, p]; }
+function pulseRing(g, t) { const r = g.userData.ring; if (!r) return; const k = .5 + .5 * Math.sin(t * 3); r[0].material.opacity = .45 + .35 * k; r[0].scale.setScalar(.9 + .2 * k); r[1].material.opacity = .14 + .12 * k; }
 function syncCrates(dt) {
   const seen = new Set();
   for (const c of G.S.crates || []) {
-    seen.add(c); let g = crateMeshes.get(c); if (!g) { g = makeCrate(); g.userData.t = 0; crateMeshes.set(c, g); }
+    seen.add(c); let g = crateMeshes.get(c); if (!g) { g = makeCrate(); g.userData.t = 0; crateMeshes.set(c, g); rarRing(g, c.rar); } pulseRing(g, g.userData.t);
     g.userData.t += dt; const t = Math.max(g.userData.t, ((G.tick ? G.tick() : 0) - c.t0) / 60), ch = g.userData.chute; g.position.set(c.w.x * T, groundH(c.w.x * T, c.w.y * T), c.w.y * T);
     if (c.taken) { g.position.y = 1.2; g.scale.setScalar(.7); ch.visible = false; continue; }
     const fall = Math.max(0, 1 - t / 3.2); g.position.y = 9 * fall * fall; g.rotation.z = fall * Math.sin(t * 2.2) * .18;
@@ -1068,7 +1076,7 @@ function syncBags(dt) {
   const seen = new Set();
   for (const b of G.S.bags || []) {
     seen.add(b); let e = bagMeshes.get(b);
-    if (!e) { e = { g: makeBag(), t: 0, spin: Math.random() * 6 }; bagMeshes.set(b, e); }
+    if (!e) { e = { g: makeBag(), t: 0, spin: Math.random() * 6 }; bagMeshes.set(b, e); if (b.rar && b.rar !== 'common') rarRing(e.g, b.rar); } pulseRing(e.g, e.t);
     e.t += dt; const g = e.g; g.position.set(b.w.x * T, groundH(b.w.x * T, b.w.y * T), b.w.y * T); g.rotation.y = e.spin;
     if (!b.opened) {   // fall in from above with two bounces, then a gentle wobble
       const t = e.t, fall = t < .35 ? 1.4 * (1 - (t / .35) ** 2) : t < .55 ? .22 * Math.sin((t - .35) / .2 * Math.PI) : t < .68 ? .06 * Math.sin((t - .55) / .13 * Math.PI) : 0;

@@ -17,7 +17,7 @@
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
   // fam/tier/next = building family ladder (footprint fixed per family, so upgrades happen in place). slot = one staff slot (auto-staffed).
-  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null, wood: 0, mat: 0, stone: 0 }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
+  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null, wood: 0, mat: 0, stone: 0, cloth: 0, meds: 0, fuel: 0 }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
   /* V3D.23 building tiers: Camp (tents, scrap) -> Timber (logs, planks) -> Stone. tier = material tier, unlocked by the HQ tier.
      A family (fam) upgrades in place along next; its footprint is fixed. wood / mat (= scrap) / stone = the price of THIS step
      (building it new for a tier-1 type, upgrading into it otherwise). up = only reachable by upgrading.
@@ -25,10 +25,10 @@
   const DEFS = {
     hq:       D({ name: 'Camp',  role: 'hq', fam: 'hq', tier: 1, next: 'hq2', w: 2, h: 2, a: 10, hidden: true, icon: 'inn' }),
     hq2:      D({ name: 'Lodge', role: 'hq', fam: 'hq', tier: 2, next: 'hq3', w: 2, h: 2, a: 12, q: 12, wood: 20, mat: 8, rank: 2, up: true, icon: 'inn' }),
-    hq3:      D({ name: 'Fort',  role: 'hq', fam: 'hq', tier: 3, w: 2, h: 2, a: 16, q: 16, stone: 30, wood: 20, mat: 12, rank: 3, up: true, icon: 'barracks' }),
+    hq3:      D({ name: 'Fort',  role: 'hq', fam: 'hq', tier: 3, w: 2, h: 2, a: 16, q: 16, stone: 30, wood: 20, mat: 12, fuel: 2, rank: 3, up: true, icon: 'barracks' }),
     tent:     D({ name: 'Tent',        like: 'inn', role: 'inn', fam: 'housing', tier: 1, next: 'cabin', cap: 2, a: 6, wood: 3, mat: 3, icon: 'inn' }),
     cabin:    D({ name: 'Cabin',       like: 'inn', role: 'inn', fam: 'housing', tier: 2, next: 'stonehouse', cap: 3, a: 9, wood: 10, mat: 3, up: true, icon: 'house' }),
-    stonehouse: D({ name: 'Stone House', like: 'inn', role: 'inn', fam: 'housing', tier: 3, cap: 4, a: 12, q: 12, stone: 12, wood: 6, mat: 4, up: true, icon: 'house' }),
+    stonehouse: D({ name: 'Stone House', like: 'inn', role: 'inn', fam: 'housing', tier: 3, cap: 4, a: 12, q: 12, stone: 12, wood: 6, mat: 4, cloth: 2, up: true, icon: 'house' }),
     barrel:   D({ name: 'Rain Barrel',    like: 'water', role: 'water', fam: 'water', tier: 1, next: 'water', slot: true, out: 3, a: 3, wood: 3, mat: 2, icon: 'water' }),
     water:    D({ name: 'Rain Collector', role: 'water', fam: 'water', tier: 2, next: 'well', sprite: 'grid', slot: true, out: 6, a: 4, wood: 8, mat: 2, up: true }),
     well:     D({ name: 'Stone Well',     role: 'water', fam: 'water', tier: 3, slot: true, out: 10, a: 6, q: 12, stone: 10, wood: 4, mat: 4, up: true }),
@@ -37,9 +37,9 @@
     irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 2, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
     canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', w: 2, cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
     mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
-    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', w: 2, sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3 }),
-    clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, up: true }),
-    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, up: true }),
+    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', w: 2, sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
+    clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, cloth: 3, meds: 2, up: true }),
+    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, meds: 6, fuel: 2, up: true }),
     crates:   D({ name: 'Supply Crates', like: 'storage', role: 'storage', fam: 'storage', tier: 1, next: 'storage', a: 3, q: 8, wood: 4, icon: 'storage' }),
     storage:  D({ name: 'Storehouse',    role: 'storage', fam: 'storage', tier: 2, next: 'warehouse', a: 4, q: 8, wood: 12, mat: 4, up: true }),
     warehouse: D({ name: 'Warehouse',    like: 'storage', role: 'storage', fam: 'storage', tier: 3, a: 5, q: 9, stone: 16, wood: 8, mat: 6, up: true, icon: 'storage' }),
@@ -50,12 +50,12 @@
     quarry:   D({ name: 'Quarry',      role: 'parts', fam: 'quarry', tier: 2, w: 2, slot: true, out: 5, a: 3, q: 8, wood: 12, mat: 6, icon: 'scrapyard' }),   // V3D.23: staffed → stone
     bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
     armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
-    barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8 }),
+    barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8, cloth: 3 }),
     // V2.14 training buildings: each raises one survivor stat when visited
     gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
     library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
     lounge:   D({ name: 'Lounge',          role: 'train', tier: 2, cap: 3, train: 'cha', a: 10, wood: 8, mat: 2 }),
-    range:    D({ name: 'Archery Range',   role: 'train', tier: 2, w: 2, cap: 2, train: 'per', a: 8, wood: 9, mat: 3 }),
+    range:    D({ name: 'Archery Range',   role: 'train', tier: 2, w: 2, cap: 2, train: 'per', a: 8, wood: 9, mat: 3, cloth: 2 }),
     track:    D({ name: 'Obstacle Course', role: 'train', tier: 2, w: 2, cap: 2, train: 'agi', a: 8, wood: 8, mat: 3 }),
     sparring: D({ name: 'Sparring Ring',   role: 'train', tier: 2, w: 2, cap: 2, train: 'end', a: 8, wood: 8, mat: 3 }),
     // older types the code still knows; not built any more (Housing replaced them)

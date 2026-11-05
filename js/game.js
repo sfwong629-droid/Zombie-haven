@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.24', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.25', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -276,7 +276,7 @@ function drawSheet(key, img, frame, fw, fh, p, hScale, footY, content = 118, cri
   const k = Math.max(.05, Math.round(sc * 32) / 32), sheet = scaled(key + 's', img, Math.round(img.width * k), Math.round(img.height * k));
   ctx.drawImage(sheet, Math.round(frame * fw * k), 0, Math.round(fw * k), sheet.height, p.x - fw * k / 2, p.y - footY * k, Math.round(fw * k), sheet.height);
 }
-const EMOJI = { Chopping: '🪓', Mining: '⛏', Salvaging: '🔧', Building: '🔨', Eating: '🍖', Drinking: '💧', Resting: '💤', Treatment: '💊', Shopping: '🛒', 'Getting food': '🥫', Working: '🔧', Firefighting: '🧯' };
+const EMOJI = { Chopping: '🪓', Mining: '⛏', Salvaging: '🔧', Searching: '🧵', Building: '🔨', Eating: '🍖', Drinking: '💧', Resting: '💤', Treatment: '💊', Shopping: '🛒', 'Getting food': '🥫', Working: '🔧', Firefighting: '🧯' };
 const textCache = new Map();
 function textImg(txt, font, col) {   /* V2.18: text and emoji are rasterised once and stamped (fillText was ~16% of frame time) */
   const key = txt + '|' + font + '|' + col + '|' + DPR; let c = textCache.get(key); if (c) return c;
@@ -285,7 +285,7 @@ function textImg(txt, font, col) {   /* V2.18: text and emoji are rasterised onc
   if (textCache.size > 300) textCache.clear(); c = { cv, w, h, base: px * 1.1 + 2 }; textCache.set(key, c); return c;
 }
 function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.base) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true; }
-const TAGTXT = { Chopping: 'Chopping', Mining: 'Mining', Salvaging: 'Salvaging', Building: 'Building', Eating: 'Eating', Drinking: 'Drinking', Resting: 'Resting', Treatment: 'Treatment', Shopping: 'Shopping', 'Getting food': 'Foraging', Working: 'Working', Firefighting: 'Firefighting' };
+const TAGTXT = { Chopping: 'Chopping', Mining: 'Mining', Salvaging: 'Salvaging', Searching: 'Searching', Building: 'Building', Eating: 'Eating', Drinking: 'Drinking', Resting: 'Resting', Treatment: 'Treatment', Shopping: 'Shopping', 'Getting food': 'Foraging', Working: 'Working', Firefighting: 'Firefighting' };
 const tagCache = new Map();
 function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a character */
   const fs = Math.round(Math.max(13, 13 * cam.z)), cozy = document.documentElement.classList.contains('cozy'), key = (cozy ? 'z' : '') + txt + col + fs + DPR; let c = tagCache.get(key);
@@ -434,10 +434,10 @@ function floatCozy(f, p) {   /* a float's life runs from f.a0 down to 0 (frames)
    zombie is close, and the bag pops open with a sparkle burst before the scrap are counted. Bags nobody fetches open
    by themselves after ~3 game hours. */
 let bagSeq = 1;
-function dropBag(w, amt, killer) {   /* tossed a little away from the fight, so the fighter has to walk over */
+function dropBag(w, amt, killer, extra, rar) {   /* tossed a little away from the fight, so the fighter has to walk over */
   let dx = w.x - (killer ? killer.w.x : w.x - 1), dy = w.y - (killer ? killer.w.y : w.y), L = Math.hypot(dx, dy) || 1; const a = (rnd() - .5) * 1.2, c = Math.cos(a), sn = Math.sin(a); [dx, dy] = [(dx * c - dy * sn) / L, (dx * sn + dy * c) / L];
   let x = w.x + dx * .8, y = w.y + dy * .8; if (!Wd.walkable || Wd.walkable(world, Math.floor(x), Math.floor(y))) { /* ok */ } else { x = w.x; y = w.y; }
-  (S.bags ||= []).push({ id: bagSeq++ + '_' + tick, w: { x, y }, amt, t0: tick });
+  (S.bags ||= []).push({ id: bagSeq++ + '_' + tick, w: { x, y }, amt, t0: tick, extra: extra || null, rar: rar || (extra && Object.keys(extra).some((k) => RES_RAR[k] === 'rare') ? 'rare' : extra ? 'uncommon' : 'common') });
 }
 function fetchBag(s) {
   const bag = (S.bags || []).filter((b) => !b.opened && dist(b.w, s.w) < 4).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0];
@@ -445,8 +445,12 @@ function fetchBag(s) {
   s.mode = 'loot'; s.lootId = bag.id; s.path = null; s.target = null; s.why = 'Grabbing the dropped bag'; return true;
 }
 function openBag(bag, s) {
-  if (bag.opened) return; bag.opened = tick; bag.f = 0; S.mat += bag.amt; flow('mat', 'Zombie drops', bag.amt); SFX('reward');
-  floats.push({ w: { ...bag.w }, t: '+' + bag.amt + ' ⚙', col: '#9fe0ff', a: 80, big: true }); ui();
+  if (bag.opened) return; bag.opened = tick; bag.f = 0; S.mat += bag.amt; if (bag.amt) flow('mat', 'Zombie drops', bag.amt); SFX('reward');
+  if (bag.amt) floats.push({ w: { ...bag.w }, t: '+' + bag.amt + ' ⚙', col: '#9fe0ff', a: 80, big: true });
+  const ex = { ...(bag.extra || {}) }, item = ex.item; delete ex.item; addLoot(ex, 'Zombie drops'); if (item) stashAdd(item);
+  Object.entries(ex).forEach(([k, v], i) => floats.push({ w: { x: bag.w.x, y: bag.w.y - .3 * (i + 1) }, t: '+' + v + ' ' + RES_ICON[k], col: RARITY[RES_RAR[k]].c, a: 90, big: true }));
+  if (bag.rar === 'epic' && COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: 'BOSS LOOT', sub: 'The big one dropped its stash', entries: lootEntries({ mat: bag.amt, ...ex }, item ? [item] : []) }); else if (item) screenToast('🎁 Found: ' + ITEMS[item].name);
+  ui();
 }
 function bagsTick() {
   if (tick % 60 === 0) for (const b of S.bags || []) {   /* V3D.17: a bag nobody went for gets fetched by the nearest idle survivor */
@@ -928,6 +932,8 @@ const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own c
 const SLOTS = ['weapon', 'armor', 'head', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', head: 'Hat', acc: 'Accessory' };
 const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'hardhat', 'bikehelm'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
+/* V3D.25 extra drops per zombie type: [chance, resource, amount] */
+const ZDROP = { runner: [[.3, 'cloth', 1]], brute: [[.4, 'cloth', 1], [.15, 'meds', 1]], bloated: [[.35, 'meds', 1]], spitter: [[.3, 'meds', 1]], crawler: [[.15, 'cloth', 1]], raider: [[.45, 'fuel', 1], [.3, 'meds', 1], [.3, 'cloth', 1]] };
 const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
 const fairRound = (x) => Math.floor(x) + (rnd() < x - Math.floor(x) ? 1 : 0);   /* V3D.16: 3.7 is 4 seven times in ten, so every point of armor counts */
 const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, rate: .9, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
@@ -1143,7 +1149,7 @@ function renderAlerts() {
 }
 /* V2.35 shortage warnings from the forecast: a critical alert under ~1 day left (until it recovers), a banner under 2 days (once a day),
  * tomorrow's upkeep that can't be paid, and storage that is full and wasting production */
-const SHORT_ICON = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨' };
+const SHORT_ICON = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', cloth: '🧵', meds: '💊', fuel: '⛽' };
 function shortageCheck() {
   const E = econ(), day = S.day;
   for (const k of ['food', 'water']) {
@@ -1153,13 +1159,13 @@ function shortageCheck() {
     else if (e.days < 2 && (S.warnDay || {})[k] !== day) { S.warnDay = { ...(S.warnDay || {}), [k]: day }; note('important', `⚠ ${nm.toUpperCase()}: ABOUT ${e.days.toFixed(1)} DAYS LEFT`, { log: `${nm} is going down by ${f1(-e.net)} a day: about ${e.days.toFixed(1)} days left. Tap ${nm.toLowerCase()} at the top to see why.` }); }
     if (e.full && e.net > .2 && (S.warnDay || {})[k + 'Full'] !== day) { S.warnDay = { ...(S.warnDay || {}), [k + 'Full']: day }; note('important', `${SHORT_ICON[k]} ${nm.toUpperCase()} STORAGE FULL`, { log: `${nm} storage is full (${e.cap}): extra production is wasted. Build Storage, or use it (feasts, trades).` }); }
   }
-  const up = upkeepTotal(); if (S.hour === 18 && S.mat < up && (S.warnDay || {}).up !== day) { S.warnDay = { ...(S.warnDay || {}), up: day }; note('important', `⚙ UPKEEP TONIGHT: ${f1(up)} SCRAP, YOU HAVE ${Math.floor(S.mat)}`, { log: `Upkeep at midnight is ${f1(up)} scrap and you have ${Math.floor(S.mat)}: some buildings will run at half output tomorrow (water, food and medical are paid first).` }); }
+  const up = upkeepTotal(); if (S.hour === 18 && S.mat + (S.wood || 0) < up && (S.warnDay || {}).up !== day) { S.warnDay = { ...(S.warnDay || {}), up: day }; note('important', `⚙ UPKEEP TONIGHT: ${f1(up)} WOOD + SCRAP, YOU HAVE ${Math.floor(S.mat + (S.wood || 0))}`, { log: `Upkeep at midnight is ${f1(up)} scrap and you have ${Math.floor(S.mat)}: some buildings will run at half output tomorrow (water, food and medical are paid first).` }); }
 }
 function rationNeed() { let f = 0; for (const q of S.sv) f += ration(q) / 2; for (const k of S.kids || []) f += .25; return { f, w: f }; }   // a day of rations: half food, half water
 function downAlert(s) {
   note('critical', s.name + ' is down', { key: 'down' + (s.id || s.name), icon: '🩸', log: s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.', at: () => s.w, live: () => s.mode === 'down' && S.sv.includes(s),
     dyn: () => `${s.name} is down · ${Math.max(0, Math.ceil((s.bleed || 0) / 60))} s left · ` + (s.rescuer ? (s.rescuer.carrying === s ? `${s.rescuer.name} is bringing them in` : `${s.rescuer.name} is on the way`) : 'no rescuer yet'),
-    acts: [{ label: () => 'Bandage ⚙' + BANDAGE_COST, ok: () => S.mat >= BANDAGE_COST, fn: () => useBandage(s) }] });
+    acts: [{ label: () => (S.cloth || 0) >= 1 ? 'Bandage 🧵1' : 'Bandage ⚙' + BANDAGE_COST * 2, ok: () => (S.cloth || 0) >= 1 || S.mat >= BANDAGE_COST * 2, fn: () => useBandage(s) }] });
 }
 function raidAlert(n) {
   const alive = () => S.z.filter((z) => z.human && z.hp > 0 && !z.escaped);
@@ -1292,14 +1298,16 @@ const NODE = {
   tree:  { res: 'wood',  charges: 3, regrow: 72,  ticks: 700, amt: 3, act: 'Chopping',   verb: 'chop', icon: '🪓' },
   rock:  { res: 'stone', charges: 4, regrow: 96,  ticks: 900, amt: 2, act: 'Mining',     verb: 'mine', icon: '⛏' },
   wreck: { res: 'mat',   charges: 2, regrow: 120, ticks: 800, amt: 2, act: 'Salvaging',  verb: 'salvage', icon: '🔧' },
+  bin:   { res: 'cloth', charges: 2, regrow: 96,  ticks: 500, amt: 1, act: 'Searching',  verb: 'search', icon: '🧵' },   /* V3D.25 clothes bins, out past the walls */
 };
+const BIN_SPOTS = [[1, 1], [14, 1], [0, 19], [15, 19], [18, 9], [26, 3], [24, 18], [16, 27], [6, 28], [27, 28]];
 const ROCK_SPOTS = [[3, 1], [8, 1], [12, 1], [0, 9], [0, 13], [15, 9], [15, 14], [2, 20], [9, 21], [14, 20], [18, 4], [23, 8], [19, 15], [25, 13], [22, 20], [17, 25], [11, 27], [5, 25], [25, 24], [21, 11]];
 const TREE_CHARGES = NODE.tree.charges, CHOP_WOOD = NODE.tree.amt;
 const nodeKey = (x, y) => x + ',' + y;
 function nodeList() {
-  return [...TREE_SPOTS.map(([x, y]) => ({ k: 'tree', x, y })), ...ROCK_SPOTS.map(([x, y]) => ({ k: 'rock', x, y })), ...[...CAR_SPOTS, ...wreckSpots()].map(([x, y]) => ({ k: 'wreck', x, y }))];
+  return [...TREE_SPOTS.map(([x, y]) => ({ k: 'tree', x, y })), ...ROCK_SPOTS.map(([x, y]) => ({ k: 'rock', x, y })), ...[...CAR_SPOTS, ...wreckSpots()].map(([x, y]) => ({ k: 'wreck', x, y })), ...BIN_SPOTS.map(([x, y]) => ({ k: 'bin', x, y }))];
 }
-function nodeKindAt(x, y) { if (TREE_SPOTS.some(([a, b]) => a === x && b === y)) return 'tree'; if (ROCK_SPOTS.some(([a, b]) => a === x && b === y)) return 'rock'; if ([...CAR_SPOTS, ...wreckSpots()].some(([a, b]) => a === x && b === y)) return 'wreck'; return null; }
+function nodeKindAt(x, y) { if (TREE_SPOTS.some(([a, b]) => a === x && b === y)) return 'tree'; if (ROCK_SPOTS.some(([a, b]) => a === x && b === y)) return 'rock'; if ([...CAR_SPOTS, ...wreckSpots()].some(([a, b]) => a === x && b === y)) return 'wreck'; if (BIN_SPOTS.some(([a, b]) => a === x && b === y)) return 'bin'; return null; }
 function treeNode(x, y) { S.nodes ||= {}; const k = nodeKey(x, y); return S.nodes[k] || (S.nodes[k] = { left: NODE[nodeKindAt(x, y) || 'tree'].charges, regrow: 0, mark: false }); }
 function treeBlocked(x, y) { return !!(Wd.buildingAt(world, x, y) || Wd.wallAt(world, x, y) || Wd.isRoad(world, x, y) || (S.sites || []).some((q) => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h)); }
 function nodeState(x, y) { if (treeBlocked(x, y)) return null; const n = (S.nodes || {})[nodeKey(x, y)]; return !n || n.left > 0 ? (n && n.mark ? 'marked' : 'full') : 'empty'; }
@@ -1310,14 +1318,16 @@ function nodesTick() {   // once a game hour: emptied nodes come back
   for (const [k, n] of Object.entries(S.nodes || {})) if (n.left === 99) { const [x, y] = k.split(',').map(Number); n.left = NODE[nodeKindAt(x, y) || 'tree'].charges; }
   if (ch) S.nodeVer = (S.nodeVer || 0) + 1;
 }
-const resCap = (r) => r === 'mat' ? 1e9 : matCap();
+const RARE = ['cloth', 'meds', 'fuel'], rareCap = () => 20 + 10 * storeTiers();   /* V3D.25 rare resources */
+const resCap = (r) => r === 'mat' ? 1e9 : RARE.includes(r) ? rareCap() : matCap();
 function resWant(r) {   // how badly the town wants more of r right now (0 = not at all)
   const need = jobList().reduce((a, { j }) => a + Math.max(0, (j.need[r] || 0) - (j.got[r] || 0) - (j.inb[r] || 0)), 0), have = S[r] || 0;
   if (have >= resCap(r) - 1) return 0;
   if (need > have) return 3 + Math.min(3, (need - have) / 4);
   if (r === 'wood') return have < 25 ? 1.4 : .8;
   if (r === 'stone') return hqTier() >= 2 ? (have < 20 ? 1 : .5) : need ? 1 : .08;
-  return have < 15 ? .9 : .5;
+  if (r === 'cloth') return have < 6 ? .5 : .15;
+  return have < 8 ? 1.8 : have < 15 ? 1 : .5;
 }
 function tryGather(s) {
   if (isNight()) return false;
@@ -1327,15 +1337,15 @@ function tryGather(s) {
   let t = null; const marked = live.filter((n) => nodeState(n.x, n.y) === 'marked');
   if (marked.length && rnd() < .9) t = near(marked);
   else {
-    const W = { wood: resWant('wood'), stone: resWant('stone'), mat: resWant('mat') }, tot = W.wood + W.stone + W.mat; if (tot <= 0) return false;
+    const W = { wood: resWant('wood'), stone: resWant('stone'), mat: resWant('mat'), cloth: resWant('cloth') }, tot = W.wood + W.stone + W.mat + W.cloth; if (tot <= 0) return false;
     if (rnd() > Math.min(.85, .35 + tot * .12)) return false;
-    let r = rnd() * tot, res = 'wood'; for (const k of ['wood', 'stone', 'mat']) { if ((r -= W[k]) <= 0) { res = k; break; } }
-    t = near(live.filter((n) => NODE[n.k].res === res && dist(tc(n.x, n.y), town) < 12));
+    let r = rnd() * tot, res = 'wood'; for (const k of ['wood', 'stone', 'mat', 'cloth']) { if ((r -= W[k]) <= 0) { res = k; break; } }
+    t = near(live.filter((n) => NODE[n.k].res === res && dist(tc(n.x, n.y), town) < (res === 'cloth' ? 15 : 12)));
   }
   if (!t) return false;
   const c = tc(t.x, t.y), dx = s.w.x - c.x, dy = s.w.y - c.y, d = Math.hypot(dx, dy) || 1;
   s.gatherAt = nodeKey(t.x, t.y); s.gatherK = t.k; s.dest = { x: c.x + dx / d * .5, y: c.y + dy / d * .5 }; s.mode = 'walk'; s.purpose = 'gath-out'; s.path = null; s.stateTicks = 2400;
-  s.why = nodeState(t.x, t.y) === 'marked' ? `Off to ${NODE[t.k].verb} the marked ${t.k}` : { tree: 'Chopping wood', rock: 'Breaking rocks for stone', wreck: 'Salvaging scrap from a wreck' }[t.k]; return true;
+  s.why = nodeState(t.x, t.y) === 'marked' ? `Off to ${NODE[t.k].verb} the marked ${t.k}` : { tree: 'Chopping wood', rock: 'Breaking rocks for stone', wreck: 'Salvaging scrap from a wreck', bin: 'Searching a clothes bin for cloth' }[t.k]; return true;
 }
 function gatherTick(s) {
   s.moving = false; const [x, y] = (s.gatherAt || '').split(',').map(Number), st = s.gatherAt ? nodeState(x, y) : null, K = NODE[s.gatherK || 'tree'];
@@ -1344,10 +1354,11 @@ function gatherTick(s) {
   if (s.stateTicks > 0) return;
   const n = treeNode(x, y); n.left--; if (n.left <= 0) { n.regrow = nowH() + K.regrow; n.mark = false; } S.nodeVer = (S.nodeVer || 0) + 1;
   const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' || s.job === 'Mechanic' ? 1 : 0) : (s.job === 'Scavenger' || s.job === 'Mechanic' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
-  s.carriedLoot = K.res; s.carryAmt = K.amt + bonus; s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
+  if (s.gatherK === 'wreck' && rnd() < .22) { S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
+  s.carriedLoot = K.res; s.carryAmt = K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus; s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
   const jb = jobFor(K.res); s.gjob = null;
   if (jb) { jb.j.inb[K.res] = (jb.j.inb[K.res] || 0) + s.carryAmt; s.gjob = jb.j.id; s.dest = jobPt(jb); s.why = `Bringing ${RES_ICON[K.res]} to the ${jobName(jb)}`; }
-  else { s.dest = depotPt(s); s.why = { wood: 'Carrying logs home', stone: 'Carrying stone home', mat: 'Carrying scrap home' }[K.res]; }
+  else { s.dest = depotPt(s); s.why = { wood: 'Carrying logs home', stone: 'Carrying stone home', mat: 'Carrying scrap home', cloth: 'Bringing cloth home' }[K.res]; }
   s.mode = 'walk'; s.purpose = 'gath-back'; s.path = null; s.stateTicks = 2400;
 }
 function depotPt(s) {   // the HQ or the nearest storage
@@ -1358,13 +1369,13 @@ function dropWood(s) {   // (name kept) drop whatever the survivor carries: into
   const n = s.carryAmt || 0, r = s.carriedLoot; s.carriedLoot = null; s.carryAmt = 0; if (!n || !RES_ICON[r]) { s.gjob = null; return; }
   let left = n; const jb = s.gjob != null ? jobById(s.gjob) : null; s.gjob = null;
   if (jb) { const j = jb.j; j.inb[r] = Math.max(0, (j.inb[r] || 0) - n); const add = Math.max(0, Math.min(left, (j.need[r] || 0) - (j.got[r] || 0))); j.got[r] = (j.got[r] || 0) + add; left -= add; if (add) jobDelivered(jb, r, add, s); }
-  if (left > 0) { const got = Math.max(0, Math.min(left, resCap(r) - (S[r] || 0))); S[r] = (S[r] || 0) + got; flow(r, { wood: 'Chopped trees', stone: 'Mined rocks', mat: 'Salvaged wrecks' }[r], got);
+  if (left > 0) { const got = Math.max(0, Math.min(left, resCap(r) - (S[r] || 0))); S[r] = (S[r] || 0) + got; flow(r, { wood: 'Chopped trees', stone: 'Mined rocks', mat: 'Salvaged wrecks', cloth: 'Clothes bins' }[r] || 'Gathered', got);
     floats.push({ w: { ...s.w }, t: got ? '+' + got + ' ' + RES_ICON[r] : RES_TITLE[r] + ' full', col: '#e8b878', a: 80, big: true }); if (got) SFX('reward'); }
   ui();
 }
 function tapTree(x, y) {   // tap a node: mark / unmark it
-  const k = nodeKindAt(x, y), st = nodeState(x, y); if (!k || !st) return false; const K = NODE[k], nm = { tree: 'Tree', rock: 'Rock', wreck: 'Wreck' }[k];
-  if (st === 'empty') { const n = treeNode(x, y); say(`${k === 'tree' ? 'Stump' : k === 'rock' ? 'Broken rock' : 'Stripped wreck'}: back in about ${Math.max(1, Math.ceil(n.regrow - nowH()))} h.`, true); return true; }
+  const k = nodeKindAt(x, y), st = nodeState(x, y); if (!k || !st) return false; const K = NODE[k], nm = { tree: 'Tree', rock: 'Rock', wreck: 'Wreck', bin: 'Clothes bin' }[k];
+  if (st === 'empty') { const n = treeNode(x, y); say(`${k === 'tree' ? 'Stump' : k === 'rock' ? 'Broken rock' : k === 'bin' ? 'Empty bin' : 'Stripped wreck'}: back in about ${Math.max(1, Math.ceil(n.regrow - nowH()))} h.`, true); return true; }
   const n = treeNode(x, y); n.mark = !n.mark; S.nodeVer = (S.nodeVer || 0) + 1;
   say(n.mark ? `${nm} marked: a free survivor will ${K.verb} it next (${n.left} left, ${K.amt} ${RES_NAME[K.res]} each).` : 'Mark removed.', true); saveGame(); return true;
 }
@@ -1746,7 +1757,7 @@ function finishFacility(s) {
   if (r.need === 'thirst') { if (S.water >= .5) s.thirst = Math.max(0, s.thirst - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1)); else floats.push({ w: { ...s.w }, t: 'No 💧', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'hunger' && rnd() < .6) emote(s, '😋', 80); if (r.need === 'thirst' && rnd() < .5) emote(s, '😌', 80); if (r.need === 'fatigue' && rnd() < .4) emote(s, '🥱', 70);
   if (r.need === 'fatigue') { s.fatigue = Math.max(0, s.fatigue - r.benefit); if (b && isT(b, 'house') && b.owner === s.id) { s.fatigue = Math.max(0, s.fatigue - r.benefit * .5); s.sat = Math.min(100, (s.sat || 0) + 2); } }   /* own home: rests 50% better, +2 ♥ */
-  if (r.need === 'injury') { s.hp = Math.min(s.max, s.hp + r.benefit); }   // no medicine stock: care is limited by the building's tier, beds and the time it takes
+  if (r.need === 'injury') { const med = (S.meds || 0) >= .25; if (med) { S.meds -= .25; flow('meds', 'Treatment', -.25); } s.hp = Math.min(s.max, s.hp + r.benefit * (med ? 1.6 : 1)); if (med && rnd() < .3) floats.push({ w: { ...s.w }, t: '💊', col: '#ff9fbd', a: 60 }); }   /* V3D.25: medicine in stock heals 60% more */   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (isT(b, 'armory')) { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' scrap).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
   if (r.need === 'train') {   /* each visit fills a stat's training bar; 100 = +1 permanent point */
     if (isT(b, 'library')) S.rp = (S.rp || 0) + 1;   /* V2.18: study sessions feed the research effort */
@@ -1852,7 +1863,7 @@ function ai(s) {
     }
     if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { s.ammo = weaponOf(s).mag; emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
     if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
-      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { S.mat += 15; S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; if (rnd() < pd[0]) { if (COZY_HUD) dropBag(z.w, pd[1], s); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
+      if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { { const pool = ['katana', 'kevlar', 'shotgun', 'rifle', 'military', 'riot', 'crossbow', 'dogtags'], it = pool[Math.floor(rnd() * pool.length)]; if (COZY_HUD) dropBag(z.w, 15, s, { meds: 2, fuel: 2, cloth: 2, ...(rnd() < .7 ? { item: it } : {}) }, 'epic'); else S.mat += 15; } S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; const zx = {}; for (const [ch, k, n] of ZDROP[z.type] || []) if (rnd() < ch) zx[k] = (zx[k] || 0) + n; if (rnd() < pd[0] || Object.keys(zx).length) { if (COZY_HUD) dropBag(z.w, rnd() < pd[0] ? pd[1] : 0, s, Object.keys(zx).length ? zx : null); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }
     if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) { s.mode = 'chase'; s.stateTicks = Math.round(32 * (weaponOf(s).rate || 1)); } } return;
@@ -1868,7 +1879,7 @@ function ai(s) {
     if (s.purpose === 'post' && (r === 'arrived' || dist(s.w, s.dest || s.w) < .5)) { s.mode = 'wait'; s.purpose = 'post-hold'; s.stateTicks = 360; s.dest = null; s.path = null; s.idleBubble = '🛡️'; const gp = myPost(s); s.why = gp ? `On guard at the ${postName(gp)}` : 'On guard'; return; }
     if (s.purpose === 'scav-out' && r === 'arrived') { s.mode = 'wait'; s.stateTicks = 160; s.purpose = 'scav-search'; s.why = 'Searching for supplies'; s.dest = null; s.path = null; return; }
     if (s.purpose === 'scav-back' && r === 'arrived') { lootFind(s); gainXp(s, 2); ui(); }
-    if (s.purpose === 'gath-out') { if (r === 'arrived' || dist(s.w, s.dest || s.w) < .35) { s.mode = 'gather'; s.purpose = null; s.dest = null; s.path = null; const K = NODE[s.gatherK || 'tree']; s.activity = K.act; s.stateTicks = Math.round(K.ticks / TUNE.work); s.why = { tree: 'Chopping a tree', rock: 'Breaking a rock', wreck: 'Stripping a wreck for scrap' }[s.gatherK || 'tree']; return; } if (r === 'fail') s.gatherAt = null; }
+    if (s.purpose === 'gath-out') { if (r === 'arrived' || dist(s.w, s.dest || s.w) < .35) { s.mode = 'gather'; s.purpose = null; s.dest = null; s.path = null; const K = NODE[s.gatherK || 'tree']; s.activity = K.act; s.stateTicks = Math.round(K.ticks / TUNE.work); s.why = { tree: 'Chopping a tree', rock: 'Breaking a rock', wreck: 'Stripping a wreck for scrap', bin: 'Rummaging through a clothes bin' }[s.gatherK || 'tree']; return; } if (r === 'fail') s.gatherAt = null; }
     if (s.purpose === 'gath-back' && (r === 'arrived' || r === 'fail' || s.stateTicks <= 0)) { dropWood(s); s.purpose = null; }
     if (s.purpose === 'haul-get' && (r === 'arrived' || r === 'fail' || s.stateTicks <= 0)) { const x = s.haul && jobById(s.haul.id); if (!x) { cancelHaul(s); s.purpose = null; } else { s.carriedLoot = s.haul.r; s.carryAmt = s.haul.n; s.purpose = 'haul-put'; s.dest = jobPt(x); s.path = null; s.stateTicks = 2400; s.mode = 'walk'; s.why = `Bringing ${RES_ICON[s.haul.r]} to the ${jobName(x)}`; return; } }
     if (s.purpose === 'haul-put' && (r === 'arrived' || r === 'fail' || s.stateTicks <= 0)) { const h = s.haul, x = h && jobById(h.id); s.haul = null; s.carriedLoot = null; s.carryAmt = 0; s.purpose = null;
@@ -1923,7 +1934,7 @@ const STARTS = {
 };
 const ST = () => STARTS[S.start] || STARTS.camp;
 function applyStart(key) {   /* builds the opening town for a starting condition */
-  const st = STARTS[key] || STARTS.camp; S.start = STARTS[key] ? key : 'camp'; S.food = st.food; S.water = st.water; S.mat = st.mat; S.wood = st.wood ?? 12; S.stone = 0; S.nodes = {}; S.nodeVer = 0; S.jobSeq = 0; world.buildings = [];
+  const st = STARTS[key] || STARTS.camp; S.start = STARTS[key] ? key : 'camp'; S.food = st.food; S.water = st.water; S.mat = st.mat; S.wood = st.wood ?? 12; S.stone = 0; S.cloth = st.cloth ?? 3; S.meds = st.meds ?? 1; S.fuel = 0; S.nodes = {}; S.nodeVer = 0; S.jobSeq = 0; world.buildings = [];
   for (const [type, x, y] of st.b) { const d = DEFS[type]; if (!d) continue; const chk = Wd.placementCheck(world, x, y, d, null); if (chk.ok) world.buildings.push({ type, x, y, w: d.w, h: d.h, q: d.q, a: d.a }); }
   Wd.bump(world); S.sv = st.sv.map(([n, job, l, tr, x, y], i) => { const q = mk(n, job, l, x ?? 5 + 2 * (i % 3), y ?? 10 + (i % 2) * 2, i); q.trait = tr; q.max = baseMax(q); q.hp = q.max; return q; });
 }
@@ -2217,7 +2228,7 @@ const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
   const order = ['water', 'well', 'farm', 'field', 'medic', 'clinic', 'hospital', 'scrapyard', 'canteen', 'house'];
   const list = [...world.buildings].sort((a, b) => ((order.indexOf(a.type) + 1) || 99) - ((order.indexOf(b.type) + 1) || 99));
-  let paid = 0, unpaid = 0; for (const b of list) { const c = upkeepOf(b); if (S.mat >= c) { S.mat -= c; paid += c; b.unpaid = false; } else { b.unpaid = true; unpaid++; } } flow('mat', 'Upkeep', -paid);
+  let paid = 0, unpaid = 0, pw = 0; for (const b of list) { const c = upkeepOf(b), w = Math.min(c / 2, S.wood || 0), m = c - w; if (S.mat >= m) { S.mat -= m; S.wood = (S.wood || 0) - w; paid += m; pw += w; b.unpaid = false; } else if ((S.wood || 0) >= c) { S.wood -= c; pw += c; b.unpaid = false; } else { b.unpaid = true; unpaid++; } } flow('mat', 'Upkeep', -paid); flow('wood', 'Upkeep', -pw);   /* V3D.25: upkeep is half wood, half scrap (either covers the other) */
   if (unpaid) { note('important', `⚠ ${unpaid} BUILDING${unpaid > 1 ? 'S' : ''} UNPAID — HALF OUTPUT`, { log: `Not enough scrap for upkeep: ${unpaid} building${unpaid > 1 ? 's run' : ' runs'} at half output tomorrow. Build a Scrapyard or scavenge for scrap.` }); }
   return { paid, unpaid };
 }
@@ -2246,7 +2257,7 @@ const RESEARCH = {
   salvage: { name: 'Salvage Methods', rp: 25, mat: 6, desc: 'Scrapyards make 25% more scrap' },
   walls: { name: 'Reinforced Walls', rp: 30, mat: 10, desc: 'New and repaired walls get 30% more HP' },
   stockpile: { name: 'Bigger Stockpiles', rp: 40, mat: 12, desc: '+30 supply cap' },
-  medicine: { name: 'Field Medicine', rp: 25, mat: 6, desc: 'Bandages cost 1 scrap and last longer' },
+  medicine: { name: 'Field Medicine', rp: 25, mat: 6, desc: 'Scrap bandages cost less, and every bandage lasts longer' },
   blades: { name: 'Bladesmithing', rp: 20, mat: 5, desc: 'Craft Machete and Fire Axe' },
   firearms: { name: 'Firearms', rp: 40, mat: 12, need: 'blades', desc: 'Craft Pistol and Hunting Rifle' },
   bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft Riot Vest and Scrap Plate' },
@@ -2304,14 +2315,14 @@ function hourlyProduction() {   // runs every game hour
   S.produced += fi + wi; dayLog.foodIn += fi; dayLog.waterIn += wi;
 }
 /* ---------------- V2.35 economy: expected daily rates from the same formulas as the simulation + an hourly ledger of what really happened ---------------- */
-const RES_TITLE = { food: 'Food', water: 'Water', mat: 'Scrap', wood: 'Wood', stone: 'Stone' };
+const RES_TITLE = { food: 'Food', water: 'Water', mat: 'Scrap', wood: 'Wood', stone: 'Stone', cloth: 'Cloth', meds: 'Medicine', fuel: 'Fuel' };
 const ECO = { start: null, cur: null, hist: [] };   // hist: last 24 game hours of { res: { category: amount } } (not saved: rebuilt after a load)
-function flow(res, cat, amt) { if (!ECO.cur) ecoHour(); const r = ECO.cur[res]; r[cat] = (r[cat] || 0) + amt; }
+function flow(res, cat, amt) { if (!ECO.cur) ecoHour(); const r = ECO.cur[res] ||= {}; r[cat] = (r[cat] || 0) + amt; }
 function ecoHour() {   // close the hour: what is not explained by a recorded flow goes to "Other" (kills, story events, trader, purchases...)
   if (ECO.cur && ECO.start) { for (const k of ['food', 'water', 'mat']) { const rec = Object.values(ECO.cur[k]).reduce((a, v) => a + v, 0), res = (S[k] - ECO.start[k]) - rec; if (Math.abs(res) > .005) ECO.cur[k][res > 0 ? 'Other income' : 'Other spending'] = res; } ECO.hist.push(ECO.cur); if (ECO.hist.length > 24) ECO.hist.shift(); }
   ECO.cur = { food: {}, water: {}, mat: {}, wood: {}, stone: {} }; ECO.start = { food: S.food, water: S.water, mat: S.mat, wood: S.wood || 0, stone: S.stone || 0 };
 }
-function ecoLast24(res) { const out = {}; for (const h of ECO.hist) for (const [k, v] of Object.entries(h[res])) out[k] = (out[k] || 0) + v; return { hours: ECO.hist.length, by: out }; }
+function ecoLast24(res) { const out = {}; for (const h of ECO.hist) for (const [k, v] of Object.entries(h[res] || {})) out[k] = (out[k] || 0) + v; return { hours: ECO.hist.length, by: out }; }
 const workShare = (b) => { if (!b.staff) return 0; const h = b.wh || []; return h.length >= 4 ? h.reduce((a, v) => a + v, 0) / h.length : .5; };   // measured; .5 until there are a few hours of history
 function expectedMult(b) { const sh = workShare(b); return prodMult(b, false) * (1 - sh) + prodMult(b, true) * sh; }
 function econ() {   // expected per-day flows for food, water and scrap, with the buildings behind them
@@ -2502,14 +2513,14 @@ function drawPet(s, pp) {
 /* wandering trader */
 const TRADER_TINT = (r, g, b) => (r > 190 && g > 165 && b > 120 && r - b < 110 ? [Math.round(r * .25), Math.round(g * .62), Math.round(b * .58)] : [r, g, b]);   // teal coat
 const TRADES = [{ give: { food: 6 }, get: { mat: 4 } }, { give: { water: 6 }, get: { mat: 4 } }, { give: { mat: 5 }, get: { food: 6 } }, { give: { mat: 5 }, get: { water: 6 } }];
-const RES_NAME = { food: 'food', water: 'water', mat: 'scrap', wood: 'wood', stone: 'stone' };
+const RES_NAME = { food: 'food', water: 'water', mat: 'scrap', wood: 'wood', stone: 'stone', cloth: 'cloth', meds: 'medicine', fuel: 'fuel' };
 function traderDisc() { const c = Math.max(5, ...S.sv.filter((q) => q.hp > 0 && q.mode !== 'away').map((q) => stat(q, 'cha'))); return Math.min(.3, Math.max(0, (c - 5) * .02)); }
 const priced = (cost) => Object.fromEntries(Object.entries(cost).map(([k, v]) => [k, Math.max(1, Math.ceil(v * (1 - traderDisc())))]));
 const costText = (c) => Object.entries(c).map(([k, v]) => v + ' ' + RES_NAME[k]).join(' + ');
 const canPay = (c) => Object.entries(c).every(([k, v]) => (S[k] || 0) >= v);
 /* V3D.22 resources: costs are objects { wood, mat (= scrap), ... } */
-const RES_ICON = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨' };
-const bCost = (d) => { const c = {}; if (d.wood) c.wood = d.wood; if (d.stone) c.stone = d.stone; if (d.mat) c.mat = d.mat; return c; };
+const RES_ICON = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', cloth: '🧵', meds: '💊', fuel: '⛽' };
+const bCost = (d) => { const c = {}; for (const k of ['wood', 'stone', 'mat', 'cloth', 'meds', 'fuel']) if (d[k]) c[k] = d[k]; return c; };
 const payCost = (c) => { for (const [k, v] of Object.entries(c)) S[k] = (S[k] || 0) - v; };
 const refundCost = (c, f) => { for (const [k, v] of Object.entries(c)) S[k] = (S[k] || 0) + Math.floor(v * f); };
 const costShort = (c) => Object.entries(c).map(([k, v]) => (RES_ICON[k] || '') + ' ' + v).join('  ') || 'free';
@@ -2857,7 +2868,7 @@ let advShown = null;
 function advisorTips() {
   const T = [], E = econ(), add = (key, pri, icon, text, act) => T.push({ key, pri, icon, text, act });
   for (const k of ['food', 'water']) { const e = E[k]; if (e.net < -1e-6 && e.days < 3) add('short' + k, 90 - e.days * 10, k === 'food' ? '🍖' : '💧', `${RES_TITLE[k]} runs out in about ${e.days < 1 ? Math.max(1, Math.round(e.days * 24)) + ' h' : e.days.toFixed(1) + ' days'}`, () => showResource(k)); }
-  const up = upkeepTotal(); if (S.mat < up) add('upkeep', 70, '⚙', `Not enough scrap for tonight's upkeep (${f1(up)})`, () => showResource('mat'));
+  const up = upkeepTotal(); if (S.mat + (S.wood || 0) < up) add('upkeep', 70, '⚙', `Not enough wood and scrap for tonight's upkeep (${f1(up)})`, () => showResource('mat'));
   for (const b of world.buildings) { const d = DEFS[b.type]; if (!d.slot || b.staff || !FAMRES(d.fam)) continue; const free = S.sv.find((q) => (STAFF_JOBS[d.fam] || []).includes(q.job) && !q.post && q.hp > 0); add('staff' + b.x + ',' + b.y, 60, '👷', free ? `${d.name} has no worker: ${free.name} could take it` : `${d.name} has no ${(STAFF_JOBS[d.fam] || []).join(' or ')}: change someone's profession`, () => showBuildingInfo(b)); }
   if (S.rankReady || (rankConds() && rankConds().every((r) => r.ok))) add('rank', 85, '⭐', 'The Haven can be upgraded to the next star', () => showUpgrade('rank'));
   if (world.walls.size >= 8 && !Wd.perimeter(world).sealed) { const g = findGaps(4).length; if (g) add('gaps', 45, '🧱', `Your wall ring has ${g} gap${g > 1 ? 's' : ''}`, () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); showObjMarks(findGaps()); }); }
@@ -2957,7 +2968,7 @@ function newcomer(job, lvl) { if (popNow() >= popCap()) return null; const name 
 const ERRANDS = {
   scout: { out: 'edge', hours: 44, why: 'Scouting the radio signal', done(e, ms) { const sc = ms[0]; if (!sc) return; if (e.trap) { sc.hp = Math.max(1, Math.round(sc.max * .35)); showEventPopup({ stage: { scene: 'sad', head: 'An ambush', icon: '📻', hero: sc }, short: `It was a trap. ${sc.name} made it back, badly hurt.` }); return; } STORY.radio2.run(sc); } },
   kid: { out: 'edge', hours: 5, why: 'Searching for a lost child', done(e, ms) { if (ms.length && rnd() < .8 && popNow() < popCap()) { S.kids = S.kids || []; const name = KID_NAMES.find((n) => !S.sv.some((q) => q.name.split(' ')[0] === n) && !S.kids.some((k) => k.name === n)) || 'Kid'; S.kids.push({ name, age: 2, parents: [], st: Object.fromEntries(STATS.map((k) => [k, 4 + Math.floor(rnd() * 3)])) }); renownGain(8, 'A child saved'); showEventPopup({ stage: { scene: 'party', head: 'Safe!', icon: '🧒', badge: name, hero: ms[0], crowd: ms.slice(1) }, short: `${name} is safe and will grow up in the Haven.`, chips: ['+8 Renown'] }); } else { const s = ms.find(isFighter) || ms[0]; if (s) s.hp = Math.max(1, Math.round(s.max * .5)); showEventPopup({ stage: { scene: 'sad', head: 'Too late', icon: '🧒', hero: s || S.sv[0] }, short: 'They searched until dark and found nothing.' }); } } },
-  drop: { out: 'crate', grab: 300, why: 'Fetching the supply crate', done(e, ms) { const c = (S.crates || []).find((x) => x.id === e.data.crate); S.crates = (S.crates || []).filter((x) => x !== c); if (!ms.length || !c) { banner('📦 The crate was lost'); return; } const k = c.k, n = c.n; S[k] += n; ui(); SFX('reward'); showEventPopup({ stage: { scene: 'party', head: 'Got it!', icon: k === 'mat' ? '⚙️' : k === 'food' ? '🍖' : '💧', badge: '+' + n, hero: ms[0], crowd: ms.slice(1) }, short: `${ms.map((q) => q.name).join(' and ')} brought the crate home.` }); } },
+  drop: { out: 'crate', grab: 300, why: 'Fetching the supply crate', done(e, ms) { const c = (S.crates || []).find((x) => x.id === e.data.crate); S.crates = (S.crates || []).filter((x) => x !== c); if (!ms.length || !c) { banner('📦 The crate was lost'); return; } const k = c.k, n = c.n; if (c.loot) { addLoot(c.loot, 'Supply drop'); (c.items || []).forEach((id) => stashAdd(id)); } else S[k] += n; ui(); SFX('reward'); if (c.loot && COZY_HUD && !window.ZH_NO_REVEAL) { lootReveal({ title: 'SUPPLY CRATE', sub: `${ms.map((q) => q.name).join(' and ')} brought it home · ${RARITY[c.rar].n} crate`, entries: lootEntries(c.loot, c.items) }); return; } showEventPopup({ stage: { scene: 'party', head: 'Got it!', icon: k === 'mat' ? '⚙️' : k === 'food' ? '🍖' : '💧', badge: '+' + n, hero: ms[0], crowd: ms.slice(1) }, short: `${ms.map((q) => q.name).join(' and ')} brought the crate home.` }); } },
 };
 const errandOk = (q) => q.hp > q.max * .6 && !['down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover'].includes(q.mode) && !q.carrying && !q.errand;
 function errandTeam(kind, n) {   /* who goes: scouts and fighters first, healthiest first; never the last people at home */
@@ -2967,7 +2978,10 @@ function errandTeam(kind, n) {   /* who goes: scouts and fighters first, healthi
 function dropCrate() {   /* the crate lands outside the walls, inside the map */
   const a = spawnPoint(), cx = (Wd.BUILD.x0 + Wd.BUILD.x1) / 2, cy = (Wd.BUILD.y0 + Wd.BUILD.y1) / 2; let x = a[0], y = a[1];
   for (let i = 0; i < 6; i++) { const nx = Math.round(x + Math.sign(cx - x)), ny = Math.round(y + Math.sign(cy - y)); if (Wd.inWallZone && Wd.inWallZone(nx, ny)) break; if (!Wd.walkable(world, nx, ny)) break; x = nx; y = ny; }
-  const k = ['food', 'water', 'mat'][Math.floor(rnd() * 3)], c = { id: 'c' + tick, w: tc(x, y), t0: tick, k, n: 8 + Math.floor(rnd() * 5), until: tick + 9000 }; (S.crates ||= []).push(c); SFX('event'); return c;
+  const k = ['food', 'water', 'mat'][Math.floor(rnd() * 3)], r = rnd(), rar = r < .55 ? 'common' : r < .83 ? 'uncommon' : r < .96 ? 'rare' : 'epic';   /* V3D.25: crates come in rarities */
+  const loot = { [k]: 8 + Math.floor(rnd() * 5) }; if (rar !== 'common') { loot.wood = 6 + Math.floor(rnd() * 5); loot.cloth = 1 + Math.floor(rnd() * 2); } if (rar === 'rare' || rar === 'epic') { loot.meds = 1 + Math.floor(rnd() * 2); loot.fuel = 1 + Math.floor(rnd() * 2); }
+  const items = rar === 'epic' ? [['kevlar', 'rifle', 'crossbow', 'katana', 'riot'][Math.floor(rnd() * 5)]] : [];
+  const c = { id: 'c' + tick, w: tc(x, y), t0: tick, k, n: loot[k], loot, items, rar, until: tick + 9000 }; (S.crates ||= []).push(c); SFX('event'); return c;
 }
 function homeSpot() { const cx = Math.round((Wd.BUILD.x0 + Wd.BUILD.x1) / 2), cy = Math.round((Wd.BUILD.y0 + Wd.BUILD.y1) / 2), g = Wd.nearestWalkable(world, cx, cy) || { x: cx, y: cy }; return tc(g.x, g.y); }
 function startErrand(kind, ms, data = {}) {
@@ -3158,7 +3172,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
 let upTab = 'rank';
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
-  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) rr.textContent = ['cloth', 'meds', 'fuel'].map((k) => Math.floor(S[k] || 0)).join('·'); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   if (COZY_HUD) { const mb = $('mExp'); if (mb) { leadsTidy(); const n = (S.leads || []).length; mb.classList.toggle('dim', !n && !S.trip); mb.dataset.badge = !S.trip && n ? n : ''; } }
   $('clock').textContent = COZY_HUD ? `${S.weather ? WX_ICON[S.weather.kind] || "🌧" : seasonOf().icon} DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00` : `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
@@ -3242,12 +3256,67 @@ function applySave(raw, legacy, prev) {
   } catch (e) { console.warn('load failed', e); return false; }
 }
 
+/* ---------------- V3D.25 loot rarity, the crate-style loot reveal, and the Stash ---------------- */
+const RARITY = { common: { n: 'Common', c: '#c9b8a4', o: 0 }, uncommon: { n: 'Uncommon', c: '#7cc95a', o: 1 }, rare: { n: 'Rare', c: '#5aa8f0', o: 2 }, epic: { n: 'Epic', c: '#b072f0', o: 3 } };
+const RES_RAR = { food: 'common', water: 'common', wood: 'common', stone: 'common', mat: 'common', cloth: 'uncommon', meds: 'rare', fuel: 'rare' };
+const itemRar = (id) => { const c = (ITEMS[id] && ITEMS[id].cost) || 1; return c >= 13 ? 'epic' : c >= 9 ? 'rare' : c >= 5 ? 'uncommon' : 'common'; };
+function lootEntries(loot, items) {   // resources + items, rarest last so the reveal builds up
+  const e = Object.entries(loot || {}).filter(([, v]) => v > 0).map(([k, v]) => ({ icon: RES_ICON[k] || '•', name: RES_TITLE[k] || k, n: Math.round(v), rar: RES_RAR[k] || 'common' }));
+  for (const id of items || []) if (ITEMS[id]) e.push({ item: id, name: ITEMS[id].name, n: 1, rar: itemRar(id) });
+  return e.sort((a, b) => RARITY[a.rar].o - RARITY[b.rar].o);
+}
+function addLoot(loot, why) {   // into the stockpile, within caps
+  for (const [k, v] of Object.entries(loot || {})) { if (!v) continue; const cap = k === 'food' || k === 'water' ? supplyCap() : resCap(k); const got = Math.max(0, Math.min(v, cap - (S[k] || 0))); S[k] = (S[k] || 0) + got; if (ECO.cur && ECO.cur[k]) flow(k, why, got); }
+}
+let revealCss = false;
+function lootReveal(o) {   // { title, sub, entries, note, best }: cards flip in one at a time; rare ones shine
+  if (!revealCss) { revealCss = true; const st = document.createElement('style'); st.textContent = `
+#lootRev{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(30,20,12,.55);animation:lrFade .25s}
+#lootRev .lrBox{width:min(92vw,420px);max-height:86vh;overflow:auto;background:#fff8ec;border:3px solid #5a3f31;border-radius:22px;padding:14px 14px 12px;box-shadow:0 8px 0 rgba(0,0,0,.25);text-align:center;font-family:Fredoka,Nunito,sans-serif;color:#5a3f31}
+#lootRev h3{margin:2px 0 0;font-family:'Lilita One',Fredoka,sans-serif;font-size:24px;letter-spacing:.5px}
+#lootRev .lrSub{font-size:13px;opacity:.75;margin-bottom:8px}
+#lootRev .lrGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;perspective:600px}
+#lootRev .lrCard{position:relative;border:3px solid var(--rc);border-radius:14px;background:#fff;padding:8px 4px 6px;opacity:0;transform:rotateY(90deg) scale(.6);animation:lrFlip .45s cubic-bezier(.2,1.5,.4,1) forwards;overflow:hidden;box-shadow:0 0 0 0 var(--rc)}
+#lootRev .lrCard .ic{font-size:30px;line-height:38px;height:40px;display:flex;align-items:center;justify-content:center}
+#lootRev .lrCard .nm{font-size:12px;font-weight:600;line-height:1.1;min-height:26px}
+#lootRev .lrCard .n{font-size:18px;font-weight:700}
+#lootRev .lrCard .rr{font-size:10px;font-weight:700;color:var(--rc);text-transform:uppercase;letter-spacing:.6px}
+#lootRev .lrCard.r2,#lootRev .lrCard.r3{animation:lrFlip .5s cubic-bezier(.2,1.5,.4,1) forwards,lrGlow 1.6s ease-in-out infinite alternate}
+#lootRev .lrCard.r2::after,#lootRev .lrCard.r3::after{content:'';position:absolute;top:-30%;left:-60%;width:40%;height:160%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);transform:rotate(18deg);animation:lrShine 2.2s ease-in-out infinite;animation-delay:inherit}
+#lootRev .lrNote{text-align:left;font-size:12.5px;margin:10px 2px 6px;max-height:120px;overflow:auto;opacity:.85}
+#lootRev button{margin-top:8px;font:inherit;font-size:18px;font-weight:700;padding:8px 28px;border-radius:99px;border:3px solid #5a3f31;background:#8fc46a;color:#fff;box-shadow:0 4px 0 #5a3f31}
+@keyframes lrFlip{to{opacity:1;transform:none}}
+@keyframes lrGlow{from{box-shadow:0 0 0 0 var(--rc)}to{box-shadow:0 0 14px 3px var(--rc)}}
+@keyframes lrShine{0%{left:-60%}60%,100%{left:130%}}
+@keyframes lrFade{from{opacity:0}}`; document.head.appendChild(st); }
+  const old = document.getElementById('lootRev'); if (old) old.remove();
+  const el = document.createElement('div'); el.id = 'lootRev'; const E = o.entries || [], step = Math.max(.12, Math.min(.32, 2.4 / Math.max(1, E.length)));
+  const best = E.reduce((a, e) => Math.max(a, RARITY[e.rar].o), 0);
+  el.innerHTML = `<div class="lrBox"><h3>${esc(o.title || 'LOOT')}</h3><div class="lrSub">${o.sub || ''}${E.length ? ` · best find: <b style="color:${Object.values(RARITY)[best].c}">${Object.values(RARITY)[best].n}</b>` : ''}</div>`
+    + (E.length ? `<div class="lrGrid">${E.map((e, i) => `<div class="lrCard r${RARITY[e.rar].o}" style="--rc:${RARITY[e.rar].c};animation-delay:${(i * step).toFixed(2)}s${RARITY[e.rar].o >= 2 ? `,${(i * step).toFixed(2)}s` : ''}"><div class="ic">${e.item ? itemIcon(e.item) : e.icon}</div><div class="n">${e.item ? '' : '+' + e.n}</div><div class="nm">${esc(e.name)}</div><div class="rr">${RARITY[e.rar].n}</div></div>`).join('')}</div>` : '<div class="lrSub">Nothing found this time.</div>')
+    + (o.note ? `<div class="lrNote">${o.note}</div>` : '') + `<button id="lrOk">Collect</button></div>`;
+  document.body.appendChild(el); if (window.ZHIcons) ZHIcons.swap(el);
+  E.forEach((e, i) => setTimeout(() => SFX(RARITY[e.rar].o >= 2 ? 'chime' : 'coin'), (i * step + .2) * 1000));
+  el.querySelector('#lrOk').onclick = () => { el.remove(); SFX('reward'); if (o.onClose) o.onClose(); };
+}
+function showStash() {   /* every resource, how much room there is, and where more comes from */
+  endBuildMode(true); closeP(); $('it').textContent = 'STASH';
+  const WHERE = { food: 'Garden Plots, farms; Abandoned Houses trips', water: 'Rain Barrels and Collectors, wells', wood: 'chopping trees, a Lumber Camp; Lumber Yard trips', stone: 'breaking rocks, a Quarry; Old Quarry trips',
+    mat: 'salvaging wrecks, the Scrapyard, zombie bags; Warehouse trips', cloth: 'clothes bins past the walls; Abandoned Houses trips; some zombies', meds: 'Pharmacy trips, bloated and spitter zombies, supply drops', fuel: 'Gas Station trips, siphoning wrecks, raiders, supply drops' };
+  const row = (k) => { const cap = k === 'food' || k === 'water' ? supplyCap() : k === 'mat' ? 0 : resCap(k), v = Math.floor(S[k] || 0); return `<div class="card" style="padding:7px 10px"><div class="row" style="gap:8px"><span style="font-size:22px">${RES_ICON[k]}</span><span class="sp"><b>${RES_TITLE[k]}</b> <small style="color:${RARITY[RES_RAR[k]].c};font-weight:700">${RARITY[RES_RAR[k]].n}</small><br><small>${WHERE[k]}</small></span><b>${v}${cap ? ' / ' + cap : ''}</b></div></div>`; };
+  const inv = Object.entries(S.inv || {}).filter(([id, n]) => n > 0 && ITEMS[id]);
+  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Storage buildings (Supply Crates → Storehouse → Warehouse) hold more of everything.</div>` + ['food', 'water', 'wood', 'stone', 'mat', 'cloth', 'meds', 'fuel'].map(row).join('')
+    + `<div class="card"><b>Gear in the stash</b>${inv.length ? inv.map(([id, n]) => `<div class="row" style="gap:6px"><span class="sp">${esc(ITEMS[id].name)}${n > 1 ? ' ×' + n : ''}</span><small style="color:${RARITY[itemRar(id)].c};font-weight:700">${RARITY[itemRar(id)].n}</small></div>`).join('') : '<div class="sm">Nothing spare.</div>'}</div>`;
+  showPanel('Stash');
+}
 /* ---------------- expeditions (V2.8): a squad leaves the map for a timed trip in real time ---------------- */
 // Trips run on the real clock (Date.now), so they keep going while the game is closed; the town itself pauses while closed.
 const EXP_DEFS = {
-  houses:    { name: 'Abandoned Houses',   icon: '🏚️', desc: 'Food and water from empty homes.',          risks: ['low'],             lock: () => '', loot: { food: [1, 2], water: [1, 2] }, lines: ['The squad searches a row of empty houses.', 'They check cellars and cupboards.', 'A quiet street, a few useful cans.'] },
-  pharmacy:  { name: 'Pharmacy and Clinic', icon: '🏥', desc: 'A few scrap, and a chance to find survivors.', risks: ['low', 'medium'], lock: () => (world.walls.size ? '' : 'Build a wall first'), loot: { mat: [1, 2] }, recruit: { low: .3, medium: .55 }, lines: ['The squad forces the pharmacy shutters.', 'Shelves are mostly bare, but the back room is intact.', 'They hear someone calling from the clinic.'] },
+  houses:    { name: 'Abandoned Houses',   icon: '🏚️', desc: 'Food, water and cloth from empty homes.',          risks: ['low'],             lock: () => '', loot: { food: [1, 2], water: [1, 2], cloth: [1, 2] }, lines: ['The squad searches a row of empty houses.', 'They check cellars and cupboards.', 'A quiet street, a few useful cans.'] },
+  pharmacy:  { name: 'Pharmacy and Clinic', icon: '🏥', desc: 'Medicine, a little scrap, and a chance to find survivors.', risks: ['low', 'medium'], lock: () => (world.walls.size ? '' : 'Build a wall first'), loot: { meds: [1, 2], mat: [1, 2] }, recruit: { low: .3, medium: .55 }, lines: ['The squad forces the pharmacy shutters.', 'Shelves are mostly bare, but the back room is intact.', 'They hear someone calling from the clinic.'] },
   lumberyard: { name: 'Lumber Yard', icon: '🪵', desc: 'Stacks of cut timber: wood, and lots of it.', risks: ['low', 'medium'], lock: () => '', loot: { wood: [3, 5] }, lines: ['The squad pries open the yard gate.', 'They load cut planks and logs onto a cart.', 'A sawmill shed still holds dry timber.'] },   /* V3D.23 */
+  gasstation: { name: 'Gas Station', icon: '⛽', desc: 'Fuel from the underground tanks, and scrap from the garage.', risks: ['medium', 'high'], lock: () => (hqTier() >= 2 ? '' : 'Needs the Lodge'), loot: { fuel: [1, 3], mat: [1, 2] }, lines: ['The squad rigs a hand pump over the tank hatch.', 'Jerrycans fill slowly; the noise carries.', 'The garage still has tools on the wall.'] },   /* V3D.25 */
+  military: { name: 'Military Checkpoint', icon: '🪖', desc: 'Dangerous, but rich: a bit of everything and good gear.', risks: ['high'], lock: () => (S.rank >= 3 ? '' : 'Needs Haven rank 3'), loot: { mat: [2, 4], meds: [1, 2], fuel: [1, 2], cloth: [1, 2] }, gear: 2.5, lines: ['Sandbags and an overturned truck block the road.', 'The squad works through the supply tents one by one.', 'A radio crackles in an empty guard hut.'] },
   quarrysite: { name: 'Old Quarry', icon: '🪨', desc: 'Cut stone blocks left behind: stone for the stone tier.', risks: ['medium', 'high'], lock: () => (hqTier() >= 2 ? '' : 'Needs the Lodge'), loot: { stone: [3, 5] }, lines: ['The squad climbs down into the old quarry.', 'They lever cut blocks onto a sled.', 'Something moves in the flooded pit below.'] },
   warehouse: { name: 'Warehouse District', icon: '🏭', desc: 'Scrap, and plenty of it.',                  risks: ['medium', 'high'],  lock: () => (S.rank >= 3 ? '' : 'Needs Haven rank 3'), loot: { mat: [3, 5] }, lines: ['The squad slips between loading docks.', 'Crates of hardware, half of it salvageable.', 'A forklift pins a stack of steel; they cut it free.'] },
 };
@@ -3308,7 +3377,7 @@ function startExpedition(destId, riskId, ids) {
   take('food', pv.need); take('water', pv.need);
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
   S.sv = S.sv.filter((q) => !ms.includes(q));
-  S.trip = { dest: destId, risk: riskId, t0: expNow(), dur: (COZY_HUD ? EXP_HOURS[riskId] * EXP_HMS : rk.min * 60000), stage: 0, phase: 'out', backAt: 0, short: pv.short, members: ms.map(expPlain), loot: { food: 0, water: 0, mat: 0, wood: 0, stone: 0 }, log: [`Departed for ${d.name} (${rk.label} risk).` + (pv.short ? ' Short on supplies: the trip is riskier.' : '')], lost: [], hurt: [], troubleSeen: 0 };
+  S.trip = { dest: destId, risk: riskId, t0: expNow(), dur: (COZY_HUD ? EXP_HOURS[riskId] * EXP_HMS : rk.min * 60000), stage: 0, phase: 'out', backAt: 0, short: pv.short, members: ms.map(expPlain), loot: { food: 0, water: 0, mat: 0, wood: 0, stone: 0, cloth: 0, meds: 0, fuel: 0 }, log: [`Departed for ${d.name} (${rk.label} risk).` + (pv.short ? ' Short on supplies: the trip is riskier.' : '')], lost: [], hurt: [], troubleSeen: 0 };
   ms.forEach((q) => { const m = S.trip.members.find((x) => x.id === q.id); m.mode = 'away'; });
   autoStaff(); say(`${ms.map((q) => q.name).join(', ')} left for ${d.name}.`, true); saveGame(); ui(); expTick(); return { ok: true, why: '' };
 }
@@ -3318,7 +3387,7 @@ function expResolveStage(t, quiet) {
   const kinds = new Set(ms.map(expKind).filter((k) => k !== 'other')).size, avgL = ms.reduce((a, s) => a + (s.l || 1), 0) / (ms.length || 1), f = rk.mult * (1 + .12 * Math.max(0, kinds - 1)) * (1 + .04 * (avgL - 1)) * (1 + .15 * ms.filter((m) => hasSkill(m, 'lootSense')).length) * (1 + .2 * ms.filter((m) => hasSkill(m, 'treasureHunter')).length) * expTraitLoot(ms);
   const got = [], r = (a) => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
   for (const k in d.loot) { const n = Math.max(1, Math.round(r(d.loot[k]) * f)); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${n} ${RES_NAME[k] || k}`); }
-  if (Math.random() < .2 * Math.sqrt(rk.mult) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
+  if (Math.random() < .2 * Math.sqrt(rk.mult) * (d.gear || 1) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
   const rm = expRiskMult(t); let trouble = [];
   for (const m of [...ms]) {
     const x = Math.random(), tm = hasT(m, 'cautious') ? .7 : 1, dead = rk.death * rm * tm, collapse = rk.hurt * rm * .35 * tm, hurt = rk.hurt * rm * tm;
@@ -3440,7 +3509,7 @@ function expRecall() {
 function expFinish(recalled) {
   const t = S.trip; if (!t) return; if (t.enc) { if (recalled) { t.enc = null; t.log.push('The squad left the situation behind on the way home.'); } else encResolve(t, null); } S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
   if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); t.log.push(`${m.name} fell on the way home.`); }
-  (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = Math.min(cap, S.food + t.loot.food); S.water = Math.min(cap, S.water + t.loot.water); S.mat += t.loot.mat; S.wood = Math.min(matCap(), (S.wood || 0) + (t.loot.wood || 0)); S.stone = Math.min(matCap(), (S.stone || 0) + (t.loot.stone || 0)); S.produced += t.loot.food + t.loot.water;
+  (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = Math.min(cap, S.food + t.loot.food); S.water = Math.min(cap, S.water + t.loot.water); S.mat += t.loot.mat; addLoot({ wood: t.loot.wood, stone: t.loot.stone, cloth: t.loot.cloth, meds: t.loot.meds, fuel: t.loot.fuel }, 'Expedition'); S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y <= 6) return tc(w.x, w.y + 1); return tc(7, 7); })();
   if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${v} ${RES_NAME[k] || k}`).concat((t.items || []).map((id) => ITEMS[id].name));
@@ -3450,7 +3519,7 @@ function expFinish(recalled) {
   }
   const body = t.log.map((l) => esc(l)).join('<br>') + `<br><b>Returned:</b> ${t.members.map((m) => esc(m.name)).join(', ') || 'nobody'}.` + (t.lost.length ? `<br><b style="color:#ff8a7a">Lost:</b> ${t.lost.map(esc).join(', ')}.` : '');
   S.lastTrip = { dest: t.dest, risk: t.risk, loot: t.loot, lost: t.lost.slice(), recalled: !!recalled, recruit: recruit && recruit.name };
-  S.trip = null; autoStaff(); showEventPopup({ title: 'EXPEDITION REPORT', text: `<b>${d.name}</b> · ${rk.label} risk<br>${body}`, gains: tot.length ? '+' + tot.join(' · +') : 'Nothing found' }); saveGame(); ui(); expTick();
+  S.trip = null; autoStaff(); if (COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: 'EXPEDITION BACK', sub: `${d.icon} ${d.name} · ${rk.label} risk`, entries: lootEntries(t.loot, t.items), note: body }); else showEventPopup({ title: 'EXPEDITION REPORT', text: `<b>${d.name}</b> · ${rk.label} risk<br>${body}`, gains: tot.length ? '+' + tot.join(' · +') : 'Nothing found' }); saveGame(); ui(); expTick();
 }
 /* ---- UI ---- */
 let expOpen = false; const expSel = { dest: 'houses', risk: 'low', ids: null };
@@ -3570,8 +3639,7 @@ function starve(s) {
 function useBandage(s) {
   if (s.mode !== 'down') return false;
   BANDAGE_COST = researched('medicine') ? 1 : 2; BANDAGE_TICKS = researched('medicine') ? 5400 : 3600;
-  if (S.mat < BANDAGE_COST) { say('Need ' + BANDAGE_COST + ' scrap for a bandage.'); return false; }
-  S.mat -= BANDAGE_COST; if (s.bleed == null) s.bleed = bleedMax(); s.bleed = Math.min(s.bleed + BANDAGE_TICKS, bleedMax() + BANDAGE_TICKS); s.warned = false; say('Bandaged ' + s.name + ' · +60 s'); ui(); return true;
+  if ((S.cloth || 0) >= 1) S.cloth -= 1; else if (S.mat >= BANDAGE_COST * 2) S.mat -= BANDAGE_COST * 2; else { say('A bandage needs 1 cloth (or ' + BANDAGE_COST * 2 + ' scrap).'); return false; }   /* V3D.25: bandages are cloth; scrap rags cost double */ if (s.bleed == null) s.bleed = bleedMax(); s.bleed = Math.min(s.bleed + BANDAGE_TICKS, bleedMax() + BANDAGE_TICKS); s.warned = false; say('Bandaged ' + s.name + ' · +60 s'); ui(); return true;
 }
 const routing = () => { const d = S.sv.filter((q) => q.mode === 'down').length; return d >= 3 || (d >= 2 && S.z.some((z) => z.type === 'boss' && z.hp > 0)); };   /* V2.37: the fight is being lost */
 function retreatCheck(s) {
@@ -3847,7 +3915,7 @@ function unitPanel(u) {
   $('ib').innerHTML = `<div class="card row">${portrait(u)}<div class="sp"><div style="font-size:24px;line-height:22px">${esc(fullName(u))} ${u.resident ? '🏠' : ''}${u.partner ? '💑' : ''}</div><div class="sm">${u.job} · Lv.${u.l}</div>
     <div class="row"><span class="sm">HP</span><div class="sp">${meter(u.hp / u.max * 100, 'hp')}</div><span class="sm">${Math.ceil(u.hp)}/${u.max}</span></div></div></div>
     <div style="margin:-2px 0 6px">${esc(activityText(u))}</div>` + traitCard(u) + nowCard(u)
-    + (u.mode === 'down' ? `<div class="card"><b style="color:var(--bad)">Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><br><button class="act go" id="bandage">Bandage +60 s (⚙ ${BANDAGE_COST})</button></div>` : '');
+    + (u.mode === 'down' ? `<div class="card"><b style="color:var(--bad)">Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><br><button class="act go" id="bandage">Bandage +60 s (${(S.cloth || 0) >= 1 ? '🧵 1' : '⚙ ' + BANDAGE_COST * 2})</button></div>` : '');
   showPanel(u.name.toUpperCase()); { const nd = unitNow(u), dd = $('uDest'), pp = $('uPost'); if (dd && nd.destB) dd.onclick = () => showBuildingInfo(nd.destB); if (pp) pp.onclick = () => showBuildingInfo(u.post); } const bd = $('bandage'); if (bd) bd.onclick = () => { if (useBandage(u)) unitPanel(u); }; unitExtra(u);
 }
 function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
@@ -4145,14 +4213,14 @@ $('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = (
 /* V3D.14 Clay icons (style A) on the top bar, left menu, Home and bottom bar */
 if (COZY_HUD && window.ZHIcons) {
   const I = ZHIcons.svg, set = (sel, n, px) => { const e = document.querySelector(sel); if (e) e.innerHTML = I(n, px); };
-  const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'wood', 'stone', 'parts'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 22); });
+  const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'wood', 'stone', 'parts', 'box'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 22); });
   [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
   set('#btnHome', 'home', 30); set('#btnLog', 'log', 26); set('#btnCenter', 'locate', 26);
   ZHIcons.watch(['ib', 'eventModal', 'alerts', 'requestBox', 'confirmBar', 'quest', 'say', 'fx', 'infoPanel', 'adv', 'slots']);   /* panels, cards, alerts: emoji -> Clay icons */
 }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if (COZY_HUD && window.ZHIcons) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
-document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
+document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { if ((r.querySelector('b') || {}).id === 'rare') { showStash(); return; } const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
 
 
@@ -4167,7 +4235,7 @@ function simTick() {
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { CAR_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
+window.ZHG = { CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];
@@ -4307,7 +4375,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
