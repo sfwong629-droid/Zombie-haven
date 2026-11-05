@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.23', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.24', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3752,6 +3752,7 @@ const BCAT = [['live', 'Living', ['tent', 'bonfire', 'barrel', 'farm', 'canteen'
   ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:gate', 'wall:metal', 'post', 'armory', 'barracks']]];
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
+  { const u = G3D && window.ZH3D && ZH3D.ready && ZH3D.bthumb && ZH3D.bthumb(k, Math.round(bw * 2), Math.round(bh * 2)); if (u) return `<img src="${u}" style="width:${bw}px;height:${bh}px;object-fit:contain" alt="">`; }   /* V3D.24: picture of the coded 3D building */
   k = (!IMG['b4:' + k] && DEFS[k] && DEFS[k].icon) || k; const im = IMG['b4:' + k]; let w = im && im.naturalWidth, h = im && im.naturalHeight; if (!w) { try { const d = DEFS[k], pa = ZHProc.art(k, d.w, d.h); w = pa.im.width; h = pa.im.height; } catch (e) { w = 42; h = 42; } }
   const f = Math.min(bw / w, bh / h), sc = f >= 1 ? Math.floor(f * 4) / 4 : f;   /* V2.32: V7 buildings are bigger than the card, so shrink to fit */ return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
 }

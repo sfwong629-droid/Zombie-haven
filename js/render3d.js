@@ -1281,6 +1281,24 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
   if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96)));   // the hull is off on the #v2 models: draw a clean outline around the figure
   g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); portraits.set(key, url); return url;
 }
+// V3D.24 building pictures for the Build menu and panels: the same coded model as on the map, three-quarter view, inked
+const bthumbs = new Map();
+function buildingThumb(type, W = 208, H = 156) {
+  const D = G.DEFS[type]; if (!ready || !D) return null; const key = type + '|' + W + 'x' + H; if (bthumbs.has(key)) return bthumbs.get(key);
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk], g = makeBuilding({ type, x: 0, y: 0, w: D.w, h: D.h, rot: 0 }); g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(g), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
+  const c = pRig.cam, dir = new THREE.Vector3(.75, .85, 1).normalize(); c.position.copy(ctr).addScaledVector(dir, 20); c.lookAt(ctr);
+  c.updateMatrixWorld(true); const inv = c.matrixWorldInverse; let mx = 0, my = 0;
+  for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) { const v = new THREE.Vector3(x, y, z).applyMatrix4(inv); mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y)); }
+  const hh = Math.max(my, mx * H / W) * 1.08 + .05, hw = hh * W / H; c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix();
+  pRig.sc.add(g); const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(g);   // (geometry is not freed: the tent / house GLB clones share theirs with the map)
+  const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+  inkEdge(im.data, W, H, Math.max(2, Math.round(W / 90))); g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); bthumbs.set(key, url); return url;
+}
 // People page: framed from the hair down to the chest, turned so the weapon hand is away from the face
 const portraitOf = (s) => snapActor(s, { key: 'bust', half: .46 });
 // event-card stage figures, full body: wave (arriving), cheer, ready (danger), down (mourning)
@@ -1297,7 +1315,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { bthumb: buildingThumb, scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
