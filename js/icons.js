@@ -119,6 +119,9 @@
     cool: FACE + `<path fill="K" d="M6.5 11.5h19v2.5c0 2.6-2 4.3-4.5 4.3s-4.2-1.7-4.5-4.3h-1c-.3 2.6-2 4.3-4.5 4.3S6.5 16.6 6.5 14z"/><path class="l" sw="2.4" d="M12.5 22c2.6 1.2 5.4 1 7.5-.6"/>`,
     yum: FACE + `<path class="l" sw="2.4" d="M9.5 13.5l2.5-2 2.5 2M17.5 13.5l2.5-2 2.5 2M10.5 19c3.2 3 7.8 3 11 0"/><path fill="R" d="M16.5 20.5h4.5v2.5a2.25 2.25 0 0 1-4.5 0z"/>`,
   };
+  P.demolish = `<rect fill="M" x="3.5" y="16" width="15" height="11.5" rx="1"/><path class="l" sw="1.5" d="M3.5 21.7h15M9 16v5.7M13.5 21.7v5.8"/><path fill="Y" d="M14.5 15.5l2-2.5 3 2.3-2 2.6z"/><path fill="N" d="M18.5 12.7L27 3.5l2 1.8-8.4 9.3z"/><rect fill="S" x="13" y="6" width="8" height="5.5" rx="1.2" transform="rotate(42 17 8.7)"/><path class="l" sw="1.8" st="Y" d="M24 17l3 1.5M23.5 21l3.5-.5M21 13.5l1-3"/>`;
+  P.road = `<path fill="D" d="M11 3.5h10l6.5 25h-23z"/><path class="l" sw="2.6" st="Y" d="M16 7v3.5M16 14.5v4M16 22.5v4.5"/>`;
+  P.post = `<path fill="N" d="M8 13h16v15H8z"/><path fill="R" d="M5.5 14L16 5l10.5 9z"/><rect fill="K" x="12.5" y="17" width="7" height="4.5"/><path class="l" sw="1.6" d="M8 24.5h16"/>`;
   P.scrap = P.parts; P.hammer = P.build; P.ruin = P.town;
   /* ---- compile one icon into its three print layers ---- */
   const EL = /<(\w+)\s([^>]*?)\/>/g, ATT = /(\w[\w-]*)="([^"]*)"/g;

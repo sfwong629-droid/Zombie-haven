@@ -575,6 +575,7 @@ function cabin(P, w, d, roof, o = {}) {
   for (const sx of [w / 2, -w / 2]) gv.push(sx, H, -d / 2, sx, H, d / 2, sx, H + rise, 0, sx, H, d / 2, sx, H, -d / 2, sx, H + rise, 0);
   const gable = new THREE.BufferGeometry(); gable.setAttribute('position', new THREE.Float32BufferAttribute(gv, 3)); gable.computeVertexNormals();
   P.put(gable, o.plank ? wall[0] : wall[1], M4(0, 0, 0));
+  if (P.doorX === undefined) P.doorX = -w * .2;   /* 3D.28: remember where the door is so survivors walk in through it */
   P.put(box(.4, .76, .06), '#3d2817', M4(-w * .2, .38, d / 2 + .08)); P.put(box(.56, .1, .4), '#6a5a48', M4(-w * .2, .05, d / 2 + .26));
   for (const wx of o.windows || [w * .22]) { P.put(box(.4, .34, .06), '#3b2a1a', M4(wx, .72, d / 2 + .08)); P.win(box(.3, .24, .04), M4(wx, .72, d / 2 + .105)); }
   if (o.chimney) P.put(box(.3, .8, .3), '#8c8478', M4(w * .3, H + .5, -d * .2));
@@ -674,6 +675,14 @@ let tentScene = null;
 const BGLB = { house: 'assets/buildings/ai3d/house/house_realtime.glb' }, glbB = {};   // V3D.3: Hunyuan models from export_prop3d.py (origin = footprint centre, door faces +Z = front-left); scaled to fill the footprint
 const bGroups = new Map();
 function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b.burnt ? 1 : 0, b.wrecked ? 1 : 0].join(','); }
+function syncDoors() {   /* 3D.28: the game's door point (where survivors enter) follows the door drawn on each 3D building */
+  const def = (P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {});
+  for (const [k, D] of Object.entries(G.DEFS)) {
+    if (!D || D.door || glbB[k] || k === 'medic') continue; const f = BUILD[k] || def, P = new Parts();
+    try { f(P, D.w * T, D.h * T); } catch (e) { continue; }
+    if (P.doorX !== undefined) D.door = [D.w / 2 + P.doorX / T, D.h - .35];
+  }
+}
 function makeBuilding(b) {
   const g = new THREE.Group(), odd = (b.rot | 0) & 1, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T;
   if (b.type === 'medic' && tentScene) {
@@ -1427,5 +1436,5 @@ inkButton();
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
   bGroups.forEach((v) => scene.remove(v.g)); bGroups.clear();
-  ready = true; window.ZH3D.ready = true;
+  syncDoors(); ready = true; window.ZH3D.ready = true;
 })().catch((e) => { console.error('3D load failed', e); const b = document.getElementById('crash'); if (b) { b.style.display = 'block'; b.textContent = '3D: ' + e.message; } });

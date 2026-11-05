@@ -132,3 +132,18 @@ html.glass #loading { background: #1d2628; color: #fff; font-family: var(--f); }
 html.glass #confirmBar { border-radius: 22px; bottom: calc(100px + env(safe-area-inset-bottom)); }
 html.glass #nudge button { background: rgba(255, 255, 255, .12); color: var(--tx); border: 1px solid var(--edge); }
 html.glass .zi-t .zi { width: 1.3em; height: 1.3em; }
+
+/* 3D.28 fixes from the first phone test */
+html.glass .newGame { background: rgba(255, 255, 255, .06) !important; color: var(--tx) !important; border: 1px solid var(--edge); }
+html.glass .newGame .sm { color: var(--mu) !important; }
+html.glass .newGame .sm:nth-last-child(2) { color: var(--lime) !important; }
+html.glass .newGame input { background: rgba(255, 255, 255, .1) !important; color: var(--tx) !important; border: 1px solid var(--edge) !important; border-radius: 12px !important; }
+html.glass .ngOpt { border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px; background: rgba(255, 255, 255, .05); color: var(--tx); }
+html.glass .ngOpt.on { border-color: var(--lime); background: rgba(198, 255, 77, .12); }
+html.glass .ngOpt small { color: var(--mu); }
+html.glass .ngOpt .ngI .zi { width: 28px; height: 28px; }
+html.glass .newGame .act { color: var(--tx); }
+html.glass .newGame .act.go { color: var(--limeInk); }
+html.glass .tabs button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 6px; }
+html.glass .ti.zi-ti, html.glass .si.zi-si { display: inline-flex; vertical-align: middle; line-height: 0; }
+html.glass #bDemo .zi { width: 30px; height: 30px; }

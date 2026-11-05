@@ -1548,7 +1548,7 @@ function spreadOut() {   /* V3D.17: two people never stand in the same spot; a s
 const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && dist(z.w, p) < r);
 function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: fighters chase them; others go in pairs on the nearest one */
   const raiders = S.z.filter((z) => z.human && z.hp > 0 && !z.escaped && z.mode !== 'appear' && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (!raiders.length) return false;
-  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .35 : .5) && !q.rescuing && !q.carrying && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire'].includes(q.mode));
+  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .35 : .5) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire'].includes(q.mode));
   let n = 0;
   for (const q of able) {
     const t = raiders.slice().sort((a, b) => (a.mode === 'rsmash' ? -9 : 0) - (b.mode === 'rsmash' ? -9 : 0) || dist(a.w, q.w) - dist(b.w, q.w))[0];   /* arsonists first */
@@ -1563,7 +1563,7 @@ function militia() {   /* V2.37: no able fighter left and zombies inside the tow
   if (S.sv.some((q) => isFighter(q) && q.hp >= q.max * .5 && !['down', 'away', 'errand', 'hospital'].includes(q.mode))) return false;
   if (S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
   const inside = S.z.filter((z) => z.hp > 0 && z.type !== 'boss' && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (!inside.length) return false;
-  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .4 : .6) && !q.rescuing && !q.carrying && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)); if (able.length < 3) return false;
+  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .4 : .6) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)); if (able.length < 3) return false;
   const t = inside.sort((a, b) => a.hp - b.hp)[0];
   able.slice(0, Math.min(able.length, 3 + inside.length)).forEach((q) => { q.fleeT = 0; q.hideAt = null; engage(q, t); q.why = `Militia: banding together against a ${zombieTypes[t.type].name}`; });
   note('important', '✊ MILITIA: SURVIVORS BAND TOGETHER'); return true;
@@ -1571,7 +1571,7 @@ function militia() {   /* V2.37: no able fighter left and zombies inside the tow
 function rally() {   /* V2.37: someone is down and nobody is fighting → fighters with at least half their health come out together and clear the zombies around the downed */
   const downs = S.sv.filter((q) => q.mode === 'down'); if (!downs.length || S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
   const near = S.z.filter((z) => z.hp > 0 && downs.some((q) => dist(z.w, q.w) < 3)); if (!near.length) return false;
-  const able = S.sv.filter((q) => isFighter(q) && q.hp >= q.max * .5 && !q.rescuing && !q.carrying && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode));
+  const able = S.sv.filter((q) => isFighter(q) && q.hp >= q.max * .5 && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode));
   if (able.length < Math.min(2, near.length)) return false;
   able.sort((a, b) => b.hp - a.hp).slice(0, Math.max(2, near.length)).forEach((q, i) => { q.fleeT = 0; q.hideAt = null; engage(q, near[i % near.length]); q.why = `Rallying to cover ${downs[0].name}`; });
   note('important', `⚔ RALLY: FIGHTERS MOVE TO COVER ${downs[0].name.toUpperCase()}`); return true;
@@ -1672,9 +1672,9 @@ function drawEmote(s, p, y) {   /* cream speech bubble with a tail; pops in, bob
   const e = s.emo; if (!e) return; const u = hudU() * HUD_SMALL, k = 1 - e.f / e.f0, pop = k < .1 ? .5 + k * 6 : 1, al = e.f < 15 ? e.f / 15 : 1;
   const parts = window.ZHIcons ? ZHIcons.split(e.t).filter((q) => q.i || q.t.trim()) : [{ t: e.t }], np = Math.max(1, parts.length);
   const r = 13 * u * pop, x = p.x + 14 * u, cy = y - r - 4 * u + Math.sin(tick / 12) * 1.5 * u, rx = r * (np > 1 ? 1.15 + .55 * (np - 1) : 1.15);
-  ctx.save(); ctx.globalAlpha = al; ctx.lineWidth = (GLASS ? 1.1 : 2.2) * u; ctx.strokeStyle = GLASS ? 'rgba(255,255,255,.35)' : '#161616'; ctx.lineJoin = 'round';
+  ctx.save(); ctx.globalAlpha = al; ctx.lineWidth = (GLASS ? 1.1 : 2.2) * u; ctx.strokeStyle = GLASS ? 'rgba(0,0,0,.12)' : '#161616'; ctx.lineJoin = 'round';
   const blob = (ox) => { ctx.beginPath(); ctx.ellipse(x + ox, cy + ox, rx, r, 0, 0, 7); ctx.moveTo(x - r * .5 + ox, cy + r * .75 + ox); ctx.lineTo(x - r * .95 + ox, cy + r * 1.45 + ox); ctx.lineTo(x - r * .05 + ox, cy + r * .92 + ox); };
-  const bf = GLASS ? 'rgba(16,22,28,.84)' : '#FFFDF4'; if (!GLASS) { ctx.fillStyle = '#161616'; blob(2 * u); ctx.fill(); } else { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 7 * u; ctx.shadowOffsetY = 2 * u; }
+  const bf = GLASS ? 'rgba(255,255,255,.96)' : '#FFFDF4';   /* emoji bubbles stay white so the sticker icons read */ if (!GLASS) { ctx.fillStyle = '#161616'; blob(2 * u); ctx.fill(); } else { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 7 * u; ctx.shadowOffsetY = 2 * u; }
   ctx.fillStyle = bf; blob(0); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.stroke();
   if (!GLASS) { ctx.beginPath(); ctx.ellipse(x, cy, rx - 1.4 * u, r - 1.4 * u, 0, 0, 7); ctx.fill(); }
   const sz = r * 1.35, gap = sz * 1.02, x1 = x - gap * (np - 1) / 2;
@@ -1826,7 +1826,7 @@ function nightPrep(s) {
 /* combat: a survivor under attack shouts for help; the two nearest free fighters come */
 function callHelp(s, z) {
   if ((s.helpT || 0) > tick) return; s.helpT = tick + 240; if (!bark(s, isFighter(s) ? 'engage' : 'help', {}, { pri: 2 })) emote(s, isFighter(s) ? '😤' : '🆘', 90, true);
-  S.sv.filter((q) => q !== s && isFighter(q) && q.hp > q.max * .45 && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < 9)
+  S.sv.filter((q) => q !== s && isFighter(q) && q.hp > q.max * .45 && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < 9)
     .sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w)).slice(0, 2).forEach((q) => { engage(q, z); q.why = `Answering ${s.name}'s call for help`; if (!(rnd() < .6 && bark(q, 'answer', { other: s.name }, { pri: 2 }))) emote(q, '💪', 80, true); });
 }
 function chooseLifePurpose(s) {
@@ -1914,7 +1914,7 @@ function ai(s) {
   if (s.hammerJob != null && s.purpose !== 'build-go' && s.mode !== 'hammer') endHammer(s);
   if (s.errand && (s.mode === 'errand' || s.mode === 'away')) { errandAi(s); return; }   /* V3D.17 */
   if (s.mode === 'fix') { fixTick(s); return; }
-  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat', 'loot', 'chat', 'campfire', 'pitch', 'gather', 'hammer'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); if (th) { if (s.mode === 'chat') endChat(s); if (s.mode === 'gather') { s.gatherAt = null; s.activity = null; } if (s.mode === 'pitch') endPitch(s); s.fire = null; s.faceW = null; if (isFighter(s) || (th.human && s.hp >= s.max * .5)) { engage(s, th); emote(s, '😤', 70); } else { startHide(s, th); emote(s, '😱', 90, true); } return; } }
+  if (['goFacility', 'useFacility', 'goWork', 'work', 'walk', 'wait', 'free', 'goFire', 'fightFire', 'postCombat', 'loot', 'chat', 'campfire', 'pitch', 'gather', 'hammer'].includes(s.mode) && tick % 6 === s.i % 6 && !insideBuilding(s)) { const th = threatOf(s); const busyCarry = (s.carriedLoot && s.carryAmt && s.purpose === 'gath-back') || (s.haul && s.purpose === 'haul-put'); if (th && busyCarry && !(th.target === s && dist(th.w, s.w) < 1.3)) { /* 3D.28: carriers deliver first, fight only when cornered */ } else if (th) { if (s.mode === 'chat') endChat(s); if (s.mode === 'gather') { s.gatherAt = null; s.activity = null; } if (s.mode === 'pitch') endPitch(s); s.fire = null; s.faceW = null; if (isFighter(s) || (th.human && s.hp >= s.max * .5)) { engage(s, th); emote(s, '😤', 70); } else { startHide(s, th); emote(s, '😱', 90, true); } return; } }
   if (s.mode === 'loot') {   /* V3D.12: walking over to a zombie's dropped bag */
     const bag = (S.bags || []).find((b) => b.id === s.lootId && !b.opened); if (!bag) { s.lootId = null; enterPost(s); return; }
     if (tick - bag.t0 < 45) { s.moving = false; return; }   /* let it land first */
@@ -2013,7 +2013,7 @@ function ai(s) {
     s.dest = null; s.path = null; settlePause(s, 100, 220); return;
   }
   if (s.mode === 'wait' || s.purpose === 'scav-search') return;
-  if (s.mode === 'free') { if (s.stateTicks > 0) { s.moving = false; return; } chooseLifePurpose(s); }
+  if (s.mode === 'free') { if (s.stateTicks > 0) { s.moving = false; return; } if (s.carriedLoot && s.carryAmt) { s.dest = depotPt(s); s.mode = 'walk'; s.purpose = 'gath-back'; s.path = null; s.stateTicks = 2400; s.why = 'Taking the load home first'; return; } chooseLifePurpose(s); }   /* 3D.28: a load in hand goes home before anything else */
 }
 // scavenger leaves 'wait' after searching → head home
 function lootFind(s) {
@@ -3957,12 +3957,12 @@ function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to f
   const f = Math.min(bw / w, bh / h), sc = f >= 1 ? Math.floor(f * 4) / 4 : f;   /* V2.32: V7 buildings are bigger than the card, so shrink to fit */ return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
 }
 function buildLock(k) { const d = DEFS[k]; if ((d.tier || 1) > hqTier()) return 'Needs ' + hqName(d.tier); if (S.rank < d.rank) return `Rank ${d.rank}`; if (!researched(d.res)) return 'Research: ' + (RESEARCH[d.res] ? RESEARCH[d.res].name : d.res); return ''; }
-function wallIcon(t) { return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
+function wallIcon(t) { if (GLASS && window.ZHIcons) return ZHIcons.svg(t === 'gate' ? 'door' : t === 'metal' ? 'wall' : 'wood', 64); return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
 function showBuild() {
   endBuildMode(true); closeP(); const cat = BCAT.find((c) => c[0] === bCat) || BCAT[0];
   const cards = cat[2].map((k) => {
-    if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">🛣️</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
-    if (k === 'post') return `<button class="bcard" data-tool="post"><div class="im"><img class="pix" src="${postIcon()}" style="width:84px" alt=""></div><div class="nm">Guard Post</div><div class="co">⚙ ${POST_COST} · ${(S.posts || []).length}/${postMax()}</div></button>`;
+    if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">${GLASS && window.ZHIcons ? ZHIcons.svg('road', 64) : '🛣️'}</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
+    if (k === 'post') return `<button class="bcard" data-tool="post"><div class="im">${GLASS && window.ZHIcons ? ZHIcons.svg('post', 64) : `<img class="pix" src="${postIcon()}" style="width:84px" alt="">`}</div><div class="nm">Guard Post</div><div class="co">⚙ ${POST_COST} · ${(S.posts || []).length}/${postMax()}</div></button>`;
     if (k.startsWith('wall:')) { const t = k.slice(5), wd = Wd.WALL_DEFS[t], lk = S.rank < wd.rank || (wd.tier || 1) > hqTier(); return `<button class="bcard${lk ? ' lock' : ''}" data-wall="${t}"><div class="im" style="font-size:46px">${wallIcon(t)}</div><div class="nm">${wd.name}</div><div class="co">${lk ? '🔒 ' + ((wd.tier || 1) > hqTier() ? hqName(wd.tier) : 'Rank ' + wd.rank) : costShort(bCost(wd))}</div></button>`; }
     const d = DEFS[k]; if (!d || d.hidden) return ''; const lk = buildLock(k);
     return `<button class="bcard${lk ? ' lock' : ''}" data-b="${k}"><div class="im">${bImg(k, 104, 78)}</div><div class="nm">${d.name}</div><div class="co">${lk ? '🔒 ' + lk.replace('Research: ', '') : costShort(bCost(d))}</div></button>`;
@@ -4180,12 +4180,14 @@ let UIM = null; const uiIconCache = {};
 /* V2.47 stat and need icons (assets/ui/stats.png, tools/art/build_stat_icons.py): 16-px pixel art; until the sheet exists, short text */
 const SI_NAMES = ['str', 'agi', 'int', 'end', 'per', 'cha', 'hunger', 'thirst', 'fatigue'], SI_LABEL = { str: 'Strength', agi: 'Agility', int: 'Intelligence', end: 'Endurance', per: 'Perception', cha: 'Charisma', hunger: 'Hunger', thirst: 'Thirst', fatigue: 'Tired' }, SI_TEXT = { str: 'STR', agi: 'AGI', int: 'INT', end: 'END', per: 'PER', cha: 'CHA', hunger: 'Hunger', thirst: 'Thirst', fatigue: 'Tired' }, siCache = {};
 function SI(k) {
+  if (GLASS && window.ZHIcons) { const n = { str: 'strong', agi: 'speed', int: 'research', end: 'heart', per: 'search', cha: 'chat', hunger: 'food', thirst: 'water', fatigue: 'sleep' }[k]; if (n) return `<span class="si zi-si" data-si="${k}" title="${SI_LABEL[k]}">${ZHIcons.svg(n, 22)}</span>`; }
   if (siCache[k] !== undefined) return siCache[k]; const im = IMG.statIcons, i = SI_NAMES.indexOf(k); if (i < 0 || !okImg(im)) return `<span class="siT" data-si="${k}">${SI_TEXT[k] || k}</span>`;
   const c = document.createElement('canvas'), Z = 2; c.width = c.height = 16 * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * 16, 0, 16, 16, 0, 0, 16 * Z, 16 * Z);
   return (siCache[k] = `<img class="pix si" data-si="${k}" src="${c.toDataURL()}" alt="${SI_LABEL[k]}" title="${SI_LABEL[k]}">`);
 }
 function wireSI(root) { root.querySelectorAll('[data-si]').forEach((e) => { e.onclick = (ev) => { ev.stopPropagation(); say(SI_LABEL[e.dataset.si] || e.dataset.si); }; }); }
 function uiIcon(name) {   /* V2.32: DV2-style menu icons (assets/ui/icons.png), 2x crisp */
+  if (GLASS && window.ZHIcons) { const n = { living: 'home', care: 'medic', train: 'train', defend: 'shield', road: 'road', demolish: 'demolish', events: 'bang', trader: 'shop', rating: 'star', supplies: 'box' }[name]; if (n) return `<span class="ti zi-ti">${ZHIcons.svg(n, 24)}</span>`; }   /* 3D.28 Glass: sticker icons, no pixel art */
   if (uiIconCache[name] !== undefined) return uiIconCache[name]; const im = IMG.uiIcons, i = UIM ? UIM.icons.indexOf(name) : -1; if (i < 0 || !okImg(im)) return '';
   const n = UIM.n, Z = 2, c = document.createElement('canvas'); c.width = c.height = n * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * n, 0, n, n, 0, 0, n * Z, n * Z);
   return (uiIconCache[name] = `<img class="pix ti" src="${c.toDataURL()}" alt="">`);
