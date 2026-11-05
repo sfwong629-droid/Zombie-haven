@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.27', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.28', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -930,8 +930,8 @@ const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own c
   army: { name: "Army Helmet", slot: "head", def: 5, cost: 6, shape: "army" },
   riothelm: { name: "Riot Helmet", slot: "head", def: 6, cost: 7, st: { per: -1 }, shape: "riot" },
 };
-const SLOTS = ['weapon', 'armor', 'head', 'acc'], SLOT_NAME = { weapon: 'Weapon', armor: 'Armor', head: 'Hat', acc: 'Accessory' };
-const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'hardhat', 'bikehelm'] };   // what survivors can buy at an Armory with parts
+const SLOTS = ['head', 'acc', 'armor', 'weapon'], SLOT_NAME = { weapon: 'Weapon', armor: 'Clothing', head: 'Hat', acc: 'Accessory' };   /* 3D.28: four gear slots: hat, accessory, clothing (the old armour slot, key kept for saves), weapon; all show on the 3D model */
+const ARMORY_STOCK = { weapon: ['knife', 'bat', 'crowbar', 'machete', 'pistol', 'bow'], armor: ['jacket', 'leather', 'hockey', 'riot'], head: ['bandana', 'cap', 'beanie', 'strawhat', 'hardhat', 'bikehelm'], acc: ['gloves', 'belt', 'shoes', 'glasses', 'charm'] };   // what survivors can buy at an Armory with parts
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 /* V3D.25 extra drops per zombie type: [chance, resource, amount] */
 const ZDROP = { runner: [[.3, 'cloth', 1]], brute: [[.4, 'cloth', 1], [.15, 'meds', 1]], bloated: [[.35, 'meds', 1]], spitter: [[.3, 'meds', 1]], crawler: [[.15, 'cloth', 1]], raider: [[.45, 'fuel', 1], [.3, 'meds', 1], [.3, 'cloth', 1]] };
@@ -2384,7 +2384,7 @@ const RESEARCH = {
   medicine: { name: 'Field Medicine', rp: 25, mat: 6, desc: 'Scrap bandages cost less, and every bandage lasts longer' },
   blades: { name: 'Bladesmithing', rp: 20, mat: 5, desc: 'Craft Machete and Fire Axe' },
   firearms: { name: 'Firearms', rp: 40, mat: 12, need: 'blades', desc: 'Craft Pistol and Hunting Rifle' },
-  bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft Riot Vest and Scrap Plate' },
+  bodyArmor: { name: 'Body Armor', rp: 35, mat: 10, desc: 'Craft protective clothing: Riot Vest and Scrap Plate' },
   gadgets: { name: 'Gadgets', rp: 30, mat: 8, desc: 'Craft stat accessories' },
 };
 const RECIPES = { blades: ['machete', 'nailbat', 'spear', 'axe', 'sledge', 'katana'], firearms: ['pistol', 'revolver', 'rifle', 'shotgun', 'crossbow', 'smg'], bodyArmor: ['biker', 'riot', 'kevlar', 'plate', 'military', 'football', 'army', 'riothelm'], gadgets: ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'dogtags'] };
