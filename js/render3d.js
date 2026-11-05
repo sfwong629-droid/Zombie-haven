@@ -1327,7 +1327,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { bthumb: buildingThumb, scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
