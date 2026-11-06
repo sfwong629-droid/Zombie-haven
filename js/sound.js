@@ -49,40 +49,107 @@
     event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => tone(c, o, t + i * .09, N(s2 + 12), .14, 'triangle', .06)); },
     woof: (c, o, t) => { tone(c, o, t, 420, .08, 'sawtooth', .1, 260); tone(c, o, t + .13, 400, .09, 'sawtooth', .1, 240); },
   };
-  // ambient music: a slow minor-pentatonic pluck over a soft pad; darker and lower at night
-  const SCALE = [0, 3, 5, 7, 10, 12, 15, 17];
-  function musicStep(c, out, t, i, dark) {
-    const beat = 60 / 66;   // 66 bpm
-    if (i % 16 === 0) { const root = dark ? -12 : -7; [0, 7, 12].forEach((s) => tone(c, out, t, N(root + s), beat * 15.5, 'sine', dark ? .05 : .04, null, 1.2)); }   // pad
-    const pat = dark ? [0, null, 2, null, 1, null, null, 3, 0, null, 2, null, 4, null, null, null] : [4, 2, null, 3, 5, null, 2, null, 4, 3, null, 1, 2, null, 0, null];
-    const k = pat[i % 16]; if (k !== null) { const s = SCALE[k] + (dark ? -12 : 0) + (i % 32 >= 16 && !dark ? 2 : 0); tone(c, out, t, N(s), beat * 1.6, 'triangle', dark ? .05 : .045, null, .01); }
-    return beat / 2;   // eighth notes
+  /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
+     day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
+     night  low drone, sparse music-box / piano notes in a big reverb, a faint heartbeat on the tense chord (D minor, 60 bpm)
+     danger driving low-string ostinato, drums and brass stabs (E minor, 116 bpm) while a horde or fight is on
+     Each bar is written just ahead of time from the mood's chord loop, with seeded variation so it doesn't repeat exactly. */
+  const MOODS = {
+    day: { bpm: 84, prog: [[0, 'm'], [-4, 'M'], [3, 'M'], [-2, 'M'], [0, 'm'], [-4, 'M'], [-2, 'M'], [-5, 'm']] },
+    night: { bpm: 60, prog: [[-7, 'm'], [-11, 'M'], [-2, 'm'], [0, 'M'], [-7, 'm'], [-11, 'M'], [-9, 'M'], [0, 'M']] },
+    danger: { bpm: 116, prog: [[-5, 'm'], [-9, 'M'], [-7, 'M'], [2, 'M'], [-5, 'm'], [-9, 'M'], [-7, 'M'], [-3, 'M']] },
+  };
+  const Q = { m: [0, 3, 7], M: [0, 4, 7] };
+  const fold = (r) => { while (r > 0) r -= 12; while (r < -12) r += 12; return r; };   // chord roots live in A2..A3
+  const ksCache = new Map();
+  function ksBuf(c, f, sec = 1.8, bright = .5) {   // Karplus-Strong plucked string, cached per pitch
+    const k = c.sampleRate + ':' + Math.round(f * 10) + ':' + bright; if (ksCache.has(k)) return ksCache.get(k);
+    const n = Math.floor(c.sampleRate * sec), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0), P = Math.max(2, Math.round(c.sampleRate / f)), ring = new Float32Array(P);
+    for (let i = 0; i < P; i++) ring[i] = (Math.random() * 2 - 1) * (1 - bright * Math.random());
+    let p = 0; for (let i = 0; i < n; i++) { const nx = (p + 1) % P, v = ring[p]; d[i] = v; ring[p] = (v + ring[nx]) * .4985; p = nx; }
+    ksCache.set(k, b); return b;
   }
+  function pluck(c, out, t, f, vol, sec = 1.6, pan = 0) { const s = c.createBufferSource(); s.buffer = ksBuf(c, f, sec); const g = c.createGain(); g.gain.value = vol; const p = c.createStereoPanner ? c.createStereoPanner() : null; s.connect(g); if (p) { p.pan.value = pan; g.connect(p); p.connect(out); } else g.connect(out); s.start(t); s.stop(t + sec); }
+  function pad(c, out, t, freqs, dur, vol, cut = 900, att = 1.2) {   // soft strings: detuned saws through a low-pass, slow swell
+    const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = cut; fl.Q.value = .4; const g = c.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.setValueAtTime(vol, t + dur - .6); g.gain.linearRampToValueAtTime(.0001, t + dur); fl.connect(g); g.connect(out);
+    for (const f of freqs) for (const dt of [-4, 4]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = dt; o.connect(fl); o.start(t); o.stop(t + dur + .05); }
+  }
+  function whistle(c, out, t, f, dur, vol) {   // breathy flute: sine + vibrato + a little noise
+    const o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f; lfo.frequency.value = 5.2; lg.gain.value = f * .006; lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(vol, t + .09); g.gain.setValueAtTime(vol * .85, t + dur * .7); g.gain.linearRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(out); o.start(t); lfo.start(t); o.stop(t + dur + .05); lfo.stop(t + dur + .05);
+    noise(c, out, t, Math.min(.12, dur), vol * .25, f * 2, 2);
+  }
+  function bell(c, out, t, f, vol) { tone(c, out, t, f, 2.4, 'sine', vol, null, .004); tone(c, out, t, f * 2.01, 1.1, 'sine', vol * .35, null, .004); tone(c, out, t, f * 3.98, .5, 'sine', vol * .12, null, .002); }   // music box / soft piano
+  function kick(c, out, t, vol) { tone(c, out, t, 120, .28, 'sine', vol, 42, .002); }
+  function snare(c, out, t, vol) { noise(c, out, t, .16, vol, 1800, .7); tone(c, out, t, 190, .08, 'triangle', vol * .4, 150); }
+  function hat(c, out, t, vol) { noise(c, out, t, .035, vol, 7000, 1.5, 'highpass'); }
+  function stab(c, out, t, freqs, vol) { const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(2200, t); fl.frequency.exponentialRampToValueAtTime(500, t + .35); const g = c.createGain(); env(c, g, t, .01, vol, .4); fl.connect(g); g.connect(out);
+    for (const f of freqs) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(fl); o.start(t); o.stop(t + .45); } }
+  function verb(c) {   // a simple generated hall reverb
+    const sec = 2.6, n = Math.floor(c.sampleRate * sec), b = c.createBuffer(2, n, c.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2); }
+    const cv = c.createConvolver(); cv.buffer = b; return cv;
+  }
+  function musicGraph(c, out) {   // dry + reverb send
+    const dry = c.createGain(), wet = c.createGain(), cv = verb(c); dry.gain.value = 1; wet.gain.value = .55; dry.connect(out); dry.connect(cv); cv.connect(wet); wet.connect(out);
+    return dry;
+  }
+  let mrnd = 1; const mr = () => ((mrnd = (mrnd * 16807) % 2147483647) / 2147483647);
+  function writeBar(c, out, t0, mood, bar) {   // schedules one bar; returns its length in seconds
+    const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);
+    const phrase = Math.floor(bar / M.prog.length);
+    if (mood === 'day') {
+      if (bar % 2 === 0) pad(c, out, t0, [F(root - 12), F(ch[1]), F(ch[2])], len * 2, .011, 700, 1.5);
+      const pat = [[-12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [ch[2] - root, 1], [7 - 12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [12, 2]];   // fingerpicking: bass, then the chord's middle and top
+      pat.forEach(([s, v], i) => { if (i === 7 && mr() < .4) return; pluck(c, out, t0 + i * beat / 2 + (i % 2 ? .012 : 0), F(root + s), [.17, .1, .085][v], v ? 1.4 : 2, [0, -.35, .35][v]); });
+      if (phrase % 2 === 1) { const tones = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24, ch[1] + 12 + 2], rh = mr() < .5 ? [0, 1.5, 2, 3] : [0, 2, 3]; rh.forEach((b, i) => { if (mr() < .15) return; const d = (rh[i + 1] ?? 4) - b; whistle(c, out, t0 + b * beat, F(tones[(bar + i * 2 + Math.floor(mr() * 3)) % tones.length]), d * beat * .95, .045); }); }
+    } else if (mood === 'night') {
+      pad(c, out, t0, [F(root - 12), F(root - 5)], len + .3, .016, 380, 2.2);
+      for (let b = 0; b < 4; b++) if (mr() < (b === 0 ? .8 : .38)) bell(c, out, t0 + b * beat + (mr() < .3 ? beat / 2 : 0), F(ch[Math.floor(mr() * 3)] + 12 + (mr() < .3 ? 12 : 0)), .05);
+      if (q === 'M' && root === 0) for (let b = 0; b < 4; b += 1) { kick(c, out, t0 + b * beat, .05); kick(c, out, t0 + b * beat + .22, .03); }   // heartbeat on the tense chord
+    } else {
+      const eighth = beat / 2, six = beat / 4;
+      for (let i = 0; i < 16; i++) { const f = F(root - 12 + (i % 4 === 2 ? 12 : 0)); tone(c, out, t0 + i * six, f, six * .9, 'sawtooth', .05, null, .004); }   // low-string ostinato
+      [0, 2].forEach((b) => kick(c, out, t0 + b * beat, .22)); if (mr() < .5) kick(c, out, t0 + 2.5 * beat, .14);
+      [1, 3].forEach((b) => snare(c, out, t0 + b * beat, .1)); for (let i = 0; i < 8; i++) hat(c, out, t0 + i * eighth, i % 2 ? .025 : .04);
+      stab(c, out, t0, ch.map((s) => F(s)), .05); if (bar % 4 === 3) for (let i = 0; i < 4; i++) tone(c, out, t0 + 3 * beat + i * six, 160 - i * 22, .12, 'sine', .14, 70);   // tom fill
+      if (bar % 2 === 1) pad(c, out, t0, [F(ch[0] + 12), F(ch[2] + 12)], len, .012, 1600, .2);
+    }
+    return len;
+  }
+  let mood = 'day', want = 'day', bar = 0, musOut = null, danger = false;
   function scheduler() {
-    if (!ctx || mode !== 'all') return;
-    while (nextNote < ctx.currentTime + .4) { nextNote += musicStep(ctx, musBus, Math.max(nextNote, ctx.currentTime + .02), step++, night); }
+    if (!ctx || mode !== 'all') return; if (!musOut) musOut = musicGraph(ctx, musBus);
+    while (nextNote < ctx.currentTime + .6) {
+      const t = Math.max(nextNote, ctx.currentTime + .05);
+      if (want !== mood && bar % 2 === 0) { mood = want; bar = 0; musBus.gain.cancelScheduledValues(t); musBus.gain.setValueAtTime(.0001, t); musBus.gain.linearRampToValueAtTime(mode === 'all' ? 1 : 0, t + 1.2); }
+      nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
+    }
   }
+  const setWant = () => { want = danger ? 'danger' : night ? 'night' : 'day'; };
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
     unlock() {
       if (!AC || mode === 'off') return; if (!ctx) { try { ctx = new AC(); const g = build(ctx); master = g.m; sfxBus = g.s; musBus = g.mu; } catch (e) { ctx = null; return; } }
-      if (ctx.state === 'suspended') quiet(ctx.resume()); if (!timer) { nextNote = ctx.currentTime + .1; timer = setInterval(scheduler, 150); }
+      if (ctx.state === 'suspended') quiet(ctx.resume()); if (!timer) { nextNote = ctx.currentTime + .1; timer = setInterval(scheduler, 200); }
     },
     play(name) {
       if (!ctx || mode === 'off' || ctx.state !== 'running' || !FX[name]) return; const now = performance.now(); if (now - (last[name] || 0) < (GAP[name] || 80)) return; last[name] = now;
       try { FX[name](ctx, sfxBus, ctx.currentTime + .01); } catch (e) { /* ignore */ }
     },
-    music(isNight) { night = !!isNight; },
+    music(isNight) { night = !!isNight; setWant(); },
+    danger(on) { danger = !!on; setWant(); },   /* 3D.50 a horde or a fight in town */
+    get mood() { return mood; },
     get mode() { return mode; },
     setMode(m) { mode = m; try { localStorage.setItem('zhSound', m); } catch (e) { /* storage blocked */ } if (m === 'off' && ctx) quiet(ctx.suspend()); else { SND.unlock(); if (ctx && ctx.state === 'suspended') quiet(ctx.resume()); } if (musBus) musBus.gain.value = m === 'all' ? 1.0 : 0; },
     cycle() { SND.setMode(mode === 'all' ? 'sfx' : mode === 'sfx' ? 'off' : 'all'); return mode; },
     pause(on) { if (!ctx) return; if (on) quiet(ctx.suspend()); else if (mode !== 'off') quiet(ctx.resume()); },
     // offline render for previews/tests: a list of [time, name] effects plus `musicSec` seconds of music
     async render(events, sec, musicSec = 0, dark = false) {
-      const c = new OfflineAudioContext(1, Math.ceil(44100 * sec), 44100), g = build(c);
+      const c = new OfflineAudioContext(2, Math.ceil(44100 * sec), 44100), g = build(c);
       for (const [t, n] of events) FX[n](c, g.s, t);
-      let tt = .05, i = 0; while (tt < musicSec) tt += musicStep(c, g.mu, tt, i++, dark);
+      const md = dark === true ? 'night' : dark || 'day', o = musicSec ? musicGraph(c, g.mu) : null; let tt = .05, i = 0; while (tt < musicSec) tt += writeBar(c, o, tt, md, i++);
       const buf = await c.startRendering(); return buf.getChannelData(0);
     },
     names: Object.keys(FX),
