@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.50', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.51', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3625,11 +3625,12 @@ function showMore() {
   $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore);
   showPanel('MORE');
 }
+const DAYMUS = { mix: ['Mix', 'A different tune each day'], day: ['Folk', 'Guitar picking and a whistle'], lounge: ['Lounge', 'Retro 50s swing: vibes, walking bass, brushes'], porch: ['Porch', 'Banjo, boom-chick guitar and harmonica'] };   /* 3D.51 */
 function showSettings(back) {
   endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
   const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;
   $('ib').innerHTML = `<div class="setRow"><span class="moT"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go" id="stSave">Save</button></div>`
-    + tg('stMusic', m === 'all', 'Music') + tg('stSfx', m !== 'off', 'Sound effects')
+    + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
     + `<button class="setRow link" id="stLog"><span class="moT"><b>Event log</b></span><span class="moA">›</span></button>`
     + tg('stSwear', OPTS.swear !== false, 'Swearing in chat', 'Off shows it as f**k') + tg('stAdv', OPTS.advisor, 'Advisor tips') + tg('stSlow', OPTS.autoSlow, 'Slow down on emergencies', 'Drops to 1× speed when something bad happens')
     + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
@@ -3637,6 +3638,7 @@ function showSettings(back) {
     + `<div class="setFoot"><button class="act" id="stMenu">Main menu</button><button class="act go" id="stResume">Resume</button></div>`;
   const re = () => showSettings(back), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
   $('stSave').onclick = () => { if (saveGame()) { banner('💾 SAVED'); re(); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); };
+  if ($('stDayMus')) $('stDayMus').onclick = () => { const k = Object.keys(DAYMUS), n = k[(k.indexOf(SND.dayMusic) + 1) % k.length]; SND.setDayMusic(n); SND.unlock(); re(); };
   $('stMusic').onclick = () => snd(m === 'all' ? 'sfx' : 'all'); $('stSfx').onclick = () => snd(m === 'off' ? 'sfx' : 'off');
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
@@ -4711,7 +4713,7 @@ if (COZY_HUD && window.ZHIcons) {
   ZHIcons.watch(['ib', 'eventModal', 'alerts', 'requestBox', 'confirmBar', 'quest', 'say', 'fx', 'infoPanel', 'adv', 'slots']);   /* panels, cards, alerts: emoji -> Clay icons */
 }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if (COZY_HUD && window.ZHIcons) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
-document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight()); } }, { capture: true });
+document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight(), S.day); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { if ((r.querySelector('b') || {}).id === 'rare') { showStash(); return; } const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
 
@@ -4723,7 +4725,7 @@ function simTick() {
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
-  if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight()); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
+  if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */
   if (tick % 60 === 40) helpTick();
   if (tick % 1000 === 0) { S.hour++; if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }

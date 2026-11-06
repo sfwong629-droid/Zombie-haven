@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
+  const GAP = { chop: 120, swing: 80, door: 300, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -27,27 +27,41 @@
     const g = c.createGain(); env(c, g, t, .003, vol, dur); n.connect(fl); fl.connect(g); g.connect(out); n.start(t); n.stop(t + dur + .05);
   }
   const N = (semi) => 220 * Math.pow(2, semi / 12);   // A3-based note helper
+  /* 3D.51 effects: layered and more physical (thuds, wood, metal, voices through formant filters) instead of plain beeps */
+  function formant(c, out, t, f0, dur, vol, forms, slideTo, vib = 0) {   // a voice-like buzz shaped by vowel filters
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    if (vib) { const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = vib; lg.gain.value = f0 * .04; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
+    const g = c.createGain(); env(c, g, t, Math.min(.08, dur * .2), vol, dur); g.connect(out);
+    for (const [f, q, a] of forms) { const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; const ga = c.createGain(); ga.gain.value = a; o.connect(bp); bp.connect(ga); ga.connect(g); }
+    o.start(t); o.stop(t + dur + .05);
+  }
+  const thud = (c, o, t, f = 110, vol = .3, d = .18) => tone(c, o, t, f, d, 'sine', vol, f * .4, .002);
+  const knock = (c, o, t, f = 420, vol = .25) => { pluck(c, o, t, f, vol, .25); noise(c, o, t, .03, vol * .8, f * 3, 3); thud(c, o, t, f * .45, vol * .5, .1); };
+  const clang = (c, o, t, f = 600, vol = .12, d = 1.1) => { [1, 2.76, 5.4, 8.9].forEach((m, i) => tone(c, o, t, f * m, d / (1 + i * .7), 'sine', vol / (1 + i), null, .001)); noise(c, o, t, .02, vol, 5000, 1); };
   const FX = {   // each: (context, output, start time)
-    hit: (c, o, t) => { noise(c, o, t, .07, .35, 900, 1.2); tone(c, o, t, 160, .06, 'square', .08, 80); },
-    hurt: (c, o, t) => { tone(c, o, t, 300, .12, 'sawtooth', .1, 140); noise(c, o, t, .05, .15, 2000); },
-    kill: (c, o, t) => { noise(c, o, t, .18, .3, 500, .7, 'lowpass', 120); tone(c, o, t, 110, .2, 'triangle', .14, 55); },
-    groan: (c, o, t) => { const d = .9; tone(c, o, t, 95, d, 'sawtooth', .05, 70, .15); tone(c, o, t, 97.5, d, 'sawtooth', .04, 68, .15); },
-    down: (c, o, t) => { tone(c, o, t, 392, .18, 'triangle', .14, 330); tone(c, o, t + .18, 311, .35, 'triangle', .14, 262); },
-    build: (c, o, t) => { noise(c, o, t, .06, .3, 300, 1, 'lowpass'); noise(c, o, t + .14, .06, .3, 340, 1, 'lowpass'); tone(c, o, t + .28, 880, .12, 'square', .05); },
-    click: (c, o, t) => { tone(c, o, t, 1200, .03, 'square', .04); },
-    chime: (c, o, t) => { tone(c, o, t, N(15), .18, 'triangle', .1); tone(c, o, t + .08, N(19), .26, 'triangle', .09); },
-    reward: (c, o, t) => { [12, 16, 19, 24].forEach((s, i) => tone(c, o, t + i * .07, N(s), .22, 'square', .05)); },
-    coin: (c, o, t) => { tone(c, o, t, N(24), .07, 'square', .05); tone(c, o, t + .06, N(31), .16, 'square', .05); },
-    breach: (c, o, t) => { noise(c, o, t, .35, .45, 700, .6, 'lowpass', 90); tone(c, o, t, 70, .4, 'sawtooth', .12, 40); },
-    alarm: (c, o, t) => { for (let i = 0; i < 3; i++) { tone(c, o, t + i * .36, 660, .16, 'square', .07); tone(c, o, t + i * .36 + .18, 520, .16, 'square', .07); } },
-    boss: (c, o, t) => { tone(c, o, t, 55, 1.6, 'sawtooth', .16, 41, .2); tone(c, o, t, 82, 1.6, 'sawtooth', .08, 61, .2); noise(c, o, t + .1, 1.2, .14, 200, .5, 'lowpass'); },
-    night: (c, o, t) => { [0, -5, -9].forEach((s, i) => tone(c, o, t + i * .35, N(s), 1.2, 'triangle', .08)); },
-    dawn: (c, o, t) => { [3, 7, 10, 15].forEach((s, i) => tone(c, o, t + i * .18, N(s), .7, 'triangle', .07)); },
-    crackle: (c, o, t) => { for (let i = 0; i < 6; i++) noise(c, o, t + Math.random() * .5, .02 + Math.random() * .03, .18, 1800 + Math.random() * 2500, 2); noise(c, o, t, .6, .05, 400, .5, 'lowpass'); },
-    rescued: (c, o, t) => { tone(c, o, t, N(12), .14, 'triangle', .08); tone(c, o, t + .12, N(19), .3, 'triangle', .08); },   /* V2.38: someone made it to care */
-    rankup: (c, o, t) => { [0, 4, 7, 12].forEach((s2, i) => tone(c, o, t + i * .11, N(s2 + 12), .3, 'square', .05)); [12, 16, 19].forEach((s2) => tone(c, o, t + .5, N(s2 + 12), .7, 'triangle', .05)); },
-    event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => tone(c, o, t + i * .09, N(s2 + 12), .14, 'triangle', .06)); },
-    woof: (c, o, t) => { tone(c, o, t, 420, .08, 'sawtooth', .1, 260); tone(c, o, t + .13, 400, .09, 'sawtooth', .1, 240); },
+    hit: (c, o, t) => { thud(c, o, t, 95, .32, .16); noise(c, o, t, .09, .32, 700, .9, 'lowpass', 200); noise(c, o, t, .025, .18, 3200, 1.5); },
+    hurt: (c, o, t) => { formant(c, o, t, 210, .22, .2, [[700, 6, 1], [1200, 8, .6]], 150); thud(c, o, t, 120, .18, .1); },
+    kill: (c, o, t) => { thud(c, o, t, 80, .38, .3); noise(c, o, t, .22, .3, 600, .7, 'lowpass', 120); formant(c, o, t + .02, 120, .45, .11, [[500, 5, 1], [900, 6, .5]], 70, 6); },
+    groan: (c, o, t) => { const d = 1.3 + Math.random() * .5, f = 82 + Math.random() * 25; formant(c, o, t, f, d, .12, [[420, 5, 1], [820, 7, .55], [2400, 10, .15]], f * .8, 3.5); noise(c, o, t, d, .025, 500, .6, 'lowpass'); },
+    down: (c, o, t) => { thud(c, o, t, 70, .35, .35); formant(c, o, t + .05, 180, .5, .13, [[600, 6, 1], [1000, 7, .5]], 110); thud(c, o, t + .55, 60, .15, .2); thud(c, o, t + .78, 60, .12, .2); },
+    build: (c, o, t) => { knock(c, o, t, 330, .28); knock(c, o, t + .16, 360, .26); knock(c, o, t + .34, 300, .3); },
+    click: (c, o, t) => { pluck(c, o, t, 1400, .12, .08); noise(c, o, t, .012, .08, 4500, 2); },
+    chime: (c, o, t) => { bell(c, o, t, N(15), .09); bell(c, o, t + .09, N(22), .08); },
+    reward: (c, o, t) => { [12, 16, 19, 24].forEach((s, i) => bell(c, o, t + i * .08, N(s), .08)); pluck(c, o, t, N(0), .2, 1); },
+    coin: (c, o, t) => { clang(c, o, t, 1800, .07, .35); clang(c, o, t + .07, 2400, .07, .5); },
+    breach: (c, o, t) => { thud(c, o, t, 55, .5, .5); noise(c, o, t, .5, .5, 900, .5, 'lowpass', 80); for (let i = 0; i < 5; i++) knock(c, o, t + .05 + Math.random() * .3, 500 + Math.random() * 500, .12); },
+    alarm: (c, o, t) => { for (let i = 0; i < 4; i++) clang(c, o, t + i * .28, 880, .12, .5); },
+    boss: (c, o, t) => { formant(c, o, t, 58, 1.8, .3, [[300, 4, 1], [700, 5, .7], [1600, 7, .2]], 40, 5); thud(c, o, t, 45, .4, .8); noise(c, o, t + .1, 1.3, .12, 220, .5, 'lowpass'); },
+    night: (c, o, t) => { [0, -5, -9].forEach((s, i) => bell(c, o, t + i * .45, N(s - 12), .07)); },
+    dawn: (c, o, t) => { [3, 7, 10, 15].forEach((s, i) => bell(c, o, t + i * .22, N(s + 12), .06)); },
+    crackle: (c, o, t) => { for (let i = 0; i < 9; i++) noise(c, o, t + Math.random() * .6, .01 + Math.random() * .03, .2, 1500 + Math.random() * 3500, 2); noise(c, o, t, .7, .06, 300, .5, 'lowpass'); },
+    rescued: (c, o, t) => { [0, 4, 7, 12].forEach((s, i) => pluck(c, o, t + i * .07, N(s), .18, 1.2)); bell(c, o, t + .3, N(19), .07); },
+    rankup: (c, o, t) => { [0, 4, 7].forEach((s2, i) => stab(c, o, t + i * .13, [N(s2), N(s2 + 7)], .07)); stab(c, o, t + .42, [N(12), N(16), N(19)], .09); [12, 16, 19].forEach((s2) => bell(c, o, t + .42, N(s2 + 12), .05)); },
+    event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => bell(c, o, t + i * .1, N(s2 + 12), .06)); },
+    woof: (c, o, t) => { formant(c, o, t, 330, .1, .3, [[900, 4, 1], [1800, 6, .4]], 210); formant(c, o, t + .16, 310, .11, .28, [[880, 4, 1], [1700, 6, .4]], 200); },
+    chop: (c, o, t) => { knock(c, o, t, 260, .3); noise(c, o, t, .05, .2, 1800, 1.2); },   /* 3D.51 new */
+    swing: (c, o, t) => { noise(c, o, t, .14, .14, 900, .9, 'bandpass', 2400); },
+    door: (c, o, t) => { knock(c, o, t, 200, .2); formant(c, o, t + .02, 300, .3, .03, [[1800, 15, 1]], 260); },
   };
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
@@ -57,9 +71,11 @@
   const MOODS = {
     day: { bpm: 84, prog: [[0, 'm'], [-4, 'M'], [3, 'M'], [-2, 'M'], [0, 'm'], [-4, 'M'], [-2, 'M'], [-5, 'm']] },
     night: { bpm: 60, prog: [[-7, 'm'], [-11, 'M'], [-2, 'm'], [0, 'M'], [-7, 'm'], [-11, 'M'], [-9, 'M'], [0, 'M']] },
+    lounge: { bpm: 112, prog: [[-4, 'M7'], [-7, 'm7'], [-2, 'm7'], [3, '7'], [0, 'm7'], [-7, '7'], [-2, 'm7'], [3, '7']] },   /* 3D.51 retro 50s lounge (F major, swing) */
+    porch: { bpm: 98, prog: [[-2, 'M'], [3, 'M'], [-7, 'M'], [-2, 'M'], [-5, 'm'], [3, 'M'], [-7, 'M'], [-2, 'M']] },   /* 3D.51 country porch (G major) */
     danger: { bpm: 116, prog: [[-5, 'm'], [-9, 'M'], [-7, 'M'], [2, 'M'], [-5, 'm'], [-9, 'M'], [-7, 'M'], [-3, 'M']] },
   };
-  const Q = { m: [0, 3, 7], M: [0, 4, 7] };
+  const Q = { m: [0, 3, 7], M: [0, 4, 7], M7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '7': [0, 4, 7, 10] };
   const fold = (r) => { while (r > 0) r -= 12; while (r < -12) r += 12; return r; };   // chord roots live in A2..A3
   const ksCache = new Map();
   function ksBuf(c, f, sec = 1.8, bright = .5) {   // Karplus-Strong plucked string, cached per pitch
@@ -103,6 +119,24 @@
       const pat = [[-12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [ch[2] - root, 1], [7 - 12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [12, 2]];   // fingerpicking: bass, then the chord's middle and top
       pat.forEach(([s, v], i) => { if (i === 7 && mr() < .4) return; pluck(c, out, t0 + i * beat / 2 + (i % 2 ? .012 : 0), F(root + s), [.17, .1, .085][v], v ? 1.4 : 2, [0, -.35, .35][v]); });
       if (phrase % 2 === 1) { const tones = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24, ch[1] + 12 + 2], rh = mr() < .5 ? [0, 1.5, 2, 3] : [0, 2, 3]; rh.forEach((b, i) => { if (mr() < .15) return; const d = (rh[i + 1] ?? 4) - b; whistle(c, out, t0 + b * beat, F(tones[(bar + i * 2 + Math.floor(mr() * 3)) % tones.length]), d * beat * .95, .045); }); }
+    } else if (mood === 'lounge') {   /* swing: walking bass, brushes and ride, Rhodes-like comping, a vibraphone tune */
+      const sw = (b, off) => t0 + (b + (off ? 2 / 3 : 0)) * beat, nx = MOODS.lounge.prog[(bar + 1) % 8], nroot = fold(nx[0]);
+      const walk = [root, root + (ch[1] - root), root + 7, nroot + (mr() < .5 ? -1 : 1)]; walk.forEach((s2, b) => pluck(c, out, t0 + b * beat, F(s2 - 24), .19, .9));
+      [[0, 0], [1, 0], [1, 1], [2, 0], [3, 0], [3, 1]].forEach(([b, o2]) => clang(c, out, sw(b, o2), 3100, o2 ? .008 : .013, .35));   // ride: ding, ding-ga-ding
+      [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .22, .05, 2600, .6));   // brushes
+      const voic = [ch[1] + 12, ch[3] !== undefined ? ch[3] : ch[2] + 12, ch[2] + 12].map((s2) => F(s2)); [[1, 1], [3, 0]].forEach(([b, o2]) => { if (mr() < .85) voic.forEach((f) => { tone(c, out, sw(b, o2), f, .5, 'sine', .022, null, .004); tone(c, out, sw(b, o2), f * 2, .2, 'triangle', .006, null, .002); }); });
+      const motif = [[0, 0, 2], [0, 1, 1], [1, 1, 0], [2, 0, 3], [3, 0, 1]], half = bar % 4 < 2 || phrase % 2 === 1;   // vibes: a short swung phrase, answered every other bar
+      if (half) for (const [b, o2, k] of motif) { if (mr() < .2) continue; const tn = ch[(k + bar) % ch.length] + 12 + (k === 3 ? 12 : 0); bell(c, out, sw(b, o2), F(tn), .045); }
+    } else if (mood === 'porch') {   /* banjo rolls, boom-chick bass and guitar, a harmonica tune */
+      const roll = [0, 2, 1, 3, 0, 2, 1, 3].map((k) => [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24][k]);
+      roll.forEach((s2, i) => pluck(c, out, t0 + i * beat / 2 + (i % 2 ? .01 : 0), F(s2), i % 4 === 0 ? .13 : .09, .7, .3));
+      [0, 2].forEach((b, i) => pluck(c, out, t0 + b * beat, F(root - 24 + (i ? 7 : 0)), .3, 1));
+      [1, 3].forEach((b) => ch.forEach((s2, i) => pluck(c, out, t0 + b * beat + i * .012, F(s2), .05, .4, -.3)));
+      kick(c, out, t0, .05); kick(c, out, t0 + 2 * beat, .04);
+      if (phrase % 2 === 1 && mr() < .85) { const tn = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12]; [[0, 1.5], [1.5, .5], [2, 1], [3, 1]].forEach(([b, d], i) => {
+          const f = F(tn[(i + bar) % tn.length]), o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain(); o.type = 'square'; o.frequency.value = f; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 1.2;
+          l.frequency.value = 6; lg.gain.value = f * .01; l.connect(lg); lg.connect(o.frequency); const tt = t0 + b * beat, dd = d * beat * .95; g.gain.setValueAtTime(.0001, tt); g.gain.linearRampToValueAtTime(.05, tt + .06); g.gain.linearRampToValueAtTime(.0001, tt + dd);
+          o.connect(bp); bp.connect(g); g.connect(out); o.start(tt); l.start(tt); o.stop(tt + dd + .05); l.stop(tt + dd + .05); }); }
     } else if (mood === 'night') {
       pad(c, out, t0, [F(root - 12), F(root - 5)], len + .3, .016, 380, 2.2);
       for (let b = 0; b < 4; b++) if (mr() < (b === 0 ? .8 : .38)) bell(c, out, t0 + b * beat + (mr() < .3 ? beat / 2 : 0), F(ch[Math.floor(mr() * 3)] + 12 + (mr() < .3 ? 12 : 0)), .05);
@@ -126,7 +160,9 @@
       nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
     }
   }
-  const setWant = () => { want = danger ? 'danger' : night ? 'night' : 'day'; };
+  const DAY_TRACKS = ['day', 'lounge', 'porch']; let dayN = 0, dayPick = 'mix';
+  try { dayPick = localStorage.getItem('zhDayMusic') || 'mix'; } catch (e) { /* storage blocked */ }
+  const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick; };   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
@@ -138,7 +174,9 @@
       if (!ctx || mode === 'off' || ctx.state !== 'running' || !FX[name]) return; const now = performance.now(); if (now - (last[name] || 0) < (GAP[name] || 80)) return; last[name] = now;
       try { FX[name](ctx, sfxBus, ctx.currentTime + .01); } catch (e) { /* ignore */ }
     },
-    music(isNight) { night = !!isNight; setWant(); },
+    music(isNight, day) { night = !!isNight; if (day != null) dayN = day; setWant(); },
+    get dayMusic() { return dayPick; }, setDayMusic(p) { dayPick = p; try { localStorage.setItem('zhDayMusic', p); } catch (e) { /* storage blocked */ } setWant(); },
+    tracks: DAY_TRACKS,
     danger(on) { danger = !!on; setWant(); },   /* 3D.50 a horde or a fight in town */
     get mood() { return mood; },
     get mode() { return mode; },
