@@ -73,6 +73,8 @@
     night: { bpm: 60, prog: [[-7, 'm'], [-11, 'M'], [-2, 'm'], [0, 'M'], [-7, 'm'], [-11, 'M'], [-9, 'M'], [0, 'M']] },
     lounge: { bpm: 112, prog: [[-4, 'M7'], [-7, 'm7'], [-2, 'm7'], [3, '7'], [0, 'm7'], [-7, '7'], [-2, 'm7'], [3, '7']] },   /* 3D.51 retro 50s lounge (F major, swing) */
     porch: { bpm: 98, prog: [[-2, 'M'], [3, 'M'], [-7, 'M'], [-2, 'M'], [-5, 'm'], [3, 'M'], [-7, 'M'], [-2, 'M']] },   /* 3D.51 country porch (G major) */
+    strum: { bpm: 120, prog: [[-7, 'M'], [0, 'M'], [2, 'm'], [-2, 'M'], [-7, 'M'], [0, 'M'], [-2, 'M'], [0, 'M']] },   /* 3D.52 lively strummed acoustic (D major) */
+    travis: { bpm: 104, prog: [[-2, 'M'], [3, 'M'], [-2, 'M'], [-7, 'M'], [-5, 'm'], [3, 'M'], [-7, 'M'], [-2, 'M']] },   /* 3D.52 bright fingerstyle (G major) */
     danger: { bpm: 116, prog: [[-5, 'm'], [-9, 'M'], [-7, 'M'], [2, 'M'], [-5, 'm'], [-9, 'M'], [-7, 'M'], [-3, 'M']] },
   };
   const Q = { m: [0, 3, 7], M: [0, 4, 7], M7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '7': [0, 4, 7, 10] };
@@ -137,6 +139,21 @@
           const f = F(tn[(i + bar) % tn.length]), o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain(); o.type = 'square'; o.frequency.value = f; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 1.2;
           l.frequency.value = 6; lg.gain.value = f * .01; l.connect(lg); lg.connect(o.frequency); const tt = t0 + b * beat, dd = d * beat * .95; g.gain.setValueAtTime(.0001, tt); g.gain.linearRampToValueAtTime(.05, tt + .06); g.gain.linearRampToValueAtTime(.0001, tt + dd);
           o.connect(bp); bp.connect(g); g.connect(out); o.start(tt); l.start(tt); o.stop(tt + dd + .05); l.stop(tt + dd + .05); }); }
+    } else if (mood === 'strum') {   /* down-up strumming, cajon and shaker, a lead riff every other phrase */
+      const six = beat / 4, voice = [root - 12, root - 5, root, ch[1], ch[2], root + 12];
+      const strum = (t, down, vol) => { const v = down ? voice : voice.slice(2).reverse(); v.forEach((s2, i) => pluck(c, out, t + i * (down ? .011 : .008), F(s2), vol * (down ? 1 : .7), .9, (i / 5 - .5) * .5)); };
+      [[0, 1], [4, 1], [6, 0], [10, 0], [12, 1], [14, 0]].forEach(([i, d]) => strum(t0 + i * six, d, i === 0 ? .075 : .055));
+      [0, 2].forEach((b) => thud(c, out, t0 + b * beat, 90, .2, .14)); [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .09, .13, 1300, .9));
+      for (let i = 0; i < 16; i++) noise(c, out, t0 + i * six, .03, i % 2 ? .018 : .03, 6500, 1.4, 'highpass');
+      if (phrase % 2 === 1) { const pent = [0, 2, 4, 7, 9, 12, 14, 16].map((x) => x - 7 + 12); [0, 2, 3, 6, 8, 10, 11, 14].forEach((i, k) => { if (mr() < .2) return; pluck(c, out, t0 + i * six, F(pent[(k * 3 + bar * 2) % pent.length] + (ch[0] === root ? 0 : 0)), .1, .5, .4); }); }
+    } else if (mood === 'travis') {   /* alternating thumb bass, pinched melody on top, claps on 2 and 4 */
+      const bassN = [root - 12, root - 5, root - 12 + (q === 'm' ? 3 : 4) + 12 - 12, root - 5];
+      bassN.forEach((s2, b) => pluck(c, out, t0 + b * beat, F(s2), .16, 1.1, -.2));
+      [0, 1, 2, 3].forEach((b) => pluck(c, out, t0 + (b + .5) * beat, F([ch[1], ch[2], ch[1] + 12, ch[2]][b] + 12 - 12), .07, .7, .25));
+      const mel = [ch[2] + 12, ch[0] + 24, ch[1] + 12, ch[2] + 12, ch[0] + 12 + 2, ch[1] + 12], rh = phrase % 2 ? [0, 1.5, 2.5, 3] : [0, 1, 2.5];
+      rh.forEach((b, i) => pluck(c, out, t0 + b * beat, F(mel[(i + bar) % mel.length]), .11, 1.2, .35));
+      if (phrase % 2 === 1) [1, 3].forEach((b) => { noise(c, out, t0 + b * beat, .06, .09, 1600, 1.4); noise(c, out, t0 + b * beat + .012, .05, .06, 2400, 1.4); });
+      else [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .05, .03, 6000, 1.4, 'highpass'));
     } else if (mood === 'night') {
       pad(c, out, t0, [F(root - 12), F(root - 5)], len + .3, .016, 380, 2.2);
       for (let b = 0; b < 4; b++) if (mr() < (b === 0 ? .8 : .38)) bell(c, out, t0 + b * beat + (mr() < .3 ? beat / 2 : 0), F(ch[Math.floor(mr() * 3)] + 12 + (mr() < .3 ? 12 : 0)), .05);
@@ -160,7 +177,7 @@
       nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
     }
   }
-  const DAY_TRACKS = ['day', 'lounge', 'porch']; let dayN = 0, dayPick = 'mix';
+  const DAY_TRACKS = ['strum', 'day', 'travis', 'lounge', 'porch']; let dayN = 0, dayPick = 'mix';
   try { dayPick = localStorage.getItem('zhDayMusic') || 'mix'; } catch (e) { /* storage blocked */ }
   const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick; };   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
