@@ -384,6 +384,24 @@ def spit(t):
                 'upperarm.L': (k['ua'], 0, 12), 'upperarm.R': (k['ua'], 0, -12), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0)}, k['w'], .7)
     return p
 
+def spore_combo(t):
+    """Sporehead three-hit combo (3D only, one-shot, ~1.9 s): left claw swipe (lands t=.2), right claw swipe (t=.45),
+    then a lunging headbutt with the spore cap, both hands raking down (t=.74); recovers to the ready stance."""
+    K = [(0, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'hd': -8}),
+         (.1, {'tw': 26, 'lean': 4, 'w': -.4, 'Lx': 70, 'Lz': 70, 'Rx': 30, 'Rz': -20, 'hd': -10}),
+         (.2, {'tw': -20, 'lean': 16, 'w': .8, 'Lx': 92, 'Lz': -30, 'Rx': 24, 'Rz': -30, 'hd': -4}),
+         (.33, {'tw': -26, 'lean': 8, 'w': -.2, 'Lx': 60, 'Lz': -10, 'Rx': 72, 'Rz': -72, 'hd': -10}),
+         (.45, {'tw': 22, 'lean': 18, 'w': .8, 'Lx': 30, 'Lz': 30, 'Rx': 94, 'Rz': 30, 'hd': -4}),
+         (.6, {'tw': 0, 'lean': -16, 'w': -.8, 'Lx': 150, 'Lz': 20, 'Rx': 150, 'Rz': -20, 'hd': -30}),
+         (.74, {'tw': 0, 'lean': 38, 'w': 1.3, 'Lx': 70, 'Lz': 10, 'Rx': 70, 'Rz': -10, 'hd': 26}),
+         (.86, {'tw': 0, 'lean': 30, 'w': 1.1, 'Lx': 60, 'Lz': 14, 'Rx': 60, 'Rz': -14, 'hd': 16}),
+         (1, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'hd': -8})]
+    k = keys(K, t)
+    p = stance({'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .4, 0), 'neck': (k['hd'] * .4, 0, 0), 'head': (k['hd'] * .6 - k['lean'] * .2, -k['tw'] * .4, 0),
+                'upperarm.L': (k['Lx'], 0, k['Lz']), 'upperarm.R': (k['Rx'], 0, k['Rz']), 'forearm.L': (24, 0, 0), 'forearm.R': (24, 0, 0),
+                'hand.L': (-20, 0, 0), 'hand.R': (-20, 0, 0)}, k['w'], .9)
+    return p
+
 def bloated_walk(t):
     """Bloated zombie waddle (3D only): short heavy steps, hips rolling side to side, the belly leading, arms kept low
     beside the belly (his model has the arms fused to the belly: raising them would stretch the skin)."""

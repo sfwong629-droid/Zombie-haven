@@ -850,10 +850,11 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: .540, zombie_run: 1.264 } },
   bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: .395 } },
   crawler: { url: 'assets/characters/ai3d_v2/zombie_crawler.glb', stride: { crawl: .24 }, crawl: true },
-  spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } } }, ZSRC = {};   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
+  spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
+  sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } } }, ZSRC = {};   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
 function zombieOwn(type) {
   const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
-  const t = (type === 'spitter' ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
+  const t = (type === 'spitter' || type === 'sporehead' ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
@@ -1122,7 +1123,7 @@ function personAnim(a, s, dt) {
   const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     if (!a.attacking) {
-      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : (a.acts.melee_swing_d ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'melee_swing_d'] : ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'])[(Math.random() * (a.acts.melee_swing_d ? 4 : 3)) | 0];
+      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : (() => { const nx = s.comboZ === s.target && (G.tick ? G.tick() : 0) < (s.comboT || 0) ? (s.combo || 0) + 1 : 1; return ['melee_swing_a', 'melee_swing_b', a.acts.melee_swing_d ? 'melee_swing_d' : 'melee_swing_c'][(nx - 1) % 3]; })();   /* 3D.37 combo: A, B, then the two-hand finisher */
       a.play(clip, true, true); a.attacking = true;
     }
     return;
@@ -1204,7 +1205,7 @@ function zombieAnim(a, z) {
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
-  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : a.src === ZSRC.sporehead && a.acts.spore_combo ? 'spore_combo' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
   if (z.type === 'runner') { a.play('zombie_run'); return; }

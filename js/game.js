@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.36', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.37', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -557,6 +557,9 @@ function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
 /* 3D.36 attack impact effects: brute / Alpha / boss slam = ground shockwave, dust and debris and a little screen shake;
    bloated = a green belly-splash; claws = three quick slash marks on the target; spitter hits use the spit splat. */
 const hitFx = [];
+/* 3D.37 survivor melee combo: hits in a row on the same enemy (within 2.5 s) chain swing A, swing B, then a two-hand finisher for +60% damage */
+function comboMult(s, z, w) { if (w.ranged) { s.combo = 0; s.comboFin = false; return 1; } s.combo = s.comboZ === z && tick < (s.comboT || 0) ? (s.combo || 0) + 1 : 1; s.comboZ = z; s.comboT = tick + 150; s.comboFin = s.combo % 3 === 0; return s.comboFin ? 1.6 : 1; }
+const zHitDmg = (z, d, t) => Math.max(1, fairRound(d.atk * (z.pw || 1) * (hasSkill(t, 'armored') ? .8 : 1) * (hasSkill(t, 'bulwark') ? .85 : 1) * (atPost(t) ? .8 : 1) * (1 - dmgReduce(t))));
 function impactFx(z, w) {
   if (!w || z.type === 'spitter') return; const k = ['brute', 'alpha', 'boss'].includes(z.type) ? 'slam' : z.type === 'bloated' ? 'belly' : 'claw';
   hitFx.push({ k, w: { x: w.x, y: w.y }, t0: tick, big: z.type === 'alpha' || z.type === 'boss' ? 1.4 : 1, a: rnd() * 6.28, bits: Array.from({ length: 9 }, () => ({ a: rnd() * 6.28, v: .5 + rnd(), s: rnd() })) });
@@ -1094,6 +1097,7 @@ const zombieTypes = {
   burnt: { name: 'Burnt Zombie', hp: 40, atk: 6, aggro: 2.6, chase: .013, reward: 35, ren: 3, weight: 0, alert: 5, isNew: 1, desc: 'Smouldering: sets buildings it hits on fire. Firefighter Coat and rain help.' },
   dog: { name: 'Infected Dog', hp: 18, atk: 5, aggro: 4.2, chase: .034, reward: 22, ren: 2, weight: 0, alert: 6, isNew: 1, desc: 'Fast and low to the ground: goes for workers out at the trees and rocks. Fences and Agility help.' },
   alpha: { name: 'The Alpha', hp: 230, atk: 15, aggro: 4, chase: .012, reward: 0, ren: 20, weight: 0, alert: 8, isNew: 1, desc: 'Leads the horde: zombies near it move 20% faster. Kill it and the horde breaks.' },
+  sporehead: { name: 'Sporehead', hp: 70, atk: 4, aggro: 2.8, chase: .011, reward: 40, ren: 3, weight: 3, alert: 5, desc: 'Fungus-headed brawler: every attack is a three-hit combo (claw, claw, headbutt). Keep your distance or block it with walls.' },   /* 3D.37 the user's model; in waves from day 4 */
   raider: { name: 'Raider', hp: 55, atk: 7, aggro: 2.6, chase: .019, reward: 0, ren: 3, weight: 0, alert: 0 },   /* V2.13: human raiders */
   boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 4.2, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
 };
@@ -2110,7 +2114,7 @@ function ai(s) {
       if (near) { const dx = s.w.x - near.w.x, dy = s.w.y - near.w.y, l = Math.hypot(dx, dy) || 1; moveSlide(s, { x: s.w.x + dx / l, y: s.w.y + dy / l }, CHASE * .9); s.moving = true; if (rnd() < .02) emote(s, '😰', 50); return; }
     }
     if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { s.ammo = weaponOf(s).mag; emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1)); z.hp -= dmg; z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * comboMult(s, z, w)); z.hp -= dmg; if (s.comboFin) { floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: 'COMBO!', col: '#C6FF4D', a: 70, big: true }); if (!w.ranged) impactFx({ type: w.kind === 'blunt' ? 'brute' : 'walker' }, z.w); } z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (z.type === 'boss') bark(s, 'bossKill', {}, { pri: 2 }); else if (rnd() < .3) bark(s, 'kill', {}, { pri: 1 }); else if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { { const pool = ['katana', 'kevlar', 'shotgun', 'rifle', 'military', 'riot', 'crossbow', 'dogtags'], it = pool[Math.floor(rnd() * pool.length)]; if (COZY_HUD) dropBag(z.w, 15, s, { meds: 2, fuel: 2, cloth: 2, ...(rnd() < .7 ? { item: it } : {}) }, 'epic'); else S.mat += 15; } S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; const zx = {}; for (const [ch, k, n] of ZDROP[z.type] || []) if (rnd() < ch) zx[k] = (zx[k] || 0) + n; if (rnd() < pd[0] || Object.keys(zx).length) { if (COZY_HUD) dropBag(z.w, rnd() < pd[0] ? pd[1] : 0, s, Object.keys(zx).length ? zx : null); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }
@@ -2150,7 +2154,7 @@ function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s
 
 /* ---------------- zombies ---------------- */
 function weightedZombie() {
-  const pool = Object.entries(zombieTypes).filter(([k]) => k === 'walker' || k === 'crawler' || (k === 'runner' && S.day >= 2) || ((k === 'bloated' || k === 'spitter') && (S.rank >= 2 || S.day >= 5)) || (k === 'brute' && (S.rank >= 3 || S.day >= 8)));
+  const pool = Object.entries(zombieTypes).filter(([k]) => k === 'walker' || k === 'crawler' || (k === 'runner' && S.day >= 2) || (k === 'sporehead' && S.day >= 4) || ((k === 'bloated' || k === 'spitter') && (S.rank >= 2 || S.day >= 5)) || (k === 'brute' && (S.rank >= 3 || S.day >= 8)));
   let tot = pool.reduce((a, [, v]) => a + v.weight, 0), r = rnd() * tot; for (const [k, v] of pool) { r -= v.weight; if (r <= 0) return k; } return 'walker';
 }
 function spawnPoint() {   /* a walkable tile on the map edge outside the territory; more sides open up as the territory grows */
@@ -2398,8 +2402,10 @@ function zai0(z) {
   if (z.mode === 'zchase') {
     if (!z.target || z.target.hp <= 0 || ['down', 'hospital'].includes(z.target.mode) || insideBuilding(z.target)) { z.target = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 40; return; }
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
-    if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
+    if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
+  if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
+    if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 70 + rnd() * 20; } return; }   /* 3D.37 three-hit combo, in time with spore_combo */
   if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
     if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
@@ -3503,7 +3509,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['comboZ', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -4621,7 +4627,7 @@ async function init() {
 }
 /* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
    Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
-const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute', 'raider'], ['screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'raider']];
+const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute', 'sporehead', 'raider'], ['screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
 function zooLine() {
   S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
     const S0 = 11 + r * 2.1, D = -3 + (i - (row.length - 1) / 2) * 2.2, x = (S0 + D) / 2, y = (S0 - D) / 2;   /* a compact grid that runs across the screen (iso), north of the camp */
