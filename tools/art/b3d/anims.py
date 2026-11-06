@@ -354,6 +354,35 @@ def zombie_attack(t):
     return p
 
 
+def brute_attack(t):
+    """Brute double hammer fist (3D only, one-shot): feet planted side by side, both arms swing up over the head together,
+    then smash straight down in front, knees and back bending into the blow."""
+    K = [(0, {'ua': 20, 'fa': 26, 'lean': 4, 'kn': .4, 'hd': -8, 'az': 6}),
+         (.42, {'ua': 168, 'fa': 46, 'lean': -12, 'kn': .2, 'hd': -22, 'az': 10}),
+         (.58, {'ua': 62, 'fa': 4, 'lean': 30, 'kn': 1.2, 'hd': 4, 'az': -16}),
+         (.74, {'ua': 58, 'fa': 6, 'lean': 28, 'kn': 1.1, 'hd': 2, 'az': -16}),
+         (1, {'ua': 20, 'fa': 26, 'lean': 4, 'kn': .4, 'hd': -8, 'az': 6})]
+    k = keys(K, t); kn = k['kn']
+    p = {'pelvis': (k['lean'] * .3, 0, 0), 'chest': (k['lean'] * .7, 0, 0), 'neck': (0, 0, 0), 'head': (k['hd'] - k['lean'] * .4, 0, 0)}
+    for n, sg in (('L', 1), ('R', -1)):   # both feet parallel, shoulder-width, knees bending together
+        p['thigh.' + n] = (22 * kn, 0, sg * -4); p['shin.' + n] = (-40 * kn, 0, 0); p['foot.' + n] = (18 * kn, 0, 0)
+        p['upperarm.' + n] = (k['ua'], 0, sg * k['az']); p['forearm.' + n] = (k['fa'], 0, 0); p['hand.' + n] = (0, 0, -sg * 10)   # fists come together
+    p['bob'] = -.035 * kn - .01
+    return p
+
+def spit(t):
+    """Spitter ranged attack (3D only, one-shot): rears back with the chest puffed and the head tipped up, gathering it,
+    then snaps the head and chest forward and spits (the glob leaves the mouth at t = .5), arms flung back for balance."""
+    K = [(0, {'lean': 4, 'hd': -6, 'w': 0, 'ua': 4, 'fa': 18}),
+         (.38, {'lean': -18, 'hd': -34, 'w': -.8, 'ua': -10, 'fa': 30}),
+         (.5, {'lean': 26, 'hd': 22, 'w': 1.2, 'ua': -34, 'fa': 12}),
+         (.68, {'lean': 22, 'hd': 16, 'w': 1.1, 'ua': -28, 'fa': 14}),
+         (1, {'lean': 4, 'hd': -6, 'w': 0, 'ua': 4, 'fa': 18})]
+    k = keys(K, t)
+    p = stance({'chest': (k['lean'] * .7, 0, 0), 'pelvis': (k['lean'] * .3, 0, 0), 'neck': (k['hd'] * .4, 0, 0), 'head': (k['hd'] * .6, 0, 0),
+                'upperarm.L': (k['ua'], 0, 12), 'upperarm.R': (k['ua'], 0, -12), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0)}, k['w'], .7)
+    return p
+
 def bloated_walk(t):
     """Bloated zombie waddle (3D only): short heavy steps, hips rolling side to side, the belly leading, arms kept low
     beside the belly (his model has the arms fused to the belly: raising them would stretch the skin)."""
@@ -415,16 +444,17 @@ def crawl_idle(t):
     return p
 
 def crawl_attack(t):
-    """Crawler lunge (one-shot): rears up on its arms, then throws itself forward, one claw swiping and the jaw snapping."""
-    K = [(0, {'lie': 84, 'ua': 150, 'fa': 30, 'sw': 150, 'hd': -30, 'bob': 0}),
-         (.38, {'lie': 56, 'ua': 112, 'fa': 4, 'sw': 172, 'hd': -40, 'bob': .03}),
-         (.58, {'lie': 80, 'ua': 150, 'fa': 20, 'sw': 120, 'hd': -10, 'bob': -.01}),
-         (.75, {'lie': 82, 'ua': 152, 'fa': 26, 'sw': 130, 'hd': -20, 'bob': 0}),
-         (1, {'lie': 84, 'ua': 150, 'fa': 30, 'sw': 150, 'hd': -30, 'bob': 0})]
+    """Crawler grab (one-shot): rears up on its chest, flings both arms wide open, then wraps them together in front in a
+    grabbing hug, jaw snapping, and sinks back down."""
+    K = [(0, {'lie': 72, 'ua': 150, 'op': 0, 'fa': 30, 'hd': -36, 'bob': 0}),
+         (.35, {'lie': 52, 'ua': 124, 'op': -78, 'fa': 8, 'hd': -44, 'bob': .03}),
+         (.58, {'lie': 64, 'ua': 128, 'op': -26, 'fa': 62, 'hd': -26, 'bob': .015}),
+         (.78, {'lie': 66, 'ua': 130, 'op': -24, 'fa': 64, 'hd': -28, 'bob': .01}),
+         (1, {'lie': 72, 'ua': 150, 'op': 0, 'fa': 30, 'hd': -36, 'bob': 0})]
     k = keys(K, t); p = _prone({})
-    p['pelvis'] = (k['lie'], 0, 0); p['chest'] = (84 - k['lie'] - 4, 0, 0); p['head'] = (k['hd'], 0, 0)
-    p['upperarm.L'] = (k['ua'], 0, CRAWL['spread']); p['forearm.L'] = (k['fa'], 0, 0)
-    p['upperarm.R'] = (k['sw'], 0, -CRAWL['spread'] - 16); p['forearm.R'] = (30, 0, 0); p['hand.R'] = (-30, 0, 0)
+    p['pelvis'] = (k['lie'], 0, 0); p['chest'] = (72 - k['lie'] + 4, 0, 0); p['head'] = (k['hd'], 0, 0)
+    for n, sg in (('L', 1), ('R', -1)):   # op < -40: arms flung wide open; op near -26: hands meet in front (the hug)
+        p['upperarm.' + n] = (k['ua'], 0, sg * (CRAWL['spread'] + k['op'])); p['forearm.' + n] = (k['fa'], 0, 0); p['hand.' + n] = (-20, 0, 0)
     p['bob'] = CRAWL['bob'] + k['bob']
     return p
 

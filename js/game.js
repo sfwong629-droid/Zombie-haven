@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.32', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.35', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -528,7 +528,7 @@ function tinted(key, img, fn) {   /* recolour a pixel-art sheet once (keeps ever
 }
 const RAIDER_TINT = (r, g, b) => (r > 190 && g > 165 && b > 120 && r - b < 110 ? [Math.round(r * .62), Math.round(g * .2), Math.round(b * .2)] : r > 60 && r < 200 && g < r && b < g ? [Math.round(r * .55), Math.round(g * .55), Math.round(b * .6)] : [r, g, b]);   // red shirt, darker clothes
 const BOSS_TINT = (r, g, b) => [Math.min(255, Math.round(r * .9 + 40)), Math.round(g * .55), Math.min(255, Math.round(b * 1.15 + 30))];   // sickly purple
-const corpses = [], shots = [];   /* shots: short tracer lines for guns and bows (V2.33) */   /* short death animations (not saved) */
+const corpses = [], shots = [], spits = [];   /* 3D.35 spits: flying mucus globs from spitters */   /* shots: short tracer lines for guns and bows (V2.33) */   /* short death animations (not saved) */
 function zFrame(zm, zmeta) {
   const fr = zmeta.frames, fc = facing(zm), boss = zm.type === 'boss';
   const A = (n, t) => fr[n][0] + (Math.floor((tick + (zm.phase || 0)) / t) % fr[n][1]);
@@ -553,6 +553,22 @@ function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
   else ctx.drawImage(big, f * zmeta.fw * m, view * zmeta.fh * m, zmeta.fw * m, zmeta.fh * m, snap(p.x - w / 2), y, w, h);
   ctx.restore(); ctx.imageSmoothingEnabled = true; ctx.globalAlpha = 1;
   return p.y - zmeta.h * sc;
+}
+const SPIT_COL = ['#7cc242', '#8e4fb0', '#6b4a2b', '#a6d94a'];   /* green, purple and brown mucus */
+function drawSpits() {   /* 3D.35: an arcing glob with a dripping trail; a splat where it lands */
+  const tw = TWs() * .55, H = CHAR_H * TWs();
+  for (let i = spits.length - 1; i >= 0; i--) {
+    const g = spits[i], k = (tick - g.t0) / g.dur, a = project(g.a.x, g.a.y), b = project(g.b.x, g.b.y);
+    if (k >= 1) { if (!g.splat) { g.splat = tick; g.drops = Array.from({ length: 7 }, (_, j) => ({ a: rnd() * 6.28, v: .5 + rnd(), c: SPIT_COL[j % 3] })); } const q = (tick - g.splat) / 40; if (q > 1) { spits.splice(i, 1); continue; }
+      ctx.save(); ctx.globalAlpha = 1 - q; ctx.fillStyle = 'rgba(110,170,50,.55)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, (8 + 10 * Math.min(1, q * 3)) * tw / 40, (4 + 5 * Math.min(1, q * 3)) * tw / 40, 0, 0, 7); ctx.fill();
+      for (const d of g.drops) { const r = Math.min(1, q * 2.5) * 16 * d.v * tw / 40; ctx.fillStyle = d.c; ctx.beginPath(); ctx.arc(b.x + Math.cos(d.a) * r, b.y - H * .35 + Math.sin(d.a) * r * .5 + q * q * H * .4, Math.max(1, 2.6 * tw / 40 * (1 - q * .5)), 0, 7); ctx.fill(); } ctx.restore(); continue; }
+    const pt = (u) => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u - H * (.86 - .5 * u) - Math.sin(Math.PI * u) * H * .55 });
+    ctx.save();
+    for (let j = 6; j >= 1; j--) { const u = Math.max(0, k - j * .045), p = pt(u); ctx.globalAlpha = .75 - j * .1; ctx.fillStyle = SPIT_COL[(j + ((g.seed * 4) | 0)) % 3]; ctx.beginPath(); ctx.arc(p.x, p.y + j * .6, Math.max(1, (4.2 - j * .45) * tw / 40), 0, 7); ctx.fill(); }
+    const p = pt(k), r = 6 * tw / 40; ctx.globalAlpha = 1; ctx.fillStyle = '#6fb53a'; ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 1.15, r, Math.atan2(b.y - a.y, b.x - a.x), 0, 7); ctx.fill();
+    ctx.fillStyle = '#8e4fb0'; ctx.beginPath(); ctx.arc(p.x - r * .35, p.y + r * .2, r * .45, 0, 7); ctx.fill(); ctx.fillStyle = '#6b4a2b'; ctx.beginPath(); ctx.arc(p.x + r * .4, p.y - r * .25, r * .32, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x - r * .4, p.y - r * .45, r * .22, 0, 7); ctx.fill(); ctx.restore();
+  }
 }
 function drawZombie(zm) {
   const p = project(zm.w.x, zm.w.y), tw = TWs();
@@ -657,6 +673,7 @@ function draw() {
   drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
   for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
+  drawSpits();
   if (COZY_HUD) for (const c of S.crates || []) if (c.grab > 0 && !c.taken) { const p = project(c.w.x, c.w.y), u = hudU(), y = p.y - 40 * u;   /* V3D.17: prying the crate loose */
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, y, 12 * u, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.lineWidth = 4 * u; ctx.lineCap = 'round'; ctx.strokeStyle = '#7fbf5a'; ctx.beginPath(); ctx.arc(p.x, y, 12 * u, -Math.PI / 2, -Math.PI / 2 + c.grab * Math.PI * 2); ctx.stroke(); ctx.restore();
     const im = window.ZHIcons && ZHIcons.img && ZHIcons.img('box'); if (im && im.complete) ctx.drawImage(im, p.x - 8 * u, y - 8 * u, 16 * u, 16 * u); }
@@ -2357,7 +2374,8 @@ function zai0(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = 26; } return;
   }
-  if (z.mode === 'zattack') { z.moving = false; if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
+    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
