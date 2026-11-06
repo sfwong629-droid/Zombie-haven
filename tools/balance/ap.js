@@ -122,7 +122,7 @@
     for (const q of S.sv) if (!AP.seen.has(q)) { AP.seen.add(q); { const k = q.src || 'other'; AP.joins[k] = (AP.joins[k] || 0) + 1; } }
     const sv = S.sv, per = Wd.perimeter(W), wl = [...W.walls.values()];
     return { d: S.day, sv: sv.length, fallen: (S.fallen || []).length, down: sv.filter((q) => q.mode === 'down' || q.mode === 'hospital').length,
-      food: Math.round(S.food), water: Math.round(S.water), mat: Math.round(S.mat), wood: Math.round(S.wood || 0), stumps: Object.values(S.nodes || {}).filter((n) => n.left <= 0).length, rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
+      food: Math.round(S.food), water: Math.round(S.water), sup: Z.supplyCap ? Z.supplyCap() : null, need: Z.rationNeed ? Z.rationNeed() : null, ffam: W.buildings.filter((b) => D[b.type].fam === 'food' && !b.burnt).map((b) => b.type).join('+'), wfam: W.buildings.filter((b) => D[b.type].fam === 'water' && !b.burnt).map((b) => b.type).join('+'), mat: Math.round(S.mat), wood: Math.round(S.wood || 0), stumps: Object.values(S.nodes || {}).filter((n) => n.left <= 0).length, rp: Math.round(S.rp || 0), ren: S.ren, rank: S.rank, terr: S.terr || 0,
       leg: Z.legacyDone ? Z.legacyDone() : 0, fin: S.finale ? S.finale.night : null, won: S.won ? S.won.day : null, score: S.won ? S.won.score : null,
       kills: S.kills, cap: Z.popCap(), joins: { ...AP.joins }, nb: W.buildings.length, walls: wl.length, sealed: per.sealed, wallHp: wl.length ? Math.round(100 * wl.reduce((a, w) => a + w.hp / w.max, 0) / wl.length) : 0,
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),

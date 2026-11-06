@@ -38,3 +38,10 @@ the Lodge, and walls up after the Lodge. With scrap at the old prices every run 
 0-8 scrap), so Camp and Timber buildings now cost 40% less scrap. 5 seeds x 14 days after that: the Lodge on day 2-3 in
 4 of 5 runs, rank 3 in 3, 12-19 buildings. Walls from day 2 cost the bot its Lodge in most runs without fewer deaths.
 The bot still loses many people; read build pacing from it, not survival.
+
+## Food and water (3D.49)
+`python3 tools/balance/foodwater.py '{"b":{"farm":1,"barrel":2}}' 5 'ZH.TUNE.eat=1.5'` places those buildings next to a fresh
+camp, keeps zombies away, auto-staffs, collects the trays every 2 hours (like a player) and prints each day's food / water
+income and spending by source. At `TUNE.eat` 1 a person used ~0.6 food and 0.6 water a day, so one staffed Garden Plot
+(about 4-5 food a day) fed 7-8 people and stock piled up. 3D.49 sets `TUNE.eat` 1.5 (~0.95 a day each): a Garden Plot feeds
+about 4-5, a Rain Barrel (about 3 water a day) about 2, and every farm drinks 2 water a day for irrigation.
