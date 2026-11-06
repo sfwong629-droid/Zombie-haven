@@ -241,7 +241,7 @@ async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, 
     await close_popups(pg)
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;ZH.tryWall(3,5,'wood');ZH.startTool({kind:'demolish'});const p=ZH.project(3.5,5.5);
       ZH.tapAt(p.x,p.y);out.after1=!!Wd.wallAt(W,3,5);ZH.tapAt(p.x,p.y);out.after2=!!Wd.wallAt(W,3,5);
-      const rk=[...W.roads][0].split(',').map(Number),q=ZH.project(rk[0]+.5,rk[1]+.5);ZH.tapAt(q.x,q.y);out.road1=Wd.isRoad(W,rk[0],rk[1]);ZH.tapAt(q.x,q.y);out.road2=Wd.isRoad(W,rk[0],rk[1]);ZH.endBuildMode(true);
+      if(!W.roads.size){for(const [x,y] of Wd.ROAD_COORDS)W.roads.add(Wd.key(x,y));Wd.bump(W);}const rk=[...W.roads][0].split(',').map(Number),q=ZH.project(rk[0]+.5,rk[1]+.5);ZH.tapAt(q.x,q.y);out.road1=Wd.isRoad(W,rk[0],rk[1]);ZH.tapAt(q.x,q.y);out.road2=Wd.isRoad(W,rk[0],rk[1]);ZH.endBuildMode(true);
       S.rank=2;S.food=S.water=40;S.lastEventDay=-1;out.lock=ZH.holdEvent('caravan');S.rank=3;const m0=S.mat,f0=S.food;out.ok=ZH.holdEvent('caravan');out.parts=S.mat-m0;out.food=f0-S.food;
       S.rank=4;S.res={};ZH.showUpgrade('rank');out.path=document.getElementById('ib').textContent;
       S.hour=22;ZH.OPTS.nightLights=true;ZH.draw();ZH.OPTS.nightLights=false;ZH.draw();ZH.OPTS.nightLights=true;out.opt=JSON.parse(localStorage.getItem('zombieHavenOpts')||'{}');
@@ -271,7 +271,7 @@ async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker a
     t.ok(r['noTapPinch'], 'a pinch never counts as a tap')
     t.ok(r['tap'], 'a quick tap places a road')
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;const B=Wd.BUILD;
-      const rd=[...W.roads][0].split(',').map(Number);out.onRoad=!Wd.placementCheck(W,rd[0],rd[1],ZH.DEFS.house,null).ok;
+      {for(const [x,y] of Wd.ROAD_COORDS)W.roads.add(Wd.key(x,y));Wd.bump(W);}const rd=Wd.ROAD_COORDS[0];out.onRoad=!Wd.placementCheck(W,rd[0],rd[1],ZH.DEFS.house,null).ok;
       out.outside=!Wd.inTown(B.x0-1,B.y0);const n=W.roads.size;ZH.startTool({kind:'road'});const pb=ZH.project(B.x0-.5,B.y0+.5);ZH.tapAt(pb.x,pb.y);out.noOutside=W.roads.size===n;ZH.endBuildMode(true);
       const a={x:B.x0,y:rd[1]},b={x:B.x1,y:rd[1]};const p1=Wd.findPath(W,a,b);out.path=!!p1;out.roadShare=p1?p1.filter(q=>Wd.isRoad(W,q.x,q.y)).length/p1.length:0;
       for(const q of S.sv)q.job='Civilian';S.sv[0].job='Farmer';S.sv[0].l=1;S.sv[1].job='Farmer';S.sv[1].l=4;
