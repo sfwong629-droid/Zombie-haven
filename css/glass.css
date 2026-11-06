@@ -244,3 +244,9 @@ html.glass .tgl { flex: 0 0 auto; width: 52px; height: 30px; border-radius: 15px
 html.glass .tgl::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #f4f1e8; transition: left .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
 html.glass .tgl.on { background: var(--lime); } html.glass .tgl.on::after { left: 25px; }
 html.glass .setFoot { display: flex; gap: 10px; margin-top: 16px; } html.glass .setFoot .act { flex: 1; margin: 0; }
+/* 3D.41 Explore: send button, squad count, cost and loot at the top */
+html.glass .expTop { display: block; margin-bottom: 10px; border-color: rgba(198, 255, 77, .45); }
+html.glass .expTop .etRow { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+html.glass .expTop .etN { display: flex; flex-direction: column; align-items: center; min-width: 56px; } html.glass .expTop .etN b { font-size: 22px; font-weight: 800; line-height: 1; } html.glass .expTop .etN small { font-size: 11px; color: var(--mu); }
+html.glass .expTop #expGo { flex: 1; margin: 0; min-height: 48px; font-size: 16px; }
+html.glass .expTop .etLine { font-size: 14px; margin: 3px 0; } html.glass .expTop .etK { display: inline-block; min-width: 40px; font-weight: 800; color: var(--mu); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }

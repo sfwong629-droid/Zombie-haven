@@ -530,7 +530,7 @@ async def t_replay(br, port, t):   # V2.46: starts, difficulty, legacy goals, th
 
 async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entrance faces the other wall
     ctx, pg, errs = await open_game(br, port, 'rotate')
-    r = await pg.evaluate("""()=>{const S=ZH.S,Wd=ZH.Wd;S.mat=300;ZH.startTool({kind:'building',type:'canteen'});let sp=null;const rb=document.getElementById('rotBuild');
+    r = await pg.evaluate("""()=>{const S=ZH.S,Wd=ZH.Wd;S.mat=300;S.wood=300;S.rank=3;{const h=ZH.world.buildings.find(b=>b.type==='hq');if(h)h.type='hq2';}ZH.startTool({kind:'building',type:'armory'});let sp=null;const rb=document.getElementById('rotBuild');
       for(let y=Wd.BUILD.y0;y<=Wd.BUILD.y1&&!sp;y++)for(let x=Wd.BUILD.x0;x<=Wd.BUILD.x1&&!sp;x++){ZH.updatePreview(x,y);const ok1=ZH.preview.ok;rb.click();const ok2=ZH.preview.ok;rb.click();if(ok1&&ok2)sp=[x,y]}
       ZH.updatePreview(sp[0],sp[1]);const p0={...ZH.preview};rb.click();const p1={...ZH.preview};ZH.confirmPreview();const b=ZH.world.buildings[ZH.world.buildings.length-1];
       const d=Wd.doorPoint(b),a=Wd.approachTile(b);const path=!!Wd.findPath(ZH.world,{x:7,y:10},a);

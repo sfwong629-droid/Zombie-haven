@@ -656,7 +656,16 @@ const BUILD = {
   well: (P, w, d) => { P.put(cyl(.42, .46, .5, 12), '#8f8a80', M4(0, .25, 0)); P.put(cyl(.32, .32, .52, 12), '#2a3a44', M4(0, .26, 0)); for (const k of [-1, 1]) P.put(box(.08, 1.2, .08), '#6f4a2c', M4(k * .42, .85, 0)); P.put(box(1.1, .07, .07), '#6f4a2c', M4(0, 1.42, 0)); P.put(new THREE.ConeGeometry(.75, .45, 4), '#8a4a2a', M4(0, 1.7, 0, Math.PI / 4)); P.put(cyl(.09, .07, .16, 8), '#7a5232', M4(.1, .9, 0)); },
   farm: (P, w, d) => { beds(P, w * .9, d * .9, 2); },
   field: (P, w, d) => { beds(P, w * .86, d * .86, 4); fenceRing(P, w * .96, d * .96, .5); P.put(box(.06, 1.1, .06), '#6f4a2c', M4(w * .3, .55, -d * .3)); P.put(box(.6, .06, .06), '#6f4a2c', M4(w * .3, .85, -d * .3)); P.put(new THREE.IcosahedronGeometry(.12, 0), '#d9b45a', M4(w * .3, 1.18, -d * .3)); },
-  medic: null,   // the tent model
+  medic: (P, w, d) => {   /* 3D.41 Medical Tent (1x1), toon parts: white canvas field tent with red crosses, a cot, a supply crate and an IV stand */
+    const tw = w * .74, td = d * .62, H = 1.0, gz = -d * .06; P.put(box(w * .86, .04, d * .82), '#8f8a7e', M4(0, .02, 0));   // canvas ground sheet
+    { const P2 = { put: (g, c, m) => P.put(g, c, new THREE.Matrix4().makeTranslation(0, 0, gz).multiply(m)) }; tentG(P2, tw, td, '#ece7da', { h: H, col2: '#d8d1c0' }); }
+    const fz = gz + td / 2 + .012; P.put(box(.26, .07, .02), '#c8352c', M4(0, H * .66, fz)); P.put(box(.07, .26, .02), '#c8352c', M4(0, H * .66, fz));   // cross over the door
+    for (const k of [-1, 1]) { const ang = Math.atan2(H, tw / 2); P.put(box(.22, .02, .06), '#c8352c', M4(k * tw * .25, H * .52, gz, 0, 0, -k * ang)); P.put(box(.06, .02, .22), '#c8352c', M4(k * tw * .25, H * .52, gz, 0, 0, -k * ang)); }   // crosses on both roof sides
+    P.put(cyl(.025, .025, 1.5, 6), '#6f4a2c', M4(-w * .38, .75, -d * .3)); P.put(box(.34, .22, .02), '#f4f1e8', M4(-w * .38 + .18, 1.36, -d * .3)); P.put(box(.16, .05, .025), '#c8352c', M4(-w * .38 + .18, 1.36, -d * .3)); P.put(box(.05, .16, .025), '#c8352c', M4(-w * .38 + .18, 1.36, -d * .3));   // red-cross flag
+    const cx = w * .3, cz = d * .3; P.put(box(.3, .05, .62), '#d9d4c6', M4(cx, .26, cz)); P.put(box(.26, .04, .14), '#f4f1e8', M4(cx, .3, cz - .22)); for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(box(.03, .24, .03), '#5a5650', M4(cx + x * .13, .12, cz + z * .28));   // cot with a pillow
+    P.put(box(.3, .24, .24), '#f2efe6', M4(-w * .3, .12, d * .3)); P.put(box(.16, .05, .01), '#c8352c', M4(-w * .3, .14, d * .3 + .125)); P.put(box(.05, .16, .01), '#c8352c', M4(-w * .3, .14, d * .3 + .125));   // supply crate
+    P.put(cyl(.012, .012, .9, 5), '#9aa0a6', M4(cx + .26, .45, cz - .3)); P.put(box(.12, .02, .02), '#9aa0a6', M4(cx + .26, .9, cz - .3)); P.put(box(.07, .12, .04), '#bfe3f2', M4(cx + .3, .8, cz - .3));   // IV stand
+  },
   clinic: (P, w, d) => cabin(P, w * .86, d * .72, '#d9d2c2', { plank: true, wall: ['#e8e2d4', '#e8e2d4'], cross: true, windows: [w * .1, w * .32] }),
   hospital: (P, w, d) => { cabin(P, w * .84, d * .8, '#c83a32', { plank: true, wall: ['#ece6d8', '#ece6d8'], h: 2.1, cross: true, windows: [w * .05, w * .3] }); },
   canteen: (P, w, d) => { cabin(P, w * .8, d * .7, '#c47a2e', { chimney: true, windows: [w * .05, w * .28] }); P.put(box(w * .5, .05, .45), '#c8a46a', M4(w * .1, 1.15, d * .35 + .25, 0, -.35)); },
@@ -679,14 +688,14 @@ function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b
 function syncDoors() {   /* 3D.28: the game's door point (where survivors enter) follows the door drawn on each 3D building */
   const def = (P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {});
   for (const [k, D] of Object.entries(G.DEFS)) {
-    if (!D || D.door || glbB[k] || k === 'medic') continue; const f = BUILD[k] || def, P = new Parts();
+    if (!D || D.door || glbB[k]) continue; const f = BUILD[k] || def, P = new Parts();
     try { f(P, D.w * T, D.h * T); } catch (e) { continue; }
     if (P.doorX !== undefined) D.door = [D.w / 2 + P.doorX / T, D.h - .35];
   }
 }
 function makeBuilding(b) {
   const g = new THREE.Group(), odd = (b.rot | 0) & 1, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T;
-  if (b.type === 'medic' && tentScene) {
+  if (false && b.type === 'medic' && tentScene) {   /* 3D.41: the old Hunyuan tent is retired; the Medical Tent is built from toon parts */
     const t = tentScene.clone(); const s = Math.min(w / 2.2, d / 2.4) * .95; t.scale.setScalar(s); g.add(t);
   } else if (glbB[b.type]) {
     const m = glbB[b.type], t = m.scene.clone(); t.scale.setScalar(Math.min(w / m.sx, d / m.sz) * .95); g.add(t);
@@ -893,7 +902,7 @@ class Actor {
   }
   play(name, once = false, restart = false) {
     if (this.src && this.src.crawl && name === 'collapse') name = 'crawl_die';   /* 3D.34 */
-    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && this.spd < (this.name === name ? .07 : .14)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
+    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && !this.isMov() && this.spd < (this.name === name ? .07 : .14)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
     if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
     if (this.name === name && !restart) return;
     const n = this.acts[name];
@@ -910,12 +919,13 @@ class Actor {
     const x = wx * T, z = wy * T;
     let dx, dz; if (faceTo) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
-    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); }   // V3D.20 ground speed (model units / s) for stride matching
+    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = v > .15 ? 0 : (this.movT || 0) + dt; }   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
     const gy = groundH(x, z); this.o.position.set(x, gy, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
     this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
     if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
   }
-  show(v) { if (!v) { this.spd = 0; this.last = null; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
+  isMov() { return !!this.last && (this.movT || 0) < .25; }   /* 3D.41: moving right now, measured from the body itself */
+  show(v) { if (!v) { this.spd = 0; this.last = null; this.movT = 9; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
   dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
 }
 // ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
@@ -1099,10 +1109,10 @@ const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
-  const has = (c) => !!a.acts[c], still = !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
+  const has = (c) => !!a.acts[c], still = !a.isMov() && !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
-  if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
+  if (still && s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];   /* 3D.41: never dig or tinker while walking */
   else if (still && s.mode === 'gather') c = s.gatherK === 'rock' ? 'work_dig' : s.gatherK === 'wreck' || s.gatherK === 'bin' ? 'work_tinker' : 'work_chop';   // V3D.22/23 gathering
   else if (still && s.mode === 'hammer') c = 'work_hammer';
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
@@ -1118,8 +1128,8 @@ function personAnim(a, s, dt) {
   a.setWeapon(model);
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
-  if (anim === 'walk' && a.last && a.spd < .06) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
-  if (anim === 'idle' && a.last && a.spd > .3 && !a.attacking) anim = 'walk';   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
+  if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
+  if (anim !== 'walk' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !a.attacking) anim = 'walk';   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */

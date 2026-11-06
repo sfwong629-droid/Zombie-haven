@@ -22,6 +22,8 @@
      A family (fam) upgrades in place along next; its footprint is fixed. wood / mat (= scrap) / stone = the price of THIS step
      (building it new for a tier-1 type, upgrading into it otherwise). up = only reachable by upgrading.
      like = behaves like that older type everywhere the game asks for a type (beds, meals, storage, research...). hidden = not in the Build menu. */
+  /* 3D.41 owner: tier-1 buildings are 1x1 (only the Camp is bigger). A family can grow when it upgrades: the player places the bigger
+     footprint (and turns it) before the upgrade starts. */
   const DEFS = {
     hq:       D({ name: 'Camp',  role: 'hq', fam: 'hq', tier: 1, next: 'hq2', w: 2, h: 2, a: 10, hidden: true, icon: 'inn' }),
     hq2:      D({ name: 'Lodge', role: 'hq', fam: 'hq', tier: 2, next: 'hq3', w: 2, h: 2, a: 12, q: 12, wood: 20, mat: 8, rank: 2, up: true, icon: 'inn' }),
@@ -35,17 +37,17 @@
     farm:     D({ name: 'Garden Plot',    role: 'food', fam: 'farm', tier: 1, next: 'field', w: 1, sprite: 'grid', slot: true, out: 4, waterUse: 2, a: 5, wood: 4 }),
     field:    D({ name: 'Fenced Farm',    role: 'food', fam: 'farm', tier: 2, next: 'irrig', w: 1, slot: true, out: 7, waterUse: 3, a: 7, q: 12, wood: 10, mat: 3, up: true }),
     irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 1, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
-    canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', w: 2, cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
+    canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
     mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
-    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', w: 2, sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
+    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
     clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, cloth: 3, meds: 2, up: true }),
     hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, meds: 6, fuel: 2, up: true }),
     crates:   D({ name: 'Supply Crates', like: 'storage', role: 'storage', fam: 'storage', tier: 1, next: 'storage', a: 3, q: 8, wood: 4, icon: 'storage' }),
     storage:  D({ name: 'Storehouse',    role: 'storage', fam: 'storage', tier: 2, next: 'warehouse', a: 4, q: 8, wood: 12, mat: 4, up: true }),
     warehouse: D({ name: 'Warehouse',    like: 'storage', role: 'storage', fam: 'storage', tier: 3, a: 5, q: 9, stone: 16, wood: 8, mat: 6, up: true, icon: 'storage' }),
-    bench:    D({ name: 'Workbench', like: 'workshop', role: 'engineering', fam: 'research', tier: 1, next: 'workshop', w: 2, slot: true, out: 7, wood: 4, mat: 4, icon: 'workshop' }),
+    bench:    D({ name: 'Workbench', like: 'workshop', role: 'engineering', fam: 'research', tier: 1, next: 'workshop', slot: true, out: 7, wood: 4, mat: 4, icon: 'workshop' }),
     workshop: D({ name: 'Workshop',  role: 'engineering', fam: 'research', tier: 2, w: 2, slot: true, out: 12, q: 12, wood: 12, mat: 8, up: true }),   // V2.16: staffed → research points; crafting
-    scrapyard: D({ name: 'Scrapyard',   role: 'parts', fam: 'scrap', tier: 1, w: 2, slot: true, out: 3, a: 4, q: 8, wood: 6, mat: 4 }),   // V2.15: staffed salvage → scrap
+    scrapyard: D({ name: 'Scrapyard',   role: 'parts', fam: 'scrap', tier: 1, slot: true, out: 3, a: 4, q: 8, wood: 6, mat: 4 }),   // V2.15: staffed salvage → scrap
     lumber:   D({ name: 'Lumber Camp', role: 'parts', fam: 'lumber', tier: 2, w: 2, slot: true, out: 8, a: 4, q: 8, wood: 10, mat: 4, icon: 'scrapyard' }),   // V3D.23: staffed → wood
     quarry:   D({ name: 'Quarry',      role: 'parts', fam: 'quarry', tier: 2, w: 2, slot: true, out: 5, a: 3, q: 8, wood: 12, mat: 6, icon: 'scrapyard' }),   // V3D.23: staffed → stone
     bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
