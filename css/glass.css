@@ -214,3 +214,14 @@ html.glass .expBar .ebStop { background: rgba(16,22,28,.8); border-color: #fff; 
 html.glass .expBar .ebTime { background: rgba(16,22,28,.85); color: #fff; border: 1px solid rgba(255,255,255,.3); font-family: Manrope, sans-serif; font-weight: 800; }
 html.glass .expBar .ebEnd { filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
 html.glass body:has(#infoPanel.show) .expBar { display: none; }
+/* 3D.32 zombie test page (?zoo) */
+.zooPanel { position: absolute; left: 12px; right: 12px; bottom: calc(100px + env(safe-area-inset-bottom)); z-index: 22; padding: 10px; border-radius: 20px; color: #fff; font-family: Manrope, sans-serif;
+  background: rgba(16, 22, 28, .7); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .22); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+.zooPanel .zh { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 6px; } .zooPanel .zh b { font: 800 16px Manrope, sans-serif; } .zooPanel .sm { color: #C9D1D9; font-size: 12px; }
+.zooPanel .zrow { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.zooPanel .zc { flex: none; min-width: 92px; text-align: left; padding: 7px 9px; border-radius: 12px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); color: #fff; font-family: Manrope, sans-serif; position: relative; }
+.zooPanel .zc b { display: block; font-size: 12px; font-weight: 800; padding-right: 26px; } .zooPanel .zc small { display: block; color: #C9D1D9; font-size: 10px; font-weight: 700; margin-top: 2px; }
+.zooPanel .zc i { position: absolute; top: 6px; right: 6px; font: 800 9px Manrope, sans-serif; font-style: normal; background: #C6FF4D; color: #14200A; border-radius: 6px; padding: 1px 4px; }
+.zooPanel .zinfo { font-size: 12px; font-weight: 600; color: #E6ECF2; line-height: 1.35; margin: 4px 2px 8px; min-height: 32px; }
+.zooPanel .zbtns { display: flex; gap: 8px; } .zooPanel .zbtns .act { flex: 1; min-height: 40px; font-size: 14px; }
+.zooPanel #zooExit { flex: 0 0 auto; padding: 0 14px; }

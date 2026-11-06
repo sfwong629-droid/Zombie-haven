@@ -3,11 +3,11 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.31', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.32', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
-let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune'].some((k) => QS.has(k));
+let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune', 'zoo'].some((k) => QS.has(k)), ZOO = QS.has('zoo');   /* 3D.32 ?zoo = zombie test page (never saves) */
 /* V2.42 save safety: a day backup per slot (<key>_bak), a copy of a save that would not load (<key>_bad), a session id so a second tab on the same slot is noticed */
 const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
 let saveBlocked = '', saveErr = '', loadedFrom = '';
@@ -518,7 +518,7 @@ function drawHuman(s) {
   else if (ic && s.mode !== 'down' && !(COZY_HUD && (s.emo || s.bark))) bubble({ x: p.x, y: tagY - 1 }, ic);
   if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
 }
-const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9 };
+const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9, alpha: 1.6, dog: .55, riot: 1.08, boss: 1.6 };
 const tintCache = {};
 function tinted(key, img, fn) {   /* recolour a pixel-art sheet once (keeps every pixel crisp) */
   if (tintCache[key]) return tintCache[key]; if (!okImg(img)) return null;
@@ -566,6 +566,15 @@ function drawZombie(zm) {
     return;
   }
   const top = drawZSprite(zm, p); if (top == null || zm.dead != null) return;
+  { const u = hudU();   /* 3D.32 new-zombie effects */
+    if (zm.scream > 0) { const k = 1 - zm.scream / 40; ctx.save(); for (const o of [0, .33, .66]) { const kk = (k + o) % 1; ctx.globalAlpha = (1 - kk) * .8; ctx.strokeStyle = '#FFE14D'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(p.x, top + 6 * u, (10 + kk * 60) * u, (6 + kk * 34) * u, 0, 0, 7); ctx.stroke(); } ctx.restore(); }
+    if (zm.type === 'burnt') { ctx.save(); for (let i = 0; i < 5; i++) { const t = ((tick + i * 23 + (zm.phase || 0) * 9) % 70) / 70, x = p.x + Math.sin(i * 2.3 + tick / 20) * 8 * u, y = p.y - t * CHAR_H * TWs() * 1.1; ctx.globalAlpha = 1 - t; ctx.fillStyle = t < .5 ? '#FFB347' : '#FF6A2A'; ctx.beginPath(); ctx.arc(x, y, (2.6 - t * 1.6) * u, 0, 7); ctx.fill(); } ctx.restore(); }
+    if (zm.zoo) { const d = zombieTypes[zm.type] || {}, nm = d.name || zm.type, y = top - (zm.type === 'boss' || zm.type === 'alpha' ? 40 : 28) * u; ctx.save(); ctx.font = `800 ${Math.round(12 * u)}px Manrope, sans-serif`; const tw2 = ctx.measureText(nm).width + 16 * u + (d.isNew ? 34 * u : 0), h = 20 * u;
+      ctx.beginPath(); ctx.roundRect(p.x - tw2 / 2, y - h, tw2, h, h / 2); ctx.fillStyle = 'rgba(16,22,28,.78)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(nm, p.x - tw2 / 2 + 8 * u, y - h / 2);
+      if (d.isNew) { const bx = p.x + tw2 / 2 - 32 * u; ctx.beginPath(); ctx.roundRect(bx, y - h + 3 * u, 26 * u, h - 6 * u, 7 * u); ctx.fillStyle = '#C6FF4D'; ctx.fill(); ctx.fillStyle = '#14200A'; ctx.font = `800 ${Math.round(9 * u)}px Manrope, sans-serif`; ctx.fillText('NEW', bx + 3.5 * u, y - h / 2); } ctx.restore(); }
+  }
+  if (zm.type === 'alpha') { const u = hudU(), bt = hpPill(zm, p.x, top - (HUD_LIFT + 6) * u, { col: '#e8453c', w: 70 }); if (!zm.zoo) hudText('ALPHA', p.x, bt - 4 * u, `800 ${Math.round(14 * u)}px Manrope, sans-serif`, '#ffd0c8', '#3a0d08', 3.5 * u); return; }
+  if (zm.zoo && COZY_HUD) { hpPill(zm, p.x, top - 3 - HUD_LIFT * hudU(), { zed: true, w: zm.type === 'boss' ? 70 : 34 }); return; }
   if (zm.type === 'boss') {
     if (COZY_HUD) { const u = hudU(), bt = hpPill(zm, p.x, top - (HUD_LIFT + 6) * u, { col: '#e8453c', w: 70 }); hudText('BOSS', p.x, bt - 4 * u, `600 ${Math.round(14 * u)}px Fredoka, sans-serif`, '#f2c8ff', '#5a3f31', 3.5 * u); return; }
     const bt = top - 10; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 28 * cam.z, bt, 56 * cam.z, 7 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 27 * cam.z, bt + cam.z, 54 * cam.z * Math.max(0, zm.hp / zm.max), 5 * cam.z);
@@ -1036,6 +1045,12 @@ const zombieTypes = {
   bloated: { name: 'Bloated', hp: 60, atk: 8, aggro: 2, chase: .009, reward: 40, ren: 3, weight: 6, alert: 4 },
   spitter: { name: 'Spitter', hp: 28, atk: 6, aggro: 3.7, chase: .0125, reward: 32, ren: 2, weight: 3, alert: 5.5 },
   brute: { name: 'Brute', hp: 105, atk: 12, aggro: 2.4, chase: .008, reward: 70, ren: 5, weight: 1, alert: 5 },
+  /* 3D.32 new zombies (from the story plan; weight 0 = not in normal waves yet, only the test page and later acts) */
+  screamer: { name: 'Screamer', hp: 26, atk: 3, aggro: 3.6, chase: .015, reward: 30, ren: 3, weight: 0, alert: 9, isNew: 1, desc: 'Shrieks every few seconds: each scream calls a walker. Kill it fast (guns, high Perception).' },
+  riot: { name: 'Riot Zombie', hp: 80, atk: 7, aggro: 2.4, chase: .011, reward: 45, ren: 4, weight: 0, alert: 4.5, isNew: 1, desc: 'Still wearing riot gear: blades and knives do half damage. Use blunt weapons or guns.' },
+  burnt: { name: 'Burnt Zombie', hp: 40, atk: 6, aggro: 2.6, chase: .013, reward: 35, ren: 3, weight: 0, alert: 5, isNew: 1, desc: 'Smouldering: sets buildings it hits on fire. Firefighter Coat and rain help.' },
+  dog: { name: 'Infected Dog', hp: 18, atk: 5, aggro: 4.2, chase: .034, reward: 22, ren: 2, weight: 0, alert: 6, isNew: 1, desc: 'Fast and low to the ground: goes for workers out at the trees and rocks. Fences and Agility help.' },
+  alpha: { name: 'The Alpha', hp: 230, atk: 15, aggro: 4, chase: .012, reward: 0, ren: 20, weight: 0, alert: 8, isNew: 1, desc: 'Leads the horde: zombies near it move 20% faster. Kill it and the horde breaks.' },
   raider: { name: 'Raider', hp: 55, atk: 7, aggro: 2.6, chase: .019, reward: 0, ren: 3, weight: 0, alert: 0 },   /* V2.13: human raiders */
   boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 4.2, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
 };
@@ -1567,17 +1582,18 @@ const NEEDTXT = { hunger: 'Hungry', thirst: 'Thirsty', fatigue: 'Tired', injury:
 function chooseTownAction(s) { const b = chooseFacility(s); if (b && b !== s.lastFacility) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${NEEDTXT[facilityRules[b.type].need]} → ${DEFS[b.type].name}`; return true; } return false; }
 // A zombie that is attacking this survivor (or about to) interrupts whatever they were doing — eating, drinking, working, strolling.
 function threatOf(s) {
-  let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear') continue; const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if (s.fleeT > 0 ? (atkMe && d < 1.3) : ((atkMe && d < 3.2) || d < 1.7)) { if (d < bd) { bd = d; best = z; } } }
+  let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear' || z.zoo) continue; const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if (s.fleeT > 0 ? (atkMe && d < 1.3) : ((atkMe && d < 3.2) || d < 1.7)) { if (d < bd) { bd = d; best = z; } } }
   return best;
 }
-function engage(s, z) { s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.moving = false; s.why = `Fighting a ${zombieTypes[z.type].name}`; }
-function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (z.hp > 0) { const d = dist(s.w, z.w); if (d < bd) { bd = d; best = z; } } return best; }
+function engage(s, z) {
+  if (z && z.zoo) return;   /* 3D.32 test page: the line-up is only for looking */ s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.moving = false; s.why = `Fighting a ${zombieTypes[z.type].name}`; }
+function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (z.hp > 0 && !z.zoo) { const d = dist(s.w, z.w); if (d < bd) { bd = d; best = z; } } return best; }
 function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; they defend others first and gang up on the same zombie
   if (s.fleeT > 0 || !isFighter(s)) return false;
   const cfg = jobAI[s.job] || jobAI.Civilian, rng = (S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro) * (policy() === 'defend' ? 1.4 : policy() === 'produce' ? .8 : 1) * traitRange(s) * (atPost(s) ? 1.25 : 1);
   let best = null, bs = 1e9;
   for (const z of S.z) {
-    if (z.hp <= 0 || z.mode === 'appear') continue; const d = dist(s.w, z.w);
+    if (z.hp <= 0 || z.mode === 'appear' || z.zoo) continue; const d = dist(s.w, z.w);
     const onPerson = z.target && z.target !== s && z.target.job !== undefined && ['zchase', 'zattack', 'zrecover'].includes(z.mode);
     const sneaking = z.human && z.mode === 'rsneak' && !z.carried && !(S.alert > 0);
     if (sneaking && d > 2.5 + (stat(s, 'per') - 5) * .15 + traitSpot(s) + (atPost(s) ? 1.5 : 0)) continue;   /* raiders sneaking in are hard to spot */
@@ -2051,7 +2067,7 @@ function ai(s) {
       if (near) { const dx = s.w.x - near.w.x, dy = s.w.y - near.w.y, l = Math.hypot(dx, dy) || 1; moveSlide(s, { x: s.w.x + dx / l, y: s.w.y + dy / l }, CHASE * .9); s.moving = true; if (rnd() < .02) emote(s, '😰', 50); return; }
     }
     if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { s.ammo = weaponOf(s).mag; emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s)); z.hp -= dmg; z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1)); z.hp -= dmg; z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (z.type === 'boss') bark(s, 'bossKill', {}, { pri: 2 }); else if (rnd() < .3) bark(s, 'kill', {}, { pri: 1 }); else if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { { const pool = ['katana', 'kevlar', 'shotgun', 'rifle', 'military', 'riot', 'crossbow', 'dogtags'], it = pool[Math.floor(rnd() * pool.length)]; if (COZY_HUD) dropBag(z.w, 15, s, { meds: 2, fuel: 2, cloth: 2, ...(rnd() < .7 ? { item: it } : {}) }, 'epic'); else S.mat += 15; } S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; const zx = {}; for (const [ch, k, n] of ZDROP[z.type] || []) if (rnd() < ch) zx[k] = (zx[k] || 0) + n; if (rnd() < pd[0] || Object.keys(zx).length) { if (COZY_HUD) dropBag(z.w, rnd() < pd[0] ? pd[1] : 0, s, Object.keys(zx).length ? zx : null); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }
@@ -2277,8 +2293,14 @@ function eventSchedule() {   /* called every game hour */
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
 }
-function zai(z) { zai0(z); if (!z.human && z.hp > 0) zPushOut(z); }
+function zSpecial(z) {   /* 3D.32 new-zombie extras */
+  if (z.type === 'screamer' && z.mode !== 'appear' && (z.scrT = (z.scrT || 0) + 1) % 420 === 0) { z.scream = 40; SFX('alarm'); if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
+  if (z.scream > 0) z.scream--;
+  if (z.type === 'alpha' && tick % 30 === 0) for (const q of S.z) if (q !== z && !q.human && q.hp > 0) q.alphaNear = dist(q.w, z.w) < 6;
+}
+function zai(z) { if (!z.zoo) zSpecial(z); zai0(z); if (!z.human && z.hp > 0) zPushOut(z); }
 function zai0(z) {
+  if (z.zoo) { z.moving = false; z.mode = 'zoo'; return; }   /* 3D.32 test page: stand still on display */
   if (z.human && z.hp < z.max * RK(z).flee && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
   if (z.human && z.mode === 'idle' && RK(z).hunt) { z.mode = 'rsneak'; }   /* brutes skip the idle wander */
   if (z.human && !['zchase', 'zattack', 'zrecover', 'appear'].includes(z.mode)) return rai(z);
@@ -2308,7 +2330,7 @@ function zai0(z) {
     if (best) { z.target = best; z.mode = 'zchase'; z.bldT = null; z.path = null; alertPack(z, best); return; }
     if (dist(z.w, z.bpt) > .35) { const r = followPath(z, z.bpt, d.chase); if (r === 'fail') { z.bldT = null; z.mode = 'idle'; z.stateTicks = 60; } return; }
     z.moving = false; z.faceB = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-    if (z.stateTicks <= 0) { hitBuilding3(b, d.atk * .8 * (z.pw || 1) * (z.type === 'brute' ? 2.2 : z.type === 'boss' ? 3.5 : z.type === 'bloated' ? 1.4 : 1), 'a ' + d.name.toLowerCase()); z.stateTicks = z.type === 'brute' ? 64 : z.type === 'runner' ? 36 : 50; z.punchT = tick; }
+    if (z.stateTicks <= 0) { hitBuilding3(b, d.atk * .8 * (z.pw || 1) * (z.type === 'brute' ? 2.2 : z.type === 'boss' ? 3.5 : z.type === 'bloated' ? 1.4 : 1), 'a ' + d.name.toLowerCase()); if (z.type === 'burnt' && rnd() < .35) startFire(b, 30, 'a burnt zombie'); z.stateTicks = z.type === 'brute' ? 64 : z.type === 'runner' ? 36 : 50; z.punchT = tick; }
     return;
   }
   if (z.mode === 'zbreak') {
@@ -2370,7 +2392,7 @@ function zPushOut(z) {   /* V2.33: zombies keep clear of building footprints so 
   }
 }
 function zWalk(z, goal, sp, viaPath = false) {   // slide toward the goal; when walls hold it still for a moment, start breaking the nearest one
-  const bx = z.w.x, by = z.w.y; if (!goal) return; moveSlide(z, goal, sp);
+  const bx = z.w.x, by = z.w.y; if (!goal) return; if (z.alphaNear) sp *= 1.2; moveSlide(z, goal, sp);   /* 3D.32 the Alpha's pack */
   if (Math.hypot(z.w.x - bx, z.w.y - by) < sp * .3) z.blocked++; else z.blocked = 0;
   if (z.blocked > 8) { const tx = Math.floor(z.w.x), ty = Math.floor(z.w.y); let best = null, bd = 1e9;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const wl = wallAtTile(tx + dx, ty + dy); if (!wl || wl.broken) continue; const dd = dist({ x: tx + dx + .5, y: ty + dy + .5 }, goal); if (dd < bd) { bd = dd; best = wl; } }
@@ -3448,6 +3470,7 @@ function readKey(key) { try { return localStorage.getItem(key); } catch (e) { re
 /* V2.40: the title screen's background town is never saved over a slot. V2.42: failures are reported, storage-full drops this slot's day backup and retries,
    a save that could not be loaded (or was changed by another tab) is never overwritten. */
 function saveGame() {
+  if (ZOO) return;   /* 3D.32 the test page never touches your saves */
   if (titleOn || saveBlocked) return false;
   let data; try { data = serialize(); } catch (e) { saveFail('the town could not be packed (' + e.message + ')'); return false; }
   let r = writeKey(SAVE_KEY, data);
@@ -4537,7 +4560,7 @@ document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(
 async function init() {
   await loadAll(); resize();
   if (!SKIP_TITLE) { titleOn = true; document.getElementById('app').classList.add('titleMode'); }
-  const restored = titleOn ? null : loadGame();
+  const restored = titleOn || ZOO ? null : loadGame();
   if (!restored) {
     let o = {}; if (!titleOn) { try { o = JSON.parse(localStorage.getItem('zhNewOpts') || '{}') || {}; localStorage.removeItem('zhNewOpts'); } catch (e) { o = {}; } } const tq = (k) => QS.get(k);   /* V2.46: chosen on the new-game screen (?start=&diff= for testing) */
     S.diff = DIFFS[tq('diff') || o.diff] ? (tq('diff') || o.diff) : 'normal'; applyStart(tq('start') || o.start || 'camp');
@@ -4547,9 +4570,32 @@ async function init() {
   if (titleOn) { $('loading').style.display = 'none'; showTitle(); requestAnimationFrame(frame); return; }
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
   autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
+  if (ZOO) zooStart();
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
   if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
   if (saveBlocked === 'load') showEventPopup({ title: '💾 SAVE COULD NOT BE OPENED', text: `The town in slot ${SLOT} could not be loaded. <b>Nothing was overwritten</b>: this town will not save while you look around.<br><br>On the main screen, <b>Start → Backups</b> can export the file or import an older backup.`, buttons: [{ label: 'MAIN SCREEN', fn: () => { location.href = location.pathname; } }, { label: 'LOOK AROUND' }] });
+}
+/* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
+   Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
+const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute', 'raider'], ['screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'raider']];
+function zooLine() {
+  S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
+    const S0 = 11 + r * 2.1, D = -3 + (i - (row.length - 1) / 2) * 2.2, x = (S0 + D) / 2, y = (S0 - D) / 2;   /* a compact grid that runs across the screen (iso), north of the camp */
+    if (t === 'raider') { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(x, y), home: tc(x, y), pw: 1, hp: d.hp, max: d.hp, cool: 40, phase: rnd() * 100, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
+    if (t === 'boss') { S.z.push({ type: 'boss', boss: true, pw: 1, w: tc(x, y), hp: 260, max: 260, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
+    spawn(x, y, t); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max;
+  }));
+}
+function zooStart() {
+  S.mission = null; zooLine(); centerOn(6.3, 9.3, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;
+  const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
+  const card = (t) => { const z = zombieTypes[t] || { name: 'Mutant Boss' }; return `<button class="zc" data-t="${t}"><b>${esc(z.name || t)}</b>${z.isNew ? '<i>NEW</i>' : ''}<small>HP ${z.hp || 260} · ATK ${z.atk || 14}</small></button>`; };
+  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to look closer</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zinfo" id="zooInfo">Top two rows: the new zombies from the story plan (NEW). Bottom rows: the ones in the game today.</div><div class="zbtns"><button class="act" id="zooExit">Exit</button><button class="act" id="zooReset">Line up again</button><button class="act go" id="zooGo">Let them attack</button></div>`;
+  $('world').appendChild(d);
+  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { const t = b.dataset.t, z = S.z.find((q) => q.type === t && q.hp > 0), def = zombieTypes[t]; if (z) centerOn(z.w.x, z.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc((def && def.name) || 'Mutant Boss')}</b> · HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`; }; });
+  $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('zoo'); location.search = q.toString(); };
+  $('zooReset').onclick = () => { zooLine(); centerOn(6.3, 9.3, Math.max(.95, Math.min(1.3, VW / 330))); };
+  $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } };
 }
 /* ---------------- V2.40 title screen and save slots (the DV2-style start flow, original look) ---------------- */
 function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }
@@ -4571,7 +4617,7 @@ function showTitle() {
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
   if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
-  $('tStart').onclick = showSlots; { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + (G3D ? ' · ' + BUILD_TAG : '') + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
+  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; }   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + (G3D ? ' · ' + BUILD_TAG : '') + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;
 function showSlots() {

@@ -764,7 +764,7 @@ let MALE = null, LITE = null;
 const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
 const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
-const ZSC = { bloated: 1.18, brute: 1.32, crawler: .85, boss: 1.6 };
+const ZSC = { bloated: 1.18, brute: 1.32, crawler: .85, boss: 1.6, alpha: 1.75, screamer: .97, riot: 1.06, dog: 1.15 };
 function toonScene(root, map, clean = false) {   // clean (the #v2 models): mipmapped texture and no hull outline (it poked through the AI mesh as dark specks)
   root.traverse((o) => {
     if (!o.isMesh || o.userData.hull) return;
@@ -839,7 +839,8 @@ function jobMaterial(job, expr = 'neutral', look = null) {
 function lookOf(s) { if (!s.look3) { const r = Math.imul(s.id || 1, 2654435761) >>> 0; s.look3 = { sk: r % SKINS.length, hr: (r >>> 8) % HAIRS.length }; } return s.look3; }
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
-const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9] };
+const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9], screamer: [1, .96, 1], burnt: [.42, .34, .3], riot: [.82, .86, .95], alpha: [1, .58, .52] };   /* 3D.32 new types */
+const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker', riot: 'walker' };
 const zMats = {};
 // V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
 function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
@@ -849,7 +850,7 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: .540, zombie_run: 1.264 } },
   bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: .395 } } }, ZSRC = {};
 function zombieOwn(type) {
-  const src = ZSRC[type]; if (!src) return null;
+  const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
   const t = ZSKIN_TINT[type] || [1, 1, 1], key = 'own|' + type;
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
@@ -1131,6 +1132,31 @@ function personAnim(a, s, dt) {
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
+/* 3D.32 Infected Dog: a low-detail toon dog built from boxes, legs swing with its ground speed (no rig needed) */
+class DogActor {
+  constructor() {
+    const o = new THREE.Group(), fur = toon('#5b5148'), dark = toon('#3a332d'), sore = toon('#8c3b33'), add = (geo, m, x, y, z, p = o) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.castShadow = true; addHull(k, .012); p.add(k); return k; };
+    add(new THREE.BoxGeometry(.26, .24, .62), fur, 0, .38, 0); add(new THREE.BoxGeometry(.12, .1, .18), sore, .08, .46, .05);
+    this.head = new THREE.Group(); this.head.position.set(0, .5, .34); o.add(this.head);
+    add(new THREE.BoxGeometry(.2, .2, .22), fur, 0, 0, .04, this.head); add(new THREE.BoxGeometry(.13, .1, .16), dark, 0, -.05, .2, this.head);
+    for (const sx of [-1, 1]) { add(new THREE.ConeGeometry(.045, .12, 4), dark, sx * .07, .14, -.02, this.head); const e = new THREE.Mesh(new THREE.SphereGeometry(.022, 6, 4), new THREE.MeshBasicMaterial({ color: 0xd8ff7a })); e.position.set(sx * .055, .04, .155); this.head.add(e); }
+    this.legs = []; for (const [x, z] of [[-.09, .22], [.09, .22], [-.09, -.22], [.09, -.22]]) { const g = new THREE.Group(); g.position.set(x, .3, z); add(new THREE.BoxGeometry(.07, .3, .08), dark, 0, -.15, 0, g); o.add(g); this.legs.push(g); }
+    this.tail = new THREE.Group(); this.tail.position.set(0, .45, -.31); add(new THREE.BoxGeometry(.05, .05, .22), fur, 0, 0, -.1, this.tail); o.add(this.tail);
+    o.scale.setScalar(1.15); this.o = o; scene.add(o); this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
+    this.dog = true; this.acts = {}; this.w = {}; this.arm = []; this.skin = []; this.cur = null; this.name = ''; this.yaw = 0; this.last = null; this.acc = 0; this.lite = true; this.spd = 0; this.t = 0; this.atk = 0;
+    this.mixer = { update: (dt) => this.anim(dt) };
+  }
+  play(name) { if (name === 'collapse') this.dead = true; if (/attack/.test(name) && this.name !== name) this.atk = .35; this.name = name; }
+  setWeapon() {} setArmor() {} setExpr() {} setMood() {}
+  anim(dt) {
+    if (this.dead) { this.o.rotation.z = Math.min(Math.PI / 2, (this.o.rotation.z || 0) + dt * 5); return; }
+    const run = Math.min(1, this.spd / 1.2); this.t += dt * (3 + run * 12);
+    this.legs.forEach((g, i) => { g.rotation.x = Math.sin(this.t + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * (.15 + .6 * run); });
+    this.tail.rotation.y = Math.sin(this.t * 1.7) * .5; this.atk = Math.max(0, this.atk - dt);
+    this.head.rotation.x = this.atk > 0 ? -Math.sin(this.atk / .35 * Math.PI) * .6 : Math.sin(this.t * .5) * .06;
+  }
+}
+DogActor.prototype.place = Actor.prototype.place; DogActor.prototype.show = Actor.prototype.show; DogActor.prototype.dispose = Actor.prototype.dispose;
 function makeCart() {   // V3D.17 rescue cart: a wooden barrow on two wheels with a pushing handle
   const g = new THREE.Group(), wood = toon('#b07a45'), dark = toon('#6b4a2e'), tyre = toon('#3a302a');
   const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; addHull(o, .012); g.add(o); return o; };
@@ -1171,6 +1197,7 @@ function syncPeople(dt, vis) {
   for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
 }
 function zombieAnim(a, z) {
+  if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); a.attacking = true; } return; }   // V3D.20 zombies claw-swipe
   a.attacking = false;
@@ -1184,6 +1211,9 @@ function syncZombies(dt, vis) {
     if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
     if (!a) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
+      else if (z.type === 'dog') a = new DogActor();   /* 3D.32 */
+      else if (z.type === 'alpha') { a = zombieOwn('alpha') || new Actor(LITE, zombieMaterial('brute', 0), true); a.setWeapon(null); a.setArmor(false); }
+      else if (z.type === 'riot' && MALE.v2) { a = zombieV2('riot', false, (Math.random() * 4) | 0, true) || new Actor(LITE, zombieMaterial('walker', 0), true); a.setWeapon(null); a.setArmor(true); addHat(a, 'SwatHelm', true); }
       else { const v = (Math.random() * 4) | 0; a = (MALE.v2 && (z.turned ? zombieV2(z.type, !!(FEMALE3D && z.turned.fem), v, true) : zombieV2(z.type, FEMALE3D && Math.random() < .4, v))) || new Actor(LITE, zombieMaterial(z.type, v), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
