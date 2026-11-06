@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.53', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.54', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3625,7 +3625,7 @@ function showMore() {
   $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore);
   showPanel('MORE');
 }
-const DAYMUS = { mix: ['Mix', 'A different tune each day'], strum: ['Strum', 'Lively strummed guitar, cajon and shaker'], travis: ['Picking', 'Bright fingerstyle guitar with claps'], day: ['Folk', 'Guitar picking and a whistle'], lounge: ['Lounge', 'Retro 50s swing: vibes, walking bass, brushes'], porch: ['Porch', 'Banjo, boom-chick guitar and harmonica'] };   /* 3D.51 */
+const DAYMUS = { mix: ['Mix', 'A different tune each day'], strum: ['Strum', 'Lively strummed guitar, cajon and shaker'], travis: ['Picking', 'Bright fingerstyle guitar with claps'], western: ['Western', 'Galloping guitar, whistle and trumpet'], jig: ['Jig', 'Celtic fiddle, guitar and drum'], rag: ['Honky-tonk', 'Old saloon piano'], day: ['Folk', 'Guitar picking and a whistle'], lounge: ['Lounge', 'Retro 50s swing: vibes, walking bass, brushes'], porch: ['Porch', 'Banjo, boom-chick guitar and harmonica'] };   /* 3D.51 */
 function showSettings(back) {
   endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
   const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;

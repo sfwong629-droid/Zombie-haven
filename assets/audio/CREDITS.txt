@@ -1,6 +1,6 @@
 Zombie Haven: music sample credits (3D.53)
 
-Instrument samples (folders gtr, nyl, bass, banjo, harp, vibes, tpt, str, mbox, whis, ep, cello, brass, timp, piano):
+Instrument samples (folders fid, gtr, nyl, bass, banjo, harp, vibes, tpt, str, mbox, whis, ep, cello, brass, timp, piano):
   FluidR3_GM sound font by Frank Wen, rendered to MP3 by the midi-js-soundfonts project (github.com/gleitz/midi-js-soundfonts).
   Licence: Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/). Re-encoded to mono and shortened.
 
