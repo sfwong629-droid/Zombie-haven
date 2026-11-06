@@ -855,8 +855,9 @@ function zombieOwn(type) {
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
+const OWN_SHARE = { walker: .7 };
 function zombieV2(type, female, v, noOwn = false) {
-  const own = !noOwn && Math.random() < .6 && zombieOwn(type); if (own) return own;   // 60% wear the type's own model, the rest a reskinned survivor for variety
+  const own = !noOwn && Math.random() < (OWN_SHARE[type] ?? 1) && zombieOwn(type); if (own) return own;   // 3D.33: runners, brutes and bloated always wear their own model; walkers 70% (the rest a reskinned survivor for variety)
   const src = female ? FEMALE3D : MALE, tx = src && src.zTex2; if (!tx || !tx.length) return null;
   const key = 'v2|' + type + '|' + (female ? 'f' : 'm') + v, t = ZSKIN_TINT[type] || [1, 1, 1];
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: tx[v % tx.length], color: new THREE.Color(...t), gradientMap: grad }), .2);
