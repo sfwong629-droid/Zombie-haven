@@ -354,6 +354,7 @@ def zombie_attack(t):
     return p
 
 
+BRUTE_SPREAD = 18   # thighs out to the sides (deg); shins and feet turn back so the soles stay flat
 def brute_attack(t):
     """Brute double hammer fist (3D only, one-shot): feet planted side by side, both arms swing up over the head together,
     then smash straight down in front, knees and back bending into the blow."""
@@ -365,7 +366,7 @@ def brute_attack(t):
     k = keys(K, t); kn = k['kn']
     p = {'pelvis': (k['lean'] * .3, 0, 0), 'chest': (k['lean'] * .7, 0, 0), 'neck': (0, 0, 0), 'head': (k['hd'] - k['lean'] * .4, 0, 0)}
     for n, sg in (('L', 1), ('R', -1)):   # both feet parallel, shoulder-width, knees bending together
-        p['thigh.' + n] = (22 * kn, 0, sg * -4); p['shin.' + n] = (-40 * kn, 0, 0); p['foot.' + n] = (18 * kn, 0, 0)
+        p['thigh.' + n] = (22 * kn, 0, sg * BRUTE_SPREAD); p['shin.' + n] = (-40 * kn, 0, sg * -BRUTE_SPREAD * .6); p['foot.' + n] = (18 * kn, 0, sg * -BRUTE_SPREAD * .4)
         p['upperarm.' + n] = (k['ua'], 0, sg * k['az']); p['forearm.' + n] = (k['fa'], 0, 0); p['hand.' + n] = (0, 0, -sg * 10)   # fists come together
     p['bob'] = -.035 * kn - .01
     return p
