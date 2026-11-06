@@ -78,6 +78,8 @@
     western: { bpm: 92, prog: [[0, 'm'], [0, 'm'], [-7, 'm'], [0, 'm'], [-4, 'M'], [-2, 'M'], [0, 'm'], [-5, 'M']] },   /* 3D.54 desert western (A minor) */
     jig: { bpm: 120, prog: [[-7, 'M'], [-7, 'M'], [-2, 'M'], [0, 'M'], [-7, 'M'], [-5, 'm'], [-2, 'M'], [0, 'M']] },   /* 3D.54 Celtic fiddle jig in 6/8 (D major); bpm = dotted quarters */
     rag: { bpm: 100, prog: [[3, '7M'], [0, '7'], [-7, '7'], [-2, '7'], [3, '7M'], [3, '7'], [-4, 'M'], [-2, '7']] },   /* 3D.54 honky-tonk piano (C major) */
+    calm: { bpm: 64, prog: [[3, 'M'], [0, 'm'], [-4, 'M'], [-2, 'M'], [-5, 'm'], [-4, 'M'], [3, 'M'], [-2, 'M']] },   /* 3D.55 slow ballad (C major) */
+    hearth: { bpm: 70, prog: [[-2, 'M'], [-7, 'M'], [-5, 'm'], [3, 'M'], [-2, 'M'], [-7, 'M'], [3, 'M'], [-7, 'M']] },   /* 3D.55 slow fingerpicking with cello (G major) */
     danger: { bpm: 116, prog: [[-5, 'm'], [-9, 'M'], [-7, 'M'], [2, 'M'], [-5, 'm'], [-9, 'M'], [-7, 'M'], [-3, 'M']] },
   };
   const Q = { '7M': [0, 4, 7], m: [0, 3, 7], M: [0, 4, 7], M7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '7': [0, 4, 7, 10] };
@@ -139,7 +141,7 @@
     s.connect(g); if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(out); } else g.connect(out); s.start(t); s.stop(t + dur + .05); return true;
   }
   function kit(c, out, t, k, vol, rate = 1) { const b = KITB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .04); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
-  const MVOL = { western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45 };   /* 3D.53 even out the moods' loudness */
+  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45 };   /* 3D.53 even out the moods' loudness */
   function writeBar(c, out0, t0, mood, bar) {   // schedules one bar; returns its length in seconds
     const out = c.createGain(); out.gain.value = MVOL[mood] || 1; out.connect(out0);
     const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);
@@ -184,6 +186,16 @@
       [1, 3].forEach((b) => ch.forEach((s2, i) => gt(t0 + b * beat + i * .012, F(s2), .1, .4, -.3)));
       K(t0, 'kick', .35, 1, () => kick(c, out, t0, .05)); K(t0 + 2 * beat, 'kick', .28, 1, () => kick(c, out, t0 + 2 * beat, .04));
       if (phrase % 2 === 1 && mr() < .85) { const tn = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12]; [[0, 1.5], [1.5, .5], [2, 1], [3, 1]].forEach(([b, d], i) => samp(c, out, t0 + b * beat, 'harp', F(tn[(i + bar) % tn.length]), .16, d * beat * .95, .15, .04, .12)); }
+    } else if (mood === 'calm') {   /* slow: rolling nylon guitar, a few piano notes, warm strings */
+      const g = P('nyl'); PAD('str', t0, [F(root - 12), F(ch[1]), F(ch[2])], len + .4, .028, 600);
+      [root - 12, ch[2] - 12, ch[1], ch[2], root + 12, ch[2], ch[1], ch[2] - 12].forEach((s2, i) => g(t0 + i * beat / 2 + i * .004, F(s2), i === 0 ? .26 : .15, 2.2, (i % 2 ? .25 : -.25)));
+      const mel = [ch[2] + 12, ch[1] + 12, ch[0] + 24, ch[1] + 12], at = phrase % 2 ? [0, 2] : [0, 1.5, 3];
+      if (bar % 2 === 0 || phrase % 2) at.forEach((b, i) => samp(c, out, t0 + b * beat, 'piano', F(mel[(i + bar) % mel.length]), .2, 2.8, .1));
+    } else if (mood === 'hearth') {   /* slow: steel-string fingerpicking, a long cello line, soft brushes */
+      const g = P('gtr');
+      [[0, root - 12], [1, ch[1]], [1.5, ch[2]], [2, root - 5], [3, ch[1] + 12], [3.5, ch[2]]].forEach(([b, s2], i) => g(t0 + b * beat, F(s2), i === 0 ? .24 : .13, 2, i % 2 ? .3 : -.2));
+      if (phrase % 2 === 1 || bar % 2 === 0) { const tn = [ch[0], ch[1], ch[2], ch[1]]; samp(c, out, t0, 'cello', F(tn[bar % 4] - 12 + 12), .17, len * .98, -.15, .25, .4); }
+      [1, 3].forEach((b) => K(t0 + b * beat, 'snare', .05, .8));
     } else if (mood === 'western') {   /* galloping nylon guitar, lonely whistle, muted trumpet answer, timpani */
       const g = P('nyl'), six = beat / 4;
       [[0, 1, .26], [2, 0, .14], [3, 0, .14], [4, 1, .2], [6, 0, .14], [7, 0, .14], [8, 1, .22], [10, 0, .14], [11, 0, .14], [12, 1, .2], [14, 0, .14], [15, 0, .14]].forEach(([i, full, v]) => (full ? [root - 12, root - 5, ch[1], ch[2]] : [ch[1], ch[2]]).forEach((s2, k) => g(t0 + i * six + k * .01, F(s2), v * (full ? .8 : .7), .45, (k / 3 - .5) * .4)));
@@ -230,9 +242,9 @@
       nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
     }
   }
-  const DAY_TRACKS = ['strum', 'western', 'day', 'jig', 'travis', 'rag', 'lounge', 'porch']; let dayN = 0, dayPick = 'mix';
+  const DAY_TRACKS = ['strum', 'calm', 'western', 'day', 'jig', 'hearth', 'travis', 'rag', 'lounge', 'porch'], SLOW_TRACKS = ['calm', 'hearth', 'day']; let dayN = 0, dayPick = 'mix';
   try { dayPick = localStorage.getItem('zhDayMusic') || 'mix'; } catch (e) { /* storage blocked */ }
-  const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick; };   /* 3D.51 a different day track each game day */
+  const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
