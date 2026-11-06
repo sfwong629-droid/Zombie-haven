@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.37', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.38', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -556,32 +556,38 @@ function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
 }
 /* 3D.36 attack impact effects: brute / Alpha / boss slam = ground shockwave, dust and debris and a little screen shake;
    bloated = a green belly-splash; claws = three quick slash marks on the target; spitter hits use the spit splat. */
-const hitFx = [];
+const hitFx = [], SCREAM_R = 2.4;
 /* 3D.37 survivor melee combo: hits in a row on the same enemy (within 2.5 s) chain swing A, swing B, then a two-hand finisher for +60% damage */
 function comboMult(s, z, w) { if (w.ranged) { s.combo = 0; s.comboFin = false; return 1; } s.combo = s.comboZ === z && tick < (s.comboT || 0) ? (s.combo || 0) + 1 : 1; s.comboZ = z; s.comboT = tick + 150; s.comboFin = s.combo % 3 === 0; return s.comboFin ? 1.6 : 1; }
 const zHitDmg = (z, d, t) => Math.max(1, fairRound(d.atk * (z.pw || 1) * (hasSkill(t, 'armored') ? .8 : 1) * (hasSkill(t, 'bulwark') ? .85 : 1) * (atPost(t) ? .8 : 1) * (1 - dmgReduce(t))));
 function impactFx(z, w) {
-  if (!w || z.type === 'spitter') return; const k = ['brute', 'alpha', 'boss'].includes(z.type) ? 'slam' : z.type === 'bloated' ? 'belly' : 'claw';
+  if (!w || z.type === 'spitter') return; const k = z.type === 'screamer' ? 'scream' : ['brute', 'alpha', 'boss'].includes(z.type) ? 'slam' : z.type === 'bloated' ? 'belly' : 'claw';
   hitFx.push({ k, w: { x: w.x, y: w.y }, t0: tick, big: z.type === 'alpha' || z.type === 'boss' ? 1.4 : 1, a: rnd() * 6.28, bits: Array.from({ length: 9 }, () => ({ a: rnd() * 6.28, v: .5 + rnd(), s: rnd() })) });
-  if (k === 'slam') { const p = project(w.x, w.y); if (p.x > -40 && p.x < VW + 40 && p.y > -40 && p.y < VH + 40) { const el = $('world'); if (el) { el.classList.remove('zhShake'); void el.offsetWidth; el.classList.add('zhShake'); } } }
+  if (k === 'slam' && (z.type === 'alpha' || z.type === 'boss')) { const p = project(w.x, w.y); if (p.x > -40 && p.x < VW + 40 && p.y > -40 && p.y < VH + 40) { const el = $('world'); if (el) { el.classList.remove('zhShake'); void el.offsetWidth; el.classList.add('zhShake'); } } }
 }
+/* 3D.38 toned down (owner: "way too much"); the same drawing runs on the Zombie Animation Board (fxDraw is copied there) */
+const FX_STRENGTH = 1;
+function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: effect, q: 0..1 progress, p: ground point (px), tw: tile width (px), H: survivor height (px) */
+  g.save(); const px = tw / 40;
+  if (f.k === 'slam') { const R0 = tw * .4 * f.big * k;
+    for (const [d, c, w] of [[0, 'rgba(255,248,230,', 2.4], [.15, 'rgba(170,135,90,', 1.6]]) { const u = Math.max(0, q - d) / (1 - d), e = 1 - (1 - u) * (1 - u); g.globalAlpha = (1 - u) * .7; g.strokeStyle = c + '1)'; g.lineWidth = w * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke(); }
+    for (const b of f.bits.slice(0, 6)) { const r = R0 * .85 * Math.min(1, q * 2) * b.v, x = p.x + Math.cos(b.a) * r, y = p.y + Math.sin(b.a) * r * .5; g.globalAlpha = (1 - q) * .5;
+      g.fillStyle = b.s < .55 ? 'rgb(196,170,130)' : 'rgb(150,120,85)'; g.beginPath(); g.arc(x, y - H * .08 * Math.min(1, q * 3) * (1 - q), (2 + 4 * q) * px * k * (b.s < .55 ? 1 : .6), 0, 7); g.fill(); } }
+  else if (f.k === 'scream') {   /* AOE: three sound rings rolling out to the edge of the area, the area itself faintly marked, and ))) waves from the head */
+    const RX = tw * .7 * (f.r || 2.4); g.globalAlpha = (1 - q) * .12 * k; g.fillStyle = '#c9a8ff'; g.beginPath(); g.ellipse(p.x, p.y, RX, RX * .5, 0, 0, 7); g.fill();
+    for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.5 - j * .2)); if (u <= 0 || u >= 1) continue; g.globalAlpha = (1 - u) * .8; g.strokeStyle = j % 2 ? '#FFE14D' : '#c9a8ff'; g.lineWidth = (2.6 - j * .5) * px; g.beginPath(); g.ellipse(p.x, p.y, RX * u, RX * u * .5, 0, 0, 7); g.stroke(); }
+    const hx = p.x, hy = p.y - H * .92; g.lineCap = 'round';
+    for (let j = 0; j < 3; j++) { const u = (q * 2.2 + j / 3) % 1, r = (8 + u * 26) * px; g.globalAlpha = (1 - u) * (1 - q) * .9; g.strokeStyle = '#FFE14D'; g.lineWidth = 2 * px; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx, hy, r, sd > 0 ? -1.1 : Math.PI - .5, sd > 0 ? -.4 : Math.PI + .2); g.stroke(); } g.beginPath(); g.arc(hx, hy - r * .2, r, -Math.PI / 2 - .35, -Math.PI / 2 + .35); g.stroke(); } }
+  else if (f.k === 'belly') { const R0 = tw * .34 * k, e = Math.min(1, q * 1.8); g.globalAlpha = (1 - q) * .75; g.strokeStyle = '#b8d65a'; g.lineWidth = 2 * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke();
+    for (const b of f.bits.slice(0, 6)) { const r = R0 * e * b.v; g.fillStyle = b.s < .5 ? '#9cc23e' : '#d6c24a'; g.beginPath(); g.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - H * .18 * Math.sin(Math.PI * e) * b.v, 1.7 * px * k, 0, 7); g.fill(); } }
+  else { const cx = p.x, cy = p.y - H * .55, L = tw * .2 * k, e = Math.min(1, q * 3); g.globalAlpha = (q < .5 ? 1 : 2 - q * 2) * .85; g.lineCap = 'round';
+    for (let j = -1; j <= 1; j++) { g.save(); g.translate(cx + j * L * .25, cy); g.rotate(f.a * .2 - .6); g.strokeStyle = '#ffffff'; g.lineWidth = 2.2 * px; g.beginPath(); g.moveTo(-L / 2, -L * .2); g.quadraticCurveTo(0, L * .1, -L / 2 + L * e, -L * .2 + L * .4 * e); g.stroke(); g.strokeStyle = '#e8453c'; g.lineWidth = 1 * px; g.stroke(); g.restore(); } }
+  g.restore();
+}
+const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60 };
 function drawHitFx() {
   const tw = TWs(), H = CHAR_H * tw;
-  for (let i = hitFx.length - 1; i >= 0; i--) {
-    const f = hitFx[i], dur = f.k === 'claw' ? 14 : 38, q = (tick - f.t0) / dur; if (q > 1) { hitFx.splice(i, 1); continue; }
-    const p = project(f.w.x, f.w.y); ctx.save();
-    if (f.k === 'slam') { const R0 = tw * .65 * f.big;
-      for (const [d, c, w] of [[0, 'rgba(255,248,230,', 4], [.12, 'rgba(180,140,90,', 3]]) { const u = Math.max(0, q - d) / (1 - d), e = 1 - (1 - u) * (1 - u); ctx.globalAlpha = 1 - u; ctx.strokeStyle = c + '1)'; ctx.lineWidth = w * tw / 40 * (1 - u * .6); ctx.beginPath(); ctx.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); ctx.stroke(); }
-      for (const b of f.bits) { const r = R0 * .9 * Math.min(1, q * 2) * b.v, x = p.x + Math.cos(b.a) * r, y = p.y + Math.sin(b.a) * r * .5; ctx.globalAlpha = (1 - q) * .8;
-        ctx.fillStyle = b.s < .55 ? 'rgba(196,170,130,.9)' : 'rgba(150,120,85,.9)'; ctx.beginPath(); ctx.arc(x, y - H * .15 * Math.min(1, q * 3) * (1 - q), (3 + 6 * q) * tw / 40 * (b.s < .55 ? 1 : .5), 0, 7); ctx.fill();
-        if (b.s > .7) { ctx.fillStyle = '#6b5a48'; ctx.fillRect(x - 1.5, y - H * .5 * Math.sin(Math.PI * Math.min(1, q * 1.6)) * b.v, 3 * tw / 40, 3 * tw / 40); } }
-      if (q < .25) { ctx.globalAlpha = 1 - q * 4; ctx.fillStyle = 'rgba(255,240,200,.9)'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 2, R0 * .35, R0 * .17, 0, 0, 7); ctx.fill(); } }
-    else if (f.k === 'belly') { const R0 = tw * .55, e = Math.min(1, q * 1.8); ctx.globalAlpha = 1 - q; ctx.strokeStyle = '#b8d65a'; ctx.lineWidth = 3 * tw / 40; ctx.beginPath(); ctx.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); ctx.stroke();
-      for (const b of f.bits) { const r = R0 * e * b.v; ctx.fillStyle = b.s < .5 ? '#9cc23e' : '#d6c24a'; ctx.beginPath(); ctx.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - H * .3 * Math.sin(Math.PI * e) * b.v, 2.4 * tw / 40, 0, 7); ctx.fill(); } }
-    else { const cx = p.x, cy = p.y - H * .55, L = tw * .32, e = Math.min(1, q * 3); ctx.globalAlpha = q < .5 ? 1 : 2 - q * 2; ctx.lineCap = 'round';
-      for (let j = -1; j <= 1; j++) { ctx.save(); ctx.translate(cx + j * L * .22, cy); ctx.rotate(f.a * .2 - .6); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.4 * tw / 40; ctx.beginPath(); ctx.moveTo(-L / 2, -L * .2); ctx.quadraticCurveTo(0, L * .1, -L / 2 + L * e, -L * .2 + L * .4 * e); ctx.stroke(); ctx.strokeStyle = '#e8453c'; ctx.lineWidth = 1.6 * tw / 40; ctx.stroke(); ctx.restore(); } }
-    ctx.restore();
-  }
+  for (let i = hitFx.length - 1; i >= 0; i--) { const f = hitFx[i], q = (tick - f.t0) / FX_DUR[f.k]; if (q > 1) { hitFx.splice(i, 1); continue; } fxDraw(ctx, f, q, project(f.w.x, f.w.y), tw, H); }
 }
 const SPIT_COL = ['#7cc242', '#8e4fb0', '#6b4a2b', '#a6d94a'];   /* green, purple and brown mucus */
 function drawSpits() {   /* 3D.35: an arcing glob with a dripping trail; a splat where it lands */
@@ -612,7 +618,6 @@ function drawZombie(zm) {
   }
   const top = drawZSprite(zm, p); if (top == null || zm.dead != null) return;
   { const u = hudU();   /* 3D.32 new-zombie effects */
-    if (zm.scream > 0) { const k = 1 - zm.scream / 40; ctx.save(); for (const o of [0, .33, .66]) { const kk = (k + o) % 1; ctx.globalAlpha = (1 - kk) * .8; ctx.strokeStyle = '#FFE14D'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(p.x, top + 6 * u, (10 + kk * 60) * u, (6 + kk * 34) * u, 0, 0, 7); ctx.stroke(); } ctx.restore(); }
     if (zm.type === 'burnt') { ctx.save(); for (let i = 0; i < 5; i++) { const t = ((tick + i * 23 + (zm.phase || 0) * 9) % 70) / 70, x = p.x + Math.sin(i * 2.3 + tick / 20) * 8 * u, y = p.y - t * CHAR_H * TWs() * 1.1; ctx.globalAlpha = 1 - t; ctx.fillStyle = t < .5 ? '#FFB347' : '#FF6A2A'; ctx.beginPath(); ctx.arc(x, y, (2.6 - t * 1.6) * u, 0, 7); ctx.fill(); } ctx.restore(); }
     if (zm.zoo) { const d = zombieTypes[zm.type] || {}, nm = d.name || zm.type, y = top - (zm.type === 'boss' || zm.type === 'alpha' ? 40 : 28) * u; ctx.save(); ctx.font = `800 ${Math.round(12 * u)}px Manrope, sans-serif`; const tw2 = ctx.measureText(nm).width + 16 * u + (d.isNew ? 34 * u : 0), h = 20 * u;
       ctx.beginPath(); ctx.roundRect(p.x - tw2 / 2, y - h, tw2, h, h / 2); ctx.fillStyle = 'rgba(16,22,28,.78)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(nm, p.x - tw2 / 2 + 8 * u, y - h / 2);
@@ -1092,7 +1097,7 @@ const zombieTypes = {
   spitter: { name: 'Spitter', hp: 28, atk: 6, aggro: 3.7, chase: .0125, reward: 32, ren: 2, weight: 3, alert: 5.5 },
   brute: { name: 'Brute', hp: 105, atk: 12, aggro: 2.4, chase: .008, reward: 70, ren: 5, weight: 1, alert: 5 },
   /* 3D.32 new zombies (from the story plan; weight 0 = not in normal waves yet, only the test page and later acts) */
-  screamer: { name: 'Screamer', hp: 26, atk: 3, aggro: 3.6, chase: .015, reward: 30, ren: 3, weight: 0, alert: 9, isNew: 1, desc: 'Shrieks every few seconds: each scream calls a walker. Kill it fast (guns, high Perception).' },
+  screamer: { name: 'Screamer', hp: 30, atk: 5, aggro: 3.6, chase: .013, reward: 30, ren: 3, weight: 0, alert: 9, isNew: 1, desc: 'Area attack: throws its head back and shrieks, hurting everyone within about 2 tiles, and every shriek calls a walker. Kill it fast from range.' },
   riot: { name: 'Riot Zombie', hp: 80, atk: 7, aggro: 2.4, chase: .011, reward: 45, ren: 4, weight: 0, alert: 4.5, isNew: 1, desc: 'Still wearing riot gear: blades and knives do half damage. Use blunt weapons or guns.' },
   burnt: { name: 'Burnt Zombie', hp: 40, atk: 6, aggro: 2.6, chase: .013, reward: 35, ren: 3, weight: 0, alert: 5, isNew: 1, desc: 'Smouldering: sets buildings it hits on fire. Firefighter Coat and rain help.' },
   dog: { name: 'Infected Dog', hp: 18, atk: 5, aggro: 4.2, chase: .034, reward: 22, ren: 2, weight: 0, alert: 6, isNew: 1, desc: 'Fast and low to the ground: goes for workers out at the trees and rocks. Fences and Agility help.' },
@@ -2341,7 +2346,6 @@ function alertPack(z, target) {   /* V2.12: zombies near one that spots a surviv
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
 }
 function zSpecial(z) {   /* 3D.32 new-zombie extras */
-  if (z.type === 'screamer' && z.mode !== 'appear' && (z.scrT = (z.scrT || 0) + 1) % 420 === 0) { z.scream = 40; SFX('alarm'); if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
   if (z.scream > 0) z.scream--;
   if (z.type === 'alpha' && tick % 30 === 0) for (const q of S.z) if (q !== z && !q.human && q.hp > 0) q.alphaNear = dist(q.w, z.w) < 6;
 }
@@ -2402,8 +2406,12 @@ function zai0(z) {
   if (z.mode === 'zchase') {
     if (!z.target || z.target.hp <= 0 || ['down', 'hospital'].includes(z.target.mode) || insideBuilding(z.target)) { z.target = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 40; return; }
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
-    if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
+    if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
+  if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
+    if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
+      if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
+    if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
   if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 70 + rnd() * 20; } return; }   /* 3D.37 three-hit combo, in time with spore_combo */
   if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() });   /* 3D.35: the glob leaves the mouth, lands when the hit does */

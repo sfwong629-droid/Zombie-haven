@@ -403,6 +403,21 @@ def spore_combo(t):
                 'hand.L': (-20, 0, 0), 'hand.R': (-20, 0, 0)}, k['w'], .9)
     return p
 
+def scream(t):
+    """Screamer area attack (3D only, one-shot, ~1.6 s): draws in a breath hunched over, then throws the head back until it
+    almost faces the sky, arms flung out about 45 degrees to the sides, and holds the shriek, shaking; the shockwave goes
+    out at t = .32. Then it slumps back to the ready stance."""
+    K = [(0, {'hd': -8, 'ch': 6, 'ua': 4, 'sp': 12, 'fa': 18, 'kn': .5}),
+         (.22, {'hd': 22, 'ch': 18, 'ua': 10, 'sp': 4, 'fa': 40, 'kn': .9}),
+         (.32, {'hd': -72, 'ch': -16, 'ua': 2, 'sp': 28, 'fa': 6, 'kn': .3}),
+         (.8, {'hd': -70, 'ch': -14, 'ua': 2, 'sp': 29, 'fa': 8, 'kn': .3}),
+         (1, {'hd': -8, 'ch': 6, 'ua': 4, 'sp': 12, 'fa': 18, 'kn': .5})]
+    k = keys(K, t); sh = 3 * math.sin(t * 90) if .32 < t < .82 else 0   # shaking with the shriek
+    p = soft_legs({'chest': (k['ch'], 0, sh * .5), 'pelvis': (k['ch'] * .2, 0, 0), 'neck': (k['hd'] * .45, 0, sh), 'head': (k['hd'] * .55, sh, 0),
+                   'upperarm.L': (k['ua'], 0, k['sp']), 'upperarm.R': (k['ua'], 0, -k['sp']), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0),
+                   'hand.L': (-10, 0, 8), 'hand.R': (-10, 0, -8)}, k['kn'])
+    return p
+
 def bloated_walk(t):
     """Bloated zombie waddle (3D only): short heavy steps, hips rolling side to side, the belly leading, arms kept low
     beside the belly (his model has the arms fused to the belly: raising them would stretch the skin)."""

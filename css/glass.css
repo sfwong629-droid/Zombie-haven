@@ -226,5 +226,5 @@ html.glass body:has(#infoPanel.show) .expBar { display: none; }
 .zooPanel .zbtns { display: flex; gap: 8px; } .zooPanel .zbtns .act { flex: 1; min-height: 40px; font-size: 14px; }
 .zooPanel #zooExit { flex: 0 0 auto; padding: 0 14px; }
 /* 3D.36 brute slam: a short screen shake */
-.zhShake { animation: zhShake .32s cubic-bezier(.36,.07,.19,.97); }
-@keyframes zhShake { 10%, 90% { transform: translate(-1px, 1px); } 25%, 65% { transform: translate(3px, -2px); } 40% { transform: translate(-4px, 2px); } 55% { transform: translate(3px, 1px); } }
+.zhShake { animation: zhShake .22s ease-out; }
+@keyframes zhShake { 20%, 80% { transform: translate(-1px, 0); } 40% { transform: translate(2px, -1px); } 60% { transform: translate(-2px, 1px); } }
