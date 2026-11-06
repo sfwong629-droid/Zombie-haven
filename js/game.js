@@ -518,7 +518,7 @@ function drawHuman(s) {
   else if (ic && s.mode !== 'down' && !(COZY_HUD && (s.emo || s.bark))) bubble({ x: p.x, y: tagY - 1 }, ic);
   if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
 }
-const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .9, alpha: 1.6, dog: .55, riot: 1.08, boss: 1.6 };
+const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .5, alpha: 1.6, dog: .55, riot: 1.08, boss: 1.6 };
 const tintCache = {};
 function tinted(key, img, fn) {   /* recolour a pixel-art sheet once (keeps every pixel crisp) */
   if (tintCache[key]) return tintCache[key]; if (!okImg(img)) return null;
@@ -1040,7 +1040,7 @@ const workBoost = (s) => .5 + .08 * (Math.min(LEVEL_CAP, s.l || 1) - 1);        
 const jobAI = { Civilian: { aggro: 3.0, rescue: 5, town: 1.35 }, Guard: { aggro: 6, rescue: 7, town: .65 }, Medic: { aggro: 3.3, rescue: 10, town: 1.1 }, Scavenger: { aggro: 4.3, rescue: 6, town: .8 }, 'Police Officer': { aggro: 6.8, rescue: 8, town: .55 } };
 const zombieTypes = {
   walker: { name: 'Walker', hp: 30, atk: 4, aggro: 2.2, chase: .0125, reward: 18, ren: 1, weight: 58, alert: 4.5 },
-  crawler: { name: 'Crawler', hp: 22, atk: 3, aggro: 1.8, chase: .017, reward: 16, ren: 1, weight: 20, alert: 3.5 },
+  crawler: { name: 'Crawler', hp: 22, atk: 3, aggro: 1.8, chase: .0055,   /* 3D.34: drags itself on its arms, the slowest zombie */ reward: 16, ren: 1, weight: 20, alert: 3.5 },
   runner: { name: 'Runner', hp: 25, atk: 5, aggro: 3.2, chase: .027, reward: 25, ren: 2, weight: 12, alert: 6 },
   bloated: { name: 'Bloated', hp: 60, atk: 8, aggro: 2, chase: .009, reward: 40, ren: 3, weight: 6, alert: 4 },
   spitter: { name: 'Spitter', hp: 28, atk: 6, aggro: 3.7, chase: .0125, reward: 32, ren: 2, weight: 3, alert: 5.5 },

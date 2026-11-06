@@ -764,7 +764,7 @@ let MALE = null, LITE = null;
 const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
 const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
-const ZSC = { bloated: 1.18, brute: 1.32, crawler: .85, boss: 1.6, alpha: 1.75, screamer: .97, riot: 1.06, dog: 1.15 };
+const ZSC = { bloated: 1.18, brute: 1.32, crawler: 1, boss: 1.6, alpha: 1.75, screamer: .97, riot: 1.06, dog: 1.15 };
 function toonScene(root, map, clean = false) {   // clean (the #v2 models): mipmapped texture and no hull outline (it poked through the AI mesh as dark specks)
   root.traverse((o) => {
     if (!o.isMesh || o.userData.hull) return;
@@ -848,7 +848,8 @@ function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilt
 const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: .525, zombie_run: 1.197 } },
   runner: { url: 'assets/characters/ai3d_v2/zombie_runner.glb', stride: { zombie_walk: .538, zombie_run: 1.273 } },
   brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: .540, zombie_run: 1.264 } },
-  bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: .395 } } }, ZSRC = {};
+  bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: .395 } },
+  crawler: { url: 'assets/characters/ai3d_v2/zombie_crawler.glb', stride: { crawl: .24 }, crawl: true } }, ZSRC = {};   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
 function zombieOwn(type) {
   const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
   const t = ZSKIN_TINT[type] || [1, 1, 1], key = 'own|' + type;
@@ -875,7 +876,7 @@ const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47',
   golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat', hatchet: 'axe', cleaver: 'axe', magnum: 'pistol' };   // 3D.28 new gear
 const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
-const STAND_OF = { walk: 'idle', walk_f: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle' };
+const STAND_OF = { walk: 'idle', walk_f: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
 class Actor {
   constructor(src, mat, lite, faces = null) {
     this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
@@ -887,6 +888,7 @@ class Actor {
     if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
   }
   play(name, once = false, restart = false) {
+    if (this.src && this.src.crawl && name === 'collapse') name = 'crawl_die';   /* 3D.34 */
     { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && this.spd < (this.name === name ? .07 : .14)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
     if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
     if (this.name === name && !restart) return;
@@ -1199,6 +1201,7 @@ function syncPeople(dt, vis) {
 }
 function zombieAnim(a, z) {
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
+  if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); a.attacking = true; } return; }   // V3D.20 zombies claw-swipe
   a.attacking = false;
@@ -1529,7 +1532,7 @@ inkButton();
   if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); FEMALE3D = f; } catch (e) { console.warn('female model', e); } }
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
-  if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
+  if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
   if (CHAR_V2) for (const [src, k] of [[MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }

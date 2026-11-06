@@ -109,7 +109,7 @@ def prep(src, out, tris=40000):
     ao = survivor.armature(J, 'rig', (0, 0, 0), 0)
     # skin: heat weights on a watertight proxy, then copy to the real mesh
     px = o.copy(); px.data = o.data.copy(); px.name = 'proxy'; bpy.context.scene.collection.objects.link(px)
-    rm = px.modifiers.new('rm', 'REMESH'); rm.mode = 'VOXEL'; rm.voxel_size = .006   # fine enough to keep close legs apart
+    rm = px.modifiers.new('rm', 'REMESH'); rm.mode = 'VOXEL'; rm.voxel_size = float(os.environ.get('ZH_VOXEL', .006))   # fine enough to keep close legs apart (ZH_VOXEL: coarser when heat weighting fails)
     bpy.context.view_layer.objects.active = px; bpy.ops.object.modifier_apply(modifier='rm')
     print('proxy verts', len(px.data.vertices), flush=True)
     bpy.ops.object.select_all(action='DESELECT'); px.select_set(True); ao.select_set(True)

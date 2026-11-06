@@ -382,6 +382,61 @@ def bloated_attack(t):
     return p
 
 
+# ------------------------------------------------------------------ 3D.34 crawler (legless zombie, 3D only): lies face down and drags itself on its arms
+CRAWL = {'lie': 72, 'bob': -.105, 'spread': 24}   # body pitch forward (deg), drop of the pelvis, arms out to the side
+
+def _prone(p, sway=0.0):
+    p.update({'pelvis': (CRAWL['lie'], 0, 0), 'chest': (4, 6 * sway, 3 * sway), 'neck': (-30, 0, 0), 'head': (-36, -8 * sway, 0),
+              'thigh.L': (6, 0, 8), 'thigh.R': (10, 0, -8), 'shin.L': (-6, 0, 0), 'shin.R': (-10, 0, 0)})   # stumps trail behind
+    p['bob'] = CRAWL['bob']
+    return p
+
+def _arm(p, n, sg, u):
+    """One arm's crawl cycle, u 0..1: plant far ahead (0), pull the body forward (0..0.6), lift and reach ahead again (0.6..1)."""
+    if u < .6:
+        k = ease(u / .6); ua = lerp(166, 100, k); fa = lerp(4, 74, k)   # elbow bends mid-pull so the hand stays on the ground
+    else:
+        k = ease((u - .6) / .4); ua = lerp(100, 166, k) + 16 * math.sin(math.pi * k); fa = lerp(74, 4, k) + 24 * math.sin(math.pi * k)       # hand lifts clear as it swings forward
+    p['upperarm.' + n] = (ua, 0, sg * CRAWL['spread']); p['forearm.' + n] = (fa, 0, 0); p['hand.' + n] = (-20, 0, 0)
+
+def crawl(t):
+    """Crawler locomotion: arms pull alternately, the body slides, shoulders roll with each pull, head up eyeing its prey."""
+    sn = math.sin(2 * math.pi * t); p = _prone({}, sn)
+    _arm(p, 'L', 1, t % 1.0); _arm(p, 'R', -1, (t + .5) % 1.0)
+    p['bob'] += .008 * abs(math.cos(2 * math.pi * t))
+    return p
+
+def crawl_idle(t):
+    """Crawler waiting: lying on its arms, head lifting and weaving, fingers clawing at the dirt."""
+    w = math.sin(2 * math.pi * t); p = _prone({}, w * .5)
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (150 + 4 * sg * w, 0, sg * CRAWL['spread']); p['forearm.' + n] = (30 - 6 * sg * w, 0, 0); p['hand.' + n] = (-10 + 14 * max(0.0, sg * w), 0, 0)
+    p['neck'] = (-30 - 6 * w, 0, 0); p['head'] = (-30, 14 * math.sin(2 * math.pi * t + 1), 0)
+    return p
+
+def crawl_attack(t):
+    """Crawler lunge (one-shot): rears up on its arms, then throws itself forward, one claw swiping and the jaw snapping."""
+    K = [(0, {'lie': 84, 'ua': 150, 'fa': 30, 'sw': 150, 'hd': -30, 'bob': 0}),
+         (.38, {'lie': 56, 'ua': 112, 'fa': 4, 'sw': 172, 'hd': -40, 'bob': .03}),
+         (.58, {'lie': 80, 'ua': 150, 'fa': 20, 'sw': 120, 'hd': -10, 'bob': -.01}),
+         (.75, {'lie': 82, 'ua': 152, 'fa': 26, 'sw': 130, 'hd': -20, 'bob': 0}),
+         (1, {'lie': 84, 'ua': 150, 'fa': 30, 'sw': 150, 'hd': -30, 'bob': 0})]
+    k = keys(K, t); p = _prone({})
+    p['pelvis'] = (k['lie'], 0, 0); p['chest'] = (84 - k['lie'] - 4, 0, 0); p['head'] = (k['hd'], 0, 0)
+    p['upperarm.L'] = (k['ua'], 0, CRAWL['spread']); p['forearm.L'] = (k['fa'], 0, 0)
+    p['upperarm.R'] = (k['sw'], 0, -CRAWL['spread'] - 16); p['forearm.R'] = (30, 0, 0); p['hand.R'] = (-30, 0, 0)
+    p['bob'] = CRAWL['bob'] + k['bob']
+    return p
+
+def crawl_die(t):
+    """Crawler death (one-shot): the arms give out and it slumps flat, head dropping to the dirt."""
+    u = ease(min(1.0, t)); p = _prone({})
+    p['pelvis'] = (CRAWL['lie'] + 10 * u, 0, 0); p['neck'] = (-30 + 14 * u, 0, 0); p['head'] = (-36 + 16 * u, 34 * u, 0)
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (150 - 40 * u, 0, sg * (CRAWL['spread'] + 30 * u)); p['forearm.' + n] = (30 - 20 * u, 0, 0)
+    p['bob'] = CRAWL['bob'] - .015 * u
+    return p
+
 # ------------------------------------------------------------------ V3D.19 everyday clips (3D only, not in CLIPS): work, rest, social, carrying
 def _crouch(p, depth=1.0):
     """Both knees deep, hips low (for tinkering)."""
