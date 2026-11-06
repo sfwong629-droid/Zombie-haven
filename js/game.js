@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.41', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.44', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1078,7 +1078,7 @@ const TRAIT_KEYS = Object.keys(TRAITS), hasT = (s, k) => !!s && s.trait === k;
 function rollTrait(s) { let h = 7; for (const c of String(s.name) + ':' + (s.id || 0)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return TRAIT_KEYS[h % TRAIT_KEYS.length]; }   /* stable for old saves */
 const traitGood = (s) => { const t = TRAITS[s && s.trait]; return t ? (!isFighter(s) && t.nf ? t.nf : t.good) : ''; };
 const traitIcon = (s) => (TRAITS[s && s.trait] ? TRAITS[s.trait].icon : '');
-const traitTag = (s) => (TRAITS[s && s.trait] ? ` · ${TRAITS[s.trait].icon} ${TRAITS[s.trait].name}` : '');
+const traitTag = (s) => (s ? ` · ${ageOf(s)} yrs` : '') + (TRAITS[s && s.trait] ? ` · ${TRAITS[s.trait].icon} ${TRAITS[s.trait].name}` : '');   /* 3D.44 age shown */
 const traitRange = (s) => (hasT(s, 'brave') ? 1.25 : hasT(s, 'cautious') ? .8 : 1) * (hasT(s, 'owl') && isNight() ? 1.3 : 1);
 const traitSpot = (s) => (hasT(s, 'cautious') || (hasT(s, 'owl') && isNight()) ? 1.2 : 0);
 const traitWork = (s) => (hasT(s, 'diligent') ? .15 : 0) - (hasT(s, 'scrounger') ? .1 : 0) - (hasT(s, 'owl') && S.hour >= 7 && S.hour < 12 ? .15 : 0);
@@ -1418,8 +1418,15 @@ function moveSlide(o, t, sp) {                // free movement that cannot enter
 
 /* ---------------- survivors ---------------- */
 function mk(name, job, l, x, y, i) {
-  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: G3D ? null : 'pipe', armor: null, head: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.max = baseMax(o); o.hp = o.max; return o;
+  const o = mk0(name, job, l, x, y, i); o.st = rollStats(job, l); o.eq = { weapon: G3D ? null : 'pipe', armor: null, head: null, acc: null }; o.tp = {}; o.cls = { [job]: { l, xp: 0 } }; o.skills = []; learnSkills(o, true); o.trait = TRAIT_KEYS[Math.floor(rnd() * TRAIT_KEYS.length)]; o.age = 18 + Math.floor(rnd() * 57); o.south = rnd() < .25; o.max = baseMax(o); o.hp = o.max; return o;
 }
+/* 3D.44 age and voice: every survivor has an age (18-74). 58+ talk like boomers, 27 and under like Gen Z, and about one in four has a
+   Southern accent. Lines in js/barks.js tagged B| Z| S| are only said by those voices. Close ages bond faster and chat more. */
+function ageOf(s) { if (!s) return 40; if (s.age == null) { let h = 7; for (const c of (s.name || '') + (s.id || 0)) h = (h * 31 + c.charCodeAt(0)) >>> 0; s.age = 18 + (h % 57); s.south = (h >>> 9) % 4 === 0; } return s.age; }
+const voiceOk = (s, t) => (t === 'B' ? ageOf(s) >= 58 : t === 'Z' ? ageOf(s) <= 27 : t === 'S' ? (ageOf(s), !!s.south) : true);
+const lineTag = (l) => (/^[BZS]\|/.test(l) ? [l[0], l.slice(2)] : [null, l]);
+const voiceName = (s) => [ageOf(s) >= 58 ? 'Boomer' : ageOf(s) <= 27 ? 'Gen Z' : '', s.south ? 'Southern' : ''].filter(Boolean).join(', ');
+const ageBondMul = (a, b) => { const d = Math.abs(ageOf(a) - ageOf(b)); return d <= 6 ? 1.5 : d <= 12 ? 1.2 : d >= 30 ? .8 : 1; };
 /* V3D.17 full names: everyone has a family name (the first name is what the town calls them) */
 const FIRST_NAMES = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar', 'Cass', 'Dex', 'Mara', 'Ozzy', 'Lark', 'Vince', 'Hana', 'Rook', 'Sol', 'Quinn', 'Ada', 'Bo', 'Cleo', 'Dante', 'Esme', 'Felix', 'Gwen', 'Hal', 'Ines', 'Jonah', 'Kira', 'Leo', 'Mina', 'Nico', 'Opal', 'Pia', 'Rafe', 'Sana', 'Tomas', 'Uma', 'Vera', 'Wes', 'Yara', 'Zed', 'Abel', 'Bryn', 'Cyrus', 'Della', 'Ezra', 'Faye', 'Gus', 'Hattie'];
 const LAST_NAMES = ['Reyes', 'Novak', 'Okafor', 'Brennan', 'Sato', 'Lindqvist', 'Moreau', 'Kowalski', 'Haddad', 'Fischer', 'Park', 'Ivanova', 'Alvarez', 'Murphy', 'Nakamura', 'Osei', 'Petrov', 'Quinlan', 'Rossi', 'Schmidt', 'Tanaka', 'Underwood', 'Vasquez', 'Whitfield', 'Yilmaz', 'Zhou', 'Abara', 'Becker', 'Castillo', 'Dubois', 'Engel', 'Fontaine', 'Garza', 'Holm', 'Ibarra', 'Jensen', 'Kaur', 'Larsen', 'Mendes', 'Nyberg', 'Ortiz', 'Pruitt', 'Ramos', 'Sorensen', 'Torres', 'Vance', 'Webb', 'Abbott', 'Bishop', 'Crane'];
@@ -1837,16 +1844,17 @@ const BARK_LAST = {}; let barkGlobalT = 0, barkSquad = null;
 const GLASS = typeof document !== 'undefined' && document.documentElement.classList.contains('glass');   /* 3D.28 Glass UI: bubbles are dark frosted glass */
 const SWEAR_RE = /\b(fuck(?:ing|er|ed)?|shit(?:ty)?|bitch|bastards?|asshole|ass|damn(?:ed)?|hell|bloody|dumbass)\b/gi, unswear = (t) => (OPTS.swear === false ? t.replace(SWEAR_RE, (w) => w[0] + '*'.repeat(Math.max(1, w.length - 2)) + w[w.length - 1]) : t);   /* 3D.41 Settings > Swearing in chat */
 const barkFill = (t, v) => unswear(t.replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : k === 'n' ? '' : k === 'b' ? 'building' : k === 'r' ? 'supplies' : k === 'dest' ? 'ruins' : 'friend')));
-function barkLine(key, v) {
-  const B = window.ZH_BARKS && ZH_BARKS[key]; const L = B && B.lines; if (!L || !L.length) return null;
-  let i = Math.floor(rnd() * L.length); if (L.length > 1 && i === BARK_LAST[key]) i = (i + 1) % L.length; BARK_LAST[key] = i; return { t: barkFill(L[i], v), st: B.style || 'talk' };
+function barkLine(key, v, s) {
+  const B = window.ZH_BARKS && ZH_BARKS[key]; const L0 = B && B.lines; if (!L0 || !L0.length) return null;
+  const L = L0.filter((l) => { const [t] = lineTag(l); return !t || (s && voiceOk(s, t)); }); if (!L.length) return null;   /* 3D.44 only lines that fit the speaker's voice */
+  let i = Math.floor(rnd() * L.length); if (L.length > 1 && i === BARK_LAST[key]) i = (i + 1) % L.length; BARK_LAST[key] = i; return { t: barkFill(lineTag(L[i])[1], v), st: B.style || 'talk' };
 }
 const barkable = (q) => q && q.hp > 0 && q.w && !['away', 'down', 'hospital'].includes(q.mode) && !q.sleeping && !insideBuilding(q);
 function bark(s, key, v = {}, o = {}) {
   if (!COZY_HUD || !barkable(s)) return false; const pri = o.pri || 0;
   if (s.bark && s.bark.f > 20 && s.bark.pri >= pri) return false;
   if (!pri && ((s.barkNext || 0) > tick || barkGlobalT > tick || S.sv.filter((q) => q.bark).length >= 2)) return false;
-  const L = o.line ? { t: barkFill(o.line, v), st: o.style || 'talk' } : barkLine(key, v); if (!L) return false;
+  const L = o.line ? { t: barkFill(o.line, v), st: o.style || 'talk' } : barkLine(key, v, s); if (!L) return false;
   const f = o.f || Math.min(330, 150 + L.t.length * 4);
   s.bark = { t: GLASS ? L.t : L.t.toUpperCase(), st: o.style || L.st, f, f0: f, pri }; s.emo = null;
   s.barkNext = tick + 1800 + Math.floor(rnd() * 1200); barkGlobalT = tick + (pri ? 60 : 260); return true;
@@ -1913,7 +1921,8 @@ function chatText(a, b) {   /* 3D.27: a spoken two-line exchange (js/barks.js), 
   const B = window.ZH_BARKS; if (!B) return null; const bond = bondOf(a, b);
   const key = (S.griefUntil || 0) > nowH() ? 'chatGrief' : S.food < rationNeed().f * 1.5 ? 'chatHungry' : S.water < rationNeed().w * 1.5 ? 'chatThirsty' : S.weather ? 'chatRain'
     : isNight() ? 'chatNight' : (S.barkFought === S.day && rnd() < .5) ? 'chatFight' : bond > 40 && rnd() < .5 ? 'chatFriends' : bond < 10 && rnd() < .5 ? 'chatNew' : 'chat';
-  const T = B[key] || B.chat; let pr = T.pairs[Math.floor(rnd() * T.pairs.length)];
+  const T = B[key] || B.chat, ok = T.pairs.filter(([x, y]) => { const [t1] = lineTag(x), [t2] = lineTag(y); return (!t1 || voiceOk(a, t1)) && (!t2 || voiceOk(b, t2)); }); if (!ok.length) return null;
+  let pr = ok[Math.floor(rnd() * ok.length)].map((l) => (key === 'chatGrief' ? lineTag(l)[1] : lineTag(l)[1].replace('{other}', a.name)));   /* 3D.44 each line fits its speaker */
   if (key === 'chatGrief') { const f = (S.fallen || []).slice(-1)[0]; pr = pr.map((l) => l.replace('{other}', f ? f.name : 'them')); }
   return { pair: pr.map(unswear), st: T.style || 'talk' };
 }
@@ -1921,7 +1930,7 @@ const chatBuilding = () => { const l = world.buildings.filter((b) => !b.burnt &&
 function startChat(s) {
   if (!COZY_HUD || (s.chatNext || 0) > tick || isNight() && !bOf('bonfire').length && rnd() < .6) return false;   /* V3D.17: a pause between chats */
   const pals = S.sv.filter((q) => q !== s && q.hp > 0 && ['free', 'wait'].includes(q.mode) && !q.purpose && !q.sleeping && !q.chatWith && (q.chatNext || 0) <= tick && !insideBuilding(q) && dist(q.w, s.w) < 5)
-    .sort((x, y) => (bondOf(s, y) - bondOf(s, x)) * .05 + dist(x.w, s.w) - dist(y.w, s.w));
+    .sort((x, y) => (bondOf(s, y) - bondOf(s, x)) * .05 + dist(x.w, s.w) - dist(y.w, s.w) + (Math.abs(ageOf(s) - ageOf(x)) - Math.abs(ageOf(s) - ageOf(y))) * .05);   /* 3D.44 people their own age first */
   const q = pals[0]; if (!q || hasT(s, 'loner') && rnd() < .6) return false;
   const mid = { x: (s.w.x + q.w.x) / 2, y: (s.w.y + q.w.y) / 2 }, txt = rnd() < .7 ? chatText(s, q) : null, lines = txt ? txt.pair : chatTopic(s, q);
   for (const [a, b, side] of [[s, q, -1], [q, s, 1]]) { a.mode = 'chat'; a.chatWith = b; a.chatLines = lines; a.chatTxt = txt ? txt.st : null; a.chatStep = side < 0 ? 0 : 1; a.chatT = side < 0 ? 30 : 75; a.dest = { x: mid.x + side * .32, y: mid.y + side * .12 }; a.path = null; a.stateTicks = 900; a.why = `Chatting with ${b.name}`; a.purpose = null; }
@@ -2924,7 +2933,7 @@ const bondOf = (a, b) => (a.rel && a.rel[b.id]) || 0;
 const bondName = (v) => (v >= BOND.close ? 'Close friend' : v >= BOND.friend ? 'Friend' : v >= BOND.acq ? 'Acquaintance' : 'Stranger');
 function addBond(a, b, n) {
   if (!a || !b || a === b) return; a.rel = a.rel || {}; b.rel = b.rel || {}; const pk = Math.min(a.id, b.id) + '-' + Math.max(a.id, b.id), today = bondDay.get(pk) || 0; if (today >= 20) return; bondDay.set(pk, today + n);   /* at most ~20 a day per pair */
-  const before = bondOf(a, b), m = n * (hasT(a, 'caring') || hasT(b, 'caring') ? 1.5 : 1) * (hasT(a, 'loner') || hasT(b, 'loner') ? .5 : 1) * Math.max(.6, (sMod(a, 'cha', .04) + sMod(b, 'cha', .04)) / 2) * Math.max(.25, 1 - before / 150), v = Math.min(100, before + m);   /* each step up is harder */
+  const before = bondOf(a, b), m = n * (hasT(a, 'caring') || hasT(b, 'caring') ? 1.5 : 1) * (hasT(a, 'loner') || hasT(b, 'loner') ? .5 : 1) * Math.max(.6, (sMod(a, 'cha', .04) + sMod(b, 'cha', .04)) / 2) * ageBondMul(a, b) * Math.max(.25, 1 - before / 150), v = Math.min(100, before + m);   /* each step up is harder */
   a.rel[b.id] = v; b.rel[a.id] = v;
   for (const [k, lvl] of [['friend', BOND.friend], ['close', BOND.close]]) if (before < lvl && v >= lvl) { if (k === 'friend') S.friendsMade = (S.friendsMade || 0) + 1; floats.push({ w: { x: (a.w.x + b.w.x) / 2, y: (a.w.y + b.w.y) / 2 }, t: k === 'close' ? '♥ CLOSE FRIENDS' : '♥ FRIENDS', col: '#ff9ac8', a: 90 }); note('routine', `${a.name} and ${b.name} are now ${k === 'close' ? 'close friends' : 'friends'}.`); }
 }
@@ -3006,7 +3015,7 @@ function growUp(k) {
   const v = mk(k.name, 'Civilian', 1, Math.floor(p.x), Math.floor(p.y), S.sv.length); v.w = { x: p.x, y: p.y };
   for (const s of STATS) v.st[s] = Math.min(STAT_CAP, Math.max(1, (k.st[s] || 5) + (rnd() < .5 ? 1 : 0))); v.max = baseMax(v); v.hp = v.max; v.resident = true; v.sat = 40; v.parents = [...k.parents];
   v.rel = {}; for (const pid of k.parents) { const par = S.sv.find((q) => q.id === pid); if (par) { v.rel[pid] = 90; par.rel = par.rel || {}; par.rel[v.id] = 90; } }
-  v.src = 'grown'; S.sv.push(v); SFX('reward'); showEventPopup({ title: '🧑 ' + k.name.toUpperCase() + ' HAS GROWN UP', text: `${k.name} is ready to help the Haven. Give them a profession from the survivor panel (Job tab).`, gains: 'New resident · Civilian Lv.1 · stats from the parents' + traitTag(v) }); ui();
+  v.src = 'grown'; v.age = 18; S.sv.push(v); SFX('reward'); showEventPopup({ title: '🧑 ' + k.name.toUpperCase() + ' HAS GROWN UP', text: `${k.name} is ready to help the Haven. Give them a profession from the survivor panel (Job tab).`, gains: 'New resident · Civilian Lv.1 · stats from the parents' + traitTag(v) }); ui();
 }
 function bondsOnDeath(s) {   /* grief, and the bonds are cleared */
   for (const q of S.sv) { const v = bondOf(q, s), gm = hasT(q, 'caring') ? 1.5 : hasT(q, 'loner') ? .3 : 1; if (q.partner === s.id) { q.partner = null; q.sat = Math.max(0, (q.sat || 0) - 30 * gm); q.why = 'Grieving for ' + s.name; } else if (v >= BOND.friend) { q.sat = Math.max(0, (q.sat || 0) - (v >= BOND.close ? 20 : 12) * gm); q.why = 'Grieving for ' + s.name; } if (q.rel) delete q.rel[s.id]; }
@@ -4320,7 +4329,7 @@ function refreshNow() {   // keep the open survivor's "Now" card live
   const el = $('uNow'); if (!el || !selected || selected.kind !== 'unit') return; const u = selected.ref, h = nowCard(u); if (el.outerHTML === h) return;
   el.outerHTML = h; wireSI($('uNow')); const nd = unitNow(u), dd = $('uDest'), pp = $('uPost'); if (dd && nd.destB) dd.onclick = () => showBuildingInfo(nd.destB); if (pp) pp.onclick = () => showBuildingInfo(u.post);
 }
-function traitCard(u) { const t = TRAITS[u.trait]; return t ? `<div class="card traitCard"><b>${t.icon} ${t.name}</b><div class="sm">✔ ${traitGood(u)}</div><div class="sm">✖ ${t.bad}</div></div>` : ''; }
+function traitCard(u) { const t = TRAITS[u.trait], vn = voiceName(u); return (`<div class="card traitCard"><b>Age ${ageOf(u)}</b>${vn ? ` · ${vn} voice` : ''}<div class="sm">Gets along fastest with people about the same age.</div></div>`) + (t ? `<div class="card traitCard"><b>${t.icon} ${t.name}</b><div class="sm">✔ ${traitGood(u)}</div><div class="sm">✖ ${t.bad}</div></div>` : ''); }
 function unitPanel(u) {
   selected = { kind: 'unit', ref: u }; closeP();
   $('ib').innerHTML = `<div class="card row">${portrait(u)}<div class="sp"><div style="font-size:24px;line-height:22px">${esc(fullName(u))} ${u.resident ? '🏠' : ''}${u.partner ? '💑' : ''}</div><div class="sm">${u.job} · Lv.${u.l}</div>
@@ -4825,7 +4834,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { barkLine, chatText, ageOf, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
