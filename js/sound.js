@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { chop: 120, swing: 80, door: 300, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
+  const GAP = { chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -44,7 +44,11 @@
     kill: (c, o, t) => { thud(c, o, t, 80, .38, .3); noise(c, o, t, .22, .3, 600, .7, 'lowpass', 120); formant(c, o, t + .02, 120, .45, .11, [[500, 5, 1], [900, 6, .5]], 70, 6); },
     groan: (c, o, t) => { const d = 1.3 + Math.random() * .5, f = 82 + Math.random() * 25; formant(c, o, t, f, d, .12, [[420, 5, 1], [820, 7, .55], [2400, 10, .15]], f * .8, 3.5); noise(c, o, t, d, .025, 500, .6, 'lowpass'); },
     down: (c, o, t) => { thud(c, o, t, 70, .35, .35); formant(c, o, t + .05, 180, .5, .13, [[600, 6, 1], [1000, 7, .5]], 110); thud(c, o, t + .55, 60, .15, .2); thud(c, o, t + .78, 60, .12, .2); },
-    build: (c, o, t) => { knock(c, o, t, 330, .28); knock(c, o, t + .16, 360, .26); knock(c, o, t + .34, 300, .3); },
+    build: (c, o, t) => {   /* 3D.57 hammer on nails: recorded wood + metal hits (Kenney, CC0), tap-tap-BANG */
+      const hits = [[0, 'woodL', .8, 1.25], [.24, 'woodL', .85, 1.2], [.5, 'woodM', 1, 1.1]];
+      if (!SFXB.woodL0) { knock(c, o, t, 330, .28); knock(c, o, t + .24, 360, .26); knock(c, o, t + .5, 300, .3); return; }
+      for (const [dt, k, v, r] of hits) { sfx(c, o, t + dt, k + rnd3(), v * .42, r); sfx(c, o, t + dt, 'metalL' + rnd3(), v * .22, 1.35); }
+    },
     click: (c, o, t) => { pluck(c, o, t, 1400, .12, .08); noise(c, o, t, .012, .08, 4500, 2); },
     chime: (c, o, t) => { bell(c, o, t, N(15), .09); bell(c, o, t + .09, N(22), .08); },
     reward: (c, o, t) => { [12, 16, 19, 24].forEach((s, i) => bell(c, o, t + i * .08, N(s), .08)); pluck(c, o, t, N(0), .2, 1); },
@@ -55,13 +59,21 @@
     night: (c, o, t) => { [0, -5, -9].forEach((s, i) => bell(c, o, t + i * .45, N(s - 12), .07)); },
     dawn: (c, o, t) => { [3, 7, 10, 15].forEach((s, i) => bell(c, o, t + i * .22, N(s + 12), .06)); },
     crackle: (c, o, t) => { for (let i = 0; i < 9; i++) noise(c, o, t + Math.random() * .6, .01 + Math.random() * .03, .2, 1500 + Math.random() * 3500, 2); noise(c, o, t, .7, .06, 300, .5, 'lowpass'); },
+    rescued2: (c, o, t) => {   /* 3D.57 option B: a real nylon guitar strums G major, vibraphone answers */
+      const ch = [-14, -10, -7, -2, 2, 10], ok = samp(c, o, t, 'nyl', N(ch[0]), .5, 1.8);
+      if (!ok) { FX.rescued(c, o, t); return; }
+      ch.forEach((sm, i) => samp(c, o, t + i * .022, 'nyl', N(sm), .5, 1.8)); [10, 14, 17, 22].forEach((sm, i) => samp(c, o, t + .32 + i * .11, 'vibes', N(sm), .42, 1.6));
+    },
+    rescued3: (c, o, t) => { if (!sfx(c, o, t, 'pizzi', 1.1, 1)) FX.rescued(c, o, t); },   /* 3D.57 option C: recorded pizzicato strings jingle (Kenney, CC0) */
     rescued: (c, o, t) => { [0, 4, 7, 12].forEach((s, i) => pluck(c, o, t + i * .07, N(s), .18, 1.2)); bell(c, o, t + .3, N(19), .07); },
     rankup: (c, o, t) => { [0, 4, 7].forEach((s2, i) => stab(c, o, t + i * .13, [N(s2), N(s2 + 7)], .07)); stab(c, o, t + .42, [N(12), N(16), N(19)], .09); [12, 16, 19].forEach((s2) => bell(c, o, t + .42, N(s2 + 12), .05)); },
     event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => bell(c, o, t + i * .1, N(s2 + 12), .06)); },
     woof: (c, o, t) => { formant(c, o, t, 330, .1, .3, [[900, 4, 1], [1800, 6, .4]], 210); formant(c, o, t + .16, 310, .11, .28, [[880, 4, 1], [1700, 6, .4]], 200); },
-    chop: (c, o, t) => { knock(c, o, t, 260, .3); noise(c, o, t, .05, .2, 1800, 1.2); },   /* 3D.51 new */
-    swing: (c, o, t) => { noise(c, o, t, .14, .14, 900, .9, 'bandpass', 2400); },
-    door: (c, o, t) => { knock(c, o, t, 200, .2); formant(c, o, t + .02, 300, .3, .03, [[1800, 15, 1]], 260); },
+    hammer: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .38, 1.2)) { knock(c, o, t, 340, .2); return; } sfx(c, o, t, 'metalL' + rnd3(), .18, 1.35); },   /* 3D.57 one hammer blow (builders at work) */
+    chop: (c, o, t) => {   /* 3D.57 an axe biting into a log: recorded chop + heavy wood thunk (Kenney, CC0) */
+      if (!SFXB.chop) { knock(c, o, t, 260, .3); noise(c, o, t, .05, .2, 1800, 1.2); return; }
+      sfx(c, o, t, 'chop', 1, 1); sfx(c, o, t + .008, 'woodH' + rnd3(), .9, .82 + Math.random() * .08); noise(c, o, t + .03, .06, .05, 2600, 1.5);
+    },
   };
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
@@ -123,6 +135,9 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
+  const SFXN = ['chop', 'pizzi', ...['woodH', 'woodL', 'woodM', 'metalL'].flatMap((k) => [0, 1, 2].map((i) => k + i))], SFXB = {};   /* 3D.57 recorded effects */
+  const rnd3 = () => Math.floor(Math.random() * 3);
+  function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
   const AUDIO_BASE = (window.ZH_AUDIO_BASE || 'assets/audio/');
   async function loadBank(c) {
@@ -131,6 +146,7 @@
     const jobs = [];
     for (const [k, [a, b]] of Object.entries(INST)) { BANK[k] = []; for (let o = a; o <= b; o++) for (const [n, off] of NOTES) jobs.push(get(`${k}/${n}${o}.mp3`).then((buf) => BANK[k].push({ m: 12 * (o + 1) + off, buf })).catch(() => {})); }
     for (const k of KIT) jobs.push(get(`kit/${k}.mp3`).then((buf) => { KITB[k] = buf; }).catch(() => {}));
+    for (const k of SFXN) jobs.push(get(`sfx/${k}.mp3`).then((buf) => { SFXB[k] = buf; }).catch(() => {}));
     return (bankP = Promise.all(jobs));
   }
   const LEVEL = { fid: .8, gtr: 1, nyl: 1.1, bass: 1.6, banjo: .9, harp: .7, vibes: 1, tpt: .8, str: .9, mbox: .8, whis: .7, ep: 1, cello: 1.1, brass: .8, timp: 1.2, piano: 1 };
@@ -250,6 +266,7 @@
   const SND = {
     unlock() {
       if (!AC || mode === 'off') return; if (!ctx) { try { ctx = new AC(); const g = build(ctx); master = g.m; sfxBus = g.s; musBus = g.mu; } catch (e) { ctx = null; return; } }
+      loadBank(ctx);   /* 3D.57 recorded effects load even with music off */
       if (ctx.state === 'suspended') quiet(ctx.resume()); if (!timer) { nextNote = ctx.currentTime + .1; timer = setInterval(scheduler, 200); }
     },
     play(name) {
@@ -268,8 +285,8 @@
     // offline render for previews/tests: a list of [time, name] effects plus `musicSec` seconds of music
     async render(events, sec, musicSec = 0, dark = false) {
       const c = new OfflineAudioContext(2, Math.ceil(44100 * sec), 44100), g = build(c);
+      await loadBank(new OfflineAudioContext(1, 1, 44100));
       for (const [t, n] of events) FX[n](c, g.s, t);
-      if (musicSec) await loadBank(new OfflineAudioContext(1, 1, 44100));
       const md = dark === true ? 'night' : dark || 'day', o = musicSec ? musicGraph(c, g.mu) : null; let tt = .05, i = 0; while (tt < musicSec) tt += writeBar(c, o, tt, md, i++);
       const buf = await c.startRendering(); return buf.getChannelData(0);
     },

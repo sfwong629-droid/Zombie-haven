@@ -902,7 +902,7 @@ class Actor {
   }
   play(name, once = false, restart = false) {
     if (this.src && this.src.crawl && name === 'collapse') name = 'crawl_die';   /* 3D.34 */
-    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && !this.isMov() && this.spd < (this.name === name ? .07 : .14)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
+    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && !this.isMov() && this.spd < (this.name === name ? .05 : .1)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
     if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
     if (this.name === name && !restart) return;
     const n = this.acts[name];
@@ -917,9 +917,10 @@ class Actor {
   setArmor(on) { if (on === this.armor) return; this.armor = on; for (const a of this.arm) a.visible = on; }
   place(wx, wy, faceTo, dt, scale = 1) {
     const x = wx * T, z = wy * T;
-    let dx, dz; if (faceTo) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
+    let dx, dz; const mv = this.last ? Math.hypot(x - this.last.x, z - this.last.z) / Math.max(dt, 1e-3) / scale : 0;   /* 3D.57 audit: a body that is really moving faces where it goes, even with a target (no sideways or backwards walking) */
+    if (faceTo && !(mv > .3 && this.spd > .25)) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
-    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = v > .15 ? 0 : (this.movT || 0) + dt; }   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
+    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = v > .07 ? 0 : (this.movT || 0) + dt; }   /* 3D.57: slow drifts (.07+) walk too, never glide in the idle pose */   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
     const gy = groundH(x, z); this.o.position.set(x, gy, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
     this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
     if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
@@ -1208,7 +1209,7 @@ function syncPeople(dt, vis) {
     { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
       if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
     { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
-        if (s.reloadT > 0) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
+        if (s.reloadT > 0 && !a.isMov()) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
   }
   const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
   if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
@@ -1375,11 +1376,13 @@ function strideOf(a) {
   return t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
 }
 function tickMixer(a, dt, vis) {
-  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.35, Math.min(8, a.spd / st));   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
+  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.15, Math.min(8, a.spd / st));   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
   if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
+  const cs = seen && a.cur && CLIP_SFX[a.name]; if (cs) { const d = a.cur.getClip().duration, ph = d ? (a.cur.time % d) / d : 0; if (a.sfxPh != null && a.sfxPh < cs[0] && ph >= cs[0] && window.SND) SND.play(cs[1]); a.sfxPh = ph; } else a.sfxPh = null;   /* 3D.57 the axe and hammer sound when the tool lands */
 }
+const CLIP_SFX = { work_chop: [.55, 'chop'], work_hammer: [.45, 'hammer'] };
 
 
 // ---------------------------------------------------------------- comic ink (V3D.19): bold, even outlines like a graphic novel
