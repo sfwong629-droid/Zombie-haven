@@ -385,20 +385,21 @@ def spit(t):
     return p
 
 def spore_combo(t):
-    """Sporehead three-hit combo (3D only, one-shot, ~1.9 s): left claw swipe (lands t=.2), right claw swipe (t=.45),
-    then a lunging headbutt with the spore cap, both hands raking down (t=.74); recovers to the ready stance."""
-    K = [(0, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'hd': -8}),
-         (.1, {'tw': 26, 'lean': 4, 'w': -.4, 'Lx': 70, 'Lz': 70, 'Rx': 30, 'Rz': -20, 'hd': -10}),
-         (.2, {'tw': -20, 'lean': 16, 'w': .8, 'Lx': 92, 'Lz': -30, 'Rx': 24, 'Rz': -30, 'hd': -4}),
-         (.33, {'tw': -26, 'lean': 8, 'w': -.2, 'Lx': 60, 'Lz': -10, 'Rx': 72, 'Rz': -72, 'hd': -10}),
-         (.45, {'tw': 22, 'lean': 18, 'w': .8, 'Lx': 30, 'Lz': 30, 'Rx': 94, 'Rz': 30, 'hd': -4}),
-         (.6, {'tw': 0, 'lean': -16, 'w': -.8, 'Lx': 150, 'Lz': 20, 'Rx': 150, 'Rz': -20, 'hd': -30}),
-         (.74, {'tw': 0, 'lean': 38, 'w': 1.3, 'Lx': 70, 'Lz': 10, 'Rx': 70, 'Rz': -10, 'hd': 26}),
-         (.86, {'tw': 0, 'lean': 30, 'w': 1.1, 'Lx': 60, 'Lz': 14, 'Rx': 60, 'Rz': -14, 'hd': 16}),
-         (1, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'hd': -8})]
+    """Sporehead three-hit combo (3D only, one-shot, ~1.9 s): a wide left claw swipe (lands t=.2), a wide right claw swipe
+    (t=.45), then a lunging headbutt with the spore cap, both hands raking down (t=.74); recovers to the ready stance.
+    The swipes wind the arm far out and back with the torso turned away, then sweep all the way across the body."""
+    K = [(0, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'Lf': 24, 'Rf': 24, 'hd': -8}),
+         (.1, {'tw': 58, 'lean': -4, 'w': -.8, 'Lx': 14, 'Lz': 104, 'Rx': 20, 'Rz': -30, 'Lf': 34, 'Rf': 24, 'hd': -14}),
+         (.2, {'tw': -48, 'lean': 20, 'w': 1.0, 'Lx': 88, 'Lz': -46, 'Rx': 14, 'Rz': -40, 'Lf': 4, 'Rf': 24, 'hd': -2}),
+         (.33, {'tw': -58, 'lean': -4, 'w': -.8, 'Lx': 50, 'Lz': -30, 'Rx': 14, 'Rz': -104, 'Lf': 24, 'Rf': 34, 'hd': -14}),
+         (.45, {'tw': 48, 'lean': 20, 'w': 1.0, 'Lx': 20, 'Lz': 40, 'Rx': 88, 'Rz': 46, 'Lf': 24, 'Rf': 4, 'hd': -2}),
+         (.6, {'tw': 0, 'lean': -16, 'w': -.8, 'Lx': 150, 'Lz': 20, 'Rx': 150, 'Rz': -20, 'Lf': 24, 'Rf': 24, 'hd': -30}),
+         (.74, {'tw': 0, 'lean': 38, 'w': 1.3, 'Lx': 70, 'Lz': 10, 'Rx': 70, 'Rz': -10, 'Lf': 24, 'Rf': 24, 'hd': 26}),
+         (.86, {'tw': 0, 'lean': 30, 'w': 1.1, 'Lx': 60, 'Lz': 14, 'Rx': 60, 'Rz': -14, 'Lf': 24, 'Rf': 24, 'hd': 16}),
+         (1, {'tw': 0, 'lean': 8, 'w': 0, 'Lx': 40, 'Lz': 20, 'Rx': 40, 'Rz': -20, 'Lf': 24, 'Rf': 24, 'hd': -8})]
     k = keys(K, t)
-    p = stance({'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .4, 0), 'neck': (k['hd'] * .4, 0, 0), 'head': (k['hd'] * .6 - k['lean'] * .2, -k['tw'] * .4, 0),
-                'upperarm.L': (k['Lx'], 0, k['Lz']), 'upperarm.R': (k['Rx'], 0, k['Rz']), 'forearm.L': (24, 0, 0), 'forearm.R': (24, 0, 0),
+    p = stance({'chest': (k['lean'] * .7, k['tw'] * .75, 0), 'pelvis': (k['lean'] * .3, k['tw'] * .5, 0), 'neck': (k['hd'] * .4, 0, 0), 'head': (k['hd'] * .6 - k['lean'] * .2, -k['tw'] * .4, 0),
+                'upperarm.L': (k['Lx'], 0, k['Lz']), 'upperarm.R': (k['Rx'], 0, k['Rz']), 'forearm.L': (k['Lf'], 0, 0), 'forearm.R': (k['Rf'], 0, 0),
                 'hand.L': (-20, 0, 0), 'hand.R': (-20, 0, 0)}, k['w'], .9)
     return p
 
