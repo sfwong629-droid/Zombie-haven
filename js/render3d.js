@@ -764,7 +764,7 @@ let MALE = null, LITE = null;
 const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
 const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
-const ZSC = { bloated: 1.18, brute: 1.32, crawler: 1, boss: 1.6, alpha: 1.75, screamer: 1, riot: 1.06, dog: 1.15 };
+const ZSC = { bloated: 1.18, brute: 1.32, crawler: 1, boss: 1.6, alpha: 1.75, screamer: 1, riot: 1, dog: 1.15 };
 function toonScene(root, map, clean = false) {   // clean (the #v2 models): mipmapped texture and no hull outline (it poked through the AI mesh as dark specks)
   root.traverse((o) => {
     if (!o.isMesh || o.userData.hull) return;
@@ -840,7 +840,7 @@ function lookOf(s) { if (!s.look3) { const r = Math.imul(s.id || 1, 2654435761) 
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
 const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9], screamer: [1, .96, 1], burnt: [.42, .34, .3], riot: [.82, .86, .95], alpha: [1, .58, .52] };   /* 3D.32 new types */
-const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker', riot: 'walker' };
+const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker' };
 const zMats = {};
 // V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
 function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
@@ -852,10 +852,11 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   crawler: { url: 'assets/characters/ai3d_v2/zombie_crawler.glb', stride: { crawl: .24 }, crawl: true },
   spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
   sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } } }, ZSRC = {};   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
+  screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
+  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } } }, ZSRC = {};   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
 function zombieOwn(type) {
   const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
-  const t = (type === 'spitter' || type === 'sporehead' || type === 'screamer' ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
+  const t = (type === 'spitter' || type === 'sporehead' || type === 'screamer' || type === 'riot' ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
@@ -1098,7 +1099,7 @@ const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
-  const has = (c) => !!a.acts[c], still = s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06);   // V3D.21: not actually covering ground = standing
+  const has = (c) => !!a.acts[c], still = !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
   if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
   let c = null;
   if (s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];
@@ -1118,6 +1119,7 @@ function personAnim(a, s, dt) {
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
   if (anim === 'walk' && a.last && a.spd < .06) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
+  if (anim === 'idle' && a.last && a.spd > .3 && !a.attacking) anim = 'walk';   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
@@ -1220,6 +1222,7 @@ function syncZombies(dt, vis) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
       else if (z.type === 'dog') a = new DogActor();   /* 3D.32 */
       else if (z.type === 'alpha') { a = zombieOwn('alpha') || new Actor(LITE, zombieMaterial('brute', 0), true); a.setWeapon(null); a.setArmor(false); }
+      else if (z.type === 'riot' && ZSRC.riot) { a = zombieOwn('riot'); a.setWeapon(null); a.setArmor(false); }   /* 3D.39 */
       else if (z.type === 'riot' && MALE.v2) { a = zombieV2('riot', false, (Math.random() * 4) | 0, true) || new Actor(LITE, zombieMaterial('walker', 0), true); a.setWeapon(null); a.setArmor(true); addHat(a, 'SwatHelm', true); }
       else { const v = (Math.random() * 4) | 0; a = (MALE.v2 && (z.turned ? zombieV2(z.type, !!(FEMALE3D && z.turned.fem), v, true) : zombieV2(z.type, FEMALE3D && Math.random() < .4, v))) || new Actor(LITE, zombieMaterial(z.type, v), true); a.setWeapon(null); a.setArmor(false); }
       a.yaw = Math.random() * 6; zeds.set(z, a);

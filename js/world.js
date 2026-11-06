@@ -32,9 +32,9 @@
     barrel:   D({ name: 'Rain Barrel',    like: 'water', role: 'water', fam: 'water', tier: 1, next: 'water', slot: true, out: 3, a: 3, wood: 3, mat: 2, icon: 'water' }),
     water:    D({ name: 'Rain Collector', role: 'water', fam: 'water', tier: 2, next: 'well', sprite: 'grid', slot: true, out: 6, a: 4, wood: 8, mat: 2, up: true }),
     well:     D({ name: 'Stone Well',     role: 'water', fam: 'water', tier: 3, slot: true, out: 10, a: 6, q: 12, stone: 10, wood: 4, mat: 4, up: true }),
-    farm:     D({ name: 'Garden Plot',    role: 'food', fam: 'farm', tier: 1, next: 'field', w: 2, sprite: 'grid', slot: true, out: 4, waterUse: 2, a: 5, wood: 4 }),
-    field:    D({ name: 'Fenced Farm',    role: 'food', fam: 'farm', tier: 2, next: 'irrig', w: 2, slot: true, out: 7, waterUse: 3, a: 7, q: 12, wood: 10, mat: 3, up: true }),
-    irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 2, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
+    farm:     D({ name: 'Garden Plot',    role: 'food', fam: 'farm', tier: 1, next: 'field', w: 1, sprite: 'grid', slot: true, out: 4, waterUse: 2, a: 5, wood: 4 }),
+    field:    D({ name: 'Fenced Farm',    role: 'food', fam: 'farm', tier: 2, next: 'irrig', w: 1, slot: true, out: 7, waterUse: 3, a: 7, q: 12, wood: 10, mat: 3, up: true }),
+    irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 1, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
     canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', w: 2, cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
     mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
     medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', w: 2, sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
@@ -92,7 +92,7 @@
   ];
 
   const key = (x, y) => x + ',' + y;
-  function createWorld() { return { roads: new Set(ROAD_COORDS.map(([x, y]) => key(x, y))), buildings: [], walls: new Map(), ver: 0 }; }
+  function createWorld() { return { roads: new Set(), buildings: [], walls: new Map(), ver: 0 }; }   /* 3D.39 owner: a new game starts with just the camp, no roads (ROAD_COORDS kept for reference) */
   const bump = (w) => { w.ver++; };
   const isRoad = (w, x, y) => w.roads.has(key(x, y));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
