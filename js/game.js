@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.38', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.39', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -561,7 +561,7 @@ const hitFx = [], SCREAM_R = 2.4;
 function comboMult(s, z, w) { if (w.ranged) { s.combo = 0; s.comboFin = false; return 1; } s.combo = s.comboZ === z && tick < (s.comboT || 0) ? (s.combo || 0) + 1 : 1; s.comboZ = z; s.comboT = tick + 150; s.comboFin = s.combo % 3 === 0; return s.comboFin ? 1.6 : 1; }
 const zHitDmg = (z, d, t) => Math.max(1, fairRound(d.atk * (z.pw || 1) * (hasSkill(t, 'armored') ? .8 : 1) * (hasSkill(t, 'bulwark') ? .85 : 1) * (atPost(t) ? .8 : 1) * (1 - dmgReduce(t))));
 function impactFx(z, w) {
-  if (!w || z.type === 'spitter') return; const k = z.type === 'screamer' ? 'scream' : ['brute', 'alpha', 'boss'].includes(z.type) ? 'slam' : z.type === 'bloated' ? 'belly' : 'claw';
+  if (!w || z.type !== 'screamer') return; const k = 'scream';   /* 3D.39 owner: only the Screamer has a hit effect for now (board style B); the others looked wrong, so none */
   hitFx.push({ k, w: { x: w.x, y: w.y }, t0: tick, big: z.type === 'alpha' || z.type === 'boss' ? 1.4 : 1, a: rnd() * 6.28, bits: Array.from({ length: 9 }, () => ({ a: rnd() * 6.28, v: .5 + rnd(), s: rnd() })) });
   if (k === 'slam' && (z.type === 'alpha' || z.type === 'boss')) { const p = project(w.x, w.y); if (p.x > -40 && p.x < VW + 40 && p.y > -40 && p.y < VH + 40) { const el = $('world'); if (el) { el.classList.remove('zhShake'); void el.offsetWidth; el.classList.add('zhShake'); } } }
 }
@@ -573,7 +573,8 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     for (const [d, c, w] of [[0, 'rgba(255,248,230,', 2.4], [.15, 'rgba(170,135,90,', 1.6]]) { const u = Math.max(0, q - d) / (1 - d), e = 1 - (1 - u) * (1 - u); g.globalAlpha = (1 - u) * .7; g.strokeStyle = c + '1)'; g.lineWidth = w * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke(); }
     for (const b of f.bits.slice(0, 6)) { const r = R0 * .85 * Math.min(1, q * 2) * b.v, x = p.x + Math.cos(b.a) * r, y = p.y + Math.sin(b.a) * r * .5; g.globalAlpha = (1 - q) * .5;
       g.fillStyle = b.s < .55 ? 'rgb(196,170,130)' : 'rgb(150,120,85)'; g.beginPath(); g.arc(x, y - H * .08 * Math.min(1, q * 3) * (1 - q), (2 + 4 * q) * px * k * (b.s < .55 ? 1 : .6), 0, 7); g.fill(); } }
-  else if (f.k === 'scream') {   /* AOE: three sound rings rolling out to the edge of the area, the area itself faintly marked, and ))) waves from the head */
+  else if (f.k === 'scream') { fxScreamB(g, f, q, p, tw, H); }
+  else if (f.k === 'scream_old') {
     const RX = tw * .7 * (f.r || 2.4); g.globalAlpha = (1 - q) * .12 * k; g.fillStyle = '#c9a8ff'; g.beginPath(); g.ellipse(p.x, p.y, RX, RX * .5, 0, 0, 7); g.fill();
     for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.5 - j * .2)); if (u <= 0 || u >= 1) continue; g.globalAlpha = (1 - u) * .8; g.strokeStyle = j % 2 ? '#FFE14D' : '#c9a8ff'; g.lineWidth = (2.6 - j * .5) * px; g.beginPath(); g.ellipse(p.x, p.y, RX * u, RX * u * .5, 0, 0, 7); g.stroke(); }
     const hx = p.x, hy = p.y - H * .92; g.lineCap = 'round';
@@ -585,6 +586,22 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
   g.restore();
 }
 const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60 };
+/* 3D.39 Screamer shriek, style B "detailed, painted" from the Zombie Animation Board: wavering sound rings roll out to the edge of the
+   AOE (the real SCREAM_R), kicking up soft dust at the front, and jagged shriek lines burst from the open mouth. No ink lines. */
+function fxScreamB(g, f, q, p, tw, H) {
+  const px = tw / 40 * .18, RX = tw * .7 * (f.r || SCREAM_R), hx = p.x, hy = p.y - H * .92, out = 1 - q;
+  if (!f.wob) { f.wob = [0, 1, 2].map(() => ({ ph: rnd() * 6, fq: 5 + ((rnd() * 4) | 0), amp: .04 + rnd() * .04 })); f.dust = Array.from({ length: 6 }, () => ({ a: rnd() * 6.28, s: .6 + rnd() * .7 })); }
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+  for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.45 - j * .2)); if (u <= 0 || u >= 1) continue; const w = f.wob[j];
+    g.globalAlpha = (1 - u) * .9; g.beginPath(); for (let i = 0; i <= 48; i++) { const an = i / 48 * Math.PI * 2, rr = RX * u * (1 + w.amp * Math.sin(an * w.fq + w.ph + q * 20)), x = p.x + Math.cos(an) * rr, y = p.y + Math.sin(an) * rr * .5; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.lineWidth = (3 - j * .6) * px; g.strokeStyle = j === 1 ? 'rgba(170,140,225,.85)' : 'rgba(236,226,200,.85)'; g.stroke();
+    for (const d of f.dust) { const x = p.x + Math.cos(d.a) * RX * u, y = p.y + Math.sin(d.a) * RX * u * .5 - 2 * px, r = (2 + 2 * d.s) * px, gr = g.createRadialGradient(x - r * .3, y - r * .4, r * .1, x, y, r);
+      gr.addColorStop(0, '#e6d8bd'); gr.addColorStop(1, '#a8916c'); g.globalAlpha = (1 - u) * .7; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }
+  for (let j = 0; j < 7; j++) { const u = (q * 2.4 + j / 7) % 1, an = -Math.PI / 2 + (j - 3) * .32, r0 = 6 * px, r1 = r0 + (8 + 18 * u) * px; g.globalAlpha = (1 - u) * out;
+    g.beginPath(); for (let i = 0; i <= 4; i++) { const rr = r0 + (r1 - r0) * i / 4, jit = (i % 2 ? 1 : -1) * 1.6 * px; g.lineTo(hx + Math.cos(an) * rr - Math.sin(an) * jit, hy + Math.sin(an) * rr + Math.cos(an) * jit); }
+    g.lineWidth = 1.4 * px; g.strokeStyle = '#fff3c4'; g.stroke(); }
+  g.restore();
+}
 function drawHitFx() {
   const tw = TWs(), H = CHAR_H * tw;
   for (let i = hitFx.length - 1; i >= 0; i--) { const f = hitFx[i], q = (tick - f.t0) / FX_DUR[f.k]; if (q > 1) { hitFx.splice(i, 1); continue; } fxDraw(ctx, f, q, project(f.w.x, f.w.y), tw, H); }
