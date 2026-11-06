@@ -1129,7 +1129,8 @@ function personAnim(a, s, dt) {
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
   if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
-  if (anim !== 'walk' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !a.attacking) anim = 'walk';   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
+  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning())) anim = 'walk';
+  if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
@@ -1146,7 +1147,7 @@ function personAnim(a, s, dt) {
   if (s._lvT > 24 && !s.carrying && anim !== 'walk' && !(a.spd > .14)) { a.play('cheer'); return; }   /* 3D.30: only cheer standing still (cheering while walking looked like a frozen slide) */   // level-up: a happy jump while the LEVEL UP burst plays
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
   const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || (s.mode === 'chase' && !hold));
-  if (anim === 'walk' && rush) { a.play('run'); return; }
+  if (anim === 'walk' && rush && a.spd > (a.name === 'run' ? .65 : .8)) { a.play('run'); return; }   /* 3D.45: only sprint when actually moving fast */
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
@@ -1221,7 +1222,7 @@ function zombieAnim(a, z) {
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : a.src === ZSRC.sporehead && a.acts.spore_combo ? 'spore_combo' : a.src === ZSRC.screamer && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
-  if (z.type === 'runner') { a.play('zombie_run'); return; }
+  if (z.type === 'runner') { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
   a.play(a.src === ZSRC.bloated && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
 }
 function syncZombies(dt, vis) {
@@ -1374,7 +1375,7 @@ function strideOf(a) {
   return t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
 }
 function tickMixer(a, dt, vis) {
-  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.35, Math.min(3, a.spd / st));
+  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.35, Math.min(8, a.spd / st));   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
   if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
@@ -1536,7 +1537,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { people: () => people, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
