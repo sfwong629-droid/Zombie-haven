@@ -1029,21 +1029,60 @@ function setAccessory(a, id) {   // add / swap the accessory pieces
 }
 const CLOTHES = { jacket: '#3d5f91', leather: '#6b4226', hockey: '#e6e1d4', biker: '#2c2c31', riot: '#3b4a5a', kevlar: '#4b5540', military: '#5d6b44', plate: '#5a5a55',
   hoodie: '#8a8f96', raincoat: '#f2c230', firecoat: '#b8432f', hazmat: '#c9d34a', ghillie: '#6b7a3a', tactical: '#3f4636', swatarmor: '#262a30' };   // 3D.28 new clothing
-const clothMats = {};
-function clothMaterial(fem, id) {   // the v2 texture with the shirt recoloured (male shirt is green, female shirt mustard)
-  const col = CLOTHES[id]; const key = (fem ? 'f' : 'm') + (col || ''); if (clothMats[key]) return clothMats[key];
+/* 3D.31 looks: skin tone, hair colour and hairstyle per survivor (v2 models), together with the Clothing shirt colour.
+   One shader on the v2 texture: skin = the peach areas scaled to the new tone (shading kept), hair = the near-black brown
+   areas recoloured by brightness, shirt = the hue window from 3D.28. Hairstyles are low-detail toon pieces on the head bone. */
+const SKIN2 = ['#f8d8c0', '#efc09e', '#d9a077', '#b07a52', '#85553a', '#5a3826'];
+const HAIR2 = ['#1d1817', '#3d2616', '#6e4528', '#8e3c1f', '#c4642f', '#dcb974', '#a9a59d'];
+const STYLES = { m: ['short', 'short', 'mohawk', 'afro', 'spiky', 'bun', 'long'], f: ['base', 'long', 'ponytail', 'bun', 'afro', 'long', 'ponytail'] };
+function look2(s) { const L = lookOf(s); if (L.v !== 2) { const r = Math.imul((s.id || 1) + 977, 2654435761) >>> 0; L.sk = r % SKIN2.length; L.hr = (r >>> 7) % HAIR2.length; L.hs = (r >>> 13) % 7; L.v = 2; } return L; }
+const clothMats = {}, SKIN_REF2 = { m: new THREE.Color('#efc09e'), f: new THREE.Color('#e6b587') }, HAIR_REF_LUM = .016;
+const headZones = new Map();
+function headZone(a) {   // 3D.31: where the face is, in the model's rest space, so hair recolouring skips the eyes
+  if (headZones.has(a.src)) return headZones.get(a.src); const f = headFit(a), m = a.skin[0]; if (!f || !m) return null;
+  a.o.updateMatrixWorld(true); const M = new THREE.Matrix4().copy(a.o.matrixWorld).invert().multiply(m.matrixWorld);
+  const z = { M, brow: f.hb + (f.top - f.hb) * .46, cz: f.z, cx: f.x, hw: f.hw }; headZones.set(a.src, z); return z;
+}
+function clothMaterial(fem, id, lk, zone) {   // the v2 texture with skin, hair and (Clothing) shirt recoloured
+  const col = CLOTHES[id], sk = lk ? lk.sk : -1, hr = lk ? lk.hr : -1, key = (fem ? 'f' : 'm') + (col || '') + '|' + sk + '|' + hr + (zone ? 'z' : ''); if (clothMats[key]) return clothMats[key];
   const src = fem ? FEMALE3D : MALE, m = new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad });
-  if (col) { const c = new THREE.Color(col); m.onBeforeCompile = (sh) => { sh.uniforms.shirt = { value: new THREE.Vector3(c.r, c.g, c.b) };
-    sh.fragmentShader = 'uniform vec3 shirt;\nvec3 zhHsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.*d+1e-10)),d/(q.x+1e-10),q.x);}\n' +
+  const c = new THREE.Color(col || '#000'), ref = SKIN_REF2[fem ? 'f' : 'm'], st = sk >= 0 ? new THREE.Color(SKIN2[sk]) : ref, ht = hr >= 0 ? new THREE.Color(HAIR2[hr]) : null;
+  m.onBeforeCompile = (sh) => { sh.uniforms.shirt = { value: new THREE.Vector3(c.r, c.g, c.b) }; sh.uniforms.skinK = { value: new THREE.Vector3(st.r / ref.r, st.g / ref.g, st.b / ref.b) }; sh.uniforms.hairT = { value: ht ? new THREE.Vector3(ht.r, ht.g, ht.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.zhM = { value: zone ? zone.M : new THREE.Matrix4() }; sh.uniforms.zhZ = { value: new THREE.Vector4(zone ? zone.brow : -1e9, zone ? zone.cz : 1e9, zone ? zone.cx : 0, zone ? zone.hw * .5 : 0) };
+    sh.vertexShader = 'uniform mat4 zhM; varying vec3 vZh;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvZh = (zhM * vec4(position, 1.)).xyz;');
+    sh.fragmentShader = 'uniform vec3 shirt; uniform vec3 skinK; uniform vec3 hairT; uniform vec4 zhZ; varying vec3 vZh;\nvec3 zhHsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.*d+1e-10)),d/(q.x+1e-10),q.x);}\n' +
       sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
-{ vec3 h = zhHsv(diffuseColor.rgb); float m = ${fem ? 'step(.052, h.x) * step(h.x, .115) * step(.72, h.y) * step(.28, h.z)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)'};
-  float v = min(1.25, h.z / ${fem ? '.72' : '.25'}); diffuseColor.rgb = mix(diffuseColor.rgb, shirt * v, m); }`); };
-    m.customProgramCacheKey = () => 'shirt' + (fem ? 'f' : 'm'); }
+{ vec3 lin = diffuseColor.rgb, h = zhHsv(lin), sc = zhHsv(pow(max(lin, vec3(0.)), vec3(.4545)));
+  float skinM = step(.03, sc.x) * step(sc.x, .115) * step(.18, sc.y) * (1. - step(.53, sc.y)) * step(.55, sc.z);
+  float hairM = step(.02, sc.x) * step(sc.x, .15) * step(.5, sc.y) * (1. - step(.29, sc.z)) * max(max(step(zhZ.x, vZh.y), step(vZh.z, zhZ.y)), step(zhZ.w, abs(vZh.x - zhZ.z)));   /* not the eyes: above the brow or behind the head's middle */
+  float shirtM = ${col ? (fem ? 'step(.052, h.x) * step(h.x, .115) * step(.72, h.y) * step(.28, h.z)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)') : '0.'} * (1. - skinM);
+  vec3 o = mix(lin, min(lin * skinK, vec3(1.)), skinM);
+  if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${HAIR_REF_LUM.toFixed(3)}, .55, 1.7); o = mix(o, hairT * l, hairM); }
+  o = mix(o, shirt * min(1.25, h.z / ${fem ? '.72' : '.25'}), shirtM); diffuseColor.rgb = o; }`).replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb;'); };
+  m.customProgramCacheKey = () => 'look2' + (fem ? 'f' : 'm') + (col ? 's' : '');
   return (clothMats[key] = nightLit(m, .32));
 }
-function setClothing(a, s) {   // 3D.28: shirt colour from the Clothing slot (v2 models only)
-  const id = (s.eq && s.eq.armor) || null; if (a.clothId === id || !MALE || !MALE.v2) return; a.clothId = id;
-  const mat = clothMaterial(a.src === FEMALE3D, id); for (const n of a.skin) n.material = mat; a.faces = () => mat;
+function setClothing(a, s) {   // 3D.28 shirt colour from the Clothing slot; 3D.31 plus skin and hair colour (v2 models only)
+  const id = (s.eq && s.eq.armor) || null, lk = s.id ? look2(s) : null, sig = id + '|' + (lk ? lk.sk + '.' + lk.hr : ''); if (a.clothSig === sig || !MALE || !MALE.v2) return; a.clothSig = sig; a.clothId = id;
+  const mat = clothMaterial(a.src === FEMALE3D, id, lk, lk ? headZone(a) : null); for (const n of a.skin) n.material = mat; a.faces = () => mat;
+}
+function hairFor(a, style, col) {   // -> [{ g, top }] pieces in model space at the rest pose
+  const f = headFit(a); if (!f) return []; const r = f.r, M = toon(col), out = [], mk = (geo, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; addHull(m, .008); return m; };
+  const top = f.top, back = f.z - r * .55;
+  if (style === 'long') { const g = new THREE.Group(), h = (top - f.hb); g.add(mk(new THREE.SphereGeometry(1, 16, 12), f.x, f.hb + h * .2, back - r * .25, f.hw * .98, h * .78, r * .42)); out.push({ g, top: false }); }
+  if (style === 'ponytail') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * .22, 12, 10), f.x, top - r * .45, f.z - r * .98)); g.add(mk(new THREE.SphereGeometry(1, 12, 10), f.x, top - r * 1.05, f.z - r * 1.12, r * .17, r * .5, r * .17)); out.push({ g, top: false }); }
+  if (style === 'bun') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * .3, 14, 12), f.x, top - r * .02, f.z - r * .5)); out.push({ g, top: true }); }
+  if (style === 'afro') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * 1.08, 18, 12, 0, Math.PI * 2, 0, Math.PI * .55), f.x, top - r * .72, f.z - r * .2, 1.05, 1, 1));
+    for (const [dx, dy, dz, k] of [[0, .32, .05, .5], [-.62, .05, .05, .45], [.62, .05, .05, .45], [-.45, .25, -.4, .5], [.45, .25, -.4, .5], [0, .2, -.7, .55], [-.3, .38, .45, .38], [.3, .38, .45, .38]]) g.add(mk(new THREE.SphereGeometry(r * k, 10, 8), f.x + dx * r, top - r * .25 + dy * r, f.z - r * .2 + dz * r)); out.push({ g, top: true }); }
+  if (style === 'mohawk') { const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(r * .2, r * .42, r * 1.55), f.x, top + r * .04, f.z - r * .12)); out.push({ g, top: true }); }
+  if (style === 'spiky') { const g = new THREE.Group(); for (const [dx, dz, k] of [[0, .25, 1], [-.32, 0, .85], [.32, 0, .85], [0, -.3, .9], [-.2, -.55, .7], [.2, -.55, .7]]) { const c = mk(new THREE.ConeGeometry(r * .17, r * .45 * k, 6), f.x + dx * r, top + r * .08 * k, f.z + dz * r); c.rotation.set(-dz * .7, 0, dx * .9); g.add(c); } out.push({ g, top: true }); }
+  return out;
+}
+function setHair(a, s) {   // 3D.31 add / swap the hairstyle pieces; pieces on top of the head hide under a hat
+  if (!MALE || !MALE.v2 || !s.id) return; const lk = look2(s), fem = a.src === FEMALE3D, style = STYLES[fem ? 'f' : 'm'][lk.hs % 7], sig = style + '|' + lk.hr + '|' + !!a.hat;
+  if (a.hairSig === sig) return; a.hairSig = sig; for (const p of a.hair || []) p.parent && p.parent.remove(p); a.hair = [];
+  const head = boneOf(a, 'head'); if (!head) return; const keep = [a.o.position.clone(), a.o.rotation.clone(), a.o.scale.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.scale.setScalar(1);
+  for (const { g, top } of hairFor(a, style, HAIR2[lk.hr])) { if (top && a.hat) continue; a.hair.push(attachTo(a, head, g)); }
+  a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.scale.copy(keep[2]); a.o.updateMatrixWorld(true);
 }
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
@@ -1119,6 +1158,7 @@ function syncPeople(dt, vis) {
     a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : (!s.moving && s.faceW) || null, dt);   // V3D.14: chatting / at the fire: face them
     setClothing(a, s); setAccessory(a, s.eq && s.eq.acc);   /* 3D.28 */
     { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; if (a.hatId !== (shape || null)) { a.hatId = shape || null; addHat(a, shape ? HAT_SHAPE[shape] : null, !!shape); } }   // V3D.16 equipped hat
+    setHair(a, s);   /* 3D.31 */
     personAnim(a, s, dt); a.setMood(s.emo && s.emo.face);
     { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
       if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
@@ -1394,13 +1434,13 @@ function inkEdge(d, W, H, r) {   // a dark outline r px wide just outside the op
 function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? lookOf(s) : { sk: 0, hr: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, s.id && isFemale(s) ? 'f' : 'm'].join('|');
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? look2(s) : { sk: 0, hr: 0, hs: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, lk.hs, s.id && isFemale(s) ? 'f' : 'm'].join('|');
   if (portraits.has(key)) return portraits.get(key);
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
-  const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); } if (!o.zt) { setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); }   /* 3D.28: the equipped hat shows in the picture */ scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); } if (!o.zt) { setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s); }   /* 3D.28: the equipped hat shows in the picture */ scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
   a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
