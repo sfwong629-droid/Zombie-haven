@@ -113,64 +113,93 @@
     return dry;
   }
   let mrnd = 1; const mr = () => ((mrnd = (mrnd * 16807) % 2147483647) / 2147483647);
-  function writeBar(c, out, t0, mood, bar) {   // schedules one bar; returns its length in seconds
+  /* 3D.53 real instruments: recorded samples bundled with the game (assets/audio, works offline). Instruments from the FluidR3 GM
+     sound font (Frank Wen, CC BY 3.0), percussion from the Versilian Community Sample Library (CC0). Every 3rd semitone is
+     recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
+  const INST = { gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6] };
+  const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
+  const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
+  const AUDIO_BASE = (window.ZH_AUDIO_BASE || 'assets/audio/');
+  async function loadBank(c) {
+    if (bankP) return bankP; const dec = (ab) => new Promise((ok, no) => { const p = c.decodeAudioData(ab, ok, no); if (p && p.then) p.then(ok, no); });
+    const get = (u) => fetch(AUDIO_BASE + u).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(u))).then(dec);
+    const jobs = [];
+    for (const [k, [a, b]] of Object.entries(INST)) { BANK[k] = []; for (let o = a; o <= b; o++) for (const [n, off] of NOTES) jobs.push(get(`${k}/${n}${o}.mp3`).then((buf) => BANK[k].push({ m: 12 * (o + 1) + off, buf })).catch(() => {})); }
+    for (const k of KIT) jobs.push(get(`kit/${k}.mp3`).then((buf) => { KITB[k] = buf; }).catch(() => {}));
+    return (bankP = Promise.all(jobs));
+  }
+  const LEVEL = { gtr: 1, nyl: 1.1, bass: 1.6, banjo: .9, harp: .7, vibes: 1, tpt: .8, str: .9, mbox: .8, whis: .7, ep: 1, cello: 1.1, brass: .8, timp: 1.2, piano: 1 };
+  function samp(c, out, t, k, f, vol, dur = 1.5, pan = 0, att = .004, rel = .25) {   // play instrument k at frequency f; false if not loaded
+    const B = BANK[k]; if (!B || !B.length) return false; const m = 69 + 12 * Math.log2(f / 440); let best = B[0]; for (const x of B) if (Math.abs(x.m - m) < Math.abs(best.m - m)) best = x;
+    const s = c.createBufferSource(); s.buffer = best.buf; s.playbackRate.value = Math.pow(2, (m - best.m) / 12); const g = c.createGain(), v = vol * (LEVEL[k] || 1);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + att); g.gain.setValueAtTime(v, t + Math.max(att, dur - rel)); g.gain.linearRampToValueAtTime(.0001, t + dur);
+    s.connect(g); if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(out); } else g.connect(out); s.start(t); s.stop(t + dur + .05); return true;
+  }
+  function kit(c, out, t, k, vol, rate = 1) { const b = KITB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .04); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
+  const MVOL = { day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45 };   /* 3D.53 even out the moods' loudness */
+  function writeBar(c, out0, t0, mood, bar) {   // schedules one bar; returns its length in seconds
+    const out = c.createGain(); out.gain.value = MVOL[mood] || 1; out.connect(out0);
     const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);
     const phrase = Math.floor(bar / M.prog.length);
-    if (mood === 'day') {
-      if (bar % 2 === 0) pad(c, out, t0, [F(root - 12), F(ch[1]), F(ch[2])], len * 2, .011, 700, 1.5);
-      const pat = [[-12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [ch[2] - root, 1], [7 - 12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [12, 2]];   // fingerpicking: bass, then the chord's middle and top
-      pat.forEach(([s, v], i) => { if (i === 7 && mr() < .4) return; pluck(c, out, t0 + i * beat / 2 + (i % 2 ? .012 : 0), F(root + s), [.17, .1, .085][v], v ? 1.4 : 2, [0, -.35, .35][v]); });
-      if (phrase % 2 === 1) { const tones = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24, ch[1] + 12 + 2], rh = mr() < .5 ? [0, 1.5, 2, 3] : [0, 2, 3]; rh.forEach((b, i) => { if (mr() < .15) return; const d = (rh[i + 1] ?? 4) - b; whistle(c, out, t0 + b * beat, F(tones[(bar + i * 2 + Math.floor(mr() * 3)) % tones.length]), d * beat * .95, .045); }); }
-    } else if (mood === 'lounge') {   /* swing: walking bass, brushes and ride, Rhodes-like comping, a vibraphone tune */
+    const P = (k) => (t, f, vol, dur = 1.4, pan = 0, att, rel) => samp(c, out, t, k, f, vol, dur, pan, att, rel) || pluck(c, out, t, f, vol * .9, Math.min(2, dur), pan);
+    const PAD = (k, t, fs, dur, vol, cut) => { if (!fs.every((f) => samp(c, out, t, k, f, vol, dur, 0, .5, .6))) pad(c, out, t, fs, dur, vol * .25, cut, 1.2); };
+    const K = (t, k, vol, rate, alt) => kit(c, out, t, k, vol, rate) || (alt && alt());
+    if (mood === 'day') {   /* folk: nylon guitar fingerpicking over soft strings, whistle tune */
+      const g = P('nyl');
+      if (bar % 2 === 0) PAD('str', t0, [F(root - 12), F(ch[1]), F(ch[2])], len * 2, .035, 700);
+      const pat = [[-12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [ch[2] - root, 1], [7 - 12, 0], [ch[2] - root, 1], [ch[1] - root + 12, 2], [12, 2]];
+      pat.forEach(([s, v], i) => { if (i === 7 && mr() < .4) return; g(t0 + i * beat / 2 + (i % 2 ? .012 : 0), F(root + s), [.32, .2, .17][v], v ? 1.4 : 2, [0, -.3, .3][v]); });
+      if (phrase % 2 === 1) { const tones = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24, ch[1] + 14], rh = mr() < .5 ? [0, 1.5, 2, 3] : [0, 2, 3]; rh.forEach((b, i) => { if (mr() < .15) return; const d = (rh[i + 1] ?? 4) - b, f = F(tones[(bar + i * 2 + Math.floor(mr() * 3)) % tones.length]); if (!samp(c, out, t0 + b * beat, 'whis', f, .14, d * beat * .95, .1, .06, .15)) whistle(c, out, t0 + b * beat, f, d * beat * .95, .045); }); }
+    } else if (mood === 'strum') {   /* steel guitar strumming, cajon, shaker, a lead lick */
+      const g = P('gtr'), six = beat / 4, voice = [root - 12, root - 5, root, ch[1], ch[2], root + 12];
+      const strum = (t, down, vol) => { const v = down ? voice : voice.slice(2).reverse(); v.forEach((s2, i) => g(t + i * (down ? .012 : .009), F(s2), vol * (down ? 1 : .65), .9, (i / 5 - .5) * .5)); };
+      [[0, 1], [4, 1], [6, 0], [10, 0], [12, 1], [14, 0]].forEach(([i, d]) => strum(t0 + i * six, d, i === 0 ? .2 : .15));
+      [0, 2].forEach((b) => K(t0 + b * beat, 'cajon_lo', .55, 1, () => thud(c, out, t0 + b * beat, 90, .2, .14))); [1, 3].forEach((b) => K(t0 + b * beat, 'cajon_hi', .4, 1, () => noise(c, out, t0 + b * beat, .09, .13, 1300, .9)));
+      for (let i = 0; i < 16; i += 2) K(t0 + i * six, i % 4 ? 'shaker_up' : 'shaker_dn', .25);
+      if (phrase % 2 === 1) { const pent = [0, 2, 4, 7, 9, 12, 14, 16].map((x) => x + 5); [0, 2, 3, 6, 8, 10, 11, 14].forEach((i, k) => { if (mr() < .2) return; g(t0 + i * six, F(pent[(k * 3 + bar * 2) % pent.length]), .2, .5, .4); }); }
+    } else if (mood === 'travis') {   /* fingerstyle steel guitar: alternating bass, pinched melody, claps */
+      const g = P('gtr');
+      [root - 12, root - 5, root - 12, root - 5].forEach((s2, b) => g(t0 + b * beat, F(s2), .28, 1.1, -.2));
+      [0, 1, 2, 3].forEach((b) => g(t0 + (b + .5) * beat, F([ch[1], ch[2], ch[1] + 12, ch[2]][b]), .15, .7, .25));
+      const mel = [ch[2] + 12, ch[0] + 24, ch[1] + 12, ch[2] + 12, ch[0] + 14, ch[1] + 12], rh = phrase % 2 ? [0, 1.5, 2.5, 3] : [0, 1, 2.5];
+      rh.forEach((b, i) => g(t0 + b * beat, F(mel[(i + bar) % mel.length]), .24, 1.2, .35));
+      if (phrase % 2 === 1) [1, 3].forEach((b) => K(t0 + b * beat, 'clap', .35, 1, () => noise(c, out, t0 + b * beat, .06, .09, 1600, 1.4)));
+      else [1, 3].forEach((b) => K(t0 + b * beat, 'shaker_dn', .25));
+    } else if (mood === 'lounge') {   /* 50s swing: upright bass, brushes and ride, electric piano comping, vibraphone, muted trumpet */
       const sw = (b, off) => t0 + (b + (off ? 2 / 3 : 0)) * beat, nx = MOODS.lounge.prog[(bar + 1) % 8], nroot = fold(nx[0]);
-      const walk = [root, root + (ch[1] - root), root + 7, nroot + (mr() < .5 ? -1 : 1)]; walk.forEach((s2, b) => pluck(c, out, t0 + b * beat, F(s2 - 24), .19, .9));
-      [[0, 0], [1, 0], [1, 1], [2, 0], [3, 0], [3, 1]].forEach(([b, o2]) => clang(c, out, sw(b, o2), 3100, o2 ? .008 : .013, .35));   // ride: ding, ding-ga-ding
-      [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .22, .05, 2600, .6));   // brushes
-      const voic = [ch[1] + 12, ch[3] !== undefined ? ch[3] : ch[2] + 12, ch[2] + 12].map((s2) => F(s2)); [[1, 1], [3, 0]].forEach(([b, o2]) => { if (mr() < .85) voic.forEach((f) => { tone(c, out, sw(b, o2), f, .5, 'sine', .022, null, .004); tone(c, out, sw(b, o2), f * 2, .2, 'triangle', .006, null, .002); }); });
-      const motif = [[0, 0, 2], [0, 1, 1], [1, 1, 0], [2, 0, 3], [3, 0, 1]], half = bar % 4 < 2 || phrase % 2 === 1;   // vibes: a short swung phrase, answered every other bar
-      if (half) for (const [b, o2, k] of motif) { if (mr() < .2) continue; const tn = ch[(k + bar) % ch.length] + 12 + (k === 3 ? 12 : 0); bell(c, out, sw(b, o2), F(tn), .045); }
-    } else if (mood === 'porch') {   /* banjo rolls, boom-chick bass and guitar, a harmonica tune */
-      const roll = [0, 2, 1, 3, 0, 2, 1, 3].map((k) => [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24][k]);
-      roll.forEach((s2, i) => pluck(c, out, t0 + i * beat / 2 + (i % 2 ? .01 : 0), F(s2), i % 4 === 0 ? .13 : .09, .7, .3));
-      [0, 2].forEach((b, i) => pluck(c, out, t0 + b * beat, F(root - 24 + (i ? 7 : 0)), .3, 1));
-      [1, 3].forEach((b) => ch.forEach((s2, i) => pluck(c, out, t0 + b * beat + i * .012, F(s2), .05, .4, -.3)));
-      kick(c, out, t0, .05); kick(c, out, t0 + 2 * beat, .04);
-      if (phrase % 2 === 1 && mr() < .85) { const tn = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12]; [[0, 1.5], [1.5, .5], [2, 1], [3, 1]].forEach(([b, d], i) => {
-          const f = F(tn[(i + bar) % tn.length]), o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain(); o.type = 'square'; o.frequency.value = f; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 1.2;
-          l.frequency.value = 6; lg.gain.value = f * .01; l.connect(lg); lg.connect(o.frequency); const tt = t0 + b * beat, dd = d * beat * .95; g.gain.setValueAtTime(.0001, tt); g.gain.linearRampToValueAtTime(.05, tt + .06); g.gain.linearRampToValueAtTime(.0001, tt + dd);
-          o.connect(bp); bp.connect(g); g.connect(out); o.start(tt); l.start(tt); o.stop(tt + dd + .05); l.stop(tt + dd + .05); }); }
-    } else if (mood === 'strum') {   /* down-up strumming, cajon and shaker, a lead riff every other phrase */
-      const six = beat / 4, voice = [root - 12, root - 5, root, ch[1], ch[2], root + 12];
-      const strum = (t, down, vol) => { const v = down ? voice : voice.slice(2).reverse(); v.forEach((s2, i) => pluck(c, out, t + i * (down ? .011 : .008), F(s2), vol * (down ? 1 : .7), .9, (i / 5 - .5) * .5)); };
-      [[0, 1], [4, 1], [6, 0], [10, 0], [12, 1], [14, 0]].forEach(([i, d]) => strum(t0 + i * six, d, i === 0 ? .075 : .055));
-      [0, 2].forEach((b) => thud(c, out, t0 + b * beat, 90, .2, .14)); [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .09, .13, 1300, .9));
-      for (let i = 0; i < 16; i++) noise(c, out, t0 + i * six, .03, i % 2 ? .018 : .03, 6500, 1.4, 'highpass');
-      if (phrase % 2 === 1) { const pent = [0, 2, 4, 7, 9, 12, 14, 16].map((x) => x - 7 + 12); [0, 2, 3, 6, 8, 10, 11, 14].forEach((i, k) => { if (mr() < .2) return; pluck(c, out, t0 + i * six, F(pent[(k * 3 + bar * 2) % pent.length] + (ch[0] === root ? 0 : 0)), .1, .5, .4); }); }
-    } else if (mood === 'travis') {   /* alternating thumb bass, pinched melody on top, claps on 2 and 4 */
-      const bassN = [root - 12, root - 5, root - 12 + (q === 'm' ? 3 : 4) + 12 - 12, root - 5];
-      bassN.forEach((s2, b) => pluck(c, out, t0 + b * beat, F(s2), .16, 1.1, -.2));
-      [0, 1, 2, 3].forEach((b) => pluck(c, out, t0 + (b + .5) * beat, F([ch[1], ch[2], ch[1] + 12, ch[2]][b] + 12 - 12), .07, .7, .25));
-      const mel = [ch[2] + 12, ch[0] + 24, ch[1] + 12, ch[2] + 12, ch[0] + 12 + 2, ch[1] + 12], rh = phrase % 2 ? [0, 1.5, 2.5, 3] : [0, 1, 2.5];
-      rh.forEach((b, i) => pluck(c, out, t0 + b * beat, F(mel[(i + bar) % mel.length]), .11, 1.2, .35));
-      if (phrase % 2 === 1) [1, 3].forEach((b) => { noise(c, out, t0 + b * beat, .06, .09, 1600, 1.4); noise(c, out, t0 + b * beat + .012, .05, .06, 2400, 1.4); });
-      else [1, 3].forEach((b) => noise(c, out, t0 + b * beat, .05, .03, 6000, 1.4, 'highpass'));
-    } else if (mood === 'night') {
-      pad(c, out, t0, [F(root - 12), F(root - 5)], len + .3, .016, 380, 2.2);
-      for (let b = 0; b < 4; b++) if (mr() < (b === 0 ? .8 : .38)) bell(c, out, t0 + b * beat + (mr() < .3 ? beat / 2 : 0), F(ch[Math.floor(mr() * 3)] + 12 + (mr() < .3 ? 12 : 0)), .05);
-      if (q === 'M' && root === 0) for (let b = 0; b < 4; b += 1) { kick(c, out, t0 + b * beat, .05); kick(c, out, t0 + b * beat + .22, .03); }   // heartbeat on the tense chord
-    } else {
-      const eighth = beat / 2, six = beat / 4;
-      for (let i = 0; i < 16; i++) { const f = F(root - 12 + (i % 4 === 2 ? 12 : 0)); tone(c, out, t0 + i * six, f, six * .9, 'sawtooth', .05, null, .004); }   // low-string ostinato
-      [0, 2].forEach((b) => kick(c, out, t0 + b * beat, .22)); if (mr() < .5) kick(c, out, t0 + 2.5 * beat, .14);
-      [1, 3].forEach((b) => snare(c, out, t0 + b * beat, .1)); for (let i = 0; i < 8; i++) hat(c, out, t0 + i * eighth, i % 2 ? .025 : .04);
-      stab(c, out, t0, ch.map((s) => F(s)), .05); if (bar % 4 === 3) for (let i = 0; i < 4; i++) tone(c, out, t0 + 3 * beat + i * six, 160 - i * 22, .12, 'sine', .14, 70);   // tom fill
-      if (bar % 2 === 1) pad(c, out, t0, [F(ch[0] + 12), F(ch[2] + 12)], len, .012, 1600, .2);
+      const bs = P('bass'); [root, root + (ch[1] - root), root + 7, nroot + (mr() < .5 ? -1 : 1)].forEach((s2, b) => bs(t0 + b * beat, F(s2 - 24), .5, beat * 1.05, 0, .005, .08));
+      [[0, 0], [1, 0], [1, 1], [2, 0], [3, 0], [3, 1]].forEach(([b, o2]) => K(sw(b, o2), 'ride', o2 ? .1 : .16, 1.1, () => clang(c, out, sw(b, o2), 3100, o2 ? .008 : .013, .35)));
+      [1, 3].forEach((b) => K(t0 + b * beat, 'snare', .12, .9, () => noise(c, out, t0 + b * beat, .22, .05, 2600, .6)));
+      const voic = [ch[1] + 12, ch[3] !== undefined ? ch[3] : ch[2] + 12, ch[2] + 12].map((s2) => F(s2)), ep = P('ep'); [[1, 1], [3, 0]].forEach(([b, o2]) => { if (mr() < .85) voic.forEach((f) => ep(sw(b, o2), f, .09, .55, 0, .005, .15)); });
+      const vb = P('vibes'), motif = [[0, 0, 2], [0, 1, 1], [1, 1, 0], [2, 0, 3], [3, 0, 1]], half = bar % 4 < 2 || phrase % 2 === 1;
+      if (half) for (const [b, o2, k] of motif) { if (mr() < .2) continue; vb(sw(b, o2), F(ch[(k + bar) % ch.length] + 12 + (k === 3 ? 12 : 0)), .17, 1.2, .2); }
+      else if (phrase % 2 === 0) [[0, 0], [0, 1], [1, 1], [2, 0]].forEach(([b, o2], i) => { if (mr() < .25) return; samp(c, out, sw(b, o2), 'tpt', F(ch[(i + bar) % ch.length] + 12), .14, beat * (i === 3 ? 1.6 : .55), -.2, .02, .12); });
+    } else if (mood === 'porch') {   /* banjo rolls, boom-chick bass and guitar, stomp, harmonica */
+      const bj = P('banjo'), gt = P('gtr'), bs = P('bass'), roll = [0, 2, 1, 3, 0, 2, 1, 3].map((k) => [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24][k]);
+      roll.forEach((s2, i) => bj(t0 + i * beat / 2 + (i % 2 ? .01 : 0), F(s2), i % 4 === 0 ? .22 : .16, .7, .3));
+      [0, 2].forEach((b, i) => bs(t0 + b * beat, F(root - 24 + (i ? 7 : 0)), .5, beat * .95));
+      [1, 3].forEach((b) => ch.forEach((s2, i) => gt(t0 + b * beat + i * .012, F(s2), .1, .4, -.3)));
+      K(t0, 'kick', .35, 1, () => kick(c, out, t0, .05)); K(t0 + 2 * beat, 'kick', .28, 1, () => kick(c, out, t0 + 2 * beat, .04));
+      if (phrase % 2 === 1 && mr() < .85) { const tn = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12]; [[0, 1.5], [1.5, .5], [2, 1], [3, 1]].forEach(([b, d], i) => samp(c, out, t0 + b * beat, 'harp', F(tn[(i + bar) % tn.length]), .16, d * beat * .95, .15, .04, .12)); }
+    } else if (mood === 'night') {   /* low strings, sparse music box and piano in a big hall, a faint heartbeat */
+      PAD('str', t0, [F(root - 12), F(root - 5)], len + .3, .05, 380);
+      for (let b = 0; b < 4; b++) if (mr() < (b === 0 ? .8 : .38)) { const f = F(ch[Math.floor(mr() * 3)] + 12 + (mr() < .3 ? 12 : 0)), tt = t0 + b * beat + (mr() < .3 ? beat / 2 : 0); if (!samp(c, out, tt, mr() < .5 ? 'mbox' : 'piano', f, .14, 2.6)) bell(c, out, tt, f, .05); }
+      if (q === 'M' && root === 0) for (let b = 0; b < 4; b += 1) { K(t0 + b * beat, 'kick', .14, .8, () => kick(c, out, t0 + b * beat, .05)); K(t0 + b * beat + .22, 'kick', .09, .8, () => kick(c, out, t0 + b * beat + .22, .03)); }
+    } else {   /* danger: cello ostinato, drums, brass stabs, timpani */
+      const eighth = beat / 2, six = beat / 4, ce = P('cello');
+      for (let i = 0; i < 16; i++) { const f = F(root - 12 + (i % 4 === 2 ? 12 : 0)); if (!samp(c, out, t0 + i * six, 'cello', f, .2, six * .95, 0, .003, .05)) tone(c, out, t0 + i * six, f, six * .9, 'sawtooth', .05, null, .004); }
+      [0, 2].forEach((b) => K(t0 + b * beat, 'kick', .7, 1, () => kick(c, out, t0 + b * beat, .22))); if (mr() < .5) K(t0 + 2.5 * beat, 'kick', .45, 1, () => kick(c, out, t0 + 2.5 * beat, .14));
+      [1, 3].forEach((b) => K(t0 + b * beat, 'snare', .5, 1, () => snare(c, out, t0 + b * beat, .1))); for (let i = 0; i < 8; i++) K(t0 + i * eighth, 'hat', i % 2 ? .12 : .2, 1, () => hat(c, out, t0 + i * eighth, i % 2 ? .025 : .04));
+      if (!ch.every((s2) => samp(c, out, t0, 'brass', F(s2), .13, .45, 0, .01, .15))) stab(c, out, t0, ch.map((s2) => F(s2)), .05);
+      samp(c, out, t0, 'timp', F(root - 12), .35, 1.2);
+      if (bar % 4 === 3) for (let i = 0; i < 4; i++) K(t0 + 3 * beat + i * six, 'tom', .4, 1.1 - i * .08, () => tone(c, out, t0 + 3 * beat + i * six, 160 - i * 22, .12, 'sine', .14, 70));
+      if (bar % 2 === 1) PAD('str', t0, [F(ch[0] + 12), F(ch[2] + 12)], len, .04, 1600);
     }
     return len;
   }
   let mood = 'day', want = 'day', bar = 0, musOut = null, danger = false;
   function scheduler() {
-    if (!ctx || mode !== 'all') return; if (!musOut) musOut = musicGraph(ctx, musBus);
+    if (!ctx || mode !== 'all') return; if (!musOut) { musOut = musicGraph(ctx, musBus); loadBank(ctx); }
     while (nextNote < ctx.currentTime + .6) {
       const t = Math.max(nextNote, ctx.currentTime + .05);
       if (want !== mood && bar % 2 === 0) { mood = want; bar = 0; musBus.gain.cancelScheduledValues(t); musBus.gain.setValueAtTime(.0001, t); musBus.gain.linearRampToValueAtTime(mode === 'all' ? 1 : 0, t + 1.2); }
@@ -204,6 +233,7 @@
     async render(events, sec, musicSec = 0, dark = false) {
       const c = new OfflineAudioContext(2, Math.ceil(44100 * sec), 44100), g = build(c);
       for (const [t, n] of events) FX[n](c, g.s, t);
+      if (musicSec) await loadBank(new OfflineAudioContext(1, 1, 44100));
       const md = dark === true ? 'night' : dark || 'day', o = musicSec ? musicGraph(c, g.mu) : null; let tt = .05, i = 0; while (tt < musicSec) tt += writeBar(c, o, tt, md, i++);
       const buf = await c.startRendering(); return buf.getChannelData(0);
     },
