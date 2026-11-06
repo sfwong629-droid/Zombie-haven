@@ -242,8 +242,8 @@
       nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
     }
   }
-  const DAY_TRACKS = ['strum', 'calm', 'western', 'day', 'jig', 'hearth', 'travis', 'rag', 'lounge', 'porch'], SLOW_TRACKS = ['calm', 'hearth', 'day']; let dayN = 0, dayPick = 'mix';
-  try { dayPick = localStorage.getItem('zhDayMusic') || 'mix'; } catch (e) { /* storage blocked */ }
+  const DAY_TRACKS = ['strum', 'calm', 'western', 'day', 'jig', 'hearth', 'travis', 'rag', 'lounge', 'porch'], SLOW_TRACKS = ['calm', 'hearth', 'day']; let dayN = 0, dayPick = 'hearth';
+  try { dayPick = localStorage.getItem('zhDayMusic') || 'hearth'; } catch (e) { /* storage blocked */ }   /* 3D.56 owner: Hearth is the default day music */
   const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
