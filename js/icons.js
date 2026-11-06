@@ -38,6 +38,7 @@
     soundLow: `<path fill="Y" d="M4.5 12h5.5l7.5-6.5v21L10 20H4.5z"/><path class="l" d="M21.5 11c2 1.8 2 8.2 0 10"/>`,
     soundOff: `<path fill="S" d="M4.5 12h5.5l7.5-6.5v21L10 20H4.5z"/><path class="l" sw="3" st="R" d="M21 12l7 8M28 12l-7 8"/>`,
     log: `<path fill="T" d="M9 5h15a3 3 0 0 1 0 6H9z"/><path fill="W" d="M9 5v20a3 3 0 0 0 6 0V11h9v14a3 3 0 0 1-3 3h-9"/><path class="l" sw="1.6" d="M17.5 16h4.5M17.5 20h3.5"/>`,
+    menu: `<rect fill="W" x="5" y="7" width="22" height="4" rx="2"/><rect fill="W" x="5" y="14" width="22" height="4" rx="2"/><rect fill="W" x="5" y="21" width="22" height="4" rx="2"/>`,
     locate: `<circle fill="W" cx="16" cy="16" r="9"/><circle fill="R" cx="16" cy="16" r="3.6"/><path class="l" d="M16 3v5M16 24v5M3 16h5M24 16h5"/>`,
     speed: `<path fill="Y" d="M4 7l11 9-11 9z"/><path fill="Y" d="M16 7l11 9-11 9z"/>`,
     pause: `<rect fill="B" x="7" y="6" width="6.5" height="20" rx="1.5"/><rect fill="B" x="18.5" y="6" width="6.5" height="20" rx="1.5"/>`,

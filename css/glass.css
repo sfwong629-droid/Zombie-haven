@@ -228,3 +228,19 @@ html.glass body:has(#infoPanel.show) .expBar { display: none; }
 /* 3D.36 brute slam: a short screen shake */
 .zhShake { animation: zhShake .22s ease-out; }
 @keyframes zhShake { 20%, 80% { transform: translate(-1px, 0); } 40% { transform: translate(2px, -1px); } 60% { transform: translate(-2px, 1px); } }
+
+/* ---- 3D.40 HUD layout B (owner pick, UI canvas round 9): no side column. One slim dock (speed + find) on the right;
+   Home, Save, Sound, Log and Ink live in More > Settings. ---- */
+html.glass #btnHome, html.glass #btnSave, html.glass #btnSound, html.glass #btnLog, html.glass #btnInk { display: none !important; }
+html.glass #bottom { top: 44% !important; transform: translateY(-50%); right: 10px; width: 60px; padding: 6px; gap: 8px; border-radius: 30px; background: rgba(18, 24, 20, .72); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+html.glass #bottom .bb { box-shadow: none; }
+html.glass .moreRow, html.glass .setRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 6px; background: none; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .09); color: var(--tx); text-align: left; font: inherit; }
+html.glass .moreRow { padding: 14px 6px; cursor: pointer; } html.glass .setRow.link { cursor: pointer; }
+html.glass .moI .zi { width: 34px; height: 34px; }
+html.glass .moT { flex: 1; min-width: 0; } html.glass .moT b { display: block; font-size: 17px; font-weight: 800; } html.glass .moT small { display: block; font-size: 13px; color: var(--mu); margin-top: 2px; }
+html.glass .moA { font-size: 24px; color: var(--mu); }
+html.glass .setRow .act { margin: 0; min-width: 86px; }
+html.glass .tgl { flex: 0 0 auto; width: 52px; height: 30px; border-radius: 15px; background: rgba(255, 255, 255, .18); border: 0; position: relative; cursor: pointer; transition: background .15s; }
+html.glass .tgl::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #f4f1e8; transition: left .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+html.glass .tgl.on { background: var(--lime); } html.glass .tgl.on::after { left: 25px; }
+html.glass .setFoot { display: flex; gap: 10px; margin-top: 16px; } html.glass .setFoot .act { flex: 1; margin: 0; }

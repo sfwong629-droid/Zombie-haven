@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.39', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.40', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3236,7 +3236,7 @@ function advisorTips() {
 function layoutTop() {   // the left menu and the alerts sit just under the plaque, whatever its height
   const pl = $('plaque'), w = $('world'); if (!pl || !w) return; const y = Math.round(pl.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6);
   for (const id of GLASS ? ['alerts'] : ['lmenu', 'alerts']) { const e = $(id); if (e && e.style.top !== y + 'px') e.style.top = y + 'px'; }   /* 3D.28 Glass: the menu is the bottom tab bar */
-  if (GLASS) { const ck = $('clock'), y2 = ck ? Math.round(ck.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6) : y, g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y2 + 'px'; if (h) h.style.top = (y2 + 44) + 'px'; if (bt) bt.style.top = (y2 + 102) + 'px'; }   /* the right column hangs off the clock card, so tips and notifications under the mission card never push it down */
+  if (GLASS) { const ck = $('clock'), y2 = ck ? Math.round(ck.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6) : y, g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y2 + 'px'; if (h) h.style.top = (y2 + 44) + 'px'; if (bt && !HUD_B) bt.style.top = (y2 + 102) + 'px'; }   /* the right column hangs off the clock card, so tips and notifications under the mission card never push it down */
 }
 function advisorUpdate() {
   if (GLASS) { const e0 = $('adv'); if (e0) e0.style.display = 'none'; alertHub(); return; }
@@ -3544,6 +3544,37 @@ function writeKey(key, data) { try { localStorage.setItem(key, data); return tru
 function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 /* V2.40: the title screen's background town is never saved over a slot. V2.42: failures are reported, storage-full drops this slot's day backup and retries,
    a save that could not be loaded (or was changed by another tab) is never overwritten. */
+let savedAtMs = 0;
+/* 3D.39 HUD layout B (owner pick): the side column is gone. Speed + find sit in one slim dock on the right; the 5th tab is "More",
+   which holds the Guide and a Settings sheet (save, music, sound effects, event log, advisor tips, slow down on emergencies, how to play, main menu). */
+const HUD_B = typeof document !== 'undefined' && document.documentElement.classList.contains('glass');
+function showMore() {
+  endBuildMode(true); closeP(); const I = (n) => (window.ZHIcons ? ZHIcons.svg(n, 30) : '');
+  $('ib').innerHTML = `<button class="moreRow" id="moGuide"><span class="moI">${I('guide')}</span><span class="moT"><b>Guide</b><small>Goals, how things work, the story so far</small></span><span class="moA">›</span></button>`
+    + `<button class="moreRow" id="moSet"><span class="moI">${I('parts')}</span><span class="moT"><b>Settings</b><small>Save, sound, event log, tips, main menu</small></span><span class="moA">›</span></button>`;
+  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore);
+  showPanel('MORE');
+}
+function showSettings(back) {
+  endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
+  const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;
+  $('ib').innerHTML = `<div class="setRow"><span class="moT"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go" id="stSave">Save</button></div>`
+    + tg('stMusic', m === 'all', 'Music') + tg('stSfx', m !== 'off', 'Sound effects')
+    + `<button class="setRow link" id="stLog"><span class="moT"><b>Event log</b></span><span class="moA">›</span></button>`
+    + tg('stAdv', OPTS.advisor, 'Advisor tips') + tg('stSlow', OPTS.autoSlow, 'Slow down on emergencies', 'Drops to 1× speed when something bad happens')
+    + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
+    + `<button class="setRow link" id="stHow"><span class="moT"><b>How to play</b></span><span class="moA">›</span></button>`
+    + `<div class="setFoot"><button class="act" id="stMenu">Main menu</button><button class="act go" id="stResume">Resume</button></div>`;
+  const re = () => showSettings(back), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
+  $('stSave').onclick = () => { if (saveGame()) { banner('💾 SAVED'); re(); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); };
+  $('stMusic').onclick = () => snd(m === 'all' ? 'sfx' : 'all'); $('stSfx').onclick = () => snd(m === 'off' ? 'sfx' : 'off');
+  $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
+  $('stAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); }; $('stSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); re(); };
+  if ($('stInk')) $('stInk').onclick = () => { $('btnInk').click(); re(); };
+  $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };
+  $('stMenu').onclick = () => { closeP(); if (!titleOn) backToTitle(); }; $('stResume').onclick = closeP;
+  showPanel('SETTINGS', back);
+}
 function saveGame() {
   if (ZOO) return;   /* 3D.32 the test page never touches your saves */
   if (titleOn || saveBlocked) return false;
@@ -3552,7 +3583,7 @@ function saveGame() {
   if (r !== true) { try { localStorage.removeItem(BAK(SAVE_KEY)); localStorage.removeItem(BAD(SAVE_KEY)); } catch (e) { /* ignore */ } r = writeKey(SAVE_KEY, data); }
   if (r !== true) { saveFail(/quota/i.test(r.name + r.message) ? 'the browser storage is full' : 'the browser blocked storage (private browsing?)'); return false; }
   if (saveErr) { saveErr = ''; renderAlerts(); }
-  S.lastSave = tick; if (S.bakDay !== S.day && writeKey(BAK(SAVE_KEY), data) === true) S.bakDay = S.day;   /* first save of each day becomes the backup */
+  S.lastSave = tick; savedAtMs = Date.now(); if (S.bakDay !== S.day && writeKey(BAK(SAVE_KEY), data) === true) S.bakDay = S.day;   /* first save of each day becomes the backup */
   return true;
 }
 function saveFail(why) { const first = !saveErr; saveErr = why; if (first) note('critical', `Saving failed: ${why}`, { key: 'savefail', icon: '💾', live: () => !!saveErr, dyn: () => `Saving failed: ${saveErr}. Export a backup now.`, acts: [{ label: 'Backup', fn: () => showBackup() }] }); }
@@ -4589,7 +4620,7 @@ function tapAt(px, py) {
 $('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = G3D ? ((sel.rot | 0) + 1) & 3 : (sel.rot ? 0 : 1); if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(['Entrance faces front-left.', 'Entrance faces front-right.', 'Entrance faces back-right.', 'Entrance faces back-left.'][(sel.rot | 0) & 3]); };   /* V2.47: turn the entrance */
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
-$('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = showGuide; $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
+$('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = () => (HUD_B ? showMore() : showGuide()); $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
 $('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5, 10, .9 * (G3D ? 1.25 : 1));   /* V3D.3: 3D tiles are bigger, zoom in a bit so people stay readable */
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; try { localStorage.setItem('zhSpeed', simSpeed); } catch (e) { /* private mode */ } };
@@ -4599,7 +4630,8 @@ $('btnLog').onclick = showLog; { const sv = $('btnSave'); if (sv) sv.onclick = (
 if (COZY_HUD && window.ZHIcons) {
   const I = ZHIcons.svg, set = (sel, n, px) => { const e = document.querySelector(sel); if (e) e.innerHTML = I(n, px); };
   const res = document.querySelectorAll('#plaque .res > span > i'); ['food', 'water', 'wood', 'stone', 'parts', 'stash'].forEach((n, k) => { if (res[k]) res[k].innerHTML = I(n, 26); });
-  [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
+  [['mBuild', 'build'], ['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', HUD_B ? 'menu' : 'guide']].forEach(([id, n]) => set('#' + id + ' i', n, 30));
+  if (HUD_B) { const g = $('mGuide'); if (g) { g.lastChild.textContent = 'More'; g.title = 'Guide and settings'; } }
   set('#btnHome', 'home', 30); set('#btnLog', 'log', 30); set('#btnCenter', 'locate', 30); if (document.documentElement.classList.contains('glass')) { set('#btnSave', 'save', 30); const sv = $('btnSave'); if (sv) sv.setAttribute('aria-label', 'Save'); }   /* 3D.28 Glass: round icon buttons */
   ZHIcons.watch(['ib', 'eventModal', 'alerts', 'requestBox', 'confirmBar', 'quest', 'say', 'fx', 'infoPanel', 'adv', 'slots']);   /* panels, cards, alerts: emoji -> Clay icons */
 }
