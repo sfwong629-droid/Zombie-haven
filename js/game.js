@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.58', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.59', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1424,6 +1424,8 @@ function steer(o, p, sp) {
   return false;
 }
 function followPath(o, goal, sp) {
+  { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y), same = o.arrG && Math.abs(o.arrG.x - goal.x) < .01 && Math.abs(o.arrG.y - goal.y) < .01; o.nearT = dG < .5 ? (o.nearT || 0) + 1 : 0;
+    if (dG < .03 || o.nearT > 45 || (same && dG < 1.3)) { o.path = null; o.pathGoal = null; o.moving = false; o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } }   /* 3D.59 owner's tracker log (Maya): someone already on their goal never re-paths, and someone kept off it by another person standing there (the anti-overlap push) stops at arm's length instead of walking in place forever */   /* 3D.59 owner's tracker log: someone already standing on their goal never re-paths (a goal on a building footprint sent them out to the door and back in, forever: the chat moonwalk) */
   sp *= TUNE.move;
   const curvy = o.job !== undefined, go = (p) => curvy ? steer(o, p, sp) : stepToward(o, p, sp);
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
@@ -1441,15 +1443,18 @@ function followPath(o, goal, sp) {
   if (curvy && o.path.length > 1 && dist(o.w, o.path[0]) < .5) o.path.shift();   /* cut the corner: head for the next point early */
   if (go(o.path.length > 1 ? o.path[0] : (o.path.length === 1 ? o.path[0] : goal))) {
     if (o.path.length) { o.path.shift(); if (!o.path.length) { /* now on the goal tile centre: finish to exact point */ } }
-    else { o.path = null; o.pathGoal = null; return 'arrived'; }
+    else { o.path = null; o.pathGoal = null; o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; }
   }
   if (!o.path || !o.path.length) { // final leg: exact goal point (live, so chasing moving targets works)
     if (o.job === undefined && !o.human && !Wd.walkable(world, Math.floor(goal.x), Math.floor(goal.y), true)) { o.path = null; o.pathGoal = null; return 'fail'; }   // zombies never step into a wall tile, even for a survivor standing in the gate
-    if (o.path && !o.path.length) { if (go(goal)) { o.path = null; o.pathGoal = null; return 'arrived'; } }
+    if (o.path && !o.path.length) { if (go(goal)) { o.path = null; o.pathGoal = null; o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } }
   }
   const moved = Math.hypot(o.w.x - before.x, o.w.y - before.y);
   o.stuck = moved < sp * .25 ? (o.stuck || 0) + 1 : 0;
   if (o.stuck > 90) { o.path = null; o.pathGoal = null; o.stuck = 0; return 'fail'; }
+  if (!o.prog || tick - o.prog.t > 60) {   /* 3D.59 net progress: stepping forward and being pushed back by someone standing in the way (the anti-overlap push) looked like walking in place forever */
+    const net = o.prog ? Math.hypot(o.w.x - o.prog.x, o.w.y - o.prog.y) : 1; o.prog = { x: o.w.x, y: o.w.y, t: tick };
+    if (net < .12) { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y); o.path = null; o.pathGoal = null; o.moving = false; o.prog = null; if (dG < 1.3) { o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } return 'fail'; } }
   return 'moving';
 }
 function moveSlide(o, t, sp) {                // free movement that cannot enter buildings or walls (zombie roaming)
@@ -1989,13 +1994,14 @@ function chatText(a, b) {   /* 3D.27: a spoken two-line exchange (js/barks.js), 
   return { pair: pr.map(unswear), st: T.style || 'talk' };
 }
 const chatBuilding = () => { const l = world.buildings.filter((b) => !b.burnt && DEFS[b.type]); return l.length ? DEFS[l[Math.floor(rnd() * l.length)].type].name : 'wall'; };
+function chatSpot(a, p) { const ok = (x, y) => Wd.walkable(world, Math.floor(x), Math.floor(y)) && !Wd.buildingAt(world, Math.floor(x), Math.floor(y)); return ok(p.x, p.y) ? p : { x: a.w.x, y: a.w.y }; }   /* 3D.59 never chat on a building footprint */
 function startChat(s) {
   if (!COZY_HUD || (s.chatNext || 0) > tick || isNight() && !bOf('bonfire').length && rnd() < .6) return false;   /* V3D.17: a pause between chats */
   const pals = S.sv.filter((q) => q !== s && q.hp > 0 && ['free', 'wait'].includes(q.mode) && !q.purpose && !q.sleeping && !q.chatWith && (q.chatNext || 0) <= tick && !insideBuilding(q) && dist(q.w, s.w) < 5)
     .sort((x, y) => (bondOf(s, y) - bondOf(s, x)) * .05 + dist(x.w, s.w) - dist(y.w, s.w) + (Math.abs(ageOf(s) - ageOf(x)) - Math.abs(ageOf(s) - ageOf(y))) * .05);   /* 3D.44 people their own age first */
   const q = pals[0]; if (!q || hasT(s, 'loner') && rnd() < .6) return false;
   const mid = { x: (s.w.x + q.w.x) / 2, y: (s.w.y + q.w.y) / 2 }, txt = rnd() < .7 ? chatText(s, q) : null, lines = txt ? txt.pair : chatTopic(s, q);
-  for (const [a, b, side] of [[s, q, -1], [q, s, 1]]) { a.mode = 'chat'; a.chatWith = b; a.chatLines = lines; a.chatTxt = txt ? txt.st : null; a.chatStep = side < 0 ? 0 : 1; a.chatT = side < 0 ? 30 : 75; a.dest = { x: mid.x + side * .32, y: mid.y + side * .12 }; a.path = null; a.stateTicks = 900; a.why = `Chatting with ${b.name}`; a.purpose = null; }
+  for (const [a, b, side] of [[s, q, -1], [q, s, 1]]) { a.mode = 'chat'; a.chatWith = b; a.chatLines = lines; a.chatTxt = txt ? txt.st : null; a.chatStep = side < 0 ? 0 : 1; a.chatT = side < 0 ? 30 : 75; a.dest = chatSpot(a, { x: mid.x + side * .32, y: mid.y + side * .12 }); a.path = null; a.stateTicks = 900; a.why = `Chatting with ${b.name}`; a.purpose = null; }
   return true;
 }
 function chatTick(s) {
@@ -3615,7 +3621,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
