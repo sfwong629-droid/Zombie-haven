@@ -18,7 +18,7 @@ RUN = r"""([days, roster, lock])=>{const S=ZH.S,W=ZH.world;
      ZH.simTick();tk++;if(k%60===59){ZH.tripUpdate();AP.tick();}
      for(const s of S.sv){const g=s.hp-(hp0.get(s)||s.hp);if(g>0){const src=s.mode==='hospital'?'care':s.mode==='down'?'down':s.sleeping?'sleep':s.mode;M.heal[src]=(M.heal[src]||0)+g;}
        if(s.mode==='down'&&!downAt.has(s)){downAt.set(s,tk);M.downs++;} if(s.mode!=='down'&&s.mode!=='hospital'&&downAt.has(s)){M.downT.push(tk-downAt.get(s));downAt.delete(s);}}
-     for(const z of S.z){if(z.hp<=0&&zT.has(z)){const j=zT.get(z);M.kills[j]=(M.kills[j]||0)+1;zT.delete(z);}}
+     {const live=new Set(S.z);for(const [z,j] of zT){if((!live.has(z)||z.hp<=0)&&!z.escaped){M.kills[j]=(M.kills[j]||0)+1;zT.delete(z);}else if(!live.has(z))zT.delete(z);}}   /* dead zombies leave S.z within the tick */
      if(k%30===0){for(const s of S.sv){if(s.mode==='work')M.work[s.job]=(M.work[s.job]||0)+1;if(['chase','attack','recover'].includes(s.mode))M.fight[s.job]=(M.fight[s.job]||0)+1;if(s.mode==='fix')M.fix++;}
        for(const b of W.buildings){const p=bH.get(b);if(p!=null&&b.hp>p&&tk-(b.lastHit||-9999)>60)M.repairHp+=b.hp-p;bH.set(b,b.hp);}}}
    AP.hour();}
@@ -35,7 +35,8 @@ async def main():
     seeds = [int(x) for x in (sys.argv[2] if len(sys.argv) > 2 else '3,7,11').split(',')]
     which = sys.argv[3] if len(sys.argv) > 3 else 'all'
     label = sys.argv[4] if len(sys.argv) > 4 else 'run'
-    cfgs = [None] + ([j for j in JOBS if j != 'Civilian'] if which == 'all' else which.split(','))
+    nofull = which.startswith('-'); which = which.lstrip('-')   # '-Guard,Medic' = only those ablations, no full roster
+    cfgs = ([] if nofull else [None]) + ([j for j in JOBS if j != 'Civilian'] if which == 'all' else which.split(','))
     srv, port = R.serve(); res = {}
     async with async_playwright() as p:
         br = await p.chromium.launch()

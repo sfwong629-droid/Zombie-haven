@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.67', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.68', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2404,10 +2404,22 @@ const nowD = () => S.day + S.hour / 24;
 const graceOn = () => (S.graceUntil || 0) > nowD();   /* V2.24 mourning: the horde pulls back after heavy losses */
 const avgLevel = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.l || 1), 0) / S.sv.length : 1);
 const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, quieter days */
+/* 3D.68 boss-night balance. The boss probe showed the boss rarely downs anyone itself: what broke towns was that every zombie killed on a
+   boss night was replaced within a second, so the fighters wore down until everyone was hiding or down and nobody could reach the downed
+   for hours. Now nothing new joins while the boss lives, killing the boss breaks the horde (its followers flee and the rest of the night is
+   quiet), and at dawn the followers leave with the boss. */
+function mobScatter() { for (const z of S.z) if (z.hp > 0 && !z.human && (z.mob || z.siege) && z.type !== 'boss') { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } }
+function bossWatch() {
+  if (S.bossOn == null || S.z.some((z) => z.type === 'boss' && z.hp > 0 && z.mode !== 'zleave')) return;
+  const killed = (S.bossKills || 0) > S.bossOn; S.bossOn = null;
+  if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, the horde scatters into the dark. The rest of the night is quiet.' }); }
+}
 function monsterGeneration() {
+  bossWatch();
+  if (isNight() && (S.bossOn != null || nowD() < (S.calmUntil || 0))) return;   /* 3D.68: no fresh zombies while the boss lives, nor after it falls */
   S.spawnClock++; const tr = S.terr || 0, base = 5 + S.rank + Math.floor(S.threat / 2) + 2 * tr + Math.floor(S.day / 3), night = isNight();
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + S.day) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr, 2 + S.day))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 : 1.6);
-  if (activeZ() < desired && S.spawnClock > gap) { spawn(); S.spawnClock = 0; }
+  if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
     if (far.length) { const z = far[Math.floor(rnd() * far.length)]; z.hp = 0; z.escaped = true; }
@@ -2474,12 +2486,14 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
   if (!z.human || z.escaped) return; S.raiderKills = (S.raiderKills || 0) + 1; for (const k of ['food', 'water', 'mat']) if (z.loot && z.loot[k]) { S[k] += z.loot[k]; floats.push({ w: { ...z.w }, t: '+' + z.loot[k] + ' ' + SHORT_ICON[k], col: '#9fe58a', a: 80 }); }
 }
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
+const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(S.day / 5)) * (S.day <= 14 ? .7 : 1));
 function spawnBoss() {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = S.day <= 4 ? 'mutant' : ks[Math.floor(rnd() * ks.length)], K = BOSS_KINDS[bk]; S.lastBoss = bk;
   const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * S.day) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
   S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * S.day) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   { const bz = S.z[S.z.length - 1]; bz.hp = bz.max = Math.round(bz.hp * K.hp); }
-  const mob = Math.round((3 + Math.round(L * .8) + 3 * tr + Math.floor(S.day / 5)) * (S.day <= 14 ? .7 : 1)); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
+  const mob = bossMob(); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
+  S.bossOn = S.bossKills || 0;   /* 3D.68: the boss night is on (no fresh zombies join while it lives) */
   SFX('boss'); if (COZY_HUD) showEventPopup({ stage: { scene: 'boss', boss: bk, head: 'Boss!' }, short: K.line, chips: [`☠ ${mob} zombies follow`], title: K.name.toUpperCase() });
   note('critical', `${K.line} ${mob} zombies follow it.`, { key: 'boss', icon: '☠', log: `${K.line} It leads ${mob} zombies against the Haven.`, threats: true, at: () => { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); return b ? b.w : null; }, live: () => S.z.some((z) => z.type === 'boss' && z.hp > 0) }); S.alert = 2400;
 }
@@ -2493,7 +2507,7 @@ function eventSchedule() {   /* called every game hour */
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
-  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: 'The Mutant Boss slunk back into the wasteland. It will return.' }); } S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }
+  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: 'The Mutant Boss slunk back into the wasteland. It will return.' }); } if (S.bossOn != null || bs.length) { S.bossOn = null; mobScatter(); for (const z of S.z) if (z.hp > 0 && !z.human && z.type !== 'boss' && z.mode !== 'zleave' && !(z.target && S.sv.includes(z.target) && dist(z.w, z.target.w) < 2.5)) { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } } else S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }   /* 3D.68: its followers leave with it */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }

@@ -166,9 +166,9 @@ async def t_economy(br, port, t):   # V2.35: resource panels, building status, s
     t.ok(r['same'], 'Town panel / rank conditions use the same numbers as the resource panel')
     t.ok(r['title'] == 'FOOD' and r['hasNet'], 'tapping food at the top opens the food panel')
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};const farm=W.buildings.find(b=>b.type==='farm');
-      for(const q of S.sv)if(q.job==='Farmer'){q.job='Civilian';}ZH.autoStaff();ZH.showBuildingInfo(farm);const tx=document.getElementById('ib').textContent;
+      for(const q of S.sv)if(q.job==='Farmer'||q.job==='Civilian'){q.job='Guard';}ZH.autoStaff();ZH.showBuildingInfo(farm);   /* 3D.67: a Civilian would cover the farm, so nobody is left who can */const tx=document.getElementById('ib').textContent;
       out.noFarmer=/No Farmer assigned/.test(tx)&&/base output/.test(tx)&&!/needs Farmer/.test(tx);
-      const sy=W.buildings.find(b=>b.type==='water');S.sv[0].job='Engineer';ZH.autoStaff();ZH.showBuildingInfo(sy);const w=document.getElementById('bWorker');out.worker=!!w;if(w){w.click();out.unit=ZH.selected&&ZH.selected.kind==='unit'}
+      const sy=W.buildings.find(b=>b.type==='water');S.sv[0].job='Farmer';ZH.autoStaff();ZH.showBuildingInfo(sy);const w=document.getElementById('bWorker');out.worker=!!w;if(w){w.click();out.unit=ZH.selected&&ZH.selected.kind==='unit'}
       return out}""")
     t.ok(r['noFarmer'], 'a farm without a Farmer says so plainly (and that it runs at base output)')
     t.ok(r['worker'] and r['unit'], "tapping a building's worker opens that survivor")
@@ -739,6 +739,11 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
     t.ok(abs(r['wrong'] - (.75 / 1 - 1)) < .3 and r['wrong'] < 0 and r['civ'] == .25, f"wrong job is a penalty, a Civilian helps ({r['wrong']:.2f} / {r['civ']})")
     t.ok(abs((r.get('range') or 0) - 1.5) < .01, f"Police Officers shoot 1.5 tiles further ({r.get('range')})")
     t.ok(r['save'] is True, f"saves still work mid field-aid ({r['save']})")
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.day=6;S.hour=21;ZH.spawnBoss();const b=S.z.find(z=>z.type==='boss');const mob=S.z.filter(z=>z.mob);out.mob=mob.length;
+      const n0=S.z.length;ZH.step(400);out.noRefill=S.z.filter(z=>z.hp>0&&!z.human).length<=n0;
+      b.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(2);out.flee=mob.filter(z=>z.hp>0).every(z=>z.mode==='zleave');const act=()=>S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length;const n1=act();ZH.step(600);out.calm=act()<=n1;out.n=[n1,act()];return out}""")
+    t.ok(r['mob'] > 0 and r['noRefill'], f"no fresh zombies join while the boss lives {r}")
+    t.ok(r['flee'] and r['calm'], f"killing the boss breaks its horde and the rest of the night is quiet {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
