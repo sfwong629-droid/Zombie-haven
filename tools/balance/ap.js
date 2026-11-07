@@ -83,9 +83,10 @@
     for (const b of W.buildings) if (b.burnt) Z.repairBurnt(b);   /* 3D.61: repairBurnt checks the wood / stone / scrap it needs */
     // keep at least 2 fighters: retrain the best unassigned survivor as a Guard
     const FIGHT = ['Guard', 'Police Officer', 'Scavenger', 'SWAT'];
-    if (S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
+    if (AP.lockJobs) { for (const q of S.sv) if (AP.lockJobs.includes(q.job) && Z.changeProfession) Z.changeProfession(q, 'Civilian'); }   /* profession study: keep the roster as set, and keep the removed job out */
+    else if (S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
     // give civilians (grown-up children, newcomers) a useful job
-    if (S.hour === 9) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
+    if (S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
     // research
     { const nx = Z.RANK_REQ[S.rank], want = nx && Z.DEFS[nx.build] && Z.DEFS[nx.build].res; let goal = null;   /* V2.38: research toward the next star's building first (its chain), then the usual order */
       if (want && !Z.researched(want)) { let r = want; while (r && !Z.researched(Z.RESEARCH[r].need)) r = Z.RESEARCH[r].need; goal = r; }

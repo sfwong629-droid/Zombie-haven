@@ -2,3 +2,4 @@ __pycache__/
 tools/behaviour/out_*.json
 tools/balance/horde_*.json
 tools/soak/soak_*.json
+tools/balance/prof_*.json
