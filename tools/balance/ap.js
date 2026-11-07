@@ -50,6 +50,7 @@
       last.set(s, { mode: s.mode, purpose: s.purpose, why: s.why }); }
   };
   AP.hour = function () {
+    if (Z.collectBonus && S.hour % 2 === 0) for (const b of W.buildings) if (b.bonus) Z.collectBonus(b);   /* 3D.58: production waits in trays until collected, as a player taps them */
     // V2.33: hold a town event at noon when it is affordable, and upgrade the town when the rating conditions are met
     if (Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
     if (Z.holdEvent && S.hour === 13 && S.rank >= 3 && (S.lastEventDay ?? -1) < S.day && S.food > Z.supplyCap() * .75 && S.water > Z.supplyCap() * .7) Z.holdEvent('caravan');   /* V2.38: trade a full pantry for parts */

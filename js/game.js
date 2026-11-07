@@ -3171,7 +3171,7 @@ const ARRIVE = { low: 12000, high: 24000 };   /* V3D.21 ticks between newcomers 
 function visitorArrival() {
   if (S.finale) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.arrivalClock < (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook'];
-  const name = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length);   /* V2.18: newcomers to a bigger Haven are more experienced */
+  const name = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length); clearSpot(v);   /* V2.18: newcomers to a bigger Haven are more experienced */
   v.sat = 3; v.stateTicks = 80; v.src = 'gate'; if (!G3D) giveSpare(v); S.sv.push(v);
   if (COZY_HUD) {   /* V3D.15: they walk in and wave; the player decides whether they stay (no party until then) */
     showEventPopup({ stage: { scene: 'newcomer', head: 'Someone at the gate', hero: v }, short: `${fullName(v)} wants to join`, chips: [job + ' Lv.' + lv].concat(TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : []), title: 'NEWCOMER',
@@ -3398,7 +3398,8 @@ const pickSv = (f = () => true) => { const c = S.sv.filter((q) => q.hp > 0 && ![
 const storyLater = (id, days) => { S.storyQ = S.storyQ || []; S.storyQ.push({ id, day: S.day + days }); };
 const pay = (c) => { if (!Object.entries(c).every(([k, v]) => S[k] >= v)) return false; for (const [k, v] of Object.entries(c)) S[k] -= v; ui(); return true; };
 const result = (title, text, gains = '') => showEventPopup({ title, text, gains });
-function newcomer(job, lvl) { if (popNow() >= popCap()) return null; const name = freeFirst(), v = mk(name, job, lvl, 7, 9, S.sv.length); v.sat = 20; v.src = 'event'; S.sv.push(v); return v; }
+function clearSpot(v) { if (!Wd.buildingAt(world, Math.floor(v.w.x), Math.floor(v.w.y))) return; const t = Wd.nearestWalkable(world, Math.floor(v.w.x), Math.floor(v.w.y), true); if (t) v.w = tc(t.x, t.y); }   /* 3D.58: a newcomer never appears inside a building (tests: geometry) */
+function newcomer(job, lvl) { if (popNow() >= popCap()) return null; const name = freeFirst(), v = mk(name, job, lvl, 7, 9, S.sv.length); clearSpot(v); v.sat = 20; v.src = 'event'; S.sv.push(v); return v; }
 /* V3D.17 errands: event jobs done by real people. They walk out of the map (or to a crate), and walk back in. */
 const ERRANDS = {
   scout: { out: 'edge', hours: 44, why: 'Scouting the radio signal', done(e, ms) { const sc = ms[0]; if (!sc) return; if (e.trap) { sc.hp = Math.max(1, Math.round(sc.max * .35)); showEventPopup({ stage: { scene: 'sad', head: 'An ambush', icon: '📻', hero: sc }, short: `It was a trap. ${sc.name} made it back, badly hurt.` }); return; } STORY.radio2.run(sc); } },
@@ -3614,7 +3615,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt']);   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
