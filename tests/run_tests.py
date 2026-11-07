@@ -735,7 +735,7 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
     t.ok(r['down'] and r['up'], f"a first fall: the Medic gets them up at 30%, Wounded {r}")
     t.ok(r['capped'], 'a Wounded survivor heals no further than 60% outside a medical building')
     t.ok(r['carried'], f"a second fall the same day: stabilised and carried to care {r}")
-    t.ok(1.4 < r['careRatio'] < 2.8, f"care is about 1.6x slower without a Medic on staff (their INT shifts it a little) ({r['careRatio']:.2f})")
+    t.ok(1.1 < r['careRatio'] < 2.3, f"care is about 1.3x slower without a Medic on staff (their INT shifts it a little) ({r['careRatio']:.2f})")
     t.ok(abs(r['wrong'] - (.75 / 1 - 1)) < .3 and r['wrong'] < 0 and r['civ'] == .25, f"wrong job is a penalty, a Civilian helps ({r['wrong']:.2f} / {r['civ']})")
     t.ok(abs((r.get('range') or 0) - 1.5) < .01, f"Police Officers shoot 1.5 tiles further ({r.get('range')})")
     t.ok(r['save'] is True, f"saves still work mid field-aid ({r['save']})")

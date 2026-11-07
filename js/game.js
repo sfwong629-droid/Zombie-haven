@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.68', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.69', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4160,7 +4160,7 @@ let BANDAGE_COST = 2, BANDAGE_TICKS = 3600;   /* Field Medicine research: 1 part
 function medTier() { const m = medSite(); return m ? m.type : 'none'; }
 function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed); }
 function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.round(CARE_TICKS.medic * 1.5);   /* 3D.46 camp care: half again as long as a Medical Tent */
-  const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1) * (m && !(isWorking(m) && m.staff && m.staff.job === 'Medic') ? 1.6 : 1)); }   /* 3D.67: care without a Medic on staff is 1.6x slower */
+  const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1) * (m && !(isWorking(m) && m.staff && m.staff.job === 'Medic') ? 1.3 : 1)); }   /* 3D.69: care without a Medic on staff is 1.3x slower (was 1.6x in 3D.67: made the Medic too essential) */
 /* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:
    a field dressing heals to 60% at most, and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
@@ -4424,7 +4424,7 @@ const BDESC = {
   bonfire: 'A big camp fire: burns bright at night and lights the camp around it (about 4 tiles), so you can see your people and the zombies.',
   barrel: 'Catches a little rainwater. Upgrade to a Rain Collector, then a Stone Well.', water: 'Catches rainwater. A Farmer makes it collect more.', well: 'Draws groundwater: the most water.',
   farm: 'A small vegetable patch. Drinks a little water. A Farmer boosts it.', field: 'A fenced field: nearly twice the food of a Garden Plot.', irrig: 'Irrigated rows: the most food, but thirsty.',
-  medic: 'Treats the hurt and heals field wounds. Care is much slower without a Medic on staff.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying.',
+  medic: 'Treats the hurt and heals field wounds. Care is slower without a Medic on staff.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying.',
   canteen: 'Survivors eat here. A Cook makes every meal more filling.', mess: 'A big stone mess hall: seats 4 and meals do more.',
   crates: 'Holds more food, water, wood and stone.', storage: 'Holds more food, water, wood and stone.', warehouse: 'Holds the most.',
   bench: 'Research and craft gear. Upgrade to a Workshop for more research.', workshop: 'Research new tech and craft gear. Engineers work fastest.',
