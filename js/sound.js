@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
+  const GAP = { chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, rescued4: 1200, rescued5: 1200, rescued6: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -47,7 +47,7 @@
     build: (c, o, t) => {   /* 3D.57 hammer on nails: recorded wood + metal hits (Kenney, CC0), tap-tap-BANG */
       const hits = [[0, 'woodL', .8, 1.25], [.24, 'woodL', .85, 1.2], [.5, 'woodM', 1, 1.1]];
       if (!SFXB.woodL0) { knock(c, o, t, 330, .28); knock(c, o, t + .24, 360, .26); knock(c, o, t + .5, 300, .3); return; }
-      for (const [dt, k, v, r] of hits) { sfx(c, o, t + dt, k + rnd3(), v * .42, r); sfx(c, o, t + dt, 'metalL' + rnd3(), v * .22, 1.35); }
+      for (const [dt, k, v, r] of hits) { sfx(c, o, t + dt, k + rnd3(), v * .36, r); sfx(c, o, t + dt, 'metalL' + rnd3(), v * .19, 1.35); }
     },
     click: (c, o, t) => { pluck(c, o, t, 1400, .12, .08); noise(c, o, t, .012, .08, 4500, 2); },
     chime: (c, o, t) => { bell(c, o, t, N(15), .09); bell(c, o, t + .09, N(22), .08); },
@@ -64,7 +64,21 @@
       if (!ok) { FX.rescued(c, o, t); return; }
       ch.forEach((sm, i) => samp(c, o, t + i * .022, 'nyl', N(sm), .5, 1.8)); [10, 14, 17, 22].forEach((sm, i) => samp(c, o, t + .32 + i * .11, 'vibes', N(sm), .42, 1.6));
     },
-    rescued3: (c, o, t) => { if (!sfx(c, o, t, 'pizzi', 1.1, 1)) FX.rescued(c, o, t); },   /* 3D.57 option C: recorded pizzicato strings jingle (Kenney, CC0) */
+    rescued3: (c, o, t) => { if (!sfx(c, o, t, 'pizzi', .85, 1)) FX.rescued(c, o, t); },   /* 3D.57 option C: recorded pizzicato strings jingle (Kenney, CC0) */
+    rescued4: (c, o, t) => {   /* option D: acoustic guitar, C to G 'home' cadence, harp on top */
+      const strum = (tt, ch, v) => ch.forEach((sm, i) => samp(c, o, tt + i * .02, 'gtr', N(sm), v, 2));
+      if (!samp(c, o, t, 'gtr', N(-9), .001, .1)) { FX.rescued(c, o, t); return; }
+      strum(t, [-9, -2, 3, 7, 10], .42); strum(t + .42, [-14, -7, -2, 2, 5, 10], .5); samp(c, o, t + .46, 'harp', N(22), .5, 1.8); samp(c, o, t + .6, 'harp', N(26), .35, 1.6);
+    },
+    rescued5: (c, o, t) => {   /* option E: a whistled three-note lift over a soft nylon chord */
+      if (!samp(c, o, t, 'nyl', N(-2), .5, 2)) { FX.rescued(c, o, t); return; }
+      [2, 5, 10].forEach((sm, i) => samp(c, o, t + .02 + i * .02, 'nyl', N(sm), .45, 2));
+      [[14, 0, .2], [17, .18, .2], [22, .36, .9]].forEach(([sm, dt, d]) => samp(c, o, t + .05 + dt, 'whis', N(sm), .75, d, 0, .03, .2));
+    },
+    rescued6: (c, o, t) => {   /* option F: strings swell under a music-box arpeggio */
+      if (!samp(c, o, t, 'mbox', N(22), .75, 1.4)) { FX.rescued(c, o, t); return; }
+      [-2, 2, 5].forEach((sm) => samp(c, o, t, 'str', N(sm), .4, 1.9, 0, .3, .6)); [26, 29, 34].forEach((sm, i) => samp(c, o, t + (i + 1) * .13, 'mbox', N(sm), .75, 1.4));
+    },
     rescued: (c, o, t) => { [0, 4, 7, 12].forEach((s, i) => pluck(c, o, t + i * .07, N(s), .18, 1.2)); bell(c, o, t + .3, N(19), .07); },
     rankup: (c, o, t) => { [0, 4, 7].forEach((s2, i) => stab(c, o, t + i * .13, [N(s2), N(s2 + 7)], .07)); stab(c, o, t + .42, [N(12), N(16), N(19)], .09); [12, 16, 19].forEach((s2) => bell(c, o, t + .42, N(s2 + 12), .05)); },
     event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => bell(c, o, t + i * .1, N(s2 + 12), .06)); },

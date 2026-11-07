@@ -56,15 +56,18 @@ sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
 sun.position.copy(MC).add(new THREE.Vector3(-30, 52, 18)); sun.target.position.copy(MC); scene.add(sun, sun.target);
 const KEYS = [   // hour: sky, hemi colour, hemi intensity, sun colour, sun intensity, window glow 0..1
   [0, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [4.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
-  [8, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [17, 0x9fb7c2, 0xfff4dc, 1.25, 0xfff0d0, 1.9, 0], [19, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.4, .6],
+  [8, 0x9fb2bc, 0xfff0d8, 1.12, 0xffe8c4, 1.55, 0], [10.5, 0x9db8c6, 0xfff4dc, 1.22, 0xfff0d6, 1.85, 0], [13, 0x9cbac9, 0xfff6e2, 1.3, 0xfff4e0, 2.05, 0], [15.5, 0x9fb7c2, 0xfff2da, 1.24, 0xfff0d0, 1.85, 0],   /* 3D.58: the light climbs to noon and eases off through the afternoon */
+  [17.3, 0xb4b2a8, 0xffe8c8, 1.12, 0xffd8a8, 1.6, .1], [19, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.4, .6],
   [20.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [24, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1]];   // V3D.15: nights brighter again (.95 / .55 -> 1.18 / .72)   // V3D.12: nights brighter (were .7 / .35)
 const cA = new THREE.Color(), cB = new THREE.Color();
-let glowNow = -1;
+let glowNow = -1, sunH = -1;
 function light(h) {
   let i = 0; while (i < KEYS.length - 2 && h >= KEYS[i + 1][0]) i++;
   const a = KEYS[i], b = KEYS[i + 1], u = Math.max(0, Math.min(1, (h - a[0]) / (b[0] - a[0] || 1)));
   const mix = (k) => cA.set(a[k]).lerp(cB.set(b[k]), u).clone(), num = (k) => a[k] + (b[k] - a[k]) * u;
   scene.background = mix(1); hemi.color.copy(mix(2)); hemi.intensity = num(3); sun.color.copy(mix(4)); sun.intensity = num(5);
+  { const day = h > 5.5 && h < 20.5, f = day ? (h - 6) / 14 : .5, el = day ? Math.max(.12, Math.sin(Math.PI * Math.min(1, Math.max(0, f)))) : .75, az = (f - .5) * 1.7, bx = -30, bz = 18, L = Math.hypot(bx, bz) * (1.25 - .45 * el);   /* 3D.58 the sun crosses the sky: long shadows morning and evening */
+    const k = Math.round(h * 10) / 10; if (k !== sunH) { sunH = k; sun.position.set(MC.x + (bx * Math.cos(az) - bz * Math.sin(az)) / Math.hypot(bx, bz) * L, 22 + 34 * el, MC.z + (bx * Math.sin(az) + bz * Math.cos(az)) / Math.hypot(bx, bz) * L); renderer.shadowMap.needsUpdate = true; } }
   const g = Math.round(num(6) * 50) / 50;
   if (g !== glowNow) { glowNow = g; winMat.color.set(0x4a3a28).lerp(new THREE.Color(0xffc864), g); poolMat.opacity = .8 * g; lampSprite.opacity = .9 * g; beamMat.opacity = .45 * g; haloMat.opacity = .5 * g; for (const m of charMats) m.emissive.setScalar(m.userData.nightGlow * g); }
 }
@@ -1137,9 +1140,10 @@ function personAnim(a, s, dt) {
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
   const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
-    if (!a.attacking) {
-      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : (() => { const nx = s.comboZ === s.target && (G.tick ? G.tick() : 0) < (s.comboT || 0) ? (s.combo || 0) + 1 : 1; return ['melee_swing_a', 'melee_swing_b', a.acts.melee_swing_d ? 'melee_swing_d' : 'melee_swing_c'][(nx - 1) % 3]; })();   /* 3D.37 combo: A, B, then the two-hand finisher */
-      a.play(clip, true, true); a.attacking = true;
+    const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
+    if (!a.attacking || (burst && a.comboSeen !== step)) {
+      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', a.acts.melee_swing_d ? 'melee_swing_d' : 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a');
+      a.play(clip, true, true); a.attacking = true; a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
     }
     return;
   }
@@ -1209,7 +1213,7 @@ function syncPeople(dt, vis) {
     { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
       if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
     { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
-        if (s.reloadT > 0 && !a.isMov()) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis);
+        if (s.reloadT > 0 && !a.isMov()) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && (s.mode === 'campfire' || insideBuilding3(s))) a.beam.visible = false; tickMixer(a, dt, vis); if (TRACK.on) trackActor(a, s, dt);
   }
   const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
   if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
@@ -1382,6 +1386,40 @@ function tickMixer(a, dt, vis) {
   if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
   const cs = seen && a.cur && CLIP_SFX[a.name]; if (cs) { const d = a.cur.getClip().duration, ph = d ? (a.cur.time % d) / d : 0; if (a.sfxPh != null && a.sfxPh < cs[0] && ph >= cs[0] && window.SND) SND.play(cs[1]); a.sfxPh = ph; } else a.sfxPh = null;   /* 3D.57 the axe and hammer sound when the tool lands */
 }
+/* 3D.58 animation tracker: for each survivor, compares how fast the body really moves (over the last .3 s) with what the
+   feet do, and logs anything that would look like sliding. Settings > Animation tracker shows it live; ZH3D.track for tests. */
+const TRACK = { on: false, log: [], rows: new Map(), t0: performance.now() };
+const LOCO_RE = /walk|run|crawl$|rescue/, ATK_RE = /punch|swing|blunt|fire|attack|shoot/;
+function trackActor(a, s, dt) {
+  const now = performance.now(), h = a.trk || (a.trk = []); a.trkT = (a.trkT || 0) + dt; h.push([a.trkT, a.o.position.x, a.o.position.z]); while (h.length > 2 && a.trkT - h[0][0] > .3) h.shift();   // game time, the same clock the animation runs on
+  const [t0, x0, z0] = h[0], span = a.trkT - t0, sp = G.simSpeed ? G.simSpeed() : 1, v = span > .05 ? Math.hypot(a.o.position.x - x0, a.o.position.z - z0) / span : 0;
+  const n = a.name || '', loco = LOCO_RE.test(n), st = loco ? strideOf(a) : 0, ts = a.cur ? a.cur.timeScale : 1, foot = st ? st * ts : 0;
+  const mvAng = span > .05 && v > .1 ? Math.atan2(a.o.position.x - x0, a.o.position.z - z0) : null, side = mvAng == null ? 0 : Math.abs(Math.atan2(Math.sin(mvAng - a.yaw), Math.cos(mvAng - a.yaw))) * 57.3;
+  let flag = '';
+  if (v > .12 && !loco && !ATK_RE.test(n) && !/collapse|cheer|pickup/.test(n)) flag = 'SLIDE (no walk clip)';
+  else if (v > .12 && ATK_RE.test(n)) flag = 'SLIDE (attacking while moving)';
+  else if (loco && st && v > .12 && (foot / v < .6 || foot / v > 1.7)) flag = foot < v ? 'SKATE (feet too slow)' : 'FEET TOO FAST';
+  else if (loco && v < .03 && h.length > 3 && !/crawl/.test(n)) flag = 'WALK IN PLACE';
+  else if (side > 70) flag = side > 120 ? 'MOONWALK (backwards)' : 'SIDEWAYS';
+  let sim = ''; try { const r = G.humanAnim(s, G.facing(s)); sim = Array.isArray(r) ? r[0] : r; } catch (e) { /* */ }
+  const row = { name: s.name, job: s.job, mode: s.mode, why: (s.why || '').slice(0, 40), clip: n, sim, v: +v.toFixed(2), foot: +foot.toFixed(2), ts: +ts.toFixed(2), moving: s.moving, flag, fps: Math.round(window.ZH3D.fps || 0), speed: sp, wpn: a.weapon || '' };
+  TRACK.rows.set(s, row);
+  if (flag) { const last = a.trkLast; if (!last || last.flag !== flag || now - last.t > 1500) { a.trkLast = { flag, t: now }; TRACK.log.push({ t: +((now - TRACK.t0) / 1000).toFixed(1), ...row }); if (TRACK.log.length > 400) TRACK.log.shift(); } }
+}
+function trackPanel(on) {   /* 3D.58 the live tracker panel (Settings > Animation tracker) */
+  TRACK.on = !!on; let el = document.getElementById('trkPanel'); if (!on) { if (el) el.remove(); clearInterval(TRACK.iv); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'trkPanel'; el.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top) + 64px);z-index:60;background:rgba(20,16,12,.86);color:#f3ead8;font:11px/1.35 ui-monospace,Menlo,monospace;padding:6px 8px;border-radius:8px;max-width:min(94vw,430px);pointer-events:auto';
+    el.innerHTML = '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><b>Animation tracker</b><span id="trkN" style="opacity:.7"></span><span style="flex:1"></span><button id="trkCopy" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Copy log</button><button id="trkClr" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Clear</button></div><div id="trkRows" style="white-space:pre;overflow-x:auto"></div>'; document.body.appendChild(el);
+    el.querySelector('#trkClr').onclick = () => { TRACK.log.length = 0; };
+    el.querySelector('#trkCopy').onclick = () => { const txt = 'Zombie Haven animation log (' + new Date().toISOString() + ', ' + navigator.userAgent + ')\n' + TRACK.log.map((e) => JSON.stringify(e)).join('\n'); const done = () => { const b = el.querySelector('#trkCopy'); b.textContent = 'Copied ' + TRACK.log.length; setTimeout(() => (b.textContent = 'Copy log'), 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallback()); else fallback();
+      function fallback() { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;inset:10%;z-index:99;font-size:10px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { /* */ } ta.onblur = () => ta.remove(); } };
+    el.querySelector('#trkRows').onclick = (ev) => { const r = ev.target.closest('[data-n]'); if (!r) return; const s = G.S.sv.find((q) => q.name === r.dataset.n); if (s && s.w && window.ZH && ZH.centerOn) ZH.centerOn(s.w.x, s.w.y); };
+  }
+  const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  clearInterval(TRACK.iv); TRACK.iv = setInterval(() => { const rows = el.querySelector('#trkRows'); if (!rows) return; el.querySelector('#trkN').textContent = TRACK.log.length + ' flagged · ' + Math.round(window.ZH3D.fps || 0) + ' fps';
+    rows.innerHTML = G.S.sv.map((s) => { const r = TRACK.rows.get(s); if (!r) return ''; return `<div data-n="${esc(s.name)}" style="cursor:pointer;${r.flag ? 'color:#ff8a7a' : ''}">${esc(s.name.split(' ')[0]).padEnd(7)} ${esc(r.mode).padEnd(10).slice(0, 10)} ${esc(r.clip).padEnd(15).slice(0, 15)} body ${r.v.toFixed(2)} feet ${r.foot.toFixed(2)}${r.flag ? ' ⚠ ' + esc(r.flag) : ''}</div>`; }).join('') || 'Nobody visible'; }, 250);
+}
 const CLIP_SFX = { work_chop: [.55, 'chop'], work_hammer: [.45, 'hammer'] };
 
 
@@ -1466,7 +1504,7 @@ function frame() {
   SWAY.uTime.value = now / 1000;
   placeCamera();
   let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
-  if (dirty) renderer.shadowMap.needsUpdate = true;
+  if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
   light(((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
@@ -1540,7 +1578,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
