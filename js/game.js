@@ -1686,7 +1686,7 @@ function needScore(s, b) {
   if (s.avoid && (s.avoid[b.type] || 0) > tick) return -999;   /* V3D.15: recently looped here: give it a rest */
   if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s) && !((r.need === 'thirst' && s.thirst >= 95) || (r.need === 'hunger' && s.hunger >= 95))) return -999;   /* 3D.63: desperate enough, they risk it (they went to eat while dying of thirst because zombies were near the only barrel) */   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
   if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
-  if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * 1.2 + (isNight() && s.fatigue > 15 ? 45 : 0);   /* V2.36: nights are for sleeping */
+  if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * (isNight() || s.fatigue >= 70 ? 1.2 : .6) + (isNight() && s.fatigue > 15 ? 45 : 0);   /* 3D.63: by day a nap only wins once they're really tired (a third of the town napped through lunch) */   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1);
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
   if (r.need === 'train') {   /* V2.14: free time goes into self-improvement, favouring the stats their job uses */
@@ -2095,6 +2095,7 @@ function chooseLifePurpose(s) {
     s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = `Shift at the ${DEFS[s.post.type].name} (until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00)`; return;
   }
   if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35) - (S.hour >= 22 || S.hour < 5 ? 30 : 0) + (s.id * 7) % 12) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
+    { const nd = s.thirst >= 85 && S.water >= 1 ? 'thirst' : s.hunger >= 85 && S.food >= 1 ? 'hunger' : null, fb = nd && chooseFacility(s, false, nd); if (fb) { s.facility = fb; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${nd === 'thirst' ? 'A drink' : 'A bite'} before bed → ${DEFS[fb.type].name}`; return; } }   /* 3D.63: woke up parched → drink first, then back to bed */
     const bed = bedFor(s);
     if (bed) { s.facility = bed; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `Going to bed at the ${DEFS[bed.type].name}`; return; }
     s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.sleeping = 'rough'; s.stateTicks = Math.min(9500, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000) + wakeOff(s)); s.why = 'Sleeping rough: no free bed (build a Shelter)'; s.idleBubble = '💤'; return;
