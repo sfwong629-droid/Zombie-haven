@@ -79,7 +79,7 @@
     for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
     for (const s of S.sv) if (s.mode !== 'down') s.bandaged = 0;
     // repair burnt buildings
-    for (const b of W.buildings) if (b.burnt && S.mat >= Math.ceil(D[b.type].mat * .25) + 2) Z.repairBurnt(b);
+    for (const b of W.buildings) if (b.burnt) Z.repairBurnt(b);   /* 3D.61: repairBurnt checks the wood / stone / scrap it needs */
     // keep at least 2 fighters: retrain the best unassigned survivor as a Guard
     const FIGHT = ['Guard', 'Police Officer', 'Scavenger', 'SWAT'];
     if (S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }

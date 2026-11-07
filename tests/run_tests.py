@@ -474,7 +474,7 @@ async def t_posts(br, port, t):   # V2.45: guard posts, watches, patrols, zombie
     r = await pg.evaluate("""()=>{const S=ZH.S,[p1,p2]=S.posts,lena=S.sv.find(q=>q.job==='Scavenger');p2.holder=lena.id;p1.holder='auto';ZH.postsAssign();return {p1:S.sv.find(q=>q.id===p1.cur).name,p2:S.sv.find(q=>q.id===p2.cur).name}}""")
     t.ok(r['p2'] == 'Lena' and r['p1'] == 'Marcus', f"a chosen holder takes the post and auto fills the other {r}")
     r = await pg.evaluate("""()=>{const S=ZH.S,p=S.posts[0],h=S.sv.find(q=>q.id===p.cur);S.z.length=0;S.hour=21;p.sched='night';h.hunger=h.thirst=h.fatigue=0;h.hp=h.max;h.mode='free';h.stateTicks=0;h.w={x:p.x+.5+3,y:p.y+.5+1};
-      let held=false;for(let i=0;i<1500&&!held;i++){ZH.simTick();held=!!ZH.atPost(h)}return {held,why:h.why}}""")
+      let held=false;for(let i=0;i<1500&&!held;i++){S.z.length=0;ZH.simTick();held=!!ZH.atPost(h)}   /* 3D.62: no stray zombie pulls the holder into a fight mid-test */return {held,why:h.why}}""")
     t.ok(r['held'], f"at night the holder walks to the post and stands watch {r}")
     r = await pg.evaluate("""()=>{const S=ZH.S,p=S.posts[0],h=S.sv.find(q=>q.id===p.cur);ZH.spawn(p.x+.5+3.2,p.y+.5,'walker');const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=999;
       for(const q of S.sv)if(q!==h)q.w={x:z.w.x+.6,y:z.w.y+.3};let got=false;for(let i=0;i<30&&!got;i++){ZH.simTick();got=z.target===h}return {got,t:z.target&&z.target.name}}""")
@@ -592,7 +592,7 @@ async def t_fire(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'fire')
     for k in ['canteen', 'tent']: await pg.evaluate(PLACE, k)   # 3D.58: the game starts with just the camp
     r = await pg.evaluate("""()=>{ZH.S.z.length=0;ZH.S.water=30;const c=ZH.world.buildings.find(b=>b.type==='canteen');ZH.startFire(c,40);let n=0;while(c.fire>0&&n<20000){ZH.step(30);n+=30}
-      const out=!c.fire&&!c.burnt;const h=ZH.world.buildings.find(b=>b.type==='tent');ZH.burnDown(h);const prod=ZH.prodMult(h);ZH.S.mat=50;const rep=ZH.repairBurnt(h);return {out,n,burnt:h.burnt,prod,rep,safe:ZH.startFire(h,30)}}""")
+      const out=!c.fire&&!c.burnt;const h=ZH.world.buildings.find(b=>b.type==='tent');ZH.burnDown(h);const prod=ZH.prodMult(h);ZH.S.mat=50;ZH.S.wood=50;ZH.S.stone=50;const rep=ZH.repairBurnt(h);return {out,n,burnt:h.burnt,prod,rep,safe:ZH.startFire(h,30)}}""")
     t.ok(r['out'] and r['n'] < 6000, f"survivors put a fire out ({r['n']} ticks)")
     t.ok(r['prod'] == 0, 'a burnt building produces nothing'); t.ok(r['rep'] and not r['burnt'], 'repair works')
     t.ok(r['safe'] is False, 'a freshly repaired building cannot catch fire'); t.ok(not errs, 'no page errors'); await ctx.close()
