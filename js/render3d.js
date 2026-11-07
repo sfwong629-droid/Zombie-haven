@@ -1108,7 +1108,7 @@ function setHair(a, s) {   // 3D.31 add / swap the hairstyle pieces; pieces on t
 }
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
-const ATTACK = new Set(['punch', 'blunt', 'shoot']);
+const ATTACK = new Set(['punch', 'blunt', 'shoot']), STRIKE_RE = /punch|swing|fire|attack|blunt|shoot/;
 const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
@@ -1133,12 +1133,12 @@ function personAnim(a, s, dt) {
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
   if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
-  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning())) anim = 'walk';
+  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name))) anim = 'walk';
   if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
-  const day = everyday(a, s, anim, hold); if (day) { const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim)) {
     const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
     if (!a.attacking || (burst && a.comboSeen !== step)) {
@@ -1147,7 +1147,7 @@ function personAnim(a, s, dt) {
     }
     return;
   }
-  if (a.attacking && a.cur && a.cur.isRunning()) return;    // let the strike finish
+  if (a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name)) return;    // let the strike finish   /* 3D.59 owner's log (Marcus, Ben): only a strike clip holds; a work or carry pose left over after a fight used to freeze them while they chased */
   a.attacking = false;
   if (s._lvT > 24 && !s.carrying && anim !== 'walk' && !(a.spd > .14)) { a.play('cheer'); return; }   /* 3D.30: only cheer standing still (cheering while walking looked like a frozen slide) */   // level-up: a happy jump while the LEVEL UP burst plays
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
@@ -1411,7 +1411,7 @@ function trackPanel(on) {   /* 3D.58 the live tracker panel (Settings > Animatio
   if (!el) { el = document.createElement('div'); el.id = 'trkPanel'; el.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top) + 64px);z-index:60;background:rgba(20,16,12,.86);color:#f3ead8;font:11px/1.35 ui-monospace,Menlo,monospace;padding:6px 8px;border-radius:8px;max-width:min(94vw,430px);pointer-events:auto';
     el.innerHTML = '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><b>Animation tracker</b><span id="trkN" style="opacity:.7"></span><span style="flex:1"></span><button id="trkCopy" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Copy log</button><button id="trkClr" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Clear</button></div><div id="trkRows" style="white-space:pre;overflow-x:auto"></div>'; document.body.appendChild(el);
     el.querySelector('#trkClr').onclick = () => { TRACK.log.length = 0; };
-    el.querySelector('#trkCopy').onclick = () => { const txt = 'Zombie Haven animation log (' + new Date().toISOString() + ', ' + navigator.userAgent + ')\n' + TRACK.log.map((e) => JSON.stringify(e)).join('\n'); const done = () => { const b = el.querySelector('#trkCopy'); b.textContent = 'Copied ' + TRACK.log.length; setTimeout(() => (b.textContent = 'Copy log'), 1500); };
+    el.querySelector('#trkCopy').onclick = () => { const txt = 'Zombie Haven animation log (build ' + ((window.ZH && ZH.BUILD_TAG) || document.title) + ', ' + new Date().toISOString() + ', ' + navigator.userAgent + ')\n' + TRACK.log.map((e) => JSON.stringify(e)).join('\n'); const done = () => { const b = el.querySelector('#trkCopy'); b.textContent = 'Copied ' + TRACK.log.length; setTimeout(() => (b.textContent = 'Copy log'), 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallback()); else fallback();
       function fallback() { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;inset:10%;z-index:99;font-size:10px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { /* */ } ta.onblur = () => ta.remove(); } };
     el.querySelector('#trkRows').onclick = (ev) => { const r = ev.target.closest('[data-n]'); if (!r) return; const s = G.S.sv.find((q) => q.name === r.dataset.n); if (s && s.w && window.ZH && ZH.centerOn) ZH.centerOn(s.w.x, s.w.y); };
