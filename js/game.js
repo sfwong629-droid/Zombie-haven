@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.69', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.70', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2414,13 +2414,19 @@ function bossWatch() {
   const killed = (S.bossKills || 0) > S.bossOn; S.bossOn = null;
   if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, the horde scatters into the dark. The rest of the night is quiet.' }); }
 }
+const NIGHT_WAVES = [1, .25, .25];   /* 3D.70: share of the night's horde in each wave (1.5x the night cap in all) */
+const nightWave = () => (S.hour >= 23 || (S.hour >= 2 && S.hour < 6) ? (S.hour >= 23 ? 1 : 2) : S.hour >= 20 ? 0 : 1);   /* dusk 20:00, 23:00, 02:00 */
 function monsterGeneration() {
   bossWatch();
-  const night = isNight(); if (night !== S.wasNight) { S.wasNight = night; S.nightSpawned = 0; }
+  const night = isNight(); if (night !== S.wasNight) { S.wasNight = night; S.nightSpawned = 0; S.waveN = 0; S.nightCap = 0; }
   if (night && (S.bossOn != null || nowD() < (S.calmUntil || 0))) return;   /* 3D.68: no fresh zombies while the boss lives, nor after it falls */
   const SP = window.ZH_SPAWN || {};   /* study knobs (tools/balance/respawn_study.py); the game itself never sets these */
-  if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* a fixed pool per night: kills clear the night */
-  if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* refill only at the top of every Nth hour */
+  if (night && !SP.old && S.nightCap) {   /* 3D.70: a fixed horde per night, in three waves: the full horde at dusk, then two smaller pushes. Kill them all and the night goes quiet. Days are unchanged. */
+    const w = nightWave(), allow = Math.round(S.nightCap * NIGHT_WAVES.slice(0, w + 1).reduce((a, b) => a + b, 0));
+    if (w !== S.waveN) { S.waveN = w; if (w > 0 && S.nightSpawned >= Math.round(S.nightCap * NIGHT_WAVES[0])) { note('important', `🧟 WAVE ${w + 1} OF ${NIGHT_WAVES.length}`, { log: 'More of them are coming out of the dark.' }); SFX('alarm'); } }
+    if ((S.nightSpawned || 0) >= allow) { S.spawnClock++; return; } }
+  if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* study: a fixed pool per night */
+  if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, base = 5 + S.rank + Math.floor(S.threat / 2) + 2 * tr + Math.floor(S.day / 3);
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + S.day) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr, 2 + S.day))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */

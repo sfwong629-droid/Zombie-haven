@@ -2,23 +2,27 @@
 Runs the auto-player for N days per seed under one spawn rule and records, per night: zombies spawned, kills,
 how much of the night the horde sat at full strength, downs and deaths.
     python3 tools/balance/respawn_study.py DAYS SEEDS VARIANT
-VARIANT: base | gapX (refill gap times X, e.g. gap4) | budgetX (a fixed pool of X times the night cap per night) | waveX (refill only every X hours)"""
+VARIANT: base (3D.70 waves) | old (endless refill) | gapX (refill gap times X, e.g. gap4) | budgetX (a fixed pool of X times the night cap per night) | waveX (refill only every X hours)"""
 import asyncio, sys, os, json, re, statistics as st
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests'))
 import run_tests as R
 from playwright.async_api import async_playwright
 AP = open(os.path.join(R.ROOT, 'tools', 'balance', 'ap.js')).read()
-PROBE = """(days)=>{const S=ZH.S,out={nights:[]};let d0=0,x0=0,k0=0,s0=0;
+PROBE = """(days)=>{const S=ZH.S,out={nights:[]};let d0=0,x0=0,k0=0,s0=0,dd0=null,dx0=0;
   const kills=()=>Object.values(S.killsBy||{}).reduce((a,b)=>a+b,0)||S.kills||0;
   for(let d=0;d<days;d++){const n={day:S.day,full:0,ticks:0,boss:false};
     for(let h=0;h<24;h++){if(S.hour===20){d0=AP.downs.length;x0=(S.fallen||[]).length;k0=S.kills||0;s0=S.spawnTot||0;}
       for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick();
         if(S.hour>=20||S.hour<6){const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length;n.ticks++;if(act>=(S.nightCap||99)*.85)n.full++;if(S.z.some(z=>z.type==='boss'&&z.hp>0))n.boss=true;}}
       AP.hour();
-      if(S.hour===6){n.spawned=(S.spawnTot||0)-s0;n.kills=(S.kills||0)-k0;n.downs=AP.downs.length-d0;n.deaths=(S.fallen||[]).length-x0;n.cap=S.nightCap;n.alive=S.sv.length;}}
+      const zl=()=>S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave');
+      if(S.hour===6){n.spawned=(S.spawnTot||0)-s0;n.kills=(S.kills||0)-k0;n.downs=AP.downs.length-d0;n.deaths=(S.fallen||[]).length-x0;n.cap=S.nightCap;n.alive=S.sv.length;n.z6=zl().length;dd0=AP.downs.length;dx0=(S.fallen||[]).length;}
+      if(S.hour===9&&dd0!=null)n.z9=zl().length;
+      if(S.hour===19&&dd0!=null){n.dayDowns=AP.downs.length-dd0;n.dayDeaths=(S.fallen||[]).length-dx0;n.dayBy=AP.downs.slice(dd0).map(x=>x.by+'@'+x.h+':'+(x.was||'').split(' ')[0]);}}
     n.fullPct=Math.round(100*n.full/Math.max(1,n.ticks));out.nights.push(n);}
-  out.fallen=(S.fallen||[]).length;out.alive=S.sv.length;return out}"""
+  out.fallen=(S.fallen||[]).length;out.alive=S.sv.length;out.lv=S.sv.map(q=>q.l);out.kills=S.kills;out.allDowns=AP.downs.map(x=>({d:x.d,h:x.h,by:x.by,was:x.was,who:x.who}));out.died=(S.fallen||[]).map(f=>({d:f.day,who:f.job+" L"+f.l,how:f.cause}));return out}"""
 def knobs(v):
+    if v == 'old': return {'old': 1}   # the pre-3D.70 rule: kills refilled all night
     m = re.match(r'(gap|budget|wave)([\d.]+)', v)
     return {m.group(1): float(m.group(2))} if m else {}
 async def one(br, port, seed, days, v):

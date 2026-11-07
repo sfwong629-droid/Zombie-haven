@@ -744,6 +744,15 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
       b.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(2);out.flee=mob.filter(z=>z.hp>0).every(z=>z.mode==='zleave');const act=()=>S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length;const n1=act();ZH.step(600);out.calm=act()<=n1;out.n=[n1,act()];return out}""")
     t.ok(r['mob'] > 0 and r['noRefill'], f"no fresh zombies join while the boss lives {r}")
     t.ok(r['flee'] and r['calm'], f"killing the boss breaks its horde and the rest of the night is quiet {r}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.bossOn=null;S.calmUntil=0;S.nextBoss=99;S.nextRaid=99;S.day=8;S.hour=19;ZH.step(1100);
+      const kill=()=>{for(const z of S.z)if(!z.human&&z.hp>0&&z.type!=='boss'){z.hp=0;}};const cap=()=>S.nightCap;
+      ZH.step(300);kill();ZH.step(900);out.w1=S.nightSpawned;out.cap=cap();kill();ZH.step(500);out.afterKill=S.nightSpawned;   /* 21:30ish: wave 1 spent, no refill */
+      while(S.hour!==23)ZH.step(100);ZH.step(1500);out.w2=S.nightSpawned;kill();
+      while(S.hour!==3)ZH.step(100);ZH.step(500);out.w3=S.nightSpawned;kill();ZH.step(1500);out.end=S.nightSpawned;out.cap2=cap();
+      while(S.hour!==9)ZH.step(200);ZH.step(2000);out.day=S.z.filter(z=>!z.human&&z.hp>0).length;return out}""")
+    t.ok(r['cap'] and r['w1'] == r['afterKill'] and r['w1'] <= r['cap'], f"wave 1 is the night's horde; killing it doesn't bring more until the next wave {r}")
+    t.ok(r['w2'] > r['w1'] and r['w3'] > r['w2'] and r['end'] == r['w3'] and r['end'] <= round(max(r['cap'], r['cap2']) * 1.5) + 1, f"two smaller waves follow, then the night is done (1.5x the cap in all) {r}")
+    t.ok(r['day'] > 0, f"zombies still come by day {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
