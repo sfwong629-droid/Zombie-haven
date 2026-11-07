@@ -228,7 +228,7 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
       S.z.length=0;const v=S.sv.find(q=>q.job!=='Guard');v.hp=0;ZH.simTick();ZH.spawn(v.w.x+.5,v.w.y,'walker');const zz=S.z[S.z.length-1];zz.mode='idle';zz.stateTicks=99999;
       for(const q of S.sv)if(q!==v&&q.job!=='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.stateTicks=9999}
       const civ=S.sv.filter(q=>q!==v&&!['Guard','Police Officer','SWAT','Scavenger'].includes(q.job));out.civRescue=false;ZH.assignRescue();out.civRescue=!!(v.rescuer&&civ.includes(v.rescuer));
-      if(!S.sv.some(q=>q!==v&&q.job==='Guard'))S.sv.push(ZH.mk('Gus','Guard',3,v.w.x+1,v.w.y,S.sv.length));for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max;q.rescuing=null;q.carrying=null}v.rescuer=null;
+      if(!S.sv.some(q=>q!==v&&q.job==='Guard'))S.sv.push(ZH.mk('Gus','Guard',3,v.w.x+1,v.w.y,S.sv.length));for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max;q.fleeT=0;q.rescuing=null;q.carrying=null}v.rescuer=null;
       out.rally=ZH.rally();return out}""")
     t.ok(r['bosses'] >= 2 and r['after'] == 0, f"every boss leaves at dawn ({r['bosses']} -> {r['after']})")
     t.ok(not r['civRescue'], 'a non-fighter does not walk up to a body with a zombie on it')

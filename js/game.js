@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.65', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.66', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1758,7 +1758,7 @@ function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; the
     if (d > rng && !(onPerson && d <= rng + 3)) continue;
     if (s.hp < s.max * (hasT(s, 'brave') ? .5 : hasT(s, 'cautious') ? .75 : .6) && !onPerson) continue;   /* hurt fighters only step in to defend someone (V2.43: Brave sooner, Cautious later) */
     const allies = S.sv.filter((q) => q !== s && q.target === z && ['chase', 'attack', 'recover'].includes(q.mode)).length;
-    const sc = d - (onPerson ? 3 : 0) - Math.min(2, allies) * 1.2 + z.hp / 60 - (z.hp < z.max * .3 ? 1.2 : 0);   /* V3D.14: finish off the nearly dead */
+    const sc = d - (onPerson ? 3 : 0) - (allies === 1 ? 1.2 : 0) + (allies >= 2 ? 2.5 * (allies - 1) : 0) + z.hp / 60 - (z.hp < z.max * .3 ? 1.2 : 0);   /* V3D.14: finish off the nearly dead; 3D.66 study: pairing up helps, but a third and fourth on the same zombie count against it (pile-ons while another zombie went free) */
     if (sc < bs) { bs = sc; best = z; }
   }
   if (!best) return false; s.target = best; s.mode = 'chase'; s.stateTicks = 9999; s.path = null; s.facility = null; s.activity = null;
@@ -2166,6 +2166,7 @@ function ai(s) {
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) s.ammo = weaponOf(s).mag;   /* reloads finish out of combat too */
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
   if (s.fleeT > 0) s.fleeT--;
+  if (s.sleeping && !(s.mode === 'useFacility' || (s.mode === 'wait' && s.sleeping === 'rough'))) s.sleeping = false;   /* 3D.66 overnight soak: someone woken by a fight, an SOS or a rescue kept the 'asleep' flag (shown asleep at midday, tired never rose) */
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
   if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
@@ -2194,7 +2195,7 @@ function ai(s) {
     s.moving = false; const b = s.hideAt; if (!b || !world.buildings.includes(b)) { s.hideAt = null; enterFree(s, 30); return; }
     if (tick % 90 === (s.i * 13) % 90) {   /* V2.18: sheltering indoors they eat, drink and rest from the town stores, and call for the guards */
       if (S.water >= .05) { S.water -= .005; s.thirst = Math.max(0, s.thirst - .7); } if (S.food >= .05) { S.food -= .005; s.hunger = Math.max(0, s.hunger - .6); } s.fatigue = Math.max(0, s.fatigue - 1.5); if (s.hp < s.max) s.hp = Math.min(s.max, s.hp + 1); S.alert = Math.max(S.alert, 200); }   /* V2.37: sheltering also patches you up slowly */
-    if (s.stateTicks <= 0) { const dn = isFighter(s) && canFight(s) && S.sv.some((q) => q.mode === 'down' && !q.rescuer);   /* 3D.64 balance study: 'hiding' was the commonest state just before going down: non-fighters came out early to help someone who was down and were caught 3 tiles from the door; now only fit fighters come out early */ if (zombieNear(Wd.doorPoint(b), dn ? 3.2 : 6.5) || (dn && S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zrecover'].includes(z.mode) && dist(z.w, Wd.doorPoint(b)) < 7))) s.stateTicks = 120;   /* 3D.48: someone is down: come out as soon as nothing is right outside or hunting */ else { s.hideAt = null; s.wary = tick + 900; enterFree(s, 30); s.why = 'Coming out — area clear'; } } return;
+    if (s.stateTicks <= 0) { const dn = isFighter(s) && canFight(s) && S.sv.some((q) => q.mode === 'down' && !q.rescuer);   /* 3D.64 balance study: 'hiding' was the commonest state just before going down: non-fighters came out early to help someone who was down and were caught 3 tiles from the door; now only fit fighters come out early */ if (zombieNear(Wd.doorPoint(b), lastStand() ? 8 : dn ? 3.2 : 6.5) ||   /* 3D.66: in a last stand they stay in until nothing is within 8 tiles (they popped out, saw a zombie further off, and ran back in) */ (dn && S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zrecover'].includes(z.mode) && dist(z.w, Wd.doorPoint(b)) < 7))) s.stateTicks = 120;   /* 3D.48: someone is down: come out as soon as nothing is right outside or hunting */ else { s.hideAt = null; s.wary = tick + 900; enterFree(s, 30); s.why = 'Coming out — area clear'; } } return;
   }   // being attacked beats lunch
   if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { const cb = s.careAt; s.hp = Math.round(s.max * (isCamp(cb) || !cb ? .55 : cb.type === 'hospital' ? 1 : cb.type === 'clinic' ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
