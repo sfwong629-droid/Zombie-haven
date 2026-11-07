@@ -1133,7 +1133,7 @@ function personAnim(a, s, dt) {
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
   if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
-  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name))) anim = 'walk';
+  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name) && performance.now() - (a.atkT || 0) < 600)) anim = 'walk';
   if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
@@ -1143,11 +1143,11 @@ function personAnim(a, s, dt) {
     const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
     if (!a.attacking || (burst && a.comboSeen !== step)) {
       const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', a.acts.melee_swing_d ? 'melee_swing_d' : 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a');
-      a.play(clip, true, true); a.attacking = true; a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
+      a.play(clip, true, true); a.attacking = true; a.atkT = performance.now(); a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
     }
     return;
   }
-  if (a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name)) return;    // let the strike finish   /* 3D.59 owner's log (Marcus, Ben): only a strike clip holds; a work or carry pose left over after a fight used to freeze them while they chased */
+  if (a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name) && performance.now() - (a.atkT || 0) < (a.isMov() ? 600 : 1500)) return;    // let the strike finish (3D.64 owner's log, Noah: a punch held for 8 s while he walked off; a strike now holds at most 1.5 s, 0.6 s once they move)   /* 3D.59 owner's log (Marcus, Ben): only a strike clip holds; a work or carry pose left over after a fight used to freeze them while they chased */
   a.attacking = false;
   if (s._lvT > 24 && !s.carrying && anim !== 'walk' && !(a.spd > .14)) { a.play('cheer'); return; }   /* 3D.30: only cheer standing still (cheering while walking looked like a frozen slide) */   // level-up: a happy jump while the LEVEL UP burst plays
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed

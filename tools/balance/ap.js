@@ -44,6 +44,7 @@
   }
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
   AP.tick = function () {
+    if (Z.radioHelp && Z.helpReady && AP.radio !== false && S.sv.filter((q) => q.mode === 'down').length >= 2 && Z.helpReady()) { Z.radioHelp(); AP.events.push('radio@d' + S.day); }   /* 3D.64: a player radios for help when two are down */
     for (const s of S.sv) { const prev = last.get(s);
       if (s.mode === 'down' && prev && prev.mode !== 'down') { let zt = null, zd = 9; for (const z of S.z) if (z.hp > 0) { const d = Math.hypot(z.w.x - s.w.x, z.w.y - s.w.y); if (d < zd) { zd = d; zt = z.type + (z.human ? '' : '') ; } }
         const B = Wd.BUILD; AP.downs.push({ d: S.day, h: S.hour, who: s.job + ' L' + s.l, was: prev.mode + (prev.purpose ? '/' + prev.purpose : '') + (prev.why ? ' (' + prev.why + ')' : ''), inTown: s.w.x >= B.x0 && s.w.x <= B.x1 + 1 && s.w.y >= B.y0 && s.w.y <= B.y1 + 1, by: zt, broken: [...W.walls.values()].filter((w) => w.broken).length, walls: W.walls.size }); }
