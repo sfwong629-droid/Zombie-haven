@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.62', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.63', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1218,14 +1218,14 @@ function answerSOS() {
   const hits = S.z.filter((z) => z.hp > 0 && (z.mode === 'zbash' || z.mode === 'rsmash')); if (!hits.length) return;
   for (const z of hits) {
     const on = S.sv.filter((q) => q.target === z && ['chase', 'attack', 'recover'].includes(q.mode)).length; if (on >= 3) continue;   /* 3D.41: up to three fighters per attacker */
-    const c = S.sv.filter((q) => isFighter(q) && !q.errand && q.hp > q.max * .5 && !q.carrying && !q.rescuing && (['free', 'wait', 'walk', 'postCombat', 'pitch', 'chat', 'campfire', 'goFacility'].includes(q.mode) || ['useFacility', 'hiding'].includes(q.mode) || q.sleeping || (q.mode === 'work' && isNight())) && dist(q.w, z.w) < 20)   /* 3D.41 owner: a building under attack wakes the fighters, however tired */
+    const c = S.sv.filter((q) => isFighter(q) && !q.errand && canFight(q) && !q.carrying && !q.rescuing && (['free', 'wait', 'walk', 'postCombat', 'pitch', 'chat', 'campfire', 'goFacility'].includes(q.mode) || ['useFacility', 'hiding'].includes(q.mode) || q.sleeping || (q.mode === 'work' && isNight())) && dist(q.w, z.w) < 20)   /* 3D.41 owner: a building under attack wakes the fighters, however tired */
       .sort((a, b) => dist(a.w, z.w) - dist(b.w, z.w)).slice(0, 3 - on);
     for (const q of c) { if (insideBuilding(q)) { const bb = insideBuilding(q); q.facility = null; q.hideAt = null; q.w = { ...Wd.approachPoint(bb) }; } if (q.mode === 'chat') endChat(q); if (q.mode === 'pitch') endPitch(q); if (q.sleeping) { q.sleeping = false; bark(q, 'wake', {}, { pri: 2 }); } q.fleeT = 0; engage(q, z); q.why = `Answering the SOS at the ${DEFS[(z.bldT || z.goalB || {}).type]?.name || 'building'}`; emote(q, '😤', 60); }
   }
 }
 function engineerRepairs() {   /* idle Engineers patch damaged buildings: 1 wood, stone or scrap per 12 HP (3D.61: the building's own materials) */
   const dmg = world.buildings.filter((b) => !b.burnt && bHp(b) < b.max && tick - (b.lastHit || -9999) > 600 && (S[repStep(b)] || 0) >= 1); if (!dmg.length) return;
-  for (const q of S.sv) { if (q.job !== 'Engineer' || !['free', 'wait', 'walk'].includes(q.mode) || insideBuilding(q) || threatOf(q)) continue; const b = dmg.sort((a, c) => dist(q.w, Wd.approachPoint(a)) - dist(q.w, Wd.approachPoint(c)))[0]; q.mode = 'fix'; q.fixB = b; q.path = null; q.why = 'Repairing the ' + DEFS[b.type].name; return; }
+  for (const q of S.sv) { if (q.job !== 'Engineer' || !['free', 'wait', 'walk'].includes(q.mode) || q.sleeping || q.purpose || q.carriedLoot || isNight() || insideBuilding(q) || threatOf(q)) continue;   /* 3D.63: not out of bed, not mid-delivery */ const b = dmg.sort((a, c) => dist(q.w, Wd.approachPoint(a)) - dist(q.w, Wd.approachPoint(c)))[0]; q.mode = 'fix'; q.fixB = b; q.path = null; q.why = 'Repairing the ' + DEFS[b.type].name; return; }
 }
 function fixTick(s) {
   const b = s.fixB; if (!b || !world.buildings.includes(b) || b.burnt || bHp(b) >= b.max || threatOf(s)) { s.fixB = null; s.activity = null; enterFree(s, 30); return; }
@@ -1395,7 +1395,7 @@ function restoreAlerts() {   // alerts are not saved: re-raise the ones whose em
 function drawAlertMarks() {   // pulsing ring on the spot, red rings on nearby threats, an arrow at the screen edge when the spot is off screen
   const t = performance.now() / 1000;
   for (const a of alerts.values()) {
-    if (a.dismissed) continue; const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 2.5);   /* V2.35: slow, soft pulse */
+    if (a.dismissed || performance.now() - (a.seen || 0) > 12000) continue;   /* 3D.63 owner: 25 alerts left 25 orange rings on the map that said nothing; a ring now shows for 12 s when the alert is new or when you tap it */ const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 2.5);   /* V2.35: slow, soft pulse */
     if (a.threats) for (const z of S.z) if (z.hp > 0 && dist(z.w, w) < 5) { const q = project(z.w.x, z.w.y); ctx.save(); ctx.strokeStyle = 'rgba(255,70,60,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(q.x, q.y, .22 * tw, .11 * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); }
     const on = p.x > 20 && p.x < VW - 20 && p.y > 20 && p.y < VH - 20;
     if (on) { ctx.save(); ctx.strokeStyle = `rgba(255,120,70,${.6 + .25 * pulse})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(p.x, p.y, (.4 + .06 * pulse) * tw, (.2 + .03 * pulse) * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); continue; }
@@ -1493,7 +1493,7 @@ const freeFirst = (pool = FIRST_NAMES) => { const f = pool.filter((n) => !S.sv.s
 const pickLast = () => { const f = LAST_NAMES.filter((n) => !S.sv.some((q) => q.last === n)); const L = f.length ? f : LAST_NAMES; return L[Math.floor(rnd() * L.length)]; };
 const fullName = (s) => (s ? s.name + (s.last ? ' ' + s.last : '') : '');
 function mk0(name, job, l, x, y, i) {
-  return { id: ++S.seq, name, last: pickLast(), job, l, mastery: 0, w: tc(x, y), hp: 58 + l * 8, max: 58 + l * 8, post: null, mode: 'free', target: null, cool: 20 + i * 23, stateTicks: 30 + i * 11, sat: 8 + i * 3, resident: false, i, phase: i * 37, dest: null, moving: false, hunger: 15 + i * 8, thirst: 10 + i * 6, fatigue: 8 + i * 5, activity: null, facility: null, rescuer: null, rescuing: null, carrying: null, lastFacility: null, why: 'Settling in', purpose: null, idleBubble: '' };
+  return { id: ++S.seq, name, last: pickLast(), job, l, mastery: 0, w: tc(x, y), hp: 58 + l * 8, max: 58 + l * 8, post: null, mode: 'free', target: null, cool: 20 + (i % 8) * 23, stateTicks: 30 + (i % 8) * 11, sat: 8 + (i % 6) * 3, resident: false, i, phase: i * 37, dest: null, moving: false, hunger: 15 + (i % 5) * 8, thirst: 10 + (i % 5) * 6, fatigue: 8 + (i % 5) * 5,   /* 3D.63: the 12th+ recruit arrived already starving (needs grew with the roster index) */ activity: null, facility: null, rescuer: null, rescuing: null, carrying: null, lastFacility: null, why: 'Settling in', purpose: null, idleBubble: '' };
 }
 const medSite = () => bOf('hospital')[0] || bOf('clinic')[0] || bOf('medic')[0] || null;
 /* 3D.46 owner: with no room in a medical building (or none at all), the wounded go to the Camp. The Camp can look after only a
@@ -1676,30 +1676,33 @@ function hammerTick(s) {
 }
 const hqB = () => world.buildings.find((b) => DEFS[b.type] && DEFS[b.type].role === 'hq') || null;
 const hqTier = () => { const b = hqB(); return b ? DEFS[b.type].tier : 1; };
-function settlePause(s, min = 150, max = 330) { s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.stateTicks = min + rnd() * (max - min); s.idleBubble = ['💭', '👀', '🙂', '💬'][Math.floor(rnd() * 4)]; if (!s.why.startsWith('Idle')) s.why = 'Idle · taking a breather'; }
+function settlePause(s, min = 150, max = 330) { if (s.purpose && s.purpose.startsWith('gath')) { s.gatherAt = null; } s.purpose = null; s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.stateTicks = min + rnd() * (max - min); s.idleBubble = ['💭', '👀', '🙂', '💬'][Math.floor(rnd() * 4)]; if (!s.why.startsWith('Idle')) s.why = 'Idle · taking a breather'; }
+const wakeOff = (s) => ((s.id * 263) % 1500) - 500 + (hasT(s, 'owl') ? 900 : 0);   /* 3D.63 study: the whole town woke at exactly 6:00; now 5:30–7:00 per person (owls later) */
 function enterFree(s, d = 110) { s.sleeping = false; s.mode = 'free'; s.target = null; s.activity = null; s.stateTicks = d; s.dest = null; s.path = null; s.moving = false; s.purpose = null; }
-function enterPost(s) { { const w = weaponOf(s); if (w.mag && (s.ammo == null ? w.mag : s.ammo) <= w.mag / 2 && !(s.reloadT > 0)) s.reloadT = Math.round(w.reload * 60);   /* lull: reload a half-empty gun (keeps the rounds left until it's done) */ } s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + s.i * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
+function enterPost(s) { { const w = weaponOf(s); if (w.mag && (s.ammo == null ? w.mag : s.ammo) <= w.mag / 2 && !(s.reloadT > 0)) s.reloadT = Math.round(w.reload * 60);   /* lull: reload a half-empty gun (keeps the rounds left until it's done) */ } s.mode = 'postCombat'; s.target = null; s.stateTicks = 135 + (s.i % 8) * 24; s.moving = false; s.path = null; s.why = 'Catching breath after a fight'; }
 function needScore(s, b) {
   const r = facilityRules[b.type]; if (!r || b.fire || b.burnt) return -999; if (isT(b, 'house') && b.owner && b.owner !== s.id) return -999; let sc = 0;
   if ((r.need === 'hunger' && S.food < .5) || (r.need === 'thirst' && S.water < .5)) return -999;   /* V3D.15: no trips to an empty canteen or water point */
   if (s.avoid && (s.avoid[b.type] || 0) > tick) return -999;   /* V3D.15: recently looped here: give it a rest */
-  if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s)) return -999;   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
+  if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s) && !((r.need === 'thirst' && s.thirst >= 95) || (r.need === 'hunger' && s.hunger >= 95))) return -999;   /* 3D.63: desperate enough, they risk it (they went to eat while dying of thirst because zombies were near the only barrel) */   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
   if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * 1.2 + (isNight() && s.fatigue > 15 ? 45 : 0);   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1);
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
   if (r.need === 'train') {   /* V2.14: free time goes into self-improvement, favouring the stats their job uses */
     const base = (s.st && s.st[r.stat]) || 5; if (base >= STAT_CAP) return -999;
-    sc += 22 + (STAT_CAP - base) * .9 + ((JOB_STATS[s.job] || []).includes(r.stat) ? 12 : 0) - Math.max(s.hunger, s.thirst, s.fatigue) * .35 - (isNight() ? 20 : 0);
+    sc += 22 + (STAT_CAP - base) * .9 + ((JOB_STATS[s.job] || []).includes(r.stat) ? 12 : 0) - Math.max(s.hunger, s.thirst, s.fatigue) * .35 - (isNight() ? 20 : 0) - (s.trainDay === S.day ? (s.trainN || 0) * 16 : 0);   /* 3D.63: a couple of sessions a day, not all free time */
   }
   if ((r.need === 'hunger' && S.food < 1) || (r.need === 'thirst' && S.water < 1)) sc -= 90;
   sc += b.a * .35 + b.q * .45; if (s.lastFacility === b) sc -= 30;
   sc -= dist(s.w, Wd.doorPoint(b)) * 1.2;       // nearer is better
   return sc;
 }
-function chooseFacility(s, urgentOnly = false) {
-  let bed; const c = world.buildings.filter((b) => facilityRules[b.type] && facilityUsers(b) < cap(b) && (!urgentOnly || URGENT_NEEDS.includes(facilityRules[b.type].need)) && (facilityRules[b.type].need !== 'fatigue' || b === (bed === undefined ? (bed = bedFor(s)) : bed))); if (!c.length) return null;   /* 3D.30: rest only in your own housing (or the Camp) */
-  c.sort((a, b) => needScore(s, b) - needScore(s, a)); return needScore(s, c[0]) > 24 ? c[0] : null;
+const useCap = (b) => { const n = facilityRules[b.type] && facilityRules[b.type].need; return n === 'hunger' || n === 'thirst' ? Math.max(3, cap(b)) : cap(b); };   /* 3D.63 study: a Rain Barrel or Garden Plot let one person at a time eat or drink, so with 8+ people half the town queued thirsty all day */
+const URGENT_FOR = { Hungry: 'hunger', Thirsty: 'thirst', Exhausted: 'fatigue', Hurt: 'injury' };   /* 3D.63 study: a thirsty worker's 'quick break' picked whichever facility scored best (often a Tent to nap in), so the thirst was never fixed */
+function chooseFacility(s, urgentOnly = false, need = null) {
+  let bed; const c = world.buildings.filter((b) => facilityRules[b.type] && facilityUsers(b) < useCap(b) && (!urgentOnly || URGENT_NEEDS.includes(facilityRules[b.type].need)) && (!need || facilityRules[b.type].need === need) && (facilityRules[b.type].need !== 'fatigue' || b === (bed === undefined ? (bed = bedFor(s)) : bed))); if (!c.length) return null;   /* 3D.30: rest only in your own housing (or the Camp) */
+  c.sort((a, b) => needScore(s, b) - needScore(s, a)); return need || needScore(s, c[0]) > 24 ? c[0] : null;
 }
 /* V2.36 task commitment: staffed survivors keep a shift (7-12, 13-18) and only leave it for something urgent; free time is lunch, evening and night */
 /* V2.37 town policies: a settlement-wide priority that shifts the AI's weights (it never gives orders to individuals) */
@@ -1710,6 +1713,7 @@ const POLICIES = {
   recover: { name: 'Recover & Heal', icon: '✚', desc: 'Fighters fall back 15% sooner, the hurt go for treatment earlier, the second shift ends at 16:00 so people rest more.' },
 };
 const policy = () => POLICIES[S.policy] ? S.policy : 'balanced';
+const canFight = (q) => q.hp > q.max * Math.max(.5, (retreatPct() + traitRetreat(q)) / 100 + .05) && !(q.fleeT > 0);   /* 3D.63 study: every call to arms uses the same bar as falling back (SOS at 50% vs a 60-90% retreat pulled hurt fighters back and forth) */
 const retreatPct = () => (S.retreat ?? 35) + (policy() === 'recover' ? 15 : policy() === 'defend' ? -5 : 0);
 function setPolicy(k) { if (!POLICIES[k]) return; S.policy = k; note('important', `${POLICIES[k].icon} POLICY: ${POLICIES[k].name.toUpperCase()}`, { log: `Town policy set to ${POLICIES[k].name}: ${POLICIES[k].desc}` }); saveGame(); }
 const URGENT_NEEDS = ['hunger', 'thirst', 'fatigue', 'injury'];
@@ -1740,7 +1744,7 @@ function engage(s, z) {
   if (z && z.zoo) return;   /* 3D.32 test page: the line-up is only for looking */ s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = z; s.mode = 'chase'; s.stateTicks = 9999; s.moving = false; s.why = `Fighting a ${zombieTypes[z.type].name}`; }
 function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (z.hp > 0 && !z.zoo) { const d = dist(s.w, z.w); if (d < bd) { bd = d; best = z; } } return best; }
 function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; they defend others first and gang up on the same zombie
-  if (s.fleeT > 0 || !isFighter(s)) return false;
+  if (s.fleeT > 0 || !isFighter(s) || (s.carriedLoot && s.carryAmt) || s.hp < s.max * (retreatPct() + traitRetreat(s)) / 100) return false;   /* 3D.63: below their retreat bar they don't step in (they'd turn and flee the next tick); carriers deliver first */
   const cfg = jobAI[s.job] || jobAI.Civilian, rng = (S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro) * (policy() === 'defend' ? 1.4 : policy() === 'produce' ? .8 : 1) * traitRange(s) * (atPost(s) ? 1.25 : 1);
   let best = null, bs = 1e9;
   for (const z of S.z) {
@@ -1776,7 +1780,7 @@ function spreadOut() {   /* V3D.17: two people never stand in the same spot; a s
 const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && dist(z.w, p) < r);
 function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: fighters chase them; others go in pairs on the nearest one */
   const raiders = S.z.filter((z) => z.human && z.hp > 0 && !z.escaped && z.mode !== 'appear' && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (!raiders.length) return false;
-  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .35 : .5) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire'].includes(q.mode));
+  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .35 : .5) && !(q.fleeT > 0) && !(isFighter(q) && !canFight(q)) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire'].includes(q.mode));
   let n = 0;
   for (const q of able) {
     const t = raiders.slice().sort((a, b) => (a.mode === 'rsmash' ? -9 : 0) - (b.mode === 'rsmash' ? -9 : 0) || dist(a.w, q.w) - dist(b.w, q.w))[0];   /* arsonists first */
@@ -1799,7 +1803,7 @@ function militia() {   /* V2.37: no able fighter left and zombies inside the tow
 function rally() {   /* V2.37: someone is down and nobody is fighting → fighters with at least half their health come out together and clear the zombies around the downed */
   const downs = S.sv.filter((q) => q.mode === 'down'); if (!downs.length || S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
   const near = S.z.filter((z) => z.hp > 0 && downs.some((q) => dist(z.w, q.w) < 3)); if (!near.length) return false;
-  const able = S.sv.filter((q) => isFighter(q) && q.hp >= q.max * .5 && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode));
+  const able = S.sv.filter((q) => isFighter(q) && canFight(q) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode));
   if (able.length < Math.min(2, near.length)) return false;
   able.sort((a, b) => b.hp - a.hp).slice(0, Math.max(2, near.length)).forEach((q, i) => { q.fleeT = 0; q.hideAt = null; engage(q, near[i % near.length]); q.why = `Rallying to cover ${downs[0].name}`; });
   note('important', `⚔ RALLY: FIGHTERS MOVE TO COVER ${downs[0].name.toUpperCase()}`); return true;
@@ -1809,7 +1813,7 @@ function assignRescue() {   /* V2.37: anyone not already in an emergency can be 
   const downs = downedUnassigned(); if (!downs.length) return false;
   const OK = ['free', 'postCombat', 'wait', 'work', 'goWork', 'goFacility', 'useFacility', 'walk'];
   const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && (OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
-    || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < 2.2)))); if (!free.length) return false;
+    || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, weaponRange(weaponOf(r)) + 1))))); if (!free.length) return false;   /* 3D.63: a shooter mid-fight isn't 'free' just because no zombie is at arm's length */
   let best = null, bs = -1e9;
   for (const q of downs) { const crowd = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5).length, urgency = 3000 / Math.max(300, q.bleed || 1);
     for (const r of free) { if (crowd >= (hasT(r, 'caring') ? 3 : 2) && !isFighter(r)) continue; if (crowd && lastStand()) continue;   /* 3D.48 */   /* non-fighters don't walk into a crowd (Caring: up to two zombies) */ const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 + (hasT(r, 'caring') ? 8 : 0) - dist(r.w, q.w) + urgency - (r.mode === 'useFacility' ? 4 : 0) - (['chase', 'attack', 'recover'].includes(r.mode) ? 3 : 0); if (sc > bs) { bs = sc; best = { r, q }; } } }
@@ -1869,7 +1873,7 @@ function showPost(p) {
   selected = { kind: 'post', ref: p }; showPanel('Guard Post');
 }
 function patrolDest() { if ((S.posts || []).length) { const p = S.posts[Math.floor(rnd() * S.posts.length)], a = rnd() * 6.283; return { x: p.x + .5 + Math.cos(a) * .9, y: p.y + .5 + Math.sin(a) * .9 }; } const pts = [...world.roads].map((k) => k.split(',').map(Number)).filter(([x, y]) => y <= 9); const p = pts[Math.floor(rnd() * pts.length)] || [7, 7]; return tc(p[0], p[1]); }
-function roamDest() { const here = tileOf(s_dummy), open = [...world.roads].map((k) => k.split(',').map(Number)); const p = open[Math.floor(rnd() * open.length)] || [7, 10]; return tc(p[0], p[1]); }
+function roamDest(s) { const o = s ? tileOf(s.w) : { x: 7, y: 10 }; for (let k = 0; k < 12; k++) { const x = o.x + Math.round((rnd() - .5) * 10), y = o.y + Math.round((rnd() - .5) * 10); if (Wd.inMap(x, y) && Wd.walkable(world, x, y) && !Wd.buildingAt(world, x, y) && Wd.inTown(x, y)) return tc(x, y); } return tc(o.x, o.y); }   /* 3D.63: a short stroll nearby (with no roads everyone walked to the same spot) */
 const s_dummy = { x: 7, y: 10 };
 /* ======================= V3D.14 "life": emotions, chatter and smarter choices (all offline, no network) =======================
    emote(s, icon): a little speech bubble with an emoji over a survivor (drawn by drawEmote; the 3D face follows the mood).
@@ -2003,6 +2007,7 @@ function chatText(a, b) {   /* 3D.27: a spoken two-line exchange (js/barks.js), 
 const chatBuilding = () => { const l = world.buildings.filter((b) => !b.burnt && DEFS[b.type]); return l.length ? DEFS[l[Math.floor(rnd() * l.length)].type].name : 'wall'; };
 function chatSpot(a, p) { const ok = (x, y) => Wd.walkable(world, Math.floor(x), Math.floor(y)) && !Wd.buildingAt(world, Math.floor(x), Math.floor(y)); return ok(p.x, p.y) ? p : { x: a.w.x, y: a.w.y }; }   /* 3D.59 never chat on a building footprint */
 function startChat(s) {
+  if (urgentNeed(s)) return false;   /* 3D.63: no chatting while starving */
   if (!COZY_HUD || (s.chatNext || 0) > tick || isNight() && !bOf('bonfire').length && rnd() < .6) return false;   /* V3D.17: a pause between chats */
   const pals = S.sv.filter((q) => q !== s && q.hp > 0 && ['free', 'wait'].includes(q.mode) && !q.purpose && !q.sleeping && !q.chatWith && (q.chatNext || 0) <= tick && !insideBuilding(q) && dist(q.w, s.w) < 5)
     .sort((x, y) => (bondOf(s, y) - bondOf(s, x)) * .05 + dist(x.w, s.w) - dist(y.w, s.w) + (Math.abs(ageOf(s) - ageOf(x)) - Math.abs(ageOf(s) - ageOf(y))) * .05);   /* 3D.44 people their own age first */
@@ -2028,16 +2033,28 @@ function goCampfire(s) {
   s.mode = 'campfire'; s.fire = f; s.dest = { x: c.x + Math.cos(a) * 1.05, y: c.y + Math.sin(a) * 1.05 }; s.path = null; s.stateTicks = 1400 + rnd() * 900; s.why = 'Warming up at the bonfire';
   return true;
 }
+/* 3D.63 study: chats only happened between two idle people, so with full days the town barely spoke (about one chat per person every 4 days).
+   Now people also talk where they sit: round the bonfire, and over food or water at an outdoor spot. */
+const talkOk = (q) => !!q.talkBy && q.talkBy.talk && q.talkBy.talk.q === q;
+function sitTalk(s, same) {
+  const t = s.talk;
+  if (t) { if (!S.sv.includes(t.q) || !same(t.q) || threatOf(s)) { s.talk = null; return; } if (--t.T > 0) return;
+    if (t.k >= t.L.length) { s.talk = null; addBond(s, t.q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); t.q.sat = Math.min(100, (t.q.sat || 0) + 1); return; }
+    const sp = t.k % 2 === 0 ? s : t.q; bark(sp, null, { other: (sp === s ? t.q : s).name, b: chatBuilding() }, { line: t.L[t.k], style: t.st, pri: 1, f: 170 }); t.k++; t.T = 160; return; }
+  if (talkOk(s) || (s.talkNext || 0) > tick || rnd() > 1 / 300 || urgentNeed(s)) return;
+  const q = S.sv.find((o) => o !== s && same(o) && !o.talk && !talkOk(o) && dist(o.w, s.w) < 2.8 && (o.talkNext || 0) <= tick); if (!q) return;
+  const txt = chatText(s, q); if (!txt) return; s.talk = { q, L: txt.pair, st: txt.st, k: 0, T: 15 }; q.talkBy = s; s.talkNext = q.talkNext = tick + 1500 + rnd() * 1200;
+}
 function campfireTick(s) {
   const f = s.fire; if (!f || !world.buildings.includes(f) || s.fatigue > 75 || S.hour >= 24 || (S.hour < 19 && S.hour > 5) || threatOf(s)) { s.fire = null; s.faceW = null; enterFree(s, 20); return; }
-  const r = followPath(s, s.dest, WALK); if (r === 'moving') return; s.moving = false; s.faceW = { x: f.x + .5, y: f.y + .5 };
+  const r = followPath(s, s.dest, WALK); if (r === 'moving') return; s.moving = false; s.faceW = { x: f.x + .5, y: f.y + .5 }; sitTalk(s, (o) => o.mode === 'campfire' && o.fire === f && !o.moving);
   if (tick % 900 === (s.i * 97) % 900 && rnd() < .25) { const o = S.sv.find((q) => q !== s && q.mode === 'campfire'); bark(s, 'bonfire', { other: o ? o.name : 'someone' }); }
   if (tick % 120 === (s.i * 17) % 120) { s.sat = Math.min(100, (s.sat || 0) + .6); const nb = S.sv.find((q) => q !== s && q.mode === 'campfire' && dist(q.w, s.w) < 2.2); if (nb) addBond(s, nb, 1); if (rnd() < .5) emote(s, ['🎶', '🔥', '😊', '😂', '☕'][Math.floor(rnd() * 5)], 90); }
   if (--s.stateTicks <= 0) { s.fire = null; s.faceW = null; enterFree(s, 20); }
 }
 /* pitching in: when food or water will run out within a day and a half, free hands help at the producer (+35% each, two at most) */
 function pitchIn(s) {
-  if (isFighter(s) && activeZ() > 0) return false; const R = rationNeed(), need = S.food < R.f * 1.5 ? 'food' : S.water < R.w * 1.5 ? 'water' : null; if (!need) return false;
+  if ((isFighter(s) && activeZ() > 0) || urgentNeed(s)) return false; const R = rationNeed(), need = S.food < R.f * 1.5 ? 'food' : S.water < R.w * 1.5 ? 'water' : null; if (!need) return false;
   const fam = need === 'food' ? 'farm' : 'water', b = world.buildings.filter((x) => DEFS[x.type] && DEFS[x.type].fam === fam && !x.burnt && !x.fire && (x.helpers = (x.helpers || []).filter((id) => S.sv.some((q) => q.id === id && q.mode === 'pitch'))).length < 2).sort((x, y) => dist(Wd.doorPoint(x), s.w) - dist(Wd.doorPoint(y), s.w))[0];
   if (!b || zombieNear(Wd.doorPoint(b), 5) || (s.wary || 0) > tick) return false; (b.helpers ||= []).push(s.id); s.mode = 'pitch'; s.helpAt = b; s.dest = Wd.approachPoint(b); s.path = null; s.stateTicks = 1000; s.why = `Pitching in at the ${DEFS[b.type].name} (${need === 'food' ? '🍖' : '💧'} running low)`; emote(s, need === 'food' ? '🌱💪' : '💧💪', 110, true); return true;
 }
@@ -2052,15 +2069,15 @@ const helpMult = (b) => 1 + .35 * ((b.helpers || []).filter((id) => S.sv.some((q
 function nightPrep(s) {
   if (S.hour < 18 || S.hour >= 20) return false; let need = null;
   if (isFighter(s) && s.hp < s.max * .75 && medSite() && facilityUsers(medSite()) < cap(medSite())) need = medSite();
-  else if (s.hunger > 35 && S.food >= 1) need = world.buildings.find((b) => facilityRules[b.type] && facilityRules[b.type].need === 'hunger' && facilityUsers(b) < cap(b));
-  else if (s.thirst > 35 && S.water >= 1) need = world.buildings.find((b) => facilityRules[b.type] && facilityRules[b.type].need === 'thirst' && facilityUsers(b) < cap(b));
+  else if (s.hunger > 35 && S.food >= 1) need = chooseFacility(s, false, 'hunger');   /* 3D.63: the nearest safe one, not the first built */
+  else if (s.thirst > 35 && S.water >= 1) need = chooseFacility(s, false, 'thirst');
   if (!need || need === s.lastFacility) return false;
   s.facility = need; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `Getting ready for the night → ${DEFS[need.type].name}`; return true;
 }
 /* combat: a survivor under attack shouts for help; the two nearest free fighters come */
 function callHelp(s, z) {
   if ((s.helpT || 0) > tick) return; s.helpT = tick + 240; if (!bark(s, isFighter(s) ? 'engage' : 'help', {}, { pri: 2 })) emote(s, isFighter(s) ? '😤' : '🆘', 90, true);
-  S.sv.filter((q) => q !== s && isFighter(q) && q.hp > q.max * .45 && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < (gearFx(s, 'radio') || gearFx(q, 'radio') ? 18 : 9))
+  S.sv.filter((q) => q !== s && isFighter(q) && canFight(q) && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < (gearFx(s, 'radio') || gearFx(q, 'radio') ? 18 : 9))
     .sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w)).slice(0, 2).forEach((q) => { engage(q, z); q.why = `Answering ${s.name}'s call for help`; if (!(rnd() < .6 && bark(q, 'answer', { other: s.name }, { pri: 2 }))) emote(q, '💪', 80, true); });
 }
 function chooseLifePurpose(s) {
@@ -2068,19 +2085,19 @@ function chooseLifePurpose(s) {
   const cfg = jobAI[s.job] || jobAI.Civilian;
   if (acquireEnemy(s)) return;   // a zombie in sight comes before any errand
   { const gp = myPost(s); if (gp && postActive(gp)) {   /* V2.45: on watch at a guard post (needs still come first) */
-    const u = urgentNeed(s), b = u && chooseFacility(s, true);
+    const u = urgentNeed(s), b = u && chooseFacility(s, true, URGENT_FOR[u]);
     if (b) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${u}: a quick break, then back to the ${postName(gp)}`; return; }
     s.dest = postPt(gp); s.mode = 'walk'; s.purpose = 'post'; s.path = null; s.stateTicks = 900; s.why = `Heading to the ${postName(gp)} (${(POST_SCHED[gp.sched] || POST_SCHED.night).name.toLowerCase()})`; return; } }
   if (onShift(s)) {   /* V2.36: on shift → back to work unless something urgent comes first */
-    const u = urgentNeed(s), b = u && chooseFacility(s, true);
+    const u = urgentNeed(s), b = u && chooseFacility(s, true, URGENT_FOR[u]);
     if (b) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${u}: quick break at the ${DEFS[b.type].name}, then back to work`; s.returnToWork = true; return; }
     if (!u && s.chop === true && rnd() < .3 && tryGather(s)) { s.why = 'Gathering for a while, then back to the ' + DEFS[s.post.type].name; return; }   /* 3D.30: Gather on = part of the shift goes to gathering */
     s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = `Shift at the ${DEFS[s.post.type].name} (until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00)`; return;
   }
-  if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35)) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
+  if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35) - (S.hour >= 22 || S.hour < 5 ? 30 : 0) + (s.id * 7) % 12) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
     const bed = bedFor(s);
     if (bed) { s.facility = bed; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `Going to bed at the ${DEFS[bed.type].name}`; return; }
-    s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.sleeping = 'rough'; s.stateTicks = Math.min(9000, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000)); s.why = 'Sleeping rough: no free bed (build a Shelter)'; s.idleBubble = '💤'; return;
+    s.mode = 'wait'; s.dest = null; s.path = null; s.moving = false; s.sleeping = 'rough'; s.stateTicks = Math.min(9500, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000) + wakeOff(s)); s.why = 'Sleeping rough: no free bed (build a Shelter)'; s.idleBubble = '💤'; return;
   }
   if (nightPrep(s)) return;
   if (pitchIn(s)) return;
@@ -2095,7 +2112,7 @@ function chooseLifePurpose(s) {
     s.forage = S.food < 1 ? 'food' : 'water'; s.dest = tc(2 + Math.floor(rnd() * 11), 2 + Math.floor(rnd() * 3)); s.mode = 'walk'; s.purpose = 'scav-out'; s.why = `Out looking for ${s.forage === 'food' ? '🍖' : '💧'}`; s.stateTicks = 900; emote(s, s.forage === 'food' ? '🍖❓' : '💧❓', 100, true); return; }
   if (s.job === 'Scavenger' && r < .30 && activeZ() <= 3) { s.dest = tc(2 + Math.floor(rnd() * 11), 2 + Math.floor(rnd() * 3)); s.mode = 'walk'; s.purpose = 'scav-out'; s.why = 'Scavenging outside the walls'; s.stateTicks = 900; return; }
   if (r < .66) { settlePause(s); return; }
-  s.dest = roamDest(); s.mode = 'walk'; s.purpose = 'roam'; s.why = 'Strolling through town'; s.stateTicks = 600;
+  s.dest = roamDest(s); s.mode = 'walk'; s.purpose = 'roam'; s.why = 'Strolling through town'; s.stateTicks = 600;
 }
 const activeZ = () => S.z.filter((z) => z.hp > 0 && !z.human).length;
 function gearUpgrade(s) {   /* best improvement for any slot: free from the stash first, else buy basic gear at the Armory with scrap */
@@ -2121,6 +2138,7 @@ function finishFacility(s) {
   if (r.need === 'injury') { const med = (S.meds || 0) >= .25; if (med) { S.meds -= .25; flow('meds', 'Treatment', -.25); } s.hp = Math.min(s.max, s.hp + r.benefit * (med ? 1.6 : 1)); if (med && rnd() < .3) floats.push({ w: { ...s.w }, t: '💊', col: '#ff9fbd', a: 60 }); }   /* V3D.25: medicine in stock heals 60% more */   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (isT(b, 'armory')) { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' scrap).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
   if (r.need === 'train') {   /* each visit fills a stat's training bar; 100 = +1 permanent point */
+    if (s.trainDay !== S.day) { s.trainDay = S.day; s.trainN = 0; } s.trainN++;
     if (isT(b, 'library')) S.rp = (S.rp || 0) + 1;   /* V2.18: study sessions feed the research effort */
     s.tp = s.tp || {}; s.st = s.st || rollStats(s.job, s.l); const k = r.stat, gainT = r.benefit * (b.q || 10) / 10 * Math.max(.7, sMod(s, 'int', .02)) * (1 + combos(b).train) * (b.unpaid ? .5 : 1);
     s.tp[k] = (s.tp[k] || 0) + gainT; s.fatigue = Math.min(100, s.fatigue + 6);
@@ -2139,7 +2157,7 @@ function finishFacility(s) {
 }
 function ai(s) {
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) s.ammo = weaponOf(s).mag;   /* reloads finish out of combat too */
-  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ s.fatigue = Math.min(100, s.fatigue + (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }
+  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
   if (s.fleeT > 0) s.fleeT--;
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
   if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
@@ -2181,12 +2199,13 @@ function ai(s) {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     if (!s.careTo || !world.buildings.includes(s.careTo)) s.careTo = careDest(); const dB = s.careTo;
     const r = followPath(s, sitePoint(dB), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
-    if (r === 'arrived' || r === 'fail') { q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
+    if (r === 'fail' && dist(s.w, sitePoint(dB)) > 1.5 && (s.carryFail = (s.carryFail || 0) + 1) < 6) { s.path = null; return; }   /* 3D.63: a blocked path is retried, not teleported through */
+    if (r === 'arrived' || r === 'fail') { s.carryFail = 0; q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
   }
   if (s.mode === 'goFire' || s.mode === 'fightFire') { fireAI(s); return; }
   if (s.mode === 'goWork') {
     if (!s.post || !world.buildings.includes(s.post) || s.post.staff !== s) { s.post = null; enterFree(s, 30); return; }
-    if (acquireEnemy(s) && ['Guard', 'Police Officer'].includes(s.job)) return;
+    if (acquireEnemy(s)) return;   /* 3D.63: any fighter who picked a fight stops heading to work this tick */
     const r = followPath(s, Wd.doorPoint(s.post), WALK * 1.1);
     if (r === 'arrived') { if (!OPEN_AIR.has(s.post.type)) s.w = { ...Wd.doorPoint(s.post) }; s.mode = 'work'; s.activity = 'Working'; s.stateTicks = shiftLeft() || 600; s.path = null; s.returnToWork = false; s.why = `Working at the ${DEFS[s.post.type].name}` + (shiftLeft() ? ` until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00` : ''); }
     else if (r === 'fail') { enterFree(s, 120); s.why = "Couldn't reach work — trying later"; } return;
@@ -2196,18 +2215,21 @@ function ai(s) {
     if (downedUnassigned().length && tick % 30 === 0) { assignRescue(); if (s.mode === 'rescueTo') { s.activity = null; return; } }
     if (tick % 20 === s.i % 20 && acquireEnemy(s)) { s.activity = null; return; }
     if (tick % 1000 === (s.i * 37) % 1000) gainXp(s, 2);   /* every game hour on shift */
-    if (tick % 120 === (s.i * 7) % 120) { const u = urgentNeed(s, true); if (u) { s.activity = null; enterFree(s, 5); s.why = `${u}: taking a break`; return; } }   /* V2.36: only urgent needs end a shift early */
+    if (tick % 120 === (s.i * 7) % 120) { const u = urgentNeed(s, true); if (u && chooseFacility(s, true, URGENT_FOR[u])) { s.activity = null; enterFree(s, 5); s.why = `${u}: taking a break`; return; } }   /* 3D.63: only walk off the job when there's somewhere to go (it flickered work ↔ break every 2 s) */   /* V2.36: only urgent needs end a shift early */
     if (s.stateTicks <= 0 || !onShift(s)) { s.activity = null; gainXp(s, 1); enterFree(s, 20); s.why = 'Shift over'; } return;
   }
   if (s.mode === 'goFacility') {
     if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; enterFree(s, 25); return; }
     const r = followPath(s, Wd.doorPoint(s.facility), WALK * 1.15);
     if (r === 'arrived') { const ru = facilityRules[s.facility.type]; if (!OPEN_AIR.has(s.facility.type)) s.w = { ...Wd.doorPoint(s.facility) }; s.mode = 'useFacility';   /* 3D.61: in through the door */ s.activity = ru.label; s.stateTicks = ru.use + (ru.need === 'injury' ? Math.round(900 * (1 - s.hp / s.max)) : 0); s.path = null; s.why = ru.label + ' at ' + DEFS[s.facility.type].name;
-      if (ru.need === 'fatigue' && isNight()) { s.sleeping = true; s.activity = 'Sleeping'; s.stateTicks = Math.min(9000, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000)); s.why = `Sleeping at the ${DEFS[s.facility.type].name} until 6:00`; } }   /* V2.36: a bed for the night = fully rested */
+      if (ru.need === 'fatigue' && isNight()) { s.sleeping = true; s.activity = 'Sleeping'; s.stateTicks = Math.min(9500, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000) + wakeOff(s)); s.why = `Sleeping at the ${DEFS[s.facility.type].name} until 6:00`; } }   /* V2.36: a bed for the night = fully rested */
     else if (r === 'fail') { s.facility = null; enterFree(s, 90); s.why = "Couldn't reach it — trying later"; } return;
   }
   if (s.mode === 'useFacility') { s.moving = false; if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; s.activity = null; enterFree(s, 40); return; }
-    if (s.sleeping && tick % 250 === (s.i * 17) % 250 && s.hp > 0 && s.hp < s.max * .75) { const fr = facilityRules[s.facility.type], h = Math.max(1, Math.round(s.max * (.015 + (fr ? fr.benefit : 26) / 2600))); s.hp = Math.min(Math.round(s.max * .75), s.hp + h); }   /* 3D.47 a night in bed heals (to 75%): about +2.5% every 15 min of game time, more in better beds */ if (s.stateTicks <= 0) { finishFacility(s); s.stateTicks = 50 + s.i * 9; } return; }
+    if ((s.talk || talkOk(s)) && s.stateTicks < 25) s.stateTicks = 25;   /* finish the sentence before leaving */
+    if (!s.sleeping && OPEN_AIR.has(s.facility.type)) { const fb = s.facility; sitTalk(s, (o) => o.mode === 'useFacility' && o.facility && (o.facility === fb || (OPEN_AIR.has(o.facility.type) && dist(o.w, s.w) < 2.8)) && !o.sleeping); }
+    if (s.sleeping && ((s.thirst >= 92 && S.water >= 1) || (s.hunger >= 92 && S.food >= 1))) { const th = s.thirst >= 92; s.sleeping = false; s.facility = null; s.activity = null; enterFree(s, 0); s.why = th ? 'Woke up parched' : 'Woke up starving'; return; }   /* 3D.63 study: people slept on while dying of thirst */
+    if (s.sleeping && tick % 250 === (s.i * 17) % 250 && s.hp > 0 && s.hp < s.max * .75) { const fr = facilityRules[s.facility.type], h = Math.max(1, Math.round(s.max * (.015 + (fr ? fr.benefit : 26) / 2600))); s.hp = Math.min(Math.round(s.max * .75), s.hp + h); }   /* 3D.47 a night in bed heals (to 75%): about +2.5% every 15 min of game time, more in better beds */ if (s.stateTicks <= 0) { finishFacility(s); if (s.mode === 'free' && !onShift(s)) s.stateTicks = 50 + (s.i % 8) * 9; } return; }   /* 3D.63: the pause after a facility no longer overwrites 'keep resting' rounds or the quick return to work */
   if (['chase', 'attack', 'recover'].includes(s.mode)) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (retreatCheck(s)) return;
@@ -2234,9 +2256,9 @@ function ai(s) {
   if (s.mode === 'postCombat') { s.moving = false; if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
     if (s.hp < s.max * .5 && medSite() && facilityUsers(medSite()) < cap(medSite())) { const m = medSite(); s.facility = m; s.mode = 'goFacility'; s.stateTicks = 9999; s.path = null; s.why = 'Hurt after the fight → ' + DEFS[m.type].name; return; }   /* V2.18: patch up before the next one */ if (s.stateTicks <= 0) enterFree(s, 20); return; }
   if (s.mode === 'wait' && s.purpose === 'post-hold') { s.moving = false; const gp = myPost(s); if (!gp || !postActive(gp)) { s.purpose = null; enterFree(s, 20); return; } if (downedUnassigned().length && tick % 30 === 0) { assignRescue(); if (s.mode === 'rescueTo') return; } if (tick % 15 === s.i % 15 && acquireEnemy(s)) { s.purpose = null; return; } if (s.stateTicks <= 0) { s.purpose = null; s.mode = 'free'; s.stateTicks = 0; } return; }
-  if (s.mode === 'wait') { s.moving = false; if (s.stateTicks <= 0) { if (s.sleeping === 'rough') { s.fatigue = Math.max(0, s.fatigue - 50); s.sleeping = false; s.why = 'Woke up stiff (slept rough)'; } s.mode = 'free'; s.stateTicks = 0; scavWait(s); } return; }
+  if (s.mode === 'wait') { s.moving = false; if (s.sleeping === 'rough' && ((s.thirst >= 92 && S.water >= 1) || (s.hunger >= 92 && S.food >= 1))) s.stateTicks = 0; if (s.stateTicks <= 0) { if (s.sleeping === 'rough') { s.fatigue = Math.max(0, s.fatigue - 50); s.sleeping = false; s.why = 'Woke up stiff (slept rough)'; } s.mode = 'free'; s.stateTicks = 0; scavWait(s); } return; }
   if (s.mode === 'walk') {
-    if (acquireEnemy(s) && (s.job === 'Guard' || s.job === 'Police Officer')) return;
+    if (acquireEnemy(s)) return;
     const r = s.dest ? followPath(s, s.dest, WALK) : 'arrived';
     if (r === 'moving' && s.stateTicks > 0) return;
     if (s.purpose === 'post' && (r === 'arrived' || dist(s.w, s.dest || s.w) < .5)) { s.mode = 'wait'; s.purpose = 'post-hold'; s.stateTicks = 360; s.dest = null; s.path = null; s.idleBubble = '🛡️'; const gp = myPost(s); s.why = gp ? `On guard at the ${postName(gp)}` : 'On guard'; return; }
@@ -3020,7 +3042,7 @@ function bondTick() {   /* every 120 ticks: time together builds bonds */
   const L = S.sv.filter((q) => q.hp > 0 && !['down', 'away'].includes(q.mode));
   for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
     const a = L[i], b = L[j]; let n = 0;
-    if (a.facility && a.facility === b.facility && a.mode === 'useFacility' && b.mode === 'useFacility') n += 1.6;   /* eating, resting or training together */
+    if (a.facility && a.facility === b.facility && a.mode === 'useFacility' && b.mode === 'useFacility') n += a.sleeping || b.sleeping ? .3 : 1.6;   /* 3D.63 study: sleeping in the same Camp made everyone best friends overnight; meals, chats and fights matter more now */   /* eating, resting or training together */
     else if (dist(a.w, b.w) < 1.6) n += .5;
     if (a.target && a.target === b.target && ['chase', 'attack', 'recover'].includes(a.mode) && ['chase', 'attack', 'recover'].includes(b.mode)) n += 1.2;   /* fighting side by side */
     if (n) addBond(a, b, n);
@@ -3628,7 +3650,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -4929,7 +4951,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { BUILD_TAG, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
