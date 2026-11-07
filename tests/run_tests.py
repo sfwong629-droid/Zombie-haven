@@ -199,7 +199,7 @@ async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor pan
     t.ok(r['saveFail'] == 0, f"autosave never fails over 2 days of play ({r['saveFail']} failures {r.get('saveErr')})")
     t.ok(r['sleep'] >= .6, f"at 23:00 most survivors are asleep or going to bed ({r['sleep']:.0%})")
     t.ok('Shift work' in r['now'] and r['post'] + ' ›' in r['now'], f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const q=S.sv[2];q.hp=0;let k=0;while(q.mode!=='hospital'&&k<20000){ZH.simTick();k++}out.inCare=q.mode==='hospital';out.total=!!q.careTotal;
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const q=S.sv[2];q.downD=S.day;q.downN=1;q.hp=0;let k=0;   /* 3D.67: a second fall in a day goes to care (a first one may be treated in the field) */while(q.mode!=='hospital'&&k<20000){ZH.simTick();k++}out.inCare=q.mode==='hospital';out.total=!!q.careTotal;
       ZH.unitPanel(q);out.line=document.getElementById('uNow').textContent;const m=ZH.world.buildings.find(b=>['medic','clinic','hospital'].includes(b.type));ZH.showBuildingInfo(m);const tx=document.getElementById('ib').textContent;out.patients=/Patients [(][0-9]+[)]/.test(tx)&&tx.includes(q.name);
       const b=ZH.world.buildings.find(b=>b.type==='water');const f0=ZH.S.sv.length;return out}""")
     t.ok(r['inCare'] and r['total'], 'a rescued survivor is in care with a known treatment time')
@@ -211,7 +211,7 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
     ctx, pg, errs = await open_game(br, port, 'combat')
     await close_popups(pg)
     await pg.evaluate(PLACE, 'water')
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;const e=S.sv.find(q=>q.job!=='Guard');e.job='Engineer';ZH.autoStaff();const w=e;
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;const e=S.sv.find(q=>q.job!=='Guard');e.job='Farmer';ZH.autoStaff();const w=(ZH.world.buildings.find(b=>b.type==='water'&&b.staff)||{}).staff||e;out.who=w.job;
       ZH.setPolicy('produce');S.hour=18;out.produce18=ZH.onShift(w);ZH.setPolicy('recover');out.recover18=ZH.onShift(w);S.hour=14;out.recover14=ZH.onShift(w);out.rp=ZH.retreatPct();
       ZH.setPolicy('balanced');out.rb=ZH.retreatPct();ZH.setPolicy('defend');out.rd=ZH.retreatPct();
       const g=S.sv.find(q=>q.job==='Guard');S.alert=0;ZH.spawn(g.w.x+7.5,g.w.y,'walker');const z=S.z[S.z.length-1];z.mode='idle';out.zDist=Math.hypot(z.w.x-g.w.x,z.w.y-g.w.y);
@@ -276,13 +276,13 @@ async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker a
       for(const q of S.sv)q.job='Civilian';S.sv[0].job='Farmer';S.sv[0].l=1;S.sv[1].job='Farmer';S.sv[1].l=4;
       const D=ZH.DEFS.farm;let f=null;for(let y=B.y0;y<=B.y1&&!f;y++)for(let x=B.x0;x<=B.x1;x++)if(Wd.placementCheck(W,x,y,D,null).ok){f={type:'farm',x,y,w:D.w,h:D.h,q:D.q,a:D.a,staff:null};W.buildings.push(f);Wd.bump(W);break}
       ZH.autoStaff();out.best=f.staff===S.sv[1];S.sv[1].job='Guard';ZH.autoStaff();out.swap=f.staff===S.sv[0];
-      ZH.killSurvivor(S.sv[0],'test');ZH.autoStaff();out.released=!f.staff;S.sv[2].job='Farmer';ZH.autoStaff();out.refill=f.staff===S.sv[2];ZH.burnDown(f);ZH.autoStaff();out.burnt=!f.staff;
+      const d0=S.sv[0];ZH.killSurvivor(d0,'test');ZH.autoStaff();out.released=f.staff!==d0&&(!f.staff||f.staff.job==='Civilian');   /* 3D.67: a Civilian may cover until a Farmer is free */S.sv[2].job='Farmer';ZH.autoStaff();out.refill=f.staff===S.sv[2];ZH.burnDown(f);ZH.autoStaff();out.burnt=!f.staff;
       return out}""")
     t.ok(r['onRoad'] and r['outside'] and r['noOutside'], 'roads stay in the build zone and buildings cannot sit on them')
     t.ok(r['path'] and r['roadShare'] > .5, f"paths follow the road when there is one ({r['roadShare']:.0%} of steps on road)")
     t.ok(r['best'], 'the higher-level Farmer gets the farm')
     t.ok(r['swap'], 'a worker who changes profession leaves the post and a matching survivor takes it')
-    t.ok(r['released'] and r['refill'], 'a dead worker frees the post, a new Farmer fills it')
+    t.ok(r['released'] and r['refill'], 'a dead worker frees the post (a Civilian may cover), a new Farmer fills it')
     t.ok(r['burnt'], 'a burnt building releases its worker')
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.stage=2;S.guide=99;S.water=1;S.advMute={};ZH.OPTS.advisor=true;ZH.advisorUpdate();const el=document.getElementById('adv');out.shown=el.style.display!=='none';out.text=el.textContent;
       const k=ZH.advShown&&ZH.advShown.key;document.getElementById('advX').click();out.muted=!ZH.advisorTips().some(t=>t.key===k);return out}""")
@@ -702,7 +702,46 @@ async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — Pix
     # 3D.58: the 2D Medical Tent sprite checks were dropped: the tent is 1x1 now and drawn as a 3D model
     t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wrong-job penalty, Police range, care without a Medic
+    ctx, pg, errs = await open_game(br, port, 'profession')
+    await close_popups(pg)
+    await pg.evaluate(PLACE, 'medic')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.cloth=5;S.meds=0;
+      const m=S.sv.find(q=>q.job!=='Guard');m.job='Medic';m.post=null;for(const b of ZH.world.buildings)if(b.staff===m)b.staff=null;m.hp=m.max;
+      const p=S.sv.find(q=>q!==m);p.w={x:m.w.x+2,y:m.w.y};p.hp=Math.round(p.max*.3);p.mode='free';p.stateTicks=999;m.mode='free';m.stateTicks=0;m.patchT=0;
+      const f=ZH.medicFindPatient(m);out.found=f===p;if(f)ZH.startAid(m,p,'patch');
+      for(let k=0;k<1200&&m.aidTo;k++){S.z.length=0;p.mode='free';p.stateTicks=999;ZH.ai(m)}
+      out.patched=Math.abs(p.hp-Math.round(p.max*ZH.FIELD_CAP))<=1;out.cloth=S.cloth;
+      // revive: first fall in a day gets up Wounded at 30%
+      p.downD=-1;p.hp=0;ZH.ai(p);out.down=p.mode==='down';p.rescuer=m;m.rescuing=p;m.mode='rescueTo';m.w={x:p.w.x+1.5,y:p.w.y};
+      for(let k=0;k<1500&&p.mode==='down';k++){S.z.length=0;ZH.ai(m);ZH.ai(p)}
+      out.up=p.mode!=='down'&&p.mode!=='hospital'&&p.wounded===true&&Math.abs(p.hp-Math.round(p.max*.3))<=1;
+      p.hp=p.max;ZH.ai(p);out.capped=p.hp<=Math.round(p.max*ZH.FIELD_CAP);
+      // second fall the same day: stabilised and carried to care
+      p.hp=0;p.mode='free';ZH.ai(p);p.rescuer=m;m.rescuing=p;m.mode='rescueTo';m.w={x:p.w.x+1.5,y:p.w.y};
+      for(let k=0;k<1500&&!m.carrying&&p.mode==='down';k++){S.z.length=0;ZH.ai(m);ZH.ai(p)}
+      out.carried=m.carrying===p&&p.stable===true;
+      // care without a Medic on staff is 1.6x slower
+      const b=ZH.world.buildings.find(b=>b.type==='medic');b.staff=null;const slow=ZH.careTicks(b);const doc=S.sv.find(q=>q!==m&&q!==p);doc.job='Medic';b.staff=doc;doc.post=b;doc.mode='work';
+      out.careRatio=slow/ZH.careTicks(b);
+      // wrong job: 75% of an empty slot; Civilian +25%
+      doc.job='Guard';out.wrong=ZH.fitBoost(b,doc);doc.job='Civilian';out.civ=ZH.fitBoost(b,doc);
+      // Police shoot further with a ranged weapon
+      const c=S.sv.find(q=>q!==m&&q!==p&&q!==doc)||doc;const ids=Object.keys(ZH.ITEMS).filter(i=>ZH.ITEMS[i].slot==='weapon'&&ZH.ITEMS[i].ranged);
+      if(ids.length){c.eq=c.eq||{};c.eq.weapon=ids[0];c.job='Guard';const r0=ZH.rangeOf(c);c.job='Police Officer';out.range=ZH.rangeOf(c)-r0}
+      try{ZH.serialize();out.save=true}catch(e){out.save=e.message}
+      return out}""")
+    t.ok(r['found'] and r['patched'] and r['cloth'] == 4, f"a Medic off shift patches someone up to 60% for 1 cloth {r}")
+    t.ok(r['down'] and r['up'], f"a first fall: the Medic gets them up at 30%, Wounded {r}")
+    t.ok(r['capped'], 'a Wounded survivor heals no further than 60% outside a medical building')
+    t.ok(r['carried'], f"a second fall the same day: stabilised and carried to care {r}")
+    t.ok(1.4 < r['careRatio'] < 2.8, f"care is about 1.6x slower without a Medic on staff (their INT shifts it a little) ({r['careRatio']:.2f})")
+    t.ok(abs(r['wrong'] - (.75 / 1 - 1)) < .3 and r['wrong'] < 0 and r['civ'] == .25, f"wrong job is a penalty, a Civilian helps ({r['wrong']:.2f} / {r['civ']})")
+    t.ok(abs((r.get('range') or 0) - 1.5) < .01, f"Police Officers shoot 1.5 tiles further ({r.get('range')})")
+    t.ok(r['save'] is True, f"saves still work mid field-aid ({r['save']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

@@ -71,7 +71,7 @@
   for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
   const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Engineer', 'Mechanic'], farm: ['Farmer'], medical: ['Medic', 'Paramedic'], kitchen: ['Cook'], scrap: ['Scavenger', 'Engineer'], research: ['Engineer', 'Mechanic', 'Medic'], lumber: ['Farmer', 'Scavenger'], quarry: ['Engineer', 'Mechanic', 'Scavenger'] };
+  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], quarry: ['Engineer'] };   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
   const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {

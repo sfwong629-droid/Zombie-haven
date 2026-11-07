@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.66', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.67', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -903,15 +903,12 @@ const weapons = [['Pipe', 6, 0], ['Knife', 9, 45], ['Bat', 14, 75], ['Machete', 
 const professions = {
   Civilian: { combat: 0, med: 0, scav: 0, facility: 0, master: 40, next: ['Guard', 'Medic', 'Scavenger'], skill: 'Adaptable' },
   Guard: { combat: 3, med: 0, scav: 0, facility: 0, master: 60, next: ['Police Officer'], skill: 'Threat Response' },
-  Medic: { combat: 0, med: 4, scav: 0, facility: 1, master: 60, next: ['Paramedic'], skill: 'Field Aid' },
-  Scavenger: { combat: 1, med: 0, scav: 4, facility: 0, master: 60, next: ['Mechanic'], skill: 'Loot Sense' },
-  'Police Officer': { combat: 5, med: 0, scav: 1, facility: 0, master: 80, next: ['SWAT'], skill: 'Armed Response' },
-  Paramedic: { combat: 1, med: 7, scav: 0, facility: 2, master: 80, next: [], skill: 'Trauma Care' },
-  Mechanic: { combat: 1, med: 0, scav: 3, facility: 5, master: 80, next: ['Engineer'], skill: 'Repair' },
+  Medic: { combat: 0, med: 4, scav: 0, facility: 1, master: 60, next: [], skill: 'Field Aid' },
+  Scavenger: { combat: 1, med: 0, scav: 4, facility: 0, master: 60, next: [], skill: 'Loot Sense' },
+  'Police Officer': { combat: 3, med: 0, scav: 1, facility: 0, master: 80, next: [], skill: 'Armed Response' },   /* 3D.67 profession balance: +5 -> +3; ranged and raid specialist instead (Mechanic, Paramedic and SWAT removed for now) */
   Engineer: { combat: 1, med: 0, scav: 2, facility: 7, master: 100, next: [], skill: 'Facility Expert' },
   Farmer: { combat: 0, med: 0, scav: 1, facility: 2, master: 60, next: [], skill: 'Green Thumb' },
   Cook: { combat: 0, med: 0, scav: 0, facility: 3, master: 60, next: [], skill: 'Hearty Meals' },
-  SWAT: { combat: 8, med: 0, scav: 1, facility: 0, master: 100, next: [], skill: 'Suppression' },
 };
 const facilityRules = aliasT({   // V2.6: no prices. Survivors are fed by the daily ration; visits relieve the need meters (food/water/medicine must be in stock to help).
   canteen: { need: 'hunger', use: 145, sat: 2, benefit: 26, label: 'Eating' },
@@ -939,7 +936,7 @@ const facilityRules = aliasT({   // V2.6: no prices. Survivors are fed by the da
   sparring: { need: 'train', stat: 'end', use: 170, sat: 1, benefit: 34, label: 'Sparring' },
 });
 const weaponCost = (w) => Math.ceil(w[2] / 45);   // weapons are bought with PARTS from the stockpile (no money)
-const RATION_BASE = { Civilian: 1, Farmer: 1, Medic: 1, Paramedic: 1, Engineer: 1.25, Mechanic: 1.25, Guard: 1.5, 'Police Officer': 1.5, SWAT: 1.5, Scavenger: 1.5 };
+const RATION_BASE = { Civilian: 1, Farmer: 1, Medic: 1, Engineer: 1.25, Guard: 1.5, 'Police Officer': 1.5, Scavenger: 1.5 };
 const LEVEL_CAP = 10;   /* V2.16: DV2-style, levels 6-10 need much more XP */
 /* V2.12: per-profession levels (like DV2). Each survivor keeps a level + XP for every profession they have worked
    (s.cls[job] = { l, xp }); s.l / s.mastery always mirror the current job. Reaching Lv.3 and Lv.5 in a profession
@@ -1059,6 +1056,7 @@ const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, rate: .9, kind: 'blu
 const weaponOf = (s) => itemOf(s, 'weapon') || (G3D ? FISTS : ITEMS.pipe);
 const RANGE = { pistol: 4, revolver: 4.2, shotgun: 3, smg: 4.2, rifle: 6, assault: 5.2, bow: 5, crossbow: 5.5 };   /* V2.33: ranged weapons fire from a distance (tiles) */
 const MELEE_R = G3D ? .45 : .9, ZREACH = G3D ? .45 : .8;   /* V3D.12: 3D bodies are bigger than the sprites; at .9 a bat swung at air two body-lengths away */
+const rangeOf = (s) => { const w = weaponOf(s); return weaponRange(w) + (w && w.ranged && s.job === 'Police Officer' ? 1.5 : 0); };   /* 3D.67: Police Officers shoot 1.5 tiles further */
 const weaponRange = (w) => (w && w.ranged ? w.range || RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
 const gearFx = (s, fx) => !!s && SLOTS.some((sl) => { const it = itemOf(s, sl); return it && it.fx === fx; });   /* 3D.28 special gear effects */
 const carryBonus = (s) => (gearFx(s, 'carry2') ? 2 : gearFx(s, 'carry1') ? 1 : 0);
@@ -1072,7 +1070,7 @@ function equip(s, id) {   // move an item from the stash into its slot; the old 
   const it = ITEMS[id]; if (!it || !stashTake(id)) return false; s.eq = s.eq || {}; const old = s.eq[it.slot]; if (old && old !== 'pipe') stashAdd(old); s.eq[it.slot] = id; if (it.mag) { s.ammo = it.mag; s.reloadT = 0; } setMaxHp(s); return true;
 }
 function unequip(s, slot) { s.eq = s.eq || {}; const old = s.eq[slot]; if (!old || old === 'pipe') return false; stashAdd(old); s.eq[slot] = slot === 'weapon' && !G3D ? 'pipe' : null; setMaxHp(s); return true; }
-const FIGHTERS = new Set(['Guard', 'Police Officer', 'Scavenger', 'SWAT']);   // everyone else hides from zombies unless cornered
+const FIGHTERS = new Set(['Guard', 'Police Officer', 'Scavenger']);   // everyone else hides from zombies unless cornered
 const isFighter = (s) => FIGHTERS.has(s.job);
 /* V2.43 personalities: one trait per survivor, fixed for life. Each bends a decision the AI already makes (fight range, falling back, rescues, breaks, sleep, food, friendships,
    expeditions), with an upside and a cost, so who you post where, who you arm and who you send out matters. */
@@ -1096,8 +1094,8 @@ const traitSpot = (s) => (hasT(s, 'cautious') || (hasT(s, 'owl') && isNight()) ?
 const traitWork = (s) => (hasT(s, 'diligent') ? .15 : 0) - (hasT(s, 'scrounger') ? .1 : 0) - (hasT(s, 'owl') && S.hour >= 7 && S.hour < 12 ? .15 : 0);
 const traitRetreat = (s) => (hasT(s, 'brave') ? -10 : hasT(s, 'cautious') ? 15 : 0);
 const skillMaxHp = (s) => (hasSkill(s, 'bulwark') ? 20 : 0) + (hasSkill(s, 'hardy') ? 10 : 0) + (hasSkill(s, 'tough') ? 15 : 0) + (hasSkill(s, 'strongBack') ? 10 : 0);
-const baseMax = (s) => 48 + 8 * (s.l || 1) + 2 * stat(s, 'end') + skillMaxHp(s) + (hasT(s, 'eater') ? 12 : 0);   /* V2.14: Endurance adds HP */
-const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, (((itemOf(s, 'armor') || {}).def || 0) + ((itemOf(s, 'head') || {}).def || 0) + ((itemOf(s, 'acc') || {}).def || 0)) * .03 + (stat(s, 'end') - 5) * .012) : 0);   /* armor + Endurance */
+const baseMax = (s) => Math.round((48 + 8 * (s.l || 1) + 2 * stat(s, 'end') + skillMaxHp(s) + (hasT(s, 'eater') ? 12 : 0)) * (s.job === 'Guard' ? 1.2 : 1));   /* 3D.67: Guards +20% health */   /* V2.14: Endurance adds HP */
+const dmgReduce = (s) => (s && s.job !== undefined ? Math.min(.6, (((itemOf(s, 'armor') || {}).def || 0) + ((itemOf(s, 'head') || {}).def || 0) + ((itemOf(s, 'acc') || {}).def || 0)) * .03 + (stat(s, 'end') - 5) * .012 + (s.job === 'Guard' ? .2 : 0)) : 0);   /* armor + Endurance; 3D.67: Guards take 20% less */
 const skillDmg = (s) => (hasSkill(s, 'brawler') ? 3 : 0) + (hasSkill(s, 'steadyAim') ? 4 : 0);
 const xpMult = (s) => (hasSkill(s, 'quickLearner') ? 1.25 : 1) * Math.max(.7, sMod(s, 'int', .03));
 function gainXp(s, n) { if (!s || n <= 0) return; s.mastery = (s.mastery || 0) + n * xpMult(s); masteryCheck(s); }
@@ -1115,7 +1113,12 @@ function changeProfession(s, job) {   // keeps every class level and every learn
   if (s.post && s.post.staff === s) { s.post.staff = null; } s.post = null; setMaxHp(s); syncClass(s);
   say(`${s.name} is now a ${job} (Lv.${s.l}).`, true); if (typeof autoStaff === 'function') autoStaff(); return true;
 }
-const ration = (s) => TUNE.eat * (RATION_BASE[s.job] || 1) * (1 + .06 * (Math.min(LEVEL_CAP, s.l || 1) - 1)) * (hasT(s, 'eater') ? 1.3 : 1);   // rations per day (half food, half water)
+let cookT = -1, cookV = 1; const cookSave = () => { if (cookT !== tick) { cookT = tick; cookV = world.buildings.some((b) => DEFS[b.type] && DEFS[b.type].fam === 'kitchen' && !b.burnt && b.staff && b.staff.job === 'Cook') ? .85 : 1; } return cookV; };   /* 3D.67: a Cook running a kitchen makes the town's food go 15% further */
+const ration = (s) => cookSave() * TUNE.eat * (RATION_BASE[s.job] || 1) * (1 + .06 * (Math.min(LEVEL_CAP, s.l || 1) - 1)) * (hasT(s, 'eater') ? 1.3 : 1);   // rations per day (half food, half water)
+/* 3D.67 profession balance: the worker bonus checks the profession. Matching: +50% (+8% a level); a Civilian: +25% anywhere;
+   anyone else is in the wrong job: -25% (owner: a small penalty). It used to give the full bonus to anyone. */
+const fitOf = (b, s) => (STAFF_JOBS[DEFS[b.type].fam] || []).includes(s.job) ? 'match' : s.job === 'Civilian' ? 'civ' : 'wrong';
+const fitBoost = (b, s) => { const f = fitOf(b, s); return f === 'match' ? workBoost(s) : f === 'civ' ? .25 : .75 / TUNE.work - 1; };   // wrong job: 75% of an empty slot's output
 const workBoost = (s) => .5 + .08 * (Math.min(LEVEL_CAP, s.l || 1) - 1);                            // matching-profession output boost (+50%, +10% per level above 1)
 const jobAI = { Civilian: { aggro: 3.0, rescue: 5, town: 1.35 }, Guard: { aggro: 6, rescue: 7, town: .65 }, Medic: { aggro: 3.3, rescue: 10, town: 1.1 }, Scavenger: { aggro: 4.3, rescue: 6, town: .8 }, 'Police Officer': { aggro: 6.8, rescue: 8, town: .55 } };
 const zombieTypes = {
@@ -1574,7 +1577,7 @@ function gatherTick(s) {
   s.faceW = tc(x, y);
   if (s.stateTicks > 0) return;
   const n = treeNode(x, y); n.left--; if (n.left <= 0) { n.regrow = nowH() + K.regrow; n.mark = false; } S.nodeVer = (S.nodeVer || 0) + 1;
-  const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' || s.job === 'Mechanic' ? 1 : 0) : (s.job === 'Scavenger' || s.job === 'Mechanic' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
+  const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' ? 1 : 0) : (s.job === 'Scavenger' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
   if (s.gatherK === 'wreck' && rnd() < .22) { S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); bark(s, 'fuel', {}, { pri: 1 }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
   if (rnd() < .2) bark(s, { tree: 'chop', rock: 'mine', wreck: 'wreck', bin: 'bin' }[s.gatherK || 'tree']);
   s.carriedLoot = K.res; s.carryAmt = (K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)]) + carryBonus(s);   /* 3D.28 backpacks */ s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
@@ -1658,7 +1661,7 @@ function tryHaul(s) {
     if (zombieNear(jobPt(x), 5)) continue;
     for (const [r, v] of Object.entries(x.j.need)) {
       const m = v - (x.j.got[r] || 0) - (x.j.inb[r] || 0), have = Math.floor(S[r] || 0); if (m <= 0 || have < 1) continue;
-      const n = Math.min(m, have, 5 + carryBonus(s) * 2); S[r] -= n; x.j.inb[r] = (x.j.inb[r] || 0) + n; x.j.lastHaul = tick; s.haul = { r, n, id: x.j.id }; if (rnd() < .12) bark(s, 'haul', { b: jobName(x) });
+      const n = Math.min(m, have, (5 + carryBonus(s) * 2) * (s.job === 'Civilian' ? 2 : 1));   /* 3D.67: Civilians carry twice as much */ S[r] -= n; x.j.inb[r] = (x.j.inb[r] || 0) + n; x.j.lastHaul = tick; s.haul = { r, n, id: x.j.id }; if (rnd() < .12) bark(s, 'haul', { b: jobName(x) });
       s.dest = depotPt(s); s.mode = 'walk'; s.purpose = 'haul-get'; s.path = null; s.stateTicks = 2400; s.why = `Fetching ${n} ${RES_NAME[r]} for the ${jobName(x)}`; return true;
     }
   }
@@ -1673,7 +1676,7 @@ function endHammer(s) { const x = s.hammerJob != null ? jobById(s.hammerJob) : n
 function hammerTick(s) {
   s.moving = false; const x = s.hammerJob != null ? jobById(s.hammerJob) : null; if (!x) { endHammer(s); s.activity = null; enterFree(s, 20); return; }
   s.faceW = { x: x.b.x + x.b.w / 2, y: x.b.y + x.b.h / 2 }; s.activity = 'Building';
-  if (x.j.cons > 0) x.j.cons -= 1.2 * TUNE.work * (s.job === 'Engineer' || s.job === 'Mechanic' ? 1.4 : 1) * (gearFx(s, 'build') ? 1.3 : 1);   /* 3D.28 Tool Belt */
+  if (x.j.cons > 0) x.j.cons -= 1.2 * TUNE.work * (s.job === 'Engineer' ? 1.4 : s.job === 'Civilian' ? 1.2 : 1) * (gearFx(s, 'build') ? 1.3 : 1);   /* 3D.28 Tool Belt */
   if (s.stateTicks <= 0 || x.j.cons <= 0) { gainXp(s, 1); endHammer(s); s.activity = null; s.faceW = null; enterFree(s, 20); }
 }
 const hqB = () => world.buildings.find((b) => DEFS[b.type] && DEFS[b.type].role === 'hq') || null;
@@ -1689,7 +1692,7 @@ function needScore(s, b) {
   if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s) && !((r.need === 'thirst' && s.thirst >= 95) || (r.need === 'hunger' && s.hunger >= 95))) return -999;   /* 3D.63: desperate enough, they risk it (they went to eat while dying of thirst because zombies were near the only barrel) */   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
   if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * (isNight() || s.fatigue >= 70 ? 1.2 : .6) + (isNight() && s.fatigue > 15 ? 45 : 0);   /* 3D.63: by day a nap only wins once they're really tired (a third of the town napped through lunch) */   /* V2.36: nights are for sleeping */
-  if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1);
+  if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1) + (s.wounded ? 45 : 0);   /* 3D.67: a field wound needs a medical building */
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
   if (r.need === 'train') {   /* V2.14: free time goes into self-improvement, favouring the stats their job uses */
     const base = (s.st && s.st[r.stat]) || 5; if (base >= STAT_CAP) return -999;
@@ -1754,7 +1757,7 @@ function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; the
     if (z.hp <= 0 || z.mode === 'appear' || z.zoo || z.mode === 'zleave') continue; const d = dist(s.w, z.w); if (!z.human && !nearTown(z.w) && !(z.target && S.sv.includes(z.target) && d < 3)) continue;   /* 3D.64: they hold the town; zombies out past the edge or walking away are left alone */
     const onPerson = z.target && z.target !== s && z.target.job !== undefined && ['zchase', 'zattack', 'zrecover'].includes(z.mode);
     const sneaking = z.human && z.mode === 'rsneak' && !z.carried && !(S.alert > 0);
-    if (sneaking && d > 2.5 + (stat(s, 'per') - 5) * .15 + traitSpot(s) + (atPost(s) ? 1.5 : 0)) continue;   /* raiders sneaking in are hard to spot */
+    if (sneaking && d > (2.5 + (stat(s, 'per') - 5) * .15 + traitSpot(s) + (atPost(s) ? 1.5 : 0)) * (s.job === 'Police Officer' ? 2 : 1)) continue;   /* 3D.67: Police spot sneaking raiders twice as far */   /* raiders sneaking in are hard to spot */
     if (d > rng && !(onPerson && d <= rng + 3)) continue;
     if (s.hp < s.max * (hasT(s, 'brave') ? .5 : hasT(s, 'cautious') ? .75 : .6) && !onPerson) continue;   /* hurt fighters only step in to defend someone (V2.43: Brave sooner, Cautious later) */
     const allies = S.sv.filter((q) => q !== s && q.target === z && ['chase', 'attack', 'recover'].includes(q.mode)).length;
@@ -1817,10 +1820,10 @@ function assignRescue() {   /* V2.37: anyone not already in an emergency can be 
   const downs = downedUnassigned(); if (!downs.length) return false;
   const OK = ['free', 'postCombat', 'wait', 'work', 'goWork', 'goFacility', 'useFacility', 'walk'];
   const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && (OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
-    || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, weaponRange(weaponOf(r)) + 1))))); if (!free.length) return false;   /* 3D.63: a shooter mid-fight isn't 'free' just because no zombie is at arm's length */
+    || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, rangeOf(r) + 1))))); if (!free.length) return false;   /* 3D.63: a shooter mid-fight isn't 'free' just because no zombie is at arm's length */
   let best = null, bs = -1e9;
   for (const q of downs) { const crowd = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5).length, urgency = 3000 / Math.max(300, q.bleed || 1);
-    for (const r of free) { if (crowd >= (hasT(r, 'caring') ? 3 : 2) && !isFighter(r)) continue; if (crowd && lastStand()) continue;   /* 3D.48 */   /* non-fighters don't walk into a crowd (Caring: up to two zombies) */ const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 + (hasT(r, 'caring') ? 8 : 0) - dist(r.w, q.w) + urgency - (r.mode === 'useFacility' ? 4 : 0) - (['chase', 'attack', 'recover'].includes(r.mode) ? 3 : 0); if (sc > bs) { bs = sc; best = { r, q }; } } }
+    for (const r of free) { if (crowd >= (hasT(r, 'caring') ? 3 : 2) && !isFighter(r)) continue; if (crowd && lastStand()) continue;   /* 3D.48 */   /* non-fighters don't walk into a crowd (Caring: up to two zombies) */ if (r.job === 'Medic' && onShift(r) && dist(r.w, q.w) > 10) continue;   /* 3D.67: a Medic on shift only leaves for someone down close by */ const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 + (r.job === 'Medic' ? 6 : 0) + (hasT(r, 'caring') ? 8 : 0) - dist(r.w, q.w) + urgency - (r.mode === 'useFacility' ? 4 : 0) - (['chase', 'attack', 'recover'].includes(r.mode) ? 3 : 0); if (sc > bs) { bs = sc; best = { r, q }; } } }
   if (!best) return false;
   if (best.r.mode === 'useFacility') { best.r.sleeping = false; best.r.activity = null; }
   best.q.rescuer = best.r; best.r.rescuing = best.q; best.r.target = null; best.r.facility = null; best.r.dest = null; best.r.path = null; best.r.mode = 'rescueTo'; best.r.why = `Rescuing ${best.q.name}${hasT(best.r, 'caring') ? ' (Caring)' : ''}`; note('routine', `${best.r.name} is rescuing ${best.q.name}.`); return true;
@@ -1836,7 +1839,7 @@ const canHold = (q) => q && q.hp > 0 && isFighter(q) && !['down', 'hospital', 'a
 function postsAssign() {   /* manual holders first; 'auto' (and a manual post whose holder is away) gets the best free fighter: Guards and Police first, then the healthiest */
   const P = S.posts || [], used = new Set();
   for (const p of P) { const q = typeof p.holder === 'number' ? S.sv.find((x) => x.id === p.holder) : null; p.cur = canHold(q) ? q.id : null; if (p.cur) used.add(p.cur); }
-  const pool = S.sv.filter((q) => canHold(q) && !used.has(q.id) && !q.post).sort((a, b) => (['Guard', 'Police Officer', 'SWAT'].includes(b.job) - ['Guard', 'Police Officer', 'SWAT'].includes(a.job)) || (b.l - a.l) || (b.hp - a.hp));
+  const pool = S.sv.filter((q) => canHold(q) && !used.has(q.id) && !q.post).sort((a, b) => (['Guard', 'Police Officer'].includes(b.job) - ['Guard', 'Police Officer'].includes(a.job)) || (b.l - a.l) || (b.hp - a.hp));
   for (const p of P) if (!p.cur && p.holder !== null && pool.length) { const q = pool.shift(); p.cur = q.id; used.add(q.id); }
 }
 const myPost = (s) => (S.posts || []).find((p) => p.cur === s.id) || null;
@@ -2142,6 +2145,7 @@ function finishFacility(s) {
   if (r.need === 'hunger' && rnd() < .6) emote(s, '😋', 80); if (r.need === 'thirst' && rnd() < .5) emote(s, '😌', 80); if (r.need === 'fatigue' && rnd() < .4) emote(s, '🥱', 70);
   if (r.need === 'fatigue' && !s.sleeping && s.hp > 0 && s.hp < s.max * .75) { const h = Math.max(1, Math.round(s.max * (.05 + r.benefit / 600))); s.hp = Math.min(Math.round(s.max * .75), s.hp + h); floats.push({ w: { ...s.w }, t: '+' + h + ' HP', col: '#7fd35a', a: 60 }); }   /* 3D.47 owner: sleep heals, up to 75% (beds that rest better heal more; a doctor gets you the rest) */
   if (r.need === 'fatigue') { s.fatigue = Math.max(0, s.fatigue - r.benefit); if (b && isT(b, 'house') && b.owner === s.id) { s.fatigue = Math.max(0, s.fatigue - r.benefit * .5); s.sat = Math.min(100, (s.sat || 0) + 2); } }   /* own home: rests 50% better, +2 ♥ */
+  if (r.need === 'injury' && s.wounded) { s.wounded = false; floats.push({ w: { ...s.w }, t: 'Wound treated', col: '#7fd35a', a: 70 }); }   /* 3D.67: only a medical building treats a field wound */
   if (r.need === 'injury') { const med = (S.meds || 0) >= .25; if (med) { S.meds -= .25; flow('meds', 'Treatment', -.25); } s.hp = Math.min(s.max, s.hp + r.benefit * (med ? 1.6 : 1)); if (med && rnd() < .3) floats.push({ w: { ...s.w }, t: '💊', col: '#ff9fbd', a: 60 }); }   /* V3D.25: medicine in stock heals 60% more */   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (isT(b, 'armory')) { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' scrap).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
   if (r.need === 'train') {   /* each visit fills a stat's training bar; 100 = +1 permanent point */
@@ -2168,8 +2172,10 @@ function ai(s) {
   if (s.fleeT > 0) s.fleeT--;
   if (s.sleeping && !(s.mode === 'useFacility' || (s.mode === 'wait' && s.sleeping === 'rough'))) s.sleeping = false;   /* 3D.66 overnight soak: someone woken by a fight, an SOS or a rescue kept the 'asleep' flag (shown asleep at midday, tired never rose) */
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
-  if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
+  if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.stable = false; if (s.downD !== S.day) { s.downD = S.day; s.downN = 0; } s.downN = (s.downN || 0) + 1; endAid(s); if (s.aidBy) { const m = s.aidBy; if (m.aidTo === s && m.aidKind === 'patch') { endAid(m); enterFree(m, 30); } } SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; bleedTick(s); return; }
+  if (s.wounded && s.mode !== 'hospital' && !(s.mode === 'useFacility' && injuryTrip(s)) && s.hp > Math.round(s.max * FIELD_CAP)) s.hp = Math.round(s.max * FIELD_CAP);   /* 3D.67: a field wound heals no further until treated */
+  if (s.aidBy && s.aidBy.mode === 'fieldAid' && s.aidBy.aidTo === s && s.aidBy.aidT > 0 && ['free', 'walk', 'wait'].includes(s.mode) && !s.carrying && !threatOf(s)) { s.moving = false; s.why = 'Being patched up by ' + s.aidBy.name; return; }
   if (s.haul && s.purpose !== 'haul-get' && s.purpose !== 'haul-put') cancelHaul(s);   /* V3D.23: an interrupted delivery goes back to the stockpile */
   if (s.carriedLoot && !s.haul && s.purpose !== 'gath-back') dropWood(s);   /* V3D.22: interrupted on the way home: the load still counts */
   if (s.gatherAt && s.purpose !== 'gath-out' && s.mode !== 'gather') s.gatherAt = null;
@@ -2197,19 +2203,20 @@ function ai(s) {
       if (S.water >= .05) { S.water -= .005; s.thirst = Math.max(0, s.thirst - .7); } if (S.food >= .05) { S.food -= .005; s.hunger = Math.max(0, s.hunger - .6); } s.fatigue = Math.max(0, s.fatigue - 1.5); if (s.hp < s.max) s.hp = Math.min(s.max, s.hp + 1); S.alert = Math.max(S.alert, 200); }   /* V2.37: sheltering also patches you up slowly */
     if (s.stateTicks <= 0) { const dn = isFighter(s) && canFight(s) && S.sv.some((q) => q.mode === 'down' && !q.rescuer);   /* 3D.64 balance study: 'hiding' was the commonest state just before going down: non-fighters came out early to help someone who was down and were caught 3 tiles from the door; now only fit fighters come out early */ if (zombieNear(Wd.doorPoint(b), lastStand() ? 8 : dn ? 3.2 : 6.5) ||   /* 3D.66: in a last stand they stay in until nothing is within 8 tiles (they popped out, saw a zombie further off, and ran back in) */ (dn && S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zrecover'].includes(z.mode) && dist(z.w, Wd.doorPoint(b)) < 7))) s.stateTicks = 120;   /* 3D.48: someone is down: come out as soon as nothing is right outside or hunting */ else { s.hideAt = null; s.wary = tick + 900; enterFree(s, 30); s.why = 'Coming out — area clear'; } } return;
   }   // being attacked beats lunch
-  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { const cb = s.careAt; s.hp = Math.round(s.max * (isCamp(cb) || !cb ? .55 : cb.type === 'hospital' ? 1 : cb.type === 'clinic' ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
+  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { const cb = s.careAt; s.wounded = false; s.stable = false; s.hp = Math.round(s.max * (isCamp(cb) || !cb ? .55 : cb.type === 'hospital' ? 1 : cb.type === 'clinic' ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
     if (tick % 15 === s.i % 15) { const zb = S.z.find((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < 2.2); if (zb && dist(s.w, q.w) < 4 && isFighter(s) && s.hp > s.max * .4) { q.rescuer = null; s.rescuing = null; engage(s, zb); s.why = `Clearing the way to ${q.name}`; return; } }   /* V2.37: clear first, then pick up */
-    const r = followPath(s, q.w, .02); if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Carrying ${q.name} to ${s.careTo ? 'the ' + DEFS[s.careTo.type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
+    const r = followPath(s, q.w, .02); if (r === 'arrived' && s.job === 'Medic' && !s.aidTo && !zNear(q.w, 3) && patchSupply(true)) { startAid(s, q, 'revive'); return; } if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Carrying ${q.name} to ${s.careTo ? 'the ' + DEFS[s.careTo.type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
   }
   if (s.mode === 'rescueCarry') {
     const q = s.carrying; if (!q) { enterPost(s); return; }
     if (!s.careTo || !world.buildings.includes(s.careTo)) s.careTo = careDest(); const dB = s.careTo;
     const r = followPath(s, sitePoint(dB), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
     if (r === 'fail' && dist(s.w, sitePoint(dB)) > 1.5 && (s.carryFail = (s.carryFail || 0) + 1) < 6) { s.path = null; return; }   /* 3D.63: a blocked path is retried, not teleported through */
-    if (r === 'arrived' || r === 'fail') { s.carryFail = 0; q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { s.carryFail = 0; q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.stable = false; emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
   }
+  if (s.mode === 'fieldAid') { fieldAidAI(s); return; }
   if (s.mode === 'goFire' || s.mode === 'fightFire') { fireAI(s); return; }
   if (s.mode === 'goWork') {
     if (!s.post || !world.buildings.includes(s.post) || s.post.staff !== s) { s.post = null; enterFree(s, 30); return; }
@@ -2246,7 +2253,7 @@ function ai(s) {
     if (tick % 30 === s.i % 30 && !(s.target.mode === 'zattack' && s.target.target && S.sv.includes(s.target.target))) {   /* 3D.64 owner: break off to save someone being eaten close by */
       const z2 = S.z.filter((z) => z.hp > 0 && !z.human && z !== s.target && z.mode === 'zattack' && z.target && z.target !== s && S.sv.includes(z.target) && dist(z.w, s.w) < 4).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0];
       if (z2) { s.target = z2; s.mode = 'chase'; s.path = null; s.comboQ = 0; s.why = 'Helping ' + z2.target.name; if (rnd() < .4) emote(s, '❗', 60, true); return; } }
-    if (s.mode === 'chase') { const d = dist(s.w, s.target.w), rng = weaponRange(weaponOf(s)) - (weaponOf(s).ranged ? .3 : 0); if (d > rng) {
+    if (s.mode === 'chase') { const d = dist(s.w, s.target.w), rng = rangeOf(s) - (weaponOf(s).ranged ? .3 : 0); if (d > rng) {
       /* V3D.21: close in on a target others are already fighting through your own spot around it (evenly spaced round the
          target from the first fighter's side), instead of queuing behind the one who is swinging */
       const mates = d < 2.4 ? S.sv.filter((q) => q.target === s.target && q.hp > 0 && (q.mode === 'chase' || q.mode === 'attack')).sort((a, b) => a.id - b.id) : [];
@@ -2254,17 +2261,17 @@ function ai(s) {
         const slot = { x: t.x + Math.cos(a) * rr, y: t.y + Math.sin(a) * rr }, bx = s.w.x, by = s.w.y; moveSlide(s, slot, CHASE); s.moving = true;
         if (Math.hypot(s.w.x - bx, s.w.y - by) > CHASE * TUNE.move * .2) return; }
       const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
-    if (s.mode === 'attack' && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + (weaponOf(s).ranged ? .6 : .2)) { s.mode = 'chase'; return; }   /* 3D.64 owner: melee swings landed from about a tile away (reach + .6); now reach + .2 */   /* target slipped out of reach: follow, don't swing at air */
+    if (s.mode === 'attack' && dist(s.w, s.target.w) > rangeOf(s) + (weaponOf(s).ranged ? .6 : .2)) { s.mode = 'chase'; return; }   /* 3D.64 owner: melee swings landed from about a tile away (reach + .6); now reach + .2 */   /* target slipped out of reach: follow, don't swing at air */
     if ((s.mode === 'attack' || s.mode === 'recover') && weaponOf(s).ranged) {   /* V3D.14: shooters step back from a zombie that gets in close (3D.64: between shots too) */
       const near = S.z.find((z) => z.hp > 0 && !z.human && z.target === s && dist(z.w, s.w) < .75);
       if (near) { const dx = s.w.x - near.w.x, dy = s.w.y - near.w.y, l = Math.hypot(dx, dy) || 1; moveSlide(s, { x: s.w.x + dx / l, y: s.w.y + dy / l }, CHASE * .9); s.moving = true; if (rnd() < .02) emote(s, '😰', 50); return; }
     }
     if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { s.ammo = weaponOf(s).mag; emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0 && !weaponOf(s).ranged && dist(s.w, s.target.w) > weaponRange(weaponOf(s)) + .25) { s.mode = 'chase'; return; } if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * comboMult(s, z, w)); z.hp -= dmg; if (s.comboFin) { if (!w.ranged) impactFx({ type: w.kind === 'blunt' ? 'brute' : 'walker' }, z.w); } z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0 && !weaponOf(s).ranged && dist(s.w, s.target.w) > rangeOf(s) + .25) { s.mode = 'chase'; return; } if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * comboMult(s, z, w) * (z.type === 'raider' && s.job === 'Police Officer' ? 1.5 : 1)); z.hp -= dmg; if (s.comboFin) { if (!w.ranged) impactFx({ type: w.kind === 'blunt' ? 'brute' : 'walker' }, z.w); } z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (z.type === 'boss') bark(s, 'bossKill', {}, { pri: 2 }); else if (rnd() < .3) bark(s, 'kill', {}, { pri: 1 }); else if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { { const pool = ['katana', 'kevlar', 'shotgun', 'rifle', 'military', 'riot', 'crossbow', 'dogtags'], it = pool[Math.floor(rnd() * pool.length)]; if (COZY_HUD) dropBag(z.w, 15, s, { meds: 2, fuel: 2, cloth: 2, ...(rnd() < .7 ? { item: it } : {}) }, 'epic'); else S.mat += 15; } S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; const zx = {}; for (const [ch, k, n] of ZDROP[z.type] || []) if (rnd() < ch) zx[k] = (zx[k] || 0) + n; if (rnd() < pd[0] || Object.keys(zx).length) { if (COZY_HUD) dropBag(z.w, rnd() < pd[0] ? pd[1] : 0, s, Object.keys(zx).length ? zx : null); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = s.comboQ > 0 ? 14 : Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }   /* 3D.58 combo follow-ups come fast */
-    if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target; if (s.comboQ > 0 && z && z.hp > 0 && dist(s.w, z.w) < weaponRange(weaponOf(s)) + .25) { s.mode = 'attack'; s.stateTicks = 0; return; } s.comboQ = 0; s.mode = 'chase'; s.stateTicks = Math.round(32 * (weaponOf(s).rate || 1)); } } return;
+    if (s.mode === 'recover') { s.moving = false; if (s.stateTicks <= 0) { const z = s.target; if (s.comboQ > 0 && z && z.hp > 0 && dist(s.w, z.w) < rangeOf(s) + .25) { s.mode = 'attack'; s.stateTicks = 0; return; } s.comboQ = 0; s.mode = 'chase'; s.stateTicks = Math.round(32 * (weaponOf(s).rate || 1)); } } return;
   }
   if (s.mode === 'postCombat') { s.moving = false; if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
     if (s.hp < s.max * .5 && medSite() && facilityUsers(medSite()) < cap(medSite())) { const m = medSite(); s.facility = m; s.mode = 'goFacility'; s.stateTicks = 9999; s.path = null; s.why = 'Hurt after the fight → ' + DEFS[m.type].name; return; }   /* V2.18: patch up before the next one */ if (s.stateTicks <= 0) enterFree(s, 20); return; }
@@ -2286,7 +2293,7 @@ function ai(s) {
     s.dest = null; s.path = null; settlePause(s, 100, 220); return;
   }
   if (s.mode === 'wait' || s.purpose === 'scav-search') return;
-  if (s.mode === 'free') { if (s.stateTicks > 0) { s.moving = false; return; } if (s.carriedLoot && s.carryAmt) { s.dest = depotPt(s); s.mode = 'walk'; s.purpose = 'gath-back'; s.path = null; s.stateTicks = 2400; s.why = 'Taking the load home first'; return; } chooseLifePurpose(s); }   /* 3D.28: a load in hand goes home before anything else */
+  if (s.mode === 'free') { if (s.stateTicks > 0) { s.moving = false; return; } if (s.carriedLoot && s.carryAmt) { s.dest = depotPt(s); s.mode = 'walk'; s.purpose = 'gath-back'; s.path = null; s.stateTicks = 2400; s.why = 'Taking the load home first'; return; } { const q = medicFindPatient(s); if (q) { startAid(s, q, 'patch'); return; } } chooseLifePurpose(s); }   /* 3D.28: a load in hand goes home before anything else */
 }
 // scavenger leaves 'wait' after searching → head home
 function lootFind(s) {
@@ -2615,7 +2622,7 @@ function autoRepair() {   // every second: the most damaged segment that can be 
   const cand = [...world.walls.values()].filter((wl) => wl.hp < wl.max).sort((a, b) => a.hp / a.max - b.hp / b.max);
   if (repairFirst && (repairFirst.hp >= repairFirst.max || !world.walls.has(Wd.key(repairFirst.x, repairFirst.y)))) repairFirst = null;
   const ok = (wl) => !near(wl) && !(wl.broken && inGap(wl)), best = repairFirst && ok(repairFirst) ? repairFirst : cand.find(ok); if (!best) return;
-  const fast = S.sv.some((q) => q.hp > 0 && (q.job === 'Engineer' || q.job === 'Mechanic' || hasSkill(q, 'handy'))), amt = Math.min(best.max - best.hp, fast ? 8 : 4), cost = amt / best.max * Wd.WALL_DEFS[best.type].mat * .6;
+  const fast = S.sv.some((q) => q.hp > 0 && ((q.job === 'Engineer' && !['away', 'errand', 'down', 'hospital'].includes(q.mode)) || hasSkill(q, 'handy')))   /* 3D.67: an Engineer in town, not away or hurt */, amt = Math.min(best.max - best.hp, fast ? 8 : 4), cost = amt / best.max * Wd.WALL_DEFS[best.type].mat * .6;
   repairFrac += cost; if (repairFrac >= 1) { if (S.mat < 1) { repairFrac = 1; return; } S.mat -= 1; repairFrac -= 1; flow('mat', 'Wall repairs', -1); }
   best.hp += amt; if (best.broken && best.hp >= best.max * .3) { best.broken = false; Wd.bump(world); } if (best.hp >= best.max) { best.hp = best.max; floats.push({ w: { x: best.x + .5, y: best.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); }
 }
@@ -2636,7 +2643,7 @@ const woodCap = matCap;
 const supplyCap = () => SUPPLY_BASE_CAP + 20 * storeTiers() + (researched('stockpile') ? 30 : 0);
 const isWorking = (b) => !!(b.staff && b.staff.mode === 'work' && b.staff.hp > 0);
 const BUILDING_STAT = aliasT({ farm: 'str', field: 'str', water: 'per', well: 'per', medic: 'int', clinic: 'int', hospital: 'int', canteen: 'cha', workshop: 'int', scrapyard: 'str' });
-const prodMult = (b, working = isWorking(b)) => powerBoost(b) * (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (working && b.staff ? TUNE.work : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? workBoost(b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && isT(b, 'workshop') ? .2 : 0) : 0));
+const prodMult = (b, working = isWorking(b)) => powerBoost(b) * (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (working && b.staff ? TUNE.work : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? fitBoost(b, b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && isT(b, 'workshop') ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs scrap each day; unpaid buildings run at half output ---------------- */
 const UPKEEP = aliasT({ bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 });
@@ -3175,10 +3182,10 @@ function showResidents(b) {   /* 3D.30: choose who lives in this housing */
 }
 function showAssign(b) {   /* V3D.13: pick who works at a building (matching professions first; others work there without the bonus) */
   const d = DEFS[b.type], jobs = STAFF_JOBS[d.fam] || [], can = S.sv.filter((q) => q.hp > 0 && q.mode !== 'away');
-  can.sort((x, y) => (jobs.includes(y.job) - jobs.includes(x.job)) || (y.l - x.l));
+  const rank = (q) => (jobs.includes(q.job) ? 2 : q.job === 'Civilian' ? 1 : 0); can.sort((x, y) => (rank(y) - rank(x)) || (y.l - x.l));
   const row = (q) => { const m = jobs.includes(q.job), where = q.post && q.post !== b ? `works at the ${DEFS[q.post.type].name}` : q.post === b ? 'works here now' : 'free';
-    return `<div class="card row${m ? ' fit' : ''}" data-as="${q.id}" style="cursor:pointer;gap:8px${m ? '' : ';opacity:.75'}">${portrait(q)}<div class="sp"><b>${esc(q.name)}</b> <span class="sm">${q.job} Lv.${q.l}</span>${m ? '<span class="fitTag">Best fit</span>' : ''}<div class="sm">${m ? '★ +' + Math.round(workBoost(q) * 100) + '% here' : 'no bonus here'} · ${where}</div></div><span style="color:var(--gold)">›</span></div>`; };
-  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Who works at the ${d.name}? ${jobs.length ? `${jobs.join(' / ')} get a bonus.` : ''}</div><div class="lst">${can.map(row).join('')}<div class="card" data-as="none" style="cursor:pointer;text-align:center">Nobody</div></div>`;
+    return `<div class="card row${m ? ' fit' : ''}" data-as="${q.id}" style="cursor:pointer;gap:8px${m ? '' : ';opacity:.75'}">${portrait(q)}<div class="sp"><b>${esc(q.name)}</b> <span class="sm">${q.job} Lv.${q.l}</span>${m ? '<span class="fitTag">Best fit</span>' : ''}<div class="sm">${m ? '★ +' + Math.round(workBoost(q) * 100) + '% here' : q.job === 'Civilian' ? '+25% here (helping hands)' : '−25% here (wrong job)'} · ${where}</div></div><span style="color:var(--gold)">›</span></div>`; };
+  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Who works at the ${d.name}? ${jobs.length ? `${jobs.join(' / ')} get a bonus; a Civilian helps a little; anyone else slows it down.` : ''}</div><div class="lst">${can.map(row).join('')}<div class="card" data-as="none" style="cursor:pointer;text-align:center">Nobody</div></div>`;
   showPanel('Assign worker'); $('pBack').style.display = 'block'; panelBack = () => showBuildingInfo(b);
   $('ib').querySelectorAll('[data-as]').forEach((el) => { el.onclick = () => {
     if (el.dataset.as === 'none') { releasePost(b); b.noStaff = true; b.manual = false; say(`Nobody works at the ${d.name} now.`, true); }
@@ -3189,11 +3196,12 @@ function autoStaff() {           // one slot per building; a matching profession
   for (const q of S.sv) if (q.post && (!world.buildings.includes(q.post) || q.post.staff !== q)) q.post = null;
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || !d.slot) continue; if (b.burnt) { releasePost(b); continue; } const jobs = STAFF_JOBS[d.fam] || [];
-    if (b.staff && (!S.sv.includes(b.staff) || (!jobs.includes(b.staff.job) && !b.manual))) releasePost(b);
+    if (b.staff && (!S.sv.includes(b.staff) || (!jobs.includes(b.staff.job) && !b.manual && !(b.staff.job === 'Civilian' && !S.sv.some((q) => !q.post && jobs.includes(q.job) && q.hp > 0))))) releasePost(b);   /* a Civilian stands in until a matching worker is free */
     if (b.noStaff) continue;   /* V3D.13: the player chose 'nobody' */
     if (b.staff) continue;
     const c = S.sv.filter((q) => !q.post && q.hp > 0 && !['down', 'hospital'].includes(q.mode) && jobs.includes(q.job)).sort((x, y) => (y.l - x.l) || (dist(x.w, Wd.doorPoint(b)) - dist(y.w, Wd.doorPoint(b))));
     if (c.length) { b.staff = c[0]; c[0].post = b; note('routine', `${c[0].name} will staff the ${d.name}.`); }
+    else { const cv = S.sv.filter((q) => !q.post && q.hp > 0 && !['down', 'hospital', 'away'].includes(q.mode) && q.job === 'Civilian').sort((x, y) => dist(x.w, Wd.doorPoint(b)) - dist(y.w, Wd.doorPoint(b)))[0]; if (cv && FAMRES(d.fam)) { b.staff = cv; cv.post = b; note('routine', `${cv.name} lends a hand at the ${d.name}.`); } }   /* 3D.67: Civilians fill gaps (+25%) */
   }
 }
 function upgradeCheck(b) {   /* V3D.23: an upgrade is a construction job on the building; it keeps working meanwhile */
@@ -3242,7 +3250,7 @@ const GUIDE = [
   { name: 'Grow the Camp', desc: 'Upgrade the Camp to a Lodge', hint: 'Tap your Camp → Upgrade. It needs wood and scrap: idle survivors chop trees and salvage wrecks on their own, and builders carry everything over. The Lodge unlocks Timber buildings and more land.', done: () => hqTier() >= 2, parts: 4, ren: 6 },
   { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare scrap. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
   { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
-  { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workbench and tap it. An Engineer, Mechanic or Medic working there makes research points faster. Research unlocks gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
+  { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workbench and tap it. An Engineer working there makes research points faster. Research unlocks gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
   { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Barricade or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with scrap.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
   { name: 'Go Out There', desc: 'Send an expedition', hint: 'EXPEDITION → pick a place, a risk level and a squad. Trips run in real time, even while the game is closed, and bring back supplies, scrap and sometimes gear or new survivors.', done: () => !!S.trip || (S.expCount || 0) > 0, parts: 5, ren: 6 },
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
@@ -3670,7 +3678,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -3736,7 +3744,9 @@ function blockSaves(kind) {
 window.addEventListener('storage', (e) => {   /* another tab wrote (or deleted) this slot: stop saving here so the two never overwrite each other */
   if (titleOn || saveBlocked || e.key !== SAVE_KEY) return; const m = e.newValue && /^\{"sid":"(\w+)"/.exec(e.newValue); if (m && m[1] === SID) return; blockSaves('tab');
 });
+const OLD_JOB = { Mechanic: 'Engineer', Paramedic: 'Medic', SWAT: 'Police Officer' };   /* 3D.67: retired professions in old saves */
 function relinkSurvivor(s) {
+  if (OLD_JOB[s.job]) { s.job = OLD_JOB[s.job]; }
   if (!s.last) s.last = pickLast();   /* V3D.17 */
   if (G3D && s.eq && s.eq.weapon === 'pipe') s.eq.weapon = null;   /* V3D.15: the old default pipe goes; equipment is shown only when given */
   if (!s.st) s.st = rollStats(s.job, s.l); if (!s.tp) s.tp = {}; if (!s.eq) { const nm = s.weapon && s.weapon[0], id = Object.keys(ITEMS).find((k) => ITEMS[k].name === nm) || 'pipe'; s.eq = { weapon: id, armor: null, acc: null }; } delete s.weapon;   /* V2.14 save upgrade: stats + gear slots */
@@ -3854,7 +3864,7 @@ const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: .005, hurt: .10 
    They are only possible when a lead comes in (mornings and afternoons, each lasts ~10 hours); the squad walks a bar at the bottom of the screen. */
 const EXP_HMS = 1000 * 1000 / 60, expNow = () => S.expClock || 0, EXP_HOURS = { low: 2, medium: 3, high: 5 };
 const EXP_STAGES = 3, EXP_MAX_SQUAD = 4, EXP_HOME_MIN = 2, EXP_COST = { low: 1, medium: 2, high: 4 }, EXP_BACK_DEATH = .003;
-const expKind = (s) => (['Guard', 'Police Officer', 'SWAT'].includes(s.job) ? 'guard' : ['Medic', 'Paramedic'].includes(s.job) ? 'medic' : s.job === 'Scavenger' ? 'scav' : 'other');
+const expKind = (s) => (['Guard', 'Police Officer'].includes(s.job) ? 'guard' : s.job === 'Medic' ? 'medic' : s.job === 'Scavenger' ? 'scav' : 'other');
 function expBlock(s) {   // why a survivor can't go on an expedition (null = free to go)
   if (s.hp <= 0 || ['down', 'hospital'].includes(s.mode)) return 'hurt'; if (s.hp < s.max * .6) return 'hurt';
   if (s.rescuing || s.carrying || ['rescueTo', 'rescueCarry'].includes(s.mode)) return 'rescuing';
@@ -3937,7 +3947,7 @@ function expResolveStage(t, quiet) {
 const STAT_ABBR = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
 const EXP_ENC = {
   door: { title: '🚪 A BARRICADED STORE', text: 'Chained shutters on a corner shop. Whatever is inside has not been looted.', opts: [
-    { id: 'force', label: 'Force the shutters', chk: 'str', job: { Engineer: .1, Mechanic: .1, Guard: .05 }, win: { mat: [2, 3] }, fail: 'hurt', winT: '{who} wrenched the shutters open: {got}.', failT: 'The chain snapped back and caught {who}.' },
+    { id: 'force', label: 'Force the shutters', chk: 'str', job: { Engineer: .1, Guard: .05 }, win: { mat: [2, 3] }, fail: 'hurt', winT: '{who} wrenched the shutters open: {got}.', failT: 'The chain snapped back and caught {who}.' },
     { id: 'sneak', label: 'Find a way in at the back', chk: 'agi', job: { Scavenger: .12 }, tr: { scrounger: .1 }, win: { food: [1, 2], water: [1, 2] }, fail: 'none', winT: '{who} squeezed in through a vent: {got}.', failT: '{who} found no way in. Nothing lost.' },
     { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the store alone.' }] },
   cry: { title: '📢 A CRY FOR HELP', text: 'Someone is shouting from a rooftop, with the dead crowding the stairwell below.', opts: [
@@ -3950,10 +3960,10 @@ const EXP_ENC = {
     { id: 'back', label: 'Turn back now', safe: true, recall: true, winT: 'The squad turned for home with what they had.' }] },
   cache: { title: '🚗 A WRECKED ARMORED VAN', text: 'A security van on its side, the back door jammed half open.', opts: [
     { id: 'climb', label: 'Climb inside', chk: 'agi', tr: { scrounger: .15 }, job: { Scavenger: .1 }, win: { item: 1 }, fail: 'hurt', winT: '{who} wriggled in and came out with {got}.', failT: 'The wreck shifted and pinned {who} for a moment.' },
-    { id: 'pry', label: 'Pry the door off', chk: 'str', job: { Engineer: .12, Mechanic: .12 }, win: { mat: [2, 4] }, fail: 'none', winT: '{who} pried it open and stripped the van: {got}.', failT: 'The door would not move. Nothing lost.' },
+    { id: 'pry', label: 'Pry the door off', chk: 'str', job: { Engineer: .12 }, win: { mat: [2, 4] }, fail: 'none', winT: '{who} pried it open and stripped the van: {got}.', failT: 'The door would not move. Nothing lost.' },
     { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the van alone.' }] },
   stranger: { title: '🤒 A SICK STRANGER', text: 'A feverish man sits by a burnt-out car, clutching a backpack.', opts: [
-    { id: 'treat', label: 'Treat him', chk: 'int', job: { Medic: .2, Paramedic: .2 }, tr: { caring: .1 }, win: { item: 1, ren: 3 }, fail: 'none', winT: '{who} brought the fever down. He gave them {got}.', failT: 'There was nothing {who} could do. Nothing lost.' },
+    { id: 'treat', label: 'Treat him', chk: 'int', job: { Medic: .2 }, tr: { caring: .1 }, win: { item: 1, ren: 3 }, fail: 'none', winT: '{who} brought the fever down. He gave them {got}.', failT: 'There was nothing {who} could do. Nothing lost.' },
     { id: 'leave', label: 'Move on', safe: true, winT: 'The squad moved on.' }] },
   raiders: { minRisk: 'medium', title: '🔫 RAIDERS DEMAND A TOLL', text: 'Armed raiders block the bridge and want a share of the haul.', opts: [
     { id: 'pay', label: 'Pay half the haul', safe: true, toll: .5, winT: 'The squad paid the toll and crossed.' },
@@ -4136,18 +4146,59 @@ let BANDAGE_COST = 2, BANDAGE_TICKS = 3600;   /* Field Medicine research: 1 part
 function medTier() { const m = medSite(); return m ? m.type : 'none'; }
 function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed); }
 function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.round(CARE_TICKS.medic * 1.5);   /* 3D.46 camp care: half again as long as a Medical Tent */
-  const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1)); }
+  const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1) * (m && !(isWorking(m) && m.staff && m.staff.job === 'Medic') ? 1.6 : 1)); }   /* 3D.67: care without a Medic on staff is 1.6x slower */
+/* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:
+   a field dressing heals to 60% at most, and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
+   building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
+   Each treatment uses 1 cloth or 0.1 meds. ---------------- */
+const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+const zNear = (p, r) => S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, p) < r);
+function patchSupply(dry) { if ((S.cloth || 0) >= 1) { if (!dry) { S.cloth -= 1; flow('cloth', 'Field aid', -1); } return true; } if ((S.meds || 0) >= .1) { if (!dry) { S.meds -= .1; flow('meds', 'Field aid', -.1); } return true; } return false; }
+const injuryTrip = (q) => ['goFacility', 'useFacility'].includes(q.mode) && q.facility && facilityRules[q.facility.type] && facilityRules[q.facility.type].need === 'injury';
+function medicFindPatient(s) {
+  if (s.job !== 'Medic' || s.hp < s.max * .5 || onShift(s) || s.carriedLoot || !patchSupply(true)) return null;
+  let best = null, bd = 14;
+  for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= Math.round(q.max * FIELD_CAP) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
+      || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || insideBuilding(q) || q.sleeping) continue;
+    const d = dist(s.w, q.w); if (d < bd && !zNear(q.w, 5)) { bd = d; best = q; } }
+  return best;
+}
+function startAid(s, q, kind) { s.mode = 'fieldAid'; s.aidTo = q; s.aidKind = kind; q.aidBy = s; s.aidT = 0; s.path = null; s.dest = null; s.target = null; s.facility = null; s.activity = null; s.purpose = null;
+  if (kind === 'revive') { q.stable = true; }   /* pressure on the wound: the bleed stops while they work */
+  s.why = kind === 'patch' ? `Patching up ${q.name}` : `Treating ${q.name} where they fell`; }
+function endAid(s) { const q = s.aidTo; if (q && q.aidBy === s) q.aidBy = null; s.aidTo = null; s.aidKind = null; s.aidT = 0; if (s.activity === 'Treating') s.activity = null; }
+function fieldAidAI(s) {
+  const q = s.aidTo, kind = s.aidKind;
+  if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= Math.round(q.max * FIELD_CAP) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
+    if (q && kind === 'revive' && q.rescuer === s) { q.rescuer = null; q.stable = false; } s.rescuing = null; endAid(s); enterFree(s, 30); return; }
+  if (kind === 'patch' && (zNear(q.w, 5) || threatOf(s))) { endAid(s); enterFree(s, 60); return; }
+  if (kind === 'revive' && zNear(q.w, 2.5)) { endAid(s); q.stable = false; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `No time: carrying ${q.name} to safety`; return; }   /* zombies close in: grab them and go */
+  const d = dist(s.w, q.w);
+  if (d > .95) { s.aidT = 0; s.activity = null; const k = .6 / Math.max(.6, d), goal = { x: q.w.x + (s.w.x - q.w.x) * k, y: q.w.y + (s.w.y - q.w.y) * k };
+    const r = followPath(s, goal, .02); if (r === 'fail' && (s.aidFail = (s.aidFail || 0) + 1) > 4) { s.aidFail = 0; if (kind === 'revive') { q.rescuer = null; q.stable = false; s.rescuing = null; } endAid(s); enterFree(s, 60); } return; }
+  s.moving = false; s.path = null; s.aidFail = 0; s.activity = 'Treating'; if (s.aidT === 0) { s.facing = q.w.x < s.w.x ? -1 : 1; emote(s, '🩹', PATCH_TICKS, true); }
+  if (++s.aidT < PATCH_TICKS) return;
+  if (!patchSupply(false)) { floats.push({ w: { ...s.w }, t: 'Needs 🧵 or 💊', col: '#ff8a4b', a: 70 });
+    if (kind === 'revive') { endAid(s); q.stable = false; s.carrying = q; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Out of dressings: carrying ${q.name} in`; } else { endAid(s); enterFree(s, 60); } return; }
+  gainXp(s, kind === 'revive' ? 4 : 2); addBond(s, q, kind === 'revive' ? 6 : 3);
+  if (kind === 'patch') { const to = Math.round(q.max * FIELD_CAP), h = Math.max(0, to - q.hp); q.hp = Math.max(q.hp, to); q.patchT = tick; floats.push({ w: { ...q.w }, t: '+' + h + ' HP 🩹', col: '#7fd35a', a: 70 }); emote(q, '🙏', 90, true); endAid(s); enterFree(s, 40); return; }
+  if ((q.downN || 0) >= 2) {   /* too serious for the field: stabilised, then carried in */
+    endAid(s); q.stable = true; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `${q.name} is stable but needs care: carrying them in`;
+    note('routine', `${s.name} stabilised ${q.name} (down twice today: needs a medical bed).`); return; }
+  endAid(s); q.hp = Math.max(1, Math.round(q.max * .3)); q.bleed = null; q.warned = false; q.stable = false; q.rescuer = null; q.wounded = true; s.rescuing = null; enterFree(q, 150); q.why = 'Back on their feet (Wounded)'; emote(q, '🙏', 120, true);
+  floats.push({ w: { ...q.w }, t: '🩹 BACK UP', col: '#7fd35a', a: 80 }); SFX('rescued'); note('routine', `${s.name} got ${q.name} back on their feet. ${q.name} is Wounded until treated at a medical building.`); enterFree(s, 40);
+}
 function beingCarried(s) { const r = s.rescuer; return !!(r && r.carrying === s && r.mode === 'rescueCarry'); }
 function bleedTick(s) {
   if (s.bleed == null) { s.bleed = bleedMax(); s.warned = false; }
-  if (beingCarried(s)) return;
+  if (beingCarried(s) || s.stable) return;   /* 3D.67: a Medic stabilised them */
   s.bleed--;
   if (!s.warned && s.bleed <= 1800) { s.warned = true; note('routine', s.name + ' is bleeding out!'); }
   if (s.bleed <= 0) killSurvivor(s, 'bled out');
 }
 function killSurvivor(s, cause) {
   if (!S.sv.includes(s)) return;
-  S.sv = S.sv.filter((q) => q !== s); bondsOnDeath(s);
+  S.sv = S.sv.filter((q) => q !== s); bondsOnDeath(s); endAid(s); for (const q of S.sv) if (q.aidTo === s) { endAid(q); if (q.mode === 'fieldAid') enterFree(q, 60); }
   S.deaths = (S.deaths || []).filter((d) => d > nowD() - 1); S.deaths.push(nowD());
   if (S.deaths.length >= 2 && !graceOn()) { S.graceUntil = nowD() + 1.5; note('important', '🕯 THE HAVEN MOURNS', { log: 'After so many losses the survivors hold a vigil. The horde pulls back for a while — rebuild your defences.' }); }
   for (const q of S.sv) { if (q.rescuing === s) { q.rescuing = null; if (['rescueTo', 'rescueCarry'].includes(q.mode)) { q.carrying = null; enterFree(q, 60); } } if (q.target === s) q.target = null; }
@@ -4357,14 +4408,14 @@ const BDESC = {
   tent: 'Beds for 2. Upgrade to a Cabin, then a Stone House, for more beds and better rest.', cabin: 'A log cabin with beds for 3; better rest than a tent.', stonehouse: 'A stone house with beds for 4: the best rest and a happier mood.',
   house: 'A home of their own for one long-time resident.', inn: 'Beds for 4.',
   bonfire: 'A big camp fire: burns bright at night and lights the camp around it (about 4 tiles), so you can see your people and the zombies.',
-  barrel: 'Catches a little rainwater. Upgrade to a Rain Collector, then a Stone Well.', water: 'Catches rainwater. An Engineer or Mechanic makes it collect more.', well: 'Draws groundwater: the most water.',
+  barrel: 'Catches a little rainwater. Upgrade to a Rain Collector, then a Stone Well.', water: 'Catches rainwater. A Farmer makes it collect more.', well: 'Draws groundwater: the most water.',
   farm: 'A small vegetable patch. Drinks a little water. A Farmer boosts it.', field: 'A fenced field: nearly twice the food of a Garden Plot.', irrig: 'Irrigated rows: the most food, but thirsty.',
-  medic: 'Patches up the wounded with medicine. A Medic boosts it.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying.',
+  medic: 'Treats the hurt and heals field wounds. Care is much slower without a Medic on staff.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying.',
   canteen: 'Survivors eat here. A Cook makes every meal more filling.', mess: 'A big stone mess hall: seats 4 and meals do more.',
   crates: 'Holds more food, water, wood and stone.', storage: 'Holds more food, water, wood and stone.', warehouse: 'Holds the most.',
   bench: 'Research and craft gear. Upgrade to a Workshop for more research.', workshop: 'Research new tech and craft gear. Engineers work fastest.',
   armory: 'Survivors buy basic weapons and armor here with spare scrap.',
-  scrapyard: 'Turns junk into scrap. A Scavenger or Engineer boosts it.', lumber: 'A worker chops wood all day (plants as they go). A Farmer or Scavenger boosts it.', quarry: 'A worker digs stone all day. An Engineer, Mechanic or Scavenger boosts it.',
+  scrapyard: 'Turns junk into scrap. A Scavenger boosts it.', lumber: 'A worker chops wood all day (plants as they go). A Scavenger boosts it.', quarry: 'A worker digs stone all day. An Engineer boosts it.',
   gym: 'Free-time training for Strength.', library: 'Study for Intelligence. Every visit adds research.', lounge: 'Relax for Charisma and a happier mood.',
   range: 'Target practice for Perception (better with guns and bows).', track: 'Obstacle runs for Agility (speed and dodging).', sparring: 'Bouts in the ring for Endurance (more HP).',
   barracks: 'Fighters rest and gear up here. Next to an Armory, gear gets cheaper.',
@@ -4440,6 +4491,7 @@ function unitNow(u) {
 function activityText(u) { return u.mode === 'down' ? 'Bleeding out!' : u.mode === 'hospital' ? 'In care' : u.mode === 'away' ? 'On expedition' : u.why || u.mode; }
 const bar = (f, col) => `<div style="height:7px;background:#1d242b;border-radius:4px;margin:3px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(100 * Math.max(0, Math.min(1, f)))}%;background:${col};border-radius:4px"></i></div>`;
 function careLine(u) {   /* V2.36: rescue and treatment progress, from the real timers */
+  if (u.wounded && !['down', 'hospital'].includes(u.mode)) return `<div style="color:var(--warn,#f0b44c)">🩹 Wounded: patched up in the field. Heals no further than ${Math.round(FIELD_CAP * 100)}% until treated at a medical building.</div>`;
   if (u.mode === 'down') { const left = Math.max(0, Math.ceil((u.bleed || 0) / 60)), r = u.rescuer; return `<div style="color:var(--bad)">Bleeding out: ${left} s left</div>${bar((u.bleed || 0) / bleedMax(), '#d84d48')}<div class="sm">${r ? (r.carrying === u ? `${esc(r.name)} is wheeling them to ${medSite() ? 'the ' + DEFS[medSite().type].name : 'safety'}` : `${esc(r.name)} is on the way`) : 'No rescuer yet: the nearest free survivor will come'}</div>`; }
   if (u.mode === 'hospital') { const tot = u.careTotal || careTicks(), f = 1 - (u.stateTicks || 0) / tot, m = u.careAt || medSite(); return `<div>Recovering${m ? ' at the ' + DEFS[m.type].name : ''}: ${Math.round(f * 100)}% · about ${Math.ceil((u.stateTicks || 0) / 1000 * 10) / 10} h left</div>${bar(f, '#7fd35a')}<div class="sm">${m && isWorking(m) ? `${esc(m.staff.name)} is treating patients (faster)` : m && DEFS[m.type].slot ? 'No medic on duty: slower recovery' : ''}</div>`; }
   if (u.mode === 'useFacility' && u.facility && facilityRules[u.facility.type] && facilityRules[u.facility.type].need === 'injury') return `<div class="sm">Being patched up at the ${DEFS[u.facility.type].name}</div>`;
@@ -4589,7 +4641,8 @@ const GUIDE_TXT = [
   ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Barrels and Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
   ['Walls', 'Build → Defend → Wood Barricade, Metal Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
-  ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time.'],
+  ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
+  ['Professions', 'Guards are tough wall-holders (+20% HP, take 20% less damage). Police Officers shoot further, spot sneaking raiders sooner and hit raiders harder. Scavengers loot and fetch wood and scrap. Medics patch people up in the field (to 60%) and get the downed back up Wounded; a medical building heals the rest. Engineers build and repair fastest. Cooks stretch every ration. Farmers grow food and water. Civilians fill any job and carry twice the load. Someone in the wrong job works at 75%.'],
   ['Gear', 'Tap a survivor → Gear to equip weapons, armor and accessories from the stash. The Armory, crafting, the trader and expeditions give new gear.'],
   ['Explore', 'Send a squad out from the Explore button. Trips run in real time, even while the game is closed. Losses are permanent.'],
   ['Renown', 'Building, goals and victories earn Renown. Renown, production, residents and buildings raise the Haven rank. Higher ranks unlock buildings, and bring tougher zombies.'],
@@ -4652,7 +4705,7 @@ function showBuildingInfo(b, tab) {
   if (!tabs.some(([k]) => k === bTab)) bTab = 'overview';
   const jobs = STAFF_JOBS[d.fam] || [], cb = combos(b);
   const out = d.fam === 'lumber' || d.fam === 'quarry' ? `${d.fam === 'lumber' ? '🪵' : '🪨'} <b>+${(d.out * prodMult(b)).toFixed(1)}</b> ${d.fam === 'lumber' ? 'wood' : 'stone'} / day` : d.fam === 'scrap' ? `⚙ <b>+${(d.out * prodMult(b) * (researched('salvage') ? 1.25 : 1)).toFixed(1)}</b> scrap / day` : d.fam === 'research' ? `🔬 <b>+${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)}</b> research / day` : d.train ? `📈 Trains <b>${STAT_NAME[d.train]}</b>` : d.fam === 'water' ? `💧 <b>+${(d.out * prodMult(b)).toFixed(1)}</b> water / day` : d.fam === 'farm' ? `🍖 <b>+${(d.out * prodMult(b)).toFixed(1)}</b> food / day <span class="sm">(💧 −${d.waterUse})</span>` : r ? `🛎 ${r.label}` : '';
-  const staff = d.slot ? (b.staff ? `👷 ${esc(b.staff.name)} <span class="sm">${b.staff.job} Lv.${b.staff.l} · ${isWorking(b) ? '+' + Math.round(workBoost(b.staff) * 100) + '%' : 'off shift'}</span>` : `👷 <span style="color:var(--bad)">No worker</span> <span class="sm">needs ${jobs.join(' / ')}</span>`) : '';
+  const staff = d.slot ? (b.staff ? `👷 ${esc(b.staff.name)} <span class="sm">${b.staff.job} Lv.${b.staff.l} · ${isWorking(b) ? (fitOf(b, b.staff) === 'wrong' ? '−25% (wrong job)' : '+' + Math.round((fitOf(b, b.staff) === 'civ' ? .25 : workBoost(b.staff)) * 100) + '%') : 'off shift'}</span>` : `👷 <span style="color:var(--bad)">No worker</span> <span class="sm">needs ${jobs.join(' / ')}</span>`) : '';
   let h = tabBar(tabs, bTab);
   if (bTab === 'overview') {
     let status = ''; const st = bStatus(b), io = bOutput(b), sn = staffNote(b);
@@ -4972,6 +5025,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
 }
 // test / debug hook (no effect on gameplay)
 window.ZH = { BUILD_TAG, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+Object.assign(window.ZH, { medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
