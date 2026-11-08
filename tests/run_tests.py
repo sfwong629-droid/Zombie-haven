@@ -414,10 +414,10 @@ async def t_traits(br, port, t):   # V2.43: survivor personalities change existi
     t.ok(not r['b'] and r['n2'], f'a Brave fighter keeps fighting at 30% where others fall back {r}')
     r = await pg.evaluate("""()=>{const S=ZH.S,o={};const b=ZH.world.buildings.find(x=>ZH.DEFS[x.type].slot);if(!b)return {skip:1};const q=S.sv.find(x=>x.job!=='Guard');const keep=b.staff;b.staff=q;const md=q.mode;q.mode='work';q.trait='scrounger';const base=ZH.prodMult(b);q.trait='diligent';const dil=ZH.prodMult(b);q.mode=md;b.staff=keep;return {base,dil}}""")
     t.ok(r.get('skip') or r['dil'] > r['base'] + .2, f'a Hard-working worker out-produces a Scrounger at the same post {r}')
-    r = await pg.evaluate("""()=>{const S=ZH.S;S.z.length=0;const v=S.sv.find(q=>q.job==='Farmer');v.hp=0;ZH.simTick();for(let i=0;i<2;i++){ZH.spawn(v.w.x+.4+i*.3,v.w.y,'walker');const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=99999}
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.z.length=0;const v=S.sv.find(q=>q.job==='Farmer');v.hp=0;ZH.simTick();for(let i=0;i<1;i++){ZH.spawn(v.w.x+.4+i*.3,v.w.y,'walker');   /* 3D.71: left alone, a plain non-fighter won't pass even one zombie; Caring will */const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=99999}
       for(const q of S.sv)if(q!==v){q.mode=['Guard','Scavenger','Police Officer'].includes(q.job)?'hiding':'free';q.rescuing=null;q.carrying=null;q.hp=q.max;q.trait='scrounger'}
       const m=S.sv.find(q=>q.job==='Medic');v.rescuer=null;ZH.assignRescue();const plain=v.rescuer===m;if(v.rescuer){v.rescuer.rescuing=null;v.rescuer.mode='free'}v.rescuer=null;m.trait='caring';ZH.assignRescue();return {plain,caring:v.rescuer===m,why:m.why}}""")
-    t.ok(not r['plain'] and r['caring'] and 'Caring' in r['why'], f'only a Caring non-fighter runs to the downed past two zombies, and says why {r}')
+    t.ok(not r['plain'] and r['caring'] and 'Caring' in r['why'], f'only a Caring non-fighter runs to the downed past a zombie, and says why {r}')
     r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard'),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
     t.ok(r['card'] and r['name'], 'the survivor panel explains the personality (upside and cost)')
     r = await pg.evaluate("""()=>{const S=ZH.S;S.sv.forEach(q=>q.trait='loner');const q=S.sv[0];q.trait='eater';ZH.saveGame();const d=JSON.parse(ZH.serialize());return d.sv.map(x=>x.trait)}""")
@@ -755,7 +755,30 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
     t.ok(r['day'] > 0, f"zombies still come by day {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_skill(br, port, t):   # 3D.71 skill study changes
+    ctx, pg, errs = await open_game(br, port, 'skill')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;
+      // Send rescue: goes into a zombie that a cautious auto-rescue would not pass
+      const v=S.sv.find(q=>q.job!=='Guard');v.hp=0;ZH.simTick();ZH.spawn(v.w.x+.4,v.w.y,'walker');const z=S.z[S.z.length-1];z.mode='idle';z.stateTicks=99999;
+      for(const o of S.sv)if(o!==v){o.mode='free';o.rescuing=null;}for(const o of S.sv)if(['Guard','Police Officer','Scavenger'].includes(o.job))o.mode='away';ZH.assignRescue();out.auto=!!v.rescuer;for(const o of S.sv)if(o.mode==='away')o.mode='free';out.sent=ZH.orderRescue(v);out.ordered=!!v.rescuer;
+      // a hungry worker produces 70%
+      const q=S.sv[0];q.hunger=80;out.pen=ZH.hungryPen(q);q.hunger=10;out.ok=ZH.hungryPen(q);
+      // two days with an empty store: someone may leave (60% each day)
+      const n0=S.sv.length;S.food=0;S.water=0;S.hardship=1;let left=0;for(let i=0;i<8&&!left;i++){ZH.hardshipCheck();left=n0-S.sv.length;S.food=0;}out.left=left;S.food=40;S.water=40;ZH.hardshipCheck();out.reset=S.hardship===0;
+      // appeal: spare supplies and beds
+      S.food=0;S.water=0;const a0=ZH.townAppeal();S.food=99;S.water=99;out.appeal=[a0,ZH.townAppeal()];
+      // Focus the boss
+      S.z.length=0;S.day=6;S.hour=21;ZH.spawnBoss();for(const f of S.sv){f.hp=f.max;f.mode='free';f.rescuing=null;f.carrying=null;}out.focus=ZH.focusBoss();const b=S.z.find(z=>z.type==='boss');out.onBoss=S.sv.filter(f=>f.target===b).length;
+      return out}""")
+    t.ok(r['pen'] == .7 and r['ok'] == 1, f"hungry or thirsty workers work at 70% {r}")
+    t.ok(r['left'] == 1 and r['reset'], f"days with an empty store drive someone away; stocking up resets it {r}")
+    t.ok(r['appeal'][1] > r['appeal'][0], f"spare food and water make the town more appealing {r}")
+    t.ok(not r['auto'] and r['sent'] and r['ordered'], f"left alone a non-fighter won't pass a zombie; Send rescue sends someone {r}")
+    t.ok(r['focus'] and r['onBoss'] >= 1, f"Focus the boss sends the fighters at it {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

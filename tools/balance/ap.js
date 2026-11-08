@@ -50,6 +50,8 @@
     if (Z.policy() !== want && (S.polT || 0) + 600 < Z.tick) { Z.setPolicy(want); S.polT = Z.tick; }
     AP.xt = (AP.xt || 0) + 1;
     for (const wl of W.walls.values()) if (wl.broken && S.z.some((z) => z.hp > 0 && !z.human && Math.hypot(z.w.x - wl.x - .5, z.w.y - wl.y - .5) < 6) && !(wl.sentT > Z.tick - 900)) { if (Z.sendDefender({ x: wl.x + .5, y: wl.y + .5 })) wl.sentT = Z.tick; }   /* answers every breach alert */
+    if (Z.orderRescue) for (const q of S.sv) if (q.mode === 'down' && !q.ordered && !q.rescuer) Z.orderRescue(q);   /* taps Send rescue on every down alert */
+    if (Z.focusBoss && S.z.some((z) => z.type === 'boss' && z.hp > 0) && !(S.focusT > Z.tick)) Z.focusBoss();   /* taps Focus the boss */
     if (Z.militia && AP.xt % 2 === 0 && S.sv.some((q) => q.mode === 'down')) Z.militia();
   }
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
@@ -98,6 +100,8 @@
     else if (on('jobs') && S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
     // give civilians (grown-up children, newcomers) a useful job
     if (on('jobs') && S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
+    // beds: a sensible player makes room before the town is full (newcomers only come with a free bed)
+    if (on('plan') && S.hour === 10 && Z.popNow() >= Z.popCap() - 1) { if (!place('cabin')) place('tent'); }
     // research
     { const nx = Z.RANK_REQ[S.rank], want = nx && Z.DEFS[nx.build] && Z.DEFS[nx.build].res; let goal = null;   /* V2.38: research toward the next star's building first (its chain), then the usual order */
       if (want && !Z.researched(want)) { let r = want; while (r && !Z.researched(Z.RESEARCH[r].need)) r = Z.RESEARCH[r].need; goal = r; }
