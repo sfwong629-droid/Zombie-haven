@@ -36,7 +36,7 @@ class TownA(S.Town2):
         short = super().produce()
         if s.X.get('AMMO') and s.cat == 'ammo':
             mw = 1 + s.T['MORALE_WORK'] * (s.morale - 50) / 100
-            for k, rate, scrap in (('ammobench', 6, 1.5), ('ammofactory', 20, 3)):
+            for k, rate, scrap in (('ammobench', 6, 1.5), ('ammofactory', s.X.get('FACT', 20), 3)):
                 if not s.bld[k] or (k == 'ammofactory' and not s.on(k)): continue
                 n, q = s.staffed(k); made = n * rate * q / 1.5 * mw; cost = made / rate * scrap
                 if s.res['scrap'] < cost: made *= s.res['scrap'] / cost; cost = s.res['scrap']

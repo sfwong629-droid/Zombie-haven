@@ -696,6 +696,12 @@ const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17],
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (G3D) { ctx.clearRect(0, 0, VW, VH); if (window.ZH3D) ZH3D.frame(); }   /* the 3D canvas underneath draws the world; this canvas keeps the overlays */
+  if (G3D && !(window.ZH3D && ZH3D.ready)) {   /* 3D.76: say the world is still loading (big model files on a phone connection) instead of an empty screen */
+    const t0 = draw.t0 || (draw.t0 = performance.now()), sec = Math.round((performance.now() - t0) / 1000);
+    ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH); ctx.textAlign = 'center'; ctx.fillStyle = '#e8f0e0'; ctx.font = '600 20px Fredoka, sans-serif';
+    ctx.fillText('Loading the world…', VW / 2, VH / 2); ctx.font = '500 15px Fredoka, sans-serif'; ctx.fillStyle = '#a9b8a4';
+    ctx.fillText(sec < 40 ? `${sec} s` : 'Still loading: check your connection, or close and reopen the game', VW / 2, VH / 2 + 26); ctx.textAlign = 'start';
+  }
   else { ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH); drawGround(); }
   /* V2.18: the build-zone outline is baked into the ground image (stroking it every frame was ~half the frame time) */
   if (sel && (sel.kind === 'wall' || sel.kind === 'post')) {

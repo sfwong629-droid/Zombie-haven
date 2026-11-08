@@ -1,0 +1,25 @@
+30d/unlimited/smart                score   3248 pop  17.5 lvl  6.3 L15 (19, 0.01) dead  1.3 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.0 fac 0.0
+30d/ammo/smart                     score   3087 pop  16.7 lvl  6.0 L15 (21.0, 0.02) dead  1.4 short-nights 0.75 ammo-left   19 dark 0.00 gen 0.3 fac 0.3
+30d/ammo/no-generator/smart        score   3076 pop  16.7 lvl  6.0 L15 (None, 0) dead  1.5 short-nights 0.75 ammo-left   14 dark 0.00 gen 0 fac 0.4
+30d/unlimited/good                 score   2368 pop  13.2 lvl  4.3 L15 (None, 0) dead  1.4 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.0 fac 0.0
+30d/ammo/good                      score   2203 pop  12.4 lvl  4.0 L15 (None, 0) dead  1.6 short-nights 0.85 ammo-left    4 dark 0.00 gen 0.3 fac 0.3
+30d/ammo/no-generator/good         score   2219 pop  12.5 lvl  4.0 L15 (None, 0) dead  1.6 short-nights 0.85 ammo-left    6 dark 0.00 gen 0 fac 0.4
+30d/unlimited/casual               score   1327 pop   8.2 lvl  2.3 L15 (None, 0) dead  2.3 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.0 fac 0
+30d/ammo/casual                    score   1154 pop   7.4 lvl  2.2 L15 (None, 0) dead  2.8 short-nights 0.87 ammo-left    0 dark 0.00 gen 0.1 fac 0.1
+30d/ammo/no-generator/casual       score   1158 pop   7.4 lvl  2.2 L15 (None, 0) dead  2.8 short-nights 0.87 ammo-left    0 dark 0.00 gen 0 fac 0.1
+30d/ammo/no-factory/smart          score   3114 pop  16.9 lvl  6.1 L15 (22, 0.01) dead  1.4 short-nights 0.77 ammo-left   10 dark 0.00 gen 0.3 fac 0
+30d/ammo/no-gunsmith/smart         score   3087 pop  16.7 lvl  6.0 L15 (21.0, 0.02) dead  1.4 short-nights 0.75 ammo-left   19 dark 0.00 gen 0.3 fac 0.3
+120d/unlimited/smart               score   4582 pop  24.2 lvl  9.7 L15 (70, 0.49) dead  2.2 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.0 fac 0.1
+120d/ammo/smart                    score   4270 pop  22.6 lvl  9.0 L15 (75, 0.37) dead  2.2 short-nights 0.85 ammo-left   12 dark 0.00 gen 0.5 fac 1.1
+120d/ammo/no-generator/smart       score   4464 pop  23.6 lvl  9.4 L15 (74, 0.45) dead  2.3 short-nights 0.85 ammo-left   12 dark 0.00 gen 0 fac 1.1
+120d/unlimited/good                score   4901 pop  26.1 lvl 10.5 L15 (81.0, 0.54) dead  2.8 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.1 fac 0.1
+120d/ammo/good                     score   4019 pop  22.1 lvl  8.7 L15 (85, 0.35) dead  3.7 short-nights 0.91 ammo-left    5 dark 0.00 gen 0.6 fac 1.0
+120d/ammo/no-generator/good        score   4005 pop  21.9 lvl  8.7 L15 (85, 0.35) dead  3.6 short-nights 0.90 ammo-left    6 dark 0.00 gen 0 fac 1.1
+120d/unlimited/casual              score   2050 pop  12.9 lvl  4.8 L15 (88, 0.11) dead  5.7 short-nights 0.00 ammo-left   20 dark 0.00 gen 0.1 fac 0.1
+120d/ammo/casual                   score   1504 pop  10.7 lvl  3.9 L15 (89.0, 0.08) dead  7.1 short-nights 0.93 ammo-left    0 dark 0.00 gen 0.2 fac 0.2
+120d/ammo/no-generator/casual      score   1520 pop  10.8 lvl  4.0 L15 (90, 0.07) dead  7.1 short-nights 0.93 ammo-left    0 dark 0.00 gen 0 fac 0.2
+120d/ammo/no-factory/smart         score   4325 pop  22.9 lvl  9.1 L15 (72.0, 0.4) dead  2.2 short-nights 0.86 ammo-left   12 dark 0.00 gen 0.5 fac 0
+120d/ammo/no-gunsmith/smart        score   4270 pop  22.6 lvl  9.0 L15 (75, 0.37) dead  2.2 short-nights 0.85 ammo-left   12 dark 0.00 gen 0.5 fac 1.1
+120d/ammo-per-zombie2/smart        score   4007 pop  21.3 lvl  8.4 L15 (74.5, 0.32) dead  2.3 short-nights 0.68 ammo-left   35 dark 0.00 gen 0.5 fac 0.9
+120d/ammo-per-zombie4/smart        score   4193 pop  22.2 lvl  8.8 L15 (75, 0.35) dead  2.0 short-nights 0.91 ammo-left    4 dark 0.00 gen 0.5 fac 1.0
+done in 477s
