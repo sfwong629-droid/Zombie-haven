@@ -1,7 +1,8 @@
 // Auto-player: a sensible player's decisions, run once per game hour. Installed as window.AP.
 (() => {
   const Z = window.ZH, S = Z.S, W = Z.world, Wd = Z.Wd, D = Wd.DEFS;
-  const AP = window.AP = { log: [], built: [], events: [] }; window.ZH_NO_REVEAL = true;
+  const AP = window.AP = { log: [], built: [], events: [], off: new Set() }; window.ZH_NO_REVEAL = true;
+  const on = (k) => !AP.off.has(k) && !AP.off.has('all');   /* skill study: switch single player habits off ('all' = an idle player who only answers popups and move-in requests) */
   const cnt = (t) => W.buildings.filter((b) => b.type === t).length;
   const fam = (f) => W.buildings.filter((b) => D[b.type].fam === f).length;
   const ok = (t) => { const d = D[t]; return d && S.rank >= (d.rank || 1) && (d.role === 'hq' || (d.tier || 1) <= Z.hqTier()) && Z.researched(d.res); };
@@ -42,23 +43,33 @@
     }
     return n;
   }
+  /* skill study: an attentive player's live decisions, checked every tick the auto-player runs */
+  function expertTick() {
+    const hurt = S.sv.filter((q) => q.hp < q.max * .5 && !['away', 'errand'].includes(q.mode)).length, night = Z.isNight(), zin = S.z.filter((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))).length;
+    const want = hurt >= 2 && !zin ? 'recover' : night || zin ? 'defend' : 'produce';   /* defend at night or under attack, heal when people are hurt, push production on quiet days */
+    if (Z.policy() !== want && (S.polT || 0) + 600 < Z.tick) { Z.setPolicy(want); S.polT = Z.tick; }
+    AP.xt = (AP.xt || 0) + 1;
+    for (const wl of W.walls.values()) if (wl.broken && S.z.some((z) => z.hp > 0 && !z.human && Math.hypot(z.w.x - wl.x - .5, z.w.y - wl.y - .5) < 6) && !(wl.sentT > Z.tick - 900)) { if (Z.sendDefender({ x: wl.x + .5, y: wl.y + .5 })) wl.sentT = Z.tick; }   /* answers every breach alert */
+    if (Z.militia && AP.xt % 2 === 0 && S.sv.some((q) => q.mode === 'down')) Z.militia();
+  }
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
   AP.tick = function () {
-    if (Z.radioHelp && Z.helpReady && AP.radio !== false && S.sv.filter((q) => q.mode === 'down').length >= 2 && Z.helpReady()) { Z.radioHelp(); AP.events.push('radio@d' + S.day); }   /* 3D.64: a player radios for help when two are down */
+    if (AP.expert) expertTick();
+    if (on('radio') && Z.radioHelp && Z.helpReady && AP.radio !== false && S.sv.filter((q) => q.mode === 'down').length >= 2 && Z.helpReady()) { Z.radioHelp(); AP.events.push('radio@d' + S.day); }   /* 3D.64: a player radios for help when two are down */
     for (const s of S.sv) { const prev = last.get(s);
       if (s.mode === 'down' && prev && prev.mode !== 'down') { let zt = null, zd = 9; for (const z of S.z) if (z.hp > 0) { const d = Math.hypot(z.w.x - s.w.x, z.w.y - s.w.y); if (d < zd) { zd = d; zt = z.type + (z.human ? '' : '') ; } }
         const B = Wd.BUILD; AP.downs.push({ d: S.day, h: S.hour, who: s.job + ' L' + s.l, was: prev.mode + (prev.purpose ? '/' + prev.purpose : '') + (prev.why ? ' (' + prev.why + ')' : ''), inTown: s.w.x >= B.x0 && s.w.x <= B.x1 + 1 && s.w.y >= B.y0 && s.w.y <= B.y1 + 1, by: zt, broken: [...W.walls.values()].filter((w) => w.broken).length, walls: W.walls.size }); }
       last.set(s, { mode: s.mode, purpose: s.purpose, why: s.why }); }
   };
   AP.hour = function () {
-    if (Z.collectBonus && S.hour % 2 === 0) for (const b of W.buildings) if (b.bonus) Z.collectBonus(b);   /* 3D.58: production waits in trays until collected, as a player taps them */
+    if (on('trays') && Z.collectBonus && S.hour % 2 === 0) for (const b of W.buildings) if (b.bonus) Z.collectBonus(b);   /* 3D.58: production waits in trays until collected, as a player taps them */
     // V2.33: hold a town event at noon when it is affordable, and upgrade the town when the rating conditions are met
-    if (Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
-    if (Z.holdEvent && S.hour === 13 && S.rank >= 3 && (S.lastEventDay ?? -1) < S.day && S.food > Z.supplyCap() * .75 && S.water > Z.supplyCap() * .7) Z.holdEvent('caravan');   /* V2.38: trade a full pantry for parts */
-    if (Z.upgradeTown) Z.upgradeTown();
-    if (Z.signalReady && AP.finale !== false && S.hour === 8 && Z.signalReady()) { Z.startFinale(); AP.events.push('signal@d' + S.day); }   // V2.46: call the convoy as soon as it is possible
+    if (on('events') && Z.holdEvent && S.hour === 12 && Z.RANK_REQ[S.rank] && (S.eventsHeld || 0) < Z.RANK_REQ[S.rank].events) {   /* only as many events as the next star needs */ for (const k of ['bonfire', 'sports', 'market']) { const e = Z.TOWN_EVENTS[k], c = e.cost; if (Object.entries(c).every(([r, v]) => S[r] >= v + 6)) { if (Z.holdEvent(k)) break; } } }
+    if (on('events') && Z.holdEvent && S.hour === 13 && S.rank >= 3 && (S.lastEventDay ?? -1) < S.day && S.food > Z.supplyCap() * .75 && S.water > Z.supplyCap() * .7) Z.holdEvent('caravan');   /* V2.38: trade a full pantry for parts */
+    if (on('rank') && Z.upgradeTown) Z.upgradeTown();
+    if (on('finale') && Z.signalReady && AP.finale !== false && S.hour === 8 && Z.signalReady()) { Z.startFinale(); AP.events.push('signal@d' + S.day); }   // V2.46: call the convoy as soon as it is possible
     // V2.45: guard posts once the town has two stars: one night watch north of the centre, one day watch south, as a player would put them by the gates
-    if (Z.tryPost && AP.posts !== false && S.rank >= 2 && S.hour === 9 && (S.posts || []).length < Math.min(2, Z.postMax()) && S.mat > 20) {
+    if (on('posts') && Z.tryPost && AP.posts !== false && S.rank >= 2 && S.hour === 9 && (S.posts || []).length < Math.min(2, Z.postMax()) && S.mat > 20) {
       const B = Wd.BUILD, cx = Math.round((B.x0 + B.x1) / 2), cand = (S.posts || []).length ? [[cx, B.y1], [cx - 1, B.y1], [cx + 1, B.y1], [cx, B.y1 - 1], [cx - 2, B.y1 - 1]] : [[cx, B.y0], [cx - 1, B.y0], [cx + 1, B.y0], [cx, B.y0 + 1], [cx + 2, B.y0 + 1]];
       for (const [x, y] of cand) { const r = Z.tryPost(x, y); if (r.ok) { if (S.posts.length === 2) r.post.sched = 'day'; AP.events.push('post ' + x + ',' + y + '@d' + S.day); break; } }
     }
@@ -70,51 +81,51 @@
     // accept move-in requests (a player would)
     let g = 0; while (S.requests.length && document.getElementById('acceptReq') && g++ < 10) document.getElementById('acceptReq').click();
     // expeditions: one squad out at a time
-    if (AP.exp && !S.trip && S.sv.length >= 5 && S.food > 12 && S.water > 12) {
+    if (on('exp') && AP.exp && !S.trip && S.sv.length >= 5 && S.food > 12 && S.water > 12) {
       const sq = Z.expAutoSquad(3).map((q) => q.id), lvl = S.sv.reduce((a, q) => a + q.l, 0) / S.sv.length;
       const jn = (r) => Z.jobList().some((x) => (x.j.need[r] || 0) > (x.j.got[r] || 0)) && (S[r] || 0) < 3;
       const dest = jn('meds') && !Z.expLocked('pharmacy') ? 'pharmacy' : jn('fuel') && !Z.expLocked('gasstation') ? 'gasstation' : (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' || dest === 'gasstation' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
       if (sq.length >= 2) { const r = Z.startExpedition(dest, risk, sq); if (r.ok) AP.events.push('exp ' + dest + '/' + risk + '@d' + S.day); }
     }
     // bandage the downed
-    for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
+    if (on('bandage')) for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
     for (const s of S.sv) if (s.mode !== 'down') s.bandaged = 0;
     // repair burnt buildings
-    for (const b of W.buildings) if (b.burnt) Z.repairBurnt(b);   /* 3D.61: repairBurnt checks the wood / stone / scrap it needs */
+    if (on('repair')) for (const b of W.buildings) if (b.burnt) Z.repairBurnt(b);   /* 3D.61: repairBurnt checks the wood / stone / scrap it needs */
     // keep at least 2 fighters: retrain the best unassigned survivor as a Guard
     const FIGHT = ['Guard', 'Police Officer', 'Scavenger', 'SWAT'];
     if (AP.lockJobs) { for (const q of S.sv) if (AP.lockJobs.includes(q.job) && Z.changeProfession) Z.changeProfession(q, 'Civilian'); }   /* profession study: keep the roster as set, and keep the removed job out */
-    else if (S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
+    else if (on('jobs') && S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
     // give civilians (grown-up children, newcomers) a useful job
-    if (S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
+    if (on('jobs') && S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
     // research
     { const nx = Z.RANK_REQ[S.rank], want = nx && Z.DEFS[nx.build] && Z.DEFS[nx.build].res; let goal = null;   /* V2.38: research toward the next star's building first (its chain), then the usual order */
       if (want && !Z.researched(want)) { let r = want; while (r && !Z.researched(Z.RESEARCH[r].need)) r = Z.RESEARCH[r].need; goal = r; }
       const order = goal ? [goal, ...RES.filter((k) => k !== goal)] : RES;
-      if (S.mat > 30 + (AP.saving || 0)) for (const k of order) if (!Z.researched(k)) { if (Z.doResearch(k)) AP.events.push('res ' + k + '@d' + S.day); break; } }   /* V3D.26: research only from spare scrap */
+      if (on('research') && S.mat > 30 + (AP.saving || 0)) for (const k of order) if (!Z.researched(k)) { if (Z.doResearch(k)) AP.events.push('res ' + k + '@d' + S.day); break; } }   /* V3D.26: research only from spare scrap */
     // V3D.26 tools: steel first, then power tools once there is fuel to spare
-    if (Z.hqTier() >= 2) for (const k of ['axe', 'bar', 'pick']) { const cur = (S.tools || {})[k] || 0, nx = Z.TOOLS[k].tiers[cur + 1]; if (nx && (nx.cost.fuel || 0) <= Math.max(0, (S.fuel || 0) - 4) && (S.mat - (nx.cost.mat || 0)) >= 12 + (AP.saving || 0) && (S.wood || 0) - (nx.cost.wood || 0) >= (AP.saveW || 0) && Z.canPay(nx.cost)) { if (Z.craftTool(k)) AP.events.push('tool ' + nx.n + '@d' + S.day); break; } }
+    if (on('tools') && Z.hqTier() >= 2) for (const k of ['axe', 'bar', 'pick']) { const cur = (S.tools || {})[k] || 0, nx = Z.TOOLS[k].tiers[cur + 1]; if (nx && (nx.cost.fuel || 0) <= Math.max(0, (S.fuel || 0) - 4) && (S.mat - (nx.cost.mat || 0)) >= 12 + (AP.saving || 0) && (S.wood || 0) - (nx.cost.wood || 0) >= (AP.saveW || 0) && Z.canPay(nx.cost)) { if (Z.craftTool(k)) AP.events.push('tool ' + nx.n + '@d' + S.day); break; } }
     // food / water emergencies first
     const st = Z.supplyStats(); const reserve = 6 + 2 * Z.upkeepTotal();
     if (S.hour === 12) { AP.wTrend = S.water - (AP.w12 ?? S.water); AP.fTrend = S.food - (AP.f12 ?? S.food); AP.w12 = S.water; AP.f12 = S.food; }
     const needW = st.wNet < .5 || (S.water < 25 && (AP.wTrend || 0) < 0), needF = st.fNet < .5 || (S.food < 25 && (AP.fTrend || 0) < 0);
     const famN = (f) => W.buildings.filter((b) => D[b.type].fam === f).length + (S.sites || []).filter((q) => D[q.type].fam === f).length;
-    if (needW) { if (!place('well') && !place('water') && famN('water') < 3) place('barrel'); }
-    if (needF) { if (!place('irrig') && !place('field') && famN('farm') < 4) place('farm'); }
-    if (needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
+    if (on('supply') && needW) { if (!place('well') && !place('water') && famN('water') < 3) place('barrel'); }
+    if (on('supply') && needF) { if (!place('irrig') && !place('field') && famN('farm') < 4) place('farm'); }
+    if (on('supply') && needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
     // the building the next town star needs (Upgrade Town "Build X" condition)
-    { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
+    if (on('rank')) { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
     // build plan
-    let next = null; const want = {}; for (const t of PLAN) { want[t] = (want[t] || 0) + 1; if (have(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
+    let next = null; const want = {}; if (on('plan')) for (const t of (AP.plan || PLAN)) { want[t] = (want[t] || 0) + 1; if (have(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
     AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.saveW = next ? D[next].wood || 0 : 0; AP.core = ['barrel', 'farm', 'tent', 'bench'].every((t) => have(t) > 0);
-    if (PLAN.every((t, i) => !ok(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
+    if (on('plan') && PLAN.every((t, i) => !ok(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
     // walls from day 2
-    if (S.day >= 2 && AP.core && Z.hqTier() >= 2 && !AP.nowalls)   /* V3D.26: walls once the Lodge stands (before that, wood goes to buildings) */ walls(Math.max(reserve + 6, AP.saving));   /* V3D.26: walls once the Lodge stands */   /* economy first; walls only from spare parts */
+    if (on('walls') && S.day >= 2 && AP.core && Z.hqTier() >= 2 && !AP.nowalls)   /* V3D.26: walls once the Lodge stands (before that, wood goes to buildings) */ walls(Math.max(reserve + 6, AP.saving));   /* V3D.26: walls once the Lodge stands */   /* economy first; walls only from spare parts */
     // territory
-    const n = Wd.TERRITORY[(S.terr || 0) + 1]; if (n && S.ren >= n.ren && S.mat >= n.mat + (AP.full ? 4 : reserve + 15)) { if (Z.expandTerritory()) { AP.full = false; AP.ringDone = false; } if (S.terr && !AP.events.includes('expand ' + S.terr)) AP.events.push('expand ' + S.terr + '@d' + S.day); }
+    const n = Wd.TERRITORY[(S.terr || 0) + 1]; if (on('territory') && n && S.ren >= n.ren && S.mat >= n.mat + (AP.full ? 4 : reserve + 15)) { if (Z.expandTerritory()) { AP.full = false; AP.ringDone = false; } if (S.terr && !AP.events.includes('expand ' + S.terr)) AP.events.push('expand ' + S.terr + '@d' + S.day); }
     // crafting: weapons for fighters with only a pipe
     // trader
-    if (S.trader && S.trader.mode === 'stay') {
+    if (on('trader') && S.trader && S.trader.mode === 'stay') {
       const pi = S.trader.stock.findIndex((o) => o.k === 'pet' && !o.sold); if (pi >= 0 && S.food > 18 && S.water > 18) { if (Z.traderBuy(pi)) AP.events.push('pet@d' + S.day); }
       const owner = S.sv.find((q) => !q.pet); if ((S.pets || []).length && owner) Z.givePet(owner, 0);
       if (S.food > Z.supplyCap() * .8) Z.traderTrade(0); if (S.water > Z.supplyCap() * .8) Z.traderTrade(1);
