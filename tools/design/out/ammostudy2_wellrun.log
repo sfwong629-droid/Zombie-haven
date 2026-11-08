@@ -1,0 +1,8 @@
+120d/normal/well-run/smart           score   4291 pop  22.7 lvl  9.0 L15 (76.0, 0.38) dead  2.0 short 0.58 ammo   44 gen 0.5 fac 1.0 bench 1.9 | L8+ towns 0.46 short 0.32 dead 0
+120d/normal/well-run/no-power/smart  score   4361 pop  23.1 lvl  9.1 L15 (72.5, 0.38) dead  2.0 short 0.53 ammo   37 gen 0 fac 1.0 bench 1.9 | L8+ towns 0.49 short 0.16 dead 0
+120d/normal/well-run/good            score   4154 pop  22.9 lvl  9.1 L15 (80, 0.43) dead  3.9 short 0.66 ammo   14 gen 0.6 fac 1.0 bench 1.5 | L8+ towns 0.54 short 0.31 dead 0.04
+120d/normal/well-run/no-power/good   score   4224 pop  23.2 lvl  9.2 L15 (81, 0.43) dead  3.9 short 0.61 ammo   23 gen 0 fac 1.1 bench 1.5 | L8+ towns 0.56 short 0.19 dead 0.04
+120d/tight/well-run/smart            score   4162 pop  22.3 lvl  8.8 L15 (70.0, 0.36) dead  2.7 short 0.62 ammo   14 gen 0.5 fac 1.1 bench 2.0 | L8+ towns 0.46 short 0.25 dead 0
+120d/tight/well-run/no-power/smart   score   4251 pop  22.7 lvl  9.0 L15 (73.0, 0.4) dead  2.6 short 0.58 ammo   14 gen 0 fac 1.1 bench 2.0 | L8+ towns 0.46 short 0.18 dead 0
+120d/tight/well-run/good             score   3810 pop  21.7 lvl  8.7 L15 (77, 0.45) dead  5.7 short 0.62 ammo   13 gen 0.6 fac 1.0 bench 1.5 | L8+ towns 0.49 short 0.21 dead 0.1
+120d/tight/well-run/no-power/good    score   3754 pop  21.4 lvl  8.6 L15 (81.0, 0.4) dead  5.7 short 0.59 ammo   19 gen 0 fac 1.0 bench 1.5 | L8+ towns 0.49 short 0.12 dead 0.02
