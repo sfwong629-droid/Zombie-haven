@@ -23,7 +23,7 @@
     Z.newSite(t, best.x, best.y); AP.built.push(t + '@d' + S.day); return true;
   }
   const PLAN = ['barrel', 'farm', 'tent', 'medic', 'bench', 'hq2', 'scrapyard', 'water', 'tent', 'lumber', 'crates', 'farm', 'quarry', 'armory', 'gym', 'cabin', 'library', 'storage', 'field', 'clinic', 'workshop'];
-  const LATE = ['hq3', 'well', 'generator', 'stonehouse', 'irrig', 'radio', 'barracks', 'hospital', 'mess', 'warehouse', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];
+  const LATE = ['hq3', 'well', 'generator', 'stonehouse', 'irrig', 'fuelstill', 'radio', 'greenhouse', 'barracks', 'hospital', 'pump', 'mess', 'warehouse', 'ammofactory', 'coldstore', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];   /* 3D.77 power for growth, fuel and ammo */
   const RES = ['blades', 'salvage', 'walls', 'medicine', 'gadgets', 'bodyArmor', 'firearms', 'stockpile'];
   function ring() {   /* wood ring on the WALLZONE border, gates next to roads */
     const Zn = Wd.WALLZONE, out = [];
@@ -96,7 +96,7 @@
     // repair burnt buildings
     if (on('repair')) for (const b of W.buildings) if (b.burnt) Z.repairBurnt(b);   /* 3D.61: repairBurnt checks the wood / stone / scrap it needs */
     // keep at least 2 fighters: retrain the best unassigned survivor as a Guard
-    const FIGHT = ['Guard', 'Police Officer', 'Scavenger', 'SWAT'];
+    const FIGHT = ['Guard', 'Police Officer', 'Scavenger'];
     if (AP.lockJobs) { for (const q of S.sv) if (AP.lockJobs.includes(q.job) && Z.changeProfession) Z.changeProfession(q, 'Civilian'); }   /* profession study: keep the roster as set, and keep the removed job out */
     else if (on('jobs') && S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
     // give civilians (grown-up children, newcomers) a useful job
@@ -128,6 +128,16 @@
     if (on('walls') && S.day >= 2 && AP.core && Z.hqTier() >= 2 && !AP.nowalls)   /* V3D.26: walls once the Lodge stands (before that, wood goes to buildings) */ walls(Math.max(reserve + 6, AP.saving));   /* V3D.26: walls once the Lodge stands */   /* economy first; walls only from spare parts */
     // territory
     const n = Wd.TERRITORY[(S.terr || 0) + 1]; if (on('territory') && n && S.ren >= n.ren && S.mat >= n.mat + (AP.full ? 4 : reserve + 15)) { if (Z.expandTerritory()) { AP.full = false; AP.ringDone = false; } if (S.terr && !AP.events.includes('expand ' + S.terr)) AP.events.push('expand ' + S.terr + '@d' + S.day); }
+    // 3D.77 ammo: gunners need rounds: an Ammo Bench and a Mechanic to run it (a second bench when ammo runs low)
+    if (on('ammo') && Z.gunners) { const g = Z.gunners().length, nb = have('ammobench') + (S.sites || []).filter((q) => q.type === 'ammobench').length;
+      if (g && ok('ammobench') && (nb === 0 || (nb < 2 && (S.ammo || 0) < 6 * g && S.hour === 14)) && S.mat - D.ammobench.mat >= reserve * .5) place('ammobench');
+      const needM = W.buildings.filter((b) => ['ammobench', 'ammofactory', 'fuelstill', 'generator', 'pump'].includes(b.type)).length;
+      if (S.hour === 9 && Z.changeProfession && S.sv.filter((q) => q.job === 'Mechanic').length < Math.min(2, needM)) { const c = S.sv.filter((q) => (q.job === 'Civilian' || q.job === 'Cook') && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))[0]; if (c) Z.changeProfession(c, 'Mechanic'); } }
+    // 3D.76 traps (an attentive player): spikes and wire on the north side, re-armed and a lure set on boss days
+    if (on('traps') && AP.expert && Z.tryTrap && S.rank >= 2 && S.hour === 16) { const Zn = Wd.WALLZONE, cx = Math.round((Zn.x0 + Zn.x1) / 2); let n = Z.trapMap().size;
+      for (let dx = -3; dx <= 3 && n < Math.floor(Z.trapMax() * .7) && S.mat > 24; dx++) for (const [t, dy] of [['spikes', 2], ['wire', 1]]) { if (n >= Math.floor(Z.trapMax() * .7)) break; const r = Z.tryTrap(cx + dx, Zn.y0 - dy, t); if (r.ok) n++; }
+      if (S.day === S.nextBoss && S.rank >= 3 && Z.tryTrap) Z.tryTrap(cx, Math.max(0, Zn.y0 - 4), 'lure');
+      if (Z.rearmAll && Z.trapsSpent().length && S.mat > 16) Z.rearmAll(); }
     // crafting: weapons for fighters with only a pipe
     // trader
     if (on('trader') && S.trader && S.trader.mode === 'stay') {

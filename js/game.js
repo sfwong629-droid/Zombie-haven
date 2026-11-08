@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.77', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.78', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1074,7 +1074,7 @@ function reloadGun(s, w = itemOf(s, 'weapon')) {   /* 3D.77: limited ammo: refil
   if (s.ammo <= 0) { s.dry = true; s.ammo = 0; if (!(s.dryNote > tick - 1800)) { s.dryNote = tick; floats.push({ w: { ...s.w }, t: 'OUT OF AMMO!', col: '#ff8a6a', a: 90, big: true }); bark(s, 'noAmmo', {}, { pri: 2 }); ammoAlert(true); } }
 }
 function dryTick() {   /* every few seconds: gunners with an empty gun go back to it once there is ammo again */
-  if (tick % 120) return; for (const s of S.sv) if (s.dry && (S.ammo || 0) >= 1) { s.dry = false; s.ammo = 0; }
+  if (tick % 120) return; for (const s of S.sv) if (s.dry && (S.ammo || 0) >= 1) { s.dry = false; s.ammo = 0; reloadGun(s); }   /* audit: reload straight away (no free shot) */
 }
 const gunners = () => S.sv.filter((q) => q.hp > 0 && usesAmmo(itemOf(q, 'weapon')));
 const ammoCap = () => 60 + 30 * storeTiers();
@@ -1652,7 +1652,7 @@ const TOOL_SPEED = [1, 1.5, 2.2], TOOL_AMT = [0, 1, 2];
 const toolOf = (node) => Object.keys(TOOLS).find((k) => TOOLS[k].node === node);
 function toolLvl(node, use) {   // effective tier for a gather; use = spend the power tool's fuel
   const k = toolOf(node); if (!k) return 0; const t = (S.tools || {})[k] || 0;
-  if (t >= 2) { if ((S.fuel || 0) >= .15) { if (use) { S.fuel -= .15; flow('fuel', 'Power tools', -.15); } return 2; } return 1; } return t;
+  if (t >= 2) { if ((S.fuel || 0) >= .15 + 3 * gens().length) {   /* audit: a day of generator fuel stays in the tank */ if (use) { S.fuel -= .15; flow('fuel', 'Power tools', -.15); } return 2; } return 1; } return t;
 }
 const benchTier = () => Math.max(0, ...world.buildings.filter((b) => DEFS[b.type].fam === 'research' && !b.burnt).map((b) => DEFS[b.type].tier || 1));
 function craftTool(k) {
@@ -1670,24 +1670,29 @@ function toolsCard() {
    give buildings within 5 tiles +20% output. The Radio Tower needs power to send the rescue signal. */
 const gens = () => world.buildings.filter((b) => b.type === 'generator' && !b.burnt);
 const POWER_PER_GEN = 4;
-const POWER_ORDER = ['hospital', 'radio', 'pump', 'coldstore', 'greenhouse', 'ammofactory'];
+const POWER_ORDER = ['pump', 'hospital', 'coldstore', 'greenhouse', 'radio', 'ammofactory'];   /* audit: water first; a blackout must never starve the town */
+const PUMP_HAND = .3;   /* without power the pump is worked by hand at 30% */
 const genFuel = (b) => .125 * (b.staff && b.staff.job === 'Mechanic' ? (hasSkill(b.staff, 'fuelSaver') ? .5 : .75) : 1);   /* 3D.77: a Mechanic saves fuel */
-function powerGrid() {   /* 3D.77: hourly (and on load): which powered buildings get power this hour */
-  const sup = S.power ? gens().reduce((a, b) => a + POWER_PER_GEN + (b.staff && hasSkill(b.staff, 'gearhead') ? 2 : 0), 0) : 0;
+let genRun = [];   /* the Generators running this hour (not saved: rebuilt by powerTick) */
+function powerGrid() {   /* 3D.77: which powered buildings get power (hourly, on load, and when buildings change) */
+  const sup = S.power ? genRun.filter((g) => world.buildings.includes(g) && !g.burnt).reduce((a, g) => a + POWER_PER_GEN + (g.staff && hasSkill(g.staff, 'gearhead') ? 2 : 0), 0) : 0;
   const users = world.buildings.filter((b) => DEFS[b.type] && DEFS[b.type].power && !b.burnt).sort((a, b) => POWER_ORDER.indexOf(a.type) - POWER_ORDER.indexOf(b.type));
   let left = sup, need = 0; const off = [];
   for (const b of users) { const n = DEFS[b.type].power; need += n; b.pw = left >= n; if (b.pw) left -= n; else off.push(DEFS[b.type].name); }
-  S.pSup = sup; S.pNeed = need; S.pUse = sup - left;
-  if (off.length && S.power) note('important', `⚡ Not enough power: ${[...new Set(off)].join(', ')} ${off.length > 1 ? 'are' : 'is'} off. Build another Generator.`, { key: 'lowpower', icon: '⚡' });
-  if (off.length && !S.power && gens().length) note('important', `⚡ No power: ${[...new Set(off)].join(', ')} ${off.length > 1 ? 'are' : 'is'} off until the Generator has fuel.`, { key: 'lowpower', icon: '⚡' });
+  S.pSup = sup; S.pNeed = need; S.pUse = sup - left; return off;
 }
 const powered = (b) => !!(b && b.pw && !b.burnt);
 const anyPowered = (t) => world.buildings.some((b) => b.type === t && powered(b));
-function powerTick() {   // hourly
-  const g = gens().length; if (!g) { S.power = false; powerGrid(); return; }
-  const need = gens().reduce((a, b) => a + genFuel(b), 0); if ((S.fuel || 0) >= need) { S.fuel -= need; flow('fuel', 'Generator', -need); if (!S.power) { say('⚡ The generator is running.', true); barkSomeone('power', {}, { pri: 1 }); } S.power = true; }
-  else { if (S.power) barkSomeone('noPower', {}, { pri: 1 }); if (S.power) note('important', '⚡ The generator ran out of fuel: send a squad to the Gas Station, salvage wrecks, or run a Fuel Still', { key: 'nofuel', icon: '⛽' }); S.power = false; }
-  powerGrid();
+function powerTick() {   // hourly: run as many Generators as the fuel allows (Mechanic-run ones first: they burn less)
+  const all = [...gens()].sort((a, b) => genFuel(a) - genFuel(b)); let fuel = S.fuel || 0; const run = [];
+  for (const g of all) { const f = genFuel(g); if (fuel < f) break; fuel -= f; run.push(g); }
+  const burn = (S.fuel || 0) - fuel; if (burn > 0) { S.fuel = fuel; flow('fuel', 'Generator', -burn); }
+  const was = S.power; S.power = run.length > 0; genRun = run;
+  if (S.power && !was) { say('⚡ The generator is running.', true); barkSomeone('power', {}, { pri: 1 }); }
+  if (!S.power && was) { barkSomeone('noPower', {}, { pri: 1 }); note('important', '⚡ The generator ran out of fuel: send a squad to the Gas Station, salvage wrecks, or run a Fuel Still', { key: 'nofuel', icon: '⛽' }); }
+  const off = powerGrid();
+  if (off.length && S.power) note('important', `⚡ Not enough power: ${[...new Set(off)].join(', ')} ${off.length > 1 ? 'are' : 'is'} off. Build or fuel another Generator.`, { key: 'lowpower', icon: '⚡' });
+  if (off.length && !S.power && all.length) note('important', `⚡ No power: ${[...new Set(off)].join(', ')} ${off.length > 1 ? 'are' : 'is'} off until a Generator has fuel.`, { key: 'lowpower', icon: '⚡' });
 }
 const powerBoost = (b) => S.power && b.type !== 'generator' && gens().some((g) => Math.hypot(g.x + .5 - (b.x + b.w / 2), g.y + .5 - (b.y + b.h / 2)) <= 5) ? 1.2 : 1;
 const radioOk = () => world.buildings.some((b) => b.type === 'radio' && !b.burnt && (b.pw === undefined ? S.power : b.pw)) && !!S.power;
@@ -1871,13 +1876,14 @@ function assignRescue() {   /* V2.37: anyone not already in an emergency can be 
    nobody but a fighter walks into a crowd of zombies around the downed survivor */
   const downs = downedUnassigned(); if (!downs.length) return false;
   const OK = ['free', 'postCombat', 'wait', 'work', 'goWork', 'goFacility', 'useFacility', 'walk'];
-  const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && (OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
+  const BAL = window.ZH_BAL || {}, quiet = (q) => !S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < (BAL.hideR || 3.5));
+  const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && (((BAL.hiders ?? 1) && r.mode === 'hiding' && r.hideAt && downs.some(quiet) && !zombieNear(Wd.doorPoint(r.hideAt), BAL.hideR || 3.5)) || OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
     || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, rangeOf(r) + 1))))); if (!free.length) return false;   /* 3D.63: a shooter mid-fight isn't 'free' just because no zombie is at arm's length */
   let best = null, bs = -1e9;
   for (const q of downs) { const crowd = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5).length, urgency = 3000 / Math.max(300, q.bleed || 1);
     for (const r of free) { if (!q.ordered && crowd >= (isFighter(r) ? 2 : 1) + (hasT(r, 'caring') ? 1 : 0)) continue; if (q.ordered ? false : crowd >= (hasT(r, 'caring') ? 3 : 2) && !isFighter(r)) continue;   /* 3D.71: left alone, nobody walks into zombies (a fighter into one at most); the player's Send rescue goes anyway */ if (crowd && lastStand()) continue;   /* 3D.48 */   /* non-fighters don't walk into a crowd (Caring: up to two zombies) */ if (r.job === 'Medic' && onShift(r) && dist(r.w, q.w) > 10) continue;   /* 3D.67: a Medic on shift only leaves for someone down close by */ const sc = (jobAI[r.job] || jobAI.Civilian).rescue * 3 + (r.job === 'Medic' ? 6 : 0) + (hasT(r, 'caring') ? 8 : 0) - dist(r.w, q.w) + urgency + (q.ordered ? 40 : 0) - (r.mode === 'useFacility' ? 4 : 0) - (['chase', 'attack', 'recover'].includes(r.mode) ? 3 : 0); if (sc > bs) { bs = sc; best = { r, q }; } } }
   if (!best) return false;
-  if (best.r.mode === 'useFacility') { best.r.sleeping = false; best.r.activity = null; }
+  if (best.r.mode === 'useFacility') { best.r.sleeping = false; best.r.activity = null; } if (best.r.mode === 'hiding') best.r.hideAt = null;
   best.q.rescuer = best.r; best.r.rescuing = best.q; best.r.target = null; best.r.facility = null; best.r.dest = null; best.r.path = null; best.r.mode = 'rescueTo'; best.r.why = `Rescuing ${best.q.name}${hasT(best.r, 'caring') ? ' (Caring)' : ''}`; note('routine', `${best.r.name} is rescuing ${best.q.name}.`); return true;
 }
 /* ---------------- V2.45 guard posts: sandbagged spots the player places. The holder stands watch there (engages from 25% farther, spots raiders
@@ -2482,7 +2488,7 @@ function monsterGeneration() {
   if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* study: a fixed pool per night */
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, base = 6 + tr + Math.floor(S.day / 2.2);   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + S.day) : Math.max(3, Math.min(Math.round(base * .65), 9 + 2 * tr, 2 + S.day))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + S.day) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + S.day))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -2563,7 +2569,7 @@ function spawnBoss() {
   note('critical', `${K.line} ${mob} zombies follow it.`, { key: 'boss', icon: '☠', log: `${K.line} It leads ${mob} zombies against the Haven.`, threats: true, at: () => { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); return b ? b.w : null; }, live: () => S.z.some((z) => z.type === 'boss' && z.hp > 0), acts: [{ label: () => (S.focusT > tick ? 'Focusing ⚔' : 'Focus the boss ⚔'), ok: () => !(S.focusT > tick), fn: () => focusBoss() }] }); S.alert = 2400;
 }
 function eventSchedule() {   /* called every game hour */
-  const now = S.day + S.hour / 24; finaleHour();
+  const now = S.day + S.hour / 24; finaleHour(); comebackConvoy();
   if (S.day >= 4 && now >= S.nextRaid) {   /* 3D.64 balance: raiders from day 4 (was 2) */
   if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++; if (!COZY_HUD) note('important', '☠ The horde holds back tonight', { log: 'The horde\'s leader holds back while the Haven mourns. It will come tomorrow night.' }); }
@@ -2726,11 +2732,11 @@ const BUILDING_STAT = aliasT({ farm: 'str', field: 'str', water: 'per', well: 'p
 const prodMult = (b, working = isWorking(b)) => powerBoost(b) * (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (working && b.staff ? hungryPen(b.staff) : 1) * (working && b.staff ? TUNE.work : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? fitBoost(b, b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && isT(b, 'workshop') ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs scrap each day; unpaid buildings run at half output ---------------- */
-const UPKEEP = aliasT({ bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 });
+const UPKEEP = aliasT({ pump: .5, greenhouse: .5, coldstore: .4, fuelstill: .3, ammobench: .3, ammofactory: .8, bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 });
 const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1) * DF().upkeep;
 const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
-  const order = ['water', 'well', 'farm', 'field', 'medic', 'clinic', 'hospital', 'scrapyard', 'canteen', 'house'];
+  const order = ['barrel', 'water', 'well', 'pump', 'farm', 'field', 'irrig', 'greenhouse', 'medic', 'clinic', 'hospital', 'scrapyard', 'canteen', 'mess', 'house'];   /* audit: every water and food type, the new ones included */
   const list = [...world.buildings].sort((a, b) => ((order.indexOf(a.type) + 1) || 99) - ((order.indexOf(b.type) + 1) || 99));
   let paid = 0, unpaid = 0, pw = 0; for (const b of list) { const c = upkeepOf(b), w = Math.min(c / 2, S.wood || 0), m = c - w; if (S.mat >= m) { S.mat -= m; S.wood = (S.wood || 0) - w; paid += m; pw += w; b.unpaid = false; } else if ((S.wood || 0) >= c) { S.wood -= c; pw += c; b.unpaid = false; } else { b.unpaid = true; unpaid++; } } flow('mat', 'Upkeep', -paid); flow('wood', 'Upkeep', -pw);   /* V3D.25: upkeep is half wood, half scrap (either covers the other) */
   if (unpaid) { note('important', `⚠ ${unpaid} BUILDING${unpaid > 1 ? 'S' : ''} UNPAID — HALF OUTPUT`, { log: `Not enough scrap for upkeep: ${unpaid} building${unpaid > 1 ? 's run' : ' runs'} at half output tomorrow. Build a Scrapyard or scavenge for scrap.` }); }
@@ -2839,9 +2845,9 @@ function drawBonus(b, cx, cy, z) {   /* white glass bubble with the resource ico
 function newProduce(b, d, cap) {   /* 3D.77: the power, fuel and ammo buildings */
     if (b.burnt || b.fire) return d.fam === 'pump' || d.fam === 'greenhouse' || d.fam === 'fuel' || d.fam === 'ammo' || d.fam === 'ammo2';
     const tk = b.staff && hasSkill(b.staff, 'tinkerer') ? 1.25 : 1, base = b.staff ? 1 : .25;   /* no Mechanic on the job: a quarter */
-    if (d.fam === 'pump') { if (!powered(b)) return true; const a = d.out / 24 * prodMult(b) * base, got = Math.min(a, Math.max(0, cap - S.water)); S.water += got; flow('water', d.name, got); outPop(b, got, '💧', '#8fd8ff'); return true; }
-    if (d.fam === 'greenhouse') { const need = d.waterUse / 24, frac = Math.min(1, (S.water || 0) / need); S.water -= need * frac; flow('water', 'Irrigation', -need * frac); const a = d.out / 24 * frac * prodMult(b) * (powered(b) ? 1.4 : 1), got = Math.min(a, Math.max(0, cap - S.food)); S.food += got; flow('food', d.name, got); outPop(b, got, '🍖', '#9fe58a'); return true; }   /* lamps with power: +40% */
-    if (d.fam === 'fuel') { const a = d.out / 24 * prodMult(b) * base * tk, wood = a * 2; if ((S.wood || 0) < wood) return true; S.wood -= wood; S.fuel = Math.min(rareCap(), (S.fuel || 0) + a); flow('fuel', d.name, a); outPop(b, a, '⛽', '#ffb36b'); return true; }   /* 2 wood -> 1 fuel */
+    if (d.fam === 'pump') { const a = d.out / 24 * prodMult(b) * base * (powered(b) ? 1 : PUMP_HAND), got = Math.min(a, Math.max(0, cap - S.water)); S.water += got; flow('water', d.name, got); outPop(b, got, '💧', '#8fd8ff'); return true; }
+    if (d.fam === 'greenhouse') { const need = d.waterUse / 24, frac = Math.min(1, (S.water || 0) / need); S.water -= need * frac; flow('water', 'Irrigation', -need * frac); const a = d.out / 24 * frac * prodMult(b) * base * (powered(b) ? 1.4 : 1), got = Math.min(a, Math.max(0, cap - S.food)); S.food += got; flow('food', d.name, got); outPop(b, got, '🍖', '#9fe58a'); return true; }   /* lamps with power: +40% */
+    if (d.fam === 'fuel') { const a = Math.min(d.out / 24 * prodMult(b) * base * tk, rareCap() - (S.fuel || 0)), wood = a * 2; if (a <= 0 || (S.wood || 0) < wood) return true; S.wood -= wood; S.fuel = Math.min(rareCap(), (S.fuel || 0) + a); flow('fuel', d.name, a); outPop(b, a, '⛽', '#ffb36b'); return true; }   /* 2 wood -> 1 fuel */
     if (d.fam === 'ammo' || d.fam === 'ammo2') { if (d.fam === 'ammo2' && !powered(b)) return true; const a = Math.min(d.out / 24 * prodMult(b) * base * tk, ammoCap() - (S.ammo || 0)), scrap = a / 4; if (a <= 0 || S.mat < scrap) return true; S.mat -= scrap; S.ammo = (S.ammo || 0) + a; flow('mat', d.name, -scrap); flow('ammo', d.name, a); outPop(b, a, '🔸', '#ffd27a'); return true; }   /* 1 scrap -> 4 rounds */
     return false;
 }
@@ -2852,7 +2858,7 @@ function hourlyProduction() {   // runs every game hour
     const d = DEFS[b.type]; if (!d) continue; const nm = d.name;
     if (d.slot) { b.wh = b.wh || []; b.wh.push(b.staff ? (b.wsN ? b.wsW / b.wsN : (isWorking(b) ? 1 : 0)) : 0); if (b.wh.length > 24) b.wh.shift(); b.wsN = b.wsW = 0; }   /* V2.35: measured share of the hour the worker was on the job */
     if (d.fam === 'water' && TAP_COLLECT) { trayAdd(b, 'water', d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1)); continue; }
-    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = Math.min(cap, S.water + a); wi += got; flow('water', nm, got); addBonus(b, 'water', a); outPop(b, got, '💧', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
+    if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = keepCap(cap, S.water, a); wi += got; flow('water', nm, got); addBonus(b, 'water', a); outPop(b, got, '💧', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
     if (d.fam === 'scrap' && TAP_COLLECT) { trayAdd(b, 'mat', d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1)); continue; }
     if (d.fam === 'scrap') { const a = d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1); S.mat += a; flow('mat', nm, a); addBonus(b, 'mat', a); outPop(b, a, '⚙', '#9fe0ff'); }
     if ((d.fam === 'lumber' || d.fam === 'quarry') && TAP_COLLECT) { trayAdd(b, d.fam === 'lumber' ? 'wood' : 'stone', d.out / 24 * prodMult(b)); continue; }
@@ -2860,7 +2866,7 @@ function hourlyProduction() {   // runs every game hour
     if (d.fam === 'research' && TAP_COLLECT) { trayAdd(b, 'rp', (isWorking(b) ? d.out : 6) / 24 * prodMult(b)); continue; }
     if (d.fam === 'research') { const a = (isWorking(b) ? d.out : 6) / 24 * prodMult(b); S.rp = (S.rp || 0) + a; addBonus(b, 'rp', a); outPop(b, a, '🔬', '#c7b6ff'); }
     if (newProduce(b, d, cap)) continue;
-    if (d.fam === 'farm') { const need = d.waterUse / 24, frac = need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = frac < 1; const a = d.out / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(); if (TAP_COLLECT) { trayAdd(b, 'food', a); continue; } const room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = Math.min(cap, S.food + a); fi += got; flow('food', nm, got); addBonus(b, 'food', a); outPop(b, got, '🍖', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
+    if (d.fam === 'farm') { const need = d.waterUse / 24, frac = need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = frac < 1; const a = d.out / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(); if (TAP_COLLECT) { trayAdd(b, 'food', a); continue; } const room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = keepCap(cap, S.food, a); fi += got; flow('food', nm, got); addBonus(b, 'food', a); outPop(b, got, '🍖', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
   }
   S.produced += fi + wi; dayLog.foodIn += fi; dayLog.waterIn += wi;
 }
@@ -2877,13 +2883,14 @@ const workShare = (b) => { if (!b.staff) return 0; const h = b.wh || []; return 
 function expectedMult(b) { const sh = workShare(b); return prodMult(b, false) * (1 - sh) + prodMult(b, true) * sh; }
 function econ() {   // expected per-day flows for food, water and scrap, with the buildings behind them
   const R = { food: { prod: [], use: [] }, water: { prod: [], use: [] }, mat: { prod: [], use: [] }, wood: { prod: [], use: [] }, stone: { prod: [], use: [] } }, need = rationNeed(), issues = [];
-  let wAvail = 0; for (const b of world.buildings) { const d = DEFS[b.type]; if (d && d.fam === 'water') wAvail += d.out * expectedMult(b); }
+  let wAvail = 0; for (const b of world.buildings) { const d = DEFS[b.type]; if (d && (d.fam === 'water' || d.fam === 'pump')) wAvail += d.out * expectedMult(b) * (d.fam === 'pump' ? (powered(b) ? 1 : PUMP_HAND) : 1); }
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d) continue; const m = expectedMult(b), who = { b, name: d.name };
     if (d.fam === 'water') R.water.prod.push({ ...who, v: d.out * m });
     if (d.fam === 'scrap') R.mat.prod.push({ ...who, v: d.out * m * (researched('salvage') ? 1.25 : 1) });
     if (d.fam === 'lumber') R.wood.prod.push({ ...who, v: d.out * m }); if (d.fam === 'quarry') R.stone.prod.push({ ...who, v: d.out * m });
-    if (d.fam === 'farm') { const frac = S.water > 1 || wAvail > d.waterUse ? 1 : Math.min(1, S.water / (d.waterUse || 1)); R.food.prod.push({ ...who, v: d.out * m * frac }); R.water.use.push({ ...who, name: d.name + ' irrigation', v: d.waterUse * frac }); }
+    if (d.fam === 'farm' || d.fam === 'greenhouse') { const frac = S.water > 1 || wAvail > d.waterUse ? 1 : Math.min(1, S.water / (d.waterUse || 1)); R.food.prod.push({ ...who, v: d.out * m * frac * (d.fam === 'greenhouse' && powered(b) ? 1.4 : 1) }); R.water.use.push({ ...who, name: d.name + ' irrigation', v: d.waterUse * frac }); }
+    if (d.fam === 'pump') R.water.prod.push({ ...who, v: d.out * m * (b.staff ? 1 : .25) * (powered(b) ? 1 : PUMP_HAND) });   /* 3D.77 */
     const u = upkeepOf(b); if (u > 0) R.mat.use.push({ ...who, name: d.name + ' upkeep', v: u, group: 'Upkeep' });
     if (d.slot && !b.staff) issues.push({ b, t: `${d.name}: no ${(STAFF_JOBS[d.fam] || ['worker']).join(' or ')} assigned, base output only`, res: FAMRES(d.fam) });
     if (b.unpaid) issues.push({ b, t: `${d.name}: upkeep unpaid, half output`, res: FAMRES(d.fam) || 'mat' });
@@ -2899,7 +2906,8 @@ function econ() {   // expected per-day flows for food, water and scrap, with th
   }
   return out;
 }
-const FAMRES = (fam) => fam === 'water' ? 'water' : fam === 'farm' ? 'food' : fam === 'scrap' ? 'mat' : fam === 'lumber' ? 'wood' : fam === 'quarry' ? 'stone' : null;
+const keepCap = (cap, cur, add) => Math.max(cur, Math.min(cap, cur + add));   /* audit: a cap that shrinks (Cold Store loses power) never deletes what is stored */
+const FAMRES = (fam) => fam === 'water' || fam === 'pump' ? 'water' : fam === 'farm' || fam === 'greenhouse' ? 'food' : fam === 'fuel' ? 'fuel' : fam === 'ammo' || fam === 'ammo2' ? 'ammo' : fam === 'scrap' ? 'mat' : fam === 'lumber' ? 'wood' : fam === 'quarry' ? 'stone' : null;
 function supplyStats() {         // per-day picture for the Town panel and the rank conditions (V2.35: from econ(), so every screen shows the same numbers)
   const e = econ(), need = rationNeed().f * 2, wUse = e.water.consumers.filter((q) => q.b).reduce((a, q) => a + q.v, 0);
   return { need, fIn: e.food.prod, wIn: e.water.prod, wUse, fNet: e.food.net, wNet: e.water.net, fDays: e.food.days, wDays: e.water.days };
@@ -2943,8 +2951,8 @@ function rush(b) {   /* four hours of output right now, or a fire */
   const d = DEFS[b.type], risk = rushRisk(b); b.rushT = nowH() + 6; b.rushes = (b.rushes || 0) + 1;
   if (rnd() < risk) { startFire(b, 40, 'The rush went wrong'); saveGame(); ui(); return true; }
   const a = (d.fam === 'research' && !isWorking(b) ? 4 : d.out) / 24 * 4 * prodMult(b); let t = '';
-  if (d.fam === 'water') { S.water = Math.min(supplyCap(), S.water + a); S.produced += a; t = 'water'; }
-  if (d.fam === 'farm') { S.water = Math.max(0, S.water - d.waterUse / 6); S.food = Math.min(supplyCap(), S.food + a); S.produced += a; t = 'food'; }
+  if (d.fam === 'water') { S.water = keepCap(supplyCap(), S.water, a); S.produced += a; t = 'water'; }
+  if (d.fam === 'farm') { S.water = Math.max(0, S.water - d.waterUse / 6); S.food = keepCap(supplyCap(), S.food, a); S.produced += a; t = 'food'; }
   if (d.fam === 'scrap') { S.mat += a * (researched('salvage') ? 1.25 : 1); t = 'parts'; }
   if (d.fam === 'research') { S.rp = (S.rp || 0) + a; t = 'RP'; }
   if (b.staff) gainXp(b.staff, 2);
@@ -3262,6 +3270,14 @@ function townAppeal() {   /* 0..4: what makes survivors want to come here */
   const days = (k) => S[k] / Math.max(1, S.sv.length);   /* rations in store per person (about one a day) */
   return (days('food') >= 2 ? 1 : 0) + (days('water') >= 2 ? 1 : 0) + Math.min(2, (S.rank - 1) * .5) + (popCap() - popNow() >= 2 ? .5 : 0);
 }
+function comebackConvoy() {   /* Phase 1 (approved): a town down to its last few people gets one more chance: a small convoy at dawn, at most every 6 days */
+  if (S.finale || S.hour !== 8 || !S.sv.length) return; const few = S.sv.length <= 3 || (S.sv.length <= 4 && (S.food < 2 || S.water < 2));
+  if (!few || (S.convoyNext || 0) > S.day) return; S.convoyNext = S.day + 6; S.convoys = (S.convoys || 0) + 1;
+  const got = []; for (const j of ['Farmer', rnd() < .5 ? 'Guard' : 'Scavenger']) { const v = newcomer(j, 1); if (v) { v.src = 'convoy'; got.push(`${v.name} (${j})`); } }
+  S.food = keepCap(supplyCap(), S.food, 15); S.water = keepCap(supplyCap(), S.water, 15); S.mat += 6;
+  showEventPopup({ title: '🚚 A CONVOY FOUND THE HAVEN', text: `A battered truck rolls up at dawn. ${got.length ? got.join(' and ') + ' climb down to stay, and they' : 'They'} unload 15 food, 15 water and some scrap.<br><br>“Heard there were people still holding out here. Don't waste it.”` });
+  note('important', '🚚 A convoy brought help', { log: `A convoy brought ${got.length} survivors, 15 food, 15 water and 6 scrap.` });
+}
 function hardshipCheck() {
   if (S.food < 1 || S.water < 1) S.hardship = (S.hardship || 0) + 1; else S.hardship = 0;
   if (S.hardship >= 2 && S.sv.length > 2) { const q = S.sv.filter((v) => !['down', 'hospital', 'away', 'errand'].includes(v.mode)).sort((a, b) => (a.sat || 0) - (b.sat || 0))[0];
@@ -3299,8 +3315,8 @@ function awayCredit(ms) {
     else if (d.fam === 'lumber' || d.fam === 'quarry') { res = d.fam === 'lumber' ? 'wood' : 'stone'; a = d.out / 24 * pm; }
     else if (d.fam === 'research') { res = 'rp'; a = (b.staff ? d.out : 6) / 24 * pm; }
     else if (d.fam === 'farm') { res = 'food'; a = d.out / 24 * pm * helpMult(b) * seasonFarm(); }
-    else if (d.fam === 'greenhouse') { res = 'food'; a = d.out / 24 * pm; }
-    else if (d.fam === 'pump' && powered(b)) { res = 'water'; a = d.out / 24 * pm; }
+    else if (d.fam === 'greenhouse') { const need = d.waterUse / 24; if ((S.water || 0) >= need) { S.water -= need; res = 'food'; a = d.out / 24 * pm * (b.staff ? 1 : .25) * (powered(b) ? 1.4 : 1); } }
+    else if (d.fam === 'pump') { res = 'water'; a = d.out / 24 * pm * (b.staff ? 1 : .25) * (powered(b) ? 1 : PUMP_HAND); }
     if (!res || !(a > 0)) continue; const before = b.bonus || 0; trayAdd(b, res, a); got[res] = (got[res] || 0) + Math.max(0, (b.bonus || 0) - before);
   }
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
@@ -3423,7 +3439,7 @@ function showNextRequest() {
 const ARRIVE = { low: 8000, high: 14000 };   /* 3D.72: growth is the goal, and the rank limit keeps the town from filling too fast */ const ARRIVE_OLD = { low: 12000, high: 24000 };   /* V3D.21 ticks between newcomers at the gate (1000 ticks = 1 game hour): every 12 h below 60% of the room, every 24 h above (was 1.1 h / 2.2 h: the town filled in 2 days) */
 function visitorArrival() {
   if (S.finale) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.food < 1 || S.water < 1) return;   /* 3D.71: nobody moves to a starving town */ if (S.arrivalClock < (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ S.arrivalClock = 0;
-  const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Mechanic', 'Cook'];
+  const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])];
   const name = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2))), v = mk(name, job, lv, 7, 6, S.sv.length); clearSpot(v);   /* V2.18: newcomers to a bigger Haven are more experienced */
   v.sat = 3; v.stateTicks = 80; v.src = 'gate'; if (!G3D) giveSpare(v); S.sv.push(v);
   if (COZY_HUD) {   /* V3D.15: they walk in and wave; the player decides whether they stay (no party until then) */
@@ -3438,7 +3454,7 @@ function visitorArrival() {
 const GUIDE = [
   { name: 'Grow Food', desc: 'Build a Garden Plot', hint: 'Build → Garden Plot. Every survivor eats a daily ration of food and water. A Farmer staffs it automatically (green dot) and makes it produce more.', done: () => bOf('farm').length + bOf('field').length > 0, parts: 3, ren: 4 },
   { name: 'A Place to Rest', desc: 'Build a Tent', hint: 'Tired survivors sleep in Tents (2 beds each). Without a free bed they sleep rough and rest badly. Upgrade a Tent to a Cabin (after the Lodge) for more beds.', done: () => bOf('inn').length >= 1, parts: 3, ren: 4 },
-  { name: 'Scrap Economy', desc: 'Build a Scrapyard', hint: 'Every building costs a little upkeep in scrap each day (a building that can\'t be paid runs at half output). A Scrapyard staffed by a Scavenger or Engineer makes scrap. Kills, missions and expeditions also bring scrap.', done: () => bOf('scrapyard').length > 0, parts: 4, ren: 5 },
+  { name: 'Scrap Economy', desc: 'Build a Scrapyard', hint: 'Every building costs a little upkeep in scrap each day (a building that can\'t be paid runs at half output). A Scrapyard staffed by a Scavenger makes scrap. Kills, missions and expeditions also bring scrap.', done: () => bOf('scrapyard').length > 0, parts: 4, ren: 5 },
   { name: 'Grow the Camp', desc: 'Upgrade the Camp to a Lodge', hint: 'Tap your Camp → Upgrade. It needs wood and scrap: idle survivors chop trees and salvage wrecks on their own, and builders carry everything over. The Lodge unlocks Timber buildings and more land.', done: () => hqTier() >= 2, parts: 4, ren: 6 },
   { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare scrap. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
   { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
@@ -3560,7 +3576,7 @@ function advisorTips() {
     else if (c && n > c) add('campFull', 65, '⛺', `Camp is over capacity: ${n}/${c}. Build housing`, () => { bCat = 'live'; showBuild(); }); }
   const rough = S.sv.filter((q) => q.sleeping === 'rough').length; if (rough >= 2) add('beds', 40, '🛏', `${rough} survivors sleep rough: build a Shelter`, () => { bCat = 'live'; showBuild(); });
   for (const k of ['food', 'water']) if (E[k].full && E[k].net > .2) add('full' + k, 30, '📦', `${RES_TITLE[k]} storage is full: build Storage${S.rank >= 3 ? ' or hold a Trade Caravan' : ''}`, () => showResource(k));
-  const q = RANK_REQ[S.rank]; if (q && (S.eventsHeld || 0) < q.events && (S.lastEventDay ?? -1) < S.day && Object.values(TOWN_EVENTS).some((e) => (e.rank || 1) <= S.rank && Object.entries(e.cost).every(([r, v]) => S[r] >= v))) add('event', 35, '🎉', 'Hold a town event: the next star needs it', () => showUpgrade('events'));
+  const q = RANK_REQ[S.rank]; if (false && q && (S.eventsHeld || 0) < q.events &&   /* audit: events no longer count toward rank */ (S.lastEventDay ?? -1) < S.day && Object.values(TOWN_EVENTS).some((e) => (e.rank || 1) <= S.rank && Object.entries(e.cost).every(([r, v]) => S[r] >= v))) add('event', 35, '🎉', 'Hold a town event: the next star needs it', () => showUpgrade('events'));
   const ws = bOf('workshop')[0]; if (ws) { const r = Object.entries(RESEARCH).find(([k, x]) => !researched(k) && researched(x.need) && (S.rp || 0) >= x.rp && S.mat >= x.mat); if (r) add('res', 25, '🔬', `Research ready: ${r[1].name}`, () => showBuildingInfo(ws, 'research')); }
   if (S.rank >= 2 && !(S.posts || []).length && S.sv.some((q) => isFighter(q)) && S.mat >= POST_COST) add('post', 22, '🛡️', 'Build a guard post: a fighter on watch draws zombies away from your workers', () => { closeP(); startTool({ kind: 'post' }); });   /* V2.45 */
   if (S.day >= 4 && Date.now() - exportedAt(SLOT - 1) > 7 * 864e5) add('backup', 15, '💾', 'No backup this week: export one (Safari can clear old site data)', () => showBackup());   /* V2.42 */
@@ -3736,7 +3752,7 @@ const STORY = {
   medic: { cond: () => S.day >= 4, w: .8, run: () => showEventPopup({ title: '🩺 A WANDERING MEDIC', text: 'A travelling medic asks for shelter for the night.', buttons: [
     { label: popNow() >= popCap() ? `Ask them to stay · no room (${popNow()}/${popCap()})` : 'Ask them to stay', disabled: popNow() >= popCap(), fn: () => { const v = newcomer('Medic', 2); result('🩺 ' + (v ? v.name.toUpperCase() + ' STAYS' : 'NO ROOM'), v ? `${v.name} (Medic Lv.2) joins the Haven.` : 'There\'s no room — they treat everyone before leaving.'); if (!v) for (const q of S.sv) q.hp = Math.min(q.max, q.hp + q.max * .3); } },
     { label: 'Ask for treatment', fn: () => { for (const q of S.sv) q.hp = Math.min(q.max, q.hp + q.max * .4); result('🩺 PATCHED UP', 'Everyone is treated before the medic moves on.'); } }] }) },
-  storm: { cond: () => S.day >= 3 && !seasonOf().snow, w: .5, run: () => { S.water = Math.min(supplyCap(), S.water + 8); let t = 'Heavy rain fills every barrel.'; if (rnd() < .35) { const c = world.buildings.filter((b) => !OPEN_AIR.has(b.type) && !b.burnt); if (c.length && startFire(c[Math.floor(rnd() * c.length)], 25, 'Lightning')) t += ' Lightning struck a building!'; } ui(); result('⛈ STORM', t, '+8 water'); } },
+  storm: { cond: () => S.day >= 3 && !seasonOf().snow, w: .5, run: () => { S.water = keepCap(supplyCap(), S.water, 8); let t = 'Heavy rain fills every barrel.'; if (rnd() < .35) { const c = world.buildings.filter((b) => !OPEN_AIR.has(b.type) && !b.burnt); if (c.length && startFire(c[Math.floor(rnd() * c.length)], 25, 'Lightning')) t += ' Lightning struck a building!'; } ui(); result('⛈ STORM', t, '+8 water'); } },
   feast: { cond: () => S.sv.length >= 5 && S.food >= 12 && S.water >= 12, w: .9, run: () => showEventPopup({ title: '🎉 A FEAST?', text: 'Spirits are low. Someone suggests a feast to bring everyone together.', buttons: [
     { label: 'Hold a feast (6 food, 6 water)', fn: () => { if (!pay({ food: 6, water: 6 })) return; for (const a of S.sv) { a.sat = Math.min(100, (a.sat || 0) + 15); for (const b of S.sv) if (a.id < b.id) addBond(a, b, 6); } SFX('reward'); result('🎉 WHAT A NIGHT', 'Everyone feels closer.', '+15 ♥ for everyone · bonds grow'); } },
     { label: 'Not now', fn: () => {} }] }) },
@@ -3863,7 +3879,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
 let upTab = 'rank';
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
-  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) bar.style.width = (n ? Math.max(0, Math.min(100, (S.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) / Math.max(1, n.ren - (rankRules[S.rank - 1] ? rankRules[S.rank - 1].ren : 0)) * 100)) : 100) + '%'; if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) rr.textContent = ['cloth', 'meds', 'fuel'].map((k) => Math.floor(S[k] || 0)).join('·'); ammoChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) rr.textContent = ['cloth', 'meds', 'fuel'].map((k) => Math.floor(S[k] || 0)).join('·'); ammoChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = '★'.repeat(S.rank); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   if (COZY_HUD) { const mb = $('mExp'); if (mb) { leadsTidy(); const n = (S.leads || []).length; mb.classList.toggle('dim', !n && !S.trip); mb.dataset.badge = !S.trip && n ? n : ''; } }
   $('clock').textContent = COZY_HUD ? `${S.weather ? WX_ICON[S.weather.kind] || "🌧" : seasonOf().icon} DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00` : `DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`;
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
@@ -3982,8 +3998,10 @@ function applySave(raw, legacy, prev) {
     world.traps = new Map(); for (const [x, y, type, ch] of (d.traps || [])) if (TRAP_DEFS[type]) world.traps.set(x + ',' + y, { x, y, type, ch: Math.max(0, Math.min(TRAP_DEFS[type].ch, ch | 0)) });
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     if (COZY_HUD && S.trip && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
-    S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; powerGrid(); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
+    S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
+    genRun = S.power ? gens() : []; powerGrid();   /* audit: power after staff are relinked */
+    for (const q of S.sv) if (q.ammo == null && usesAmmo(itemOf(q, 'weapon'))) { q.ammo = 0; reloadGun(q); }   /* audit: guns from older saves load from the stock, not a free magazine */
     Wd.bump(world); guideSkipDone(); alerts.clear(); setTimeout(restoreAlerts, 0); { const away = S.savedAt ? Date.now() - S.savedAt : 0; if (away > 0) setTimeout(() => awayCredit(away), 1200); } return d;
   } catch (e) { console.warn('load failed', e); return false; }
 }
@@ -4243,13 +4261,13 @@ function expRecall() {
 function expFinish(recalled) {
   const t = S.trip; if (!t) return; if (t.enc) { if (recalled) { t.enc = null; t.log.push('The squad left the situation behind on the way home.'); } else encResolve(t, null); } S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
   if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); t.log.push(`${m.name} fell on the way home.`); }
-  (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = Math.min(cap, S.food + t.loot.food); S.water = Math.min(cap, S.water + t.loot.water); S.mat += t.loot.mat; addLoot({ wood: t.loot.wood, stone: t.loot.stone, cloth: t.loot.cloth, meds: t.loot.meds, fuel: t.loot.fuel, ammo: t.loot.ammo }, 'Expedition'); S.produced += t.loot.food + t.loot.water;
+  (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = keepCap(cap, S.food, t.loot.food); S.water = keepCap(cap, S.water, t.loot.water); S.mat += t.loot.mat; addLoot({ wood: t.loot.wood, stone: t.loot.stone, cloth: t.loot.cloth, meds: t.loot.meds, fuel: t.loot.fuel, ammo: t.loot.ammo }, 'Expedition'); S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y <= 6) return tc(w.x, w.y + 1); return tc(7, 7); })();
   barkSquad = { ids: t.members.map((m) => m.id), lost: (t.lost || []).length, at: tick + 90 };
   if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${v} ${RES_NAME[k] || k}`).concat((t.items || []).map((id) => ITEMS[id].name));
   if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
-    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Mechanic', 'Cook'], jb = jobs[Math.floor(Math.random() * jobs.length)];
+    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
     recruit = mk(nm, jb, 1, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); t.log.push(`${nm}, a ${jb} (${TRAITS[recruit.trait].icon} ${TRAITS[recruit.trait].name}), was found and followed the squad home.`);
   }
   const body = t.log.map((l) => esc(l)).join('<br>') + `<br><b>Returned:</b> ${t.members.map((m) => esc(m.name)).join(', ') || 'nobody'}.` + (t.lost.length ? `<br><b style="color:#ff8a7a">Lost:</b> ${t.lost.map(esc).join(', ')}.` : '');
@@ -4339,7 +4357,7 @@ const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 }
 const CARE_TICKS = { medic: 3600, clinic: 2700, hospital: 1800 };   // the Camp: 1.5 x medic (careTicks)
 let BANDAGE_COST = 2, BANDAGE_TICKS = 3600;   /* Field Medicine research: 1 part, longer */
 function medTier() { const m = medSite(); return m ? m.type : 'none'; }
-function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed * (medTier() === 'hospital' && anyPowered('hospital') ? 1.4 : 1)); }   /* 3D.77: surgery: a powered Hospital gives the dying 40% longer */
+function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed * ((window.ZH_BAL || {}).bleed || 1.5)   /* balance study (Nov 8): every long-run death was a bleed-out; the downed hold on 50% longer */ * (medTier() === 'hospital' && anyPowered('hospital') ? 1.4 : 1)); }   /* 3D.77: surgery: a powered Hospital gives the dying 40% longer */
 function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.round(CARE_TICKS.medic * 1.5);   /* 3D.46 camp care: half again as long as a Medical Tent */
   const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1) * (m && !(isWorking(m) && m.staff && m.staff.job === 'Medic') ? 1.3 : 1)); }   /* 3D.69: care without a Medic on staff is 1.3x slower (was 1.6x in 3D.67: made the Medic too essential) */
 /* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:
@@ -4601,7 +4619,7 @@ const trapMap = () => world.traps || (world.traps = new Map());
 const trapAt = (x, y) => trapMap().get(x + ',' + y) || null;
 const trapMax = () => 4 + 2 * (S.rank || 1);
 const trapsSpent = () => [...trapMap().values()].filter((t) => t.ch <= 0);
-const trapOkTile = (x, y) => Wd.inMap(x, y) && !Wd.inWallZone(x, y) && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y) && !isTreeSpot(x, y);
+const trapOkTile = (x, y) => Wd.inMap(x, y) && x > 0 && y > 0 && x < Wd.COLS - 1 && y < Wd.ROWS - 1 && !Wd.inWallZone(x, y) && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y) && !isTreeSpot(x, y);
 function tryTrap(x, y, type) {
   const td = TRAP_DEFS[type]; if (!td) return { ok: false, why: 'type' };
   const ex = trapAt(x, y), k = x + ',' + y;
@@ -4660,7 +4678,7 @@ const BDESC = {
   bonfire: 'A big camp fire: burns bright at night and lights the camp around it (about 4 tiles), so you can see your people and the zombies.',
   barrel: 'Catches a little rainwater. Upgrade to a Rain Collector, then a Stone Well.', water: 'Catches rainwater. A Farmer makes it collect more.', well: 'Draws groundwater: the most water.',
   farm: 'A small vegetable patch. Drinks a little water. A Farmer boosts it.', field: 'A fenced field: nearly twice the food of a Garden Plot.', irrig: 'Irrigated rows: the most food, but thirsty.',
-  medic: 'Treats the hurt and heals field wounds. Care is slower without a Medic on staff.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying.',
+  medic: 'Treats the hurt and heals field wounds. Care is slower without a Medic on staff.', clinic: 'Faster healing and longer survival for the badly hurt.', hospital: 'The best care: fastest healing, the most time to save the dying. With power (1) it can operate: the badly hurt hold on 40% longer.',
   canteen: 'Survivors eat here. A Cook makes every meal more filling.', mess: 'A big stone mess hall: seats 4 and meals do more.',
   crates: 'Holds more food, water, wood and stone.', storage: 'Holds more food, water, wood and stone.', warehouse: 'Holds the most.',
   bench: 'Research and craft gear. Upgrade to a Workshop for more research.', workshop: 'Research new tech and craft gear. Engineers work fastest.',
@@ -4669,11 +4687,11 @@ const BDESC = {
   gym: 'Free-time training for Strength.', library: 'Study for Intelligence. Every visit adds research.', lounge: 'Relax for Charisma and a happier mood.',
   range: 'Target practice for Perception (better with guns and bows).', track: 'Obstacle runs for Agility (speed and dodging).', sparring: 'Bouts in the ring for Endurance (more HP).',
   barracks: 'Fighters rest and gear up here. Next to an Armory, gear gets cheaper.',
-  generator: 'Burns 1 fuel every 8 hours. While it runs it lights the camp at night and gives buildings within 5 tiles +20% output.',
-  radio: 'With a running Generator it can send the rescue signal: the way to end the game and get your score. While powered, newcomers hear of the Haven 30% sooner.',
+  generator: 'Burns 3 fuel a day (a Mechanic on it saves a quarter). While it runs it gives 4 power to the buildings that need it, lights the camp at night and gives buildings within 5 tiles +20% output.',
+  radio: 'Needs power (1). With power it can send the rescue signal (the way to end the game and get your score), and newcomers hear of the Haven 30% sooner.',
   pump: 'Needs power (1). Pumps 16 water a day; a Mechanic runs it at full speed. Dead without power.',
   greenhouse: 'Grows food all year from a little water. With power (1) its lamps grow 40% more. A Farmer tends it.',
-  coldstore: 'Needs power (1). Keeps 40 more food and water from spoiling.',
+  coldstore: 'Needs power (1). Stores 40 more food and water. Without power it holds no extra (nothing already stored is lost).',
   fuelstill: 'A Mechanic turns 2 wood into 1 fuel: keeps the Generators running without trips to the Gas Station.',
   ammobench: 'A Mechanic hand-loads rounds: 16 a day for 4 scrap. Guns need ammo; crossbows and melee never do.',
   ammofactory: 'Needs power (2). A Mechanic makes 64 rounds a day for 16 scrap: what a big town of gunners needs.',
@@ -4847,7 +4865,7 @@ function perimText() {
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
-  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = '';
+  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = ''; { let n = 0; for (const [k, t] of [...trapMap()]) if (Wd.inWallZone(t.x, t.y)) { trapMap().delete(k); refundCost(bCost(TRAP_DEFS[t.type]), 1); n++; } if (n) say(`${n} trap${n > 1 ? 's' : ''} now inside the new walls: packed up and refunded.`); }   /* audit */
   banner('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`, true); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
 let tTab = 'overview';
@@ -4859,7 +4877,7 @@ function showTown(tab) {
   if (tTab === 'overview') {
     h += `<div class="card"><b>Town policy</b><div class="row" style="gap:4px;flex-wrap:wrap;margin:4px 0">${Object.entries(POLICIES).map(([k, q]) => `<button class="act${policy() === k ? ' go' : ''}" data-pol="${k}" style="flex:1 1 45%;margin:0;padding:6px 4px;font-size:17px">${q.icon} ${q.name}</button>`).join('')}</div><div class="sm">${POLICIES[policy()].desc}</div></div>`;
     h += `<div class="card"><div style="font-size:23px">Rank ${'★'.repeat(S.rank)} <span class="sm">· threat ☠${S.threat}</span></div>`
-      + (rankConds() ? `<div class="sm">Next star: ${rankConds().filter((r) => r.ok).length}/4 conditions met</div><button class="act${S.rankReady ? ' go' : ''}" id="tUpg">⭐ Upgrade Town</button>` : '<div>Max rank reached.</div>') + '</div>'
+      + (rankConds() ? `<div class="sm">Next star: ${rankConds().filter((r) => r.ok).length}/${rankConds().length} conditions met</div><button class="act${S.rankReady ? ' go' : ''}" id="tUpg">⭐ Upgrade Town</button>` : '<div>Max rank reached.</div>') + '</div>'
       + `<div class="card"><div class="kv"><div><span>🍖 Food</span><span style="color:${st.fNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.fNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.fDays)}</span></div>
          <div><span>💧 Water</span><span style="color:${st.wNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.wNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.wDays)}</span></div>
          <div><span>⚙ Upkeep</span><span>−${upkeepTotal().toFixed(1)}/day</span></div><div><span class="sm">storage cap</span><span>${supplyCap()}</span></div></div>
@@ -4896,16 +4914,19 @@ function showTown(tab) {
 }
 const GUIDE_TXT = [
   ['Moving around', 'Drag to look around, pinch to zoom. ⌖ jumps back to the town. 1× / 2× / 3× changes the game speed.'],
-  ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost scrap ⚙ and a little upkeep each day.'],
+  ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost wood, scrap and (later) stone, and a little scrap upkeep each day.'],
   ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Barrels and Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
-  ['Walls', 'Build → Defend → Wood Barricade, Metal Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
+  ['Walls', 'Build → Defend → Wood Barricade, Stone Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
   ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
   ['Running the town', 'The goal is a bigger town with more people. Beds give people somewhere to sleep, but the town\'s rank limits how many it can take in (8 at rank 1, +4 each rank, +2 per territory), so upgrade the town to grow. An upgrade needs enough people living here and enough buildings standing; you choose when to press Upgrade. The horde grows a little every day, whatever you build; each town upgrade brings a newcomer, supplies and healing. Newcomers come sooner to a town with spare beds, food and water. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store people start leaving. When someone is down, nobody walks into zombies on their own: tap Send rescue on the alert and fighters clear the way. When a boss comes, tap Focus the boss and every fighter goes for it together (+30% damage).'],
-  ['Professions', 'Guards are tough wall-holders (+20% HP, take 20% less damage). Police Officers shoot further, spot sneaking raiders sooner and hit raiders harder. Scavengers loot and fetch wood and scrap. Medics patch people up in the field (to 60%) and get the downed back up Wounded; a medical building heals the rest. Engineers build and repair fastest. Cooks stretch every ration. Farmers grow food and water. Civilians fill any job and carry twice the load. Someone in the wrong job works at 75%.'],
+  ['Professions', 'Guards are tough wall-holders (+20% HP, take 20% less damage). Police Officers shoot further, spot sneaking raiders sooner and hit raiders harder. Scavengers loot and fetch wood and scrap. Medics patch people up in the field (to 60%) and get the downed back up Wounded; a medical building heals the rest. Engineers build and repair fastest. Cooks stretch every ration. Farmers grow food and water. Mechanics run the Generator, Fuel Still, Ammo Bench and Factory and the Electric Pump. Civilians fill any job and carry twice the load. Someone in the wrong job works at 75%.'],
   ['Gear', 'Tap a survivor → Gear to equip weapons, armor and accessories from the stash. The Armory, crafting, the trader and expeditions give new gear.'],
   ['Explore', 'Send a squad out from the Explore button. Trips run in real time, even while the game is closed. Losses are permanent.'],
-  ['Renown', 'Building, goals and victories earn Renown. Renown, production, residents and buildings raise the Haven rank. Higher ranks unlock buildings, and bring tougher zombies.'],
+  ['Renown and rank', 'Building, goals and victories earn Renown. The Haven rank goes up when enough people live here and enough buildings stand, and you press Upgrade Town. Higher ranks unlock buildings and room for more people.'],
+  ['Power', 'Generators burn fuel (a Mechanic on shift saves a quarter) and each gives 4 power. The Electric Pump, Cold Store, Greenhouse lamps, Hospital surgery, Radio Tower and Ammo Factory draw power: water first, the Ammo Factory last. Food and water never depend on power: a pump without power still works by hand.'],
+  ['Ammo', 'Guns use rounds from the town stock (the 🔸 count). Crossbows and melee never do. Out of ammo, a gunner clubs with the empty gun. A Mechanic at an Ammo Bench makes about 16 rounds a day; a powered Ammo Factory about 64. Raiders and the Military Checkpoint drop rounds.'],
+  ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go outside the wall ring, where zombies come from. They wear out: re-arm them with scrap before the night. Scouts warn you at noon when a boss is coming.'],
 ];
 function showGuide() {
   endBuildMode(true); closeP();
@@ -5113,7 +5134,7 @@ function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
-  if (tick % 300 === 0) { autoStaff(); postsAssign(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
+  if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */
@@ -5285,7 +5306,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { BUILD_TAG, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { awayCredit, goalsTick, claimGoal, goalsHtml, GOALS_DAILY, GOALS_WEEKLY, dayKey, weekKey, rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();

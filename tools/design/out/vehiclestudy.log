@@ -1,0 +1,16 @@
+none/smart                     score   4264 pop  22.3 lvl  8.8 L15 (82.0, 0.34) dead  1.2 missions 103.8 vehicle trips 0 fuel on trips 0.0 walked (no fuel) 0 dark 0.31
+cart/smart                     score   4785 pop  24.8 lvl  9.9 L15 (82, 0.45) dead  1.1 missions 109.1 vehicle trips 109.0 fuel on trips 0.0 walked (no fuel) 0 dark 0.28
+pickup/smart                   score   4560 pop  23.7 lvl  9.4 L15 (50, 0.39) dead  1.0 missions 107.5 vehicle trips 107.4 fuel on trips 124.5 walked (no fuel) 32.2 dark 0.32
+pickup+van/smart               score   4588 pop  23.8 lvl  9.4 L15 (50, 0.41) dead  1.0 missions 107.8 vehicle trips 107.8 fuel on trips 167.2 walked (no fuel) 37.2 dark 0.34
+none/good                      score   4608 pop  24.7 lvl 10.0 L15 (87.5, 0.46) dead  3.2 missions 61.7 vehicle trips 0 fuel on trips 0.0 walked (no fuel) 0 dark 0.23
+cart/good                      score   4465 pop  24.0 lvl  9.6 L15 (91.0, 0.4) dead  3.1 missions 61.5 vehicle trips 61.5 fuel on trips 0.0 walked (no fuel) 0 dark 0.21
+pickup/good                    score   4679 pop  24.9 lvl 10.1 L15 (72, 0.51) dead  2.9 missions 61.1 vehicle trips 61.1 fuel on trips 84.6 walked (no fuel) 13.1 dark 0.22
+pickup+van/good                score   4693 pop  24.9 lvl 10.2 L15 (70, 0.51) dead  2.9 missions 61.2 vehicle trips 61.2 fuel on trips 133.3 walked (no fuel) 16.7 dark 0.24
+none/casual                    score   1981 pop  12.8 lvl  4.7 L15 (87.5, 0.1) dead  6.0 missions 29.6 vehicle trips 0 fuel on trips 0.0 walked (no fuel) 0 dark 0.10
+cart/casual                    score   1824 pop  12.1 lvl  4.3 L15 (105.5, 0.1) dead  6.1 missions 30.0 vehicle trips 29.9 fuel on trips 0.0 walked (no fuel) 0 dark 0.12
+pickup/casual                  score   1822 pop  12.0 lvl  4.3 L15 (70, 0.11) dead  6.0 missions 29.8 vehicle trips 29.7 fuel on trips 19.9 walked (no fuel) 3.6 dark 0.11
+pickup+van/casual              score   1801 pop  11.9 lvl  4.3 L15 (66, 0.09) dead  6.0 missions 29.9 vehicle trips 29.8 fuel on trips 27.3 walked (no fuel) 4.2 dark 0.11
+pickup+van/fuel1.0/smart       score   4570 pop  23.8 lvl  9.4 L15 (50.0, 0.4) dead  1.0 missions 107.6 vehicle trips 107.5 fuel on trips 93.3 walked (no fuel) 31.5 dark 0.32
+pickup+van/fuel4.0/smart       score   4540 pop  23.5 lvl  9.3 L15 (54, 0.37) dead  0.9 missions 107.1 vehicle trips 107.1 fuel on trips 333.8 walked (no fuel) 35.5 dark 0.23
+pickup+van/no-fuel-needed/smart score   4610 pop  24.0 lvl  9.5 L15 (49.0, 0.44) dead  1.0 missions 107.4 vehicle trips 107.3 fuel on trips 0.0 walked (no fuel) 0 dark 0.31
+done in 383s

@@ -24,6 +24,9 @@ window.ZH_BARKS = {
   horde: { style: 'shout', lines: [
     'Horde! Get ready!', 'Here they come!', 'Everybody to the walls!', 'Holy shit, that\'s a lot of them!', 'Hold the line!',
     'Positions, now!', 'Oh, hell no.', 'They\'re at the edge of town!', 'Barricade the gate!', 'Stick together!', 'S|Here they come, y\'all!', 'Z|Bro. Bro. That\'s so many.', 'B|Back in \'Nam it was worse. Probably.'] },
+  noAmmo: { style: 'shout', lines: [   /* 3D.77: a gunner's magazine and the town's stock are both empty */
+    'I\'m out! I\'m out!', 'Click. Shit. Click.', 'No rounds left!', 'Anyone got ammo?!', 'Empty! Going hand to hand!', 'Guess I\'m clubbing them.',
+    'Out of bullets, not out of fight.', 'Somebody make more rounds!', 'S|I\'m plumb outta bullets!', 'Z|Bro, I\'m dry. Fully dry.', 'B|Back in my day we counted every shot.'] },
   boss: { style: 'shout', lines: [
     'What the fuck is that?!', 'That one\'s huge!', 'Big one! Big one!', 'Oh no. No no no.', 'Everyone on the big bastard!', 'We\'re gonna need a bigger stick.', 'S|Well, I\'ll be damned.', 'Z|Nah, that thing is NOT real.', 'Z|That\'s a big boy, no cap.'] },
 

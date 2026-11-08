@@ -853,7 +853,16 @@ async def t_power_ammo(br, port, t):   # 3D.77 Mechanic, power for growth, limit
     t.ok(r['facDark'] and r['saved'] is True, f"the Ammo Factory does nothing without power; ammo saves {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_convoy(br, port, t):   # Phase 1 comeback convoy
+    ctx, pg, errs = await open_game(br, port, 'convoy')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.sv=S.sv.slice(0,3);S.hour=8;S.food=1;S.water=1;const n0=S.sv.length;ZH.comebackConvoy();out.added=S.sv.length-n0;out.food=Math.round(S.food);out.next=S.convoyNext-S.day;
+      const n1=S.sv.length;S.sv=S.sv.slice(0,3);ZH.comebackConvoy();out.again=S.sv.length-3;return out}""")
+    t.ok(r['added'] == 2 and r['food'] >= 15 and r['next'] == 6, f"a town down to 3 people gets 2 survivors and supplies, then waits 6 days {r}")
+    t.ok(r['again'] == 0, f"no second convoy the same day {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
