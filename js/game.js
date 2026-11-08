@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.74', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.75', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2208,6 +2208,8 @@ function ai(s) {
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
     if (tick % 15 === s.i % 15) { const zb = S.z.find((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < 2.2); if (zb && dist(s.w, q.w) < 4 && isFighter(s) && s.hp > s.max * .4) { q.rescuer = null; s.rescuing = null; engage(s, zb); s.why = `Clearing the way to ${q.name}`; return; } }   /* V2.37: clear first, then pick up */
+    if (q.ordered && !isFighter(s)) { const crowd = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 2.5).length;   /* 3D.75 skill study: a sent rescuer waits a few steps back until the escorts have thinned the crowd (it used to walk straight in: the expert lost 8 a town) */
+      if (crowd >= 2 && dist(s.w, q.w) < 4.5) { s.moving = false; s.path = null; s.why = `Waiting for the way to ${q.name} to clear`; if (tick % 120 === 0) orderEscorts(q); return; } }
     const r = followPath(s, q.w, .02); if (r === 'arrived' && s.job === 'Medic' && !s.aidTo && !zNear(q.w, 3) && patchSupply(true)) { startAid(s, q, 'revive'); return; } if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Carrying ${q.name} to ${s.careTo ? 'the ' + DEFS[s.careTo.type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
   }
   if (s.mode === 'rescueCarry') {
@@ -3203,11 +3205,12 @@ function hardshipCheck() {
     if (q && rnd() < .6) { S.sv = S.sv.filter((v) => v !== q); for (const b of world.buildings) if (b.staff === q) b.staff = null; S.left = (S.left || 0) + 1;
       note('critical', `${q.name} left the Haven`, { icon: '🎒', log: `${q.name} couldn't take another day without ${S.food < 1 ? 'food' : 'water'} and left to find somewhere better.` }); } }
 }
+function orderEscorts(q) { const zs = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 4); if (!zs.length) return [];
+  const esc = S.sv.filter((f) => isFighter(f) && canFight(f) && !f.rescuing && !f.carrying && !['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover'].includes(f.mode)).sort((a, b) => dist(a.w, q.w) - dist(b.w, q.w)).slice(0, 2);
+  esc.forEach((f, i) => { engage(f, zs[i % zs.length]); f.why = `Clearing the way to ${q.name}`; }); return esc; }
 function orderRescue(q) {   /* the player's call: escorts clear the way and a rescuer goes in even if zombies are close */
   if (!q || q.mode !== 'down') return false; q.ordered = true;
-  const zs = S.z.filter((z) => z.hp > 0 && !z.zoo && dist(z.w, q.w) < 4);
-  const esc = S.sv.filter((f) => isFighter(f) && canFight(f) && !f.rescuing && !f.carrying && !['down', 'hospital', 'away', 'errand'].includes(f.mode)).sort((a, b) => dist(a.w, q.w) - dist(b.w, q.w)).slice(0, 2);
-  esc.forEach((f, i) => { const z = zs[i % Math.max(1, zs.length)]; if (z) { engage(f, z); f.why = `Clearing the way to ${q.name}`; } });
+  const esc = orderEscorts(q);
   if (!q.rescuer) assignRescue(); say(q.rescuer ? `${q.rescuer.name} is going for ${q.name}${esc.length ? ', ' + esc.map((f) => f.name).join(' and ') + ' covering' : ''}.` : `Nobody can reach ${q.name} right now.`);
   return !!q.rescuer || esc.length > 0;
 }
