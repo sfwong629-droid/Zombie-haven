@@ -22,3 +22,5 @@ tools/balance/density.json
 !tools/design/out/binge.json
 !tools/design/out/buildstudy.json
 !tools/design/out/buildstudy.log
+!tools/design/out/lurestudy.log
+!tools/design/out/lurestudy.json

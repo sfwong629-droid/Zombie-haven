@@ -139,7 +139,7 @@ class Town2(H.Town):
         if s.bld['spikes']:
             cut += s.X['TRAP'] * s.bld['spikes']; s.trapk += min(horde, s.X['TRAP'] * s.bld['spikes'])
             worn = sum(1 for _ in range(s.bld['spikes']) if s.r.random() < s.X['WEAR']); s.bld['spikes'] -= worn; s.rearm = getattr(s, 'rearm', 0) + worn
-        if boss and s.bld['lure']: cut += .15 * horde; s.bld['lure'] -= 1
+        if boss and s.bld['lure']: cut += s.X.get('LURE', .15) * horde * min(1, s.bld['lure']); s.bld['lure'] -= 1
         if boss and s.bld['trench'] and s.res['fuel'] >= 3: cut += .25 * horde; s.res['fuel'] -= 3
         mult = 1 + .04 * min(5, s.bld['wire']) + (.15 * min(3, s.bld['floodlight']) if s.on('floodlight') else 0) + (.5 * min(1, s.bld['walls'] / 6) if s.on('efence') else 0)
         if s.cat in ('power', 'full') and s.bld['generator'] and s.res['fuel'] > 0: mult += .05     # a lit camp

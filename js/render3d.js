@@ -522,6 +522,33 @@ function buildForest() {
   return true;
 }
 
+// ---------------------------------------------------------------- 3D.76 traps (outside the wall ring; a spent trap lies flat and dull)
+let trapGroup = null, trapKey = '';
+function buildTraps() {
+  const W = G.world, list = W.traps ? [...W.traps.values()] : [];
+  const key = list.map((t) => `${t.x},${t.y},${t.type},${t.ch > 0 ? 1 : 0}`).join(';');
+  if (key === trapKey) return false; trapKey = key;
+  if (trapGroup) scene.remove(trapGroup);
+  trapGroup = new THREE.Group(); scene.add(trapGroup);
+  const P = new Parts();
+  for (const t of list) {
+    const cx = (t.x + .5) * T, cz = (t.y + .5) * T, y0 = groundH(cx, cz), s = hash(t.x, t.y), live = t.ch > 0;
+    if (t.type === 'spikes') {   // a plank with a row of stakes
+      P.put(box(1.2, .08, .34), '#6f4a2c', M4(cx, y0 + .04, cz, s));
+      for (let k = -2; k <= 2; k++) { const h = live ? .45 + hash(t.x + k, t.y) * .12 : .12; P.put(new THREE.ConeGeometry(.06, h, 5), live ? '#c9a46a' : '#7a6650', M4(cx + Math.cos(s) * k * .22, y0 + .08 + h / 2, cz - Math.sin(s) * k * .22, 0, live ? .25 : 1.2)); }
+    } else if (t.type === 'wire') {   // two stakes and a coil between them
+      for (const k of [-1, 1]) P.put(cyl(.04, .05, .7, 5), '#6a4528', M4(cx + k * .5, y0 + .35, cz));
+      if (live) for (let k = -2; k <= 2; k++) P.put(new THREE.TorusGeometry(.17, .015, 4, 10), '#9aa0a6', M4(cx + k * .18, y0 + .3, cz, Math.PI / 2));
+      else P.put(new THREE.TorusGeometry(.2, .015, 4, 10), '#7d7466', M4(cx, y0 + .03, cz, 0, Math.PI / 2));
+    } else if (t.type === 'lure') {   // a pole with a bell and hanging cans
+      P.put(cyl(.05, .06, 1.4, 6), '#6a4528', M4(cx, y0 + .7, cz)); P.put(box(.5, .05, .05), '#6a4528', M4(cx, y0 + 1.35, cz, s));
+      P.put(new THREE.ConeGeometry(.13, .2, 8), live ? '#d8b04a' : '#7a6a4a', M4(cx, y0 + 1.2, cz));
+      for (const k of [-1, 1]) P.put(cyl(.06, .06, .14, 8), live ? '#b8bec4' : '#6f6a62', M4(cx + Math.cos(s) * k * .22, y0 + 1.15, cz - Math.sin(s) * k * .22));
+    }
+  }
+  P.build(trapGroup, .02);
+  return true;
+}
 // ---------------------------------------------------------------- walls
 let wallGroup = null, wallKey = '';
 function buildWalls() {
@@ -1503,7 +1530,7 @@ function frame() {
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
   SWAY.uTime.value = now / 1000;
   placeCamera();
-  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
+  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
   light(((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));

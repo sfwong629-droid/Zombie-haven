@@ -799,7 +799,33 @@ async def t_weeks(br, port, t):   # 3D.73 away production and daily / weekly goa
     t.ok(r['html'] and r['save'] is True, f"goals show on the Goals screen and save {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_traps(br, port, t):   # 3D.76 traps outside the wall ring
+    ctx, pg, errs = await open_game(br, port, 'traps')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.Wd,out={};S.mat=99;S.wood=99;S.rank=1;S.z=[];
+      const tiles=[];for(let y=0;y<W.ROWS;y++)for(let x=0;x<W.COLS;x++)if(ZH.trapOkTile(x,y)&&y<5)tiles.push([x,y]);
+      out.inside=ZH.tryTrap(7,10,'spikes').why;out.rankLock=ZH.tryTrap(tiles[0][0],tiles[0][1],'spikes').why;S.rank=3;
+      let i=0;const put=(k)=>{while(i<tiles.length){const [x,y]=tiles[i++];const q=ZH.tryTrap(x,y,k);if(q.ok)return [x,y];}};
+      const sp=put('spikes'),wi=put('wire'),lu=put('lure');out.n=ZH.trapMap().size;out.max=ZH.trapMax();
+      ZH.spawn(sp[0],sp[1],'walker');const z=S.z[S.z.length-1];z.hp=z.max=100;z.mode='appear';z.stateTicks=999;ZH.step(1);
+      out.zhp=z.hp;out.spCh=ZH.trapAt(sp[0],sp[1]).ch;out.stun=z.stun>0;
+      ZH.spawn(wi[0],wi[1],'walker');const z2=S.z[S.z.length-1];z2.mode='appear';z2.stateTicks=999;ZH.step(1);out.wiCh=ZH.trapAt(wi[0],wi[1]).ch;
+      const mob=[];for(let k=0;k<5;k++){ZH.spawn(lu[0]+(k%3),lu[1]+3,'walker');const m=S.z[S.z.length-1];m.mob=true;m.siege=true;m.mode='zmarch';mob.push(m);}
+      for(const q of S.sv)q.w={x:7,y:12};out.pulled=ZH.lureFire();out.luCh=ZH.trapAt(lu[0],lu[1]).ch;const lured=mob.find(m=>m.lure);
+      const d0=lured?Math.hypot(lured.w.x-lu[0]-.5,lured.w.y-lu[1]-.5):0;ZH.step(240);out.closer=lured?Math.hypot(lured.w.x-lu[0]-.5,lured.w.y-lu[1]-.5)<d0:false;
+      out.spent=ZH.trapsSpent().length;const m0=S.mat;out.rearmed=ZH.rearmAll();out.paid=Math.round(m0-S.mat);out.luCh2=ZH.trapAt(lu[0],lu[1]).ch;
+      const sv=JSON.parse(ZH.serialize());out.saved=(sv.traps||[]).length;return out}""")
+    t.ok(r['inside'] == 'tile', f"traps can't go inside the wall ring {r['inside']}")
+    t.ok(r['rankLock'] == 'rank', f"traps need Haven rank 2 {r['rankLock']}")
+    t.ok(r['n'] == 3 and r['max'] == 10, f"three traps set, room for 10 at rank 3 {r}")
+    t.ok(r['zhp'] == 85 and r['spCh'] == 4 and r['stun'], f"spikes hurt for 15, stun, and lose a charge {r}")
+    t.ok(r['wiCh'] == 11, f"barbed wire wears with each crossing {r}")
+    t.ok(r['pulled'] == 3 and r['luCh'] == 0 and r['closer'], f"the lure pulls 3 of the horde toward it and is used up {r}")
+    t.ok(r['spent'] == 1 and r['rearmed'] == 1 and r['paid'] == 3 and r['luCh2'] == 1, f"re-arming pays scrap and restores the trap {r}")
+    t.ok(r['saved'] == 3, f"traps are saved {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('traps', t_traps), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
