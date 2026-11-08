@@ -1751,6 +1751,7 @@ function nearestZombie(s) { let best = null, bd = 1e9; for (const z of S.z) if (
 const nearTown = (w) => { const B = Wd.BUILD; return w.x >= B.x0 - 2.5 && w.x <= B.x1 + 3.5 && w.y >= B.y0 - 2.5 && w.y <= B.y1 + 3.5; };   /* 3D.65: the town plus a 2.5-tile margin: they clear zombies lurking at the edge, but don't follow them out across the map */
 function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; they defend others first and gang up on the same zombie
   if (s.fleeT > 0 || !isFighter(s) || (s.carriedLoot && s.carryAmt) || s.hp < s.max * (retreatPct() + traitRetreat(s)) / 100) return false;
+  if (s.focusUntil > tick && s.hp < s.max * .55) s.focusUntil = 0;   /* 3D.75: a hurt fighter peels off the boss */
   if (s.focusUntil > tick) { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0 && z.mode !== 'zleave'); if (b) { if (s.target !== b) engage(s, b); return true; } s.focusUntil = 0; }   /* 3D.71: the player said all together on the boss */   /* 3D.63: below their retreat bar they don't step in (they'd turn and flee the next tick); carriers deliver first */
   const cfg = jobAI[s.job] || jobAI.Civilian, rng = (S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro) * (policy() === 'defend' ? 1.4 : policy() === 'produce' ? .8 : 1) * traitRange(s) * (atPost(s) ? 1.25 : 1);
   let best = null, bs = 1e9;
@@ -2209,7 +2210,7 @@ function ai(s) {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
     if (tick % 15 === s.i % 15) { const zb = S.z.find((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < 2.2); if (zb && dist(s.w, q.w) < 4 && isFighter(s) && s.hp > s.max * .4) { q.rescuer = null; s.rescuing = null; engage(s, zb); s.why = `Clearing the way to ${q.name}`; return; } }   /* V2.37: clear first, then pick up */
     if (q.ordered && !isFighter(s)) { const crowd = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 2.5).length;   /* 3D.75 skill study: a sent rescuer waits a few steps back until the escorts have thinned the crowd (it used to walk straight in: the expert lost 8 a town) */
-      if (crowd >= 2 && dist(s.w, q.w) < 4.5) { s.moving = false; s.path = null; s.why = `Waiting for the way to ${q.name} to clear`; if (tick % 120 === 0) orderEscorts(q); return; } }
+      if (crowd >= 2 && dist(s.w, q.w) < 6) { s.moving = false; s.path = null; s.why = `Waiting for the way to ${q.name} to clear`; if (tick % 120 === 0) orderEscorts(q); return; } }
     const r = followPath(s, q.w, .02); if (r === 'arrived' && s.job === 'Medic' && !s.aidTo && !zNear(q.w, 3) && patchSupply(true)) { startAid(s, q, 'revive'); return; } if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Carrying ${q.name} to ${s.careTo ? 'the ' + DEFS[s.careTo.type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
   }
   if (s.mode === 'rescueCarry') {
@@ -3206,17 +3207,18 @@ function hardshipCheck() {
       note('critical', `${q.name} left the Haven`, { icon: '🎒', log: `${q.name} couldn't take another day without ${S.food < 1 ? 'food' : 'water'} and left to find somewhere better.` }); } }
 }
 function orderEscorts(q) { const zs = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 4); if (!zs.length) return [];
-  const esc = S.sv.filter((f) => isFighter(f) && canFight(f) && !f.rescuing && !f.carrying && !['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover'].includes(f.mode)).sort((a, b) => dist(a.w, q.w) - dist(b.w, q.w)).slice(0, 2);
+  const esc = S.sv.filter((f) => isFighter(f) && canFight(f) && f.hp >= f.max * .6 && !f.rescuing && !f.carrying && !['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover'].includes(f.mode)).sort((a, b) => dist(a.w, q.w) - dist(b.w, q.w)).slice(0, 2);
   esc.forEach((f, i) => { engage(f, zs[i % zs.length]); f.why = `Clearing the way to ${q.name}`; }); return esc; }
 function orderRescue(q) {   /* the player's call: escorts clear the way and a rescuer goes in even if zombies are close */
-  if (!q || q.mode !== 'down') return false; q.ordered = true;
-  const esc = orderEscorts(q);
+  if (!q || q.mode !== 'down') return false;
+  const crowd0 = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 4).length, esc = orderEscorts(q);
+  if (crowd0 && !esc.length) { say(`No fighter is fit to cover a rescue of ${q.name} yet.`); return false; }   /* 3D.75: no cover, no rescue into zombies */ q.ordered = true;
   if (!q.rescuer) assignRescue(); say(q.rescuer ? `${q.rescuer.name} is going for ${q.name}${esc.length ? ', ' + esc.map((f) => f.name).join(' and ') + ' covering' : ''}.` : `Nobody can reach ${q.name} right now.`);
   return !!q.rescuer || esc.length > 0;
 }
 function focusBoss() { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); if (!b) return false; let n = 0;
-  for (const f of S.sv) if (isFighter(f) && canFight(f) && !['down', 'hospital', 'away', 'errand'].includes(f.mode) && !f.rescuing && !f.carrying) { f.focusUntil = tick + 3000; engage(f, b); f.why = 'All together on the boss'; n++; }
-  if (n) { S.focusT = tick + 3000; say(`${n} fighter${n > 1 ? 's' : ''} go for the boss together (+30% damage while they focus).`); } return n > 0; }
+  for (const f of S.sv) if (isFighter(f) && canFight(f) && f.hp >= f.max * .7 && !['down', 'hospital', 'away', 'errand'].includes(f.mode) && !f.rescuing && !f.carrying) { f.focusUntil = tick + 1500; engage(f, b); f.why = 'All together on the boss'; n++; }
+  if (n) { S.focusT = tick + 1500; say(`${n} fighter${n > 1 ? 's' : ''} go for the boss together (+30% damage while they focus).`); } return n > 0; }
 /* ---------------- 3D.73 played over weeks: the town keeps working while you're away, and daily / weekly goals give a reason to come back ----------------
    Away: every 10 real minutes counts as one game hour of work, up to 8 hours (a full tray). Production goes into the buildings' trays, as if
    the workers kept their shifts; nothing else happens (no hunger, no fights, no days pass). Expeditions already run on real time.

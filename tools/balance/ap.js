@@ -47,12 +47,13 @@
   function expertTick() {
     const hurt = S.sv.filter((q) => q.hp < q.max * .5 && !['away', 'errand'].includes(q.mode)).length, night = Z.isNight(), zin = S.z.filter((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))).length;
     const want = hurt >= 2 && !zin ? 'recover' : night || zin ? 'defend' : 'produce';   /* defend at night or under attack, heal when people are hurt, push production on quiet days */
-    if (Z.policy() !== want && (S.polT || 0) + 600 < Z.tick) { Z.setPolicy(want); S.polT = Z.tick; }
+    const xo = AP.xoff || new Set();
+    if (!xo.has('policy') && Z.policy() !== want && (S.polT || 0) + 600 < Z.tick) { Z.setPolicy(want); S.polT = Z.tick; }
     AP.xt = (AP.xt || 0) + 1;
-    for (const wl of W.walls.values()) if (wl.broken && S.z.some((z) => z.hp > 0 && !z.human && Math.hypot(z.w.x - wl.x - .5, z.w.y - wl.y - .5) < 6) && !(wl.sentT > Z.tick - 900)) { if (Z.sendDefender({ x: wl.x + .5, y: wl.y + .5 })) wl.sentT = Z.tick; }   /* answers every breach alert */
-    if (Z.orderRescue) for (const q of S.sv) if (q.mode === 'down' && !q.ordered && !q.rescuer) Z.orderRescue(q);   /* taps Send rescue on every down alert */
-    if (Z.focusBoss && S.z.some((z) => z.type === 'boss' && z.hp > 0) && !(S.focusT > Z.tick)) Z.focusBoss();   /* taps Focus the boss */
-    if (Z.militia && AP.xt % 2 === 0 && S.sv.some((q) => q.mode === 'down')) Z.militia();
+    if (!xo.has('breach')) for (const wl of W.walls.values()) if (wl.broken && S.z.some((z) => z.hp > 0 && !z.human && Math.hypot(z.w.x - wl.x - .5, z.w.y - wl.y - .5) < 6) && !(wl.sentT > Z.tick - 900)) { if (Z.sendDefender({ x: wl.x + .5, y: wl.y + .5 })) wl.sentT = Z.tick; }   /* answers every breach alert */
+    if (!xo.has('rescue') && Z.orderRescue) for (const q of S.sv) if (q.mode === 'down' && !q.ordered && !q.rescuer) Z.orderRescue(q);   /* taps Send rescue on every down alert */
+    if (!xo.has('focus') && Z.focusBoss && S.z.some((z) => z.type === 'boss' && z.hp > 0) && !(S.focusT > Z.tick)) Z.focusBoss();   /* taps Focus the boss */
+    if (!xo.has('militia') && Z.militia && AP.xt % 2 === 0 && S.sv.some((q) => q.mode === 'down')) Z.militia();
   }
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
   AP.tick = function () {

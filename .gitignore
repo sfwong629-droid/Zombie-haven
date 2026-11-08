@@ -5,3 +5,4 @@ tools/soak/soak_*.json
 tools/balance/prof_*.json
 tools/balance/resp_*.json
 tools/balance/skill_*.json
+tools/balance/squad_probe.json

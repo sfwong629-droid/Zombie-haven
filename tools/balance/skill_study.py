@@ -11,7 +11,7 @@ from playwright.async_api import async_playwright
 AP = open(os.path.join(R.ROOT, 'tools', 'balance', 'ap.js')).read()
 CASUAL_OFF = ['trays', 'events', 'finale', 'posts', 'exp', 'bandage', 'repair', 'jobs', 'research', 'tools', 'walls', 'territory', 'trader', 'radio', 'supply']
 RUN = """(a)=>{const [days,pl]=a,S=ZH.S;
-  if(pl==='idle')AP.off.add('all');else if(pl==='casual')for(const k of %s)AP.off.add(k);else if(pl==='expert')AP.expert=true;else if(pl.startsWith('no-'))AP.off.add(pl.slice(3));
+  if(pl==='idle')AP.off.add('all');else if(pl==='casual')for(const k of %s)AP.off.add(k);else if(pl==='expert')AP.expert=true;else if(pl.startsWith('expert-'))(AP.expert=true,AP.xoff=new Set([pl.slice(7)]));else if(pl.startsWith('no-'))AP.off.add(pl.slice(3));
   else if(pl==='shuffle'){const p=['barrel','farm','tent','medic','bench','hq2','scrapyard','water','tent','lumber','crates','farm','quarry','armory','gym','cabin','library','storage','field','clinic','workshop'];for(let i=p.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}AP.plan=p;}
   const d0=S.day;const peak={pop:0};
   while(S.day<d0+days&&S.sv.length){for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick();}AP.hour();peak.pop=Math.max(peak.pop,S.sv.length);}
