@@ -6,3 +6,11 @@ tools/balance/prof_*.json
 tools/balance/resp_*.json
 tools/balance/skill_*.json
 tools/balance/squad_probe.json
+tools/design/out/*
+!tools/design/out/study_v1.json
+!tools/design/out/study_final.json
+!tools/design/out/study_final.log
+!tools/design/out/longterm_final.json
+!tools/design/out/longterm_final.log
+!tools/design/out/study_v4.json
+tools/design/__pycache__/
