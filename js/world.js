@@ -41,7 +41,7 @@
     mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
     medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
     clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, cloth: 3, meds: 2, up: true }),
-    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, meds: 6, fuel: 2, up: true }),
+    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, meds: 6, fuel: 2, up: true, power: 1, powerOpt: true }),   // 3D.77: surgery with power
     crates:   D({ name: 'Supply Crates', like: 'storage', role: 'storage', fam: 'storage', tier: 1, next: 'storage', a: 3, q: 8, wood: 4, icon: 'storage' }),
     storage:  D({ name: 'Storehouse',    role: 'storage', fam: 'storage', tier: 2, next: 'warehouse', a: 4, q: 8, wood: 12, mat: 4, up: true }),
     warehouse: D({ name: 'Warehouse',    like: 'storage', role: 'storage', fam: 'storage', tier: 3, a: 5, q: 9, stone: 16, wood: 8, mat: 6, up: true, icon: 'storage' }),
@@ -53,8 +53,15 @@
     bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
     armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
     barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8, cloth: 3 }),
-    generator: D({ name: 'Generator',   role: 'power', tier: 3, a: 4, q: 10, stone: 10, mat: 10, fuel: 4 }),   // V3D.26: burns fuel; lights the camp and boosts nearby buildings
-    radio:    D({ name: 'Radio Tower', role: 'radio', tier: 3, a: 6, q: 12, stone: 20, mat: 16, wood: 10, fuel: 6 }),   // V3D.26: needs power; sends the rescue signal (the ending)
+    generator: D({ name: 'Generator',   role: 'power', fam: 'power', tier: 3, slot: true, a: 4, q: 10, stone: 10, mat: 10, fuel: 4 }),   // 3D.77: a Mechanic on shift saves fuel   // V3D.26: burns fuel; lights the camp and boosts nearby buildings
+    radio:    D({ name: 'Radio Tower', role: 'radio', tier: 3, a: 6, q: 12, stone: 20, mat: 16, wood: 10, fuel: 6, power: 1 }),
+    // 3D.77 power for growth (each draws power units from the Generators) and the ammo / fuel chain (run by Mechanics)
+    pump:      D({ name: 'Electric Pump', role: 'water', fam: 'pump', tier: 3, slot: true, out: 16, a: 4, q: 10, stone: 6, mat: 10, fuel: 1, power: 1 }),
+    greenhouse: D({ name: 'Greenhouse',   role: 'food', fam: 'greenhouse', tier: 3, w: 2, slot: true, out: 12, waterUse: 3, a: 8, q: 12, stone: 6, wood: 10, mat: 8, cloth: 2, power: 1, powerOpt: true }),
+    coldstore: D({ name: 'Cold Store',    role: 'storage', fam: 'coldstore', tier: 3, a: 3, q: 9, stone: 10, mat: 10, power: 1 }),
+    fuelstill: D({ name: 'Fuel Still',    role: 'fuel', fam: 'fuel', tier: 2, slot: true, out: 3, a: 4, q: 9, wood: 10, mat: 6 }),
+    ammobench: D({ name: 'Ammo Bench',    role: 'ammo', fam: 'ammo', tier: 2, slot: true, out: 16, a: 4, q: 9, wood: 8, mat: 8 }),
+    ammofactory: D({ name: 'Ammo Factory', role: 'ammo', fam: 'ammo2', tier: 3, w: 2, slot: true, out: 64, a: 6, q: 12, stone: 12, mat: 16, fuel: 2, power: 2 }),   // V3D.26: needs power; sends the rescue signal (the ending)
     // V2.14 training buildings: each raises one survivor stat when visited
     gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
     library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
@@ -71,7 +78,7 @@
   for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
   const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], quarry: ['Engineer'] };   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
+  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], quarry: ['Engineer'], power: ['Mechanic'], fuel: ['Mechanic'], ammo: ['Mechanic'], ammo2: ['Mechanic'], pump: ['Mechanic'], greenhouse: ['Farmer'] };   /* 3D.77: the Mechanic runs power, fuel and ammo */   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
   const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {

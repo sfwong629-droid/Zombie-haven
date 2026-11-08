@@ -250,3 +250,7 @@ html.glass .expTop .etRow { display: flex; align-items: center; gap: 12px; margi
 html.glass .expTop .etN { display: flex; flex-direction: column; align-items: center; min-width: 56px; } html.glass .expTop .etN b { font-size: 22px; font-weight: 800; line-height: 1; } html.glass .expTop .etN small { font-size: 11px; color: var(--mu); }
 html.glass .expTop #expGo { flex: 1; margin: 0; min-height: 48px; font-size: 16px; }
 html.glass .expTop .etLine { font-size: 14px; margin: 3px 0; } html.glass .expTop .etK { display: inline-block; min-width: 40px; font-weight: 800; color: var(--mu); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+/* 3D.77: an ammo count joins the top bar once someone carries a gun: squeeze the chips so they still fit a phone */
+html.glass #plaque .res.tight { gap: 5px; padding: 4px 9px 4px 6px; }
+html.glass #plaque .res.tight i .zi { width: 22px; height: 22px; }
+html.glass #plaque .res.tight b { font-size: 14px; }

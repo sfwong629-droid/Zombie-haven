@@ -825,7 +825,35 @@ async def t_traps(br, port, t):   # 3D.76 traps outside the wall ring
     t.ok(r['saved'] == 3, f"traps are saved {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_power_ammo(br, port, t):   # 3D.77 Mechanic, power for growth, limited ammo
+    ctx, pg, errs = await open_game(br, port, 'powerammo')
+    await close_popups(pg)
+    for k in ('generator', 'pump', 'coldstore', 'ammofactory', 'radio', 'ammobench'): await pg.evaluate(PLACE, k)
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};const B=(t)=>W.buildings.find(b=>b.type===t);
+      out.mech=ZH.CLASS_LIST?ZH.CLASS_LIST.includes('Mechanic'):null;
+      // power: one generator = 4 units; hospital > radio > pump > cold store > greenhouse > factory
+      S.fuel=10;ZH.powerTick();out.sup=S.pSup;out.need=S.pNeed;out.radio=ZH.powered(B('radio'));out.pump=ZH.powered(B('pump'));out.cold=ZH.powered(B('coldstore'));out.fac=ZH.powered(B('ammofactory'));
+      const g=B('generator');const f0=ZH.genFuel(g);const m=S.sv[0];m.job='Mechanic';g.staff=m;out.fuelCut=ZH.genFuel(g)<f0;g.staff=null;
+      S.fuel=0;ZH.powerTick();out.dark=!ZH.powered(B('pump'))&&!S.power;
+      // ammo: equip takes rounds from the stock; an empty stock leaves a gunner swinging the gun
+      const s=S.sv.find(q=>q.job==='Guard')||S.sv[1];S.ammo=5;ZH.stashAdd('pistol');ZH.equip(s,'pistol');out.loaded=s.ammo;out.stock=S.ammo;
+      s.ammo=0;ZH.reloadGun(s);out.dry=s.dry;out.swing=ZH.weaponOf(s).name;S.ammo=40;ZH.step(130);out.back=!s.dry;ZH.reloadGun(s);out.reload=s.ammo;
+      ZH.stashAdd('crossbow');ZH.equip(s,'crossbow');const a0=S.ammo;s.ammo=0;ZH.reloadGun(s);out.bowFree=S.ammo===a0&&s.ammo>0;
+      // ammo bench: a Mechanic makes rounds from scrap; the factory needs power
+      const bn=B('ammobench');bn.staff=m;m.job='Mechanic';S.mat=50;S.ammo=0;for(let h=0;h<24;h++)ZH.newProduce(bn,ZH.Wd.DEFS.ammobench,999);out.bench=Math.round(S.ammo);out.scrapUsed=Math.round(50-S.mat);
+      const fc=B('ammofactory');fc.staff=m;fc.pw=false;const a1=S.ammo;ZH.newProduce(fc,ZH.Wd.DEFS.ammofactory,999);out.facDark=S.ammo===a1;
+      try{const sv=JSON.parse(ZH.serialize());out.saved=sv.S.ammo===S.ammo}catch(e){out.saved=e.message}return out}""")
+    t.ok(r['sup'] == 4 and r['need'] == 5, f"one generator gives 4 power; pump 1 + cold store 1 + factory 2 + radio 1 want 5 {r}")
+    t.ok(r['radio'] and r['pump'] and r['cold'] and not r['fac'], f"the most important buildings get power first; the factory waits {r}")
+    t.ok(r['fuelCut'] and r['dark'], f"a Mechanic saves fuel; no fuel means no power {r}")
+    t.ok(r['loaded'] == 5 and r['stock'] == 0, f"loading a gun takes rounds from the stock {r}")
+    t.ok(r['dry'] and 'Empty gun' in r['swing'] and r['back'] and r['reload'] == 12, f"out of ammo they swing the gun, then reload when there is ammo {r}")
+    t.ok(r['bowFree'], f"crossbows never need ammo {r}")
+    t.ok(14 <= r['bench'] <= 24 and 3 <= r['scrapUsed'] <= 6, f"an Ammo Bench makes about 16 rounds a day for about 4 scrap {r}")
+    t.ok(r['facDark'] and r['saved'] is True, f"the Ammo Factory does nothing without power; ammo saves {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

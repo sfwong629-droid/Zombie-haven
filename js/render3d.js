@@ -657,6 +657,13 @@ function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5
 function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
 function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
 const BUILD = {
+  /* 3D.77 power, fuel and ammo buildings (low detail toon parts) */
+  pump: (P, w, d) => { P.put(box(w * .5, .14, d * .5), '#7d776d', M4(0, .07, 0)); P.put(cyl(.2, .22, .55, 10), '#5d7a8c', M4(-w * .1, .42, 0)); P.put(box(.34, .3, .26), '#4e6a4e', M4(w * .16, .3, -d * .05)); P.put(cyl(.05, .05, .7, 6), '#8f9aa6', M4(-w * .1, .9, 0)); P.put(cyl(.05, .05, w * .5, 6), '#8f9aa6', M4(0, 1.22, 0, 0, 0, Math.PI / 2)); P.put(cyl(.03, .03, .3, 6), '#2e2e2e', M4(w * .16, .5, -d * .05)); P.put(box(.12, .1, .02), '#e8c83a', M4(w * .16, .32, d * .085)); },
+  greenhouse: (P, w, d) => { P.put(box(w * .86, .12, d * .8), '#8a847a', M4(0, .06, 0)); const H = 1.3; for (let i = 0; i < 5; i++) { const x = -w * .4 + i * w * .2; P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, -d * .38)); P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, d * .38)); } for (const k of [-1, 1]) P.put(box(w * .84, .04, d * .42), '#bfe3d8', M4(0, H + .15, k * d * .19, 0, k * .45)); P.put(box(w * .82, H * .9, .03), '#cfeee4', M4(0, H * .45, d * .38)); beds(P, w * .7, d * .5, 2); },
+  coldstore: (P, w, d) => { cabin(P, w * .8, d * .74, '#8fa6b8', { plank: true, wall: ['#dfe7ec', '#d4dde3'], h: 1.2 }); P.put(box(.3, .3, .2), '#9aa0a6', M4(w * .3, 1.4, -d * .1)); for (let i = 0; i < 3; i++) P.put(box(.26, .02, .2), '#6f7a84', M4(w * .3, 1.3 + i * .08, -d * .1)); },
+  fuelstill: (P, w, d) => { P.put(cyl(.3, .32, .7, 12), '#b0773e', M4(-w * .12, .35, 0)); P.put(new THREE.SphereGeometry(.3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#c4884a', M4(-w * .12, .7, 0)); P.put(cyl(.03, .03, .6, 6), '#b0773e', M4(w * .1, .95, 0, 0, 0, 1.2)); P.put(cyl(.16, .16, .44, 10), '#8a3a2a', M4(w * .28, .22, d * .15)); P.put(new THREE.DodecahedronGeometry(.12, 0), '#3a2a20', M4(-w * .12, .08, d * .3)); logPile(P, w * .2, -d * .3, 2); },
+  ammobench: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.04, .05, .8, 6), '#6f4a2c', M4(x * w * .34, .4, z * d * .26)); P.put(box(w * .8, .08, d * .6), '#7a6a4e', M4(0, .82, 0)); P.put(box(.26, .3, .2), '#5d6b44', M4(-w * .2, 1.0, 0)); for (let i = 0; i < 4; i++) P.put(cyl(.025, .025, .1, 6), '#d8b04a', M4(w * .05 + i * .07, .91, d * .1)); P.put(box(.3, .2, .24), '#5d6b44', M4(w * .25, .1, d * .3)); },
+  ammofactory: (P, w, d) => { stoneHall(P, w * .82, d * .72, '#4e555c', { h: 1.5, windows: [w * .2] }); P.put(cyl(.12, .14, 1.2, 8), '#5f666e', M4(-w * .3, 2.1, -d * .15)); P.put(box(.5, .3, .3), '#5d6b44', M4(w * .3, .15, d * .45)); P.put(box(.12, .1, .02), '#e8c83a', M4(-w * .1, 1.1, d * .37 + .02)); },
   generator: (P, w, d) => { P.put(box(w * .55, .5, d * .4), '#4e6a4e', M4(0, .32, 0)); P.put(box(w * .6, .08, d * .45), '#3a4a3a', M4(0, .6, 0)); for (const k of [-1, 1]) P.put(cyl(.09, .09, .06, 10), '#2e2e2e', M4(k * w * .2, .09, d * .22, 0, Math.PI / 2)); P.put(cyl(.04, .05, .5, 6), '#5f666e', M4(w * .18, .85, -d * .1)); P.put(cyl(.06, .06, .05, 8), '#2a2a2a', M4(w * .18, 1.1, -d * .1)); P.put(cyl(.025, .03, 1.5, 6), '#5a3b23', M4(-w * .36, .75, d * .3)); P.put(box(.16, .1, .16), '#ffe08a', M4(-w * .36, 1.52, d * .3)); for (let i = 0; i < 3; i++) P.put(box(.08, .12, .02), '#e8c36a', M4(-w * .1 + i * .1, .4, d * .2 + .01)); },
   radio: (P, w, d) => { const H = 4.2; for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.025, .035, Math.hypot(H, w * .3), 5), '#8f9aa6', M4(x * w * .15, H / 2, z * d * .15, 0, -z * .07, x * .07)); for (let i = 1; i < 6; i++) { const y = i * H / 6, k = 1 - y / H * .7; P.put(box(w * .3 * k + .05, .03, .03), '#c83a32', M4(0, y, d * .15 * k)); P.put(box(.03, .03, d * .3 * k + .05), '#c83a32', M4(w * .15 * k, y, 0)); }
     P.put(cyl(.2, .02, .12, 12).rotateX(Math.PI / 2), '#e8e2d4', M4(.1, H * .75, .12, .6)); P.put(box(.04, .04, .04), '#ff4a3a', M4(0, H + .05, 0)); P.put(box(w * .5, .55, d * .4), '#7a6a58', M4(-w * .1, .28, d * .25)); P.put(box(.2, .2, .04), '#3b2a1a', M4(-w * .1, .3, d * .45 + .02)); },
@@ -800,7 +807,7 @@ async function load(url) {   // hosts that can't serve .glb get a base64 copy ne
   return parse(u.buffer);
 }
 let MALE = null, LITE = null;
-const JOB_SHIRT = { Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
+const JOB_SHIRT = { Mechanic: '#3f5f7f', Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
 const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
 const ZSC = { bloated: 1.18, brute: 1.32, crawler: 1, boss: 1.6, alpha: 1.75, screamer: 1, riot: 1, dog: 1.15 };
@@ -1155,7 +1162,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   return c && has(c) ? c : null;
 }
 function personAnim(a, s, dt) {
-  const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
+  const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? (s.dry && WCLASS[model] === 'gun' ? 'melee' : WCLASS[model]) : null;   /* 3D.77: out of ammo, they swing the gun */
   a.setWeapon(model);
   const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm);
   let [anim] = G.humanAnim(s, G.facing(s));
