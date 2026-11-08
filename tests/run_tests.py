@@ -780,7 +780,26 @@ async def t_skill(br, port, t):   # 3D.71 skill study changes
     t.ok(r['focus'] and r['onBoss'] >= 1, f"Focus the boss sends the fighters at it {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_weeks(br, port, t):   # 3D.73 away production and daily / weekly goals
+    ctx, pg, errs = await open_game(br, port, 'weeks')
+    await close_popups(pg)
+    await pg.evaluate(PLACE, 'water')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const b=ZH.world.buildings.find(b=>b.type==='water');b.bonus=0;
+      out.short=ZH.awayCredit(5*60000);out.r=ZH.awayCredit(3*3600e3);out.tray=b.bonus;out.trayCap=b.trayCap;
+      ZH.goalsTick();out.nd=(S.goals.daily||[]).length;out.nw=(S.goals.weekly||[]).length;out.day=S.goals.day===ZH.dayKey();
+      const g=S.goals.daily[0],d=ZH.GOALS_DAILY[g.id];
+      // finish it: push its counter
+      if(g.id==='kills')S.kills+=999;else if(g.id==='produce')S.produced+=999;else if(g.id==='trays'){S.stat=S.stat||{};S.stat.trays=(S.stat.trays||0)+99;}else if(g.id==='exped'){S.stat=S.stat||{};S.stat.exp=(S.stat.exp||0)+1;}else if(g.id==='saved'){S.stat=S.stat||{};S.stat.saved=(S.stat.saved||0)+1;}else{g.start=-999;}
+      ZH.goalsTick();out.done=g.done;const k=Object.keys(d.reward)[0],v0=S[k]||0;out.claim=ZH.claimGoal(g,ZH.GOALS_DAILY);out.got=(S[k]||0)-v0;out.again=ZH.claimGoal(g,ZH.GOALS_DAILY);
+      out.html=ZH.goalsHtml().includes('Today');try{ZH.serialize();out.save=true}catch(e){out.save=e.message}return out}""")
+    t.ok(r['short'] is None, f"a few minutes away gives nothing {r['short']}")
+    t.ok(r['r'] and r['r']['hours'] == 8 and r['tray'] > 0, f"hours away fill the trays (8 game hours at most) {r}")
+    t.ok(r['nd'] == 3 and r['nw'] == 1 and r['day'], f"three daily goals and one weekly goal {r}")
+    t.ok(r['done'] and r['claim'] and r['got'] > 0 and not r['again'], f"a finished goal pays out once {r}")
+    t.ok(r['html'] and r['save'] is True, f"goals show on the Goals screen and save {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

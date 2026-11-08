@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.72', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.73', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2215,7 +2215,7 @@ function ai(s) {
     if (!s.careTo || !world.buildings.includes(s.careTo)) s.careTo = careDest(); const dB = s.careTo;
     const r = followPath(s, sitePoint(dB), CARRY); q.w = { x: s.w.x - .12, y: s.w.y - .05 };
     if (r === 'fail' && dist(s.w, sitePoint(dB)) > 1.5 && (s.carryFail = (s.carryFail || 0) + 1) < 6) { s.path = null; return; }   /* 3D.63: a blocked path is retried, not teleported through */
-    if (r === 'arrived' || r === 'fail') { s.carryFail = 0; q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.stable = false; emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
+    if (r === 'arrived' || r === 'fail') { s.carryFail = 0; q.w = { ...sitePoint(dB) }; s.careTo = null; addBond(s, q, 8); q.mode = 'hospital'; q.hp = 1; q.stable = false; statAdd('saved'); emote(q, '🙏', 120, true); if (!bark(s, 'rescuer', { other: q.name }, { pri: 1 })) emote(s, '❤️', 100, true); q.bleed = null; q.stateTicks = Math.round(careTicks(dB) * (hasSkill(s, 'steadyHands') || (medSite() && medSite().staff && hasSkill(medSite().staff, 'steadyHands')) ? .7 : 1)); gainXp(s, 4); if (hasSkill(s, 'miracleWorker')) q.stateTicks = Math.round(q.stateTicks * .7); q.rescuer = null; q.why = 'Recovering in care'; SFX('rescued'); q.careTotal = q.stateTicks; q.careAt = dB; q.path = null; s.carrying = null; s.rescuing = null; enterPost(s); note('routine', q.name + ' reached ' + (dB ? 'the ' + DEFS[dB.type].name : 'safety') + (isCamp(dB) ? ' (no medical bed free: slower care)' : '') + '.'); } return;
   }
   if (s.mode === 'fieldAid') { fieldAidAI(s); return; }
   if (s.mode === 'goFire' || s.mode === 'fightFire') { fireAI(s); return; }
@@ -2760,7 +2760,7 @@ function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus =
    The tray holds TRAY_H hours of output; past that the building stops filling (shown as FULL, and listed in the alert hub). */
 const TAP_COLLECT = true, TRAY_H = 8;
 function trayAdd(b, res, a, nm) { if (!(a > 0)) return; b.bonusRes = res; const cap = Math.max(2, a * TRAY_H), had = b.bonus || 0, put = Math.max(0, Math.min(a, cap - had)); b.bonus = had + put; b.trayCap = cap; b.trayFull = b.bonus >= cap - 1e-6; if (a > put && res !== 'rp') flow(res, 'Wasted: not collected', 0); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; note('important', 'Tap the bubbles over buildings to collect what they made', { banner: '👆 Tap the bubbles to collect!' }); } }
-function collectBonus(b) {
+function collectBonus(b) { statAdd('trays');
   const r = b.bonusRes, n = TAP_COLLECT ? Math.round((b.bonus || 0) * 10) / 10 : Math.floor(b.bonus || 0); if (!r || n < 1) return false;
   const room = r === 'rp' ? 1e9 : r === 'water' || r === 'food' ? supplyCap() - (S[r] || 0) : r === 'mat' ? 1e9 : resCap(r) - (S[r] || 0), got = Math.max(0, Math.min(n, TAP_COLLECT ? room : Math.floor(room)));
   if (!got) { say(`${RES_TITLE[r] || 'Storage'} is full: build more storage to collect.`); return true; }
@@ -2782,6 +2782,7 @@ function drawBonus(b, cx, cy, z) {   /* white glass bubble with the resource ico
   ctx.restore(); b._cb = { x, y, r, t: tick };
 }
 function hourlyProduction() {   // runs every game hour
+  goalsTick();
   let fi = 0, wi = 0; const cap = supplyCap();
   for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d) continue; const nm = d.name;
@@ -3213,6 +3214,69 @@ function orderRescue(q) {   /* the player's call: escorts clear the way and a re
 function focusBoss() { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); if (!b) return false; let n = 0;
   for (const f of S.sv) if (isFighter(f) && canFight(f) && !['down', 'hospital', 'away', 'errand'].includes(f.mode) && !f.rescuing && !f.carrying) { f.focusUntil = tick + 3000; engage(f, b); f.why = 'All together on the boss'; n++; }
   if (n) { S.focusT = tick + 3000; say(`${n} fighter${n > 1 ? 's' : ''} go for the boss together (+30% damage while they focus).`); } return n > 0; }
+/* ---------------- 3D.73 played over weeks: the town keeps working while you're away, and daily / weekly goals give a reason to come back ----------------
+   Away: every 10 real minutes counts as one game hour of work, up to 8 hours (a full tray). Production goes into the buildings' trays, as if
+   the workers kept their shifts; nothing else happens (no hunger, no fights, no days pass). Expeditions already run on real time.
+   Goals: three small goals each real day and one bigger goal each real week, with rewards to claim. */
+let hiddenAt = 0;
+const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 8;
+function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
+function awayCredit(ms) {
+  if (titleOn || S.finale || !(ms > 0)) return null; const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();
+  if (hours < 1) return null; const got = {};
+  for (let h = 0; h < hours; h++) for (const b of world.buildings) {
+    const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
+    const pm = prodMult(b, sh >= .5) * (d.slot && !b.staff ? 1 : 1); let res = null, a = 0;
+    if (d.fam === 'water') { res = 'water'; a = d.out / 24 * pm * helpMult(b); }
+    else if (d.fam === 'scrap') { res = 'mat'; a = d.out / 24 * pm * (researched('salvage') ? 1.25 : 1); }
+    else if (d.fam === 'lumber' || d.fam === 'quarry') { res = d.fam === 'lumber' ? 'wood' : 'stone'; a = d.out / 24 * pm; }
+    else if (d.fam === 'research') { res = 'rp'; a = (b.staff ? d.out : 6) / 24 * pm; }
+    else if (d.fam === 'farm') { res = 'food'; a = d.out / 24 * pm * helpMult(b) * seasonFarm(); }
+    if (!res || !(a > 0)) continue; const before = b.bonus || 0; trayAdd(b, res, a); got[res] = (got[res] || 0) + Math.max(0, (b.bonus || 0) - before);
+  }
+  const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
+  const real = ms >= 36e5 ? Math.round(ms / 36e5 * 10) / 10 + ' h' : Math.round(ms / 6e4) + ' min';
+  const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '');
+  note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
+  return { hours, got };
+}
+const dayKey = (t = Date.now()) => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+const weekKey = (t = Date.now()) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dayKey(d.getTime()); };   /* weeks start on Monday */
+const GOALS_DAILY = {
+  kills:   { icon: '🧟', name: 'Clear the streets', desc: (n) => `Defeat ${n} zombies`, n: () => 12 + 4 * S.rank, now: () => S.kills || 0, reward: { mat: 6 } },
+  trays:   { icon: '🧺', name: 'Bring it in', desc: (n) => `Collect from production bubbles ${n} times`, n: () => 8, now: () => (S.stat || {}).trays || 0, reward: { food: 4, water: 4 } },
+  produce: { icon: '🌾', name: 'Stock up', desc: (n) => `Produce ${n} food and water`, n: () => 15 + 5 * S.rank, now: () => S.produced || 0, reward: { mat: 5 } },
+  build:   { icon: '🔨', name: 'Raise something', desc: () => 'Finish a building or an upgrade', n: () => 1, now: () => world.buildings.length + world.buildings.reduce((a, b) => a + (DEFS[b.type].tier || 1), 0), reward: { wood: 5, mat: 3 } },
+  exped:   { icon: '🧭', name: 'Head out', desc: () => 'Send out an expedition', n: () => 1, now: () => (S.stat || {}).exp || 0, reward: { cloth: 2, meds: .5 } },
+  saved:   { icon: '🩹', name: 'Nobody left behind', desc: () => 'Bring someone back from being down', n: () => 1, now: () => (S.stat || {}).saved || 0, reward: { meds: 1 } },
+  study:   { icon: '🔬', name: 'Learn something', desc: () => 'Finish a research topic', n: () => 1, now: () => Object.keys(RESEARCH).filter((k) => researched(k)).length, reward: { mat: 6 } },
+};
+const GOALS_WEEKLY = {
+  grow:    { icon: '👥', name: 'A growing Haven', desc: (n) => `Have ${n} people living in the Haven`, n: () => Math.min(28, popNow() + 3), now: () => popNow(), abs: true, reward: { mat: 20, food: 10, water: 10 } },
+  rank:    { icon: '⭐', name: 'Moving up', desc: () => 'Upgrade the town to the next rank', n: () => 1, now: () => S.rank, reward: { mat: 25, wood: 10 } },
+  hunter:  { icon: '⚔', name: 'Hold the line', desc: (n) => `Defeat ${n} zombies this week`, n: () => 120 + 20 * S.rank, now: () => S.kills || 0, reward: { mat: 15, meds: 2 } },
+  builder: { icon: '🏗', name: 'Town planner', desc: (n) => `Finish ${n} buildings or upgrades`, n: () => 5, now: () => GOALS_DAILY.build.now(), reward: { mat: 15, wood: 15, stone: 8 } },
+};
+function seededPick(keys, k, seed) { let x = 0; for (const c of seed) x = (x * 31 + c.charCodeAt(0)) >>> 0; const a = keys.slice(), out = []; while (out.length < k && a.length) { x = (x * 1103515245 + 12345) >>> 0; out.push(a.splice(x % a.length, 1)[0]); } return out; }
+function makeGoal(set, id) { const g = set[id], n = g.n(); return { id, n, start: g.abs ? 0 : g.now(), done: false, claimed: false }; }
+function goalsTick() {
+  if (!S.sv || titleOn) return; const dk = dayKey(), wk = weekKey(); S.goals = S.goals || {};
+  if (S.goals.day !== dk) { const pool = Object.keys(GOALS_DAILY).filter((k) => !(k === 'exped' && S.sv.length < 4) && !(k === 'study' && !Object.keys(RESEARCH).some((r) => !researched(r)))); S.goals.day = dk; S.goals.daily = seededPick(pool, 3, dk + (S.townName || '')).map((id) => makeGoal(GOALS_DAILY, id)); }
+  if (S.goals.week !== wk) { const pool = Object.keys(GOALS_WEEKLY).filter((k) => !(k === 'rank' && !(RANK_REQ && RANK_REQ[S.rank]))); S.goals.week = wk; S.goals.weekly = seededPick(pool, 1, wk + (S.townName || '')).map((id) => makeGoal(GOALS_WEEKLY, id)); }
+  for (const [list, set, tag] of [[S.goals.daily, GOALS_DAILY, 'Daily'], [S.goals.weekly, GOALS_WEEKLY, 'Weekly']]) for (const g of list || []) {
+    if (g.done) continue; const d = set[g.id]; if (!d) continue; if (d.now() - g.start >= g.n) { g.done = true; SFX('coin');
+      note('important', `✔ ${tag} goal: ${d.name}`, { key: 'goal' + tag + g.id, icon: d.icon, log: `${d.desc(g.n)}: done! Claim the reward from the alert or the Goals screen.`, live: () => !g.claimed, acts: [{ label: () => 'Claim ' + rewardText(d.reward), ok: () => !g.claimed, fn: () => claimGoal(g, set) }] }); }
+  }
+}
+const rewardText = (r) => Object.entries(r).map(([k, v]) => ({ mat: '⚙', food: '🍖', water: '💧', wood: '🪵', stone: '🪨', cloth: '🧵', meds: '💊' }[k] || k) + v).join(' ');
+function claimGoal(g, set) { if (!g || !g.done || g.claimed) return false; g.claimed = true; const r = set[g.id].reward; for (const [k, v] of Object.entries(r)) { S[k] = (S[k] || 0) + v; if (['food', 'water', 'mat'].includes(k)) flow(k, 'Goal reward', v); } SFX('reward'); say(`Reward: ${rewardText(r)}`); return true; }
+function goalProgress(g, set) { const d = set[g.id]; return Math.max(0, Math.min(g.n, d.now() - g.start)); }
+function goalsHtml() {
+  goalsTick(); const G = S.goals || {}; const row = (g, set) => { const d = set[g.id]; if (!d) return ''; const p = goalProgress(g, set);
+    return `<div style="margin:3px 0;opacity:${g.claimed ? .55 : 1}">${g.claimed ? '✔' : d.icon} <b>${d.name}</b> — ${d.desc(g.n)} <span class="sm">${g.done ? '' : Math.floor(p) + '/' + g.n}</span>${g.done && !g.claimed ? ` <button class="act" data-claim="${set === GOALS_DAILY ? 'd' : 'w'}:${g.id}">Claim ${rewardText(d.reward)}</button>` : g.claimed ? ' <span class="sm">claimed</span>' : ` <span class="sm">${rewardText(d.reward)}</span>`}</div>`; };
+  const left = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const h = Math.floor((m - n) / 36e5), mi = Math.floor((m - n) / 6e4) % 60; return h + 'h ' + mi + 'm'; };
+  return `<div class="card"><b>📅 Today</b> <span class="sm">new goals in ${left()}</span>${(G.daily || []).map((g) => row(g, GOALS_DAILY)).join('')}</div><div class="card"><b>🗓 This week</b> <span class="sm">resets Monday</span>${(G.weekly || []).map((g) => row(g, GOALS_WEEKLY)).join('')}</div>`;
+}
 function endOfDay() {            // rations: every survivor eats half food, half water; a shortfall makes them hungry and thirsty (gentle, no damage yet)
   const up = payUpkeep();
   for (const b of world.buildings) if (b.rushes) b.rushes--; petDaily(); bondsDaily(); try { legacyCheck(); } catch (e) { /* never block the day */ }
@@ -3472,8 +3536,8 @@ function showGoals() {
     + GUIDE.map((g, i) => { const done = S.stage >= 2 && i < gi, cur = S.stage >= 2 && i === gi; return `<div style="opacity:${done ? .6 : cur ? 1 : .45};${cur ? 'border:1px solid #ffe38a;border-radius:4px;padding:3px;margin:2px 0' : ''}">${done ? '✔' : cur ? '▶' : '·'} <b>${g.name}</b> — ${g.desc}${cur ? `<br><small>${g.hint}</small><br><small>Reward: +${g.parts} scrap, +${g.parts * 2} wood, +${g.ren} Renown</small>` : ''}</div>`; }).join('');
   legacyCheck(); const lg = `<div class="card" style="margin-top:8px"><b>🏅 Legacy goals</b> <span class="sm">${legacyDone()}/${LEGACY.length} · ${DF().icon} ${DF().name} · ${ST().icon} ${ST().name}</span>${LEGACY.map((g) => { const d = (S.legacy || {})[g.id], [a, b] = g.prog(); return `<div style="opacity:${d ? .6 : 1}">${d ? '✔' : g.icon} <b>${g.name}</b> — ${g.desc} <span class="sm">${d ? 'day ' + d : Math.min(a, b) + '/' + b}</span></div>`; }).join('')}<div class="sm">Each: +15 Renown, +10 scrap.</div></div>
     <div class="card"><b>📻 The Signal</b><div class="sm">${S.won ? `The convoy came on day ${S.won.day}. Score ${S.won.score}. The town is yours to keep building.` : S.finale ? `Final stand under way: night ${S.finale.night} of ${FINALE_NIGHTS}. Hold out until dawn after night ${FINALE_NIGHTS}.` : `Reach ★5 and finish ${LEGACY_NEED} legacy goals, build a Radio Tower with a running Generator, then call for the convoy: ${FINALE_NIGHTS} nights of hordes, then the ending and your score. (★${S.rank}/5 · ${legacyDone()}/${LEGACY_NEED} goals · ${radioOk() ? '📻 radio on air' : world.buildings.some((b) => b.type === 'radio') ? '📻 radio needs power' : '📻 no Radio Tower yet'})`}</div>${signalReady() ? '<button class="act go" id="gSignal" style="width:100%">📻 Call for the convoy</button>' : ''}</div>`;
-  $('ib').innerHTML = (gi >= GUIDE.length ? lg + rows : rows + lg) + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
-  showPanel(); $('gLog').onclick = showLog; const gs = $('gSignal'); if (gs) gs.onclick = () => { closeP(); startFinale(); };
+  $('ib').innerHTML = goalsHtml() + (gi >= GUIDE.length ? lg + rows : rows + lg) + (gi >= GUIDE.length && S.mission ? `<br><b>Mission:</b> ${S.mission.name} — ${S.mission.desc} (${Math.floor(S.mission.progress)}/${S.mission.goal})` : '') + '<br><button class="act" id="gLog">📜 Event log</button>';
+  showPanel(); $('gLog').onclick = showLog; $('ib').querySelectorAll('[data-claim]').forEach((el) => { el.onclick = () => { const [t, id] = el.dataset.claim.split(':'), G = S.goals || {}, g = (t === 'd' ? G.daily : G.weekly || []).find((q) => q.id === id); claimGoal(g, t === 'd' ? GOALS_DAILY : GOALS_WEEKLY); showGoals(); }; }); const gs = $('gSignal'); if (gs) gs.onclick = () => { closeP(); startFinale(); };
 }
 function logEvent(t, lvl = 'routine') { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ SCRAP · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t), l: lvl }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
 let logOnlyKey = false;
@@ -3787,12 +3851,12 @@ function showSettings(back) {
 function saveGame() {
   if (ZOO) return;   /* 3D.32 the test page never touches your saves */
   if (titleOn || saveBlocked) return false;
-  let data; try { data = serialize(); } catch (e) { saveFail('the town could not be packed (' + e.message + ')'); return false; }
+  S.savedAt = Date.now(); let data; try { data = serialize(); } catch (e) { saveFail('the town could not be packed (' + e.message + ')'); return false; }
   let r = writeKey(SAVE_KEY, data);
   if (r !== true) { try { localStorage.removeItem(BAK(SAVE_KEY)); localStorage.removeItem(BAD(SAVE_KEY)); } catch (e) { /* ignore */ } r = writeKey(SAVE_KEY, data); }
   if (r !== true) { saveFail(/quota/i.test(r.name + r.message) ? 'the browser storage is full' : 'the browser blocked storage (private browsing?)'); return false; }
   if (saveErr) { saveErr = ''; renderAlerts(); }
-  S.lastSave = tick; savedAtMs = Date.now(); if (S.bakDay !== S.day && writeKey(BAK(SAVE_KEY), data) === true) S.bakDay = S.day;   /* first save of each day becomes the backup */
+  S.lastSave = tick; savedAtMs = Date.now(); S.savedAt = savedAtMs; if (S.bakDay !== S.day && writeKey(BAK(SAVE_KEY), data) === true) S.bakDay = S.day;   /* first save of each day becomes the backup */
   return true;
 }
 function saveFail(why) { const first = !saveErr; saveErr = why; if (first) note('critical', `Saving failed: ${why}`, { key: 'savefail', icon: '💾', live: () => !!saveErr, dyn: () => `Saving failed: ${saveErr}. Export a backup now.`, acts: [{ label: 'Backup', fn: () => showBackup() }] }); }
@@ -3850,7 +3914,7 @@ function applySave(raw, legacy, prev) {
     if (COZY_HUD && S.trip && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); S.terr = S.terr || 0; Wd.setTerritory(S.terr); S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
-    Wd.bump(world); guideSkipDone(); alerts.clear(); setTimeout(restoreAlerts, 0); return d;
+    Wd.bump(world); guideSkipDone(); alerts.clear(); setTimeout(restoreAlerts, 0); { const away = S.savedAt ? Date.now() - S.savedAt : 0; if (away > 0) setTimeout(() => awayCredit(away), 1200); } return d;
   } catch (e) { console.warn('load failed', e); return false; }
 }
 
@@ -3964,7 +4028,9 @@ function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time)
 function expLocked(destId) { return EXP_DEFS[destId].lock(); }
 function startExpedition(destId, riskId, ids) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId]; if (!d || !rk) return { ok: false, why: 'Unknown trip' };
-  if (S.trip) return { ok: false, why: 'A squad is already out' };
+  if (S.trip) return { ok: false, why: 'A squad is already out' }; const r0 = startExpedition0(destId, riskId, ids); if (r0 && r0.ok) statAdd('exp'); return r0; }
+function startExpedition0(destId, riskId, ids) {
+  const d = EXP_DEFS[destId], rk = EXP_RISK[riskId];
   const lock = expLocked(destId); if (lock) return { ok: false, why: lock };
   if (!d.risks.includes(riskId)) return { ok: false, why: d.name + ' only offers ' + d.risks.map((r) => EXP_RISK[r].label).join(' / ') + ' trips' };
   const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean);
@@ -4245,7 +4311,7 @@ function fieldAidAI(s) {
     endAid(s); q.stable = true; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `${q.name} is stable but needs care: carrying them in`;
     note('routine', `${s.name} stabilised ${q.name} (down twice today: needs a medical bed).`); return; }
   endAid(s); q.hp = Math.max(1, Math.round(q.max * .3)); q.bleed = null; q.warned = false; q.stable = false; q.rescuer = null; q.wounded = true; s.rescuing = null; enterFree(q, 150); q.why = 'Back on their feet (Wounded)'; emote(q, '🙏', 120, true);
-  floats.push({ w: { ...q.w }, t: '🩹 BACK UP', col: '#7fd35a', a: 80 }); SFX('rescued'); note('routine', `${s.name} got ${q.name} back on their feet. ${q.name} is Wounded until treated at a medical building.`); enterFree(s, 40);
+  floats.push({ w: { ...q.w }, t: '🩹 BACK UP', col: '#7fd35a', a: 80 }); statAdd('saved'); SFX('rescued'); note('routine', `${s.name} got ${q.name} back on their feet. ${q.name} is Wounded until treated at a medical building.`); enterFree(s, 40);
 }
 function beingCarried(s) { const r = s.rescuer; return !!(r && r.carrying === s && r.mode === 'rescueCarry'); }
 function bleedTick(s) {
@@ -4929,7 +4995,7 @@ function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two si
   try { draw(); } finally { for (const [o, w] of moved) o.w = w; }
 }
 function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + Math.sin(k * .07) * 3, 10 + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
-document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) saveGame(); else { last = 0; tripUpdate(); expTick(); } }); window.addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
 async function init() {
@@ -5085,7 +5151,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
 }
 // test / debug hook (no effect on gameplay)
 window.ZH = { BUILD_TAG, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
-Object.assign(window.ZH, { rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
+Object.assign(window.ZH, { awayCredit, goalsTick, claimGoal, goalsHtml, GOALS_DAILY, GOALS_WEEKLY, dayKey, weekKey, rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
 })();
