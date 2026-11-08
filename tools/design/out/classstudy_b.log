@@ -1,0 +1,6 @@
+limited-spec/smart             score   4997 pop  26.1 lvl 10.5 dead  1.7 | T2 first (10, 0.81) n 6.29 | T3 first (None, 0.0) n 0 | cele/day 31-90 0.45 91-180 0.15 | top combos []
+limited-spec+strong-hybrid/smart score   4934 pop  25.8 lvl 10.4 dead  1.7 | T2 first (10, 0.81) n 6.23 | T3 first (48, 0.51) n 2.5 | cele/day 31-90 0.54 91-180 0.18 | top combos [('Homesteader', 0.24), ('Pathfinder', 0.21), ('Salvager', 0.18)]
+limited-spec/good              score   5393 pop  29.0 lvl 11.8 dead  3.8 | T2 first (29.0, 0.8) n 6.91 | T3 first (None, 0.0) n 0 | cele/day 31-90 0.89 91-180 0.18 | top combos []
+limited-spec+strong-hybrid/good score   5213 pop  28.1 lvl 11.5 dead  3.7 | T2 first (29.0, 0.8) n 6.75 | T3 first (58.0, 0.72) n 3.48 | cele/day 31-90 1.05 91-180 0.23 | top combos [('Homesteader', 0.25), ('Pathfinder', 0.25), ('Salvager', 0.15)]
+limited-spec/casual            score   2323 pop  15.5 lvl  6.0 dead  8.5 | T2 first (33, 0.47) n 3.3 | T3 first (None, 0.0) n 0 | cele/day 31-90 0.47 91-180 0.16 | top combos []
+limited-spec+strong-hybrid/casual score   2206 pop  14.8 lvl  5.8 dead  8.3 | T2 first (33, 0.47) n 3.17 | T3 first (49, 0.25) n 1.15 | cele/day 31-90 0.54 91-180 0.17 | top combos [('Pathfinder', 0.19), ('Homesteader', 0.18), ('Tracker', 0.16)]

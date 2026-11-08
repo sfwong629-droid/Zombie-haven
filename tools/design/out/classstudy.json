@@ -1,0 +1,1618 @@
+{
+ "none/smart": {
+  "n": 100,
+  "pop": 25.43,
+  "pop7": 9.35,
+  "pop30": 16.43,
+  "pop60": 17.85,
+  "lvl": 10.21,
+  "lvl30": 5.84,
+  "dead": 1.72,
+  "left": 0.19,
+  "score": 4864.2,
+  "power": 609.04,
+  "dogs": 21.43,
+  "l5": [
+   14,
+   0.79
+  ],
+  "l11": [
+   68.5,
+   0.56
+  ],
+  "l15": [
+   72.5,
+   0.54
+  ],
+  "joined": {
+   "gate": 17.0,
+   "kids": 1.9,
+   "rescued": 0.3,
+   "stronghold": 1.8,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.3,
+   "pups": 1.2
+  },
+  "flog": {
+   "paid": 2.9,
+   "raids": 50.8,
+   "raids_won": 50.3,
+   "burnt": 0.2,
+   "taken": 0.1,
+   "trades": 57.4,
+   "helped": 42.1,
+   "gifts": 12.9
+  },
+  "allies": 0.0,
+  "gone": 0.09,
+  "missions": 132.1,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.56,
+  "t2_n": 0,
+  "t3_n": 0,
+  "promo_late": 0,
+  "cele_late": 13.07,
+  "cele_mid": 28.06,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.15,
+  "cele_mid_per_day": 0.47
+ },
+ "spec/smart": {
+  "n": 100,
+  "pop": 25.96,
+  "pop7": 9.36,
+  "pop30": 17.11,
+  "pop60": 21.84,
+  "lvl": 10.38,
+  "lvl30": 6.18,
+  "dead": 1.71,
+  "left": 0.26,
+  "score": 4956.1,
+  "power": 721.228,
+  "dogs": 21.33,
+  "l5": [
+   13,
+   0.77
+  ],
+  "l11": [
+   47.0,
+   0.58
+  ],
+  "l15": [
+   50.0,
+   0.58
+  ],
+  "joined": {
+   "gate": 17.7,
+   "kids": 1.8,
+   "rescued": 0.3,
+   "stronghold": 1.8,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.3,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 4.3,
+   "raids": 56.9,
+   "raids_won": 56.3,
+   "burnt": 0.4,
+   "taken": 0.2,
+   "trades": 62.0,
+   "helped": 41.9,
+   "gifts": 14.0
+  },
+  "allies": 0.0,
+  "gone": 0.08,
+  "missions": 132.5,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.58,
+  "t2_n": 24.37,
+  "t3_n": 0,
+  "promo_late": 4.31,
+  "cele_late": 16.89,
+  "cele_mid": 26.8,
+  "t2_first": [
+   10,
+   0.81
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.19,
+  "cele_mid_per_day": 0.45
+ },
+ "spec+hybrid/smart": {
+  "n": 100,
+  "pop": 24.91,
+  "pop7": 9.36,
+  "pop30": 16.92,
+  "pop60": 20.96,
+  "lvl": 10.03,
+  "lvl30": 6.13,
+  "dead": 1.75,
+  "left": 0.54,
+  "score": 4752.9,
+  "power": 725.7496,
+  "dogs": 21.36,
+  "l5": [
+   13,
+   0.77
+  ],
+  "l11": [
+   46,
+   0.55
+  ],
+  "l15": [
+   50,
+   0.47
+  ],
+  "joined": {
+   "gate": 17.0,
+   "kids": 1.5,
+   "rescued": 0.6,
+   "stronghold": 1.8,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.3,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 6.6,
+   "raids": 52.2,
+   "raids_won": 51.4,
+   "burnt": 0.4,
+   "taken": 0.3,
+   "trades": 56.2,
+   "helped": 36.2,
+   "gifts": 11.9
+  },
+  "allies": 0.0,
+  "gone": 0.15,
+  "missions": 133.5,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.59,
+  "t2_n": 20.96,
+  "t3_n": 2.32,
+  "promo_late": 5,
+  "cele_late": 23.18,
+  "cele_mid": 39.29,
+  "t2_first": [
+   10,
+   0.81
+  ],
+  "t3_first": [
+   65,
+   0.49
+  ],
+  "combos": {
+   "Homesteader": 0.25,
+   "Pathfinder": 0.2,
+   "Herbalist": 0.16,
+   "Salvager": 0.14,
+   "Tracker": 0.12,
+   "Combat Medic": 0.07,
+   "Fortifier": 0.06
+  },
+  "cele_late_per_day": 0.26,
+  "cele_mid_per_day": 0.65
+ },
+ "hybrid-only/smart": {
+  "n": 100,
+  "pop": 24.21,
+  "pop7": 9.35,
+  "pop30": 16.37,
+  "pop60": 18.75,
+  "lvl": 9.74,
+  "lvl30": 5.9,
+  "dead": 1.7,
+  "left": 0.64,
+  "score": 4616.8,
+  "power": 665.5916,
+  "dogs": 22.33,
+  "l5": [
+   14,
+   0.79
+  ],
+  "l11": [
+   63.0,
+   0.5
+  ],
+  "l15": [
+   67,
+   0.41
+  ],
+  "joined": {
+   "gate": 16.0,
+   "kids": 1.6,
+   "rescued": 0.8,
+   "stronghold": 1.7,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 21.3,
+   "pups": 1.0
+  },
+  "flog": {
+   "paid": 3.6,
+   "raids": 49.2,
+   "raids_won": 48.3,
+   "burnt": 0.4,
+   "taken": 0.3,
+   "trades": 48.7,
+   "helped": 31.5,
+   "gifts": 9.5
+  },
+  "allies": 0.01,
+  "gone": 0.16,
+  "missions": 131.7,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.56,
+  "t2_n": 0,
+  "t3_n": 2.38,
+  "promo_late": 0.9,
+  "cele_late": 16.49,
+  "cele_mid": 39.04,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   59,
+   0.53
+  ],
+  "combos": {
+   "Pathfinder": 0.22,
+   "Homesteader": 0.21,
+   "Tracker": 0.17,
+   "Salvager": 0.15,
+   "Herbalist": 0.13,
+   "Combat Medic": 0.08,
+   "Fortifier": 0.05
+  },
+  "cele_late_per_day": 0.18,
+  "cele_mid_per_day": 0.65
+ },
+ "none/good": {
+  "n": 100,
+  "pop": 28.11,
+  "pop7": 6.94,
+  "pop30": 12.97,
+  "pop60": 17.61,
+  "lvl": 11.47,
+  "lvl30": 4.21,
+  "dead": 3.86,
+  "left": 0.72,
+  "score": 5220.2,
+  "power": 641.96,
+  "dogs": 19.05,
+  "l5": [
+   30,
+   0.79
+  ],
+  "l11": [
+   80.0,
+   0.7
+  ],
+  "l15": [
+   89.0,
+   0.66
+  ],
+  "joined": {
+   "gate": 19.8,
+   "kids": 2.3,
+   "rescued": 0.4,
+   "stronghold": 2.9,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 1.0,
+   "dogs": 17.9,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 10.7,
+   "raids": 47.9,
+   "raids_won": 46.7,
+   "burnt": 0.6,
+   "taken": 0.6,
+   "trades": 51.0,
+   "helped": 35.9,
+   "gifts": 7.9
+  },
+  "allies": 0.0,
+  "gone": 0.11,
+  "missions": 117.4,
+  "winrate": 0.99,
+  "era2": 0.8,
+  "era3": 0.7,
+  "t2_n": 0,
+  "t3_n": 0,
+  "promo_late": 0,
+  "cele_late": 18.43,
+  "cele_mid": 48.21,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.2,
+  "cele_mid_per_day": 0.8
+ },
+ "spec/good": {
+  "n": 100,
+  "pop": 29.13,
+  "pop7": 6.92,
+  "pop30": 13.58,
+  "pop60": 21.23,
+  "lvl": 11.9,
+  "lvl30": 4.54,
+  "dead": 3.76,
+  "left": 0.77,
+  "score": 5425.9,
+  "power": 775.232,
+  "dogs": 19.84,
+  "l5": [
+   29,
+   0.79
+  ],
+  "l11": [
+   60.5,
+   0.74
+  ],
+  "l15": [
+   68,
+   0.73
+  ],
+  "joined": {
+   "gate": 20.4,
+   "kids": 2.7,
+   "rescued": 0.4,
+   "stronghold": 2.9,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 1.0,
+   "dogs": 18.5,
+   "pups": 1.3
+  },
+  "flog": {
+   "paid": 13.8,
+   "raids": 57.1,
+   "raids_won": 55.7,
+   "burnt": 0.7,
+   "taken": 0.6,
+   "trades": 54.0,
+   "helped": 38.3,
+   "gifts": 8.6
+  },
+  "allies": 0.0,
+  "gone": 0.09,
+  "missions": 117.7,
+  "winrate": 0.99,
+  "era2": 0.79,
+  "era3": 0.74,
+  "t2_n": 27.46,
+  "t3_n": 0,
+  "promo_late": 4.49,
+  "cele_late": 18.29,
+  "cele_mid": 62.93,
+  "t2_first": [
+   29.0,
+   0.8
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.2,
+  "cele_mid_per_day": 1.05
+ },
+ "spec+hybrid/good": {
+  "n": 100,
+  "pop": 27.01,
+  "pop7": 6.92,
+  "pop30": 13.3,
+  "pop60": 20.08,
+  "lvl": 11.19,
+  "lvl30": 4.48,
+  "dead": 3.92,
+  "left": 1.34,
+  "score": 5008.2,
+  "power": 789.8672,
+  "dogs": 20.04,
+  "l5": [
+   29,
+   0.79
+  ],
+  "l11": [
+   60.5,
+   0.68
+  ],
+  "l15": [
+   65.5,
+   0.52
+  ],
+  "joined": {
+   "gate": 18.9,
+   "kids": 2.3,
+   "rescued": 1.0,
+   "stronghold": 2.9,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 1.0,
+   "dogs": 18.7,
+   "pups": 1.3
+  },
+  "flog": {
+   "paid": 20.2,
+   "raids": 46.5,
+   "raids_won": 43.3,
+   "burnt": 1.7,
+   "taken": 1.1,
+   "trades": 41.5,
+   "helped": 28.1,
+   "gifts": 6.1
+  },
+  "allies": 0.0,
+  "gone": 0.11,
+  "missions": 118.0,
+  "winrate": 0.99,
+  "era2": 0.79,
+  "era3": 0.73,
+  "t2_n": 21.96,
+  "t3_n": 3.37,
+  "promo_late": 5.35,
+  "cele_late": 23.85,
+  "cele_mid": 82.07,
+  "t2_first": [
+   29.0,
+   0.8
+  ],
+  "t3_first": [
+   55,
+   0.73
+  ],
+  "combos": {
+   "Homesteader": 0.2,
+   "Pathfinder": 0.18,
+   "Herbalist": 0.17,
+   "Tracker": 0.16,
+   "Salvager": 0.15,
+   "Fortifier": 0.1,
+   "Combat Medic": 0.05,
+   "Caretaker": 0.01
+  },
+  "cele_late_per_day": 0.27,
+  "cele_mid_per_day": 1.37
+ },
+ "hybrid-only/good": {
+  "n": 100,
+  "pop": 24.88,
+  "pop7": 6.94,
+  "pop30": 12.7,
+  "pop60": 18.03,
+  "lvl": 10.22,
+  "lvl30": 4.17,
+  "dead": 3.95,
+  "left": 1.21,
+  "score": 4580.8,
+  "power": 699.264,
+  "dogs": 19.12,
+  "l5": [
+   30,
+   0.79
+  ],
+  "l11": [
+   74,
+   0.55
+  ],
+  "l15": [
+   78.0,
+   0.34
+  ],
+  "joined": {
+   "gate": 17.1,
+   "kids": 1.9,
+   "rescued": 1.1,
+   "stronghold": 2.8,
+   "ally": 0.0,
+   "refugees": 0.0,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 1.0,
+   "dogs": 18.1,
+   "pups": 1.0
+  },
+  "flog": {
+   "paid": 15.4,
+   "raids": 38.1,
+   "raids_won": 35.3,
+   "burnt": 1.3,
+   "taken": 0.9,
+   "trades": 35.5,
+   "helped": 22.7,
+   "gifts": 5.1
+  },
+  "allies": 0.0,
+  "gone": 0.03,
+  "missions": 117.5,
+  "winrate": 0.99,
+  "era2": 0.8,
+  "era3": 0.65,
+  "t2_n": 0,
+  "t3_n": 2.83,
+  "promo_late": 0.71,
+  "cele_late": 18.4,
+  "cele_mid": 62.86,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   61,
+   0.65
+  ],
+  "combos": {
+   "Pathfinder": 0.28,
+   "Tracker": 0.22,
+   "Homesteader": 0.14,
+   "Herbalist": 0.13,
+   "Salvager": 0.1,
+   "Fortifier": 0.07,
+   "Combat Medic": 0.06,
+   "Caretaker": 0.0
+  },
+  "cele_late_per_day": 0.2,
+  "cele_mid_per_day": 1.05
+ },
+ "none/casual": {
+  "n": 100,
+  "pop": 15.05,
+  "pop7": 6.07,
+  "pop30": 8.57,
+  "pop60": 10.77,
+  "lvl": 5.84,
+  "lvl30": 2.59,
+  "dead": 8.65,
+  "left": 1.42,
+  "score": 2226.9,
+  "power": 445.4,
+  "dogs": 6.18,
+  "l5": [
+   36,
+   0.45
+  ],
+  "l11": [
+   81,
+   0.23
+  ],
+  "l15": [
+   84,
+   0.21
+  ],
+  "joined": {
+   "gate": 12.4,
+   "kids": 1.2,
+   "rescued": 0.5,
+   "stronghold": 1.4,
+   "ally": 0.0,
+   "refugees": 0.0,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 3.2,
+   "dogs": 5.7,
+   "pups": 0.5
+  },
+  "flog": {
+   "paid": 6.0,
+   "raids": 8.2,
+   "raids_won": 6.9,
+   "burnt": 0.5,
+   "taken": 0.4,
+   "trades": 7.6,
+   "helped": 5.3,
+   "gifts": 0.3
+  },
+  "allies": 0.0,
+  "gone": 0.01,
+  "missions": 45.6,
+  "winrate": 0.99,
+  "era2": 0.47,
+  "era3": 0.23,
+  "t2_n": 0,
+  "t3_n": 0,
+  "promo_late": 0,
+  "cele_late": 13.68,
+  "cele_mid": 25.44,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.15,
+  "cele_mid_per_day": 0.42
+ },
+ "spec/casual": {
+  "n": 100,
+  "pop": 15.68,
+  "pop7": 6.07,
+  "pop30": 8.5,
+  "pop60": 11.57,
+  "lvl": 6.14,
+  "lvl30": 2.6,
+  "dead": 8.44,
+  "left": 1.64,
+  "score": 2365.1,
+  "power": 508.39599999999996,
+  "dogs": 6.65,
+  "l5": [
+   33,
+   0.45
+  ],
+  "l11": [
+   61.0,
+   0.26
+  ],
+  "l15": [
+   68.5,
+   0.26
+  ],
+  "joined": {
+   "gate": 13.0,
+   "kids": 1.4,
+   "rescued": 0.4,
+   "stronghold": 1.4,
+   "ally": 0.0,
+   "refugees": 0.0,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 3.2,
+   "dogs": 6.3,
+   "pups": 0.4
+  },
+  "flog": {
+   "paid": 7.6,
+   "raids": 10.4,
+   "raids_won": 8.9,
+   "burnt": 0.7,
+   "taken": 0.6,
+   "trades": 7.5,
+   "helped": 5.4,
+   "gifts": 0.5
+  },
+  "allies": 0.0,
+  "gone": 0.07,
+  "missions": 45.9,
+  "winrate": 0.99,
+  "era2": 0.47,
+  "era3": 0.26,
+  "t2_n": 12.43,
+  "t3_n": 0,
+  "promo_late": 4.63,
+  "cele_late": 17.64,
+  "cele_mid": 32.86,
+  "t2_first": [
+   33,
+   0.47
+  ],
+  "t3_first": [
+   null,
+   0.0
+  ],
+  "combos": {},
+  "cele_late_per_day": 0.2,
+  "cele_mid_per_day": 0.55
+ },
+ "spec+hybrid/casual": {
+  "n": 100,
+  "pop": 14.57,
+  "pop7": 6.07,
+  "pop30": 8.48,
+  "pop60": 11.11,
+  "lvl": 5.85,
+  "lvl30": 2.6,
+  "dead": 8.53,
+  "left": 2.25,
+  "score": 2148.1,
+  "power": 510.79359999999997,
+  "dogs": 6.25,
+  "l5": [
+   33,
+   0.45
+  ],
+  "l11": [
+   60.5,
+   0.26
+  ],
+  "l15": [
+   96,
+   0.17
+  ],
+  "joined": {
+   "gate": 12.1,
+   "kids": 1.1,
+   "rescued": 1.1,
+   "stronghold": 1.4,
+   "ally": 0.0,
+   "refugees": 0.0,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 3.2,
+   "dogs": 6.0,
+   "pups": 0.3
+  },
+  "flog": {
+   "paid": 7.5,
+   "raids": 8.1,
+   "raids_won": 5.6,
+   "burnt": 1.2,
+   "taken": 0.8,
+   "trades": 4.8,
+   "helped": 3.4,
+   "gifts": 0.2
+  },
+  "allies": 0.0,
+  "gone": 0.06,
+  "missions": 45.9,
+  "winrate": 0.99,
+  "era2": 0.47,
+  "era3": 0.26,
+  "t2_n": 10.2,
+  "t3_n": 1.19,
+  "promo_late": 5.83,
+  "cele_late": 22.08,
+  "cele_mid": 37.2,
+  "t2_first": [
+   33,
+   0.47
+  ],
+  "t3_first": [
+   51.5,
+   0.26
+  ],
+  "combos": {
+   "Herbalist": 0.19,
+   "Fortifier": 0.15,
+   "Homesteader": 0.14,
+   "Tracker": 0.13,
+   "Pathfinder": 0.12,
+   "Salvager": 0.12,
+   "Combat Medic": 0.12,
+   "Caretaker": 0.03
+  },
+  "cele_late_per_day": 0.25,
+  "cele_mid_per_day": 0.62
+ },
+ "hybrid-only/casual": {
+  "n": 100,
+  "pop": 11.87,
+  "pop7": 6.07,
+  "pop30": 8.41,
+  "pop60": 10.19,
+  "lvl": 5.06,
+  "lvl30": 2.56,
+  "dead": 8.99,
+  "left": 2.46,
+  "score": 1637.2,
+  "power": 446.4008,
+  "dogs": 6.04,
+  "l5": [
+   36,
+   0.45
+  ],
+  "l11": [
+   65.0,
+   0.14
+  ],
+  "l15": [
+   104.0,
+   0.06
+  ],
+  "joined": {
+   "gate": 10.4,
+   "kids": 0.8,
+   "rescued": 1.2,
+   "stronghold": 1.3,
+   "ally": 0.0,
+   "refugees": 0.0,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 3.2,
+   "dogs": 5.8,
+   "pups": 0.3
+  },
+  "flog": {
+   "paid": 5.7,
+   "raids": 4.6,
+   "raids_won": 2.1,
+   "burnt": 1.3,
+   "taken": 0.8,
+   "trades": 3.2,
+   "helped": 2.1,
+   "gifts": 0.1
+  },
+  "allies": 0.0,
+  "gone": 0.04,
+  "missions": 44.3,
+  "winrate": 0.99,
+  "era2": 0.47,
+  "era3": 0.17,
+  "t2_n": 0,
+  "t3_n": 0.68,
+  "promo_late": 0.18,
+  "cele_late": 13.31,
+  "cele_mid": 29.52,
+  "t2_first": [
+   null,
+   0.0
+  ],
+  "t3_first": [
+   46,
+   0.17
+  ],
+  "combos": {
+   "Pathfinder": 0.26,
+   "Tracker": 0.25,
+   "Herbalist": 0.15,
+   "Fortifier": 0.1,
+   "Homesteader": 0.09,
+   "Salvager": 0.07,
+   "Combat Medic": 0.07
+  },
+  "cele_late_per_day": 0.15,
+  "cele_mid_per_day": 0.49
+ },
+ "hybcap/1per2levels/smart": {
+  "n": 100,
+  "pop": 24.89,
+  "pop7": 9.36,
+  "pop30": 16.92,
+  "pop60": 20.99,
+  "lvl": 10.04,
+  "lvl30": 6.13,
+  "dead": 1.73,
+  "left": 0.54,
+  "score": 4753.9,
+  "power": 726.072,
+  "dogs": 21.4,
+  "l5": [
+   13,
+   0.77
+  ],
+  "l11": [
+   46,
+   0.55
+  ],
+  "l15": [
+   49,
+   0.47
+  ],
+  "joined": {
+   "gate": 16.9,
+   "kids": 1.5,
+   "rescued": 0.6,
+   "stronghold": 1.8,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.3,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 6.5,
+   "raids": 52.5,
+   "raids_won": 51.7,
+   "burnt": 0.3,
+   "taken": 0.3,
+   "trades": 57.9,
+   "helped": 38.3,
+   "gifts": 12.8
+  },
+  "allies": 0.0,
+  "gone": 0.12,
+  "missions": 133.0,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.59,
+  "t2_n": 19.97,
+  "t3_n": 3.29,
+  "promo_late": 5.32,
+  "cele_late": 23.44,
+  "cele_mid": 40.51,
+  "t2_first": [
+   10,
+   0.81
+  ],
+  "t3_first": [
+   65,
+   0.49
+  ],
+  "combos": {
+   "Homesteader": 0.22,
+   "Pathfinder": 0.22,
+   "Tracker": 0.16,
+   "Herbalist": 0.15,
+   "Salvager": 0.14,
+   "Fortifier": 0.05,
+   "Combat Medic": 0.05
+  },
+  "cele_late_per_day": 0.26,
+  "cele_mid_per_day": 0.68
+ },
+ "hybcap/1per5levels/smart": {
+  "n": 100,
+  "pop": 24.94,
+  "pop7": 9.36,
+  "pop30": 16.91,
+  "pop60": 21.02,
+  "lvl": 10.06,
+  "lvl30": 6.13,
+  "dead": 1.77,
+  "left": 0.58,
+  "score": 4758.7,
+  "power": 710.9752,
+  "dogs": 21.79,
+  "l5": [
+   13,
+   0.77
+  ],
+  "l11": [
+   46,
+   0.55
+  ],
+  "l15": [
+   51.5,
+   0.48
+  ],
+  "joined": {
+   "gate": 16.9,
+   "kids": 1.5,
+   "rescued": 0.7,
+   "stronghold": 1.8,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.7,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 6.3,
+   "raids": 52.4,
+   "raids_won": 51.5,
+   "burnt": 0.4,
+   "taken": 0.3,
+   "trades": 56.3,
+   "helped": 36.6,
+   "gifts": 12.1
+  },
+  "allies": 0.0,
+  "gone": 0.15,
+  "missions": 133.2,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.59,
+  "t2_n": 21.93,
+  "t3_n": 1.39,
+  "promo_late": 4.77,
+  "cele_late": 22.89,
+  "cele_mid": 37.42,
+  "t2_first": [
+   10,
+   0.81
+  ],
+  "t3_first": [
+   65,
+   0.49
+  ],
+  "combos": {
+   "Homesteader": 0.29,
+   "Salvager": 0.18,
+   "Herbalist": 0.15,
+   "Pathfinder": 0.14,
+   "Combat Medic": 0.11,
+   "Fortifier": 0.09,
+   "Tracker": 0.04
+  },
+  "cele_late_per_day": 0.25,
+  "cele_mid_per_day": 0.62
+ },
+ "t3lv8/smart": {
+  "n": 100,
+  "pop": 24.73,
+  "pop7": 9.36,
+  "pop30": 17.08,
+  "pop60": 20.55,
+  "lvl": 9.96,
+  "lvl30": 6.26,
+  "dead": 1.73,
+  "left": 0.34,
+  "score": 4728.1,
+  "power": 726.4824,
+  "dogs": 21.4,
+  "l5": [
+   13,
+   0.77
+  ],
+  "l11": [
+   46.5,
+   0.56
+  ],
+  "l15": [
+   52.0,
+   0.44
+  ],
+  "joined": {
+   "gate": 16.6,
+   "kids": 1.6,
+   "rescued": 0.6,
+   "stronghold": 1.7,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.4,
+   "pups": 1.0
+  },
+  "flog": {
+   "paid": 7.0,
+   "raids": 50.8,
+   "raids_won": 50.0,
+   "burnt": 0.5,
+   "taken": 0.3,
+   "trades": 54.8,
+   "helped": 35.8,
+   "gifts": 11.2
+  },
+  "allies": 0.0,
+  "gone": 0.08,
+  "missions": 132.6,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.58,
+  "t2_n": 20.51,
+  "t3_n": 2.58,
+  "promo_late": 5.27,
+  "cele_late": 22.18,
+  "cele_mid": 31.45,
+  "t2_first": [
+   10,
+   0.81
+  ],
+  "t3_first": [
+   74,
+   0.55
+  ],
+  "combos": {
+   "Homesteader": 0.26,
+   "Pathfinder": 0.2,
+   "Herbalist": 0.2,
+   "Salvager": 0.13,
+   "Tracker": 0.08,
+   "Fortifier": 0.07,
+   "Combat Medic": 0.05
+  },
+  "cele_late_per_day": 0.25,
+  "cele_mid_per_day": 0.52
+ },
+ "gate/T2@L2-T3@L6/smart": {
+  "n": 100,
+  "pop": 21.12,
+  "pop7": 9.33,
+  "pop30": 15.23,
+  "pop60": 17.55,
+  "lvl": 8.33,
+  "lvl30": 5.49,
+  "dead": 1.88,
+  "left": 0.38,
+  "score": 3987.9,
+  "power": 694.2683999999999,
+  "dogs": 21.6,
+  "l5": [
+   13.0,
+   0.78
+  ],
+  "l11": [
+   48,
+   0.35
+  ],
+  "l15": [
+   54,
+   0.29
+  ],
+  "joined": {
+   "gate": 13.6,
+   "kids": 1.3,
+   "rescued": 0.6,
+   "stronghold": 1.6,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.7,
+   "pups": 0.9
+  },
+  "flog": {
+   "paid": 2.0,
+   "raids": 33.1,
+   "raids_won": 32.9,
+   "burnt": 0.2,
+   "taken": 0.1,
+   "trades": 39.6,
+   "helped": 25.0,
+   "gifts": 7.4
+  },
+  "allies": 0.0,
+  "gone": 0.09,
+  "missions": 131.5,
+  "winrate": 0.99,
+  "era2": 0.82,
+  "era3": 0.35,
+  "t2_n": 17.83,
+  "t3_n": 1.86,
+  "promo_late": 4.67,
+  "cele_late": 21.23,
+  "cele_mid": 24.24,
+  "t2_first": [
+   7,
+   0.85
+  ],
+  "t3_first": [
+   58,
+   0.49
+  ],
+  "combos": {
+   "Homesteader": 0.3,
+   "Herbalist": 0.22,
+   "Pathfinder": 0.17,
+   "Tracker": 0.12,
+   "Salvager": 0.1,
+   "Combat Medic": 0.06,
+   "Fortifier": 0.04
+  },
+  "cele_late_per_day": 0.24,
+  "cele_mid_per_day": 0.4
+ },
+ "gate/T2@L6-T3@L12/smart": {
+  "n": 100,
+  "pop": 23.71,
+  "pop7": 9.35,
+  "pop30": 16.44,
+  "pop60": 20.18,
+  "lvl": 9.57,
+  "lvl30": 5.9,
+  "dead": 1.67,
+  "left": 0.32,
+  "score": 4541,
+  "power": 712.4492,
+  "dogs": 21.92,
+  "l5": [
+   14,
+   0.79
+  ],
+  "l11": [
+   47.0,
+   0.52
+  ],
+  "l15": [
+   55,
+   0.35
+  ],
+  "joined": {
+   "gate": 15.5,
+   "kids": 1.6,
+   "rescued": 0.6,
+   "stronghold": 1.7,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 20.9,
+   "pups": 1.0
+  },
+  "flog": {
+   "paid": 4.6,
+   "raids": 49.8,
+   "raids_won": 49.3,
+   "burnt": 0.3,
+   "taken": 0.2,
+   "trades": 52.3,
+   "helped": 34.4,
+   "gifts": 10.8
+  },
+  "allies": 0.0,
+  "gone": 0.1,
+  "missions": 132.4,
+  "winrate": 0.99,
+  "era2": 0.81,
+  "era3": 0.53,
+  "t2_n": 18.21,
+  "t3_n": 2.19,
+  "promo_late": 3.94,
+  "cele_late": 17.41,
+  "cele_mid": 47.45,
+  "t2_first": [
+   20.0,
+   0.68
+  ],
+  "t3_first": [
+   69,
+   0.47
+  ],
+  "combos": {
+   "Pathfinder": 0.25,
+   "Homesteader": 0.18,
+   "Salvager": 0.16,
+   "Tracker": 0.13,
+   "Herbalist": 0.13,
+   "Fortifier": 0.09,
+   "Combat Medic": 0.05,
+   "Caretaker": 0.0
+  },
+  "cele_late_per_day": 0.19,
+  "cele_mid_per_day": 0.79
+ },
+ "xp0.5/spec+hybrid/smart": {
+  "n": 100,
+  "pop": 25.78,
+  "pop7": 9.14,
+  "pop30": 17.35,
+  "pop60": 22.19,
+  "lvl": 10.42,
+  "lvl30": 6.27,
+  "dead": 1.87,
+  "left": 0.36,
+  "score": 4925.2,
+  "power": 751.7848,
+  "dogs": 22.63,
+  "l5": [
+   13,
+   0.79
+  ],
+  "l11": [
+   45.0,
+   0.6
+  ],
+  "l15": [
+   50,
+   0.51
+  ],
+  "joined": {
+   "gate": 17.3,
+   "kids": 1.8,
+   "rescued": 0.6,
+   "stronghold": 2.0,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 21.6,
+   "pups": 1.0
+  },
+  "flog": {
+   "paid": 6.5,
+   "raids": 59.5,
+   "raids_won": 58.6,
+   "burnt": 0.4,
+   "taken": 0.2,
+   "trades": 57.5,
+   "helped": 36.9,
+   "gifts": 11.6
+  },
+  "allies": 0.0,
+  "gone": 0.15,
+  "missions": 137.5,
+  "winrate": 0.99,
+  "era2": 0.83,
+  "era3": 0.61,
+  "t2_n": 21.84,
+  "t3_n": 2.6,
+  "promo_late": 4.44,
+  "cele_late": 20.74,
+  "cele_mid": 58.72,
+  "t2_first": [
+   10.0,
+   0.84
+  ],
+  "t3_first": [
+   59.5,
+   0.56
+  ],
+  "combos": {
+   "Pathfinder": 0.23,
+   "Homesteader": 0.19,
+   "Herbalist": 0.15,
+   "Tracker": 0.15,
+   "Salvager": 0.12,
+   "Combat Medic": 0.1,
+   "Fortifier": 0.05,
+   "Caretaker": 0.01
+  },
+  "cele_late_per_day": 0.23,
+  "cele_mid_per_day": 0.98
+ },
+ "xp2.0/spec+hybrid/smart": {
+  "n": 100,
+  "pop": 25.48,
+  "pop7": 9.23,
+  "pop30": 17.7,
+  "pop60": 22.43,
+  "lvl": 10.24,
+  "lvl30": 6.58,
+  "dead": 1.62,
+  "left": 0.38,
+  "score": 4876,
+  "power": 738.3892,
+  "dogs": 22.92,
+  "l5": [
+   13.0,
+   0.8
+  ],
+  "l11": [
+   46.0,
+   0.56
+  ],
+  "l15": [
+   49.5,
+   0.5
+  ],
+  "joined": {
+   "gate": 16.7,
+   "kids": 1.6,
+   "rescued": 1.0,
+   "stronghold": 1.9,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.3,
+   "dogs": 21.9,
+   "pups": 1.1
+  },
+  "flog": {
+   "paid": 6.7,
+   "raids": 56.8,
+   "raids_won": 55.9,
+   "burnt": 0.4,
+   "taken": 0.3,
+   "trades": 56.7,
+   "helped": 39.1,
+   "gifts": 12.8
+  },
+  "allies": 0.0,
+  "gone": 0.1,
+  "missions": 138.9,
+  "winrate": 0.99,
+  "era2": 0.86,
+  "era3": 0.58,
+  "t2_n": 21.7,
+  "t3_n": 2.51,
+  "promo_late": 3.73,
+  "cele_late": 16.48,
+  "cele_mid": 38.37,
+  "t2_first": [
+   10.0,
+   0.86
+  ],
+  "t3_first": [
+   46,
+   0.53
+  ],
+  "combos": {
+   "Homesteader": 0.24,
+   "Pathfinder": 0.22,
+   "Herbalist": 0.17,
+   "Salvager": 0.17,
+   "Tracker": 0.13,
+   "Combat Medic": 0.04,
+   "Fortifier": 0.04
+  },
+  "cele_late_per_day": 0.18,
+  "cele_mid_per_day": 0.64
+ },
+ "style/warlord/spec+hybrid": {
+  "n": 100,
+  "pop": 37.3,
+  "pop7": 9.21,
+  "pop30": 18.85,
+  "pop60": 25.72,
+  "lvl": 12.25,
+  "lvl30": 6.94,
+  "dead": 1.99,
+  "left": 6.62,
+  "score": 6376.9,
+  "power": 795.5884,
+  "dogs": 25.56,
+  "l5": [
+   13,
+   0.89
+  ],
+  "l11": [
+   45.5,
+   0.76
+  ],
+  "l15": [
+   55,
+   0.71
+  ],
+  "joined": {
+   "gate": 20.4,
+   "kids": 2.9,
+   "rescued": 1.1,
+   "stronghold": 3.1,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 8.3,
+   "captured": 0.1,
+   "convoy": 0.2,
+   "dogs": 25.2,
+   "pups": 0.4
+  },
+  "flog": {
+   "paid": 1.9,
+   "raids": 35.5,
+   "raids_won": 21.8,
+   "burnt": 6.8,
+   "taken": 4.8,
+   "trades": 76.6,
+   "helped": 3.5,
+   "gifts": 12.4
+  },
+  "allies": 0.0,
+  "gone": 1.34,
+  "missions": 168.5,
+  "winrate": 0.99,
+  "era2": 0.89,
+  "era3": 0.76,
+  "t2_n": 32.85,
+  "t3_n": 3.5,
+  "promo_late": 13.26,
+  "cele_late": 45.23,
+  "cele_mid": 76.09,
+  "t2_first": [
+   11,
+   0.89
+  ],
+  "t3_first": [
+   50.5,
+   0.72
+  ],
+  "combos": {
+   "Pathfinder": 0.29,
+   "Homesteader": 0.17,
+   "Herbalist": 0.16,
+   "Tracker": 0.14,
+   "Salvager": 0.13,
+   "Fortifier": 0.08,
+   "Combat Medic": 0.04
+  },
+  "cele_late_per_day": 0.5,
+  "cele_mid_per_day": 1.27
+ },
+ "style/builder/spec+hybrid": {
+  "n": 100,
+  "pop": 28.37,
+  "pop7": 9.62,
+  "pop30": 19.78,
+  "pop60": 24.2,
+  "lvl": 11.68,
+  "lvl30": 7.5,
+  "dead": 1.24,
+  "left": 2.07,
+  "score": 5444.8,
+  "power": 765.0464,
+  "dogs": 19.22,
+  "l5": [
+   15,
+   0.91
+  ],
+  "l11": [
+   39,
+   0.67
+  ],
+  "l15": [
+   43,
+   0.63
+  ],
+  "joined": {
+   "gate": 20.2,
+   "kids": 2.2,
+   "rescued": 1.5,
+   "stronghold": 1.4,
+   "ally": 0.0,
+   "refugees": 0.1,
+   "conquest": 0.0,
+   "captured": 0.0,
+   "convoy": 0.2,
+   "dogs": 18.7,
+   "pups": 0.6
+  },
+  "flog": {
+   "paid": 15.1,
+   "raids": 63.0,
+   "raids_won": 62.0,
+   "burnt": 0.5,
+   "taken": 0.3,
+   "trades": 59.8,
+   "helped": 38.9,
+   "gifts": 12.7
+  },
+  "allies": 0.0,
+  "gone": 0.12,
+  "missions": 122.9,
+  "winrate": 0.98,
+  "era2": 0.95,
+  "era3": 0.68,
+  "t2_n": 25.25,
+  "t3_n": 2.76,
+  "promo_late": 5.37,
+  "cele_late": 23.2,
+  "cele_mid": 63.25,
+  "t2_first": [
+   11,
+   0.95
+  ],
+  "t3_first": [
+   64,
+   0.57
+  ],
+  "combos": {
+   "Salvager": 0.22,
+   "Homesteader": 0.19,
+   "Pathfinder": 0.17,
+   "Herbalist": 0.15,
+   "Tracker": 0.14,
+   "Fortifier": 0.1,
+   "Combat Medic": 0.03
+  },
+  "cele_late_per_day": 0.26,
+  "cele_mid_per_day": 1.05
+ }
+}
