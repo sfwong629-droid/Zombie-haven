@@ -101,7 +101,7 @@
     // give civilians (grown-up children, newcomers) a useful job
     if (on('jobs') && S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
     // beds: a sensible player makes room before the town is full (newcomers only come with a free bed)
-    if (on('plan') && S.hour === 10 && Z.popNow() >= Z.popCap() - 1) { if (!place('cabin')) place('tent'); }
+    if (on('plan') && S.hour === 10 && Z.popNow() >= Z.popCap() - 1 && Z.bedCount() <= Z.rankRoom()) { if (!place('cabin')) place('tent'); }
     // research
     { const nx = Z.RANK_REQ[S.rank], want = nx && Z.DEFS[nx.build] && Z.DEFS[nx.build].res; let goal = null;   /* V2.38: research toward the next star's building first (its chain), then the usual order */
       if (want && !Z.researched(want)) { let r = want; while (r && !Z.researched(Z.RESEARCH[r].need)) r = Z.RESEARCH[r].need; goal = r; }

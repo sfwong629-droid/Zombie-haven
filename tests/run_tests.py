@@ -770,11 +770,13 @@ async def t_skill(br, port, t):   # 3D.71 skill study changes
       S.food=0;S.water=0;const a0=ZH.townAppeal();S.food=99;S.water=99;out.appeal=[a0,ZH.townAppeal()];
       // Focus the boss
       S.z.length=0;S.day=6;S.hour=21;ZH.spawnBoss();for(const f of S.sv){f.hp=f.max;f.mode='free';f.rescuing=null;f.carrying=null;}out.focus=ZH.focusBoss();const b=S.z.find(z=>z.type==='boss');out.onBoss=S.sv.filter(f=>f.target===b).length;
+      S.rank=1;S.terr=0;out.room1=ZH.rankRoom();out.cap1=ZH.popCap();S.rank=3;out.room3=ZH.rankRoom();S.rank=1;
       return out}""")
     t.ok(r['pen'] == .7 and r['ok'] == 1, f"hungry or thirsty workers work at 70% {r}")
     t.ok(r['left'] == 1 and r['reset'], f"days with an empty store drive someone away; stocking up resets it {r}")
     t.ok(r['appeal'][1] > r['appeal'][0], f"spare food and water make the town more appealing {r}")
     t.ok(not r['auto'] and r['sent'] and r['ordered'], f"left alone a non-fighter won't pass a zombie; Send rescue sends someone {r}")
+    t.ok(r['room1'] == 8 and r['cap1'] <= 8 and r['room3'] == 16, f"the town's rank limits how many it can take in {r}")
     t.ok(r['focus'] and r['onBoss'] >= 1, f"Focus the boss sends the fighters at it {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
