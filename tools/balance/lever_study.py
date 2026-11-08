@@ -12,7 +12,7 @@ RUN = src.split('RUN = """', 1)[1].split('""" % json.dumps(CASUAL_OFF)')[0]
 CASUAL_OFF = ['trays', 'events', 'finale', 'posts', 'exp', 'bandage', 'repair', 'jobs', 'research', 'tools', 'walls', 'territory', 'trader', 'radio', 'supply']
 RUN = RUN % json.dumps(CASUAL_OFF)
 AP = open(os.path.join(here, 'ap.js')).read()
-KN = {'old': {'hiders': 0, 'bleed': 1}, 'base': {}, 'hiders': {'hiders': 1}, 'day': {'day': .6}, 'bleed': {'bleed': 1.5}}
+KN = {'old': {'hiders': 0, 'bleed': 1}, 'noceil': {'noCeil': 1}, 'base': {}, 'hiders': {'hiders': 1}, 'day': {'day': .6}, 'bleed': {'bleed': 1.5}}
 async def one(br, port, seed, days, pl, lever):
     ctx, pg, errs = await R.open_game(br, port, 'lev%d' % seed)
     kn = {}

@@ -862,7 +862,21 @@ async def t_convoy(br, port, t):   # Phase 1 comeback convoy
     t.ok(r['again'] == 0, f"no second convoy the same day {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field Notes
+    ctx, pg, errs = await open_game(br, port, 'notes')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const d0=S.day,r0=S.rank;S.day=30;S.rank=1;out.c1=ZH.hDay();S.rank=3;out.c3=ZH.hDay();S.rank=5;S.day=80;out.c5=ZH.hDay();S.day=5;S.rank=4;out.early=ZH.hDay();S.day=d0;S.rank=r0;
+      window.ZH_INTRO=true;S.z=[];S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));for(const b of ZH.world.buildings)S.intro['b:'+b.type]=1;delete S.intro['z:runner'];delete S.intro['z:brute'];ZH.spawn(8,3,'runner');const z=S.z[S.z.length-1];z.mode='idle';ZH.step(61);const m=document.getElementById('eventModal');out.card=m?m.textContent:'';out.seen=!!S.intro['z:runner'];
+      const b=[...m.querySelectorAll('button')].find(x=>/No more tips/.test(x.textContent));if(b)b.click();out.off=!!S.introOff;
+      ZH.spawn(8,3,'brute');S.z[S.z.length-1].mode='idle';ZH.step(61);out.silent=!!S.intro['z:brute']&&!document.getElementById('eventModal').textContent;
+      out.notes=ZH.fieldNotesHtml();return out}""")
+    t.ok(r['c1'] == 9 and r['c3'] == 20 and r['c5'] == 43 and r['early'] == 5, f"the threat stops growing at the rank's ceiling (rank 1: day 9, rank 3: day 20, rank 5: day 38 + a slow creep) {r['c1'], r['c3'], r['c5'], r['early']}")
+    t.ok('NEW: RUNNER' in r['card'] and 'What to do' in r['card'] and r['seen'], f"a new zombie type gets a Field Notes card {r}")
+    t.ok(r['off'] and r['silent'], f"'No more tips' stops the cards but still records the note {r['off'], r['silent']}")
+    t.ok('Runner' in r['notes'] and 'Brute' in r['notes'], f"Guide → Field Notes lists what was seen")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

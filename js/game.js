@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.78', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.79', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2371,7 +2371,7 @@ function weightedZombie() {
   /* 3D.64 balance study: the strong ones came on day 2-3 (bloated and spitters as soon as the Camp became a Lodge, a boss on night 3)
      and early nights topped out at 15 zombies, so the auto-played town lost 8.5 people in 12 days. Each type now has an arrival day
      (by day, not town rank) and fades in over three days. */
-  const pool = Object.entries(zombieTypes).filter(([k, v]) => v.weight > 0 && S.day >= (Z_ARRIVE[k] || 1)), w = (k, v) => v.weight * Math.min(1, (S.day - (Z_ARRIVE[k] || 1) + 1) / 3);
+  const hd = hDay(), pool = Object.entries(zombieTypes).filter(([k, v]) => v.weight > 0 && hd >= (Z_ARRIVE[k] || 1)), w = (k, v) => v.weight * Math.min(1, (hd - (Z_ARRIVE[k] || 1) + 1) / 3);
   let tot = pool.reduce((a, [k, v]) => a + w(k, v), 0), r = rnd() * tot; for (const [k, v] of pool) { r -= w(k, v); if (r <= 0) return k; } return 'walker';
 }
 function spawnPoint() {   /* a walkable tile on the map edge outside the territory; more sides open up as the territory grows */
@@ -2451,10 +2451,15 @@ function winGame() {
 }
 /* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
 let dangerT = -1, dangerV = 1;
+/* Phase 1 horde ceiling (owner, Nov 8): zombies grow tougher with the days, but only up to a ceiling set by the Haven's rank.
+   A town that hasn't upgraded stops getting harder; pressing Upgrade Town raises the ceiling. At the top rank it keeps creeping up slowly for veterans. */
+const HORDE_DAY_CAP = [0, 9, 14, 20, 28, 38];
+const hordeCap = (r = S.rank || 1) => HORDE_DAY_CAP[Math.min(r, HORDE_DAY_CAP.length - 1)] + (r >= HORDE_DAY_CAP.length - 1 ? Math.max(0, S.day - 60) * .25 : 0);
+const hDay = () => Math.min(S.day, ((window.ZH_BAL || {}).noCeil ? 1e9 : hordeCap()));
 function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
   if (tick - dangerT < 300 && dangerT >= 0) return dangerV; dangerT = tick;
   let st = 0; for (const q of S.sv) if (q.hp > 0 && q.mode !== 'away') st += isFighter(q) ? 8 * (q.l || 1) + weaponOf(q).atk : 1.2 * (q.l || 1);
-  return (dangerV = Math.max(.8, Math.min(2.4, .7 + .004 * st + .02 * S.day)));
+  return (dangerV = Math.max(.8, Math.min(2.4, .7 + .004 * st + .02 * hDay())));
 }
 function spawn(x = null, y = null, type = null) {
   const a = spawnPoint(), kind = type || weightedZombie(), d = zombieTypes[kind], dm = danger(), hp = Math.round(d.hp * dm * DF().z);
@@ -2487,8 +2492,8 @@ function monsterGeneration() {
     if ((S.nightSpawned || 0) >= allow) { S.spawnClock++; return; } }
   if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* study: a fixed pool per night */
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
-  S.spawnClock++; const tr = S.terr || 0, base = 6 + tr + Math.floor(S.day / 2.2);   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + S.day) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + S.day))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
+  S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -2499,7 +2504,7 @@ function monsterGeneration() {
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
 function spawnRaid() {
   setTimeout(() => barkSomeone('raiders', {}, { pri: 2 }), 600);
-  const n = Math.min(7, 3 + (S.terr || 0) + Math.floor(S.day / 5)), a = spawnPoint();   /* 3D.71: raids grow with the days, not town upgrades */
+  const n = Math.min(7, 3 + (S.terr || 0) + Math.floor(hDay() / 5)), a = spawnPoint();   /* 3D.71: raids grow with the days, not town upgrades */
   for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); rollRaider(S.z[S.z.length - 1], i); }
   SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
@@ -2556,11 +2561,11 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
   if (!z.human || z.escaped) return; S.raiderKills = (S.raiderKills || 0) + 1; for (const k of ['food', 'water', 'mat']) if (z.loot && z.loot[k]) { S[k] += z.loot[k]; floats.push({ w: { ...z.w }, t: '+' + z.loot[k] + ' ' + SHORT_ICON[k], col: '#9fe58a', a: 80 }); }
 }
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
-const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(S.day / 5)) * (S.day <= 14 ? .7 : 1));
+const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(hDay() / 5)) * (S.day <= 14 ? .7 : 1));
 function spawnBoss() {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = S.day <= 4 ? 'mutant' : ks[Math.floor(rnd() * ks.length)], K = BOSS_KINDS[bk]; S.lastBoss = bk;
-  const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * S.day) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
-  S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * S.day) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
+  const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * hDay()) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
+  S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * hDay()) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   { const bz = S.z[S.z.length - 1]; bz.hp = bz.max = Math.round(bz.hp * K.hp); }
   const mob = bossMob(); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
   lureFire();   /* 3D.76 */
@@ -3812,7 +3817,7 @@ function rankUnlocks(r) {   /* V2.39: what reaching star r opens up (buildings, 
   const w = Object.values(Wd.WALL_DEFS).filter((d) => (d.rank || 1) === r).map((d) => d.name), e = Object.values(TOWN_EVENTS).filter((x) => (x.rank || 1) === r).map((x) => x.icon + ' ' + x.name);
   const tr = Object.values(TRAP_DEFS).filter((d) => d.rank === r).map((d) => d.name);
   const out = []; if (b.length) out.push('Buildings: ' + b.join(', ')); if (w.length) out.push('Walls: ' + w.join(', ')); if (tr.length) out.push('Traps: ' + tr.join(', ')); if (e.length) out.push('Events: ' + e.join(', '));
-  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
+  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); if (r < HORDE_DAY_CAP.length) out.push(`☠ The zombie threat ceiling rises: hordes can grow to their day-${HORDE_DAY_CAP[r]} strength (was day ${HORDE_DAY_CAP[r - 1] || HORDE_DAY_CAP[1]})`); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
 }
 function buildPath(k) {   /* V2.38: what stands between the town and a building: rank, research chain, scrap */
   const d = DEFS[k], steps = []; if (S.rank < (d.rank || 1)) steps.push(`rank ${d.rank}`);
@@ -4912,6 +4917,84 @@ function showTown(tab) {
   const tu = $('tUpg'); if (tu) tu.onclick = () => showUpgrade('rank');
   const tTi = $('tTitle'); if (tTi) tTi.onclick = backToTitle;
 }
+/* ---------------- 3D.79 Field Notes (owner, Nov 8): the first time a feature, a zombie type or a profession shows up, a short card
+   says what it is and what to do about it. The game pauses while it is open. Every note stays readable in Guide → Field Notes. ---------------- */
+const INTRO = {
+  // zombies
+  'z:walker': ['🧟', 'Walker', 'The common dead: slow, weak alone, dangerous in a crowd. They drift toward the town and pile up at night.', 'Fighters handle them. Close the walls so they have to break through, and keep non-fighters inside when a crowd comes.'],
+  'z:crawler': ['🧟', 'Crawler', 'Drags itself along on its arms: the slowest zombie, easy to miss in the grass.', 'Not a big threat on its own, but it reaches people who think the coast is clear. Look before sending workers out.'],
+  'z:runner': ['🏃', 'Runner', 'Fast and fragile. It closes the distance before your people can get inside.', 'Guards and Police on watch catch them; walls slow them down. Don\'t leave workers far from a door at night.'],
+  'z:bloated': ['🤢', 'Bloated', 'Swollen and tough. It soaks up hits and hits hard.', 'Gang up on it with two fighters. A Gas Mask or Hazmat Suit cuts its damage.'],
+  'z:spitter': ['🤮', 'Spitter', 'Spits acid from a few tiles away: it hurts people who think they are safe.', 'Close in fast or shoot it first. A Gas Mask or Hazmat Suit cuts the acid damage.'],
+  'z:brute': ['💪', 'Brute', 'A huge zombie that breaks walls and buildings fast and hits like a truck.', 'Focus it with your best fighters and guns. Stone walls hold it longer than wood.'],
+  'z:sporehead': ['🍄', 'Sporehead', 'A fungus-headed brawler: every attack is a three-hit combo.', 'Keep your distance between its combos, or fight it with ranged weapons.'],
+  'z:screamer': ['😱', 'Screamer', 'Throws its head back and shrieks: hurts everyone close and calls more zombies.', 'Kill it from range before it screams, and don\'t let your people bunch up near it.'],
+  'z:riot': ['🛡️', 'Riot Zombie', 'Still wearing riot gear: blades and knives do half damage.', 'Use blunt weapons or guns on it.'],
+  'z:burnt': ['🔥', 'Burnt Zombie', 'Smouldering: it sets buildings it hits on fire.', 'Keep it away from buildings. A Firefighter Coat puts fires out faster, and rain helps.'],
+  'z:dog': ['🐕', 'Infected Dog', 'Fast and low: it goes for workers out at the trees and rocks.', 'Gather in pairs, keep a fighter nearby, and walls keep it out.'],
+  'z:alpha': ['👑', 'The Alpha', 'Leads the horde: zombies near it move 20% faster.', 'Kill it and the horde breaks. Use Focus the boss on it.'],
+  'z:raider': ['🏴', 'Raiders', 'People, not zombies: they slip in through the gate, steal supplies, start fires and run.', 'Police Officers spot and hit raiders best. Keep fighters near the stores and gate; a beaten raider drops what they took.'],
+  'boss:mutant': ['☠', 'Boss: Mutant Zombie', 'A huge mutant leading a mob. While it lives, no other zombies join the night.', 'Kill the boss and the night goes quiet. Traps, a Noise Lure and Focus the boss all help. Scouts warn you at noon on boss days.'],
+  'boss:bloater': ['☠', 'Boss: Bloater Queen', 'A slow, enormous bloated boss with a lot of health.', 'Wear it down from range; keep fighters spread out.'],
+  'boss:stalker': ['☠', 'Boss: Stalker', 'A fast boss that hunts lone survivors.', 'Keep everyone inside or in groups and bring it down with several fighters at once.'],
+  'boss:butcher': ['☠', 'Boss: The Butcher', 'A brute boss that hits harder than anything else.', 'Don\'t trade blows with it alone. Traps, walls and guns.'],
+  // professions
+  'job:Guard': ['🛡️', 'Guard', 'A tough wall-holder: 20% more HP and takes 20% less damage.', 'Put Guards on guard posts and at the gate. Every town needs at least two fighters.'],
+  'job:Police Officer': ['👮', 'Police Officer', 'A ranged specialist: shoots further, spots sneaking raiders sooner and hits raiders harder.', 'Give them a gun, and keep ammo coming.'],
+  'job:Scavenger': ['🎒', 'Scavenger', 'Fights a little and brings in scrap and wood: runs the Scrapyard and Lumber Camp.', 'Send them on expeditions and to the wrecks around town.'],
+  'job:Medic': ['⚕️', 'Medic', 'Patches people up in the field and gets the downed back on their feet.', 'Keep one near the fighting. Care is slower without a Medic on staff.'],
+  'job:Engineer': ['🔧', 'Engineer', 'Researches at the Workbench and Workshop, and digs stone at the Quarry. Builds and repairs fastest.', 'Staff the Workshop to unlock gear and buildings.'],
+  'job:Mechanic': ['⚙️', 'Mechanic', 'Runs the machines: the Generator (burns a quarter less fuel), Fuel Still, Ammo Bench and Factory, and the Electric Pump.', 'Without a Mechanic those buildings run at a quarter. One Mechanic per machine building is ideal.'],
+  'job:Farmer': ['🌾', 'Farmer', 'Grows food and draws water: Garden Plots, Farms, Rain Collectors, Wells and the Greenhouse.', 'Food and water first: a hungry town stops growing and people leave.'],
+  'job:Cook': ['🍳', 'Cook', 'Makes every meal at the Canteen more filling: rations go further.', 'One Cook on shift saves a lot of food in a big town.'],
+  'job:Civilian': ['🙂', 'Civilian', 'No profession yet: fills any job at a bit less than the right worker, and carries twice the load.', 'Give them a profession from the survivor panel when the town needs one.'],
+  // features
+  'f:night': ['🌙', 'Nights', 'At dusk a horde comes in three waves: the big one first, then two smaller pushes. Kill them all and the night goes quiet.', 'Get people inside before dark, keep fighters at the walls, and heal up during the day.'],
+  'f:down': ['🩸', 'Downed survivors', 'A survivor knocked to 0 HP is down: they bleed out unless someone carries them to medical care in time.', 'Tap Send rescue on the alert. A medical building and a Medic give them much longer.'],
+  'f:boss': ['☠', 'Boss night', 'Scouts saw a boss gathering a horde. It attacks tonight at 21:00.', 'Re-arm traps, set a Noise Lure, heal the hurt and make sure the gunners have ammo.'],
+  'f:rank': ['⭐', 'Upgrading the town', 'The Haven grows by rank. Each rank needs enough people living here and enough buildings standing; then you press Upgrade Town.', 'Upgrading unlocks buildings and room for more people, but raises the zombie threat ceiling too. Upgrade when you are ready.'],
+  'f:ceiling': ['☠', 'The threat ceiling', 'Zombies grow tougher every day, but only up to a ceiling set by your rank.', 'If the nights feel too hard, hold off on the next upgrade and build up first.'],
+  'f:explore': ['🧭', 'Expeditions', 'Send a squad out to scavenge places on the map: food, scrap, medicine, fuel, ammo, and sometimes survivors.', 'Higher risk brings more loot and more danger. Always keep a fighter at home.'],
+  'f:power': ['⚡', 'Power', 'Generators burn fuel and each gives 4 power. Powered buildings take it in order: water first, the Ammo Factory last.', 'Keep fuel coming (Gas Station trips, wrecks, a Fuel Still). Food and water never depend on power.'],
+  'f:ammo': ['🔸', 'Ammo', 'Guns now use rounds from the town stock (the 🔸 count). Out of ammo, a gunner clubs with the empty gun.', 'A Mechanic at an Ammo Bench makes about 16 rounds a day. Crossbows and melee never need ammo.'],
+  'f:traps': ['🔺', 'Traps', 'Spike Strips, Barbed Wire and (rank 3) the Noise Lure go outside the wall ring, where zombies come from.', 'They wear out: re-arm them with scrap before the night, especially on boss days.'],
+  'f:convoy': ['🚚', 'The comeback convoy', 'When the town is down to its last few people, a convoy sometimes finds it with help and supplies.', 'Use the second chance: food and water first, then beds.'],
+  'f:fire': ['🔥', 'Fire', 'A burning building spreads fire and stops working.', 'People rush to put it out; a Firefighter Coat helps. Burnt buildings can be repaired.'],
+  'f:trader': ['🛒', 'The trader', 'A travelling trader visits by day with goods to swap.', 'Trade spare food or water for what you lack. They leave at dusk.'],
+};
+const introOff = () => !!S.introOff || (/[?&]test=/.test(location.search) && !window.ZH_INTRO);
+function intro(key) {   /* show a Field Note once per game */
+  S.intro = S.intro || {}; if (S.intro[key]) return false; const d = INTRO[key] || (key.startsWith('b:') && DEFS[key.slice(2)] && [ '🏗️', DEFS[key.slice(2)].name, BDESC[key.slice(2)] || '', 'Tap it to see how it is doing, who works there and what it needs.' ]); if (!d) return false;
+  S.intro[key] = S.day || 1; if (introOff()) return true;
+  showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
+    buttons: [{ label: 'Got it' }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
+  return true;
+}
+const INTRO_B = ['generator', 'fuelstill', 'ammobench', 'ammofactory', 'pump', 'greenhouse', 'coldstore', 'radio', 'armory', 'workshop', 'barracks', 'hospital', 'quarry', 'lumber'];
+function introTick() {   /* every few seconds: what is new on screen? */
+  if (tick % 60) return; S.intro = S.intro || {};
+  if (S.day <= 1 && S.hour < 9) for (const q of S.sv) S.intro['job:' + q.job] = S.intro['job:' + q.job] || 1;   /* the starting crew needs no introduction */
+  for (const z of S.z) if (z.hp > 0 && !z.zoo && z.mode !== 'appear') { if (z.type === 'boss') { if (intro('boss:' + (z.bk || 'mutant'))) return; } else if (intro('z:' + z.type)) return; }
+  for (const q of S.sv) if (intro('job:' + q.job)) return;
+  for (const b of world.buildings) if (INTRO_B.includes(b.type) && intro('b:' + b.type)) return;
+  if (isNight() && intro('f:night')) return;
+  if (S.sv.some((q) => q.mode === 'down') && intro('f:down')) return;
+  if (S.day === S.nextBoss && S.hour >= 12 && S.hour < 21 && intro('f:boss')) return;
+  if (rankConds() && S.day >= 2 && intro('f:rank')) return;
+  if ((S.rank || 1) >= 2 && intro('f:ceiling')) return;
+  if (S.day >= 2 && Object.keys(EXP_DEFS).some((k) => !expLocked(k)) && intro('f:explore')) return;
+  if (gens().length && intro('f:power')) return;
+  if (gunners().length && intro('f:ammo')) return;
+  if ((S.rank || 1) >= 2 && intro('f:traps')) return;
+  if ((S.convoys || 0) > 0 && intro('f:convoy')) return;
+  if (world.buildings.some((b) => b.fire) && intro('f:fire')) return;
+  if (S.trader && intro('f:trader')) return;
+}
+function fieldNotesHtml() {
+  const seen = Object.keys(S.intro || {}).filter((k) => INTRO[k] || k.startsWith('b:'));
+  const rows = seen.map((k) => { const d = INTRO[k] || ['🏗️', DEFS[k.slice(2)] ? DEFS[k.slice(2)].name : k, BDESC[k.slice(2)] || '', '']; return `<details class="card"><summary style="font-size:19px;color:var(--gold)">${d[0]} ${d[1]}</summary><div style="margin-top:4px">${d[2]}${d[3] ? '<br><b>Tip:</b> ' + d[3] : ''}</div></details>`; }).join('');
+  return `<div class="card"><b>📓 Field Notes</b> <span class="sm">${seen.length} found</span><br><button class="act" id="gTips">${S.introOff ? 'Turn tips back on' : 'Turn tips off'}</button></div>` + (rows || '<div class="sm">Nothing yet: notes appear as you meet new zombies, people and buildings.</div>');
+}
 const GUIDE_TXT = [
   ['Moving around', 'Drag to look around, pinch to zoom. ⌖ jumps back to the town. 1× / 2× / 3× changes the game speed.'],
   ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost wood, scrap and (later) stone, and a little scrap upkeep each day.'],
@@ -4924,14 +5007,15 @@ const GUIDE_TXT = [
   ['Gear', 'Tap a survivor → Gear to equip weapons, armor and accessories from the stash. The Armory, crafting, the trader and expeditions give new gear.'],
   ['Explore', 'Send a squad out from the Explore button. Trips run in real time, even while the game is closed. Losses are permanent.'],
   ['Renown and rank', 'Building, goals and victories earn Renown. The Haven rank goes up when enough people live here and enough buildings stand, and you press Upgrade Town. Higher ranks unlock buildings and room for more people.'],
+  ['The threat ceiling', 'Zombies grow tougher every day, but only up to a ceiling set by your rank (rank 1: day 9, rank 2: day 14, rank 3: day 20, rank 4: day 28, rank 5: day 38, then slowly beyond). Upgrading the town raises the ceiling, so upgrade when you are ready for it.'],
   ['Power', 'Generators burn fuel (a Mechanic on shift saves a quarter) and each gives 4 power. The Electric Pump, Cold Store, Greenhouse lamps, Hospital surgery, Radio Tower and Ammo Factory draw power: water first, the Ammo Factory last. Food and water never depend on power: a pump without power still works by hand.'],
   ['Ammo', 'Guns use rounds from the town stock (the 🔸 count). Crossbows and melee never do. Out of ammo, a gunner clubs with the empty gun. A Mechanic at an Ammo Bench makes about 16 rounds a day; a powered Ammo Factory about 64. Raiders and the Military Checkpoint drop rounds.'],
   ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go outside the wall ring, where zombies come from. They wear out: re-arm them with scrap before the night. Scouts warn you at noon when a boss is coming.'],
 ];
 function showGuide() {
   endBuildMode(true); closeP();
-  $('ib').innerHTML = GUIDE_TXT.map(([t, x], i) => `<details class="card"${i === 0 ? ' open' : ''}><summary style="font-size:21px;color:var(--gold)">${t}</summary><div style="margin-top:4px">${x}</div></details>`).join('') + `<button class="act" id="gGoals">🎯 Goals</button><button class="act" id="gLog2">📜 Event log</button><div class="sm" style="margin-top:8px">V${VERSION}</div>`;
-  showPanel('Guide'); $('gGoals').onclick = showGoals; $('gLog2').onclick = showLog;
+  $('ib').innerHTML = `<details class="card"><summary style="font-size:21px;color:var(--gold)">📓 Field Notes</summary><div style="margin-top:6px">${fieldNotesHtml()}</div></details>` + GUIDE_TXT.map(([t, x], i) => `<details class="card"${i === 0 ? ' open' : ''}><summary style="font-size:21px;color:var(--gold)">${t}</summary><div style="margin-top:4px">${x}</div></details>`).join('') + `<button class="act" id="gGoals">🎯 Goals</button><button class="act" id="gLog2">📜 Event log</button><div class="sm" style="margin-top:8px">V${VERSION}</div>`;
+  showPanel('Guide'); $('gGoals').onclick = showGoals; $('gLog2').onclick = showLog; { const tb = $('gTips'); if (tb) tb.onclick = () => { S.introOff = !S.introOff; showGuide(); }; }
 }
 /* V2.20 tabbed panels */
 let UIM = null; const uiIconCache = {};
@@ -5132,7 +5216,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
@@ -5306,7 +5390,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { BUILD_TAG, intro, introTick, INTRO, fieldNotesHtml, hDay, hordeCap, danger, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { awayCredit, goalsTick, claimGoal, goalsHtml, GOALS_DAILY, GOALS_WEEKLY, dayKey, weekKey, rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
