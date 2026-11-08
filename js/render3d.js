@@ -886,7 +886,7 @@ function lookOf(s) { if (!s.look3) { const r = Math.imul(s.id || 1, 2654435761) 
 // zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
 // picks one at random; a few types keep a light tint on top so they still read apart.
 const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9], screamer: [1, .96, 1], burnt: [.42, .34, .3], riot: [.82, .86, .95], alpha: [1, .58, .52] };   /* 3D.32 new types */
-const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker' };
+const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker', stalker: 'runner', lasher: 'runner', rotbomb: 'bloated' };   /* 3D.80 fallbacks if a new model fails to load */
 const zMats = {};
 // V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
 function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
@@ -899,10 +899,14 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
   sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
   screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } } }, ZSRC = {};   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
+  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
+  lasher: { url: 'assets/characters/ai3d_v2/zombie_lasher.glb', stride: { zombie_walk: .6, zombie_run: 1.3 } },   /* 3D.80 the user's gaunt model */
+  rotbomb: { url: 'assets/characters/ai3d_v2/zombie_rotbomb.glb', stride: { zombie_walk: .48, zombie_run: 1.1 } },   /* 3D.80 the user's clown */
+  stalker: { url: 'assets/characters/ai3d_v2/zombie_stalker.glb', stride: { zombie_walk: .55, zombie_run: 1.25 } },   /* 3D.80 the user's long-coat figure: the Stalker boss */
+  dog: { url: 'assets/characters/ai3d_v2/zombie_dog.glb', stride: { zombie_walk: .3, zombie_run: .62 }, dog: true } }, ZSRC = {};   /* 3D.80 the user's dog (four-legged rig, tools/art/b3d/ai_dog.py) */   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
 function zombieOwn(type) {
   const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
-  const t = (type === 'spitter' || type === 'sporehead' || type === 'screamer' || type === 'riot' ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
+  const t = (['spitter', 'sporehead', 'screamer', 'riot', 'lasher', 'rotbomb', 'stalker', 'dog'].includes(type) ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
@@ -1258,10 +1262,10 @@ function zombieAnim(a, z) {
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
-  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : a.src === ZSRC.sporehead && a.acts.spore_combo ? 'spore_combo' : a.src === ZSRC.screamer && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.lasher && z.lash && a.acts.lash ? 'lash' : a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : a.src === ZSRC.sporehead && a.acts.spore_combo ? 'spore_combo' : a.src === ZSRC.screamer && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
   if (z.type === 'raider') { a.play(z.moving === false ? 'melee_hold_idle' : z.mode === 'rflee' ? 'run' : 'melee_hold_walk'); return; }
-  if (z.type === 'runner') { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
+  if (z.type === 'runner' || a.dogM || (a.src && a.src === ZSRC.stalker)) { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) * (a.dogM ? .8 : 1) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.80 the dog gallops, the Stalker runs */   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
   a.play(a.src === ZSRC.bloated && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
 }
 function syncZombies(dt, vis) {
@@ -1270,7 +1274,9 @@ function syncZombies(dt, vis) {
     if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
     if (!a) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
-      else if (z.type === 'dog') a = new DogActor();   /* 3D.32 */
+      else if (z.type === 'dog') { a = (ZSRC.dog && zombieOwn('dog')) || new DogActor(); if (!a.dog) { a.dogM = true; a.setWeapon(null); a.setArmor(false); } }   /* 3D.32 box dog; 3D.80 the user's dog model */
+      else if (z.type === 'boss' && z.bk === 'stalker' && ZSRC.stalker) { a = zombieOwn('stalker'); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 */
+      else if ((z.type === 'lasher' || z.type === 'rotbomb') && ZSRC[z.type]) { a = zombieOwn(z.type); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 no weapons on any zombie */
       else if (z.type === 'alpha') { a = zombieOwn('alpha') || new Actor(LITE, zombieMaterial('brute', 0), true); a.setWeapon(null); a.setArmor(false); }
       else if (z.type === 'riot' && ZSRC.riot) { a = zombieOwn('riot'); a.setWeapon(null); a.setArmor(false); }   /* 3D.39 */
       else if (z.type === 'riot' && MALE.v2) { a = zombieV2('riot', false, (Math.random() * 4) | 0, true) || new Actor(LITE, zombieMaterial('walker', 0), true); a.setWeapon(null); a.setArmor(true); addHat(a, 'SwatHelm', true); }
@@ -1278,7 +1284,8 @@ function syncZombies(dt, vis) {
       a.yaw = Math.random() * 6; zeds.set(z, a);
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
-    a.place(z.w.x, z.w.y, tgt, dt, ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
+    const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
+    a.place(z.w.x, z.w.y, tgt, dt, a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped) { a.dispose(); continue; }   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;

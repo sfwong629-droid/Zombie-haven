@@ -354,6 +354,25 @@ def zombie_attack(t):
     return p
 
 
+
+def lash(t):
+    """Lasher pull (3D only, one-shot, ~1.4 s): draws the long right arm back low, whips it out straight at full reach
+    (the grab lands at t = .38), holds, then yanks it back to the chest leaning away, dragging the victim in.
+    No weapon: bare hands only."""
+    K = [(0, {'ua': 40, 'ab': -6, 'fa': 20, 'lean': 10, 'w': 0, 'tw': 0, 'hd': 4}),
+         (.24, {'ua': -38, 'ab': -14, 'fa': 34, 'lean': 4, 'w': -.4, 'tw': -28, 'hd': 0}),
+         (.38, {'ua': 96, 'ab': 4, 'fa': 0, 'lean': 30, 'w': 1.2, 'tw': 26, 'hd': -10}),
+         (.56, {'ua': 94, 'ab': 4, 'fa': 2, 'lean': 30, 'w': 1.2, 'tw': 26, 'hd': -10}),
+         (.78, {'ua': 30, 'ab': -10, 'fa': 110, 'lean': -6, 'w': -.6, 'tw': -16, 'hd': 8}),
+         (1, {'ua': 40, 'ab': -6, 'fa': 20, 'lean': 10, 'w': 0, 'tw': 0, 'hd': 4})]
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (-20, 0, 0),
+                'upperarm.L': (30, 0, 12), 'forearm.L': (24, 0, 0), 'hand.L': (-14, 0, 0),
+                'chest': (k['lean'] * .7, k['tw'], 4), 'pelvis': (k['lean'] * .3, k['tw'] * .4, 2),
+                'head': (k['hd'] - k['lean'] * .4, -k['tw'] * .5, 10)}, k['w'], 1.0)
+    p['bob'] -= .03
+    return p
+
 BRUTE_SPREAD = 18   # thighs out to the sides (deg); shins and feet turn back so the soles stay flat
 def brute_attack(t):
     """Brute double hammer fist (3D only, one-shot): feet planted side by side, both arms swing up over the head together,

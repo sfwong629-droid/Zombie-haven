@@ -876,7 +876,23 @@ async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field N
     t.ok('Runner' in r['notes'] and 'Brute' in r['notes'], f"Guide → Field Notes lists what was seen")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls, Rotbomb bursts, dog and riot in waves, spiral fix defaults
+    ctx, pg, errs = await open_game(br, port, 'newz')
+    await close_popups(pg)
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));S.z=[];
+      const q=S.sv.find(x=>x.job!=='Guard'&&x.hp>0);q.hp=q.max=999;q.w.x=8.5;q.w.y=6.5;q.mode='idle';
+      ZH.spawn(q.w.x+2.4,q.w.y,'lasher');const z=S.z[S.z.length-1];z.mode='zchase';z.target=q;z.lashCd=0;z.hp=z.max=9999;
+      let pulled=false,d0=Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y),dmin=d0,braced=false;for(let i=0;i<140;i++){ZH.step(1);if(z.pulling)pulled=true;dmin=Math.min(dmin,Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y));}
+      out.pulled=pulled;out.d0=d0;out.dmin=dmin;out.lashed=z.lashCd>0;
+      S.z=[];const hp0=q.hp;ZH.spawn(q.w.x+.6,q.w.y,'rotbomb');const rb=S.z[S.z.length-1];ZH.spawn(q.w.x-.6,q.w.y,'walker');const wk=S.z[S.z.length-1];const wk0=wk.hp=wk.max=100;rb.hp=0;ZH.step(1);
+      out.burst=!!rb.burst;out.hurt=hp0-q.hp;out.zhurt=wk0-wk.hp;
+      out.types=Object.entries(ZH.zombieTypes||{}).filter(([k,v])=>v.weight>0).map(([k])=>k);return out}""")
+    t.ok(r['lashed'], f"the Lasher lashes at a survivor from range {r}")
+    t.ok(r['pulled'] and r['dmin'] < r['d0'] - .8, f"a hooked survivor is dragged toward the Lasher {r}")
+    t.ok(r['burst'] and r['hurt'] > 0 and r['zhurt'] >= 25, f"a dying Rotbomb bursts, hurting survivors and zombies close by {r}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
+TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

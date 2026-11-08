@@ -165,7 +165,7 @@ def build(ao, body):
         fh, ft = B('forearm.' + side), T('forearm.' + side); fax = (ft - fh)
         fv = co[dom == 'forearm.' + side]
         dist = [((Vector(p) - fh) - fax.normalized() * (Vector(p) - fh).dot(fax.normalized())).length for p in fv]
-        r = float(np.percentile(dist, 55)) + .006
+        r = (float(np.percentile(dist, 55)) if dist else .03) + .006   # Nov 8: the clown's forearms are lost in its sleeves
         br = band(fh.lerp(ft, .6), fax, r * 1.08, r * .96, fax.length * .55, steel, 'armor_bracer_' + side)
         out.append((_solid(br, .006, 1), 'forearm.' + side))
         cuff = band(fh.lerp(ft, .32), fax, r * 1.14, r * 1.12, fax.length * .12, trim, 'armor_cuff_' + side)
