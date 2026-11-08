@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.73', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.74', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3721,7 +3721,7 @@ function nextEventPopup() {
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
 /* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */
-const RANK_REQ = [null, { ren: 60, flow: 2, events: 1, build: 'canteen' }, { ren: 200, flow: 4, events: 2, build: 'storage' }, { ren: 450, flow: 7, events: 4, build: 'barracks' }, { ren: 900, flow: 10, events: 6, build: 'hospital' }];
+const RANK_REQ = [null, { ren: 60, flow: 2, events: 1, build: 'canteen', people: 7, bld: 10 }, { ren: 200, flow: 4, events: 2, build: 'storage', people: 11, bld: 18 }, { ren: 450, flow: 7, events: 4, build: 'barracks', people: 15, bld: 26 }, { ren: 900, flow: 10, events: 6, build: 'hospital', people: 19, bld: 34 }];   /* 3D.74: a rank-up needs people and buildings (ren/flow/events/build kept for the auto-player and older screens) */
 function rankUnlocks(r) {   /* V2.39: what reaching star r opens up (buildings, walls, events) and what it costs (threat) */
   const b = Object.entries(DEFS).filter(([, d]) => (d.rank || 1) === r).map(([k, d]) => d.name + (d.res && !researched(d.res) ? ` (after ${RESEARCH[d.res].name})` : ''));
   const w = Object.values(Wd.WALL_DEFS).filter((d) => (d.rank || 1) === r).map((d) => d.name), e = Object.values(TOWN_EVENTS).filter((x) => (x.rank || 1) === r).map((x) => x.icon + ' ' + x.name);
@@ -3735,11 +3735,10 @@ function buildPath(k) {   /* V2.38: what stands between the town and a building:
 }
 function rankConds() {
   const q = RANK_REQ[S.rank]; if (!q) return null; const st = supplyStats(), flow = Math.round((st.fNet + st.wNet) * 10) / 10, built = bOf(q.build).length > 0;
+  void flow; void built; const pe = popNow(), nb = world.buildings.filter((b) => !b.burnt).length;   /* 3D.74 owner: the town grows by people and buildings; the player still presses Upgrade */
   return [
-    { ic: 'rating', name: 'Renown', need: q.ren, have: S.ren, ok: S.ren >= q.ren },
-    { ic: 'supplies', name: 'Daily supplies', need: '+' + q.flow, have: (flow >= 0 ? '+' : '') + flow, ok: flow >= q.flow, sub: 'food + water made per day, after rations' },
-    { ic: 'events', name: 'Events held', need: q.events, have: S.eventsHeld || 0, ok: (S.eventsHeld || 0) >= q.events },
-    { ic: 'living', name: 'Build ' + DEFS[q.build].name, need: '', have: built ? 'Done' : 'Pending', ok: built, wide: true, sub: built ? '' : buildPath(q.build) },
+    { ic: 'rating', name: 'People living here', need: q.people, have: pe, ok: pe >= q.people, sub: `room for ${popCap()} now: build beds, keep everyone fed and newcomers will come` },
+    { ic: 'living', name: 'Buildings standing', need: q.bld, have: nb, ok: nb >= q.bld, sub: 'any building counts; burnt ones don\'t until repaired' },
   ];
 }
 function checkRank() {
@@ -4767,7 +4766,7 @@ const GUIDE_TXT = [
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
   ['Walls', 'Build → Defend → Wood Barricade, Metal Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
   ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
-  ['Running the town', 'The goal is a bigger town with more people. Beds give people somewhere to sleep, but the town\'s rank limits how many it can take in (8 at rank 1, +4 each rank, +2 per territory), so upgrade the town to grow. The horde grows a little every day, whatever you build; each town upgrade brings a newcomer, supplies and healing. Newcomers come sooner to a town with spare beds, food and water. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store people start leaving. When someone is down, nobody walks into zombies on their own: tap Send rescue on the alert and fighters clear the way. When a boss comes, tap Focus the boss and every fighter goes for it together (+30% damage).'],
+  ['Running the town', 'The goal is a bigger town with more people. Beds give people somewhere to sleep, but the town\'s rank limits how many it can take in (8 at rank 1, +4 each rank, +2 per territory), so upgrade the town to grow. An upgrade needs enough people living here and enough buildings standing; you choose when to press Upgrade. The horde grows a little every day, whatever you build; each town upgrade brings a newcomer, supplies and healing. Newcomers come sooner to a town with spare beds, food and water. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store people start leaving. When someone is down, nobody walks into zombies on their own: tap Send rescue on the alert and fighters clear the way. When a boss comes, tap Focus the boss and every fighter goes for it together (+30% damage).'],
   ['Professions', 'Guards are tough wall-holders (+20% HP, take 20% less damage). Police Officers shoot further, spot sneaking raiders sooner and hit raiders harder. Scavengers loot and fetch wood and scrap. Medics patch people up in the field (to 60%) and get the downed back up Wounded; a medical building heals the rest. Engineers build and repair fastest. Cooks stretch every ration. Farmers grow food and water. Civilians fill any job and carry twice the load. Someone in the wrong job works at 75%.'],
   ['Gear', 'Tap a survivor → Gear to equip weapons, armor and accessories from the stash. The Armory, crafting, the trader and expeditions give new gear.'],
   ['Explore', 'Send a squad out from the Explore button. Trips run in real time, even while the game is closed. Losses are permanent.'],

@@ -248,7 +248,7 @@ async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, 
     t.ok(r['after1'] and not r['after2'], 'a wall needs a second tap to be removed')
     t.ok(r['road1'] and not r['road2'], 'a road needs a second tap to be removed')
     t.ok(not r['lock'] and r['ok'] and r['parts'] == 10 and r['food'] == 12, f"Trade Caravan: locked before rank 3, then 12 food + 10 water -> 10 parts {r['parts']},{r['food']}")
-    t.ok('Build Hospital' in r['path'] and 'Needs' in r['path'], 'Upgrade Town lists building the Hospital and what it costs')   # 3D.58: the Hospital needs no research any more
+    t.ok('People living here' in r['path'] and 'Buildings standing' in r['path'], 'Upgrade Town asks for people and buildings')   # 3D.74: rank-ups need people and buildings
     t.ok(min(r['close']) >= 44 and r['tab'] >= 42, f"panel close button {r['close']} and tabs ({r['tab']} px) are thumb-sized")
     t.ok(not errs, f'night lights draw without errors {errs[:1]}'); await ctx.close()
 
