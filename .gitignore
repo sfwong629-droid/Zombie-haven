@@ -14,3 +14,9 @@ tools/design/out/*
 !tools/design/out/longterm_final.log
 !tools/design/out/study_v4.json
 tools/design/__pycache__/
+tools/balance/density.json
+!tools/design/out/round5.json
+!tools/design/out/round5.log
+!tools/design/out/round5_a.json
+!tools/design/out/round5_a.log
+!tools/design/out/binge.json

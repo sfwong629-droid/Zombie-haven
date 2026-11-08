@@ -15,7 +15,7 @@ from collections import Counter, defaultdict
 
 # ------------------------------------------------------------------ tunables (the plan's numbers)
 T = dict(
-    DAYS_PER_REAL=6, SAFETY=1, NEED_PER_Z=5.0, CIV_DEF=5.0, DIE_BASE=.25, ATTN=.35, FAC_SCALE=1.6, MISSION_DEATH=.04, ALLY_DEF=40, V2=1, LVL_H=8.0, RESCUE=1.0, ALLY_SEND=.25, MISSION_REST=2,            # game days per real day of play (40 min/day at 1x)
+    DAYS_PER_REAL=6, UPG_A=.5, UPG_B=.8, UPG_MAX=12, UPG_ACTIVE=3, ARR_CAP0=99, ARR_CAP_L=0, SOFT_H=1.5, SOFT_MULT=.4, REGROUP=60, ENDGAME=1, SAFETY=1, NEED_PER_Z=5.0, CIV_DEF=5.0, DIE_BASE=.25, ATTN=.35, FAC_SCALE=1.6, MISSION_DEATH=.04, ALLY_DEF=40, V2=2, LVL_H=8.0, RESCUE=1.0, ALLY_SEND=.25, MISSION_REST=2,            # game days per real day of play (40 min/day at 1x)
     REAL_DAYS=90,               # how long we follow a town
     # population
     ROOM_BASE=6, ROOM_PER_LVL=2,            # room = 6 + 2*level (level 1: 8, level 15: 36)
@@ -84,6 +84,8 @@ LOC = {
 }
 
 # factions (names follow the story plan; personalities set their behaviour)
+UNLOCK = dict(houses=1, mall=3, prison=4, hospital=5, police=7, military=9)
+
 FACTIONS = {   # from the story plan (Tollmen, Ironfield, Quarantine Command, Halcyon, the Hollow) + one new ally candidate (Riverside Co-op)
     'Tollmen':            dict(agg=.8, greed=.9, trust=.2, strength=150, grow=.6, style='raiders', act=3, att0=-20, ally=False),
     'Riverside Co-op':    dict(agg=.1, greed=.3, trust=.7, strength=90, grow=.35, style='traders', act=2, att0=15, ally=True),
@@ -93,6 +95,9 @@ FACTIONS = {   # from the story plan (Tollmen, Ironfield, Quarantine Command, Ha
     'The Hollow':         dict(agg=.9, greed=.2, trust=0., strength=460, grow=.7, style='cult', act=11, att0=-60, ally=False),
 }
 WARS = {'Tollmen': 'Riverside Co-op', 'The Hollow': 'Ironfield'}
+
+def sig(x):
+    x = max(-60, min(60, x)); return 1 / (1 + math.exp(x))
 
 # ------------------------------------------------------------------ the town
 class Person:
@@ -125,7 +130,7 @@ class Town:
         s.dead = 0; s.left = 0; s.joined = Counter(); s.kills = 0
         s.missions = Counter(); s.mwins = Counter(); s.log = []
         s.fac = {k: dict(v, att=float(v['att0']), attn=0.0, alive=True, people=int(v['strength'] / 5), atwar=WARS.get(k), allied=False, absorbed=False, met=False) for k, v in FACTIONS.items()}
-        s.timeline = []; s.flog = Counter()
+        s.timeline = []; s.flog = Counter(); s.cele = []; s.seen = set()
         s.away_squad = None
         # skill profile: how well the player makes each kind of decision
         s.ban = set((feats or {}).get('ban', []))
@@ -236,8 +241,13 @@ class Town:
         s.appeal = appeal = s.town_appeal(supply_days, room - n)
         rate = s.T['ARRIVE_BASE'] * (1 + .3 * max(0, appeal)) if supply_days >= .5 else 0
         if s.bld['radio']: rate *= 1.35
+        hrs_today = ((s.day - 1) % s.T['DAYS_PER_REAL']) * 6.7 / 60
+        if hrs_today > s.T['SOFT_H']: rate *= s.T['SOFT_MULT']   # word of the Haven spreads at road speed: a long session doesn't bring people in faster
+        rd = (s.day - 1) // s.T['DAYS_PER_REAL']
+        if getattr(s, 'arr_rd', -1) != rd: s.arr_rd = rd; s.arr_n = 0
+        if s.arr_n >= s.T['ARR_CAP0'] + s.T['ARR_CAP_L'] * s.level: rate = 0   # the roads only bring so many people a day, however long you play
         if s.r.random() < rate:
-            s.people.append(Person(s.r.choice(JOBS), max(1, s.level // 3 + s.r.randint(0, 1)))); s.joined['gate'] += 1
+            s.people.append(Person(s.r.choice(JOBS), max(1, s.level // 3 + s.r.randint(0, 1)))); s.joined['gate'] += 1; s.arr_n += 1
         # families: couples have children when fed and housed (adults in ~a month of game days)
         if n >= 4 and supply_days >= 1.5 and n < room and s.r.random() < s.T['KID_RATE'] * (n // 2):
             s.people.append(Person('Civilian', 1)); s.joined['kids'] += 1
@@ -407,7 +417,7 @@ class Town:
             gate = ERA_GATE.get(L)
             if gate and gate not in s.keys: return
             c = (6 + 3 * L, 6 + 3 * L, 2 * L if L >= 3 else 0)
-            if s.can_pay(c): s.pay(c); s.upgrading = LEVEL_UP_REAL_HOURS(L)
+            if s.can_pay(c): s.pay(c); s.upgrading = min(s.T['UPG_MAX'], s.T['UPG_A'] + s.T['UPG_B'] * L) if s.T['V2'] >= 2 else LEVEL_UP_REAL_HOURS(L)
 
     def consider_mission(s):
         if s.away_squad: return
@@ -418,21 +428,25 @@ class Town:
         cands = []
         for k, L in LOC.items():
             if L['kind'] == 'stronghold' and L['key'] in s.keys: continue
-            p = 1 / (1 + math.exp(-(power - L['diff']) / s.T['MISSION_SCALE']))
+            if s.level < UNLOCK.get(k, 1): continue   # layers: places open up as the Haven grows
+            p = sig((-(power - L['diff']) / s.T['MISSION_SCALE']))
             val = sum(L['loot'].values()) * (1 + L.get('rescue', 0)) * (3 if L['kind'] == 'stronghold' else 1)
             cands.append((p, val, k))
         # faction missions: raid a hostile faction or defend an ally under attack
         for nm, f in s.fac.items():
-            if not f['met'] or not f['alive'] or f['absorbed']: continue
+            if not f['met'] or not f['alive'] or (f['absorbed'] and not f.get('defeats')): continue
+            if s.T['ENDGAME'] and f.get('defeats') and f['absorbed'] and not f.get('eradicated') and s.level >= 12 and (sty in ('warlord', 'explorer') or s.level >= 15):
+                p = sig((-(power - s.fstr(f) * 1.9) / s.T['MISSION_SCALE'])); cands.append((p, 120, 'hq:' + nm))   # their last stronghold: end them for good
+            if f['absorbed']: continue
             if f['att'] <= -30 and sty in ('warlord', 'explorer'):
-                p = 1 / (1 + math.exp(-(power - s.fstr(f) * .9) / s.T['MISSION_SCALE'])); cands.append((p, 40, 'raid:' + nm))
+                p = sig((-(power - s.fstr(f) * .9) / s.T['MISSION_SCALE'])); cands.append((p, 40, 'raid:' + nm))
             if f['allied'] and f.get('under_attack'):
-                p = 1 / (1 + math.exp(-(power - f['under_attack'] * 1.6) / s.T['MISSION_SCALE'])); cands.append((p, 50, 'defend:' + nm))
+                p = sig((-(power - f['under_attack'] * 1.6) / s.T['MISSION_SCALE'])); cands.append((p, 50, 'defend:' + nm))
         if not cands: return
         smart = s.r.random() < s.q['mission']
         bias = dict(explorer=1.6, warlord=1.3, diplomat=.7, builder=.6)[sty] if s.style in STYLES else 1.0
         if smart:
-            good = [c for c in cands if c[0] >= .65]
+            good = [c for c in cands if c[0] >= s.T.get('READY', .65)]
             if not good or s.r.random() > .35 * bias: return
             c = max(good, key=lambda c: c[0] * c[1])
         else:
@@ -445,9 +459,9 @@ class Town:
         s.missions[k.split(':')[0]] += 1
         if ':' in k:
             kind, nm = k.split(':'); f = s.fac[nm]
-            diff = s.fstr(f) * .9 if kind == 'raid' else f['under_attack'] * 1.6
+            diff = s.fstr(f) * .9 if kind == 'raid' else s.fstr(f) * 1.9 if kind == 'hq' else f['under_attack'] * 1.6
         else: L = LOC[k]; diff = L['diff']; kind = L['kind']
-        p = 1 / (1 + math.exp(-(power - diff) / s.T['MISSION_SCALE']))
+        p = sig((-(power - diff) / s.T['MISSION_SCALE']))
         win = s.r.random() < p
         hours = LOC[k]['hours'] if k in LOC else 6
         days = max(1, math.ceil(hours * s.T['DAYS_PER_REAL'] / 24))   # missions run on real time: a binge session doesn't fit more of them in a real day
@@ -469,9 +483,12 @@ class Town:
                 for of in s.fac.values():
                     if of is not f and of['met'] and f['style'] in ('raiders', 'cult', 'corp'): of['att'] += 8      # others like seeing raiders hit
                 if f['strength'] < .35 * FACTIONS[nm]['strength']:
-                    f['absorbed'] = True; n = min(6, max(1, f['people'] // 4), max(0, s.room() - len(s.alive())) + 2)
+                    f['absorbed'] = True; f['back'] = s.day + s.T['REGROUP']; f['defeats'] = f.get('defeats', 0) + 1; n = min(6, max(1, f['people'] // 4), max(0, s.room() - len(s.alive())) + 2)
                     for _ in range(n): s.people.append(Person(s.r.choice(JOBS), 2)); s.joined['conquest'] += 1
                     s.keys.add('era2' if 'era2' not in s.keys else 'era3') if s.f['eraKeysAlt'] else None
+            elif kind == 'hq':
+                f['eradicated'] = True; f['alive'] = False; s.res['scrap'] += 60; s.flog['eradicated'] += 1
+                for _ in range(3): s.people.append(Person(s.r.choice(JOBS), 3)); s.joined['freed'] += 1
             elif kind == 'defend':
                 f['att'] += 20; f['under_attack'] = 0; f['strength'] *= 1.05
         else:
@@ -585,6 +602,8 @@ class Town:
     # ---------------- factions live their own lives
     def factions_tick(s):
         for nm, f in s.fac.items():
+            if f['absorbed'] and not f.get('eradicated') and s.day >= (f.get('back') or 1e9):   # a beaten faction regroups under a new leader
+                f['absorbed'] = False; f['strength'] = FACTIONS[nm]['strength'] * .6 * (1 + .1 * f['defeats']); f['att'] = min(f['att'], -40); f['back'] = None; s.flog['regrouped'] += 1
             if not f['met'] and s.level >= f['act']: f['met'] = True
             if not f['met'] or not f['alive'] or f['absorbed']: continue
             if f['style'] == 'military': f['att'] += (.3 if s.dead == 0 or s.morale > 50 else -.4)     # Quarantine watches infection: deaths and misery
@@ -592,7 +611,7 @@ class Town:
             if f['style'] == 'cult' and s.morale < 40 and s.r.random() < .08:
                 cands = [p for p in s.home() if p.job not in FIGHTERS]
                 if cands: p = s.r.choice(cands); p.alive = False; s.left += 1          # the Hollow lures away the unhappy
-            f['strength'] *= 1 + .006 * f['grow']; f['people'] = int(f['strength'] / 5)
+            f['strength'] = min(f['strength'] * (1 + .006 * f['grow']), FACTIONS[nm]['strength'] * 3); f['people'] = int(f['strength'] / 5)
             war = f.get('atwar')
             if war and s.fac[war]['alive'] and not s.fac[war]['absorbed'] and s.r.random() < .05 * f['agg']:
                 tgt = s.fac[war]; tgt['under_attack'] = f['strength'] * .5
@@ -609,6 +628,38 @@ class Town:
             if f.get('under_attack') and s.r.random() < .3: f['under_attack'] = 0
 
     # ---------------- one game day
+    def celebrate(s, what):
+        if what not in s.seen: s.seen.add(what); s.cele.append((s.day, what))
+
+    def check_cele(s):
+        for k, n in s.bld.items():
+            if n: s.celebrate('first ' + k)
+        p = len(s.alive())
+        for m in range(10, 40, 5):
+            if p >= m: s.celebrate(f'{m} people')
+        s.celebrate(f'level {s.level}')
+        if s.T.get('STEPS', 0) and s.level < MAX_LVL:   # layers: each level split into small steps, each one celebrated
+            L = s.level; need_p, need_b = REQ_PEOPLE(L), REQ_BUILD(L); prev_p, prev_b = (REQ_PEOPLE(L - 1), REQ_BUILD(L - 1)) if L > 1 else (6, 6)
+            prog = min(1, max(0, (p - prev_p) / max(1, need_p - prev_p))) * .5 + min(1, max(0, (s.nbld() - prev_b) / max(1, need_b - prev_b))) * .5
+            for k in range(1, s.T['STEPS'] + 1):
+                if prog >= k / (s.T['STEPS'] + 1): s.celebrate(f'L{L} step {k}')
+            for q in s.alive():
+                for m in (5, 10, 15):
+                    if q.lvl >= m: s.celebrate(f'{id(q)} reached {m}')
+            if s.dogs >= 2: s.celebrate('two dogs')
+            for nm, f in s.fac.items():
+                if f['met'] and f['att'] >= 25: s.celebrate('friends ' + nm)
+            for k, n in s.blevel.items():
+                for m in (1, 2, 3):
+                    if n >= m: s.celebrate(f'{k} upgraded x{m}')
+        for k in s.mwins: s.celebrate('won ' + k)
+        if s.dogs: s.celebrate('first dog')
+        for k in s.keys: s.celebrate(k)
+        for nm, f in s.fac.items():
+            if f['met']: s.celebrate('met ' + nm)
+            if f['allied']: s.celebrate('ally ' + nm)
+            if f.get('eradicated'): s.celebrate('ended ' + nm)
+
     def step(s):
         s.day += 1
         short = s.produce(); s.update_morale(short)
@@ -620,9 +671,12 @@ class Town:
             if p.away: p.away -= 1
         if s.away_squad: s.away_squad -= 1
         if s.upgrading > 0:
-            s.upgrading -= 24 / s.T['DAYS_PER_REAL']          # real hours per game day of play (plus offline: generous)
+            if s.T['V2'] >= 2:   # builders work 3x faster while you watch; the rest of the real day counts at 1x
+                act = 6.7 / 60; s.upgrading -= act * s.T['UPG_ACTIVE'] + max(0, 24 - act * s.T['DAYS_PER_REAL']) / s.T['DAYS_PER_REAL']
+            else: s.upgrading -= 24 / s.T['DAYS_PER_REAL']          # real hours per game day of play (plus offline: generous)
             if s.upgrading <= 0: s.level += 1; s.upgrading = 0; s.res['food'] += 2; s.res['water'] += 2
         s.people = [p for p in s.people if p.alive]
+        s.check_cele()
         if s.day % s.T['DAYS_PER_REAL'] == 0:
             rd = s.day // s.T['DAYS_PER_REAL']
             sq = s.squad(4)
@@ -633,7 +687,7 @@ class Town:
     def run(s):
         for _ in range(s.T['REAL_DAYS'] * s.T['DAYS_PER_REAL']):
             if not s.step(): break
-        last = s.timeline[-1] if s.timeline else dict(pop=0, lvl=s.level)
+        last = s.timeline[-1] if s.timeline else dict(pop=len(s.alive()), lvl=s.level, nb=s.nbld(), power=0)
         def at(rd, k):
             for t in s.timeline:
                 if t['rd'] >= rd: return t[k]
@@ -647,7 +701,8 @@ class Town:
                     pop7=at(7, 'pop'), pop30=at(30, 'pop'), pop60=at(60, 'pop'), lvl7=at(7, 'lvl'), lvl30=at(30, 'lvl'), lvl60=at(60, 'lvl'),
                     lvl_day=lvl_day, joined=dict(s.joined), missions=dict(s.missions), wins=dict(s.mwins), keys=sorted(s.keys), score=score,
                     allies=[k for k, f in s.fac.items() if f['allied']], gone=[k for k, f in s.fac.items() if not f['alive'] or f['absorbed']],
-                    att={k: round(f['att']) for k, f in s.fac.items()}, morale=round(s.morale), flog=dict(s.flog), timeline=s.timeline)
+                    att={k: round(f['att']) for k, f in s.fac.items()}, morale=round(s.morale), flog=dict(s.flog), timeline=s.timeline, cele=s.cele, bld=dict(s.bld), blevel=dict(s.blevel),
+                    eradicated=[k for k, f in s.fac.items() if f.get('eradicated')], all_hostile_gone=all(s.fac[k].get('eradicated') for k in ('Tollmen', 'Halcyon Biotech', 'The Hollow')))
 
 
 STYLES = ['builder', 'warlord', 'diplomat', 'explorer']
