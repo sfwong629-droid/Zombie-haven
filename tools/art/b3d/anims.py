@@ -444,12 +444,12 @@ def haymaker_kick(t):
     K = [(0, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 26, 'tw': 46, 'ux': 92, 'uz': 24, 'fa': 30, 'kn': 1.0}),
          (.3, {'th': 108, 'sh': -125, 'ft': 30, 'lean': 4, 'tw': 6, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .9}),   # ready: knee chambered high, support knee bent
          (.42, {'th': 108, 'sh': -125, 'ft': 30, 'lean': 2, 'tw': 2, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .9}),
-         (.56, {'th': 84, 'sh': -4, 'ft': -12, 'lean': -22, 'tw': 0, 'ux': 34, 'uz': -12, 'fa': 115, 'kn': .8}),    # kick lands: leg straight out forward, upper body angled back
-         (.66, {'th': 82, 'sh': -8, 'ft': -12, 'lean': -20, 'tw': 0, 'ux': 34, 'uz': -12, 'fa': 115, 'kn': .8}),
+         (.56, {'th': 84, 'sh': -4, 'ft': -12, 'lean': -22, 'tw': 0, 'ux': -48, 'uz': -14, 'fa': 18, 'kn': .8}),    # kick lands: leg straight out forward, upper body angled back, 3D.92 arms swung back behind the body
+         (.66, {'th': 82, 'sh': -8, 'ft': -12, 'lean': -20, 'tw': 0, 'ux': -46, 'uz': -14, 'fa': 20, 'kn': .8}),
          (.84, {'th': 70, 'sh': -100, 'ft': 22, 'lean': -4, 'tw': 0, 'ux': 34, 'uz': -14, 'fa': 80, 'kn': .65}),   # re-chamber
          (1, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 8, 'tw': 0, 'ux': 30, 'uz': -16, 'fa': 40, 'kn': .5})]
     k = keys(K, u)
-    p = planted({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'upperarm.L': (k['ux'] * .9, 0, -k['uz'] * .6 + 12), 'forearm.L': (max(96, k['fa']), 0, 0),
+    p = planted({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'upperarm.L': (k['ux'] * .9, 0, -k['uz'] * .6 + 12), 'forearm.L': (max(k['fa'], 96 * min(1.0, max(0.0, k['ux'] / 34))), 0, 0),
                  'fingers.R': (135, 0, 0), 'fingers.L': (135, 0, 0),
                  'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .3, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['kn'], 16)
     if u < .98:   # the right leg kicks, the left stays planted with its knee bent
