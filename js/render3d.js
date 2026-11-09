@@ -1587,6 +1587,24 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
   if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96)));   // the hull is off on the #v2 models: draw a clean outline around the figure
   g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); portraits.set(key, url); return url;
 }
+function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the survivor once and renders a list of poses o.frames = [[clip, t], ...] -> data URLs
+  if (!ready || !MALE) return [];
+  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), W = o.W || 256, H = o.H || 256;
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk], a = s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, 'neutral', s.id ? lookOf(s) : null), false, null);
+  const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s);
+  scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o); a.setWeapon(model); a.setArmor(arm); a.o.rotation.y = o.yaw ?? -.5;
+  const c = pRig.cam, hh = o.half || .8, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy ?? .75, 0); c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
+  const out = [], prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha(), g2 = R.cv.getContext('2d'), row = W * 4;
+  for (const [clip, t] of o.frames) {
+    a.play(clip, false, true); if (a.cur) { a.cur.time = 0; } a.mixer.update(0); if (a.cur) a.cur.time = t; a.mixer.update(0); a.o.updateMatrixWorld(true);
+    renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+    const im = g2.createImageData(W, H); for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+    if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96))); g2.putImageData(im, 0, 0); out.push(R.cv.toDataURL('image/png')); }
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
+  return out;
+}
 // V3D.24 building pictures for the Build menu and panels: the same coded model as on the map, three-quarter view, inked
 const bthumbs = new Map();
 function buildingThumb(type, W = 208, H = 156) {
@@ -1621,7 +1639,7 @@ window.__WAVE_A = WAVE_A;
 const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
 // V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
-window.ZH3D = { track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

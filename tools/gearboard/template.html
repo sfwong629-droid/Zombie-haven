@@ -1,0 +1,86 @@
+<title>Gear Motion Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a survivor armoury ledger: one row per item, a label column, then a strip of looping animation tiles. */
+:root {
+  --bg: #e9ece5; --panel: #f7f8f4; --tile: #dbe2d4; --ink: #1d231f; --muted: #5d685f; --line: #cfd6c8; --accent: #c98f00; --flag: #a4442b;
+  --f-display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif; --f-body: 'Work Sans', system-ui, sans-serif; --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141815; --panel: #1c211d; --tile: #2a322b; --ink: #e5e9e2; --muted: #9aa597; --line: #313a32; --accent: #e7b93a; --flag: #e2805f; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #141815; --panel: #1c211d; --tile: #2a322b; --ink: #e5e9e2; --muted: #9aa597; --line: #313a32; --accent: #e7b93a; --flag: #e2805f; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 400 14px/1.5 var(--f-body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+header h1 { font: 800 clamp(34px, 6vw, 56px)/.95 var(--f-display); letter-spacing: .01em; margin: 0; text-transform: uppercase; text-wrap: balance; }
+header p { margin: 8px 0 0; color: var(--muted); max-width: 68ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; font-size: 12.5px; color: var(--muted); align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); white-space: nowrap; }
+.chip.shared { border-color: var(--flag); color: var(--flag); }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.jump a { font: 700 15px/1 var(--f-display); text-transform: uppercase; letter-spacing: .06em; color: var(--ink); text-decoration: none; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+nav.jump a:hover, nav.jump a:focus-visible { border-color: var(--accent); outline: none; }
+section h2 { font: 800 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; margin: 0 0 4px; display: flex; gap: 12px; align-items: baseline; }
+section h2 small { font: 500 12px var(--f-mono); color: var(--muted); letter-spacing: 0; text-transform: none; }
+section > p { margin: 0 0 12px; color: var(--muted); max-width: 72ch; }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 14px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+.lab { display: grid; gap: 6px; min-width: 0; }
+.lab b { font: 700 19px/1.05 var(--f-display); text-transform: uppercase; letter-spacing: .03em; }
+.lab .st { font: 500 12px/1.4 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cells { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+figure { margin: 0; width: 120px; display: grid; gap: 4px; }
+.sp { width: 120px; height: 144px; border-radius: 5px; background-color: var(--tile); background-repeat: no-repeat; }
+figcaption { font-size: 12px; color: var(--muted); line-height: 1.25; }
+figcaption strong { color: var(--ink); font-weight: 600; display: block; }
+.ctl { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.ctl button { font: 600 12.5px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+.ctl button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ctl button[aria-pressed="true"] { border-color: var(--accent); }
+@media (max-width: 620px) { .row { grid-template-columns: 1fr; } figure, .sp { width: 96px; } .sp { height: 115px; } }
+</style>
+<div class="wrap">
+  <header>
+    <h1>Gear Motion Board</h1>
+    <p>Every weapon, clothing piece and hat on the in-game survivor, drawn by the game's own 3D renderer and played back frame by frame. Weapons show the ready stance, the walk with the weapon, and each attack. Clothing shows a walk and a bat swing. Hats show standing and walking.</p>
+    <div class="legend"><span class="chip">model: Bat</span> the 3D weapon model the item uses today <span class="chip shared">model: Bat (shared)</span> no model of its own yet, it borrows another weapon's</div>
+  </header>
+  <div class="ctl"><button id="pause" type="button" aria-pressed="false">Pause</button><button id="slow" type="button" aria-pressed="false">Half speed</button><span id="count"></span></div>
+  <nav class="jump" id="jump"></nav>
+  <div id="board" style="display:grid;gap:36px"></div>
+</div>
+<script>
+const DATA = /*DATA*/null;
+const board = document.getElementById('board'), jump = document.getElementById('jump'), sprites = [];
+for (const sec of DATA.sections) {
+  const el = document.createElement('section'); el.id = sec.id; el.innerHTML = `<h2>${sec.title}<small>${sec.rows.length} items</small></h2><p>${sec.note}</p><div class="rows"></div>`;
+  const a = document.createElement('a'); a.href = '#' + sec.id; a.textContent = sec.title; jump.appendChild(a);
+  const rows = el.querySelector('.rows');
+  for (const r of sec.rows) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<div class="lab"><b>${r.name}</b><span class="st">${r.stats}</span>${r.model ? `<span><span class="chip${r.shared ? ' shared' : ''}">model: ${r.model}${r.shared ? ' (shared)' : ''}</span></span>` : ''}</div><div class="cells"></div>`;
+    const cells = row.querySelector('.cells');
+    for (const c of r.cells) {
+      const f = document.createElement('figure'); f.innerHTML = `<div class="sp" role="img" aria-label="${r.name}: ${c.label}"></div><figcaption><strong>${c.label}</strong>${c.note || ''}</figcaption>`;
+      const sp = f.querySelector('.sp'); sp.style.backgroundImage = `url(${c.src})`; cells.appendChild(f);
+      sprites.push({ sp, n: c.n, loop: c.loop, fps: c.fps, i: 0, hold: 0 });
+    }
+    rows.appendChild(row);
+  }
+  board.appendChild(el);
+}
+document.getElementById('count').textContent = sprites.length + ' clips';
+let paused = false, slow = false, last = 0; const R = matchMedia('(prefers-reduced-motion: reduce)');
+function draw(s) { const w = s.sp.clientWidth, h = s.sp.clientHeight; s.sp.style.backgroundSize = `${w * s.n}px ${h}px`; s.sp.style.backgroundPosition = `${-w * s.i}px 0`; }
+function tick(t) {
+  const dt = Math.min(.1, (t - last) / 1000); last = t;
+  if (!paused && !R.matches) for (const s of sprites) { s.acc = (s.acc || 0) + dt * (slow ? .5 : 1); const step = 1 / s.fps;
+    while (s.acc >= step) { s.acc -= step; if (s.hold > 0) { s.hold--; continue; } s.i++; if (s.i >= s.n) { s.i = 0; if (!s.loop) s.hold = Math.round(s.fps * .7); } } draw(s); }
+  requestAnimationFrame(tick);
+}
+sprites.forEach(draw); requestAnimationFrame((t) => { last = t; tick(t); });
+addEventListener('resize', () => sprites.forEach(draw));
+const pb = document.getElementById('pause'), sb = document.getElementById('slow');
+pb.onclick = () => { paused = !paused; pb.setAttribute('aria-pressed', paused); pb.textContent = paused ? 'Play' : 'Pause'; };
+sb.onclick = () => { slow = !slow; sb.setAttribute('aria-pressed', slow); };
+</script>
