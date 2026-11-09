@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.90', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.91', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2729,9 +2729,9 @@ function zai0(z) {
     if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
       if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
-  if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: the haymaker lands at clip t ~.41 (tick 64 of 156), the kick at t = .78 (tick 122) and shoves the survivor back */
+  if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: the haymaker lands at clip t ~.41 (tick 64 of 156), the kick at t = .80 (tick 125) and shoves the survivor back */
     const q = z.target, ok = q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < ZREACH + .6;
-    if ((z.stateTicks === 92 || z.stateTicks === 34) && ok) { const kick = z.stateTicks === 34, dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * (kick ? .8 : 1))); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 });
+    if ((z.stateTicks === 92 || z.stateTicks === 31) && ok) { const kick = z.stateTicks === 31, dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * (kick ? .8 : 1))); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 });
       if (kick) { const dx = q.w.x - z.w.x, dy = q.w.y - z.w.y, L = Math.hypot(dx, dy) || 1, nx = q.w.x + dx / L * .6, ny = q.w.y + dy / L * .6; if (Wd.inMap(Math.floor(nx), Math.floor(ny)) && Wd.walkable(world, Math.floor(nx), Math.floor(ny)) && !Wd.buildingAt(world, Math.floor(nx), Math.floor(ny))) { q.w.x = nx; q.w.y = ny; } if (rnd() < .5) emote(q, '😵', 60); } }
     if (z.stateTicks <= 0) { z.combo = false; z.mode = 'zrecover'; z.stateTicks = z.recDur = 40 + rnd() * 20; } return; }
   if (z.mode === 'zattack' && z.smash) { z.moving = false;   /* 3D.87 Stalker hulk smash: arms spread wide, then the hands slam together in front (clip 'smash', hit at t = .55): hurts everyone outside within SMASH_R */
