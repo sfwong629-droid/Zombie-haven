@@ -929,8 +929,22 @@ function zombieMaterial(type, v = 0) {
 const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', knife: 'axe', machete: 'axe', axe: 'axe', katana: 'axe',
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47',
   golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat', hatchet: 'axe', cleaver: 'axe', magnum: 'pistol' };   // 3D.28 new gear
-const WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
+let WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
 const STAND_OF = { walk: 'idle', walk_f: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
+/* 3D.94 own models for the weapons that used to borrow the bat, axe, pistol or rifle (tools/art/b3d/gear3d.py builds them in
+   the survivor's rest pose). Each is fitted next to the weapon it borrowed: same bone, same grip, so every clip still lines up. */
+const GEAR_REF = { pipe: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat',
+  knife: 'axe', machete: 'axe', katana: 'axe', hatchet: 'axe', cleaver: 'axe', revolver: 'pistol', magnum: 'pistol', shotgun: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47' };
+function fitGear(gear, srcs) {
+  gear.scene.updateMatrixWorld(true); const inv = new THREE.Matrix4(), R = new THREE.Matrix4();
+  for (const [k, ref] of Object.entries(GEAR_REF)) {
+    const gw = gear.scene.getObjectByName('gw_' + k); if (!gw) continue; let ok = false;
+    for (const src of srcs) { if (!src) continue; src.scene.updateMatrixWorld(true); const rn = src.scene.getObjectByName('weapon_' + ref); if (!rn || !rn.parent) continue;
+      R.copy(inv.copy(rn.matrixWorld).invert()).multiply(gw.matrixWorld);   // the new weapon relative to the one it borrowed (both in the male rest pose)
+      const o = gw.clone(); o.name = 'weapon_' + k; o.matrix.copy(rn.matrix).multiply(R); o.matrix.decompose(o.position, o.quaternion, o.scale); o.visible = false; rn.parent.add(o); ok = true; }
+    if (ok) { WMODEL[k] = k; WCLASS[k] = WCLASS[ref]; }
+  }
+}
 class Actor {
   constructor(src, mat, lite, faces = null) {
     this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
@@ -1085,6 +1099,45 @@ function setAccessory(a, id) {   // add / swap the accessory pieces
   if (a.accId === (id || null)) return; for (const g of a.acc || []) g.parent && g.parent.remove(g); a.acc = []; a.accId = id || null; if (!id || !MALE || !MALE.v2) return;
   const keep = [a.o.position.clone(), a.o.rotation.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0);
   for (const [bn, g] of accFor(a, id)) { const b = boneOf(a, bn); if (b) a.acc.push(attachTo(a, b, g)); }
+  a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
+}
+/* 3D.94 clothing shapes, two ways to compare (owner: "show me both"):
+   rigid = add-on pieces fixed to bones (vest panels on the chest, pads on the shoulders, a collar), sized from the body;
+   shell = a whole outfit: the body's own torso skin pushed out a little, skinned to the same bones, so it bends with the body. */
+function clothShell(a, col, off = .026) {
+  const m = a.skin[0]; if (!m || !m.skeleton) return null; const B = m.skeleton.bones, bi = (n) => B.findIndex((b) => b.name === n);
+  const keep = new Set(['chest', 'neck', 'pelvis'].map(bi).filter((i) => i >= 0)), g0 = m.geometry, P = g0.attributes.position, N = g0.attributes.normal, SI = g0.attributes.skinIndex, SW = g0.attributes.skinWeight;
+  const f = headFit(a), p = bonePos(a, 'pelvis'), n = bonePos(a, 'neck'); if (!f || !p || !n) return null;
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), v = new THREE.Vector3(), yLo = p.y + (n.y - p.y) * .02, yHi = n.y - (n.y - p.y) * .02;
+  const ok = new Uint8Array(P.count);
+  for (let i = 0; i < P.count; i++) { let best = -1, bw = 0; for (let k = 0; k < 4; k++) { const w = SW.getComponent(i, k); if (w > bw) { bw = w; best = SI.getComponent(i, k); } }
+    if (!keep.has(best)) continue; m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld).applyMatrix4(inv); if (v.y < yLo || v.y > yHi) continue; ok[i] = 1; }
+  const idx = g0.index ? g0.index.array : Array.from({ length: P.count }, (_, i) => i), map = new Int32Array(P.count).fill(-1), tri = [], pos = [], nor = [], si = [], sw = [];
+  for (let t = 0; t < idx.length; t += 3) { const a0 = idx[t], a1 = idx[t + 1], a2 = idx[t + 2]; if (!(ok[a0] && ok[a1] && ok[a2])) continue;
+    for (const q of [a0, a1, a2]) { if (map[q] < 0) { map[q] = pos.length / 3; pos.push(P.getX(q) + N.getX(q) * off, P.getY(q) + N.getY(q) * off, P.getZ(q) + N.getZ(q) * off); nor.push(N.getX(q), N.getY(q), N.getZ(q)); for (let k = 0; k < 4; k++) { si.push(SI.getComponent(q, k)); sw.push(SW.getComponent(q, k)); } } tri.push(map[q]); } }
+  if (!tri.length) return null;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); geo.setIndex(tri);
+  const sm = new THREE.SkinnedMesh(geo, new THREE.MeshToonMaterial({ color: new THREE.Color(col), gradientMap: grad })); sm.bind(m.skeleton, m.bindMatrix); sm.frustumCulled = false; m.parent.add(sm); return sm;
+}
+function clothRigid(a, col) {   // vest panels front and back on the chest, shoulder pads, a collar
+  const f = headFit(a), p = bonePos(a, 'pelvis'), n = bonePos(a, 'neck'); if (!f || !p || !n) return [];
+  const r = f.r, out = [], M = (c) => toon(c), mesh = (geo, c, x, y, z) => { const o = new THREE.Mesh(geo, M(c)); o.position.set(x, y, z); addHull(o, .006); return o; };
+  const yc = p.y + (n.y - p.y) * .55, t = sliceFit(a, 'torso', (v) => Math.abs(v.y - yc) < r * .1 && Math.abs(v.x - p.x) < f.hw * 1.1); if (!t) return [];
+  const w = (t.x1 - t.x0) * 1.04, h = (n.y - p.y) * .72, y = p.y + (n.y - p.y) * .5, g = new THREE.Group(), dark = new THREE.Color(col).multiplyScalar(.75).getStyle();
+  g.add(mesh(new THREE.BoxGeometry(w, h, r * .14), col, t.cx, y, t.z1 + r * .03)); g.add(mesh(new THREE.BoxGeometry(w, h, r * .14), col, t.cx, y, t.z0 - r * .03));
+  for (const sx of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(r * .14, h * .8, (t.z1 - t.z0) * .9), dark, t.cx + sx * (w / 2 - r * .02), y - h * .05, t.cz));
+  g.add(mesh(new THREE.BoxGeometry(w * .55, h * .28, r * .06), dark, t.cx, y + h * .08, t.z1 + r * .12));   // chest plate
+  out.push(['chest', g]);
+  const nk = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(f.hw * .78, f.hw * .9, r * .28, 16, 1, true), new THREE.MeshToonMaterial({ color: new THREE.Color(dark), gradientMap: grad, side: THREE.DoubleSide })); c.position.set(n.x, n.y - r * .05, (t.z0 + t.z1) / 2); nk.add(c); out.push(['chest', nk]);
+  for (const sd of ['L', 'R']) { const u = bonePos(a, 'upperarm' + sd); if (!u) continue; const sg = new THREE.Group(), pad = mesh(new THREE.SphereGeometry(r * .36, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), dark, u.x, u.y + r * .05, u.z); pad.scale.set(1.1, .8, 1.1); sg.add(pad); out.push(['upperarm' + sd, sg]); }
+  return out;
+}
+function setOutfit(a, id, mode) {   // 3D.94 compare: mode 'rigid' | 'shell' | '' (off)
+  if (a.outKey === id + '|' + mode) return; for (const g of a.outfit || []) g.parent && g.parent.remove(g); a.outfit = []; a.outKey = id + '|' + mode; if (!id || !mode || !MALE || !MALE.v2) return;
+  const col = CLOTHES[id] || '#556'; const keep = [a.o.position.clone(), a.o.rotation.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.updateMatrixWorld(true);
+  if (mode === 'shell') { const sm = clothShell(a, col); if (sm) a.outfit.push(sm); }
+  else for (const [bn, g] of clothRigid(a, col)) { const b = boneOf(a, bn); if (b) a.outfit.push(attachTo(a, b, g)); }
   a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
 }
 const CLOTHES = { jacket: '#3d5f91', leather: '#6b4226', hockey: '#e6e1d4', biker: '#2c2c31', riot: '#3b4a5a', kevlar: '#4b5540', military: '#5d6b44', plate: '#5a5a55',
@@ -1593,8 +1646,8 @@ function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the su
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
   const R = pRig.rts[rk], a = s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, 'neutral', s.id ? lookOf(s) : null), false, null);
-  const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s);
-  scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o); a.setWeapon(model); a.setArmor(arm); a.o.rotation.y = o.yaw ?? -.5;
+  const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); setClothing(a, o.cloth ? { ...s, eq: { ...s.eq, armor: null } } : s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s);
+  if (o.cloth) setOutfit(a, s.eq && s.eq.armor, o.cloth); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o); a.setWeapon(model); a.setArmor(o.cloth ? false : arm); a.o.rotation.y = o.yaw ?? -.5;
   const c = pRig.cam, hh = o.half || .8, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy ?? .75, 0); c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
   const out = [], prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha(), g2 = R.cv.getContext('2d'), row = W * 4;
   for (const [clip, t] of o.frames) {
@@ -1649,6 +1702,7 @@ inkButton();
   toonScene(m.scene, null, CHAR_V2); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2;
   if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); FEMALE3D = f; } catch (e) { console.warn('female model', e); } }
+  if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));

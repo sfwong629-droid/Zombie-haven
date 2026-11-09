@@ -19,7 +19,8 @@ const OUT = process.argv[2], DUR = JSON.parse(process.argv[3]);
   for (const [id] of items.filter((x) => x[2] === 'head')) for (const cl of ['idle', 'walk']) jobs.push(['h_' + id + '_' + cl, { head: id }, cl]);
   fs.writeFileSync(path.join(OUT, 'jobs.json'), JSON.stringify(jobs));
   let n = 0;
-  for (const [cid, eq, cl] of jobs) {
+  const ONLY = process.argv[4] ? new RegExp(process.argv[4]) : null;
+  for (const [cid, eq, cl] of jobs) { if (ONLY && !ONLY.test(cid)) continue;
     const d = DUR[cl] || 1, N = /walk|run/.test(cl) ? 10 : /idle/.test(cl) ? 8 : 14;
     const urls = await p.evaluate(([eq, cl, d, N]) => { const s = { id: 3, name: 'Board', job: 'Guard', eq: { weapon: null, armor: null, head: null, acc: null, ...eq } };
       return ZH3D.snapSeq(s, { frames: Array.from({ length: N }, (_, i) => [cl, d * i / N * .999 + .0001]), half: .78, dy: .74, yaw: -.62, W: 180, H: 216 }); }, [eq, cl, d, N]);
