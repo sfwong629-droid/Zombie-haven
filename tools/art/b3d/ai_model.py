@@ -31,6 +31,7 @@ def landmarks(co):
     three = [z for z, s in S.items() if zmax * .15 < z < zmax * .7 and len(free(s)) >= 2
              and any(p[0] < 0 for p in free(s)) and any(p[0] > 0 for p in free(s))]
     hand_lo, arm_join = min(three), max(three)
+    if os.environ.get('ZH_HANDLO'): hand_lo = float(os.environ['ZH_HANDLO'])   # Nov 9: override when wide-apart legs count as free pieces (the stalker v2)
     if os.environ.get('ZH_ARMJOIN'): arm_join = float(os.environ['ZH_ARMJOIN'])   # override when the arms touch a big belly (the bloated)
     # neck: narrowest torso width above the arm junction, below 75% height
     cand = [(s[0][1] - s[0][0], z) for z, s in S.items() if arm_join < z < zmax * .8 and len(s) == 1]

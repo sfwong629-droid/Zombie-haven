@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.85', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.86', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1195,7 +1195,7 @@ const zombieTypes = {
 const BOSS_KINDS = {
   mutant:  { name: 'Mutant Zombie', look: 'boss', sc: 1.6, hp: 1, spd: 1, atk: 1, line: 'A Mutant Zombie has appeared!' },
   bloater: { name: 'Bloater Queen', look: 'bloated', sc: 1.75, hp: 1.25, spd: .8, atk: .9, line: 'A Bloater Queen has appeared!' },
-  stalker: { name: 'Stalker', look: 'stalker',   /* 3D.80 the user's long-coat model (falls back to the runner) */ sc: 1.35, hp: .7, spd: 2, atk: 1.1, run: true, line: 'A Stalker has appeared!' },
+  stalker: { name: 'Stalker', look: 'stalker',   /* 3D.80 own model; 3D.86 owner: at least 1.5x a survivor */ sc: 1.5, hp: .7, spd: 2, atk: 1.1, run: true, line: 'A Stalker has appeared!' },
   butcher: { name: 'Butcher', look: 'brute', sc: 1.55, hp: 1.1, spd: 1, atk: 1.25, line: 'The Butcher has appeared!' },
 };
 const bossDefs = {};
