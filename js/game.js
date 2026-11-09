@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.82', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.83', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1178,7 +1178,7 @@ const zombieTypes = {
   dog: { name: 'Infected Dog', hp: 18, atk: 5, aggro: 4.2, chase: .034, reward: 22, ren: 2, weight: 4,   /* 3D.80 the user's dog model; in waves from day 4 */ alert: 6, isNew: 1, desc: 'Fast and low to the ground: goes for workers out at the trees and rocks. Fences and Agility help.' },
   alpha: { name: 'The Alpha', hp: 230, atk: 15, aggro: 4, chase: .012, reward: 0, ren: 20, weight: 0, alert: 8, isNew: 1, desc: 'Leads the horde: zombies near it move 20% faster. Kill it and the horde breaks.' },
   sporehead: { name: 'Sporehead', hp: 70, atk: 4, aggro: 2.8, chase: .011, reward: 40, ren: 3, weight: 3, alert: 5, desc: 'Fungus-headed brawler: every attack is a three-hit combo (claw, claw, headbutt). Keep your distance or block it with walls.' },   /* 3D.37 the user's model; in waves from day 4 */
-  lasher: { name: 'Lasher', hp: 34, atk: 5, aggro: 3.6, chase: .012, reward: 34, ren: 3, weight: 2, alert: 6, isNew: 1, desc: 'Gaunt, with arms far too long: from up to 2 tiles away it hooks one survivor and drags them in, out from behind walls and posts. Kill it first, from range; Guards often brace and hold.' },   /* 3D.80 the user's model; from day 8 */
+  lasher: { name: 'Lasher', hp: 34, atk: 5, aggro: 3.6, chase: .012, reward: 34, ren: 3, weight: 2, alert: 6, isNew: 1, desc: 'Gaunt, with arms far too long: from up to 2 tiles away it hooks a survivor holding a gun, bow or crossbow, drags them in and leaves them paralysed for about 8 seconds. Kill it first; Guards often brace and hold.' },   /* 3D.80 the user's model; from day 8 */
   rotbomb: { name: 'Rotbomb', hp: 45, atk: 5, aggro: 2.2, chase: .0095, reward: 30, ren: 3, weight: 2, alert: 4, isNew: 1, desc: 'A swollen clown full of rot: it bursts when it dies, hurting everyone and every wall within about 2 tiles (other zombies too). Kill it at range, or outside the walls.' },   /* 3D.80 the user's model; from day 9 */
   raider: { name: 'Raider', hp: 55, atk: 7, aggro: 2.6, chase: .019, reward: 0, ren: 3, weight: 0, alert: 0 },   /* V2.13: human raiders */
   boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 4.2, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
@@ -2235,6 +2235,7 @@ function finishFacility(s) {
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
 }
 function ai(s) {
+  if (s.para > 0 && s.hp > 0 && !['down', 'hospital', 'away'].includes(s.mode)) { s.para--; s.moving = false; if (s.para % 120 === 0) emote(s, '😵', 60); return; }   /* 3D.83 paralysed by a Lasher: cannot move, shoot or fight */
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) reloadGun(s);   /* reloads finish out of combat too */
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
   if (s.fleeT > 0) s.fleeT--;
@@ -2614,6 +2615,13 @@ function zSpecial(z) {   /* 3D.32 new-zombie extras */
       else { const dx = z.w.x - q.w.x, dy = z.w.y - q.w.y, l = Math.hypot(dx, dy), st = Math.min(Math.max(0, l - ZREACH * .9), .12); if (st > 0) { q.w.x += dx / l * st; q.w.y += dy / l * st; } } } }
   if (z.type === 'alpha' && tick % 30 === 0) for (const q of S.z) if (q !== z && !q.human && q.hp > 0) q.alphaNear = dist(q.w, z.w) < 6;
 }
+const LASH_PARA = 480;   /* 3D.83 a hooked survivor is paralysed for 8 s */
+const isRangedS = (q) => { const w = weaponOf(q); return !!(w && w.ranged); };
+function lashPick(z) {   /* the nearest survivor holding a gun, bow or crossbow, in reach, out in the open and not already paralysed */
+  let best = null, bd = LASH_R;
+  for (const q of S.sv) { if (q.hp <= 0 || !q.w || q.para > 0 || insideBuilding(q) || ['down', 'hospital', 'away'].includes(q.mode) || !isRangedS(q)) continue;
+    const d = dist(q.w, z.w); if (d > ZREACH + .4 && d < bd) { bd = d; best = q; } }
+  return best; }
 function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors out in the open, walls, and other zombies within ROT_R */
   z.burst = true; SFX('alarm');   /* 3D.82 owner: no hit effects except the Screamer's for now (the 'burst' and 'lash' drawings stay in fxDraw, unused) */
   let hurt = 0;
@@ -2680,7 +2688,8 @@ function zai0(z) {
   if (z.mode === 'zchase') {
     if (!z.target || z.target.hp <= 0 || ['down', 'hospital'].includes(z.target.mode) || insideBuilding(z.target)) { z.target = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 40; return; }
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
-    if (z.type === 'lasher' && dd > ZREACH + .4 && dd < LASH_R && !(z.lashCd > 0)) { z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80 */
+    const lq = z.type === 'lasher' && !(z.lashCd > 0) ? lashPick(z) : null;
+    if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
     else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
   if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
@@ -2691,7 +2700,7 @@ function zai0(z) {
     const q = z.target;
     if (z.stateTicks === 52 && q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < LASH_R + .25) {
       if (['Guard', 'Police Officer', 'SWAT'].includes(q.job) && rnd() < .5) floats.push({ w: { ...q.w }, t: 'BRACED!', col: '#C6FF4D', a: 60, big: true });
-      else { z.pulling = q; z.pullT = 34; const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * .5)); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); emote(q, '😱', 70, true); floats.push({ w: { ...q.w }, t: '-' + dmg + ' PULLED', col: '#ff6e62', a: 60 }); }
+      else { z.pulling = q; z.pullT = 34; q.para = LASH_PARA; const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * .5)); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); emote(q, '😵', 90, true); floats.push({ w: { ...q.w }, t: '-' + dmg + ' PARALYSED', col: '#ff6e62', a: 70 }); }
     }
     if (z.stateTicks <= 0) { z.lash = false; z.lashCd = 420 + rnd() * 120; z.mode = z.target && z.target.hp > 0 ? 'zchase' : 'idle'; } return; }
   if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
@@ -3928,7 +3937,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['para', 'aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   const { requests, sv: _sv, z: _z, ...rest } = S;
@@ -4968,7 +4977,7 @@ const INTRO = {
   'z:screamer': ['😱', 'Screamer', 'Throws its head back and shrieks: hurts everyone close and calls more zombies.', 'Kill it from range before it screams, and don\'t let your people bunch up near it.'],
   'z:riot': ['🛡️', 'Riot Zombie', 'Still wearing riot gear: blades and knives do half damage.', 'Use blunt weapons or guns on it.'],
   'z:burnt': ['🔥', 'Burnt Zombie', 'Smouldering: it sets buildings it hits on fire.', 'Keep it away from buildings. A Firefighter Coat puts fires out faster, and rain helps.'],
-  'z:lasher': ['🪢', 'Lasher', 'Gaunt, with arms far too long: it hooks one survivor from up to 2 tiles away and drags them in, even from behind a wall.', 'Kill it first, from range. Guards often brace and hold their ground.'],
+  'z:lasher': ['🪢', 'Lasher', 'Gaunt, with arms far too long: it hooks a survivor with a gun, bow or crossbow from up to 2 tiles away, drags them in and paralyses them for about 8 seconds.', 'Kill it first. Keep melee fighters near your shooters; Guards often brace and hold their ground.'],
   'z:rotbomb': ['💥', 'Rotbomb', 'A swollen clown full of rot: it bursts when it dies and hurts everyone and every wall close by, zombies too.', 'Shoot it at range or let it die outside the walls. Gas masks halve the damage.'],
   'z:dog': ['🐕', 'Infected Dog', 'Fast and low: it goes for workers out at the trees and rocks.', 'Gather in pairs, keep a fighter nearby, and walls keep it out.'],
   'z:alpha': ['👑', 'The Alpha', 'Leads the horde: zombies near it move 20% faster.', 'Kill it and the horde breaks. Use Focus the boss on it.'],
