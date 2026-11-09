@@ -456,9 +456,19 @@ def haymaker_kick(t):
         p['thigh.R'] = (max(p['thigh.R'][0], k['th']), 0, p['thigh.R'][2] * (1 - min(1, k['th'] / 40))); p['shin.R'] = (k['sh'], 0, 0); p['foot.R'] = (k['ft'], 0, 0)
     return p
 
+def heavy_run(t):
+    """3D.93 Stalker run (3D only, loop): the run's legs, a little shorter, with heavy arms: bent, a modest swing (more than the
+    heavy walk, much less than a survivor's pump) and the shoulders kept nearly square."""
+    p = run(t); sn = math.sin(2 * math.pi * t)
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (-20 * sg * sn + 6, 0, 12 * sg); p['forearm.' + n] = (62 + 6 * max(0.0, -sg * sn), 0, 0); p['hand.' + n] = (0, 0, 0)
+        p['fingers.' + n] = (40, 0, 0)
+    p['pelvis'] = (6, 6 * sn, 0); p['chest'] = (14, -5 * sn, 0); p['bob'] = .035 * math.cos(4 * math.pi * t) - .06
+    return steady_head(p, 0, 0)
+
 def heavy_walk(t):
     """3D.87 Stalker walk (3D only, loop): the human walk's legs with the arms hanging heavy, only a small swing."""
-    p = walk_legs(t, .85); sn = math.sin(2 * math.pi * t)
+    p = walk_legs(t, 1.0); sn = math.sin(2 * math.pi * t)   # 3D.93 full-length steps: fewer, slower steps for the same ground speed
     for n, sg in (('L', 1), ('R', -1)):
         p['upperarm.' + n] = (-8 * sg * sn + 4, 0, sg * 10); p['forearm.' + n] = (18 + 4 * max(0.0, -sg * sn), 0, 0)
     p['chest'] = (8, -6 * sn, 0); p['pelvis'] = (0, 6 * sn, 0); p['head'] = (-14, 0, 0)

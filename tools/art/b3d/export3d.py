@@ -74,9 +74,10 @@ def clip_plan():
     plan.append(('creepy_walk', 'creepy_walk', None, 1.6, lambda s: s / 1.6))   # 3D.84 Lasher creepy walk
     plan.append(('rot_swell', 'rot_swell', None, 1.1, lambda s: min(1.0, s / 1.1)))   # 3D.85 Rotbomb death swell
     plan.append(('haymaker', 'haymaker', None, 1.7, lambda s: min(1.0, s / 1.7)))   # 3D.82 Stalker wide slow punch
-    plan.append(('smash', 'smash', None, 1.8, lambda s: min(1.0, s / 1.8)))   # 3D.87 Stalker hulk-smash area attack
-    plan.append(('haymaker_kick', 'haymaker_kick', None, 2.6, lambda s: min(1.0, s / 2.6)))   # 3D.89 Stalker combo: haymaker then front kick
-    plan.append(('heavy_walk', 'heavy_walk', None, 1.0, lambda s: s))   # 3D.87 Stalker walk, small arm swing
+    plan.append(('smash', 'smash', None, 2.25, lambda s: min(1.0, s / 2.25)))   # 3D.93 owner: slower   # 3D.87 Stalker hulk-smash area attack
+    plan.append(('haymaker_kick', 'haymaker_kick', None, 3.25, lambda s: min(1.0, s / 3.25)))   # 3D.93 owner: slower   # 3D.89 Stalker combo: haymaker then front kick
+    plan.append(('heavy_walk', 'heavy_walk', None, 1.2, lambda s: s / 1.2))   # 3D.93 slower
+    plan.append(('heavy_run', 'heavy_run', None, .8, lambda s: s / .8))   # 3D.93 owner: Stalker run, less arm and shoulder, slow   # 3D.87 Stalker walk, small arm swing
     plan += [('crawl', 'crawl', None, 1.6, lambda s: s / 1.6), ('crawl_idle', 'crawl_idle', None, 2.4, lambda s: s / 2.4),   # 3D.34 legless crawler
              ('crawl_attack', 'crawl_attack', None, 1.0, lambda s: min(1.0, s / 1.0)), ('crawl_die', 'crawl_die', None, 1.2, lambda s: min(1.0, s / 1.2))]
     return plan

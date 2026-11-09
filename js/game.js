@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.92', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.93', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1218,7 +1218,7 @@ const zombieTypes = {
 const BOSS_KINDS = {
   mutant:  { name: 'Mutant Zombie', look: 'boss', sc: 1.6, hp: 1, spd: 1, atk: 1, line: 'A Mutant Zombie has appeared!' },
   bloater: { name: 'Bloater Queen', look: 'bloated', sc: 1.75, hp: 1.25, spd: .8, atk: .9, line: 'A Bloater Queen has appeared!' },
-  stalker: { name: 'Stalker', look: 'stalker',   /* 3D.80 own model; 3D.86 owner: at least 1.5x a survivor */ sc: 1.5, hp: .7, spd: 2, atk: 1.1, run: true, line: 'A Stalker has appeared!' },
+  stalker: { name: 'Stalker', look: 'stalker',   /* 3D.80 own model; 3D.86 owner: at least 1.5x a survivor */ sc: 1.5,   /* 3D.93 owner: slower all round */ hp: .7, spd: 1.6, atk: 1.1, run: true, line: 'A Stalker has appeared!' },
   butcher: { name: 'Butcher', look: 'brute', sc: 1.55, hp: 1.1, spd: 1, atk: 1.25, line: 'The Butcher has appeared!' },
 };
 const bossDefs = {};
@@ -2721,21 +2721,21 @@ function zai0(z) {
     const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
     const lq = z.type === 'lasher' && !(z.lashCd > 0) ? lashPick(z) : null;
     if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
-    else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 108; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
-    else if (z.bk === 'stalker' && dd <= ZREACH) { z.mode = 'zattack'; z.combo = true; z.stateTicks = 156; }   /* 3D.89 owner: haymaker then a front kick (clip 'haymaker_kick') */
+    else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 135; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
+    else if (z.bk === 'stalker' && dd <= ZREACH) { z.mode = 'zattack'; z.combo = true; z.stateTicks = 195; }   /* 3D.89 owner: haymaker then a front kick (clip 'haymaker_kick') */
     else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
   if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
     if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
       if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
-  if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: the haymaker lands at clip t ~.41 (tick 64 of 156), the kick at t = .80 (tick 125) and shoves the survivor back */
+  if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: 3D.93 slower (3.25 s): the haymaker lands at clip t ~.41 (tick 80 of 195), the kick at t = .80 (tick 156) and shoves the survivor back */
     const q = z.target, ok = q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < ZREACH + .6;
-    if ((z.stateTicks === 92 || z.stateTicks === 31) && ok) { const kick = z.stateTicks === 31, dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * (kick ? .8 : 1))); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 });
+    if ((z.stateTicks === 115 || z.stateTicks === 39) && ok) { const kick = z.stateTicks === 39, dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * (kick ? .8 : 1))); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 });
       if (kick) { const dx = q.w.x - z.w.x, dy = q.w.y - z.w.y, L = Math.hypot(dx, dy) || 1, nx = q.w.x + dx / L * .6, ny = q.w.y + dy / L * .6; if (Wd.inMap(Math.floor(nx), Math.floor(ny)) && Wd.walkable(world, Math.floor(nx), Math.floor(ny)) && !Wd.buildingAt(world, Math.floor(nx), Math.floor(ny))) { q.w.x = nx; q.w.y = ny; } if (rnd() < .5) emote(q, '😵', 60); } }
     if (z.stateTicks <= 0) { z.combo = false; z.mode = 'zrecover'; z.stateTicks = z.recDur = 40 + rnd() * 20; } return; }
   if (z.mode === 'zattack' && z.smash) { z.moving = false;   /* 3D.87 Stalker hulk smash: arms spread wide, then the hands slam together in front (clip 'smash', hit at t = .55): hurts everyone outside within SMASH_R */
-    if (z.stateTicks === 49) { SFX('hurt'); hitFx.push({ k: 'smash', w: { ...z.w }, t0: tick, r: SMASH_R });   /* 3D.89 owner: an effect like the Screamer's */ for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < SMASH_R) { const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * 1.2)); q.hp -= dmg; q.hitT = 9; callHelp(q, z); if (rnd() < .5) emote(q, '😵', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } }
+    if (z.stateTicks === 61) { SFX('hurt'); hitFx.push({ k: 'smash', w: { ...z.w }, t0: tick, r: SMASH_R });   /* 3D.89 owner: an effect like the Screamer's */ for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < SMASH_R) { const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * 1.2)); q.hp -= dmg; q.hitT = 9; callHelp(q, z); if (rnd() < .5) emote(q, '😵', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } }
     if (z.stateTicks <= 0) { z.smash = false; z.smashCd = 480 + rnd() * 180; z.mode = 'zrecover'; z.stateTicks = z.recDur = 50; } return; }
   if (z.mode === 'zattack' && z.lash) { z.moving = false;   /* 3D.80 Lasher: whips the long arm out and drags one survivor in (in time with the 'lash' clip: the grab lands at t = .38) */
     const q = z.target;
