@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.84', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.85', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -558,7 +558,7 @@ function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
 }
 /* 3D.36 attack impact effects: brute / Alpha / boss slam = ground shockwave, dust and debris and a little screen shake;
    bloated = a green belly-splash; claws = three quick slash marks on the target; spitter hits use the spit splat. */
-const hitFx = [], SCREAM_R = 2.4, LASH_R = 2, ROT_R = 1.9;   /* 3D.80 Lasher reach, Rotbomb burst radius (tiles) */
+const hitFx = [], SCREAM_R = 2.4, LASH_R = 2, ROT_R = 1.9, ROT_FUSE = 66;   /* 3D.80 Lasher reach, Rotbomb burst radius (tiles) */
 /* 3D.37 survivor melee combo: hits in a row on the same enemy (within 2.5 s) chain swing A, swing B, then a two-hand finisher for +60% damage */
 /* 3D.58 quick combo: any melee swing can burst into a fast three-hit combo. The chance follows Agility (2.5% per point, so 5 agi = 12.5%,
    10 agi = 25%); the follow-up hits come almost at once and the last one hits 1.5x. */
@@ -591,10 +591,17 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.5 - j * .2)); if (u <= 0 || u >= 1) continue; g.globalAlpha = (1 - u) * .8; g.strokeStyle = j % 2 ? '#FFE14D' : '#c9a8ff'; g.lineWidth = (2.6 - j * .5) * px; g.beginPath(); g.ellipse(p.x, p.y, RX * u, RX * u * .5, 0, 0, 7); g.stroke(); }
     const hx = p.x, hy = p.y - H * .92; g.lineCap = 'round';
     for (let j = 0; j < 3; j++) { const u = (q * 2.2 + j / 3) % 1, r = (8 + u * 26) * px; g.globalAlpha = (1 - u) * (1 - q) * .9; g.strokeStyle = '#FFE14D'; g.lineWidth = 2 * px; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx, hy, r, sd > 0 ? -1.1 : Math.PI - .5, sd > 0 ? -.4 : Math.PI + .2); g.stroke(); } g.beginPath(); g.arc(hx, hy - r * .2, r, -Math.PI / 2 - .35, -Math.PI / 2 + .35); g.stroke(); } }
-  else if (f.k === 'burst') { const R0 = tw * .7 * ROT_R * .62, e = 1 - (1 - q) * (1 - q);   /* 3D.80 Rotbomb burst: a green-brown splash ring and flying chunks */
-    g.globalAlpha = (1 - q) * .35; g.fillStyle = '#9cc23e'; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.fill();
-    g.globalAlpha = (1 - q) * .85; g.strokeStyle = '#d6c24a'; g.lineWidth = 3 * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke();
-    for (const b of f.bits) { const r = R0 * e * b.v; g.fillStyle = b.s < .4 ? '#7a8f2e' : b.s < .7 ? '#c9b24a' : '#6b4a2e'; g.beginPath(); g.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - H * .5 * Math.sin(Math.PI * e) * b.v, 2.6 * px * k, 0, 7); g.fill(); } }
+  else if (f.k === 'burst') { const R0 = tw * .7 * ROT_R * .62, e = 1 - (1 - q) * (1 - q), cy = p.y - H * .35;   /* 3D.85 Rotbomb explosion */
+    if (q < .18) { const u = q / .18; g.globalAlpha = 1 - u; g.fillStyle = '#fff6c8'; g.beginPath(); g.ellipse(p.x, cy, R0 * (.3 + .5 * u), R0 * (.3 + .5 * u) * .8, 0, 0, 7); g.fill(); }   /* white-hot flash */
+    { const u = Math.min(1, q / .45), r = R0 * (.25 + .6 * u); g.globalAlpha = (1 - u) * .9;   /* fireball of rot gas: orange core, sickly green rim */
+      const gr = g.createRadialGradient(p.x, cy, r * .1, p.x, cy, r); gr.addColorStop(0, '#ffd25a'); gr.addColorStop(.45, '#e0782a'); gr.addColorStop(.8, '#8fae36'); gr.addColorStop(1, 'rgba(110,140,40,0)');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(p.x, cy, r, r * .8, 0, 0, 7); g.fill(); }
+    g.globalAlpha = (1 - q) * .9; g.strokeStyle = '#f2e6b0'; g.lineWidth = 2.6 * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke();   /* shock ring on the ground, to the edge of the blast */
+    g.globalAlpha = (1 - q) * .25; g.fillStyle = '#9cc23e'; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.fill();
+    for (const b of f.bits) { const r = R0 * e * b.v, h = Math.sin(Math.PI * Math.min(1, q * 1.3)) * H * .7 * b.v; g.globalAlpha = Math.min(1, (1 - q) * 1.6);   /* chunks flying out on arcs */
+      g.fillStyle = b.s < .4 ? '#7a8f2e' : b.s < .7 ? '#c9b24a' : '#6b3a2e'; g.beginPath(); g.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - h, (2 + 2 * b.s) * px, 0, 7); g.fill(); }
+    for (let j = 0; j < 5; j++) { const a = j * 1.26 + .4, r = R0 * .45 * e, u = Math.max(0, q - .25) / .75; if (!u) continue; g.globalAlpha = (1 - u) * .35; g.fillStyle = '#6f7a4a';   /* green-grey smoke that lingers and rises */
+      g.beginPath(); g.arc(p.x + Math.cos(a) * r, cy + Math.sin(a) * r * .4 - H * .4 * u, (6 + 10 * u) * px, 0, 7); g.fill(); } }
   else if (f.k === 'lash') { const a = f.zr && f.zr.hp > 0 ? f.zr.w : f.w, b = f.qr && f.qr.w ? f.qr.w : f.to, pa = project(a.x, a.y), pb = project(b.x, b.y), ya = pa.y - H * .62, yb = pb.y - H * .45;   /* 3D.80 the Lasher's arm: a pale sinew line from it to the hooked survivor */
     const out = q < .3 ? q / .3 : 1, mx = pa.x + (pb.x - pa.x) * out, my = ya + (yb - ya) * out; g.globalAlpha = q < .8 ? .9 : (1 - q) * 4.5; g.lineCap = 'round';
     g.strokeStyle = '#3a2f2a'; g.lineWidth = 1.8 * px; g.beginPath(); g.moveTo(pa.x, ya); g.quadraticCurveTo((pa.x + mx) / 2, (ya + my) / 2 - 2.5 * px, mx, my); g.stroke();
@@ -605,7 +612,7 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     for (let j = -1; j <= 1; j++) { g.save(); g.translate(cx + j * L * .25, cy); g.rotate(f.a * .2 - .6); g.strokeStyle = '#ffffff'; g.lineWidth = 2.2 * px; g.beginPath(); g.moveTo(-L / 2, -L * .2); g.quadraticCurveTo(0, L * .1, -L / 2 + L * e, -L * .2 + L * .4 * e); g.stroke(); g.strokeStyle = '#e8453c'; g.lineWidth = 1 * px; g.stroke(); g.restore(); } }
   g.restore();
 }
-const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60, burst: 40, lash: 50 };
+const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60, burst: 56, lash: 50 };
 /* 3D.39 Screamer shriek, style B "detailed, painted" from the Zombie Animation Board: wavering sound rings roll out to the edge of the
    AOE (the real SCREAM_R), kicking up soft dust at the front, and jagged shriek lines burst from the open mouth. No ink lines. */
 function fxScreamB(g, f, q, p, tw, H) {
@@ -2623,14 +2630,14 @@ function lashPick(z) {   /* the nearest survivor holding a gun, bow or crossbow,
     const d = dist(q.w, z.w); if (d > ZREACH + .4 && d < bd) { bd = d; best = q; } }
   return best; }
 function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors out in the open, walls, and other zombies within ROT_R */
-  z.burst = true; SFX('alarm');   /* 3D.82 owner: no hit effects except the Screamer's for now (the 'burst' and 'lash' drawings stay in fxDraw, unused) */
+  z.burst = true; z.fuseT = 0; SFX('alarm'); hitFx.push({ k: 'burst', w: { ...z.w }, t0: tick, bits: Array.from({ length: 14 }, () => ({ a: rnd() * 6.28, v: .4 + rnd() * .8, s: rnd() })) });   /* 3D.85 owner: the Rotbomb explodes (the Lasher still draws no effect) */
   let hurt = 0;
   for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < ROT_R) { const dmg = Math.max(1, fairRound(16 * (z.pw || 1) * (1 - dist(q.w, z.w) / ROT_R * .4) * (gearFx(q, 'gas') ? .5 : 1) * (1 - dmgReduce(q)))); q.hp -= dmg; q.hitT = 9; hurt++; floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#b8d65a', a: 55 }); if (rnd() < .5) emote(q, '🤢', 70); }
   for (const wl of world.walls.values()) if (!wl.broken && dist({ x: wl.x + .5, y: wl.y + .5 }, z.w) < ROT_R) { wl.hp -= 30; wl.hit = 14; if (wl.hp <= 0) wallBroken(wl); }
   for (const o of S.z) if (o !== z && o.hp > 0 && !o.human && dist(o.w, z.w) < ROT_R) { o.hp -= 25; o.hitT = 9; }
   if (hurt) note('important', `💥 A Rotbomb burst and hurt ${hurt} ${hurt === 1 ? 'survivor' : 'survivors'}.`);
 }
-function zai(z) { if (!z.zoo) zSpecial(z); const px = z.w.x, py = z.w.y; if (z.zoo || !lureStep(z)) zai0(z); if (!z.human && z.hp > 0) zPushOut(z); if (z.hp > 0 && !z.zoo && (z.stun > 0 || trapMap().size)) trapStep(z, px, py); }
+function zai(z) { if (z.fuseT > 0) { z.moving = false; return; }   /* 3D.85 a dying Rotbomb stands and swells */ if (!z.zoo) zSpecial(z); const px = z.w.x, py = z.w.y; if (z.zoo || !lureStep(z)) zai0(z); if (!z.human && z.hp > 0) zPushOut(z); if (z.hp > 0 && !z.zoo && (z.stun > 0 || trapMap().size)) trapStep(z, px, py); }
 function zai0(z) {
   if (z.zoo) { z.moving = false; z.mode = 'zoo'; return; }   /* 3D.32 test page: stand still on display */
   if (z.human && z.hp < z.max * RK(z).flee && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
@@ -5264,7 +5271,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) rotBurst(z); for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }

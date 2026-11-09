@@ -1259,6 +1259,7 @@ function syncPeople(dt, vis) {
   for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
 }
 function zombieAnim(a, z) {
+  if (z.fuseT > 0) { if (a.acts && a.acts.rot_swell && a.name !== 'rot_swell') a.play('rot_swell', true, true); return; }   /* 3D.85 */
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
@@ -1272,7 +1273,7 @@ function zombieAnim(a, z) {
 function syncZombies(dt, vis) {
   const seen = new Set();
   for (const z of G.S.z) {
-    if (z.hp <= 0 || !z.w) continue; seen.add(z); let a = zeds.get(z);
+    if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
     if (!a) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
       else if (z.type === 'dog') { a = (ZSRC.dog && zombieOwn('dog')) || new DogActor(); if (!a.dog) { a.dogM = true; a.setWeapon(null); a.setArmor(false); } }   /* 3D.32 box dog; 3D.80 the user's dog model */
@@ -1288,7 +1289,7 @@ function syncZombies(dt, vis) {
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
     a.place(z.w.x, z.w.y, tgt, dt, a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
-  for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped) { a.dispose(); continue; }   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
+  for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
   for (const [a, t0] of dead) {   // fall, lie still, then sink away (the 2D corpse fades over the same time)
     const t = t0 + dt; dead.set(a, t); tickMixer(a, dt, vis);

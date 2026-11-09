@@ -489,6 +489,21 @@ def scream(t):
                    'hand.L': (-10, 0, 8), 'hand.R': (-10, 0, -8)}, k['kn'])
     return p
 
+def rot_swell(t):
+    """Rotbomb death (3D only, one-shot, ~1.1 s): like the Screamer's shriek, it hunches to draw in, then throws its head
+    back to the sky with both arms flung wide and up, shaking harder and harder as it swells, rising onto its toes;
+    it bursts at the end (the game removes the body and draws the explosion)."""
+    K = [(0, {'hd': -8, 'ch': 8, 'ua': 4, 'sp': 10, 'fa': 18, 'kn': .6}),
+         (.25, {'hd': 24, 'ch': 22, 'ua': 8, 'sp': 6, 'fa': 44, 'kn': 1.0}),
+         (.45, {'hd': -70, 'ch': -18, 'ua': 30, 'sp': 62, 'fa': 6, 'kn': .2}),
+         (1, {'hd': -76, 'ch': -22, 'ua': 36, 'sp': 70, 'fa': 4, 'kn': .05})]
+    k = keys(K, t); g = max(0.0, (t - .45) / .55); sh = (2 + 7 * g) * math.sin(t * 110) if t > .45 else 0   # shaking harder and harder
+    p = soft_legs({'chest': (k['ch'], 0, sh * .6), 'pelvis': (k['ch'] * .2, 0, sh * .3), 'neck': (k['hd'] * .45, 0, sh), 'head': (k['hd'] * .55, sh, 0),
+                   'upperarm.L': (k['ua'], 0, k['sp']), 'upperarm.R': (k['ua'], 0, -k['sp']), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0),
+                   'hand.L': (-16, 0, 12), 'hand.R': (-16, 0, -12)}, k['kn'])
+    p['bob'] = p.get('bob', 0) + .02 * g   # rising onto its toes
+    return p
+
 def bloated_walk(t):
     """Bloated zombie waddle (3D only): short heavy steps, hips rolling side to side, the belly leading, arms kept low
     beside the belly (his model has the arms fused to the belly: raising them would stretch the skin)."""
