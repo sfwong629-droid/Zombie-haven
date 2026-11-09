@@ -409,21 +409,52 @@ def creepy_walk(t):
     p['bob'] = .02 * math.cos(2 * ph) - .085
     return p
 
+def planted(p, kn=.5, spread=16, lean=0.0):
+    """3D.87 owner: feet parallel and apart (no foot forward or back), soles flat, knees bending together by kn."""
+    for n, sg in (('L', 1), ('R', -1)):
+        p['thigh.' + n] = (22 * kn, 0, sg * spread); p['shin.' + n] = (-40 * kn, 0, sg * -spread * .6); p['foot.' + n] = (18 * kn, 0, sg * -spread * .4)
+    p['bob'] = p.get('bob', 0) - .035 * kn - .01
+    return p
+
 def haymaker(t):
     """Stalker boss punch (3D only, one-shot, ~1.7 s): a slow, wide haymaker. The right arm swings out to the side and
     back while the chest turns away, holds, then sweeps round in a wide flat arc across the front (hit at t = .58),
-    the body following through; recover slowly."""
-    K = [(0, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'w': 0}),
-         (.34, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -24, 'lean': -4, 'w': -.8}),   # wound up: arm raised out wide to the side
-         (.44, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -26, 'lean': -4, 'w': -.8}),
-         (.58, {'ux': 88, 'uz': -20, 'fa': 18, 'tw': 30, 'lean': 22, 'w': 1.2}),  # the wide swing lands in front
-         (.72, {'ux': 92, 'uz': 24, 'fa': 30, 'tw': 46, 'lean': 26, 'w': 1.3}),   # follows through across the body
-         (1, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'w': 0})]
+    the body following through; recover slowly. 3D.87 owner: feet planted parallel and apart, the knees take the weight."""
+    K = [(0, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'kn': .5}),
+         (.34, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -28, 'lean': -4, 'kn': .35}),   # wound up: arm raised out wide to the side
+         (.44, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -30, 'lean': -4, 'kn': .35}),
+         (.58, {'ux': 88, 'uz': -20, 'fa': 18, 'tw': 32, 'lean': 22, 'kn': .9}),  # the wide swing lands in front
+         (.72, {'ux': 92, 'uz': 24, 'fa': 30, 'tw': 46, 'lean': 26, 'kn': 1.0}),   # follows through across the body
+         (1, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'kn': .5})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
-                'upperarm.L': (36, 0, 20), 'forearm.L': (96, 0, 0),
-                'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .45, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['w'], 1.0)
+    p = planted({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+                 'upperarm.L': (36, 0, 20), 'forearm.L': (96, 0, 0),
+                 'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .3, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['kn'], 16)
     return p
+
+def heavy_walk(t):
+    """3D.87 Stalker walk (3D only, loop): the human walk's legs with the arms hanging heavy, only a small swing."""
+    p = walk_legs(t, .85); sn = math.sin(2 * math.pi * t)
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (-8 * sg * sn + 4, 0, sg * 10); p['forearm.' + n] = (18 + 4 * max(0.0, -sg * sn), 0, 0)
+    p['chest'] = (8, -6 * sn, 0); p['pelvis'] = (0, 6 * sn, 0); p['head'] = (-14, 0, 0)
+    return steady_head(p, 0, 0)
+
+def smash(t):
+    """3D.87 Stalker 'hulk smash' area attack (3D only, one-shot, ~1.8 s): feet planted wide and parallel, both arms
+    swing out flat to the sides and a little behind the back, chest puffed; hold; then both arms sweep forward
+    horizontally and the hands slam together in front at chest height (hit at t = .55, a shockwave); hold, recover."""
+    K = [(0, {'ux': 10, 'uz': 14, 'fa': 24, 'ch': 6, 'kn': .5}),
+         (.32, {'ux': -26, 'uz': 92, 'fa': 4, 'ch': -14, 'kn': .3}),    # spread wide, slightly behind the back
+         (.44, {'ux': -30, 'uz': 94, 'fa': 4, 'ch': -16, 'kn': .3}),
+         (.55, {'ux': 86, 'uz': 6, 'fa': 6, 'ch': 18, 'kn': 1.1}),       # slam: hands meet in front
+         (.75, {'ux': 84, 'uz': 6, 'fa': 8, 'ch': 16, 'kn': 1.0}),
+         (1, {'ux': 10, 'uz': 14, 'fa': 24, 'ch': 6, 'kn': .5})]
+    k = keys(K, t)
+    p = {'chest': (k['ch'], 0, 0), 'pelvis': (k['ch'] * .25, 0, 0), 'neck': (0, 0, 0), 'head': (-10 - k['ch'] * .5, 0, 0)}
+    for n, sg in (('L', 1), ('R', -1)):
+        p['upperarm.' + n] = (k['ux'], 0, sg * k['uz']); p['forearm.' + n] = (k['fa'], 0, 0); p['hand.' + n] = (0, 0, -sg * 6)
+    return planted(p, k['kn'], 20)
 
 BRUTE_SPREAD = 18   # thighs out to the sides (deg); shins and feet turn back so the soles stay flat
 def brute_attack(t):

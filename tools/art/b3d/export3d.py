@@ -74,6 +74,8 @@ def clip_plan():
     plan.append(('creepy_walk', 'creepy_walk', None, 1.6, lambda s: s / 1.6))   # 3D.84 Lasher creepy walk
     plan.append(('rot_swell', 'rot_swell', None, 1.1, lambda s: min(1.0, s / 1.1)))   # 3D.85 Rotbomb death swell
     plan.append(('haymaker', 'haymaker', None, 1.7, lambda s: min(1.0, s / 1.7)))   # 3D.82 Stalker wide slow punch
+    plan.append(('smash', 'smash', None, 1.8, lambda s: min(1.0, s / 1.8)))   # 3D.87 Stalker hulk-smash area attack
+    plan.append(('heavy_walk', 'heavy_walk', None, 1.0, lambda s: s))   # 3D.87 Stalker walk, small arm swing
     plan += [('crawl', 'crawl', None, 1.6, lambda s: s / 1.6), ('crawl_idle', 'crawl_idle', None, 2.4, lambda s: s / 2.4),   # 3D.34 legless crawler
              ('crawl_attack', 'crawl_attack', None, 1.0, lambda s: min(1.0, s / 1.0)), ('crawl_die', 'crawl_die', None, 1.2, lambda s: min(1.0, s / 1.2))]
     return plan
@@ -254,7 +256,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             if base in COLORS: plain(m, COLORS[base], rough=.5 if base.startswith('a_') else .9, metal=.0)
     # animations
     for name, clip, cls, dur, tf in clip_plan():
-        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack', 'bloated_attack', 'crawl_attack', 'crawl_die', 'brute_attack', 'spit', 'spore_combo', 'scream', 'lash', 'haymaker', 'rot_swell')
+        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack', 'bloated_attack', 'crawl_attack', 'crawl_die', 'brute_attack', 'spit', 'spore_combo', 'scream', 'lash', 'haymaker', 'rot_swell', 'smash')
         fn = anims.pose_fn(clip, cls) if clip in anims.CLIPS else getattr(anims, clip)
         if cls == 'gun':
             anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)
