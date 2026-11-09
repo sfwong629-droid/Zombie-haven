@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.80', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.81', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -558,7 +558,7 @@ function drawZSprite(zm, p) {   /* returns head-top y, or null if no art */
 }
 /* 3D.36 attack impact effects: brute / Alpha / boss slam = ground shockwave, dust and debris and a little screen shake;
    bloated = a green belly-splash; claws = three quick slash marks on the target; spitter hits use the spit splat. */
-const hitFx = [], SCREAM_R = 2.4, LASH_R = 3.2, ROT_R = 1.9;   /* 3D.80 Lasher reach, Rotbomb burst radius (tiles) */
+const hitFx = [], SCREAM_R = 2.4, LASH_R = 2, ROT_R = 1.9;   /* 3D.80 Lasher reach, Rotbomb burst radius (tiles) */
 /* 3D.37 survivor melee combo: hits in a row on the same enemy (within 2.5 s) chain swing A, swing B, then a two-hand finisher for +60% damage */
 /* 3D.58 quick combo: any melee swing can burst into a fast three-hit combo. The chance follows Agility (2.5% per point, so 5 agi = 12.5%,
    10 agi = 25%); the follow-up hits come almost at once and the last one hits 1.5x. */
@@ -595,10 +595,10 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     g.globalAlpha = (1 - q) * .35; g.fillStyle = '#9cc23e'; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.fill();
     g.globalAlpha = (1 - q) * .85; g.strokeStyle = '#d6c24a'; g.lineWidth = 3 * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke();
     for (const b of f.bits) { const r = R0 * e * b.v; g.fillStyle = b.s < .4 ? '#7a8f2e' : b.s < .7 ? '#c9b24a' : '#6b4a2e'; g.beginPath(); g.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - H * .5 * Math.sin(Math.PI * e) * b.v, 2.6 * px * k, 0, 7); g.fill(); } }
-  else if (f.k === 'lash') { const a = f.zr && f.zr.hp > 0 ? f.zr.w : f.w, b = f.qr && f.qr.w ? f.qr.w : f.to, pa = project(a.x, a.y), pb = project(b.x, b.y), ya = pa.y - H * .55, yb = pb.y - H * .5;   /* 3D.80 the Lasher's arm: a pale sinew line from it to the hooked survivor */
+  else if (f.k === 'lash') { const a = f.zr && f.zr.hp > 0 ? f.zr.w : f.w, b = f.qr && f.qr.w ? f.qr.w : f.to, pa = project(a.x, a.y), pb = project(b.x, b.y), ya = pa.y - H * .62, yb = pb.y - H * .45;   /* 3D.80 the Lasher's arm: a pale sinew line from it to the hooked survivor */
     const out = q < .3 ? q / .3 : 1, mx = pa.x + (pb.x - pa.x) * out, my = ya + (yb - ya) * out; g.globalAlpha = q < .8 ? .9 : (1 - q) * 4.5; g.lineCap = 'round';
-    g.strokeStyle = '#3a2f2a'; g.lineWidth = 4 * px; g.beginPath(); g.moveTo(pa.x, ya); g.quadraticCurveTo((pa.x + mx) / 2, Math.min(ya, my) - 10 * px, mx, my); g.stroke();
-    g.strokeStyle = '#e8ddcf'; g.lineWidth = 2.2 * px; g.stroke(); }
+    g.strokeStyle = '#3a2f2a'; g.lineWidth = 1.8 * px; g.beginPath(); g.moveTo(pa.x, ya); g.quadraticCurveTo((pa.x + mx) / 2, (ya + my) / 2 - 2.5 * px, mx, my); g.stroke();
+    g.strokeStyle = '#e8ddcf'; g.lineWidth = .9 * px; g.stroke(); }
   else if (f.k === 'belly') { const R0 = tw * .34 * k, e = Math.min(1, q * 1.8); g.globalAlpha = (1 - q) * .75; g.strokeStyle = '#b8d65a'; g.lineWidth = 2 * px; g.beginPath(); g.ellipse(p.x, p.y, R0 * e, R0 * e * .5, 0, 0, 7); g.stroke();
     for (const b of f.bits.slice(0, 6)) { const r = R0 * e * b.v; g.fillStyle = b.s < .5 ? '#9cc23e' : '#d6c24a'; g.beginPath(); g.arc(p.x + Math.cos(b.a) * r, p.y + Math.sin(b.a) * r * .5 - H * .18 * Math.sin(Math.PI * e) * b.v, 1.7 * px * k, 0, 7); g.fill(); } }
   else { const cx = p.x, cy = p.y - H * .55, L = tw * .2 * k, e = Math.min(1, q * 3); g.globalAlpha = (q < .5 ? 1 : 2 - q * 2) * .85; g.lineCap = 'round';
@@ -1178,7 +1178,7 @@ const zombieTypes = {
   dog: { name: 'Infected Dog', hp: 18, atk: 5, aggro: 4.2, chase: .034, reward: 22, ren: 2, weight: 4,   /* 3D.80 the user's dog model; in waves from day 4 */ alert: 6, isNew: 1, desc: 'Fast and low to the ground: goes for workers out at the trees and rocks. Fences and Agility help.' },
   alpha: { name: 'The Alpha', hp: 230, atk: 15, aggro: 4, chase: .012, reward: 0, ren: 20, weight: 0, alert: 8, isNew: 1, desc: 'Leads the horde: zombies near it move 20% faster. Kill it and the horde breaks.' },
   sporehead: { name: 'Sporehead', hp: 70, atk: 4, aggro: 2.8, chase: .011, reward: 40, ren: 3, weight: 3, alert: 5, desc: 'Fungus-headed brawler: every attack is a three-hit combo (claw, claw, headbutt). Keep your distance or block it with walls.' },   /* 3D.37 the user's model; in waves from day 4 */
-  lasher: { name: 'Lasher', hp: 34, atk: 5, aggro: 3.6, chase: .012, reward: 34, ren: 3, weight: 2, alert: 6, isNew: 1, desc: 'Gaunt, with arms far too long: from up to 3 tiles away it hooks one survivor and drags them in, out from behind walls and posts. Kill it first, from range; Guards often brace and hold.' },   /* 3D.80 the user's model; from day 8 */
+  lasher: { name: 'Lasher', hp: 34, atk: 5, aggro: 3.6, chase: .012, reward: 34, ren: 3, weight: 2, alert: 6, isNew: 1, desc: 'Gaunt, with arms far too long: from up to 2 tiles away it hooks one survivor and drags them in, out from behind walls and posts. Kill it first, from range; Guards often brace and hold.' },   /* 3D.80 the user's model; from day 8 */
   rotbomb: { name: 'Rotbomb', hp: 45, atk: 5, aggro: 2.2, chase: .0095, reward: 30, ren: 3, weight: 2, alert: 4, isNew: 1, desc: 'A swollen clown full of rot: it bursts when it dies, hurting everyone and every wall within about 2 tiles (other zombies too). Kill it at range, or outside the walls.' },   /* 3D.80 the user's model; from day 9 */
   raider: { name: 'Raider', hp: 55, atk: 7, aggro: 2.6, chase: .019, reward: 0, ren: 3, weight: 0, alert: 0 },   /* V2.13: human raiders */
   boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 4.2, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
@@ -2689,7 +2689,7 @@ function zai0(z) {
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
   if (z.mode === 'zattack' && z.lash) { z.moving = false;   /* 3D.80 Lasher: whips the long arm out and drags one survivor in (in time with the 'lash' clip: the grab lands at t = .38) */
     const q = z.target;
-    if (z.stateTicks === 52 && q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < LASH_R + .5) {
+    if (z.stateTicks === 52 && q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < LASH_R + .25) {
       hitFx.push({ k: 'lash', w: { ...z.w }, to: { ...q.w }, zr: z, qr: q, t0: tick });
       if (['Guard', 'Police Officer', 'SWAT'].includes(q.job) && rnd() < .5) floats.push({ w: { ...q.w }, t: 'BRACED!', col: '#C6FF4D', a: 60, big: true });
       else { z.pulling = q; z.pullT = 34; const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * .5)); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); emote(q, '😱', 70, true); floats.push({ w: { ...q.w }, t: '-' + dmg + ' PULLED', col: '#ff6e62', a: 60 }); }
@@ -4969,7 +4969,7 @@ const INTRO = {
   'z:screamer': ['😱', 'Screamer', 'Throws its head back and shrieks: hurts everyone close and calls more zombies.', 'Kill it from range before it screams, and don\'t let your people bunch up near it.'],
   'z:riot': ['🛡️', 'Riot Zombie', 'Still wearing riot gear: blades and knives do half damage.', 'Use blunt weapons or guns on it.'],
   'z:burnt': ['🔥', 'Burnt Zombie', 'Smouldering: it sets buildings it hits on fire.', 'Keep it away from buildings. A Firefighter Coat puts fires out faster, and rain helps.'],
-  'z:lasher': ['🪢', 'Lasher', 'Gaunt, with arms far too long: it hooks one survivor from up to 3 tiles away and drags them in, even from behind a wall.', 'Kill it first, from range. Guards often brace and hold their ground.'],
+  'z:lasher': ['🪢', 'Lasher', 'Gaunt, with arms far too long: it hooks one survivor from up to 2 tiles away and drags them in, even from behind a wall.', 'Kill it first, from range. Guards often brace and hold their ground.'],
   'z:rotbomb': ['💥', 'Rotbomb', 'A swollen clown full of rot: it bursts when it dies and hurts everyone and every wall close by, zombies too.', 'Shoot it at range or let it die outside the walls. Gas masks halve the damage.'],
   'z:dog': ['🐕', 'Infected Dog', 'Fast and low: it goes for workers out at the trees and rocks.', 'Gather in pairs, keep a fighter nearby, and walls keep it out.'],
   'z:alpha': ['👑', 'The Alpha', 'Leads the horde: zombies near it move 20% faster.', 'Kill it and the horde breaks. Use Focus the boss on it.'],

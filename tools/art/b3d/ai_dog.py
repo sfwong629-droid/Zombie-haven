@@ -115,10 +115,10 @@ def gait(t, phases, A, lift, spine=0.0, bob=0.0, head=0.0, tailw=10):
     return P
 
 def walk(t):   # lateral four-beat walk, the zombie lurch: head low and swinging
-    return gait(t, {'b.L': 0, 'f.L': .25, 'b.R': .5, 'f.R': .75}, 22, 38, spine=2, bob=.008, head=4)
+    return gait(t, {'b.L': 0, 'f.L': .25, 'b.R': .5, 'f.R': .75}, 28, 44, spine=2, bob=.01, head=5)
 
 def run(t):    # rotary gallop: front pair close together, hind pair close together, the back flexing
-    P = gait(t, {'f.L': 0, 'f.R': .1, 'b.L': .5, 'b.R': .6}, 40, 60, spine=10, bob=.02, head=8, tailw=18)
+    P = gait(t, {'f.L': 0, 'f.R': .1, 'b.L': .5, 'b.R': .6}, 30, 55, spine=5, bob=.02, head=7, tailw=18)
     P['loc'] = (0, 0, .018 * math.sin(2 * math.pi * t) - .01)
     return P
 
@@ -152,7 +152,7 @@ def collapse(t):   # legs give way and it rolls onto its side
     P = {'hips': (0, 0, 0), 'neck': (-20 * u, 0, 0), 'head': (10 * u, 0, 0), 'tail': (30 * u, 0, 0)}
     for sd in 'LR':
         P['fupper.' + sd] = (-25 * u, 0, 0); P['flower.' + sd] = (30 * u, 0, 0); P['bthigh.' + sd] = (25 * u, 0, 0); P['bshin.' + sd] = (-20 * u, 0, 0)
-    P['roll'] = 88 * u; P['loc'] = (0, 0, 0)
+    P['roll'] = 88 * u; P['loc'] = (-.42 * u, 0, 0)   # slide back under the camera as it rolls, so it lies where it stood
     return P
 
 CLIPS = [('idle', idle, 2.0, True), ('zombie_walk', walk, .9, True), ('zombie_run', run, .45, True),
