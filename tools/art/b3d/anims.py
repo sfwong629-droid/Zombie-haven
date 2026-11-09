@@ -435,22 +435,23 @@ def haymaker(t):
 HK_PUNCH = .55   # 3D.89 haymaker_kick: the haymaker part ends here (its own t .0 -> .78, the punch lands at combo t ~.41)
 def haymaker_kick(t):
     """3D.89 Stalker combo (3D only, one-shot, ~2.6 s): the haymaker (closed fists, feet parallel), then straight into a
-    heavy front kick with the right leg: knee up, foot driven out forward (lands at t = .78), then it stamps back down
-    beside the left foot, feet parallel again. The fists come up to guard during the kick."""
+    heavy kick (lands at t = .78), then the foot stamps back down, feet parallel again. The fists come up to guard.
+    3D.90 owner: a side kick: the hips turn so the right side faces the target, the knee chambers up across the body,
+    and the leg drives straight out sideways heel-first while the body leans away; then it turns back square."""
     if t < HK_PUNCH: return haymaker(t / HK_PUNCH * .78)
-    h = haymaker(.78); u = (t - HK_PUNCH) / (1 - HK_PUNCH)   # 0..1 over the kick
-    K = [(0, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 26, 'tw': 46, 'ux': 92, 'uz': 24, 'fa': 30, 'kn': 1.0}),
-         (.3, {'th': 88, 'sh': -100, 'ft': 30, 'lean': -6, 'tw': 6, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .5}),     # chamber: knee up high, fists up
-         (.5, {'th': 82, 'sh': -6, 'ft': -10, 'lean': -16, 'tw': 0, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),    # kick lands: leg straight out forward
-         (.62, {'th': 80, 'sh': -10, 'ft': -10, 'lean': -14, 'tw': 0, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),
-         (.82, {'th': 40, 'sh': -70, 'ft': 20, 'lean': 0, 'tw': 0, 'ux': 34, 'uz': -14, 'fa': 70, 'kn': .5}),
-         (1, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 8, 'tw': 0, 'ux': 30, 'uz': -16, 'fa': 40, 'kn': .5})]
+    u = (t - HK_PUNCH) / (1 - HK_PUNCH)   # 0..1 over the kick
+    K = [(0, {'yaw': 46, 'ax': 0, 'az': 0, 'sh': -36, 'ft': 18, 'lean': 26, 'roll': 0, 'ux': 92, 'uz': 24, 'fa': 30, 'kn': 1.0}),
+         (.3, {'yaw': 80, 'ax': 70, 'az': -30, 'sh': -125, 'ft': 30, 'lean': 0, 'roll': 10, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .55}),   # turned side-on, knee chambered high
+         (.5, {'yaw': 84, 'ax': 8, 'az': -78, 'sh': -4, 'ft': 20, 'lean': 0, 'roll': 30, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),    # side kick lands: leg straight out sideways, body leaning away
+         (.62, {'yaw': 84, 'ax': 8, 'az': -76, 'sh': -8, 'ft': 20, 'lean': 0, 'roll': 28, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),
+         (.82, {'yaw': 50, 'ax': 50, 'az': -30, 'sh': -100, 'ft': 24, 'lean': 0, 'roll': 8, 'ux': 34, 'uz': -14, 'fa': 70, 'kn': .5}),   # re-chamber, turning back
+         (1, {'yaw': 0, 'ax': 0, 'az': 0, 'sh': -36, 'ft': 18, 'lean': 8, 'roll': 0, 'ux': 30, 'uz': -16, 'fa': 40, 'kn': .5})]
     k = keys(K, u)
     p = planted({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'upperarm.L': (k['ux'] * .9, 0, -k['uz'] * .6 + 12), 'forearm.L': (max(96, k['fa']), 0, 0),
                  'fingers.R': (135, 0, 0), 'fingers.L': (135, 0, 0),
-                 'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .3, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['kn'], 16)
+                 'chest': (k['lean'] * .7, k['yaw'] * .25, k['roll']), 'pelvis': (k['lean'] * .3, k['yaw'] * .75, 0), 'head': (-12 - k['lean'] * .4, -k['yaw'] * .9, -k['roll'] * .8)}, k['kn'], 16)
     if u < .98:   # the right leg kicks, the left stays planted
-        p['thigh.R'] = (max(p['thigh.R'][0], k['th']), 0, p['thigh.R'][2] * (1 - min(1, k['th'] / 40))); p['shin.R'] = (k['sh'], 0, 0); p['foot.R'] = (k['ft'], 0, 0)
+        p['thigh.R'] = (k['ax'], 0, p['thigh.R'][2] + k['az']); p['shin.R'] = (k['sh'], 0, 0); p['foot.R'] = (k['ft'], 0, 0)
     return p
 
 def heavy_walk(t):
