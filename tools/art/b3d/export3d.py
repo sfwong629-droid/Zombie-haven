@@ -71,6 +71,7 @@ def clip_plan():
     plan.append(('scream', 'scream', None, 1.6, lambda s: min(1.0, s / 1.6)))   # 3D.38 screamer area shriek
     plan.append(('lash', 'lash', None, 1.4, lambda s: min(1.0, s / 1.4)))   # 3D.80 Lasher reach-and-pull
     plan.append(('naruto_run', 'naruto_run', None, .5, lambda s: s / .5))   # 3D.82 Lasher run
+    plan.append(('creepy_walk', 'creepy_walk', None, 1.6, lambda s: s / 1.6))   # 3D.84 Lasher creepy walk
     plan.append(('haymaker', 'haymaker', None, 1.7, lambda s: min(1.0, s / 1.7)))   # 3D.82 Stalker wide slow punch
     plan += [('crawl', 'crawl', None, 1.6, lambda s: s / 1.6), ('crawl_idle', 'crawl_idle', None, 2.4, lambda s: s / 2.4),   # 3D.34 legless crawler
              ('crawl_attack', 'crawl_attack', None, 1.0, lambda s: min(1.0, s / 1.0)), ('crawl_die', 'crawl_die', None, 1.2, lambda s: min(1.0, s / 1.2))]

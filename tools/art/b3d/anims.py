@@ -381,11 +381,32 @@ def naruto_run(t):
         p['thigh.' + n] = (th + 34, 0, 0)
         p['shin.' + n] = (-kn, 0, 0)
         p['foot.' + n] = (-(th - kn) * .3 + kn * .4, 0, 0)
-        p['upperarm.' + n] = (-62 + 4 * sg * sn, 0, 12 * sg)      # arms straight back, barely moving
-        p['forearm.' + n] = (4, 0, 0)
-        p['hand.' + n] = (-14, 0, 0)
+        p['upperarm.' + n] = (-6 + 3 * sg * sn, 0, 9 * sg)      # 3D.84 owner: arms trailing low along the body, hands back by the hips
+        p['forearm.' + n] = (2, 0, 0)
+        p['hand.' + n] = (-18, 0, 0)
     p['bob'] = .035 * math.cos(2 * ph) - .1
     p['pelvis'] = (14, 8 * sn, 0); p['chest'] = (38, -6 * sn, 0); p['neck'] = (-14, 0, 0); p['head'] = (-30, 0, 0)
+    return p
+
+def creepy_walk(t):
+    """Lasher walk (3D only): a slow, creeping stalk. Hunched forward, head cocked to one side with sudden twitches,
+    long arms hanging limp and swinging loosely behind the body, knees bent, uneven stop-and-go steps on the toes."""
+    tt = t + .06 * math.sin(4 * math.pi * t)                      # stop-and-go: each step hesitates, then lurches
+    ph = 2 * math.pi * tt; sn, cs = math.sin(ph), math.cos(ph); p = {}
+    for n, sg in (('L', 1), ('R', -1)):
+        th = 24 * sg * sn; kn = 38 + 62 * max(0.0, sg * cs) ** 1.4
+        p['thigh.' + n] = (th + 20, 0, -3 * sg)
+        p['shin.' + n] = (-kn, 0, 0)
+        p['foot.' + n] = (-(th - kn) * .3 + kn * .2 - 10, 0, 0)      # up on the toes
+        lag = math.sin(ph - .9)                                      # limp arms swing late, like rope
+        p['upperarm.' + n] = (6 - 12 * sg * lag, 0, 7 * sg)
+        p['forearm.' + n] = (8 + 6 * max(0.0, sg * lag), 0, 0)
+        p['hand.' + n] = (22, 0, 0)
+    p['shin.R'] = (p['shin.R'][0] * .82 - 6, 0, 0)                  # one leg stiffer: an uneven gait
+    tw = 1.0 if (t % .5) > .44 else 0.0                              # a sharp head twitch twice a cycle
+    p['pelvis'] = (8, 6 * sn, 4 * sn); p['chest'] = (26, -8 * sn, -3 * sn); p['neck'] = (14, 0, 0)
+    p['head'] = (-22 + 10 * tw, 6 * math.sin(ph * .5) + 18 * tw, 24 - 30 * tw)   # cocked hard to one side, snaps the other way
+    p['bob'] = .02 * math.cos(2 * ph) - .085
     return p
 
 def haymaker(t):
