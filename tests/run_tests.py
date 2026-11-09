@@ -887,7 +887,7 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
       const m=S.sv.find(x=>x!==q&&x.hp>0);if(m){m.eq=m.eq||{};m.eq.weapon='bat';}const z2=(ZH.spawn(q.w.x+1.6,q.w.y,'lasher'),S.z[S.z.length-1]);q.eq.weapon='bat';z2.w.x=q.w.x+1.6;z2.w.y=q.w.y;z2.mode='zchase';z2.target=q;z2.lashCd=0;z2.hp=9999;for(let i=0;i<60;i++)ZH.step(1);out.meleeLashed=z2.lashCd>0;
       S.z=[];const hp0=q.hp;ZH.spawn(q.w.x+.6,q.w.y,'rotbomb');const rb=S.z[S.z.length-1];ZH.spawn(q.w.x-.6,q.w.y,'walker');const wk=S.z[S.z.length-1];const wk0=wk.hp=wk.max=100;rb.hp=0;ZH.step(1);out.fusing=rb.fuseT>0&&ZH.S.z.includes(rb);for(let i=0;i<80;i++)ZH.step(1);
       out.burst=!!rb.burst;out.hurt=hp0-q.hp;out.zhurt=wk0-wk.hp;
-      S.z=[];const q2=S.sv.find(x=>x!==q&&x.hp>0);q2.hp=q2.max=999;q2.w.x=q.w.x;q2.w.y=q.w.y+.7;q2.mode='idle';q.hp=q.max=999;const h1=q.hp,h2=q2.hp;ZH.spawn(q.w.x+1.1,q.w.y+.3,'boss');const st=S.z[S.z.length-1];st.bk='stalker';st.hp=st.max=9999;st.mode='zchase';st.target=q;st.smashCd=0;let sm=false;for(let i=0;i<200;i++){ZH.step(1);if(st.smash)sm=true;}out.smash=sm;out.smashHit=[h1-q.hp,h2-q2.hp];out.smashCd=st.smashCd>0;
+      S.z=[];const q2=S.sv.find(x=>x!==q&&x.hp>0);q2.hp=q2.max=999;q2.w.x=q.w.x;q2.w.y=q.w.y+.7;q2.mode='idle';q.hp=q.max=999;const h1=q.hp,h2=q2.hp;ZH.spawn(q.w.x+1.1,q.w.y+.3,'boss');const st=S.z[S.z.length-1];st.bk='stalker';st.hp=st.max=9999;st.mode='zchase';st.target=q;st.smashCd=0;let sm=false;for(let i=0;i<200;i++){ZH.step(1);if(st.smash)sm=true;}out.smash=sm;out.smashHit=[h1-q.hp,h2-q2.hp];out.smashCd=st.smashCd>0;S.z=[];q.hp=q.max=999;q.w.x=8.5;q.w.y=6.5;const h0=q.hp,x0=q.w.x;ZH.spawn(q.w.x+.7,q.w.y,'boss');const s2=S.z[S.z.length-1];s2.bk='stalker';s2.hp=s2.max=9999;s2.mode='zchase';s2.target=q;s2.smashCd=9999;let cb=false,hits=0,lh=q.hp;for(let i=0;i<360;i++){ZH.step(1);if(s2.combo)cb=true;if(q.hp<lh){hits++;lh=q.hp;}}out.combo=cb;out.comboHits=hits;
       out.types=Object.entries(ZH.zombieTypes||{}).filter(([k,v])=>v.weight>0).map(([k])=>k);return out}""")
     t.ok(r['lashed'], f"the Lasher lashes at a survivor from range {r}")
     t.ok(r['pulled'] and r['dmin'] < r['d0'] - .5, f"a hooked survivor is dragged toward the Lasher {r}")
@@ -895,6 +895,7 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
     t.ok(not r['meleeLashed'], f"the Lasher does not hook a survivor holding a melee weapon {r}")
     t.ok(r['fusing'], f"a dying Rotbomb stands and swells before it bursts {r}")
     t.ok(r['burst'] and r['hurt'] > 0 and r['zhurt'] >= 25, f"a dying Rotbomb bursts, hurting survivors and zombies close by {r}")
+    t.ok(r['combo'] and r['comboHits'] >= 2, f"the Stalker's combo lands a haymaker and then a kick {r}")
     t.ok(r['smash'] and r['smashCd'] and all(h > 0 for h in r['smashHit']), f"the Stalker's hulk smash hurts every survivor close by {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 

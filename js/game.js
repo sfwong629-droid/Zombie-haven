@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.88', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.89', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -586,6 +586,7 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     for (const b of f.bits.slice(0, 6)) { const r = R0 * .85 * Math.min(1, q * 2) * b.v, x = p.x + Math.cos(b.a) * r, y = p.y + Math.sin(b.a) * r * .5; g.globalAlpha = (1 - q) * .5;
       g.fillStyle = b.s < .55 ? 'rgb(196,170,130)' : 'rgb(150,120,85)'; g.beginPath(); g.arc(x, y - H * .08 * Math.min(1, q * 3) * (1 - q), (2 + 4 * q) * px * k * (b.s < .55 ? 1 : .6), 0, 7); g.fill(); } }
   else if (f.k === 'scream') { fxScreamB(g, f, q, p, tw, H); }
+  else if (f.k === 'smash') { fxSmashB(g, f, q, p, tw, H); }
   else if (f.k === 'scream_old') {
     const RX = tw * .7 * (f.r || 2.4); g.globalAlpha = (1 - q) * .12 * k; g.fillStyle = '#c9a8ff'; g.beginPath(); g.ellipse(p.x, p.y, RX, RX * .5, 0, 0, 7); g.fill();
     for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.5 - j * .2)); if (u <= 0 || u >= 1) continue; g.globalAlpha = (1 - u) * .8; g.strokeStyle = j % 2 ? '#FFE14D' : '#c9a8ff'; g.lineWidth = (2.6 - j * .5) * px; g.beginPath(); g.ellipse(p.x, p.y, RX * u, RX * u * .5, 0, 0, 7); g.stroke(); }
@@ -612,7 +613,7 @@ function fxDraw(g, f, q, p, tw, H, k = FX_STRENGTH) {   /* g: 2D context, f: eff
     for (let j = -1; j <= 1; j++) { g.save(); g.translate(cx + j * L * .25, cy); g.rotate(f.a * .2 - .6); g.strokeStyle = '#ffffff'; g.lineWidth = 2.2 * px; g.beginPath(); g.moveTo(-L / 2, -L * .2); g.quadraticCurveTo(0, L * .1, -L / 2 + L * e, -L * .2 + L * .4 * e); g.stroke(); g.strokeStyle = '#e8453c'; g.lineWidth = 1 * px; g.stroke(); g.restore(); } }
   g.restore();
 }
-const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60, burst: 56, lash: 50 };
+const FX_DUR = { claw: 12, belly: 32, slam: 34, scream: 60, smash: 56, burst: 56, lash: 50 };
 /* 3D.39 Screamer shriek, style B "detailed, painted" from the Zombie Animation Board: wavering sound rings roll out to the edge of the
    AOE (the real SCREAM_R), kicking up soft dust at the front, and jagged shriek lines burst from the open mouth. No ink lines. */
 function fxScreamB(g, f, q, p, tw, H) {
@@ -627,6 +628,28 @@ function fxScreamB(g, f, q, p, tw, H) {
   for (let j = 0; j < 7; j++) { const u = (q * 2.4 + j / 7) % 1, an = -Math.PI / 2 + (j - 3) * .32, r0 = 6 * px, r1 = r0 + (8 + 18 * u) * px; g.globalAlpha = (1 - u) * out;
     g.beginPath(); for (let i = 0; i <= 4; i++) { const rr = r0 + (r1 - r0) * i / 4, jit = (i % 2 ? 1 : -1) * 1.6 * px; g.lineTo(hx + Math.cos(an) * rr - Math.sin(an) * jit, hy + Math.sin(an) * rr + Math.cos(an) * jit); }
     g.lineWidth = 1.4 * px; g.strokeStyle = '#fff3c4'; g.stroke(); }
+  g.restore();
+}
+/* 3D.89 Stalker hulk smash, same painted style as fxScreamB: a flash and horizontal shock lines burst from the clap at chest
+   height, a pale pressure ring spreads at that height, and wavering ground rings (cream and dusty amber) roll out to the edge of
+   the AOE (the real SMASH_R), kicking up dust and a few chips. No ink lines. */
+function fxSmashB(g, f, q, p, tw, H) {
+  const px = tw / 40 * .18, RX = tw * .7 * (f.r || SMASH_R), cx = p.x, cy = p.y - H * .62, out = 1 - q;
+  if (!f.wob) { f.wob = [0, 1, 2].map(() => ({ ph: rnd() * 6, fq: 5 + ((rnd() * 4) | 0), amp: .04 + rnd() * .04 })); f.dust = Array.from({ length: 8 }, () => ({ a: rnd() * 6.28, s: .6 + rnd() * .7 })); f.chips = Array.from({ length: 7 }, () => ({ a: rnd() * 6.28, v: .4 + rnd() * .6, s: rnd() })); }
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+  if (q < .22) { const u = q / .22, r = (10 + 30 * u) * px, gr = g.createRadialGradient(cx, cy, r * .05, cx, cy, r);   /* the clap flash */
+    gr.addColorStop(0, 'rgba(255,250,228,1)'); gr.addColorStop(.5, 'rgba(255,226,160,.55)'); gr.addColorStop(1, 'rgba(255,210,140,0)'); g.globalAlpha = 1 - u; g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); }
+  { const u = Math.min(1, q * 1.6); if (u < 1) { g.globalAlpha = (1 - u) * .6; g.strokeStyle = 'rgba(244,236,214,.9)'; g.lineWidth = 2.2 * px; g.beginPath(); g.ellipse(cx, cy, RX * .75 * u, RX * .75 * u * .32, 0, 0, 7); g.stroke(); } }   /* pressure ring at chest height */
+  for (let j = 0; j < 8; j++) { const u = (q * 2.2 + j / 8) % 1, sd = j % 2 ? 1 : -1, an = (sd > 0 ? 0 : Math.PI) + ((j >> 1) - 1.5) * .22, r0 = 7 * px, r1 = r0 + (10 + 24 * u) * px; g.globalAlpha = (1 - u) * out;   /* jagged shock lines out of the clap, sideways */
+    g.beginPath(); for (let i = 0; i <= 4; i++) { const rr = r0 + (r1 - r0) * i / 4, jit = (i % 2 ? 1 : -1) * 1.6 * px; g.lineTo(cx + Math.cos(an) * rr - Math.sin(an) * jit, cy + Math.sin(an) * rr * .6 + Math.cos(an) * jit); }
+    g.lineWidth = 1.5 * px; g.strokeStyle = '#fff3c4'; g.stroke(); }
+  for (let j = 0; j < 3; j++) { const u = Math.min(1, Math.max(0, q * 1.5 - j * .18)); if (u <= 0 || u >= 1) continue; const w = f.wob[j];   /* ground rings */
+    g.globalAlpha = (1 - u) * .9; g.beginPath(); for (let i = 0; i <= 48; i++) { const an = i / 48 * Math.PI * 2, rr = RX * u * (1 + w.amp * Math.sin(an * w.fq + w.ph + q * 18)), x = p.x + Math.cos(an) * rr, y = p.y + Math.sin(an) * rr * .5; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.lineWidth = (3.2 - j * .6) * px; g.strokeStyle = j === 1 ? 'rgba(214,150,92,.85)' : 'rgba(236,226,200,.85)'; g.stroke();
+    for (const d of f.dust) { const x = p.x + Math.cos(d.a) * RX * u, y = p.y + Math.sin(d.a) * RX * u * .5 - 2 * px, r = (2.2 + 2.4 * d.s) * px, gr = g.createRadialGradient(x - r * .3, y - r * .4, r * .1, x, y, r);
+      gr.addColorStop(0, '#e6d8bd'); gr.addColorStop(1, '#a8916c'); g.globalAlpha = (1 - u) * .7; g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }
+  for (const c of f.chips) { const e = 1 - (1 - q) * (1 - q), r = RX * .8 * e * c.v, h = Math.sin(Math.PI * Math.min(1, q * 1.4)) * H * .3 * c.v; g.globalAlpha = Math.min(1, out * 1.5) * .9;   /* a few chips of ground flung up */
+    g.fillStyle = c.s < .5 ? '#9b8566' : '#6e5d48'; g.beginPath(); g.arc(p.x + Math.cos(c.a) * r, p.y + Math.sin(c.a) * r * .5 - h, (1.4 + 1.2 * c.s) * px, 0, 7); g.fill(); }
   g.restore();
 }
 function drawHitFx() {
@@ -2699,14 +2722,20 @@ function zai0(z) {
     const lq = z.type === 'lasher' && !(z.lashCd > 0) ? lashPick(z) : null;
     if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
     else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 108; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
+    else if (z.bk === 'stalker' && dd <= ZREACH) { z.mode = 'zattack'; z.combo = true; z.stateTicks = 156; }   /* 3D.89 owner: haymaker then a front kick (clip 'haymaker_kick') */
     else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
   if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
     if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
       if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
+  if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: the haymaker lands at clip t ~.41 (tick 64 of 156), the kick at t = .78 (tick 122) and shoves the survivor back */
+    const q = z.target, ok = q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < ZREACH + .6;
+    if ((z.stateTicks === 92 || z.stateTicks === 34) && ok) { const kick = z.stateTicks === 34, dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * (kick ? .8 : 1))); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 });
+      if (kick) { const dx = q.w.x - z.w.x, dy = q.w.y - z.w.y, L = Math.hypot(dx, dy) || 1, nx = q.w.x + dx / L * .6, ny = q.w.y + dy / L * .6; if (Wd.inMap(Math.floor(nx), Math.floor(ny)) && Wd.walkable(world, Math.floor(nx), Math.floor(ny)) && !Wd.buildingAt(world, Math.floor(nx), Math.floor(ny))) { q.w.x = nx; q.w.y = ny; } if (rnd() < .5) emote(q, '😵', 60); } }
+    if (z.stateTicks <= 0) { z.combo = false; z.mode = 'zrecover'; z.stateTicks = z.recDur = 40 + rnd() * 20; } return; }
   if (z.mode === 'zattack' && z.smash) { z.moving = false;   /* 3D.87 Stalker hulk smash: arms spread wide, then the hands slam together in front (clip 'smash', hit at t = .55): hurts everyone outside within SMASH_R */
-    if (z.stateTicks === 49) { SFX('hurt'); impactFx({ type: 'boss' }, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < SMASH_R) { const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * 1.2)); q.hp -= dmg; q.hitT = 9; callHelp(q, z); if (rnd() < .5) emote(q, '😵', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } }
+    if (z.stateTicks === 49) { SFX('hurt'); hitFx.push({ k: 'smash', w: { ...z.w }, t0: tick, r: SMASH_R });   /* 3D.89 owner: an effect like the Screamer's */ for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < SMASH_R) { const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * 1.2)); q.hp -= dmg; q.hitT = 9; callHelp(q, z); if (rnd() < .5) emote(q, '😵', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } }
     if (z.stateTicks <= 0) { z.smash = false; z.smashCd = 480 + rnd() * 180; z.mode = 'zrecover'; z.stateTicks = z.recDur = 50; } return; }
   if (z.mode === 'zattack' && z.lash) { z.moving = false;   /* 3D.80 Lasher: whips the long arm out and drags one survivor in (in time with the 'lash' clip: the grab lands at t = .38) */
     const q = z.target;

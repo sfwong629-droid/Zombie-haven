@@ -432,6 +432,27 @@ def haymaker(t):
                  'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .3, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['kn'], 16)
     return p
 
+HK_PUNCH = .55   # 3D.89 haymaker_kick: the haymaker part ends here (its own t .0 -> .78, the punch lands at combo t ~.41)
+def haymaker_kick(t):
+    """3D.89 Stalker combo (3D only, one-shot, ~2.6 s): the haymaker (closed fists, feet parallel), then straight into a
+    heavy front kick with the right leg: knee up, foot driven out forward (lands at t = .78), then it stamps back down
+    beside the left foot, feet parallel again. The fists come up to guard during the kick."""
+    if t < HK_PUNCH: return haymaker(t / HK_PUNCH * .78)
+    h = haymaker(.78); u = (t - HK_PUNCH) / (1 - HK_PUNCH)   # 0..1 over the kick
+    K = [(0, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 26, 'tw': 46, 'ux': 92, 'uz': 24, 'fa': 30, 'kn': 1.0}),
+         (.3, {'th': 88, 'sh': -100, 'ft': 30, 'lean': -6, 'tw': 6, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .5}),     # chamber: knee up high, fists up
+         (.5, {'th': 82, 'sh': -6, 'ft': -10, 'lean': -16, 'tw': 0, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),    # kick lands: leg straight out forward
+         (.62, {'th': 80, 'sh': -10, 'ft': -10, 'lean': -14, 'tw': 0, 'ux': 36, 'uz': -12, 'fa': 115, 'kn': .45}),
+         (.82, {'th': 40, 'sh': -70, 'ft': 20, 'lean': 0, 'tw': 0, 'ux': 34, 'uz': -14, 'fa': 70, 'kn': .5}),
+         (1, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 8, 'tw': 0, 'ux': 30, 'uz': -16, 'fa': 40, 'kn': .5})]
+    k = keys(K, u)
+    p = planted({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'upperarm.L': (k['ux'] * .9, 0, -k['uz'] * .6 + 12), 'forearm.L': (max(96, k['fa']), 0, 0),
+                 'fingers.R': (135, 0, 0), 'fingers.L': (135, 0, 0),
+                 'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .3, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['kn'], 16)
+    if u < .98:   # the right leg kicks, the left stays planted
+        p['thigh.R'] = (max(p['thigh.R'][0], k['th']), 0, p['thigh.R'][2] * (1 - min(1, k['th'] / 40))); p['shin.R'] = (k['sh'], 0, 0); p['foot.R'] = (k['ft'], 0, 0)
+    return p
+
 def heavy_walk(t):
     """3D.87 Stalker walk (3D only, loop): the human walk's legs with the arms hanging heavy, only a small swing."""
     p = walk_legs(t, .85); sn = math.sin(2 * math.pi * t)
