@@ -103,7 +103,7 @@ def split_arms(o, info, J):
         da = near([g + '.' + sd for g in ARM_G]); db = near(['pelvis', 'chest'] + [g + '.' + s2 for g in LEG_G[:3] for s2 in 'LR'])
         sel = (co[:, 0] * sgn > 0) & (co[:, 2] < info['arm_join'])
         armset = set()   # below the crotch the hands hang beside the knees: there the outermost separate piece in each slice is the arm
-        for z0 in np.arange(0, info['crotch'], .01):
+        for z0 in np.arange(max(0, info['hand_lo'] - .02), info['crotch'], .01):   # nothing below the fingertips is arm (a coat hem there is not)
             sl = np.where(sel & (co[:, 2] >= z0) & (co[:, 2] < z0 + .01))[0]
             if not len(sl): continue
             order = sl[np.argsort(co[sl, 0] * sgn)]; gaps = np.where(np.diff(co[order, 0] * sgn) > .012)[0]
@@ -140,6 +140,7 @@ def lower_arms(o, ao, deg):
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.context.view_layer.objects.active = o
     m = next(m for m in o.modifiers if m.type == 'ARMATURE'); name = m.name
+    before = [v.co.copy() for v in o.data.vertices]
     bpy.ops.object.modifier_apply(modifier=name)
     bpy.context.view_layer.objects.active = ao; bpy.ops.object.mode_set(mode='POSE')
     bpy.ops.pose.select_all(action='SELECT'); bpy.ops.pose.armature_apply(selected=False)
@@ -147,7 +148,12 @@ def lower_arms(o, ao, deg):
     m = o.modifiers.new(name, 'ARMATURE'); m.object = ao
     while o.modifiers[0].name != name:
         bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_move_up(modifier=name)
-    print('arms lowered', deg, 'degrees', flush=True)
+    import bmesh   # skin stretched by the re-pose (a sliver from a hand to the coat or a thigh) is long and thin: drop it
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    grew = lambda e: e.calc_length() / max(1e-5, (before[e.verts[0].index] - before[e.verts[1].index]).length)
+    long = [f for f in bm.faces if any(grew(e) > 2.2 and e.calc_length() > .02 for e in f.edges)]   # stretched by the re-pose, not just big
+    bmesh.ops.delete(bm, geom=long, context='FACES'); bm.to_mesh(o.data); o.data.update(); bm.free()
+    print('arms lowered', deg, 'degrees; stretched faces dropped', len(long), flush=True)
 
 def prep(src, out, tris=40000):
     import survivor

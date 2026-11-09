@@ -356,21 +356,52 @@ def zombie_attack(t):
 
 
 def lash(t):
-    """Lasher pull (3D only, one-shot, ~1.4 s): draws the long right arm back low, whips it out straight at full reach
-    (the grab lands at t = .38), holds, then yanks it back to the chest leaning away, dragging the victim in.
-    No weapon: bare hands only."""
-    K = [(0, {'ua': 40, 'ab': -6, 'fa': 20, 'lean': 10, 'w': 0, 'tw': 0, 'hd': 4}),
-         (.24, {'ua': -38, 'ab': -14, 'fa': 34, 'lean': 4, 'w': -.4, 'tw': -28, 'hd': 0}),
-         (.38, {'ua': 96, 'ab': 4, 'fa': 0, 'lean': 30, 'w': 1.2, 'tw': 26, 'hd': -10}),
-         (.56, {'ua': 94, 'ab': 4, 'fa': 2, 'lean': 30, 'w': 1.2, 'tw': 26, 'hd': -10}),
-         (.78, {'ua': 30, 'ab': -10, 'fa': 110, 'lean': -6, 'w': -.6, 'tw': -16, 'hd': 8}),
-         (1, {'ua': 40, 'ab': -6, 'fa': 20, 'lean': 10, 'w': 0, 'tw': 0, 'hd': 4})]
+    """Lasher pull (3D only, one-shot, ~1.4 s): both long arms open wide to the sides, chest up, then whip forward and
+    cross in front of the body (the grab lands at t = .38), hold the cross, then yank both arms back to the chest,
+    leaning away, dragging the victim in. Bare hands only."""
+    K = [(0, {'ux': 40, 'uz': 14, 'fa': 20, 'lean': 10, 'w': 0, 'hd': 4}),
+         (.26, {'ux': 18, 'uz': 82, 'fa': 8, 'lean': -8, 'w': -.5, 'hd': 12}),      # arms flung wide open
+         (.38, {'ux': 78, 'uz': -62, 'fa': 4, 'lean': 28, 'w': 1.2, 'hd': -8}),     # whip in: the arms cross in front of the chest
+         (.56, {'ux': 76, 'uz': -66, 'fa': 6, 'lean': 28, 'w': 1.2, 'hd': -8}),
+         (.8, {'ux': 34, 'uz': -16, 'fa': 112, 'lean': -8, 'w': -.6, 'hd': 8}),     # yank the crossed arms back to the chest
+         (1, {'ux': 40, 'uz': 14, 'fa': 20, 'lean': 10, 'w': 0, 'hd': 4})]
     k = keys(K, t)
-    p = stance({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (-20, 0, 0),
-                'upperarm.L': (30, 0, 12), 'forearm.L': (24, 0, 0), 'hand.L': (-14, 0, 0),
-                'chest': (k['lean'] * .7, k['tw'], 4), 'pelvis': (k['lean'] * .3, k['tw'] * .4, 2),
-                'head': (k['hd'] - k['lean'] * .4, -k['tw'] * .5, 10)}, k['w'], 1.0)
-    p['bob'] -= .03
+    p = stance({'upperarm.L': (k['ux'], 0, k['uz']), 'upperarm.R': (k['ux'] - 10, 0, -k['uz']),   # the right arm crosses a little lower
+                'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0), 'hand.L': (-12, 0, 0), 'hand.R': (-12, 0, 0),
+                'chest': (k['lean'] * .7, 0, 0), 'pelvis': (k['lean'] * .3, 0, 0), 'head': (k['hd'] - k['lean'] * .4, 0, 0)}, k['w'], 1.0)
+    p['bob'] -= .02
+    return p
+
+def naruto_run(t):
+    """Lasher run (3D only): the 'ninja run': body pitched far forward, head up, both long arms swept straight back
+    and trailing, short fast strides."""
+    ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
+    for n, sg in (('L', 1), ('R', -1)):
+        th = 46 * sg * sn; kn = 40 + 90 * max(0.0, sg * cs) ** 1.2
+        p['thigh.' + n] = (th + 34, 0, 0)
+        p['shin.' + n] = (-kn, 0, 0)
+        p['foot.' + n] = (-(th - kn) * .3 + kn * .4, 0, 0)
+        p['upperarm.' + n] = (-62 + 4 * sg * sn, 0, 12 * sg)      # arms straight back, barely moving
+        p['forearm.' + n] = (4, 0, 0)
+        p['hand.' + n] = (-14, 0, 0)
+    p['bob'] = .035 * math.cos(2 * ph) - .1
+    p['pelvis'] = (14, 8 * sn, 0); p['chest'] = (38, -6 * sn, 0); p['neck'] = (-14, 0, 0); p['head'] = (-30, 0, 0)
+    return p
+
+def haymaker(t):
+    """Stalker boss punch (3D only, one-shot, ~1.7 s): a slow, wide haymaker. The right arm swings out to the side and
+    back while the chest turns away, holds, then sweeps round in a wide flat arc across the front (hit at t = .58),
+    the body following through; recover slowly."""
+    K = [(0, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'w': 0}),
+         (.34, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -24, 'lean': -4, 'w': -.8}),   # wound up: arm raised out wide to the side
+         (.44, {'ux': 40, 'uz': -100, 'fa': 10, 'tw': -26, 'lean': -4, 'w': -.8}),
+         (.58, {'ux': 88, 'uz': -20, 'fa': 18, 'tw': 30, 'lean': 22, 'w': 1.2}),  # the wide swing lands in front
+         (.72, {'ux': 92, 'uz': 24, 'fa': 30, 'tw': 46, 'lean': 26, 'w': 1.3}),   # follows through across the body
+         (1, {'ux': 30, 'uz': -16, 'fa': 40, 'tw': 0, 'lean': 8, 'w': 0})]
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ux'], 0, k['uz']), 'forearm.R': (k['fa'], 0, 0), 'hand.R': (0, 0, 0),
+                'upperarm.L': (36, 0, 20), 'forearm.L': (96, 0, 0),
+                'chest': (k['lean'] * .7, k['tw'], 0), 'pelvis': (k['lean'] * .3, k['tw'] * .45, 0), 'head': (-12 - k['lean'] * .4, -k['tw'] * .5, 0)}, k['w'], 1.0)
     return p
 
 BRUTE_SPREAD = 18   # thighs out to the sides (deg); shins and feet turn back so the soles stay flat

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.81', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.82', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2615,7 +2615,7 @@ function zSpecial(z) {   /* 3D.32 new-zombie extras */
   if (z.type === 'alpha' && tick % 30 === 0) for (const q of S.z) if (q !== z && !q.human && q.hp > 0) q.alphaNear = dist(q.w, z.w) < 6;
 }
 function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors out in the open, walls, and other zombies within ROT_R */
-  z.burst = true; SFX('alarm'); hitFx.push({ k: 'burst', w: { ...z.w }, t0: tick, bits: Array.from({ length: 12 }, () => ({ a: rnd() * 6.28, v: .4 + rnd() * .8, s: rnd() })) });
+  z.burst = true; SFX('alarm');   /* 3D.82 owner: no hit effects except the Screamer's for now (the 'burst' and 'lash' drawings stay in fxDraw, unused) */
   let hurt = 0;
   for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < ROT_R) { const dmg = Math.max(1, fairRound(16 * (z.pw || 1) * (1 - dist(q.w, z.w) / ROT_R * .4) * (gearFx(q, 'gas') ? .5 : 1) * (1 - dmgReduce(q)))); q.hp -= dmg; q.hitT = 9; hurt++; floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#b8d65a', a: 55 }); if (rnd() < .5) emote(q, '🤢', 70); }
   for (const wl of world.walls.values()) if (!wl.broken && dist({ x: wl.x + .5, y: wl.y + .5 }, z.w) < ROT_R) { wl.hp -= 30; wl.hit = 14; if (wl.hp <= 0) wallBroken(wl); }
@@ -2690,7 +2690,6 @@ function zai0(z) {
   if (z.mode === 'zattack' && z.lash) { z.moving = false;   /* 3D.80 Lasher: whips the long arm out and drags one survivor in (in time with the 'lash' clip: the grab lands at t = .38) */
     const q = z.target;
     if (z.stateTicks === 52 && q && q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && !['down', 'hospital'].includes(q.mode) && dist(q.w, z.w) < LASH_R + .25) {
-      hitFx.push({ k: 'lash', w: { ...z.w }, to: { ...q.w }, zr: z, qr: q, t0: tick });
       if (['Guard', 'Police Officer', 'SWAT'].includes(q.job) && rnd() < .5) floats.push({ w: { ...q.w }, t: 'BRACED!', col: '#C6FF4D', a: 60, big: true });
       else { z.pulling = q; z.pullT = 34; const dmg = Math.max(1, Math.round(zHitDmg(z, d, q) * .5)); q.hp -= dmg; q.hitT = 9; SFX('hurt'); callHelp(q, z); emote(q, '😱', 70, true); floats.push({ w: { ...q.w }, t: '-' + dmg + ' PULLED', col: '#ff6e62', a: 60 }); }
     }

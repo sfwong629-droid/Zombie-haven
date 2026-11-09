@@ -102,11 +102,11 @@ LEG = ('fupper', 'flower', 'fpaw', 'bthigh', 'bshin', 'bpaw')
 def gait(t, phases, A, lift, spine=0.0, bob=0.0, head=0.0, tailw=10):
     P = {}; ph = lambda f: 2 * math.pi * (t + f)
     for key, f in phases.items():
-        front = key[0] == 'f'; sd = key[-1]; a = math.sin(ph(f)); sw = max(0.0, -math.cos(ph(f)))   # sw: paw off the ground, swinging forward
+        front = key[0] == 'f'; sd = key[-1]; a = math.sin(ph(f)); sw = max(0.0, math.cos(ph(f)))   # +rotation swings a leg forward; sw: the paw is off the ground while the leg swings forward (3D.82: was backward)
         if front:
-            P['fupper.' + sd] = (A * a, 0, 0); P['flower.' + sd] = (lift * sw, 0, 0); P['fpaw.' + sd] = (lift * .6 * sw, 0, 0)
+            P['fupper.' + sd] = (A * a, 0, 0); P['flower.' + sd] = (-lift * sw, 0, 0); P['fpaw.' + sd] = (-lift * .6 * sw, 0, 0)   # wrist folds the paw back and up
         else:
-            P['bthigh.' + sd] = (A * a, 0, 0); P['bshin.' + sd] = (-lift * .7 * sw, 0, 0); P['bpaw.' + sd] = (lift * .7 * sw, 0, 0)
+            P['bthigh.' + sd] = (A * a, 0, 0); P['bshin.' + sd] = (-lift * .7 * sw, 0, 0); P['bpaw.' + sd] = (-lift * .4 * sw, 0, 0)   # hock folds the paw back and up
     s2 = math.sin(4 * math.pi * t)
     P['chest'] = (spine * math.sin(ph(0)), 0, 0); P['hips'] = (-spine * .6 * math.sin(ph(0)), 0, 0)
     P['neck'] = (head * s2, 0, 0); P['head'] = (-head * .6 * s2, 0, 0)
@@ -137,8 +137,8 @@ def keys(K, t):
 def attack(t):   # crouch, lunge forward and up with the jaws, snap, back off
     K = [(0, {'p': 0, 'f': 0, 'n': 0, 'h': 0, 'fl': 0, 'bl': 0, 'up': 0}),
          (.3, {'p': 8, 'f': -.04, 'n': 14, 'h': -6, 'fl': -10, 'bl': 18, 'up': -.05}),
-         (.5, {'p': -14, 'f': .16, 'n': -26, 'h': 14, 'fl': -50, 'bl': -28, 'up': .05}),
-         (.62, {'p': -10, 'f': .16, 'n': -18, 'h': 22, 'fl': -40, 'bl': -24, 'up': .03}),
+         (.5, {'p': -14, 'f': .16, 'n': -26, 'h': 14, 'fl': 45, 'bl': -28, 'up': .05}),   # front legs reach forward, hind legs push back
+         (.62, {'p': -10, 'f': .16, 'n': -18, 'h': 22, 'fl': 35, 'bl': -24, 'up': .03}),
          (1, {'p': 0, 'f': 0, 'n': 0, 'h': 0, 'fl': 0, 'bl': 0, 'up': 0})]
     k = keys(K, t); P = {'hips': (k['p'], 0, 0), 'neck': (k['n'], 0, 0), 'head': (k['h'], 0, 0), 'tail': (-10, 0, 0)}
     for sd in 'LR':
