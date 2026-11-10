@@ -166,6 +166,10 @@ def prep(src, out, tris=40000):
     for ob in list(bpy.data.objects):
         if ob is not o: bpy.data.objects.remove(ob)
     o.parent = None
+    import bmesh   # Nov 9: Tripo splits every vertex along its UV seams (an open mesh): weld it closed before decimating and remeshing
+    bm = bmesh.new(); bm.from_mesh(o.data); n = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5); bm.to_mesh(o.data); o.data.update()
+    print('welded', n - len(bm.verts), 'seam vertices', flush=True); bm.free()
     floor = float(os.environ.get('ZH_FLOOR', 0))   # Nov 8: some AI models stand on a thin ground plate; drop every face lying below this height
     if floor:
         import bmesh

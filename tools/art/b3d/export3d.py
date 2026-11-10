@@ -238,6 +238,13 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         import facepaint
         facepaint.flatten_eyes(body.data, log=lambda *a: print(*a, flush=True))
     img = flat_regions(body, tex) if FLAT else clean_texture(body, tex, median, colors)
+    grade = os.environ.get('ZH_GRADE')   # Nov 9: 'value,saturation', e.g. '.88,1.15': Tripo textures come out lighter and greyer than our older models
+    if grade:
+        import numpy as np
+        gv, gs = map(float, grade.split(','))
+        px = np.array(img.pixels[:]).reshape(-1, 4); c = px[:, :3]; g = c.mean(1, keepdims=True)
+        px[:, :3] = np.clip((g + (c - g) * gs) * gv, 0, 1); img.pixels[:] = px.ravel(); img.update()
+        print('graded value', gv, 'saturation', gs, flush=True)
     for m in body.data.materials: plain(m, image=img)
     if decimate < 1.0:
         d = body.modifiers.new('dec', 'DECIMATE'); d.ratio = decimate
