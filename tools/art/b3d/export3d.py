@@ -234,7 +234,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         bm = bmesh.new(); bm.from_mesh(body.data); n0 = len(bm.verts)
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD); bm.to_mesh(body.data); body.data.update()
         print('welded', n0 - len(bm.verts), 'vertices', flush=True); bm.free()
-    if FACE:
+    if FACE and not os.environ.get('ZH_NOFACE'):   # Nov 9: ZH_NOFACE=1 for models with their own drawn face (Tripo): the survivor eye paint lands in the wrong place
         import facepaint
         facepaint.flatten_eyes(body.data, log=lambda *a: print(*a, flush=True))
     img = flat_regions(body, tex) if FLAT else clean_texture(body, tex, median, colors)
