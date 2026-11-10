@@ -6,7 +6,7 @@ vertex is weighted to its nearest armour bones, then moved bone by bone onto the
 stretched by the bone-length ratio, across it scaled by K (so pads sit just outside the body). The same weights become the
 skin weights, so the armour bends with every clip. Exported as one skinned mesh on the survivor rig (no animations).
 
-  python3 fit_armor.py RIG.blend ARMOR_RAW.glb OUT.glb [tris=12000] [tex=512] [check=PNG]
+  python3 fit_armor.py RIG.blend ARMOR_RAW.glb OUT.glb [tris=12000] [tex=512] [check=PNG] [joints=JSON]
 """
 import bpy, sys, os, math
 import numpy as np
@@ -32,7 +32,10 @@ def frame(a, b):
     u = (b - a) / np.linalg.norm(b - a); ref = np.array([0, -1., 0]) if abs(u[1]) < .9 else np.array([0, 0, 1.])
     e1 = ref - (ref @ u) * u; e1 /= np.linalg.norm(e1); e2 = np.cross(u, e1); return u, e1, e2
 
-def main(rig_blend, raw, out, tris=12000, tex=512, check=None):
+def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
+    global ARMOR_J, K
+    if joints:   # Nov 9: a JSON file {"J": {bone: [head, tail]}, "K": {...}} for another armour set (marked on its own front/side plot)
+        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}
     bpy.ops.wm.open_mainfile(filepath=rig_blend)
     ao = bpy.data.objects['rig']; body = bpy.data.objects['body']
     have = set(bpy.data.objects)
@@ -41,6 +44,8 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None):
     for o in [o for o in bpy.data.objects if o not in have and o != arm]: bpy.data.objects.remove(o)
     arm.parent = None; bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True); bpy.context.view_layer.objects.active = arm
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    import bmesh   # Nov 9: weld Tripo's UV-seam splits, or the decimate can't reduce the open mesh
+    bm = bmesh.new(); bm.from_mesh(arm.data); bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5); bm.to_mesh(arm.data); arm.data.update(); bm.free()
     import export3d
     img = export3d.clean_texture(arm, tex, 3, 20)          # flat, seam-padded colour; drops the normal/metal maps
     for m in arm.data.materials: export3d.plain(m, image=img)
@@ -84,4 +89,4 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None):
 if __name__ == '__main__':
     a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
     opt = dict(x.split('=', 1) for x in a if '=' in x); pos = [x for x in a if '=' not in x]
-    main(pos[0], pos[1], pos[2], int(opt.get('tris', 12000)), int(opt.get('tex', 512)), opt.get('check'))
+    main(pos[0], pos[1], pos[2], int(opt.get('tris', 12000)), int(opt.get('tex', 512)), opt.get('check'), opt.get('joints'))

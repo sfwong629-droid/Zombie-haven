@@ -170,6 +170,11 @@ def prep(src, out, tris=40000):
     bm = bmesh.new(); bm.from_mesh(o.data); n = len(bm.verts)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5); bm.to_mesh(o.data); o.data.update()
     print('welded', n - len(bm.verts), 'seam vertices', flush=True); bm.free()
+    hgt = float(os.environ.get('ZH_HEIGHT', 0))   # Nov 9: scale to this height (Tripo models come 1.0 tall; the survivor rig is 1.156)
+    if hgt:
+        zs = [v.co.z for v in o.data.vertices]; k = hgt / (max(zs) - min(zs))
+        for v in o.data.vertices: v.co *= k
+        print('scaled x', round(k, 3), flush=True)
     floor = float(os.environ.get('ZH_FLOOR', 0))   # Nov 8: some AI models stand on a thin ground plate; drop every face lying below this height
     if floor:
         import bmesh

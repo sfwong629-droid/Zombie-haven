@@ -17,7 +17,8 @@ import ai_render, anims, armor
 FPS = 30
 TWO_HAND = {'pistol_fire': ('pistol', 'grip2'), 'work_dig': ('hoe', 'grip_low'), 'melee_swing_d': ('bat', 'grip_low'), 'work_chop': ('axe', 'grip_low')}   # action -> weapon whose grip2 the left hand holds
 FACE_OUT = None      # set by main: path stem for the extra expression textures
-FACE = True          # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
+FACE = not os.environ.get('ZH_NOFACE')   # Nov 9: ZH_NOFACE=1 for models with their own drawn face (Tripo)
+# paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
 WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
 FLAT = True          # flat colour regions (see flat_regions); False = the filtered texture
 COLORS = {'w_crate': '#c8924f', 'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
@@ -234,7 +235,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         bm = bmesh.new(); bm.from_mesh(body.data); n0 = len(bm.verts)
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD); bm.to_mesh(body.data); body.data.update()
         print('welded', n0 - len(bm.verts), 'vertices', flush=True); bm.free()
-    if FACE and not os.environ.get('ZH_NOFACE'):   # Nov 9: ZH_NOFACE=1 for models with their own drawn face (Tripo): the survivor eye paint lands in the wrong place
+    if FACE:
         import facepaint
         facepaint.flatten_eyes(body.data, log=lambda *a: print(*a, flush=True))
     img = flat_regions(body, tex) if FLAT else clean_texture(body, tex, median, colors)
@@ -245,6 +246,20 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         px = np.array(img.pixels[:]).reshape(-1, 4); c = px[:, :3]; g = c.mean(1, keepdims=True)
         px[:, :3] = np.clip((g + (c - g) * gs) * gv, 0, 1); img.pixels[:] = px.ravel(); img.update()
         print('graded value', gv, 'saturation', gs, flush=True)
+    skin = os.environ.get('ZH_SKIN')   # Nov 9: 'from>to' hex, e.g. '#f8ac75>#efc09e': move the model's skin to the colour the game's skin-tone shader expects
+    if skin:
+        import numpy as np
+        a_, b_ = [np.array([int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]) for h in skin.split('>')]
+        px = np.array(img.pixels[:]).reshape(-1, 4); c = px[:, :3]; mx, mn = c.max(1), c.min(1); sat = (mx - mn) / np.maximum(mx, 1e-5)
+        r, g, bl = c.T; d = np.maximum(mx - mn, 1e-5)
+        hue = np.where(mx == r, ((g - bl) / d) % 6, np.where(mx == g, (bl - r) / d + 2, (r - g) / d + 4)) / 6
+        m = (hue > .03) & (hue < .115) & (sat > .3) & (sat < .62) & (mx > .7)
+        c[m] = np.clip(c[m] * (b_ / a_), 0, 1); px[:, :3] = c; img.pixels[:] = px.ravel(); img.update()
+        print('skin moved', int(m.sum()), 'px', flush=True)
+        hk = os.environ.get('ZH_HAIR')   # hex: move the dark-brown base hair to the near-black brown the hair-colour shader expects (shading kept)
+        if hk:
+            t = np.array([int(hk[i:i + 2], 16) / 255 for i in (1, 3, 5)]); h = (hue > .02) & (hue < .15) & (mx < .33)
+            l = c[h].mean(1); c[h] = np.clip(t[None] * (l / np.median(l))[:, None] ** .6, 0, 1); px[:, :3] = c; img.pixels[:] = px.ravel(); img.update(); print('hair moved', int(h.sum()), 'px', flush=True)
     for m in body.data.materials: plain(m, image=img)
     if decimate < 1.0:
         d = body.modifiers.new('dec', 'DECIMATE'); d.ratio = decimate
