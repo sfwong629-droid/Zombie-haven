@@ -526,6 +526,21 @@ function buildForest() {
 }
 
 // ---------------------------------------------------------------- 3D.76 traps (outside the wall ring; a spent trap lies flat and dull)
+function trapPiece(P, t, cx, cz, y0) {   // 3D.103 one trap (also used for the Build menu picture)
+  const s = hash(t.x, t.y), live = t.ch > 0;
+  if (t.type === 'spikes') {   // a plank with a row of stakes
+    P.put(box(1.2, .08, .34), '#6f4a2c', M4(cx, y0 + .04, cz, s));
+    for (let k = -2; k <= 2; k++) { const h = live ? .45 + hash(t.x + k, t.y) * .12 : .12; P.put(new THREE.ConeGeometry(.06, h, 5), live ? '#c9a46a' : '#7a6650', M4(cx + Math.cos(s) * k * .22, y0 + .08 + h / 2, cz - Math.sin(s) * k * .22, 0, live ? .25 : 1.2)); }
+  } else if (t.type === 'wire') {   // two stakes and a coil between them
+    for (const k of [-1, 1]) P.put(cyl(.04, .05, .7, 5), '#6a4528', M4(cx + k * .5, y0 + .35, cz));
+    if (live) for (let k = -2; k <= 2; k++) P.put(new THREE.TorusGeometry(.17, .015, 4, 10), '#9aa0a6', M4(cx + k * .18, y0 + .3, cz, Math.PI / 2));
+    else P.put(new THREE.TorusGeometry(.2, .015, 4, 10), '#7d7466', M4(cx, y0 + .03, cz, 0, Math.PI / 2));
+  } else if (t.type === 'lure') {   // a pole with a bell and hanging cans
+    P.put(cyl(.05, .06, 1.4, 6), '#6a4528', M4(cx, y0 + .7, cz)); P.put(box(.5, .05, .05), '#6a4528', M4(cx, y0 + 1.35, cz, s));
+    P.put(new THREE.ConeGeometry(.13, .2, 8), live ? '#d8b04a' : '#7a6a4a', M4(cx, y0 + 1.2, cz));
+    for (const k of [-1, 1]) P.put(cyl(.06, .06, .14, 8), live ? '#b8bec4' : '#6f6a62', M4(cx + Math.cos(s) * k * .22, y0 + 1.15, cz - Math.sin(s) * k * .22));
+  }
+}
 let trapGroup = null, trapKey = '';
 function buildTraps() {
   const W = G.world, list = W.traps ? [...W.traps.values()] : [];
@@ -534,21 +549,7 @@ function buildTraps() {
   if (trapGroup) scene.remove(trapGroup);
   trapGroup = new THREE.Group(); scene.add(trapGroup);
   const P = new Parts();
-  for (const t of list) {
-    const cx = (t.x + .5) * T, cz = (t.y + .5) * T, y0 = groundH(cx, cz), s = hash(t.x, t.y), live = t.ch > 0;
-    if (t.type === 'spikes') {   // a plank with a row of stakes
-      P.put(box(1.2, .08, .34), '#6f4a2c', M4(cx, y0 + .04, cz, s));
-      for (let k = -2; k <= 2; k++) { const h = live ? .45 + hash(t.x + k, t.y) * .12 : .12; P.put(new THREE.ConeGeometry(.06, h, 5), live ? '#c9a46a' : '#7a6650', M4(cx + Math.cos(s) * k * .22, y0 + .08 + h / 2, cz - Math.sin(s) * k * .22, 0, live ? .25 : 1.2)); }
-    } else if (t.type === 'wire') {   // two stakes and a coil between them
-      for (const k of [-1, 1]) P.put(cyl(.04, .05, .7, 5), '#6a4528', M4(cx + k * .5, y0 + .35, cz));
-      if (live) for (let k = -2; k <= 2; k++) P.put(new THREE.TorusGeometry(.17, .015, 4, 10), '#9aa0a6', M4(cx + k * .18, y0 + .3, cz, Math.PI / 2));
-      else P.put(new THREE.TorusGeometry(.2, .015, 4, 10), '#7d7466', M4(cx, y0 + .03, cz, 0, Math.PI / 2));
-    } else if (t.type === 'lure') {   // a pole with a bell and hanging cans
-      P.put(cyl(.05, .06, 1.4, 6), '#6a4528', M4(cx, y0 + .7, cz)); P.put(box(.5, .05, .05), '#6a4528', M4(cx, y0 + 1.35, cz, s));
-      P.put(new THREE.ConeGeometry(.13, .2, 8), live ? '#d8b04a' : '#7a6a4a', M4(cx, y0 + 1.2, cz));
-      for (const k of [-1, 1]) P.put(cyl(.06, .06, .14, 8), live ? '#b8bec4' : '#6f6a62', M4(cx + Math.cos(s) * k * .22, y0 + 1.15, cz - Math.sin(s) * k * .22));
-    }
-  }
+  for (const t of list) { const cx = (t.x + .5) * T, cz = (t.y + .5) * T; trapPiece(P, t, cx, cz, groundH(cx, cz)); }
   P.build(trapGroup, .02);
   return true;
 }
@@ -584,6 +585,20 @@ function buildHighway() {
 // ---------------------------------------------------------------- 3D.100 guard posts (owner: the old flat pixel sprite looked terrible)
 // A low sandbag nest open at the back, a sloped canvas lean-to over it, an ammo crate, a lantern and a flag on a pole coloured by the watch
 // (blue night, gold day, red both). Low detail, same toon parts as the traps.
+function postPiece(P, p, cx, cz, y0, bagG) {   // 3D.103 one guard post (also the Build menu picture)
+  const r = .78, N = 11;
+  for (let i = 0; i < N; i++) {   // a horseshoe of sandbags, two rows, open towards the back (north)
+    const a = Math.PI * (.12 + 1.76 * i / (N - 1)), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, ry = -a + Math.PI / 2;
+    for (let row = 0; row < 2; row++) { const o = row ? .5 / N * Math.PI : 0, aa = a + o * (i < N - 1 ? 1 : 0); P.put(bagG, row ? '#b9a06a' : '#a68d58', M4(cx + Math.cos(aa) * (r - row * .03), y0 + .11 + row * .19, cz + Math.sin(aa) * (r - row * .03), ry, 0, 0, .42, .2, .24)); }
+  }
+  for (const [dx, dz, h] of [[-.78, -.62, 1.5], [.78, -.62, 1.5], [-.78, .48, 1.12], [.78, .48, 1.12]]) P.put(cyl(.045, .055, h, 6), '#6f4a2c', M4(cx + dx, y0 + h / 2, cz + dz));
+  P.put(box(1.86, .035, 1.3), '#c8b48a', M4(cx, y0 + 1.33, cz - .07, 0, .33));   // the canvas roof, sloping down to the front
+  P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.5, cz - .62)); P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.12, cz + .48));
+  P.put(box(.36, .24, .24), '#5f6b3e', M4(cx + .35, y0 + .12, cz - .3, .3)); P.put(box(.37, .04, .25), '#4a5430', M4(cx + .35, y0 + .25, cz - .3, .3));   // ammo crate
+  P.put(cyl(.035, .045, 2.3, 6), '#5a3c22', M4(cx - .78, y0 + 1.15, cz - .62));   // flag pole
+  P.put(box(.62, .38, .02), POST_COL[p.sched] || POST_COL.night, M4(cx - .45, y0 + 2.02, cz - .62, 0, 0, -.05));
+  P.put(cyl(.06, .07, .13, 8), '#3a3a36', M4(cx + .7, y0 + .98, cz + .48)); P.put(new THREE.SphereGeometry(.05, 8, 6), '#ffd27a', M4(cx + .7, y0 + .92, cz + .48));   // lantern
+}
 let postGroup = null, postKey = '';
 const POST_COL = { night: '#4f7fd0', day: '#e8b73a', all: '#d0503c' };
 function buildPosts() {
@@ -591,23 +606,51 @@ function buildPosts() {
   if (key === postKey) return false; postKey = key;
   if (postGroup) scene.remove(postGroup); postGroup = new THREE.Group(); scene.add(postGroup);
   const P = new Parts(), bagG = new THREE.SphereGeometry(.5, 8, 5);
-  for (const p of list) {
-    const cx = (p.x + .5) * T, cz = (p.y + .5) * T, y0 = groundH(cx, cz), r = .78, N = 11;
-    for (let i = 0; i < N; i++) {   // a horseshoe of sandbags, two rows, open towards the back (north)
-      const a = Math.PI * (.12 + 1.76 * i / (N - 1)), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, ry = -a + Math.PI / 2;
-      for (let row = 0; row < 2; row++) { const o = row ? .5 / N * Math.PI : 0, aa = a + o * (i < N - 1 ? 1 : 0); P.put(bagG, row ? '#b9a06a' : '#a68d58', M4(cx + Math.cos(aa) * (r - row * .03), y0 + .11 + row * .19, cz + Math.sin(aa) * (r - row * .03), ry, 0, 0, .42, .2, .24)); }
-    }
-    for (const [dx, dz, h] of [[-.78, -.62, 1.5], [.78, -.62, 1.5], [-.78, .48, 1.12], [.78, .48, 1.12]]) P.put(cyl(.045, .055, h, 6), '#6f4a2c', M4(cx + dx, y0 + h / 2, cz + dz));
-    P.put(box(1.86, .035, 1.3), '#c8b48a', M4(cx, y0 + 1.33, cz - .07, 0, .33));   // the canvas roof, sloping down to the front
-    P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.5, cz - .62)); P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.12, cz + .48));
-    P.put(box(.36, .24, .24), '#5f6b3e', M4(cx + .35, y0 + .12, cz - .3, .3)); P.put(box(.37, .04, .25), '#4a5430', M4(cx + .35, y0 + .25, cz - .3, .3));   // ammo crate
-    P.put(cyl(.035, .045, 2.3, 6), '#5a3c22', M4(cx - .78, y0 + 1.15, cz - .62));   // flag pole
-    P.put(box(.62, .38, .02), POST_COL[p.sched] || POST_COL.night, M4(cx - .45, y0 + 2.02, cz - .62, 0, 0, -.05));
-    P.put(cyl(.06, .07, .13, 8), '#3a3a36', M4(cx + .7, y0 + .98, cz + .48)); P.put(new THREE.SphereGeometry(.05, 8, 6), '#ffd27a', M4(cx + .7, y0 + .92, cz + .48));   // lantern
-  }
+  for (const p of list) { const cx = (p.x + .5) * T, cz = (p.y + .5) * T; postPiece(P, p, cx, cz, groundH(cx, cz), bagG); }
   P.build(postGroup, .02); return true;
 }
 // ---------------------------------------------------------------- walls
+function wallPiece(P, w, has, cx, cz) {   // one wall tile; has(x, y) = a standing wall there (arms join to it)
+  const s = hash(w.x, w.y);
+  if (w.broken) { P.put(new THREE.DodecahedronGeometry(.3, 0).scale(1.6, .45, 1.3), '#6a5a48', M4(cx, .1, cz, s * 6)); P.put(cyl(.08, .09, .7, 6), '#6f4a2c', M4(cx + .2, .12, cz - .1, s, 0, Math.PI / 2)); return; }
+  const arms = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => has(w.x + dx, w.y + dy));
+  const dmg = w.hp < w.max * .6;
+  if (w.type === 'gate') {   // 3D.103 a person-high plank gate between two posts (sits in any wall tier)
+    const alongX = has(w.x - 1, w.y) || has(w.x + 1, w.y) || !(has(w.x, w.y - 1) || has(w.x, w.y + 1));
+    for (const k of [-1, 1]) P.put(cyl(.1, .11, 1.55, 7), '#5a3b23', M4(cx + (alongX ? k * .62 : 0), .78, cz + (alongX ? 0 : k * .62)));
+    P.put(box(1.5, .12, .12), '#6f4a2c', M4(cx, 1.42, cz, alongX ? 0 : Math.PI / 2));
+    for (const k of [-.36, 0, .36]) P.put(box(.34, 1.0, .07), '#8a6038', M4(cx + (alongX ? k : 0), .58, cz + (alongX ? 0 : k), alongX ? 0 : Math.PI / 2));
+    P.put(box(1.1, .1, .08), '#6f4a2c', M4(cx, .58, cz, alongX ? 0 : Math.PI / 2, 0, alongX ? .62 : 0));
+    return;
+  }
+  if (w.type === 'metal') {
+    P.put(box(.18, 1.7, .18), '#5f666e', M4(cx, .85, cz));
+    for (const [dx, dy] of arms) P.put(box(dx ? T / 2 : .12, 1.5 - (dmg ? .4 * s : 0), dy ? T / 2 : .12), dmg ? '#7d7466' : '#8f9aa6', M4(cx + dx * T / 4, .75, cz + dy * T / 4));
+    if (!arms.length) P.put(box(.6, 1.4, .12), '#8f9aa6', M4(cx, .7, cz));
+    return;
+  }
+  const segs = arms.length ? arms : [[1, 0], [-1, 0]];
+  if (w.type === 'palisade') {   // Log Palisade (Lodge tier): a post in the middle, tall pointed stakes along each joined side
+    P.put(cyl(.12, .13, 2.1, 7), '#6a4528', M4(cx, 1.05, cz));
+    for (const [dx, dy] of segs) for (let k = 1; k <= 2; k++) {
+      const o = k * T / 5, h = 1.8 + hash(w.x * 3 + k, w.y + dx * 5 + dy) * .35 - (dmg && k === 2 ? .7 : 0);
+      P.put(cyl(.11, .12, h, 7), '#7a5232', M4(cx + dx * o, h / 2, cz + dy * o, k));
+      P.put(new THREE.ConeGeometry(.12, .3, 7), '#7a5232', M4(cx + dx * o, h + .15, cz + dy * o));
+    }
+    return;
+  }
+  // 3D.103 Wood Fence (camp tier, owner: about a person high): a post, two rails and upright planks along each joined side
+  P.put(cyl(.07, .08, 1.3, 6), '#5e3e24', M4(cx, .65, cz));
+  P.put(new THREE.ConeGeometry(.08, .12, 6), '#5e3e24', M4(cx, 1.36, cz));
+  for (const [dx, dy] of segs) {
+    for (const y of [.36, .9]) P.put(box(dx ? T / 2 : .06, .08, dy ? T / 2 : .06), '#6f4a2c', M4(cx + dx * T / 4, y, cz + dy * T / 4));
+    for (let k = 0; k < 4; k++) {
+      if (dmg && k === 2) continue;   // a plank knocked out
+      const o = .2 + k * .27, h = 1.0 + hash(w.x * 5 + k, w.y * 3 + dx + dy * 2) * .16 - (dmg && k === 3 ? .35 : 0), px = cx + dx * o + (dy ? .05 : 0), pz = cz + dy * o + (dx ? .05 : 0);
+      P.put(box(dx ? .2 : .045, h, dy ? .2 : .045), k % 2 ? '#8a6038' : '#7e5634', M4(px, h / 2, pz, 0, 0, (hash(k, w.x + w.y) - .5) * .06));
+    }
+  }
+}
 let wallGroup = null, wallKey = '';
 function buildWalls() {
   const W = G.world, list = [...W.walls.values()];
@@ -617,33 +660,7 @@ function buildWalls() {
   wallGroup = new THREE.Group(); scene.add(wallGroup);
   const P = new Parts();
   const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
-  for (const w of list) {
-    const cx = (w.x + .5) * T, cz = (w.y + .5) * T, s = hash(w.x, w.y);
-    if (w.broken) { P.put(new THREE.DodecahedronGeometry(.3, 0).scale(1.6, .45, 1.3), '#6a5a48', M4(cx, .1, cz, s * 6)); P.put(cyl(.08, .09, .7, 6), '#6f4a2c', M4(cx + .2, .12, cz - .1, s, 0, Math.PI / 2)); continue; }
-    const arms = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => has(w.x + dx, w.y + dy));
-    const dmg = w.hp < w.max * .6;
-    if (w.type === 'gate') {
-      const alongX = has(w.x - 1, w.y) || has(w.x + 1, w.y) || !(has(w.x, w.y - 1) || has(w.x, w.y + 1));
-      for (const k of [-1, 1]) P.put(cyl(.1, .11, 2.2, 7), '#5a3b23', M4(cx + (alongX ? k * .6 : 0), 1.1, cz + (alongX ? 0 : k * .6)));
-      P.put(box(1.5, .14, .14), '#6f4a2c', M4(cx, 2.05, cz, alongX ? 0 : Math.PI / 2));
-      for (const k of [-.36, 0, .36]) P.put(box(.34, 1.2, .07), '#8a6038', M4(cx + (alongX ? k : 0), .7, cz + (alongX ? 0 : k), alongX ? 0 : Math.PI / 2));
-      continue;
-    }
-    if (w.type === 'metal') {
-      P.put(box(.18, 1.7, .18), '#5f666e', M4(cx, .85, cz));
-      for (const [dx, dy] of arms) P.put(box(dx ? T / 2 : .12, 1.5 - (dmg ? .4 * s : 0), dy ? T / 2 : .12), dmg ? '#7d7466' : '#8f9aa6', M4(cx + dx * T / 4, .75, cz + dy * T / 4));
-      if (!arms.length) P.put(box(.6, 1.4, .12), '#8f9aa6', M4(cx, .7, cz));
-      continue;
-    }
-    // wood palisade: a post in the middle, stakes along each joined side
-    P.put(cyl(.12, .13, 2.1, 7), '#6a4528', M4(cx, 1.05, cz));
-    const segs = arms.length ? arms : [[1, 0], [-1, 0]];
-    for (const [dx, dy] of segs) for (let k = 1; k <= 2; k++) {
-      const o = k * T / 5, h = 1.8 + hash(w.x * 3 + k, w.y + dx * 5 + dy) * .35 - (dmg && k === 2 ? .7 : 0);
-      P.put(cyl(.11, .12, h, 7), '#7a5232', M4(cx + dx * o, h / 2, cz + dy * o, k));
-      P.put(new THREE.ConeGeometry(.12, .3, 7), '#7a5232', M4(cx + dx * o, h + .15, cz + dy * o));
-    }
-  }
+  for (const w of list) wallPiece(P, w, has, (w.x + .5) * T, (w.y + .5) * T);
   P.build(wallGroup, .03);
   return true;
 }
@@ -1775,7 +1792,13 @@ function buildingThumb(type, W = 208, H = 156) {
   const D = G.DEFS[type]; if (!ready || !D) return null; const key = type + '|' + W + 'x' + H; if (bthumbs.has(key)) return bthumbs.get(key);
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
-  const R = pRig.rts[rk], g = makeBuilding({ type, x: 0, y: 0, w: D.w, h: D.h, rot: 0 }); g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+  const g = makeBuilding({ type, x: 0, y: 0, w: D.w, h: D.h, rot: 0 }); g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+  const url = thumbOf(g, W, H); bthumbs.set(key, url); return url;
+}
+function thumbOf(g, W, H) {   // a transparent, inked three-quarter picture of any group (Build menu cards)
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk]; g.updateMatrixWorld(true);
   const bb = new THREE.Box3().setFromObject(g), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
   const c = pRig.cam, dir = new THREE.Vector3(.75, .85, 1).normalize(); c.position.copy(ctr).addScaledVector(dir, 20); c.lookAt(ctr);
   c.updateMatrixWorld(true); const inv = c.matrixWorldInverse; let mx = 0, my = 0;
@@ -1785,7 +1808,22 @@ function buildingThumb(type, W = 208, H = 156) {
   renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
   renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(g);   // (geometry is not freed: the tent / house GLB clones share theirs with the map)
   const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
-  inkEdge(im.data, W, H, Math.max(2, Math.round(W / 90))); g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); bthumbs.set(key, url); return url;
+  inkEdge(im.data, W, H, Math.max(2, Math.round(W / 90))); g2.putImageData(im, 0, 0); return R.cv.toDataURL('image/png');
+}
+// 3D.103 Build menu pictures for the things that are not buildings: walls (a short run), the gate, roads, the guard post and traps
+function propThumb(k, W = 208, H = 156) {
+  if (!ready) return null; const key = 'prop|' + k + '|' + W + 'x' + H; if (bthumbs.has(key)) return bthumbs.get(key);
+  const P = new Parts(), g = new THREE.Group();
+  if (k.startsWith('wall:')) {
+    const t = k.slice(5), run = t === 'gate' ? [[0, 0, 'wood'], [1, 0, 'gate'], [2, 0, 'wood']] : [[0, 0, t], [1, 0, t], [2, 0, t]], at = new Map(run.map(([x, y, ty]) => [x + ',' + y, { x, y, type: ty, hp: 1, max: 1 }]));
+    for (const w of at.values()) wallPiece(P, w, (x, y) => at.has(x + ',' + y), (w.x + .5) * T, (w.y + .5) * T);
+  } else if (k === 'road') {
+    P.put(box(T * 1.6, .06, T), '#8a6a44', M4(0, .03, 0)); for (const z of [-.5, .5]) P.put(box(T * 1.6, .065, .16), '#6a4f30', M4(0, .035, z)); P.put(box(T * 1.6, .07, .12), '#6f8a3a', M4(0, .04, 0));
+    for (let i = 0; i < 7; i++) P.put(new THREE.DodecahedronGeometry(.06, 0), '#9a8a74', M4(-1.6 + i * .52, .07, (hash(i, 3) - .5) * 1.6));
+  } else if (k === 'post') postPiece(P, { sched: 'night' }, 0, 0, 0, new THREE.SphereGeometry(.5, 8, 5));
+  else if (k.startsWith('trap:')) trapPiece(P, { type: k.slice(5), x: 3, y: 5, ch: 1 }, 0, 0, 0);
+  else return null;
+  P.build(g, .03, false); const url = thumbOf(g, W, H); bthumbs.set(key, url); return url;
 }
 // People page: framed from the hair down to the chest, turned so the weapon hand is away from the face
 const portraitOf = (s) => snapActor(s, { key: 'bust', half: .46 });
@@ -1805,7 +1843,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 // 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
-window.ZH3D = { zombieIso, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

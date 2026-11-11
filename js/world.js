@@ -92,8 +92,9 @@
   const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {
-    wood:  { name: 'Wood Barricade', mat: 0, wood: 1, hp: 80,  rank: 1, tier: 1 },
-    metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
+    wood:  { name: 'Wood Fence',     mat: 0, wood: 1, hp: 80,  rank: 1, tier: 1, lvl: 1 },   // 3D.103 owner: the starting fence is about a person high (planks on two rails)
+    palisade: { name: 'Log Palisade', mat: 1, wood: 3, hp: 160, rank: 1, tier: 2, lvl: 2 },   // 3D.103 the old tall stake wall, now the Lodge-tier upgrade
+    metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3, lvl: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
     gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1, tier: 1 },
   };
   const WALLZONE = { x0: 1 + OFF, y0: 5 + OFF, x1: 14 + OFF, y1: 18 + OFF };   // build zone grown by one tile so a ring can enclose it
@@ -205,7 +206,7 @@
   // Perimeter check: flood-fill from the town centre treating walls (gate included) and buildings as solid, the way zombies see them.
   function perimeter(w) {
     let weakest = null, n = 0, gates = 0; for (const wl of w.walls.values()) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
-    const seed = nearestWalkable(w, 7, 10, true); if (!seed) return { sealed: false, walls: n, gates, weakest, area: 0 };
+    const seed = nearestWalkable(w, 7 + OFF, 10 + OFF, true);   /* 3D.103: the town centre moved with the bigger map */ if (!seed) return { sealed: false, walls: n, gates, weakest, area: 0 };
     const seen = new Set([key(seed.x, seed.y)]), q = [seed]; let open = false;
     while (q.length) { const c = q.pop(); if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) open = true;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }

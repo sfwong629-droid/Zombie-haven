@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.102', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.103', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -834,7 +834,7 @@ function drawDaylight() {   /* V2.36: one opaque multiply pass (was a multiply p
 function drawWall(wl) {   /* V2.30: pixel-art wall pieces (post + arms toward joined neighbours), cracked below 60% HP, rubble when broken */
   const W = MAPM && MAPM.wall, im = IMG.mapWalls; if (!W || !okImg(im)) return;
   const has = (dx, dy) => { const o = Wd.wallAt(world, wl.x + dx, wl.y + dy); return !!o && !o.broken; }, f = wl.hp / wl.max;
-  const key = wl.broken ? 'rubble' : wl.type + (+has(-1, 0)) + (+has(1, 0)) + (+has(0, -1)) + (+has(0, 1)) + (f < .6 ? 'c' : ''), i = W.cells[key] ?? W.cells.rubble;
+  const key = wl.broken ? 'rubble' : (wl.type === 'palisade' ? 'wood' : wl.type) + (+has(-1, 0)) + (+has(1, 0)) + (+has(0, -1)) + (+has(0, 1)) + (f < .6 ? 'c' : ''), i = W.cells[key] ?? W.cells.rubble;
   const hit = wl.hit > 0; if (hit) wl.hit--;
   const src = hit ? tinted('wallsHit', im, (r, g, b) => [Math.min(255, r + 120), Math.min(255, g + 110), Math.min(255, b + 100)]) : im;
   const O = project(wl.x, wl.y), sc = TWs() / ART_TILE, m = pxm(sc * DPR), big = pixelUp(hit ? 'wallsH' : 'walls', src, m), snap = (v) => Math.round(v * DPR) / DPR;
@@ -1493,10 +1493,18 @@ function isT(b, t) { return !!b && (b.type === t || (DEFS[b.type] && DEFS[b.type
 function aliasT(tab) { for (const [k, d] of Object.entries(DEFS)) if (d.like && tab[d.like] !== undefined && tab[k] === undefined) tab[k] = tab[d.like]; return tab; }
 
 /* ---------------- movement & path following (A* on the tile grid; recompute only when needed) ---------------- */
+const solidWall = (x, y) => { const wl = Wd.wallAt(world, Math.floor(x), Math.floor(y)); return !!wl && !wl.broken; };
 function stepToward(o, p, sp) {
   const dx = p.x - o.w.x, dy = p.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > 0.02;
+  const k = d <= sp ? 1 : sp / d, nx = o.w.x + dx * k, ny = o.w.y + dy * k;
+  if (o.job !== undefined && solidWall(nx, ny) && !solidWall(o.w.x, o.w.y)) {   /* 3D.103 owner: people walked through fences (chat spots, short hops): a person never steps onto a standing wall; they slide along it */
+    if (!solidWall(nx, o.w.y)) o.w.x = nx; else if (!solidWall(o.w.x, ny)) o.w.y = ny; else o.moving = false; return false; }
   if (d <= sp) { o.w.x = p.x; o.w.y = p.y; return true; }
-  o.w.x += dx / d * sp; o.w.y += dy / d * sp; return false;
+  o.w.x = nx; o.w.y = ny; return false;
+}
+function unwall(o) {   /* 3D.103 someone left standing on a wall tile (a wall built on top of them, an old save) steps off to the nearest open tile */
+  if (!o.w || !solidWall(o.w.x, o.w.y)) return; const t = Wd.nearestWalkable ? Wd.nearestWalkable(world, Math.floor(o.w.x), Math.floor(o.w.y)) : null; if (!t) return;
+  const g = { x: t.x + .5, y: t.y + .5 }, dx = g.x - o.w.x, dy = g.y - o.w.y, d = Math.hypot(dx, dy) || 1, sp = Math.min(d, .03); o.w.x += dx / d * sp; o.w.y += dy / d * sp; o.moving = true;
 }
 // returns 'arrived' | 'moving' | 'fail'.  goal = live world point.
 const TUNE = { move: .6, work: 1.4, nfDmg: .5, eat: 1.5 };   /* 3D.49 eat: how much everyone eats and drinks (balance) */   /* 3D.41 nfDmg: damage multiplier for people whose job isn't a fighting one (militia, cornered civilians) */   /* V3D.20 move: everyone walks at 60% of the old pace so the steps match the ground covered; V3D.21 work: on the job they work 40% faster to make up for the longer walks */
@@ -1509,7 +1517,7 @@ function steer(o, p, sp) {
   const a = Math.atan2(dy, dx), wrap = (v) => Math.atan2(Math.sin(v), Math.cos(v)); if (o.hd == null || o.hdT !== tick - 1) o.hd = a; o.hdT = tick;
   const R = Math.max(.12, Math.min(.55, d * .45)), mt = sp / R, df = wrap(a - o.hd); o.hd += Math.max(-mt, Math.min(mt, df)); if (Math.abs(wrap(a - o.hd)) > 1.7) o.hd = a;
   const nx = o.w.x + Math.cos(o.hd) * sp, ny = o.w.y + Math.sin(o.hd) * sp;
-  if (Wd.walkable(world, Math.floor(nx), Math.floor(ny)) || Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y))) { o.w.x = nx; o.w.y = ny; } else { o.hd = a; o.w.x += dx / d * sp; o.w.y += dy / d * sp; }
+  if ((Wd.walkable(world, Math.floor(nx), Math.floor(ny)) || Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y))) && !(solidWall(nx, ny) && !solidWall(o.w.x, o.w.y))) { o.w.x = nx; o.w.y = ny; } else { o.hd = a; const fx = o.w.x + dx / d * sp, fy = o.w.y + dy / d * sp; if (!solidWall(fx, fy) || solidWall(o.w.x, o.w.y)) { o.w.x = fx; o.w.y = fy; } else if (!solidWall(fx, o.w.y)) o.w.x = fx; else if (!solidWall(o.w.x, fy)) o.w.y = fy; }
   return false;
 }
 function followPath(o, goal, sp) {
@@ -3564,7 +3572,7 @@ const GUIDE = [
   { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare scrap. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
   { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
   { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workbench and tap it. An Engineer working there makes research points faster. Research unlocks gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
-  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Barricade or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with scrap.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
+  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Fence or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with scrap.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
   { name: 'Go Out There', desc: 'Send an expedition', hint: 'EXPEDITION → pick a place, a risk level and a squad. Trips run in real time, even while the game is closed, and bring back supplies, scrap and sometimes gear or new survivors.', done: () => !!S.trip || (S.expCount || 0) > 0, parts: 5, ren: 6 },
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
 ];
@@ -3612,7 +3620,7 @@ const OBJ_GUIDE = {
   'Gear Up': () => bOf('armory').length ? { reqs: [{ label: 'Spare scrap for gear', ok: S.mat >= 4, detail: `${Math.floor(S.mat)} scrap` }], spots: bSpots(['armory']), act: { label: 'Open People', fn: () => { closeP(); showSurvivors(); } } } : buildObj('armory')(),
   'Train Up': () => ({ reqs: [{ label: 'Any one of: Gym, Library or Lounge', ok: ['gym', 'library', 'lounge'].some((t) => canPay(bCost(DEFS[t]))), detail: 'You only need one. Each trains a different stat: Gym = Strength, Library = Intelligence, Lounge = Charisma.' }], spots: [], act: { label: 'Pick one to build', fn: () => { bCat = 'train'; showBuild(); } } }),   /* 3D.30: any one counts */
   'Research': () => { const ws = bOf('workshop')[0]; return ws ? { reqs: [{ label: 'Research points', ok: (S.rp || 0) >= Math.min(...Object.values(RESEARCH).map((r) => r.rp)), detail: `${Math.floor(S.rp || 0)} RP: the workshop makes more` }], spots: bSpots(['workshop']), act: { label: 'Open the Workshop', fn: () => showBuildingInfo(ws, 'research') } } : buildObj('workshop')(); },
-  'Hold the Line': () => { const wd = Wd.WALL_DEFS.wood; return { reqs: [{ label: `Walls: ${world.walls.size}/10`, ok: world.walls.size >= 10 }, { label: `Wood Barricade: ${costShort(bCost(wd))} each`, ok: canPay(bCost(wd)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}` }], spots: [], act: { label: 'Place walls', fn: () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); } } }; },
+  'Hold the Line': () => { const wd = Wd.WALL_DEFS.wood; return { reqs: [{ label: `Walls: ${world.walls.size}/10`, ok: world.walls.size >= 10 }, { label: `Wood Fence: ${costShort(bCost(wd))} each`, ok: canPay(bCost(wd)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}` }], spots: [], act: { label: 'Place walls', fn: () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); } } }; },
   'Go Out There': () => ({ reqs: [{ label: 'A free squad member', ok: S.sv.some((q) => q.hp > q.max * .5 && !['down', 'away', 'errand', 'hospital'].includes(q.mode)) }], spots: [], act: { label: 'Open Explore', fn: () => { closeP(); showExpedition(); } } }),
   'More Land': () => { const e = expandInfo(); return { reqs: e ? [{ label: `Renown ${e.n.ren}`, ok: S.ren >= e.n.ren, detail: `you have ${Math.floor(S.ren)}` }, { label: costShort(bCost(e.n)), ok: canPay(bCost(e.n)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}  ⚙ ${Math.floor(S.mat)}` }] : [], spots: [], act: { label: 'Open Town', fn: () => { closeP(); showTown(); } } }; },
 };
@@ -4715,7 +4723,9 @@ function tryWall(x, y, type) {
   if (postAt(x, y)) { say('A guard post is in the way.'); return; }
   const ex = Wd.wallAt(world, x, y), k = Wd.key(x, y);
   if (ex && ex.type === type) { if (!confirmTile('w', x, y, `Tap the ${wd.name} again to remove it.`)) return; world.walls.delete(k); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); saveGame(); ui(); return; }
-  if (ex && type === 'metal' && ex.type === 'wood') { const diff = wd.mat; if (S.mat < diff) { say('Not enough scrap.'); return; } S.mat -= diff; ex.type = 'metal'; ex.broken = false; ex.max = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); ex.hp = ex.max; say('Upgraded to Metal Wall.'); saveGame(); ui(); return; }
+  if (ex && wd.lvl && (Wd.WALL_DEFS[ex.type].lvl || 0) && wd.lvl > Wd.WALL_DEFS[ex.type].lvl) {   /* 3D.103 wall tiers: building a stronger wall on a weaker one upgrades it in place (half of the old one's cost back) */
+    if ((wd.tier || 1) > hqTier()) { say(wd.name + ' needs the ' + hqName(wd.tier) + '.'); return; } if (!canPay(bCost(wd))) { say('Not enough: need ' + missText(bCost(wd)) + '.'); return; }
+    payCost(bCost(wd)); refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); const old = Wd.WALL_DEFS[ex.type].name; ex.type = type; ex.broken = false; ex.max = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); ex.hp = ex.max; Wd.bump(world); checkPerimeter(); say(old + ' upgraded to ' + wd.name + '.'); saveGame(); ui(); return; }
   if (ex) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
   if (wd.rank > S.rank) { say(wd.name + ' needs Haven rank ' + wd.rank + '.'); return; } if ((wd.tier || 1) > hqTier()) { say(wd.name + ' needs the ' + hqName(wd.tier) + '.'); return; }
   if (Wd.isRoad(world, x, y) && type !== 'gate') { say('Use a Gate to close a road.'); return; }
@@ -4816,7 +4826,7 @@ const BDESC = {
   ammofactory: 'Needs power (2). A Mechanic makes 64 rounds a day for 16 scrap: what a big town of gunners needs.',
 };
 const BCAT = [['live', 'Living', ['tent', 'bonfire', 'barrel', 'farm', 'canteen', 'crates', 'bench', 'scrapyard', 'lumber', 'quarry', 'generator', 'fuelstill', 'radio', 'pump', 'greenhouse', 'coldstore']], ['care', 'Care', ['medic']],
-  ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:gate', 'wall:metal', 'post', 'trap:spikes', 'trap:wire', 'trap:lure', 'armory', 'ammobench', 'ammofactory', 'barracks']]];
+  ['train', 'Train', ['gym', 'library', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:palisade', 'wall:metal', 'wall:gate', 'post', 'trap:spikes', 'trap:wire', 'trap:lure', 'armory', 'ammobench', 'ammofactory', 'barracks']]];
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to fit a box */
   { const u = G3D && window.ZH3D && ZH3D.ready && ZH3D.bthumb && ZH3D.bthumb(k, Math.round(bw * 2), Math.round(bh * 2)); if (u) return `<img src="${u}" style="width:${bw}px;height:${bh}px;object-fit:contain" alt="">`; }   /* V3D.24: picture of the coded 3D building */
@@ -4824,14 +4834,16 @@ function bImg(k, bw, bh) {   /* building sprite scaled up with crisp pixels to f
   const f = Math.min(bw / w, bh / h), sc = f >= 1 ? Math.floor(f * 4) / 4 : f;   /* V2.32: V7 buildings are bigger than the card, so shrink to fit */ return `<img class="pix" src="${buildIcon(k)}" style="width:${Math.round(w * sc)}px;height:${Math.round(h * sc)}px;max-width:none;max-height:none" alt="">`;
 }
 function buildLock(k) { const d = DEFS[k]; if ((d.tier || 1) > hqTier()) return 'Needs ' + hqName(d.tier); if (S.rank < d.rank) return `Rank ${d.rank}`; if (!researched(d.res)) return 'Research: ' + (RESEARCH[d.res] ? RESEARCH[d.res].name : d.res); return ''; }
+function propPic(k, fb) {   /* 3D.103 Build menu: the real 3D look of walls, gates, roads, posts and traps (falls back to the flat icon) */
+  const u = G3D && window.ZH3D && ZH3D.ready && ZH3D.pthumb && ZH3D.pthumb(k, 208, 156); return u ? `<img src="${u}" style="width:104px;height:78px;object-fit:contain" alt="">` : fb; }
 function wallIcon(t) { if (GLASS && window.ZHIcons) return ZHIcons.svg(t === 'gate' ? 'door' : t === 'metal' ? 'wall' : 'wood', 64); return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
 function showBuild() {
   endBuildMode(true); closeP(); const cat = BCAT.find((c) => c[0] === bCat) || BCAT[0];
   const cards = cat[2].map((k) => {
-    if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">${GLASS && window.ZHIcons ? ZHIcons.svg('road', 64) : '🛣️'}</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
-    if (k === 'post') return `<button class="bcard" data-tool="post"><div class="im">${GLASS && window.ZHIcons ? ZHIcons.svg('post', 64) : `<img class="pix" src="${postIcon()}" style="width:84px" alt="">`}</div><div class="nm">Guard Post</div><div class="co">⚙ ${POST_COST} · ${(S.posts || []).length}/${postMax()}</div></button>`;
-    if (k.startsWith('trap:')) { const t = k.slice(5), td = TRAP_DEFS[t], lk = S.rank < td.rank; return `<button class="bcard${lk ? ' lock' : ''}" data-trap="${t}"><div class="im" style="font-size:46px">${td.icon}</div><div class="nm">${td.name}</div><div class="co">${lk ? '🔒 Rank ' + td.rank : costShort(bCost(td))}</div></button>`; }
-    if (k.startsWith('wall:')) { const t = k.slice(5), wd = Wd.WALL_DEFS[t], lk = S.rank < wd.rank || (wd.tier || 1) > hqTier(); return `<button class="bcard${lk ? ' lock' : ''}" data-wall="${t}"><div class="im" style="font-size:46px">${wallIcon(t)}</div><div class="nm">${wd.name}</div><div class="co">${lk ? '🔒 ' + ((wd.tier || 1) > hqTier() ? hqName(wd.tier) : 'Rank ' + wd.rank) : costShort(bCost(wd))}</div></button>`; }
+    if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">${propPic('road', GLASS && window.ZHIcons ? ZHIcons.svg('road', 64) : '🛣️')}</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
+    if (k === 'post') return `<button class="bcard" data-tool="post"><div class="im">${propPic('post', GLASS && window.ZHIcons ? ZHIcons.svg('post', 64) : `<img class="pix" src="${postIcon()}" style="width:84px" alt="">`)}</div><div class="nm">Guard Post</div><div class="co">⚙ ${POST_COST} · ${(S.posts || []).length}/${postMax()}</div></button>`;
+    if (k.startsWith('trap:')) { const t = k.slice(5), td = TRAP_DEFS[t], lk = S.rank < td.rank; return `<button class="bcard${lk ? ' lock' : ''}" data-trap="${t}"><div class="im" style="font-size:46px">${propPic('trap:' + t, td.icon)}</div><div class="nm">${td.name}</div><div class="co">${lk ? '🔒 Rank ' + td.rank : costShort(bCost(td))}</div></button>`; }
+    if (k.startsWith('wall:')) { const t = k.slice(5), wd = Wd.WALL_DEFS[t], lk = S.rank < wd.rank || (wd.tier || 1) > hqTier(); return `<button class="bcard${lk ? ' lock' : ''}" data-wall="${t}"><div class="im" style="font-size:46px">${propPic('wall:' + t, wallIcon(t))}</div><div class="nm">${wd.name}</div><div class="co">${lk ? '🔒 ' + ((wd.tier || 1) > hqTier() ? hqName(wd.tier) : 'Rank ' + wd.rank) : costShort(bCost(wd))}</div></button>`; }
     const d = DEFS[k]; if (!d || d.hidden) return ''; const lk = buildLock(k);
     return `<button class="bcard${lk ? ' lock' : ''}" data-b="${k}"><div class="im">${bImg(k, 104, 78)}</div><div class="nm">${d.name}</div><div class="co">${lk ? '🔒 ' + lk.replace('Research: ', '') : costShort(bCost(d))}</div></button>`;
   }).join('');
@@ -5200,7 +5212,7 @@ const GUIDE_TXT = [
   ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost wood, scrap and (later) stone, and a little scrap upkeep each day.'],
   ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Barrels and Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
-  ['Walls', 'Build → Defend → Wood Barricade, Stone Wall or Gate, then tap tiles around the town. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
+  ['Walls', 'Build → Defend → Wood Fence (camp), Log Palisade (Lodge), Stone Wall (Fort) or Gate, then tap tiles around the town. Build a stronger wall on a weaker one to upgrade it. Close every gap to SEAL the perimeter. Broken walls turn to rubble and are repaired with scrap.'],
   ['Fighting', 'Guards, Police and Scavengers fight. Everyone else runs inside when zombies come. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
   ['Running the town', 'The goal is a bigger town with more people. Beds give people somewhere to sleep, but the town\'s rank limits how many it can take in (8 at rank 1, +4 each rank, +2 per territory), so upgrade the town to grow. An upgrade needs enough people living here and enough buildings standing; you choose when to press Upgrade. The horde grows a little every day, whatever you build; each town upgrade brings a newcomer, supplies and healing. Newcomers come sooner to a town with spare beds, food and water. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store people start leaving. When someone is down, nobody walks into zombies on their own: tap Send rescue on the alert and fighters clear the way. When a boss comes, tap Focus the boss and every fighter goes for it together (+30% damage).'],
   ['Professions', 'Guards are tough wall-holders (+20% HP, take 20% less damage). Police Officers shoot further, spot sneaking raiders sooner and hit raiders harder. Scavengers loot and fetch wood and scrap. Medics patch people up in the field (to 60%) and get the downed back up Wounded; a medical building heals the rest. Engineers build and repair fastest. Cooks stretch every ration. Farmers grow food and water. Mechanics run the Generator, Fuel Still, Ammo Bench and Factory and the Electric Pump. Civilians fill any job and carry twice the load. Someone in the wrong job works at 75%.'],
@@ -5417,7 +5429,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 function simTick() {
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
