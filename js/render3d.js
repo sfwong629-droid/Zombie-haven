@@ -904,7 +904,7 @@ async function load(url) {   // hosts that can't serve .glb get a base64 copy ne
   for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
   return parse(u.buffer);
 }
-let MALE = null, LITE = null;
+let MALE = null, LITE = null, ZMALE = null;   /* 3D.107 ZMALE: the V-pose male, kept for reskinned zombies (their textures fit its UVs) */
 const JOB_SHIRT = { Mechanic: '#3f5f7f', Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
 const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
 const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
@@ -1011,7 +1011,7 @@ function zombieOwn(type) {
 const OWN_SHARE = { walker: .7 };
 function zombieV2(type, female, v, noOwn = false) {
   const own = !noOwn && Math.random() < (OWN_SHARE[type] ?? 1) && zombieOwn(type); if (own) return own;   // 3D.33: runners, brutes and bloated always wear their own model; walkers 70% (the rest a reskinned survivor for variety)
-  const src = female ? FEMALE3D : MALE, tx = src && src.zTex2; if (!tx || !tx.length) return null;
+  const src = female ? FEMALE3D : (ZMALE || MALE), tx = src && src.zTex2; if (!tx || !tx.length) return null;
   const key = 'v2|' + type + '|' + (female ? 'f' : 'm') + v, t = ZSKIN_TINT[type] || [1, 1, 1];
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: tx[v % tx.length], color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
@@ -1044,12 +1044,14 @@ function fitGear(gear, srcs) {
     if (ok) { WMODEL[k] = k; WCLASS[k] = WCLASS[ref]; }
   }
 }
+const FISTY = (c) => /^(punch|melee_|gun_|pistol|work_|carry_|rescue|zombie_attack|shove|grabbed)/.test(c || ''), HQX = new THREE.Quaternion(), HEX = new THREE.Euler();
 class Actor {
   constructor(src, mat, lite, faces = null) {
     this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
     this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
     this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
     this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
+    this.fing = []; if (src.m3) this.o.traverse((n) => { if (n.isBone && /^fingers\.?[LR]$/.test(n.name)) this.fing.push([n, n.quaternion.clone()]); });   /* 3D.107 the original male's finger bones */
     this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite; this.spd = 0;
     this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
     if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
@@ -1065,6 +1067,7 @@ class Actor {
     this.cur = n; this.name = name;
     this.setExpr(EXPR_OF_CLIP[name] || this.mood || 'neutral');
   }
+  hands() { if (!this.fing.length) return; const fist = FISTY(this.name) || (this.weapon && /hold|walk|idle|run/.test(this.name)); const ang = fist ? 2.007 : .14; HQX.setFromEuler(HEX.set(ang, 0, 0)); for (const [b, q0] of this.fing) b.quaternion.copy(q0).multiply(HQX); }   /* 3D.107 fist when fighting, holding a tool or carrying; open otherwise (as on the Animation Board) */
   setExpr(e) { if (this.faces && e !== this.expr) { this.expr = e; const m = this.faces(e); for (const k of this.skin) k.material = m; } }
   setMood(e) { this.mood = e; if (!EXPR_OF_CLIP[this.name]) this.setExpr(e || 'neutral'); }   // V3D.14: the face follows the survivor's emote between moves
   setWeapon(kind) { if (kind === this.weapon) return; this.weapon = kind; for (const k in this.w) this.w[k].visible = k === kind; }
@@ -1318,7 +1321,7 @@ function setHair(a, s) {   // 3D.31 add / swap the hairstyle pieces; pieces on t
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
 const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']), STRIKE_RE = /punch|swing|fire|attack|blunt|shoot/;
-const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
+const TOOL_OF = { work_barricade: 'hammer', work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker',   /* 3D.100 owner: punching at work: every outdoor post has a work clip now (the 2D hoe swing came through as a punch) */
   irrig: 'work_dig', barrel: 'work_tinker', crates: 'carry_idle', bench: 'work_hammer', scrapyard: 'work_tinker', lumber: 'work_chop', quarry: 'work_dig', bonfire: 'work_tinker', radio: 'work_tinker', track: 'idle', range: 'idle', sparring: 'punch' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
@@ -1332,6 +1335,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
   else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
   else if (still && s.mode === 'chat') c = 'talk';
   else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';
+  else if (still && s.mode === 'fix' && has('work_barricade')) c = 'work_barricade';   /* 3D.107 boarding up a wall */
   else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
   else if (still && s.mode === 'loot') { const bg = (G.S.bags || []).find((q) => q.id === s.lootId); if (bg && Math.hypot(bg.w.x - s.w.x, bg.w.y - s.w.y) < .7) c = 'pickup'; }   /* 3D.28: only bend down at the bag itself */
   else if (anim === 'walk' && !hold && a.src === FEMALE3D && !CALM_NOT.has(s.mode) && !s.target) c = 'walk_f';   /* 3D.28: the relaxed walk only in calm moments; in a fight she runs like everyone */
@@ -1347,8 +1351,10 @@ function personAnim(a, s, dt) {
   if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
-  if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
-  const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }
+  if (s.para > 0 && a.acts.grabbed) { a.attacking = false; a.play('grabbed'); return; }   /* 3D.107 hooked by a Lasher: struggles, breaks free */
+  if (s.reloadT > 0 && hold === 'gun' && !a.isMov() && a.acts.gun_reload) { a.attacking = false; a.play('gun_reload'); return; }   /* 3D.107 the real rifle reload */   /* 3D.30: pushing the cart wins over the carry clip */
+  const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); if (a.w.plank) a.w.plank.visible = day === 'work_barricade'; a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
   if (ATTACK.has(anim) && anim === 'shoot' && hold && a.isMov() && a.spd > .15) { a.attacking = false; a.play(hold + '_hold_walk'); return; }   /* 3D.100 owner (bow: frozen and sliding): a shooter stepping back between shots walks with the weapon up instead of gliding in the aim pose */
   if (ATTACK.has(anim)) {
@@ -1365,6 +1371,7 @@ function personAnim(a, s, dt) {
   // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
   const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || s.mode === 'cutRun' || (s.mode === 'chase' && !hold));
   if (anim === 'walk' && rush && a.spd > (a.name === 'run' ? .65 : .8)) { a.play('run'); return; }   /* 3D.45: only sprint when actually moving fast */
+  if (anim === 'walk' && !hold && s.hp < s.max * .3 && a.acts.limp_walk && !rush) { a.play('limp_walk'); return; }   /* 3D.107 badly hurt: limps */
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
@@ -1425,7 +1432,7 @@ function syncPeople(dt, vis) {
     { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
       if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
     { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
-        if (s.reloadT > 0 && !a.isMov()) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && a.beam.visible && (s.sleeping || s.mode === 'campfire' || s.mode === 'chat' || s.mode === 'useFacility' || s.mode === 'work' || s.mode === 'hospital' || s.mode === 'down' || (!a.isMov() && !['chase', 'attack', 'recover', 'postCombat'].includes(s.mode) && s.purpose !== 'patrol'))) a.beam.visible = false;   /* 3D.62 owner: the flashlight's orange pool stayed on round people asleep or standing about; it's on only while they walk or fight at night */ tickMixer(a, dt, vis); if (TRACK.on) trackActor(a, s, dt);
+        if (s.reloadT > 0 && !a.isMov() && !a.acts.gun_reload) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && a.beam.visible && (s.sleeping || s.mode === 'campfire' || s.mode === 'chat' || s.mode === 'useFacility' || s.mode === 'work' || s.mode === 'hospital' || s.mode === 'down' || (!a.isMov() && !['chase', 'attack', 'recover', 'postCombat'].includes(s.mode) && s.purpose !== 'patrol'))) a.beam.visible = false;   /* 3D.62 owner: the flashlight's orange pool stayed on round people asleep or standing about; it's on only while they walk or fight at night */ tickMixer(a, dt, vis); if (TRACK.on) trackActor(a, s, dt);
   }
   const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
   if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
@@ -1589,6 +1596,7 @@ const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.
 // so the feet stay planted instead of skating or running in place.
 const STRIDE = {
   v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .550, zombie_run: 1.301 },
+  m3: { walk: 1.045, walk_f: .918, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: .854, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
   v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .561, zombie_run: 1.291 },
   v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
 };
@@ -1600,7 +1608,7 @@ function tickMixer(a, dt, vis) {
   const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.15, Math.min(8, a.spd / st));   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
-  if (a.acc >= every) { a.mixer.update(a.acc); a.acc = 0; }
+  if (a.acc >= every) { a.mixer.update(a.acc); a.hands(); a.acc = 0; }
   const cs = seen && a.cur && CLIP_SFX[a.name]; if (cs) { const d = a.cur.getClip().duration, ph = d ? (a.cur.time % d) / d : 0; if (a.sfxPh != null && a.sfxPh < cs[0] && ph >= cs[0] && window.SND) SND.play(cs[1]); a.sfxPh = ph; } else a.sfxPh = null;   /* 3D.57 the axe and hammer sound when the tool lands */
 }
 /* 3D.58 animation tracker: for each survivor, compares how fast the body really moves (over the last .3 s) with what the
@@ -1776,7 +1784,7 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
   const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); } if (!o.zt) { setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s); }   /* 3D.28: the equipped hat shows in the picture */ scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
-  a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
+  a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.hands(); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
   let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
   c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, o.elev ?? .25, 5)); c.lookAt(tgt);
@@ -1802,7 +1810,7 @@ function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the su
   const c = pRig.cam, hh = o.half || .8, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy ?? .75, 0); c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
   const out = [], prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha(), g2 = R.cv.getContext('2d'), row = W * 4;
   for (const [clip, t] of o.frames) {
-    a.play(clip, false, true); if (a.cur) { a.cur.time = 0; } a.mixer.update(0); if (a.cur) a.cur.time = t; a.mixer.update(0); a.o.updateMatrixWorld(true);
+    a.play(clip, false, true); if (a.cur) { a.cur.time = 0; } a.mixer.update(0); if (a.cur) a.cur.time = t; a.mixer.update(0); a.hands(); a.o.updateMatrixWorld(true);
     renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
     const im = g2.createImageData(W, H); for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
     if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96))); g2.putImageData(im, 0, 0); out.push(R.cv.toDataURL('image/png')); }
@@ -1870,18 +1878,19 @@ window.ZH3D = { zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: 
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
-  const [m, l, t] = await Promise.all([load(CHAR_V2 ? 'assets/characters/ai3d_v2/survivor_v2.glb' : base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
+  const [m, l, t] = await Promise.all([load(CHAR_V2 ? 'assets/characters/ai3d_v2/survivor_m3.glb' : base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
   for (const src of [m, l]) { src.body = null; src.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') src.body = o; }); if (!src.body) src.scene.traverse((o) => { if (o.isSkinnedMesh && !src.body) src.body = o; }); }
   m.bodyImage = m.body.material.map && m.body.material.map.image;
   toonScene(m.scene, null, CHAR_V2); toonScene(l.scene);
-  MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2;
+  MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2; MALE.m3 = CHAR_V2; if (CHAR_V2) MALE.stride = STRIDE.m3;
+  if (CHAR_V2) { try { const z = await load('assets/characters/ai3d_v2/survivor_v2.glb'); z.scene.traverse((o) => { if (o.isSkinnedMesh && !z.body) z.body = o; }); toonScene(z.scene, null, true); z.v2 = true; ZMALE = z; } catch (e) { console.warn('zombie base model', e); } }
   if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); FEMALE3D = f; } catch (e) { console.warn('female model', e); } }
   if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
-  if (CHAR_V2) for (const id of ['riot']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
+  if (CHAR_V2) for (const id of ['riot']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
-  if (CHAR_V2) for (const [src, k] of [[MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
+  if (CHAR_V2) for (const [src, k] of [[ZMALE || MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
