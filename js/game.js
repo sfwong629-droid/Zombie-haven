@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.113', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.114', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3816,8 +3816,9 @@ const FACTIONS = { toll: { name: 'The Toll Kings', icon: '👑', desc: 'A warlor
 function fac(k) { S.fac = S.fac || {}; return (S.fac[k] ||= { att: k === 'green' ? 10 : k === 'toll' ? -20 : 0, met: false }); }
 const facOk = (k) => !(fac(k).goneUntil > S.day);
 function facAttText(a) { return a >= 60 ? 'Friendly' : a >= 25 ? 'Warm' : a > -25 ? 'Wary' : a > -60 ? 'Hostile' : 'At war'; }
-function factionsHtml() { return crisisCard() + `<div class="card"><b>Factions</b>${Object.entries(FACTIONS).map(([k, F]) => { const f = (S.fac || {})[k]; return `<div class="row" style="gap:6px;margin-top:3px"><span>${F.icon}</span><span class="sp"><b>${F.name}</b><br><small>${f && f.met ? `${facAttText(f.att)} (${Math.round(f.att)})${f.ally ? ' · ally' : ''}${f.goneUntil > S.day ? ` · beaten, regroup day ${f.goneUntil}` : ''}` : 'Not met yet'} · ${F.desc}</small></span></div>`; }).join('')}</div>`; }
-function allyDaily() { const g = (S.fac || {}).green; if (g && g.ally && S.day % 4 === 0) { S.food = keepCap(supplyCap(), S.food, 6); S.water = keepCap(supplyCap(), S.water, 6); note('routine', '🌿 Greenwater sent their allies 6 food and 6 water.'); } const t = (S.fac || {}).toll; if (t && t.goneUntil && t.goneUntil === S.day) { t.goneUntil = 0; t.att = -40; t.defied = 0; t.str = .6; note('important', '👑 The Toll Kings have regrouped on the highway (weaker than before).'); } }
+function factionsHtml() { return crisisCard() + `<div class="card"><b>🎯 Stronghold practice</b><div class="sm">Try the squad controls on any stronghold or faction camp. Nothing is lost.</div><button class="act" id="shPrac">Practice</button></div>` + `<div class="card"><b>Raids</b><div class="sm">Hit a faction camp with up to ${shCap(true)} people: steal their stockpile, free their prisoners or take out their leader. They will remember.</div><div class="row" style="gap:6px;flex-wrap:wrap">${['raid_toll', 'raid_green'].map((k) => `<button class="act" data-raid="${k}" ${expLocked(k) ? 'disabled' : ''} title="${esc(expLocked(k))}">${EXP_DEFS[k].icon} ${EXP_DEFS[k].name.replace('Raid: ', '')}${expLocked(k) ? ` <small>(${esc(expLocked(k))})</small>` : ''}</button>`).join('')}</div></div>` + `<div class="card"><b>Factions</b>${Object.entries(FACTIONS).map(([k, F]) => { const f = (S.fac || {})[k]; return `<div class="row" style="gap:6px;margin-top:3px"><span>${F.icon}</span><span class="sp"><b>${F.name}</b><br><small>${f && f.met ? `${facAttText(f.att)} (${Math.round(f.att)})${f.ally ? ' · ally' : ''}${f.goneUntil > S.day ? ` · beaten, regroup day ${f.goneUntil}` : ''}` : 'Not met yet'} · ${F.desc}</small></span></div>`; }).join('')}</div>`; }
+function allyDaily() { for (const k of ['toll', 'green']) { const F = (S.fac || {})[k]; if (F && F.revenge && S.day >= F.revenge) { F.revenge = 0; if (!(F.goneUntil > S.day)) { note('important', k === 'toll' ? '👑 The Toll Kings ride in for revenge!' : '🌿 Greenwater fighters come for what you took!'); spawnRaid(k); } } }   /* 3D.114 raids have consequences */
+  const g = (S.fac || {}).green; if (g && g.ally && S.day % 4 === 0) { S.food = keepCap(supplyCap(), S.food, 6); S.water = keepCap(supplyCap(), S.water, 6); note('routine', '🌿 Greenwater sent their allies 6 food and 6 water.'); } const t = (S.fac || {}).toll; if (t && t.goneUntil && t.goneUntil === S.day) { t.goneUntil = 0; t.att = -40; t.defied = 0; t.str = .6; note('important', '👑 The Toll Kings have regrouped on the highway (weaker than before).'); } }
 /* story events: one a day at most; some are chains that continue a few days later */
 const pickSv = (f = () => true) => { const c = S.sv.filter((q) => q.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(q.mode) && f(q)); return c.length ? c[Math.floor(rnd() * c.length)] : null; };
 const storyLater = (id, days) => { S.storyQ = S.storyQ || []; S.storyQ.push({ id, day: S.day + days }); };
@@ -4316,6 +4317,8 @@ const EXP_DEFS = {
   sh_summer: { name: 'The Burning Refinery', icon: '☀️', desc: 'A seasonal stronghold: the refinery has smouldered for years. Summer only.', risks: ['high'], lock: () => seasonLock('summer'), loot: { fuel: [3, 5], mat: [3, 5], ammo: [8, 12] }, gear: 3, stronghold: true, lines: ['Heat shimmers over the tanks.'] },
   sh_autumn: { name: 'The Harvest Fair', icon: '🍂', desc: 'A seasonal stronghold: the old county fairground. Autumn only.', risks: ['high'], lock: () => seasonLock('autumn'), loot: { food: [4, 6], cloth: [2, 4], wood: [4, 6] }, gear: 3, stronghold: true, lines: ['Rides creak in the wind.'] },
   sh_winter: { name: 'The Frozen Depot', icon: '❄️', desc: 'A seasonal stronghold: a snowed-in army depot. Winter only.', risks: ['high'], lock: () => seasonLock('winter'), loot: { mat: [4, 6], stone: [3, 5], ammo: [10, 14] }, gear: 3.5, stronghold: true, lines: ['Snow drifts against the hangar doors.'] },
+  raid_toll: { name: "Raid: the Toll Kings' fort", icon: '👑', desc: 'Hit the Toll Kings where they live: a truck yard fort on the highway. Pick a goal before you go in.', risks: ['high'], lock: () => { const f = (S.fac || {}).toll; return !f || !f.met ? 'Meet the Toll Kings first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : ''; }, loot: { mat: [4, 6], fuel: [1, 3], ammo: [6, 10] }, gear: 2, stronghold: true, raid: true, lines: ['The squad creeps up on the fort.'] },
+  raid_green: { name: 'Raid: Greenwater Commune', icon: '🌿', desc: 'Greenwater is soft and well fed. Raiding them ends any friendship for good.', risks: ['high'], lock: () => { const f = (S.fac || {}).green; return !f || !f.met ? 'Meet Greenwater first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : ''; }, loot: { food: [5, 8], water: [3, 5], cloth: [2, 3] }, gear: 1, stronghold: true, raid: true, lines: ['The squad slips past the orchard.'] },
   warehouse: { name: 'Warehouse District', icon: '🏭', desc: 'Scrap, and plenty of it.',                  risks: ['medium', 'high'],  lock: () => (S.rank >= 3 ? '' : 'Needs Haven level 7'), loot: { mat: [3, 5] }, lines: ['The squad slips between loading docks.', 'Crates of hardware, half of it salvageable.', 'A forklift pins a stack of steel; they cut it free.'] },
 };
 const seasonIdx = () => Math.floor((S.day - 1) / SEASON_DAYS);
@@ -4358,7 +4361,7 @@ const LEAD_TEXT = { mall: ['Someone saw lights in the old mall: the shops were n
 function leadsTidy() { const h = nowH(); S.leads = (S.leads || []).filter((l) => l.untilH > h); }
 function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time), at most two waiting; the first one comes on day 1 */
   leadsTidy(); const first = !S.leadSeen && S.day === 1 && S.hour === 9; if (!first && ![7, 15].includes(S.hour)) return; if ((S.leads || []).length >= 2 || (!first && rnd() > .7)) return;
-  const opts = Object.keys(EXP_DEFS).filter((k) => !expLocked(k)), wantB = needsBanner() && !bannersFree() && opts.includes('clinic') && !(S.leads || []).some((l) => l.dest === 'clinic'), seas = opts.find((k) => k.startsWith('sh_') && !(S.leads || []).some((l) => l.dest === k)), dest = first ? 'houses' : wantB && rnd() < .6 ? 'clinic' : seas && rnd() < .5 ? seas : opts[Math.floor(rnd() * opts.length)], d = EXP_DEFS[dest], risk = d.risks[Math.floor(rnd() * d.risks.length)];
+  const opts = Object.keys(EXP_DEFS).filter((k) => !expLocked(k) && !EXP_DEFS[k].raid), wantB = needsBanner() && !bannersFree() && opts.includes('clinic') && !(S.leads || []).some((l) => l.dest === 'clinic'), seas = opts.find((k) => k.startsWith('sh_') && !(S.leads || []).some((l) => l.dest === k)), dest = first ? 'houses' : wantB && rnd() < .6 ? 'clinic' : seas && rnd() < .5 ? seas : opts[Math.floor(rnd() * opts.length)], d = EXP_DEFS[dest], risk = d.risks[Math.floor(rnd() * d.risks.length)];
   const T = LEAD_TEXT[dest] || ['A new place to search']; S.leadSeen = true;
   (S.leads ||= []).push({ id: 'l' + S.day + '_' + S.hour, dest, risk, text: T[Math.floor(rnd() * T.length)], untilH: nowH() + 10 });
   banner(`🧭 New lead: ${d.name}`); logEvent(`New lead: ${d.name} (${EXP_RISK[risk].label} risk, ${EXP_HOURS[risk]} h trip). Open Explore to send a squad. It's gone in about 10 hours.`, 'important'); ui();
@@ -4376,7 +4379,7 @@ function startExpedition0(destId, riskId, ids) {
   if (S.sv.length - ms.length < EXP_HOME_MIN) return { ok: false, why: `Keep at least ${EXP_HOME_MIN} survivors at home` };
   if (ms.some((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode))) return { ok: false, why: (ms.find((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)) || {}).name + ' is hurt or busy' };
   const pv = expPreview(destId, riskId, ms), take = (k, n) => { const g = Math.min(S[k], n); S[k] -= g; return g; };
-  if (d.stronghold && G3D && SH_DEFS[destId]) { if (S.sh) return { ok: false, why: 'A squad is already inside a stronghold' }; take('food', pv.need); take('water', pv.need); return startStronghold(destId, ids); }   /* 3D.108 */
+  if (d.stronghold && G3D && SH_DEFS[destId]) { if (S.sh) return { ok: false, why: 'A squad is already inside a stronghold' }; take('food', pv.need); take('water', pv.need); return startStronghold(destId, ids, { goal: expSel.goal }); }   /* 3D.108 */
   take('food', pv.need); take('water', pv.need);
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
   S.sv = S.sv.filter((q) => !ms.includes(q));
@@ -4641,7 +4644,7 @@ const vehReady = (k) => { const v = vehOf(k); return !!(v && !v.broken && !(v.re
 const vehWhyNot = (k) => { const v = vehOf(k); if (!v) return 'Not found yet'; if (v.waiting) return 'Waiting at the gate: needs a free Garage' + (v.need ? ' and ' + v.need : ''); if (v.restoring > 0) return `Being restored: ${v.restoring} day${v.restoring > 1 ? 's' : ''} left`; if (v.broken) return 'Broken down: needs a repair'; if ((S.fuel || 0) < VEH[k].fuel) return `Needs ${VEH[k].fuel} fuel`; return ''; };
 const garageRoom = () => bOf('garage').filter((b) => !b.unpaid).length - Object.keys(VEH).filter((k) => k !== 'cart' && vehOf(k) && !vehOf(k).waiting).length;
 const vehSeats = () => (expSel.veh && VEH[expSel.veh] && vehReady(expSel.veh) && !(EXP_DEFS[expSel.dest] || {}).stronghold ? VEH[expSel.veh].seats : 0);
-const expMax = () => EXP_MAX_SQUAD + vehSeats();
+const expMax = () => (EXP_DEFS[expSel.dest] || {}).stronghold && G3D ? shCap(!!EXP_DEFS[expSel.dest].raid) : EXP_MAX_SQUAD + vehSeats();   /* 3D.114 strongholds up to 6, raids up to 8 */
 const vehLoot = (t) => (t.veh && !t.vehBroke ? VEH[t.veh].loot : 1);
 const vehSafe = (t) => (t.veh && !t.vehBroke ? VEH[t.veh].safe : 1);
 function vehBuildCart() { if (vehOf('cart')) return false; const c = VEH.cart.build; if ((S.wood || 0) < c.wood || S.mat < c.mat) { say(`A Hand Cart needs ${c.wood} wood and ${c.mat} scrap.`); return false; } S.wood -= c.wood; S.mat -= c.mat; S.veh = S.veh || {}; S.veh.cart = { wear: 0 }; say('🛒 The Hand Cart is ready for trips.', true); ui(); return true; }
@@ -4688,148 +4691,305 @@ function vehCard() {   /* the Explore screen: pick a vehicle for the trip, build
    through three areas and a boss room in real time, on a separate arena that the camera follows. Live calls: Focus the boss,
    Use a medkit, Fall back. The boss's strength is fixed, so a stronger squad is how you win. The town keeps running, slowed
    to a quarter speed. Losing never kills outright: anyone knocked down comes home Wounded, with a 4% chance they don't make it. ---- */
-const SH_AX = -110, SH_AY = 6, SH_AW = 10, SH_GAP = 2, SH_AH = 8;   /* the arena, well off the town map: three 10x8 rooms joined by 2-tile doors */
+/* ---- 3D.114 Strongholds and faction raids v2 (owner 11 Nov: "Do all four now", raids as camp maps with goals, squads of 6/8).
+   The arena is a set of rooms joined by doors, well off the town map:
+       side room (S)                    north wing (A)
+       entrance (R0) ── hall (R1) ─┤                 ├── boss room (B)
+                                        south wing (C)
+   Rooms wake up when one of the squad walks in. Movement uses a tile grid (BFS), so doors and walls matter.
+   Player control: select survivors (portraits or All), tap the floor to move, an enemy to attack, a door to open or close;
+   time runs at 25% while someone is selected. Stances (Attack, Hold, Guard, Pull back) and one ability per profession.
+   Explosives from the town's stock can be thrown where you tap. ---- */
+const SH_AX = -150, SH_AY = 2, SH_GW = 46, SH_GH = 19;
+const SH_ROOMS = { R0: [0, 7, 10, 8], S: [2, 1, 6, 5], R1: [11, 7, 10, 8], A: [22, 3, 10, 6], C: [22, 12, 10, 6], B: [33, 4, 12, 12] };   /* x, y, w, h in grid tiles */
+const SH_DOORS = [['R0', 'S', 4, 6, 2, 1], ['R0', 'R1', 10, 10, 1, 2], ['R1', 'A', 21, 7, 1, 2], ['R1', 'C', 21, 13, 1, 2], ['A', 'B', 32, 6, 1, 2], ['C', 'B', 32, 13, 1, 2]];   /* a, b, x, y, w, h */
 const SH_DEFS = {
   clinic: { rec: 175, areas: [
     { name: 'The Lobby', spawn: [['walker', 6], ['runner', 2]] },
     { name: 'The Wards', spawn: [['walker', 6], ['runner', 2], ['bloated', 1], ['spitter', 1]] },
     { name: 'The Operating Theatre', spawn: [['walker', 3]], boss: { type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011 } } ],
-    floor: ['#cfd6d2', '#d9d4c4', '#c9d3d6'], wall: '#e6ece6', props: 'clinic' },
+    floor: ['#cfd6d2', '#d9d4c4', '#c9d3d6'], wall: '#e6ece6', props: 'clinic', side: 'A supply closet', wings: ['The East Ward', 'The Storerooms'] },
   prison: { rec: 350, areas: [
     { name: 'The Outer Yard', spawn: [['walker', 7], ['runner', 2], ['riot', 1]] },
     { name: 'Cell Block C', spawn: [['walker', 6], ['riot', 2], ['brute', 1]] },
     { name: "The Warden's Yard", spawn: [['riot', 1], ['walker', 3]], boss: { type: 'riot', name: 'The Warden', hp: 860, atk: 14, big: 1.55, spd: .012 } } ],
-    floor: ['#a9a395', '#9a9a96', '#a9a395'], wall: '#7d7f84', props: 'prison' },
+    floor: ['#a9a395', '#9a9a96', '#a9a395'], wall: '#7d7f84', props: 'prison', side: 'The guard post', wings: ['Cell Block C', 'The Laundry'] },
 };
 Object.assign(SH_DEFS, {
   sh_spring: { rec: 450, areas: [ { name: 'The Potting Sheds', spawn: [['walker', 8], ['bloated', 2], ['spitter', 2]] }, { name: 'The Flooded Glasshouse', spawn: [['bloated', 2], ['sporehead', 1], ['walker', 6]] },
-    { name: 'The Pump House', spawn: [['bloated', 2], ['walker', 4]], boss: { type: 'bloated', name: 'The Mire Mother', hp: 1100, atk: 16, big: 1.9, spd: .009 } } ], floor: ['#8fa38a', '#9cb39a', '#7d9479'], wall: '#cfe0d6', props: 'clinic' },
+    { name: 'The Pump House', spawn: [['bloated', 2], ['walker', 4]], boss: { type: 'bloated', name: 'The Mire Mother', hp: 1100, atk: 16, big: 1.9, spd: .009 } } ], floor: ['#8fa38a', '#9cb39a', '#7d9479'], wall: '#cfe0d6', props: 'clinic', side: 'A seed store', wings: ['The Palm House', 'The Orchid Rooms'] },
   sh_summer: { rec: 450, areas: [ { name: 'The Gate Yard', spawn: [['burnt', 8], ['runner', 3]] }, { name: 'The Tank Farm', spawn: [['burnt', 7], ['brute', 1], ['rotbomb', 2]] },
-    { name: 'The Cracking Tower', spawn: [['burnt', 4], ['runner', 2]], boss: { type: 'brute', name: 'Cinder', hp: 1100, atk: 17, big: 1.7, spd: .012 } } ], floor: ['#a68f74', '#9a8166', '#8a6f58'], wall: '#6b5d52', props: 'prison' },
+    { name: 'The Cracking Tower', spawn: [['burnt', 4], ['runner', 2]], boss: { type: 'brute', name: 'Cinder', hp: 1100, atk: 17, big: 1.7, spd: .012 } } ], floor: ['#a68f74', '#9a8166', '#8a6f58'], wall: '#6b5d52', props: 'prison', side: 'A control room', wings: ['The Pipe Racks', 'The Pump Station'] },
   sh_autumn: { rec: 450, areas: [ { name: 'The Midway', spawn: [['walker', 8], ['runner', 3], ['rotbomb', 1]] }, { name: 'The Livestock Barns', spawn: [['walker', 6], ['dog', 3], ['lasher', 1]] },
-    { name: 'The Haunted Ride', spawn: [['lasher', 2], ['walker', 4]], boss: { type: 'lasher', name: 'The Scarecrow', hp: 1050, atk: 16, big: 1.7, spd: .013 } } ], floor: ['#b39064', '#a68458', '#9a7a52'], wall: '#8a5a32', props: 'prison' },
+    { name: 'The Haunted Ride', spawn: [['lasher', 2], ['walker', 4]], boss: { type: 'lasher', name: 'The Scarecrow', hp: 1050, atk: 16, big: 1.7, spd: .013 } } ], floor: ['#b39064', '#a68458', '#9a7a52'], wall: '#8a5a32', props: 'prison', side: 'A prize booth', wings: ['The Barns', 'The Hall of Mirrors'] },
   sh_winter: { rec: 450, areas: [ { name: 'The Snowed Gate', spawn: [['walker', 9], ['riot', 2]] }, { name: 'The Barracks', spawn: [['riot', 2], ['walker', 6], ['brute', 1]] },
-    { name: 'The Hangar', spawn: [['riot', 2], ['walker', 4]], boss: { type: 'brute', name: 'The Frostbite Giant', hp: 1200, atk: 18, big: 1.85, spd: .01 } } ], floor: ['#dfe6ec', '#cfd8de', '#e8eef2'], wall: '#9aa6b0', props: 'prison' },
+    { name: 'The Hangar', spawn: [['riot', 2], ['walker', 4]], boss: { type: 'brute', name: 'The Frostbite Giant', hp: 1200, atk: 18, big: 1.85, spd: .01 } } ], floor: ['#dfe6ec', '#cfd8de', '#e8eef2'], wall: '#9aa6b0', props: 'prison', side: 'The quartermaster', wings: ['The Barracks', 'The Motor Pool'] },
+  /* faction camps: human enemies; north wing = their stockpile, south wing = the prisoners, boss room = the leader */
+  raid_toll: { rec: 300, raid: 'toll', areas: [ { name: 'The Toll Gate', spawn: [['raider', 4], ['raiderG', 1]] }, { name: 'The Truck Yard', spawn: [['raider', 4], ['raiderG', 2]] },
+    { name: "The Collector's Hall", spawn: [['raider', 2], ['raiderG', 1]], boss: { type: 'raider', name: 'The Toll Collector', hp: 520, atk: 16, big: 1.3, spd: .016, wpn: 'roadsign' } } ], floor: ['#8a8378', '#7d776c', '#94897a'], wall: '#6b5d52', props: 'camp', side: 'A lookout', wings: ['Their stockpile', 'The cages'] },
+  raid_green: { rec: 200, raid: 'green', areas: [ { name: 'The Orchard Gate', spawn: [['raiderB', 3], ['raider', 2]] }, { name: 'The Commons', spawn: [['raiderB', 3], ['raider', 2]] },
+    { name: 'The Meeting House', spawn: [['raiderB', 2], ['raider', 1]], boss: { type: 'raider', name: 'Elder Maren', hp: 360, atk: 11, big: 1.15, spd: .015, wpn: 'bow' } } ], floor: ['#8fa36a', '#9cb07a', '#a3946c'], wall: '#8a6038', props: 'camp', side: 'A tool shed', wings: ['The granary', 'The stockade'] },
 });
+const RAID_GOALS = { loot: { icon: '📦', name: 'Steal their stockpile', room: 'A', desc: 'Reach their stockpile (north wing) and load it up: triple loot.' }, free: { icon: '🔓', name: 'Free the prisoners', room: 'C', desc: 'Open the cages (south wing): the prisoners join the Haven.' }, leader: { icon: '👑', name: 'Take out their leader', room: 'B', desc: 'Defeat the leader in the last hall: the faction is driven off for 60 days.' } };
 const shPower = (ms) => Math.round(ms.reduce((a, s) => a + 8 * (s.l || 1) + ((weaponOf(s) || {}).atk || 0), 0));
-const shRoomX = (k) => SH_AX + k * (SH_AW + SH_GAP);
-function startStronghold(destId, ids) {
-  const D = SH_DEFS[destId], d = EXP_DEFS[destId]; if (!D) return { ok: false, why: 'Unknown stronghold' };
-  const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean);
-  for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
-  S.sv = S.sv.filter((q) => !ms.includes(q));
-  ms.forEach((s, i) => { s.shHome = { w: s.w, mode: s.mode }; s.w = { x: shRoomX(0) + 1, y: SH_AY + 2.5 + i * 1 }; s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; });
-  S.sh = { dest: destId, units: ms, zs: [], area: 0, phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.9, cx: shRoomX(0) + 4, cy: SH_AY + 4, fx: [], kills: 0, power: shPower(ms), log: [] };
-  shSpawnArea(0); barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); shPanel(); ui(); return { ok: true, why: '' };
-}
-function shSpawnArea(k) {
-  const D = SH_DEFS[S.sh.dest], A = D.areas[k], x0 = shRoomX(k); let n = 0;
-  for (const [t, c] of A.spawn) for (let i = 0; i < c; i++, n++) { const zd = zombieTypes[t] || zombieTypes.walker; S.sh.zs.push({ type: t, area: k, w: { x: x0 + 5 + rnd() * 4.3, y: SH_AY + .7 + rnd() * (SH_AH - 1.4) }, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: zd.chase * 1.25, mode: 'appear', stateTicks: 20 + n * 6, target: null, moving: false, phase: rnd() * 100 }); }
-  if (A.boss) { const B = A.boss; S.sh.zs.push({ type: B.type, boss: true, name: B.name, area: k, big: B.big, w: { x: x0 + 8.4, y: SH_AY + SH_AH / 2 }, hp: B.hp, max: B.hp, atk: B.atk, spd: B.spd, mode: 'appear', stateTicks: 60, target: null, moving: false }); }
-  S.sh.log.push(A.name);
-}
-function shMove(o, to, sp) { const dx = to.x - o.w.x, dy = to.y - o.w.y, l = Math.hypot(dx, dy); if (l < .02) { o.moving = false; return true; } const st = Math.min(l, sp); o.w = { x: o.w.x + dx / l * st, y: o.w.y + dy / l * st }; o.moving = true; o.faceW = null; return l <= sp; }
-function shClamp(o) { const k = Math.max(0, Math.min(2, Math.floor((o.w.x - SH_AX) / (SH_AW + SH_GAP)))), x0 = shRoomX(k), inDoor = o.w.x > x0 + SH_AW - .3 && o.w.y > SH_AY + 3 && o.w.y < SH_AY + 5;
-  o.w.y = Math.max(SH_AY + .35, Math.min(SH_AY + SH_AH - .35, o.w.y)); if (!inDoor) o.w.x = Math.max(SH_AX + .35, Math.min(shRoomX(2) + SH_AW - .35, o.w.x)); }
-function shSep(list, r) { for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) { const a = list[i], b = list[j]; if (a.hp <= 0 || b.hp <= 0) continue; const dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, l = Math.hypot(dx, dy) || .01; if (l < r) { const p = (r - l) / 2 / l; a.w = { x: a.w.x - dx * p, y: a.w.y - dy * p }; b.w = { x: b.w.x + dx * p, y: b.w.y + dy * p }; } } }
-function shFx(w, t, col) { S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
+const shCap = (raid) => Math.min(raid ? 8 : 6, 4 + (bOf('barracks').some((b) => !b.unpaid) ? 1 : 0) + ((S.lvl || 1) >= 12 ? 1 : 0) + (raid ? (vehOf('van') && !vehOf('van').broken ? 2 : vehOf('pickup') && !vehOf('pickup').broken ? 1 : vehOf('cart') ? 1 : 0) : 0));
+/* the grid */
+let SHG = null;
+function shGrid() { if (SHG) return SHG; const g = []; for (let y = 0; y < SH_GH; y++) { g.push(new Array(SH_GW).fill(null)); }
+  for (const [k, [x0, y0, w, h]] of Object.entries(SH_ROOMS)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) g[y][x] = k;
+  SH_DOORS.forEach(([a, b, x0, y0, w, h], i) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) g[y][x] = 'D' + i; }); return (SHG = g); }
+const shCell = (w) => ({ x: Math.floor(w.x - SH_AX), y: Math.floor(w.y - SH_AY) });
+const shRoomAt = (w) => { const c = shCell(w), g = shGrid(); const v = g[c.y] && g[c.y][c.x]; return v && v[0] !== 'D' ? v : null; };
+const shWorld = (x, y) => ({ x: SH_AX + x + .5, y: SH_AY + y + .5 });
+function shOpen(x, y, who) { const g = shGrid(); const v = g[y] && g[y][x]; if (!v) return false; if (v[0] === 'D') { const d = S.sh.doors[+v.slice(1)]; return d.open || d.broken || (who === 'z' && 'bash'); } if (S.sh.blocks && S.sh.blocks.some((b) => b.x === x && b.y === y && b.hp > 0)) return who === 'z' ? 'bash' : false; return true; }
+function shPath(from, to, who) {   /* BFS on the grid; zombies may plan through closed doors and barricades (they bash them) */
+  const a = shCell(from), b = shCell(to); if (a.x === b.x && a.y === b.y) return [to]; const W = SH_GW, prev = new Int32Array(W * SH_GH).fill(-1), q = [a.y * W + a.x]; prev[q[0]] = q[0];
+  for (let i = 0; i < q.length; i++) { const c = q[i], cx = c % W, cy = (c / W) | 0; if (cx === b.x && cy === b.y) break; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= SH_GH) continue; const n = ny * W + nx; if (prev[n] >= 0 || !shOpen(nx, ny, who)) continue; prev[n] = c; q.push(n); } }
+  const e = b.y * W + b.x; if (prev[e] < 0) return null; const out = []; for (let c = e; c !== a.y * W + a.x; c = prev[c]) out.push(shWorld(c % W, (c / W) | 0)); out.reverse(); out[out.length - 1] = { ...to }; return out; }
+function shGo(o, to, sp, who) {   /* walk toward a point along the grid; returns true when there */
+  const d = dist(o.w, to); if (d < .08) { o.moving = false; o.path = null; return true; }
+  if (!o.path || !o.pathTo || dist(o.pathTo, to) > .6 || (o.pathT = (o.pathT || 0) - 1) < 0) { o.path = shPath(o.w, to, who); o.pathTo = { ...to }; o.pathT = 40; if (!o.path) { o.moving = false; return false; } }
+  let n = o.path[0]; while (n && dist(o.w, n) < .12 && o.path.length > 1) { o.path.shift(); n = o.path[0]; } if (!n) return true;
+  const c = shCell(n); if (who === 'z' && shOpen(c.x, c.y, 'u') === false) { const dr = shDoorAt(c.x, c.y), bl = S.sh.blocks && S.sh.blocks.find((q) => q.x === c.x && q.y === c.y && q.hp > 0); if (dr || bl) { o.bash = dr || bl; o.moving = false; return false; } }
+  const dx = n.x - o.w.x, dy = n.y - o.w.y, l = Math.hypot(dx, dy) || 1, st = Math.min(l, sp); o.w = { x: o.w.x + dx / l * st, y: o.w.y + dy / l * st }; o.moving = true; o.faceW = null; return false; }
+const shDoorAt = (x, y) => { const v = (shGrid()[y] || [])[x]; return v && v[0] === 'D' ? S.sh.doors[+v.slice(1)] : null; };
+function shFx(w, t, col) { if (S.sh) S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
 function shUnitDmg(s, z) { const w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s);
-  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1)); }
+  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
+/* abilities: one per profession (Specialists get the stronger version) */
+const SH_ABIL = {
+  Guard: { k: 'taunt', icon: '🛡', name: 'Taunt', cd: 1200, desc: 'Nearby enemies go for them; they take half damage for 6 s' },
+  'Police Officer': { k: 'aim', icon: '🎯', name: 'Aimed Shot', cd: 900, desc: 'The next hit does triple damage' },
+  Medic: { k: 'patch', icon: '✚', name: 'Patch Up', cd: 1500, desc: 'Heals everyone within 3 tiles by 30%' },
+  Scavenger: { k: 'search', icon: '🔍', name: 'Search', cd: 1800, desc: 'Turns the room over for supplies' },
+  Mechanic: { k: 'barricade', icon: '🧱', name: 'Barricade', cd: 1500, desc: 'A barricade where they stand (blocks enemies until broken)' },
+  Engineer: { k: 'snare', icon: '🪤', name: 'Snare', cd: 1200, desc: 'A snare on the floor: stuck for 4 s and 20 damage' },
+  _: { k: 'rally', icon: '📣', name: 'Rally', cd: 1500, desc: 'Everyone hits 20% harder for 6 s' },
+};
+const shAbil = (s) => SH_ABIL[s.job] || SH_ABIL._;
+function shUseAbil(s) { const H = S.sh, A = shAbil(s), sp = s.spec ? 1.5 : 1; if (!H || s.hp <= 0 || (s.abT || 0) > H.t) return false; s.abT = H.t + A.cd;
+  if (A.k === 'taunt') { s.tauntT = H.t + 360 * sp; for (const z of H.zs) if (z.hp > 0 && dist(z.w, s.w) < 4 * sp) { z.target = s; z.tauntBy = s; } shFx(s.w, '🛡 TAUNT', '#9fd8ff'); }
+  else if (A.k === 'aim') { s.aimNext = true; shFx(s.w, '🎯 AIM', '#ffd56b'); }
+  else if (A.k === 'patch') { for (const q of H.units) if (dist(q.w, s.w) < 3 * sp && q.hp > -1) { const up = q.hp <= 0, add = Math.round(q.max * .3 * sp); q.hp = Math.min(q.max, Math.max(0, q.hp) + add); if (up) q.mode = 'free'; shFx(q.w, '+' + add, '#7be08a'); } }
+  else if (A.k === 'search') { const r = shRoomAt(s.w) || 'R0'; const got = rnd() < .5 ? { meds: 1 + (rnd() < .4 ? 1 : 0) } : rnd() < .5 ? { mat: 2 + Math.floor(rnd() * 3) } : { cloth: 1, food: 2 }; if (rnd() < .25 * sp) got.ammo = 4; for (const [k, n] of Object.entries(got)) H.loot[k] = (H.loot[k] || 0) + n; shFx(s.w, '🔍 ' + Object.entries(got).map(([k, n]) => '+' + n + ' ' + (RES_NAME[k] || k)).join(' '), '#ffe9b8'); if (H.goal && RAID_GOALS[H.goal] && RAID_GOALS[H.goal].room === r && H.goal !== 'leader' && !H.zs.some((z) => z.hp > 0 && z.room === r)) shGoalDone(); }
+  else if (A.k === 'barricade') { const c = shCell(s.w); H.blocks = (H.blocks || []).filter((b) => b.hp > 0); H.blocks.push({ x: c.x, y: c.y, hp: 90 * sp }); s.w = { x: s.w.x - .6, y: s.w.y }; shFx(s.w, '🧱 BARRICADE', '#ffe9b8'); }
+  else if (A.k === 'snare') { H.snares = (H.snares || []).filter((q) => !q.used); H.snares.push({ w: { ...s.w }, used: false, dmg: 20 * sp }); shFx(s.w, '🪤 SNARE', '#ffe9b8'); }
+  else { for (const q of H.units) q.rallyT = H.t + 360 * sp; shFx(s.w, '📣 RALLY!', '#ffd56b'); }
+  SFX('chime'); shPanel(); return true; }
+const SH_STANCE = { attack: { icon: '⚔', name: 'Attack' }, hold: { icon: '✋', name: 'Hold' }, guard: { icon: '🫂', name: 'Guard' }, back: { icon: '↩', name: 'Pull back <30%' } };
+/* starting a run */
+function startStronghold(destId, ids, opts = {}) {
+  const D = SH_DEFS[destId], d = EXP_DEFS[destId] || { name: destId, icon: '⚔' }; if (!D) return { ok: false, why: 'Unknown stronghold' }; if (S.sh) return { ok: false, why: 'A squad is already inside' };
+  const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
+  if (!ms.length) return { ok: false, why: 'Pick at least one survivor' };
+  for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
+  if (!opts.practice) S.sv = S.sv.filter((q) => !ms.includes(q));
+  const units = opts.practice ? ms.map((q) => ({ ...JSON.parse(JSON.stringify(expPlain(q), (k, v) => (['target', 'post', 'path', 'chatWith', 'aidTo', 'aidBy', 'rescuer', 'facility', 'faceW', 'emo'].includes(k) ? undefined : v))), id: 90000 + q.id, practiceOf: q.id })) : ms;
+  units.forEach((s, i) => { if (!opts.practice) s.shHome = { w: s.w, mode: s.mode }; s.w = shWorld(1 + (i % 3) * .9, 8.5 + Math.floor(i / 3) * 1.3); s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; s.stance = s.stance || 'attack'; s.abT = 0; s.crit = 0; if (opts.practice) { s.hp = s.max; } });
+  S.sh = { dest: destId, units, zs: [], phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.8, cx: SH_AX + 5, cy: SH_AY + 11, fx: [], kills: 0, power: shPower(units), log: [], loot: {}, sel: [], doors: SH_DOORS.map(() => ({ open: true, hp: 120 })), woke: {}, goal: D.raid ? (opts.goal || 'loot') : null, practice: !!opts.practice, raid: D.raid || null };
+  shSpawnAll(); if (!opts.practice) { barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); } shPanel(); ui(); return { ok: true, why: '' };
+}
+function shSpawnAll() {   /* every room gets its enemies up front; they sleep until the squad walks in */
+  const H = S.sh, D = SH_DEFS[H.dest], A = D.areas, put = (room, list, boss) => { const [x0, y0, w, h] = SH_ROOMS[room];
+    for (const [t, c] of list) for (let i = 0; i < c; i++) { const raider = t.startsWith('raider'), zd = zombieTypes[raider ? 'raider' : t] || zombieTypes.walker, wpn = t === 'raiderG' ? 'rifle' : t === 'raiderB' ? 'bow' : raider ? ['bat', 'crowbar', 'machete'][i % 3] : null;
+      H.zs.push({ type: raider ? 'raider' : t, human: raider, wpn, ranged: !!(wpn === 'rifle' || wpn === 'bow'), room, w: shWorld(x0 + 1 + rnd() * (w - 2), y0 + 1 + rnd() * (h - 2)), hp: Math.round(zd.hp * (raider ? 1.3 : 1)), max: Math.round(zd.hp * (raider ? 1.3 : 1)), atk: zd.atk * (raider ? 1.2 : 1), spd: (zd.chase || .012) * 1.25, mode: 'sleep', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, fk: H.raid }); }
+    if (boss) { H.zs.push({ type: boss.type, human: boss.type === 'raider', wpn: boss.wpn || null, ranged: boss.wpn === 'bow' || boss.wpn === 'rifle', leader: !!H.raid, boss: true, name: boss.name, room, big: boss.big, w: shWorld(x0 + w - 3, y0 + h / 2), hp: boss.hp, max: boss.hp, atk: boss.atk, spd: boss.spd, mode: 'sleep', target: null, moving: false, fk: H.raid }); } };
+  const half = (list, k) => list.map(([t, c]) => [t, Math.max(k ? 0 : 1, k ? Math.floor(c / 2) : Math.ceil(c / 2))]).filter(([, c]) => c > 0);
+  put('R0', A[0].spawn); put('S', [[A[0].spawn[0][0], 2]]); put('R1', half(A[1].spawn, 0)); put('A', half(A[1].spawn, 1).concat([[A[1].spawn[0][0], 2]])); put('C', half(A[1].spawn, 1)); put('B', A[2].spawn, A[2].boss);
+}
+function shLiveZs() { return S.sh.zs.filter((z) => z.hp > 0); }
 function shTick() {
-  const H = S.sh; if (!H) return; H.t++; const D = SH_DEFS[H.dest], live = H.units.filter((s) => s.hp > 0), zs = H.zs.filter((z) => z.hp > 0 && z.area === H.area);
+  const H = S.sh; if (!H) return; if (H.sel.length && (H.slow = (H.slow || 0) + 1) % 4) return;   /* tactical slow-mo while someone is selected */
+  H.t++; const live = H.units.filter((s) => s.hp > 0);
   for (const f of H.fx) f.a--; H.fx = H.fx.filter((f) => f.a > 0);
-  if (H.phase === 'done') return;
-  if (!live.length) return shEnd(false);
-  if (H.back) { let home = 0; for (const s of live) { s.target = null; if (s.mode === 'attack' || s.mode === 'recover') s.mode = 'free'; if (shMove(s, { x: SH_AX + .5, y: SH_AY + SH_AH / 2 }, .045)) home++; s.mode = s.moving ? 'walk' : 'free'; } if (home === live.length || H.t - H.backT > 900) return shEnd(false, true); }
-  /* survivors */
-  if (!H.back) for (const s of H.units) {
-    if (s.hp <= 0) { s.mode = 'down'; s.moving = false; continue; }
-    if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) reloadGun(s); continue; }
-    const w = weaponOf(s), reach = w.ranged ? Math.min(4.5, rangeOf(s)) : .8;
-    if (s.mode === 'attack') { s.moving = false; if (--s.stateTicks > 0) continue; const z = s.target;
-      if (z && z.hp > 0 && dist(s.w, z.w) <= reach + .3) { const dm = shUnitDmg(s, z); z.hp -= dm; z.hitT = 9; SFX(w.ranged ? 'shot' : 'hit'); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
-        if (w.ranged && usesAmmo(w)) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) s.reloadT = Math.round((w.reload || 2) * 60); }
-        if (z.hp <= 0) { H.kills++; S.kills++; gainXp(s, z.boss ? 12 : 2); if (z.boss) { SFX('reward'); bark(s, 'bossKill', {}, { pri: 2 }); } } }
-      s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); continue; }
-    if (s.mode === 'recover') { s.moving = false; if (--s.stateTicks > 0) continue; s.mode = 'free'; }
-    const boss = zs.find((z) => z.boss && z.mode !== 'appear');
-    let t = H.focus && boss ? boss : null; if (!t) { let bd = 1e9; for (const z of zs) { if (z.mode === 'appear' && z.stateTicks > 10) continue; const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = z; } } }
-    s.target = t;
-    if (t) { const d0 = dist(s.w, t.w); if (d0 > reach) { s.mode = 'chase'; shMove(s, t.w, .032); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } }
-    else if (H.doorT) { /* walking to the next door */ }
-    else { const gx = zs.length ? s.w.x : shRoomX(H.area) + 2.2, i = H.units.indexOf(s); s.mode = 'walk'; if (shMove(s, { x: gx, y: SH_AY + 2.5 + i }, .035)) { s.mode = 'free'; s.moving = false; } }
-    shClamp(s);
-  }
-  /* the dead */
-  for (const z of zs) {
-    if (z.mode === 'appear') { z.moving = false; if (--z.stateTicks <= 0) z.mode = 'idle'; continue; }
-    let t = null, bd = 1e9; for (const s of live) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = s; } } z.target = t; if (!t) { z.moving = false; continue; }
-    const reach = z.type === 'spitter' ? 2.4 : z.boss ? 1.15 : .75;
-    if (z.mode === 'zattack') { z.moving = false; if (--z.stateTicks > 0) continue;
-      if (dist(z.w, t.w) <= reach + .35 && t.hp > 0) { const dm = Math.max(1, Math.round(z.atk * (t.spec && hasSpec(t, 'swat') ? .8 : 1) * (1 - dmgReduce(t)))); t.hp -= dm; t.hitT = 9; shFx(t.w, '-' + dm, '#ff6e62'); SFX('hurt'); if (t.hp <= 0) { t.hp = 0; t.mode = 'down'; shFx(t.w, 'DOWN', '#ff6e62'); say(`${t.name} is down inside the stronghold!`); } }
-      z.mode = 'zrecover'; z.stateTicks = z.boss ? 70 : 45; continue; }
-    if (z.mode === 'zrecover') { z.moving = false; if (--z.stateTicks > 0) continue; z.mode = 'idle'; }
-    if (bd > reach) { z.mode = 'zchase'; shMove(z, t.w, z.spd); shClamp(z); } else { z.mode = 'zattack'; z.stateTicks = z.boss ? 38 : z.type === 'brute' ? 34 : 26; z.moving = false; }
-  }
-  shSep(H.units.filter((s) => s.hp > 0), .55); shSep(zs, .5);
-  for (const z of zs) shClamp(z);
-  /* the camera follows the squad */
-  if (live.length) { const cx = live.reduce((a, s) => a + s.w.x, 0) / live.length, cy = live.reduce((a, s) => a + s.w.y, 0) / live.length; H.cx += (cx + 1.6 - H.cx) * .05; H.cy += (cy + 1.1 - H.cy) * .05; }
-  if (!H.back && !zs.length && H.t > 40) { if (H.area >= D.areas.length - 1) return shEnd(true);
-    if (!H.doorT) { H.doorT = H.t; say(`${D.areas[H.area].name} is clear.`); }
-    if (H.t - H.doorT > 70) { for (const s of live) { s.mode = 'walk'; s.target = null; } if (live.map((s, i) => shMove(s, { x: shRoomX(H.area + 1) + 1.2, y: SH_AY + 3 + i * .6 }, .04)).every(Boolean)) { H.area++; H.doorT = 0; shSpawnArea(H.area); shPanel(); } for (const s of live) s.mode = s.moving ? 'walk' : 'free'; } }
+  if (H.phase === 'done') return; if (!live.length) return shEnd(false);
+  /* rooms wake when someone walks in */
+  for (const s of live) { const r = shRoomAt(s.w); if ((r === 'A' || r === 'C') && !H.wing) H.wing = r; if (r && !H.woke[r]) { H.woke[r] = H.t; if (!H.seen) H.seen = {}; if (!H.seen[r]) { H.seen[r] = 1; const D = SH_DEFS[H.dest], nm = r === 'R0' ? D.areas[0].name : r === 'R1' ? D.areas[1].name : r === 'B' ? D.areas[2].name : r === 'S' ? D.side : r === 'A' ? D.wings[0] : D.wings[1]; if (r !== 'R0') say(`The squad enters ${nm}.`); } } }
+  if (H.back) { let home = 0; for (const s of live) { s.target = null; s.mode = 'walk'; if (shGo(s, shWorld(.6, 10.5 + (H.units.indexOf(s) % 3) * .4), .045, 'u')) { home++; s.mode = 'free'; } } if (home === live.length || H.t - H.backT > 1200) return shEnd(false, true); }
+  const zsLive = shLiveZs();
+  if (!H.back) for (const s of H.units) shUnitAI(s, zsLive, live);
+  for (const z of zsLive) shZombieAI(z, live);
+  /* snares, barricades */
+  for (const n of H.snares || []) if (!n.used) for (const z of zsLive) if (dist(z.w, n.w) < .55) { n.used = true; z.stuckT = H.t + 240; z.hp -= n.dmg; shFx(z.w, '🪤 -' + Math.round(n.dmg), '#ffb060'); break; }
+  shSep(H.units.filter((s) => s.hp > 0), .5); shSep(zsLive, .48);
+  /* the camera follows the selected survivors, or everyone */
+  const fol = (H.sel.length ? H.units.filter((s) => H.sel.includes(s.id) && s.hp > 0) : live); if (fol.length) { const cx = fol.reduce((a, s) => a + s.w.x, 0) / fol.length, cy = fol.reduce((a, s) => a + s.w.y, 0) / fol.length; H.cx += (cx + 1.8 - H.cx) * .05; H.cy += (cy + 1.5 - H.cy) * .05; }   /* keep the fight above the panel */
+  if (H.raid && !H.goalDone && H.goal !== 'leader') { const r = RAID_GOALS[H.goal].room; if (!zsLive.some((z) => z.room === r) && live.some((s) => shRoomAt(s.w) === r)) { H.load = (H.load || 0) + 1; if (H.load % 60 === 1) shFx(live.find((s) => shRoomAt(s.w) === r).w, H.goal === 'loot' ? `📦 Loading ${Math.round(H.load / 1.8)}%` : `🔓 Opening ${Math.round(H.load / 1.8)}%`, '#ffe9b8'); if (H.load >= 180) shGoalDone(); } }   /* stand in the cleared goal room for 3 s */
+  const boss = H.zs.find((z) => z.boss); if (boss && boss.hp <= 0 && !H.bossDown) { H.bossDown = true; SFX('reward'); say(`${boss.name} is down!`); if (H.goal === 'leader' || !H.raid) shGoalDone(); }
   if (H.t % 20 === 0) shPanelTick();
 }
+function shSep(list, r) { for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) { const a = list[i], b = list[j]; const dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, l = Math.hypot(dx, dy) || .01; if (l < r) { const p = (r - l) / 2 / l, na = { x: a.w.x - dx * p, y: a.w.y - dy * p }, nb = { x: b.w.x + dx * p, y: b.w.y + dy * p }, ca = shCell(na), cb = shCell(nb); if (shOpen(ca.x, ca.y, 'u') === true) a.w = na; if (shOpen(cb.x, cb.y, 'u') === true) b.w = nb; } } }
+function shUnitAI(s, zs, live) {
+  const H = S.sh; if (s.hp <= 0) { s.mode = 'down'; s.moving = false; return; }
+  if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) reloadGun(s); return; }
+  const w = weaponOf(s), reach = (w.ranged ? Math.min(4.5, rangeOf(s)) : .8) + (s.aimNext ? 1.5 : 0);
+  if (s.mode === 'attack') { s.moving = false; if (--s.stateTicks > 0) return; const z = s.target;
+    if (z && z.hp > 0 && dist(s.w, z.w) <= reach + .3) { const cr = !!s.critNext || !!s.aimNext, dm = shUnitDmg(s, z) * (cr ? 3 : 1); if (cr) { s.critNext = false; s.aimNext = false; shFx({ x: z.w.x, y: z.w.y - .4 }, 'CRIT!', '#ffd56b'); } else s.crit = Math.min(100, (s.crit || 0) + 14);
+      z.hp -= dm; z.hitT = 9; if (z.mode === 'sleep') z.mode = 'idle'; SFX(w.ranged ? 'shot' : 'hit'); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+      if (w.ranged && usesAmmo(w)) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) s.reloadT = Math.round((w.reload || 2) * 60); }
+      if (z.hp <= 0) { H.kills++; if (!H.practice) { S.kills++; gainXp(s, z.boss ? 12 : 2); } if (H.order === z) H.order = null; for (const q of H.units) if (q.order === z) q.order = null; } }
+    s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); return; }
+  if (s.mode === 'recover') { s.moving = false; if (--s.stateTicks > 0) return; s.mode = 'free'; }
+  /* player orders come first: move, then attack */
+  if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .042, 'u')) { s.moveTo = null; s.mode = 'free'; s.holdAt = { ...s.w }; } return; }
+  if (s.order && (s.order.hp <= 0)) s.order = null;
+  const st = s.stance || 'attack', hurt = s.hp < s.max * .3;
+  if (st === 'back' && hurt) { const safe = live.filter((q) => q !== s).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0]; const away = zs.filter((z) => dist(z.w, s.w) < 3); if (away.length) { const e = shWorld(1, 10); s.mode = 'walk'; shGo(s, safe && !away.some((z) => dist(z.w, safe.w) < 2) ? safe.w : e, .045, 'u'); return; } }
+  const awake = zs.filter((z) => z.mode !== 'sleep' || dist(z.w, s.w) < 3);
+  let t = s.order || H.order || null; if (!t && H.focus) t = awake.find((z) => z.boss) || null;
+  if (!t) { let bd = st === 'hold' ? reach + .2 : 1e9; for (const z of awake) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = z; } } }
+  if (st === 'guard' && !s.order) { const ward = live.find((q) => q !== s && (q.job === 'Medic' || q.hp < q.max * .5)) || live.find((q) => q !== s); if (ward && dist(ward.w, s.w) > 1.6 && (!t || dist(t.w, ward.w) > 2.5)) { s.mode = 'walk'; shGo(s, ward.w, .042, 'u'); return; } }
+  s.target = t;
+  if (t) { const d0 = dist(s.w, t.w); if (d0 > reach) { if (st === 'hold' && !s.order && !H.order) { s.mode = 'free'; s.moving = false; return; } s.mode = 'chase'; shGo(s, t.w, .032, 'u'); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } return; }
+  /* nothing to fight and no orders: move on to the next room on the route (Hold stays put) */
+  if (st !== 'hold' && !H.sel.includes(s.id)) { const nx = shNextRoom(); if (nx) { const [x0, y0, w, h] = SH_ROOMS[nx], i = H.units.indexOf(s), to = shWorld(x0 + 1.5 + (i % 3) * .9, y0 + h / 2 - 1 + Math.floor(i / 3) * .9); if (dist(s.w, to) > .5) { s.mode = 'walk'; shGo(s, to, .038, 'u'); return; } } }
+  s.mode = 'free'; s.moving = false;
+}
+function shNextRoom() {   /* the default route: entrance, hall, the wing for the goal (north for the stockpile, south for the prisoners), boss room */
+  const H = S.sh, wing = H.wing || (H.goal === 'free' ? 'C' : 'A'), route = ['R0', 'R1', wing, 'B'];
+  if (H.goalDone && H.raid) return null; if (shLiveZs().some((z) => z.mode !== 'sleep')) return null;
+  return route.find((r) => !H.woke[r] || H.zs.some((z) => z.hp > 0 && z.room === r)) || null; }
+function shZombieAI(z, live) {
+  const H = S.sh; if (z.mode === 'sleep') { if (H.woke[z.room] || live.some((s) => dist(s.w, z.w) < 3)) { z.mode = 'idle'; } else { z.moving = false; return; } }
+  if (z.stuckT > H.t) { z.moving = false; return; }
+  let t = z.tauntBy && z.tauntBy.hp > 0 && z.tauntBy.tauntT > H.t ? z.tauntBy : null, bd = 1e9; if (!t) for (const s of live) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = s; } } z.target = t; if (!t) { z.moving = false; return; }
+  const reach = z.ranged ? 4 : z.type === 'spitter' ? 2.4 : z.boss ? 1.15 : .75, d0 = dist(z.w, t.w);
+  if (z.mode === 'zattack') { z.moving = false; if (--z.stateTicks > 0) return;
+    if (z.bash) { const b = z.bash; b.hp -= z.atk * 1.5; shFx(z.w, '💥', '#ffb060'); if (b.hp <= 0) { b.broken = true; b.open = true; shFx(z.w, z.bash.x != null ? 'Barricade broken!' : 'Door broken!', '#ff6e62'); } z.bash = null; z.mode = 'zrecover'; z.stateTicks = 50; return; }
+    if (dist(z.w, t.w) <= reach + .35 && t.hp > 0) { const dm = Math.max(1, Math.round(z.atk * (t.spec && hasSpec(t, 'swat') ? .8 : 1) * (t.tauntT > H.t ? .5 : 1) * (1 - dmgReduce(t)))); t.hp -= dm; t.hitT = 9; shFx(t.w, '-' + dm, '#ff6e62'); SFX(z.ranged ? 'shot' : 'hurt'); if (z.ranged) shots.push({ a: { ...z.w }, b: { ...t.w }, t: 6, bow: z.wpn === 'bow' }); if (t.hp <= 0) { t.hp = 0; t.mode = 'down'; t.moveTo = null; shFx(t.w, 'DOWN', '#ff6e62'); say(`${t.name} is down!`); } }
+    z.mode = 'zrecover'; z.stateTicks = z.boss ? 70 : z.ranged ? 80 : 45; return; }
+  if (z.mode === 'zrecover') { z.moving = false; if (--z.stateTicks > 0) return; z.mode = 'idle'; }
+  if (z.bash) { z.mode = 'zattack'; z.stateTicks = 30; return; }
+  if (z.ranged && d0 < 2.2) { const dx = z.w.x - t.w.x, dy = z.w.y - t.w.y, l = Math.hypot(dx, dy) || 1, to = { x: z.w.x + dx / l, y: z.w.y + dy / l }, c = shCell(to); if (shOpen(c.x, c.y, 'u') === true) { z.mode = 'rflee'; shGo(z, to, z.spd, 'z'); return; } }
+  if (d0 > reach) { z.mode = 'zchase'; shGo(z, t.w, z.spd, 'z'); } else { z.mode = 'zattack'; z.stateTicks = z.boss ? 38 : z.type === 'brute' ? 34 : z.ranged ? 30 : 26; z.moving = false; }
+}
+function shGoalDone() { const H = S.sh; if (!H || H.goalDone) return; H.goalDone = true; SFX('reward');
+  if (!H.raid) return shEnd(true);
+  const G = RAID_GOALS[H.goal]; banner(`${G.icon} ${G.name.toUpperCase()}: DONE`); say(`${G.name}: done. Fall back to the entrance to get out with it.`); shPanel(); }
+function shThrow(at) { const H = S.sh, k = ['grenade', 'pipebomb', 'molotov'].find((x) => (S.ex || {})[x] > 0); if (!k && !H.practice) { say('No explosives in stock.'); return false; }
+  const thr = H.units.filter((s) => s.hp > 0 && (!H.sel.length || H.sel.includes(s.id))).sort((a, b) => dist(a.w, at) - dist(b.w, at))[0]; if (!thr || dist(thr.w, at) > 6) { say('Too far: get someone within 6 tiles.'); return false; }
+  const E = EX_DEFS[k || 'pipebomb']; if (!H.practice) S.ex[k]--; let n = 0;
+  for (const z of shLiveZs()) { const d = dist(z.w, at); if (d > E.r) continue; const kk = Math.round(E.dmg * (d < E.r * .5 ? 1 : .6) * (z.boss ? .5 : 1)); z.hp -= kk; z.hitT = 12; if (z.boss) z.stuckT = H.t + 120; if (E.burn) z.burnT = 180; if (z.mode === 'sleep') z.mode = 'idle'; shFx(z.w, '-' + kk, '#ffb060'); n++; if (z.hp <= 0) H.kills++; }
+  for (const s of H.units) if (s.hp > 0 && dist(s.w, at) < E.r * .8) { const kk = Math.round(E.dmg * .25); s.hp = Math.max(0, s.hp - kk); shFx(s.w, '-' + kk, '#ff6e62'); }
+  (window.ZH_BOOMS ||= []).push({ x: at.x, y: at.y, r: E.r, burn: !!E.burn, t: performance.now() }); SFX('hit'); shFx(at, E.icon, '#ffd070'); H.throwMode = false; shPanel(); return true; }
 function shCall(k) { const H = S.sh; if (!H || H.phase === 'done') return;
   if (k === 'focus') { H.focus = !H.focus; say(H.focus ? 'Focus the boss!' : 'Fight as you see fit.'); }
-  else if (k === 'med') { if ((S.meds || 0) < 1) { say('No medicine left in the stash.'); return; } const s = H.units.slice().sort((a, b) => a.hp / a.max - b.hp / b.max)[0]; if (!s) return; S.meds--; const up = s.hp <= 0; s.hp = Math.min(s.max, Math.max(s.hp, 0) + Math.round(s.max * .5)); if (up) s.mode = 'free'; shFx(s.w, '+' + Math.round(s.max * .5), '#7be08a'); say(`${s.name} used a medkit${up ? ' and is back up' : ''}.`); ui(); }
-  else if (k === 'back') { if (H.back) return; H.back = true; H.backT = H.t; say('Fall back! The squad retreats to the entrance.'); }
+  else if (k === 'med') { if ((S.meds || 0) < 1 && !H.practice) { say('No medicine left in the stash.'); return; } const pool = H.sel.length ? H.units.filter((q) => H.sel.includes(q.id)) : H.units; const s = pool.slice().sort((a, b) => a.hp / a.max - b.hp / b.max)[0]; if (!s) return; if (!H.practice) S.meds--; const up = s.hp <= 0; s.hp = Math.min(s.max, Math.max(s.hp, 0) + Math.round(s.max * .5)); if (up) s.mode = 'free'; shFx(s.w, '+' + Math.round(s.max * .5), '#7be08a'); say(`${s.name} used a medkit${up ? ' and is back up' : ''}.`); ui(); }
+  else if (k === 'back') { if (H.back) return; if (H.goalDone && H.raid) { H.back = true; H.backT = H.t; H.winOnExit = true; say('Out, with the goods!'); } else { H.back = true; H.backT = H.t; say('Fall back! The squad retreats to the entrance.'); } }
   else if (k === 'view') { H.view = !H.view; }
+  else if (k === 'all') { H.sel = H.sel.length === H.units.filter((q) => q.hp > 0).length ? [] : H.units.filter((q) => q.hp > 0).map((q) => q.id); }
+  else if (k === 'throw') { H.throwMode = !H.throwMode; if (H.throwMode) say('Tap where to throw.'); }
+  else if (k === 'clear') { H.sel = []; H.order = null; }
+  else if (k.startsWith('sel:')) { const id = +k.slice(4); H.sel = H.sel.length === 1 && H.sel[0] === id ? [] : [id]; }
+  else if (k.startsWith('ab:')) { const s = H.units.find((q) => q.id === +k.slice(3)); if (s) shUseAbil(s); return; }
+  else if (k.startsWith('st:')) { const s = H.units.find((q) => q.id === +k.slice(3)); if (s) { const ks = Object.keys(SH_STANCE); s.stance = ks[(ks.indexOf(s.stance || 'attack') + 1) % ks.length]; shFx(s.w, SH_STANCE[s.stance].icon + ' ' + SH_STANCE[s.stance].name, '#ffe9b8'); } }
+  else if (k.startsWith('crit:')) { const s = H.units.find((q) => q.id === +k.slice(5)); if (s && (s.crit || 0) >= 100) H.ring = { id: s.id, t0: performance.now() }; }
   shPanel(); }
 function shEnd(won, fled) {
-  const H = S.sh; if (!H || H.phase === 'done') return; H.phase = 'done'; const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest];
+  const H = S.sh; if (!H || H.phase === 'done') return; H.phase = 'done'; const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest] || { name: H.dest, icon: '⚔', loot: { mat: [3, 5] } };
+  if (fled && H.winOnExit) { won = true; fled = false; }
+  if (H.practice) { S.sh = null; shPanel(); showEventPopup({ title: won ? 'PRACTICE: CLEARED' : 'PRACTICE OVER', text: `${H.kills} enemies down in ${Math.round(H.t / 60)} s of fighting. Nothing was lost or gained.`, buttons: [{ label: 'AGAIN', fn: () => showShPractice() }, { label: 'DONE' }] }); return; }
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
-  const lost = [], hurt = [], loot = {}, lines0 = []; let recruit = null; const items = [];
+  const lost = [], hurt = [], loot = { ...H.loot }, lines0 = []; let recruit = null; const items = [];
   for (const [i, s] of H.units.entries()) {
     const down = s.hp <= 0; if (down && !won && rnd() < .04) { lost.push(s.name); continue; }
     if (down) { s.hp = Math.max(1, Math.round(s.max * .2)); hurt.push(s.name); }
-    s.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; s.mode = 'free'; s.target = null; s.moving = false; s.reloadT = 0; delete s.shHome; s.stateTicks = 60; S.sv.push(s); if (won) gainXp(s, 10);
+    s.w = { x: entry.x + (i % 3 - 1) * .3, y: entry.y + Math.floor(i / 3) * .3 }; s.mode = 'free'; s.target = null; s.moving = false; s.reloadT = 0; s.moveTo = null; s.order = null; s.path = null; delete s.shHome; s.stateTicks = 60; S.sv.push(s); if (won) gainXp(s, 10);
   }
-  if (won) { const r = (a) => a[0] + Math.floor(rnd() * (a[1] - a[0] + 1)); for (const k in d.loot) loot[k] = r(d.loot[k]) * 3;
-    const pool = H.dest.startsWith('sh_') ? ['katana', 'military', 'swathelm', 'tactvest', 'shotgun', 'smg', 'kevlar'] : H.dest === 'prison' ? ['rifle', 'shotgun', 'riot', 'kevlar', 'swathelm', 'tactvest'] : ['medpouch', 'hazmat', 'gasmask', 'kevlar', 'machete', 'crossbow']; for (const id of pool) if (ITEMS[id] && items.length < 2 && rnd() < .5) items.push(id); if (!items.length) items.push(pool.find((id) => ITEMS[id]));
-    S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id));
-    if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = names.find((n) => !S.sv.some((q) => q.name === n)) || freeFirst(), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
-      recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
-    if (H.dest.startsWith('sh_')) { S.shSeason = { ...(S.shSeason || {}), [H.dest]: seasonIdx() }; S.trophies = [...(S.trophies || []), { k: H.dest, day: S.day }]; renownGain(15, 'Seasonal trophy'); lines0.push(`🏆 A ${d.name} trophy now hangs in the HQ.`); }
-    if (H.dest === 'prison' && !vehOf('van')) setTimeout(() => vehArrive('van', 'In the prison motor pool the squad found'), 2500);   /* 3D.109 */
-    renownGain(25, d.name + ' cleared'); S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
-  else if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day };
+  if (won) { const r = (a) => a[0] + Math.floor(rnd() * (a[1] - a[0] + 1)), mult = H.raid ? (H.goal === 'loot' ? 3 : 1) : 3; for (const k in d.loot) loot[k] = (loot[k] || 0) + r(d.loot[k]) * mult;
+    const pool = H.raid === 'toll' ? ['roadsign', 'spikedclub', 'biker', 'riot', 'rifle'] : H.raid === 'green' ? ['bow', 'crossbow', 'raincoat', 'hoodie'] : H.dest.startsWith('sh_') ? ['katana', 'military', 'swathelm', 'tactvest', 'shotgun', 'smg', 'kevlar'] : H.dest === 'prison' ? ['rifle', 'shotgun', 'riot', 'kevlar', 'swathelm', 'tactvest'] : ['medpouch', 'hazmat', 'gasmask', 'kevlar', 'machete', 'crossbow'];
+    for (const id of pool) if (ITEMS[id] && items.length < 2 && rnd() < .5) items.push(id); if (!items.length) items.push(pool.find((id) => ITEMS[id]));
+    if (H.raid) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - (H.raid === 'green' ? 120 : 30)); F.raided = (F.raided || 0) + 1;
+      if (H.raid === 'green') { F.ally = false; F.revenge = S.day + 3; lines0.push('🌿 Greenwater will never forgive this. The alliance is over, and they will hit back.'); }
+      if (H.raid === 'toll') { F.next = Math.min(F.next || 1e9, S.day + 2); F.revenge = S.day + 2; lines0.push('👑 The Toll Kings will come for revenge.'); }
+      if (H.goal === 'free') { const n = Math.min(3, popCap() - S.sv.length - (S.kids || []).length); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Farmer', 'Engineer', 'Scavenger'][i % 3], 2 + i, entry.x, entry.y + .6, S.sv.length); q.src = 'event'; q.sat = 3; S.sv.push(q); } lines0.push(n > 0 ? `🔓 ${n} prisoner${n > 1 ? 's' : ''} came home with the squad.` : '🔓 The prisoners were freed, but there were no beds for them.'); }
+      if (H.goal === 'leader' || H.bossDown) { F.goneUntil = S.day + 60; F.beaten = (F.beaten || 0) + 1; if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own hall.'), 900); lines0.push(`${H.raid === 'toll' ? '👑' : '🌿'} Their leader is down: they scatter for 60 days.`); } }
+    else { if (H.dest.startsWith('sh_')) { S.shSeason = { ...(S.shSeason || {}), [H.dest]: seasonIdx() }; S.trophies = [...(S.trophies || []), { k: H.dest, day: S.day }]; renownGain(15, 'Seasonal trophy'); lines0.push(`🏆 A ${d.name} trophy now hangs in the HQ.`); }
+      if (H.dest === 'prison' && !vehOf('van')) setTimeout(() => vehArrive('van', 'In the prison motor pool the squad found'), 2500);
+      if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = names.find((n) => !S.sv.some((q) => q.name === n)) || freeFirst(), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
+        recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
+      S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
+    S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); renownGain(H.raid ? 15 : 25, d.name);
+  } else { if (H.raid) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - 15); } if (H.loot.mat) S.mat += H.loot.mat; if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day }; }
   S.sh = null; shPanel(); autoStaff(); statAdd('exp');
-  const lines = [won ? `<b>${esc(D.areas[2].boss.name)} is dead.</b> ${esc(d.name)} is cleared.` : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
+  const bossName = (D.areas[2].boss || {}).name || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is cleared.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
   lines.push(...lines0); if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
-  if (won && COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: 'STRONGHOLD CLEARED', sub: `${d.icon} ${d.name}`, entries: lootEntries(loot, items.filter(Boolean)), note: lines.join('<br>') });
-  else showEventPopup({ title: won ? 'STRONGHOLD CLEARED' : 'BACK FROM THE STRONGHOLD', text: lines.join('<br>'), buttons: [{ label: 'OK' }] });
+  if (won && COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: H.raid ? 'RAID DONE' : 'STRONGHOLD CLEARED', sub: `${d.icon} ${d.name}`, entries: lootEntries(loot, items.filter(Boolean)), note: lines.join('<br>') });
+  else showEventPopup({ title: won ? (H.raid ? 'RAID DONE' : 'STRONGHOLD CLEARED') : 'BACK HOME', text: lines.join('<br>'), buttons: [{ label: 'OK' }] });
   saveGame(); ui();
 }
+/* the panel: portraits with health, crit, stance and ability; the calls; the goal */
 function shPanel() {
   let el = $('shPanel'); const H = S.sh;
-  if (!H) { if (el) el.remove(); return; }
-  const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest];
-  if (!el) { el = document.createElement('div'); el.id = 'shPanel'; el.className = 'shPanel'; document.body.appendChild(el); el.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) shCall(b.dataset.c); }); }
-  const bossRoom = H.area === D.areas.length - 1;
-  el.innerHTML = `<div class="shHead"><b>${d.icon} ${esc(d.name)}</b><span class="shArea">${D.areas.map((a, i) => `<i class="${i < H.area ? 'done' : i === H.area ? 'on' : ''}">${esc(a.name)}</i>`).join('<span>›</span>')}</span></div>
-  <div class="shBoss"></div><div class="shUnits"></div>
-  <div class="shBtns"><button data-c="focus" class="${H.focus ? 'on' : ''}" ${bossRoom ? '' : 'disabled'}>🎯 Focus the boss</button><button data-c="med">💊 Medkit (${S.meds || 0})</button><button data-c="back" ${H.back ? 'disabled' : ''}>↩ Fall back</button><button data-c="view">${H.view ? '🏠 Watch town' : '⚔ Watch squad'}</button></div>`;
+  if (!H) { if (el) el.remove(); shTapLayer(); return; }
+  const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest] || { name: H.dest, icon: '⚔' };
+  if (!el) { el = document.createElement('div'); el.id = 'shPanel'; el.className = 'shPanel'; document.body.appendChild(el); el.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) { e.stopPropagation(); shCall(b.dataset.c); } }); }
+  const exN = Object.values(S.ex || {}).reduce((a, b) => a + b, 0);
+  el.innerHTML = `<div class="shHead"><b>${d.icon} ${esc(d.name)}${H.practice ? ' · practice' : ''}</b>${H.goal ? `<span class="shGoal ${H.goalDone ? 'done' : ''}">${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}${H.goalDone ? ' ✓' : ''}</span>` : ''}</div>
+  <div class="shBoss"></div>
+  <div class="shUnits">${H.units.map((s) => { const A = shAbil(s), cd = Math.max(0, (s.abT || 0) - H.t), on = H.sel.includes(s.id); return `<div class="shU ${s.hp <= 0 ? 'down' : ''} ${on ? 'sel' : ''}" data-c="sel:${s.id}"><span class="nm">${esc(s.name)}</span><em><b style="width:${Math.max(0, Math.round(s.hp / s.max * 100))}%"></b></em><span class="ctl"><button data-c="st:${s.id}" title="Stance: ${SH_STANCE[s.stance || 'attack'].name}">${SH_STANCE[s.stance || 'attack'].icon}</button><button data-c="ab:${s.id}" ${cd || s.hp <= 0 ? 'disabled' : ''} title="${A.name}: ${A.desc}">${A.icon}${cd ? `<i>${Math.ceil(cd / 60)}</i>` : ''}</button>${(s.crit || 0) >= 100 ? `<button data-c="crit:${s.id}" class="crit" title="Critical: tap, then tap again as the ring hits the gold band">✦</button>` : ''}</span></div>`; }).join('')}</div>
+  <div class="shBtns"><button data-c="all" class="${H.sel.length ? 'on' : ''}">👥 ${H.sel.length ? 'Selected ' + H.sel.length : 'Select all'}</button><button data-c="focus" class="${H.focus ? 'on' : ''}">🎯 Boss</button><button data-c="med">💊 Medkit (${H.practice ? '∞' : S.meds || 0})</button><button data-c="throw" class="${H.throwMode ? 'on' : ''}" ${exN || H.practice ? '' : 'disabled'}>💣 Throw (${H.practice ? '∞' : exN})</button><button data-c="back" ${H.back ? 'disabled' : ''}>${H.goalDone && H.raid ? '🏃 Get out' : '↩ Fall back'}</button><button data-c="view">${H.view ? '🏠 Town' : '⚔ Squad'}</button></div>
+  <div class="sm shHint">${H.sel.length ? 'Slow-mo: tap the floor to move, an enemy to attack, a door to open or close. Tap the portrait again to let go.' : 'Tap a portrait to take control (time slows). Tap a door to shut it. ✦ = critical ready.'}</div>`;
   shPanelTick();
 }
 function shPanelTick() { const el = $('shPanel'), H = S.sh; if (!el || !H) return;
-  const u = el.querySelector('.shUnits'); if (u) u.innerHTML = H.units.map((s) => `<div class="shU ${s.hp <= 0 ? 'down' : ''}"><span>${esc(s.name)}</span><em><b style="width:${Math.max(0, Math.round(s.hp / s.max * 100))}%"></b></em></div>`).join('');
-  const b = el.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.area === H.area); if (b) b.innerHTML = bz ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span>${H.zs.filter((z) => z.hp > 0 && z.area === H.area).length} zombies in ${esc(SH_DEFS[H.dest].areas[H.area].name)}</span>`;
-  const m = el.querySelector('[data-c="med"]'); if (m) m.textContent = `💊 Medkit (${S.meds || 0})`; }
-function shDraw() {   /* the 2D overlay while watching the squad: damage numbers over the arena */
-  const H = S.sh; if (!H || !H.view || !window.ZH3D || !ZH3D.shProject) return; ctx.save(); ctx.textAlign = 'center'; ctx.font = '700 15px Fredoka, sans-serif';
+  el.querySelectorAll('.shU').forEach((u, i) => { const s = H.units[i]; if (!s) return; const b = u.querySelector('em b'); if (b) b.style.width = Math.max(0, Math.round(s.hp / s.max * 100)) + '%'; u.classList.toggle('down', s.hp <= 0); });
+  const b = el.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.hp > 0 && (H.woke.B || H.raid)), left = H.zs.filter((z) => z.hp > 0).length;
+  if (b) b.innerHTML = bz && H.woke.B ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span class="sm">${left} enemies left inside</span>`;
+  if (H.units.some((s) => (s.crit || 0) >= 100 && !el.querySelector(`[data-c="crit:${s.id}"]`)) || H.units.some((s) => s.abT && s.abT - H.t <= 0 && el.querySelector(`[data-c="ab:${s.id}"][disabled]`) && s.hp > 0)) shPanel(); }
+/* the tap layer over the 3D view */
+function shTapLayer() { let el = $('shTap'); const on = !!(S.sh && S.sh.view && S.sh.phase !== 'done');
+  if (!on) { if (el) el.remove(); return; } if (el) return;
+  el = document.createElement('div'); el.id = 'shTap'; el.style.cssText = 'position:fixed;inset:0;z-index:39;touch-action:none'; document.body.appendChild(el);
+  el.addEventListener('pointerup', (e) => { e.preventDefault(); shTap(e.clientX, e.clientY); }); }
+function shUnproject(x, y) { if (!window.ZH3D || !ZH3D.shProject) return null; const H = S.sh; let best = null, bd = 1e9;   /* coarse-to-fine search over the grid for the floor point under the tap */
+  for (let gy = 0; gy < SH_GH; gy++) for (let gx = 0; gx < SH_GW; gx++) { if (!shGrid()[gy][gx]) continue; const w = shWorld(gx, gy), p = ZH3D.shProject(w.x, w.y, 0); if (!p) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = w; } }
+  if (!best) return null; let w = best; for (const step of [.25, .12]) { let b2 = w, d2 = 1e9; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { const q = { x: w.x + i * step, y: w.y + j * step }, p = ZH3D.shProject(q.x, q.y, 0); const d = Math.hypot(p.x - x, p.y - y); if (d < d2) { d2 = d; b2 = q; } } w = b2; } return w; }
+function shTap(px, py) {
+  const H = S.sh; if (!H || !window.ZH3D || !ZH3D.shProject) return; const r0 = cv.getBoundingClientRect(), x = px - r0.left, y = py - r0.top;
+  if (H.ring) { const k = (performance.now() - H.ring.t0) / 1000, rad = 70 - 60 * k; const u = H.units.find((q) => q.id === H.ring.id); if (u) { if (rad >= 16 && rad <= 30) { u.critNext = true; shFx(u.w, 'CRITICAL READY!', '#ffd56b'); SFX('chime'); } else shFx(u.w, 'Missed the timing', '#b4a296'); u.crit = 0; } H.ring = null; shPanel(); return; }
+  const near = (list, h, r = 46) => { let best = null, bd = r; for (const o of list) { const p = ZH3D.shProject(o.w.x, o.w.y, h); if (!p) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = o; } } return best; };
+  if (H.throwMode) { const at = shUnproject(x, y); if (at) shThrow(at); return; }
+  const u = near(H.units, .9, 34); if (u) { H.sel = H.sel.length === 1 && H.sel[0] === u.id ? [] : [u.id]; shPanel(); return; }
+  const z = near(H.zs.filter((q) => q.hp > 0 && (q.mode !== 'sleep' || H.woke[q.room])), 1); if (z) { const who = H.sel.length ? H.units.filter((q) => H.sel.includes(q.id)) : H.units; for (const q of who) { q.order = z; q.moveTo = null; } if (!H.sel.length) H.order = z; shFx(z.w, '🎯', '#ff6e62'); return; }
+  const dr = H.doors.map((d, i) => { const [, , dx, dy, dw, dh] = SH_DOORS[i]; return { d, i, w: shWorld(dx + (dw - 1) / 2, dy + (dh - 1) / 2) }; }); const dn = near(dr, .5, 40);
+  if (dn && !dn.d.broken) { const [, , dx, dy, dw, dh] = SH_DOORS[dn.i]; const busy = [...H.units, ...H.zs].some((o) => o.hp > 0 && (() => { const c = shCell(o.w); return c.x >= dx && c.x < dx + dw && c.y >= dy && c.y < dy + dh; })()); if (busy && dn.d.open) { say('Someone is standing in the doorway.'); return; } dn.d.open = !dn.d.open; dn.d.hp = 120; SFX('hit'); shFx(dn.w, dn.d.open ? 'Door open' : 'Door shut', '#ffe9b8'); return; }
+  if (H.sel.length) { const at = shUnproject(x, y); if (!at) return; const who = H.units.filter((q) => H.sel.includes(q.id) && q.hp > 0); who.forEach((q, i) => { q.moveTo = { x: at.x + (i % 3 - 1) * .5, y: at.y + Math.floor(i / 3) * .5 }; q.order = null; q.target = null; }); shFx(at, '⬤', '#9fd8ff'); }
+}
+function shDraw() {   /* the 2D overlay while watching the squad */
+  shTapLayer(); const H = S.sh; if (!H || !H.view || !window.ZH3D || !ZH3D.shProject) return; ctx.save(); ctx.textAlign = 'center';
+  for (const u of H.units) { if (u.hp <= 0) continue; const p = ZH3D.shProject(u.w.x, u.w.y, 1.55), f = ZH3D.shProject(u.w.x, u.w.y, 0); if (!p) continue;
+    if (H.sel.includes(u.id) && f) { ctx.strokeStyle = '#9fd8ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(f.x, f.y, 20, 10, 0, 0, 6.29); ctx.stroke(); if (u.moveTo) { const m = ZH3D.shProject(u.moveTo.x, u.moveTo.y, 0); if (m) { ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(m.x, m.y); ctx.stroke(); ctx.setLineDash([]); } } }
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(p.x - 15, p.y - 9, 30, 5); ctx.fillStyle = u.hp < u.max * .3 ? '#e2574c' : '#6ccf6e'; ctx.fillRect(p.x - 15, p.y - 9, 30 * u.hp / u.max, 5);
+    if ((u.crit || 0) >= 100 || u.critNext || u.aimNext) { ctx.font = '700 18px Fredoka, sans-serif'; ctx.fillStyle = u.critNext || u.aimNext ? '#ff9f43' : '#ffd56b'; ctx.fillText('✦', p.x, p.y - 12); } else { ctx.fillStyle = '#ffd56b'; ctx.fillRect(p.x - 15, p.y - 3, 30 * (u.crit || 0) / 100, 2); }
+    ctx.font = '600 11px Fredoka, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(SH_STANCE[u.stance || 'attack'].icon, p.x + 22, p.y - 3); }
+  for (const z of H.zs) { if (z.hp <= 0 || (z.mode === 'sleep' && !H.woke[z.room])) continue; if (z.boss || z.human) { const p = ZH3D.shProject(z.w.x, z.w.y, z.boss ? 2.6 : 1.6); if (p) { ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(p.x - 18, p.y - 4, 36, 5); ctx.fillStyle = '#e2574c'; ctx.fillRect(p.x - 18, p.y - 4, 36 * z.hp / z.max, 5); } } }
+  const ord = new Set([H.order, ...H.units.map((q) => q.order)].filter((z) => z && z.hp > 0)); for (const z of ord) { const p = ZH3D.shProject(z.w.x, z.w.y, .05); if (p) { ctx.strokeStyle = '#ff6e62'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y, 22, 11, 0, 0, 6.29); ctx.stroke(); } }
+  H.doors.forEach((d, i) => { if (d.open && !d.broken) return; const [, , dx, dy, dw, dh] = SH_DOORS[i], w = shWorld(dx + (dw - 1) / 2, dy + (dh - 1) / 2), p = ZH3D.shProject(w.x, w.y, 1.4); if (!p) return; ctx.font = '600 13px Fredoka, sans-serif'; ctx.fillStyle = d.broken ? '#ff8a7a' : '#ffe9b8'; ctx.fillText(d.broken ? 'broken' : '🚪 ' + Math.max(0, Math.round(d.hp)), p.x, p.y); });
+  if (H.ring) { const u = H.units.find((q) => q.id === H.ring.id), k = (performance.now() - H.ring.t0) / 1000, rad = 70 - 60 * k; if (!u || rad < 6) { if (u) { u.crit = 0; shFx(u.w, 'Too slow', '#b4a296'); } H.ring = null; } else { const p = ZH3D.shProject(u.w.x, u.w.y, .7);
+      if (p) { ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,213,107,.45)'; ctx.beginPath(); ctx.arc(p.x, p.y, 23, 0, 6.29); ctx.stroke(); ctx.lineWidth = 3; ctx.strokeStyle = rad >= 16 && rad <= 30 ? '#7be08a' : '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, 6.29); ctx.stroke(); } } }
+  if (H.throwMode) { ctx.font = '700 15px Fredoka, sans-serif'; ctx.fillStyle = '#ffd070'; ctx.fillText('💣 Tap where to throw', VW / 2, 90); }
+  ctx.font = '700 15px Fredoka, sans-serif';
   for (const f of H.fx) { const p = ZH3D.shProject(f.w.x, f.w.y, 1.9 + (60 - f.a) / 60 * .8); if (!p) continue; ctx.globalAlpha = Math.min(1, f.a / 25); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(f.t, p.x, p.y); ctx.fillStyle = f.col; ctx.fillText(f.t, p.x, p.y); }
   ctx.restore(); }
+/* the practice page (owner: "a test page in the game for that function"): try any stronghold or camp with a ready-made squad;
+   nothing is lost or gained, and the town waits. Open it from Town > Defense, or with ?shtest=1. */
+function showShPractice() {
+  endBuildMode(true); const maps = Object.keys(SH_DEFS); expSel.pr = expSel.pr || { map: 'clinic', n: 6, goal: 'loot', lv: 6 }; const P = expSel.pr;
+  $('ib').innerHTML = `<div class="card"><b>🎯 Stronghold practice</b><div class="sm">Try every control with a ready-made squad. Nothing is lost or gained, and the town waits while you play.</div></div>
+    <div class="sm">Map</div><div class="row" style="flex-wrap:wrap;gap:6px">${maps.map((k) => `<button class="vehB ${P.map === k ? 'on' : ''}" data-pm="${k}">${(EXP_DEFS[k] || {}).icon || (SH_DEFS[k].raid ? '⚔' : '🏚')} ${esc((EXP_DEFS[k] || {}).name || k)}<small>${SH_DEFS[k].raid ? 'faction camp' : 'rec. ' + SH_DEFS[k].rec}</small></button>`).join('')}</div>
+    ${SH_DEFS[P.map].raid ? `<div class="sm">Raid goal</div><div class="row" style="flex-wrap:wrap;gap:6px">${Object.entries(RAID_GOALS).map(([k, g]) => `<button class="vehB ${P.goal === k ? 'on' : ''}" data-pg="${k}">${g.icon} ${g.name}<small>${g.desc}</small></button>`).join('')}</div>` : ''}
+    <div class="sm">Squad size</div><div class="row" style="gap:6px">${[4, 5, 6, 7, 8].map((n) => `<button class="vehB ${P.n === n ? 'on' : ''}" data-pn="${n}">${n}</button>`).join('')}</div>
+    <div class="sm">Squad level</div><div class="row" style="gap:6px">${[3, 6, 9, 12].map((n) => `<button class="vehB ${P.lv === n ? 'on' : ''}" data-pl="${n}">Lv ${n}</button>`).join('')}</div>
+    <button class="act go" id="prGo" style="margin-top:10px">Start practice</button>
+    <div class="sm" style="margin-top:8px"><b>Controls:</b> tap a portrait (or 👥) to take control, and time slows to 25%. Then tap the floor to move, an enemy to attack, a door to shut it. Each portrait has a stance button (⚔ Attack, ✋ Hold, 🫂 Guard, ↩ Pull back) and an ability (🛡 Taunt, 🎯 Aimed Shot, ✚ Patch Up, 🔍 Search, 🧱 Barricade, 🪤 Snare, 📣 Rally). ✦ = critical ready: tap it, then tap again as the ring hits the gold band. 💣 throws an explosive where you tap.</div>`;
+  $('ib').querySelectorAll('[data-pm]').forEach((b) => { b.onclick = () => { P.map = b.dataset.pm; showShPractice(); }; }); $('ib').querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => { P.goal = b.dataset.pg; showShPractice(); }; });
+  $('ib').querySelectorAll('[data-pn]').forEach((b) => { b.onclick = () => { P.n = +b.dataset.pn; showShPractice(); }; }); $('ib').querySelectorAll('[data-pl]').forEach((b) => { b.onclick = () => { P.lv = +b.dataset.pl; showShPractice(); }; });
+  $('prGo').onclick = () => { if (S.sh) { say('A squad is already inside.'); return; } const jobs = ['Guard', 'Police Officer', 'Medic', 'Scavenger', 'Mechanic', 'Engineer', 'Guard', 'Police Officer'], wp = ['machete', 'rifle', 'pistol', 'crossbow', 'sledge', 'shotgun', 'katana', 'rifle'], ar = P.lv >= 9 ? 'kevlar' : P.lv >= 6 ? 'leather' : null;
+    const sq = []; for (let i = 0; i < P.n; i++) { const q = mk(FIRST_NAMES[(i * 7 + 3) % FIRST_NAMES.length], jobs[i], P.lv, 0, 0, i); q.eq = { weapon: ITEMS[wp[i]] ? wp[i] : 'bat', armor: ar && ITEMS[ar] ? ar : null, head: null, acc: null }; setMaxHp(q); q.hp = q.max; q.ammo = 99; q.id = 80000 + i; sq.push(q); }
+    S.sv.push(...sq); const r = startStronghold(P.map, sq.map((q) => q.id), { practice: true, goal: P.goal }); S.sv = S.sv.filter((q) => !sq.includes(q)); if (!r.ok) { say(r.why); return; } closeP(); };
+  showPanel('Stronghold practice');
+}
 /* ---- UI ---- */
 let expOpen = false; const expSel = { dest: 'houses', risk: 'low', ids: null };
 const mmss = (ms) => { if (COZY_HUD) { const gm = Math.max(0, Math.ceil(ms / EXP_HMS * 60)); return Math.floor(gm / 60) + 'h ' + String(gm % 60).padStart(2, '0') + 'm'; } const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -4882,7 +5042,8 @@ function showExpedition() {
     const rb = $('expRecall'); if (rb) rb.onclick = () => { if (expRecall()) showExpedition(); };
     $('ib').querySelectorAll('[data-enc]').forEach((b) => { const en = t.enc; b.onclick = () => encChoose(en, +b.dataset.enc); });
   } else {
-    if (COZY_HUD) {   /* V3D.18: you can only go where a lead points */
+    if (expSel.force && EXP_DEFS[expSel.force] && !expLocked(expSel.force)) { expSel.dest = expSel.force; expSel.risk = 'high'; }   /* 3D.114 a raid picked from the Factions card */
+    else if (COZY_HUD) {   /* V3D.18: you can only go where a lead points */
       leadsTidy(); const L = S.leads || [];
       if (!L.length) { $('ib').innerHTML = `<div class="card leadNone"><div class="lnIc">${window.ZHIcons ? ZHIcons.svg('radio', 44) : '📻'}</div><div><b>No leads right now</b><div class="sm">Scouts and the radio bring new places to search in the morning and the afternoon. Each lead lasts about 10 hours.</div></div></div>${S.lastTrip ? `<div class="sm">Last trip: ${EXP_DEFS[S.lastTrip.dest].name}${S.lastTrip.lost.length ? ' · lost ' + S.lastTrip.lost.join(', ') : ''}</div>` : ''}`; showPanel(); return; }
       if (!L.some((l) => l.id === expSel.lead)) expSel.lead = L[0].id; const ld = L.find((l) => l.id === expSel.lead); expSel.dest = ld.dest; expSel.risk = ld.risk;
@@ -4894,7 +5055,7 @@ function showExpedition() {
     const ready = S.sv.filter(expEligible);
     const where = COZY_HUD ? `<div class="sm">Leads</div><div class="lst">${(S.leads || []).map((l) => { const v = EXP_DEFS[l.dest], on = l.id === expSel.lead; return `<div class="card" data-lead="${l.id}" style="${on ? 'border-color:var(--gold)' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp"><b>${v.name}</b> <span class="sm">${EXP_RISK[l.risk].label} risk · ${EXP_HOURS[l.risk]} h trip</span><div class="sm">${esc(l.text)} · gone in ${Math.max(1, Math.round(l.untilH - nowH()))} h</div></div>${on ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>` : '';
     const lootTxt = Object.entries(d.loot || {}).map(([r, [a0, a1]]) => `${(RES_NAME[r] || r)} ${Math.round(a0 * EXP_STAGES * pv.mult)}–${Math.round(a1 * EXP_STAGES * pv.mult)}`).join(' · ');   /* 3D.41: a rough total for the whole trip */
-    $('ib').innerHTML = COZY_HUD ? `<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${expMax()}</b><small>squad</small></span><button class="act go" id="expGo">${SH_DEFS[expSel.dest] && G3D ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${vehCard()}${SH_DEFS[expSel.dest] && G3D ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
+    $('ib').innerHTML = COZY_HUD ? `<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${expMax()}</b><small>squad</small></span><button class="act go" id="expGo">${SH_DEFS[expSel.dest] && G3D ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${vehCard()}${EXP_DEFS[expSel.dest].raid ? `<div class="etLine vehLine"><span class="etK">Goal</span>${Object.entries(RAID_GOALS).map(([k, g]) => `<button class="vehB ${(expSel.goal || 'loot') === k ? 'on' : ''}" data-goal="${k}" title="${esc(g.desc)}">${g.icon} ${g.name}</button>`).join('')}</div>` : ''}${SH_DEFS[expSel.dest] && G3D ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
       + where + `<div class="sm">Squad (1–${expMax()}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>` : `<div class="sm">Where to?</div><div class="lst">${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<div class="card" data-d="${k}" style="${expSel.dest === k ? 'border-color:var(--gold)' : ''}${lk ? ';opacity:.5' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp">${v.name}<div class="sm">${lk ? '🔒 ' + lk : expSel.dest === k ? d.desc : ''}</div></div>${expSel.dest === k ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>
       <div class="sm">Risk</div><div class="tabs" style="position:static">${d.risks.map((r) => `<button data-r="${r}" class="${expSel.risk === r ? 'on' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min}m</button>`).join('')}</div>
       <div class="sm">Squad (1–${expMax()}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}${['cautious', 'scrounger', 'loner'].includes(q.trait) ? ' · ' + TRAITS[q.trait].name + (q.trait === 'cautious' ? ': safer' : q.trait === 'loner' ? ': +loot in 1–2' : ': +loot') : ''}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>
@@ -4904,8 +5065,8 @@ function showExpedition() {
     $('ib').querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { if (expLocked(b.dataset.d)) { say(expLocked(b.dataset.d)); return; } expSel.dest = b.dataset.d; showExpedition(); }; });
     $('ib').querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { expSel.risk = b.dataset.r; showExpedition(); }; });
     $('ib').querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => { const id = +b.dataset.s, q = S.sv.find((x) => x.id === id); if (ids.includes(id)) expSel.ids = ids.filter((x) => x !== id); else if (q && expEligible(q) && ids.length < expMax()) expSel.ids = [...ids, id]; else expMsg(q && !expEligible(q) ? `${q.name} can’t go: ${expBlock(q) || 'busy right now'}` : ids.length >= EXP_MAX_SQUAD ? `A squad is at most ${EXP_MAX_SQUAD}` : 'That survivor can’t go right now'); showExpedition(); }; });
-    $('ib').querySelectorAll('[data-veh]').forEach((b) => { b.onclick = () => { expSel.veh = b.dataset.veh || null; showExpedition(); }; }); $('ib').querySelectorAll('[data-vbuild]').forEach((b) => { b.onclick = () => { vehBuildCart(); showExpedition(); }; }); $('ib').querySelectorAll('[data-vfix]').forEach((b) => { b.onclick = () => { vehRepair(b.dataset.vfix); showExpedition(); }; });   /* 3D.109 */
-    $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { expMsg(r.why); return; } if (COZY_HUD) { S.leads = (S.leads || []).filter((l) => l.id !== expSel.lead); closeP(); } expSel.ids = null; if (!COZY_HUD) showExpedition(); };
+    $('ib').querySelectorAll('[data-goal]').forEach((b) => { b.onclick = () => { expSel.goal = b.dataset.goal; showExpedition(); }; }); $('ib').querySelectorAll('[data-veh]').forEach((b) => { b.onclick = () => { expSel.veh = b.dataset.veh || null; showExpedition(); }; }); $('ib').querySelectorAll('[data-vbuild]').forEach((b) => { b.onclick = () => { vehBuildCart(); showExpedition(); }; }); $('ib').querySelectorAll('[data-vfix]').forEach((b) => { b.onclick = () => { vehRepair(b.dataset.vfix); showExpedition(); }; });   /* 3D.109 */
+    $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { expMsg(r.why); return; } if (COZY_HUD) { if (!expSel.force) S.leads = (S.leads || []).filter((l) => l.id !== expSel.lead); closeP(); } expSel.ids = null; expSel.force = null; if (!COZY_HUD) showExpedition(); };
   }
   showPanel();
 }
@@ -5553,6 +5714,7 @@ function showTown(tab) {
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
   { const ea = $('tExAuto'); if (ea) ea.onclick = () => { S.exAuto = S.exAuto === false; showTown('defense'); }; }
+  { const pr = $('shPrac'); if (pr) pr.onclick = () => showShPractice(); $('ib').querySelectorAll('[data-raid]').forEach((b) => { b.onclick = () => { expSel.force = b.dataset.raid; expSel.ids = null; showExpedition(); }; }); }
   { const ca = $('crisisAct'); if (ca) ca.onclick = () => { const c = S.crisis; if (c && CRISES[c.k].act && CRISES[c.k].act()) showTown('defense'); }; }
   const tu = $('tUpg'); if (tu) tu.onclick = () => showUpgrade('rank');
   const tTi = $('tTitle'); if (tTi) tTi.onclick = backToTitle;
@@ -5942,7 +6104,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
-  if (S.sh) { shTick(); S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
+  if (S.sh) { shTick(); if (S.sh && S.sh.practice) return; S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* practice: the town waits */   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(STEP * 3); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
@@ -5978,6 +6140,7 @@ async function init() {
   if (!restored || !restored.cam) centerOn(7.5 + OFF, 10 + OFF, Math.max(.7, Math.min(1.1, VW / 430)) * (G3D ? 1.25 : 1));
   if (titleOn) { $('loading').style.display = 'none'; showTitle(); requestAnimationFrame(frame); return; }
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
+  if (QS.get('shtest')) setTimeout(() => showShPractice(), 1200);   /* 3D.114 the practice page */
   if (S.cutPending) { delete S.cutPending; cutStart(); } autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission && !S.cut) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
   if (ZOO) zooStart();
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
@@ -6121,7 +6284,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, showLegacy, legacySave, applyLegacy, legacySaved, LEG_PERKS, legSel, CRISES, crisisDaily, crisisEnd, promoteSpec, promoteHyb, hybOptions, specWhy, needsBanner, setExpVeh: (k) => { expSel.veh = k || null; }, vehReady, VEH, vehArrive, vehBuildCart, vehRepair, vehDaily, vehDrive, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, exAdd, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, rotBurst, dawnRetreat, intro, introTick, INTRO, fieldNotesHtml, hDay, hordeCap, danger, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { BUILD_TAG, SH_ROOMS, SH_DOORS, SH_AX, SH_AY, shGridOf: () => shGrid(), shWorldOf: (x, y) => shWorld(x, y), showShPractice, shCap, RAID_GOALS, shTap, showLegacy, legacySave, applyLegacy, legacySaved, LEG_PERKS, legSel, CRISES, crisisDaily, crisisEnd, promoteSpec, promoteHyb, hybOptions, specWhy, needsBanner, setExpVeh: (k) => { expSel.veh = k || null; }, vehReady, VEH, vehArrive, vehBuildCart, vehRepair, vehDaily, vehDrive, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, exAdd, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, rotBurst, dawnRetreat, intro, introTick, INTRO, fieldNotesHtml, hDay, hordeCap, danger, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { awayCredit, goalsTick, claimGoal, goalsHtml, GOALS_DAILY, GOALS_WEEKLY, dayKey, weekKey, rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();

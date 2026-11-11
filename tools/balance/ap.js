@@ -58,7 +58,7 @@
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
   AP.tick = function () {
     if (AP.expert) expertTick();
-    if (S.sh && on('stronghold')) { const H = S.sh, D = Z.SH_DEFS[H.dest]; if (H.area === D.areas.length - 1 && !H.focus) Z.shCall('focus'); const low = H.units.find((q) => q.hp > 0 && q.hp < q.max * .3) || H.units.find((q) => q.hp <= 0); if (low && (S.meds || 0) > 0 && !(AP.medT > Z.tick)) { Z.shCall('med'); AP.medT = Z.tick + 300; }
+    if (S.sh && on('stronghold')) { const H = S.sh, D = Z.SH_DEFS[H.dest]; if (H.woke && H.woke.B && !H.focus) Z.shCall('focus'); const low = H.units.find((q) => q.hp > 0 && q.hp < q.max * .3) || H.units.find((q) => q.hp <= 0); if (low && (S.meds || 0) > 0 && !(AP.medT > Z.tick)) { Z.shCall('med'); AP.medT = Z.tick + 300; }
       if (!AP.shSeen) { AP.shSeen = true; } } else if (AP.shSeen) { AP.shSeen = false; AP.events.push((S.shCleared && Object.values(S.shCleared).reduce((a, b) => a + b, 0) > (AP.shWins || 0) ? 'stronghold WON' : 'stronghold lost') + '@d' + S.day); AP.shWins = S.shCleared ? Object.values(S.shCleared).reduce((a, b) => a + b, 0) : 0; }
     if (on('radio') && Z.radioHelp && Z.helpReady && AP.radio !== false && S.sv.filter((q) => q.mode === 'down').length >= 2 && Z.helpReady()) { Z.radioHelp(); AP.events.push('radio@d' + S.day); }   /* 3D.64: a player radios for help when two are down */
     for (const s of S.sv) { const prev = last.get(s);
