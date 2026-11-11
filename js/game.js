@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.101', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.102', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4042,6 +4042,7 @@ function showSettings(back) {
 function saveGame() {
   if (ZOO) return;   /* 3D.32 the test page never touches your saves */
   if (titleOn || saveBlocked) return false;
+  if (S.cut) return false;   /* 3D.102 never save half-way through the opening cutscene (the camp is not up yet) */
   S.savedAt = Date.now(); let data; try { data = serialize(); } catch (e) { saveFail('the town could not be packed (' + e.message + ')'); return false; }
   let r = writeKey(SAVE_KEY, data);
   if (r !== true) { try { localStorage.removeItem(BAK(SAVE_KEY)); localStorage.removeItem(BAD(SAVE_KEY)); } catch (e) { /* ignore */ } r = writeKey(SAVE_KEY, data); }
@@ -5081,9 +5082,93 @@ const introOff = () => !!S.introOff || (/[?&]test=/.test(location.search) && !wi
 function intro(key) {   /* show a Field Note once per game */
   S.intro = S.intro || {}; if (S.intro[key]) return false; const d = INTRO[key] || (key.startsWith('b:') && DEFS[key.slice(2)] && [ '🏗️', DEFS[key.slice(2)].name, BDESC[key.slice(2)] || '', 'Tap it to see how it is doing, who works there and what it needs.' ]); if (!d) return false;
   S.intro[key] = S.day || 1; if (introOff()) return true;
-  showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
+  let pic = '';   /* 3D.102: a new zombie gets its picture, seen from the game's iso angle, in the middle of the card */
+  if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
+  showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `${pic}<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
     buttons: [{ label: 'Got it' }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
   return true;
+}
+/* 3D.102 the opening cutscene of a new game (owner): four survivors run off the north-east highway with two zombies on their heels,
+   lose them, find a broken-down farm (a 5x5 wood fence with gaps) in the middle of the map, see the scrap lying around and put the
+   camp up there. The camera follows them zoomed in; the HUD is hidden behind letterbox bars; Skip jumps straight to the built camp. */
+const CUT_FENCE = (() => { const o = [], x0 = 12, y0 = 15;   /* around the camp site (STARTS hq 8,11 + OFF = 14,17) */ for (let i = 0; i < 5; i++) { o.push([x0 + i, y0], [x0 + i, y0 + 4]); if (i > 0 && i < 4) o.push([x0, y0 + i], [x0 + 4, y0 + i]); } return o; })();
+const CUT_GAP = new Set(['14,15', '15,15', '16,17']);   /* the way in (north, facing the highway) and a section blown out on the east */
+const CUT_RUBBLE = new Set(['12,18', '13,19']);   /* fallen panels: rubble anyone can cross */
+const CUT_SPOT = [[14.6, 16.4], [13.5, 16.5], [15.6, 16.2], [13.4, 17.6]].map(([x, y]) => ({ x, y }));   /* Marcus, Amy, Lena, Ben: just north of the camp site */
+const CUT_LINES = {
+  run: [[2, "Don't stop! They're right behind us!", 'shout'], [0, 'Keep moving! We need a place to hide!', 'shout'], [3, "I can't... my legs are done!", 'talk'], [1, "The whole world's turning to shit...", 'talk'], [2, "They're slow off the road. Keep going and we lose them!", 'shout']],
+  farm: [[2, "Look! An old farm. The fence is half down, but it's something.", 'talk'], [0, "We lost them. A fence, open ground, a road out... we can settle here.", 'talk'], [3, "Soil's still good. I could grow something here.", 'talk'], [1, "And there's scrap lying all over the place. Enough to build a camp.", 'talk'], [0, "Then this is it. Let's build.", 'shout']],
+  done: [[1, 'Home. For now.', 'talk'], [0, "Rest while you can. They'll come at night.", 'talk']],
+};
+function cutFence() {   /* the broken farm fence: placed on any new game (with or without the cutscene) */
+  for (const [x, y] of CUT_FENCE) { const k = x + ',' + y; if (CUT_GAP.has(k) || world.walls.has(k) || Wd.buildingAt(world, x, y)) continue; const def = Wd.WALL_DEFS.wood, h = (x * 7 + y * 13) % 5;
+    const hp = CUT_RUBBLE.has(k) ? 0 : Math.round(def.hp * (h < 2 ? .45 : h < 4 ? .7 : 1)); world.walls.set(k, { x, y, type: 'wood', hp, max: def.hp, ...(CUT_RUBBLE.has(k) ? { broken: true } : {}) }); }
+  Wd.bump(world);
+}
+const cutZoom = () => Math.max(.7, Math.min(1.1, VW / 430)) * (G3D ? 1.25 : 1);
+function cutStart() {
+  const C = S.cut = { ph: 'run', t: 0, line: 0, lineT: 0, cx: 0, cy: 0, hq: null, z0: cutZoom() };
+  const hi = world.buildings.findIndex((b) => b.type === 'hq'); if (hi >= 0) C.hq = world.buildings.splice(hi, 1)[0]; Wd.bump(world);
+  const crew = S.sv.slice(0, 4), y = Wd.HWY_Y + .5;
+  crew.forEach((q, i) => { q.w = { x: 33.2 + i * .9 + (i % 2) * .3, y: y + (i % 2 ? 1 : .2) }; q.mode = 'cutRun'; q.path = null; q.dest = null; q.moving = true; q.cutWp = 0; q.pv = { ...q.w }; });
+  C.zs = [[37.6, y + .3, 'runner'], [39.2, y + 1.1, 'runner']].map(([x, yy, t]) => { spawn(x, yy, t); const z = S.z[S.z.length - 1]; z.w = { x, y: yy }; z.mode = 'zchase'; z.stateTicks = 0; z.cut = true; z.siege = false; return z; });
+  C.cx = 34.5; C.cy = y + .5; centerOn(C.cx, C.cy, C.z0 * 1.85);
+  document.getElementById('app').classList.add('cutMode'); cutUi(true);
+}
+function cutUi(on) {
+  let el = document.getElementById('cutBox');
+  if (!on) { if (el) el.remove(); document.getElementById('app').classList.remove('cutMode'); return; }
+  if (!document.getElementById('cutCss')) { const st = document.createElement('style'); st.id = 'cutCss'; st.textContent = `#app.cutMode #plaque,#app.cutMode #quest,#app.cutMode #adv,#app.cutMode #lmenu,#app.cutMode #gauge,#app.cutMode #btnHome,#app.cutMode #zoom,#app.cutMode #alerts,#app.cutMode #bottom,#app.cutMode #requestBox,#app.cutMode #nudge{display:none!important}
+#cutBox{position:fixed;inset:0;z-index:60;pointer-events:auto;touch-action:none}#cutBox .bar{position:absolute;left:0;right:0;height:11vh;background:#0d0a07;border-radius:0;transition:height .6s}#cutBox .bar.t{top:0}#cutBox .bar.b{bottom:0;height:15vh}
+#cutBox .sub{position:absolute;left:0;right:0;bottom:3vh;padding:0 max(16px,env(safe-area-inset-left,0px));text-align:center;font:600 clamp(15px,2.4vw,21px)/1.3 system-ui,sans-serif;color:#f3e6c8;text-shadow:0 2px 0 #000;min-height:2.6em}#cutBox .sub b{color:#f0b84a}
+#cutBox .ttl{position:absolute;top:2.6vh;left:0;right:0;text-align:center;font:800 clamp(14px,2vw,18px)/1 system-ui,sans-serif;letter-spacing:.2em;color:#bfae8a;text-transform:uppercase}
+#cutBox .skip{position:absolute;right:max(14px,env(safe-area-inset-right,0px));top:calc(11vh + 10px);background:rgba(13,10,7,.75);color:#f3e6c8;border:1.5px solid #6d5a3c;border-radius:8px;padding:7px 14px;font:700 14px system-ui,sans-serif;cursor:pointer}
+#cutBox.out .bar{height:0}#cutBox.out .sub,#cutBox.out .ttl,#cutBox.out .skip{opacity:0;transition:opacity .4s}`; document.head.appendChild(st); }
+  if (!el) { el = document.createElement('div'); el.id = 'cutBox'; el.innerHTML = `<div class="bar t"></div><div class="bar b"></div><div class="ttl">${esc(S.townName || 'Zombie Haven')} · Day 1</div><div class="sub" id="cutSub"></div><button class="skip" id="cutSkip">Skip ▸▸</button>`; document.body.appendChild(el); el.querySelector('#cutSkip').onclick = (e) => { e.stopPropagation(); cutEnd(true); }; }
+}
+function cutSay(set) {   /* the next line of this phase, once the last one has had time to be read; returns true when the phase's lines are done */
+  const C = S.cut, L = CUT_LINES[set]; if (C.lineT > 0) { C.lineT--; return false; } if (C.line >= L.length) return true;
+  const [who, t, st] = L[C.line++], q = S.sv[who]; for (const o of S.sv) if (o.bark && o.bark.pri === 3) o.bark = null; if (q) { const f = Math.min(250, 100 + t.length * 2.5); q.bark = { t: GLASS ? t : t.toUpperCase(), st, f, f0: f, pri: 3 }; q.emo = null; C.lineT = f - 30; const sb = document.getElementById('cutSub'); if (sb) sb.innerHTML = `<b>${esc(q.name)}:</b> ${esc(t)}`; }
+  return false;
+}
+function cutTick() {
+  const C = S.cut; C.t++; const crew = S.sv.slice(0, 4);
+  for (const q of S.sv) if (q.bark && --q.bark.f <= 0) q.bark = null;
+  const rampTop = { x: Wd.HWY_RAMP_X + 1, y: Wd.HWY_Y + 1.5 }, rampBot = { x: Wd.HWY_RAMP_X + .9, y: Wd.HWY_Y + 5.4 };
+  if (C.ph === 'run') {
+    let home = 0;
+    crew.forEach((q, i) => { const wp = [{ x: rampTop.x + (i % 2) * .5 + i * .25, y: rampTop.y - (i % 2) * .7 }, { x: rampBot.x + (i % 2) * .5, y: rampBot.y + i * .2 }, CUT_SPOT[i]];
+      if (q.cutWp >= wp.length) { q.moving = false; q.mode = 'cutIdle'; home++; return; }
+      const r = q.cutWp < 2 ? (stepToward(q, wp[q.cutWp], .03 - i * .0012 + (i === 3 ? -.001 : 0)) ? 'arrived' : 'moving') : followPath(q, wp[2], .05 - (i === 3 ? .002 : 0));
+      if (r === 'arrived' || (q.cutWp < 2 && dist(q.w, wp[q.cutWp]) < .25)) q.cutWp++; else if (r === 'fail') { q.w = { ...wp[2] }; q.cutWp = 3; } });
+    const lead = crew.reduce((a, q) => (q.w.x < a.w.x ? a : q), crew[0]), back = crew.reduce((a, q) => (q.w.x > a.w.x ? a : q), crew[0]), off = crew.every((q) => q.cutWp >= 2);
+    for (const z of C.zs) { if (z.hp <= 0) continue; if (!off) { z.mode = 'zchase'; z.target = back; stepToward(z, { x: back.w.x + 1.3, y: back.w.y + (z === C.zs[0] ? -.2 : .5) }, .022 + (z === C.zs[0] ? .002 : 0)); } else { z.mode = 'idle'; z.target = null; z.moving = false; } }
+    cutSay('run'); if (home === crew.length) { C.ph = 'farm'; C.line = 0; C.lineT = 40; C.t = 0; }
+  } else if (C.ph === 'farm') { crew.forEach((q) => { q.moving = false; }); if (cutSay('farm')) { C.ph = 'build'; C.t = 0; crew.forEach((q, i) => { q.mode = 'hammer'; q.path = null; q.cutGo = i; }); SFX('build'); } }
+  else if (C.ph === 'build') {
+    const b = C.hq, site = b ? [{ x: b.x - .45, y: b.y + .5 }, { x: b.x + b.w + .45, y: b.y + 1 }, { x: b.x + 1, y: b.y - .45 }, { x: b.x + .3, y: b.y + b.h + .45 }] : CUT_SPOT;
+    crew.forEach((q, i) => { const r = followPath(q, site[i], CHASE); if (r !== 'moving') q.moving = false; });
+    if (C.t % 50 === 0 && b) floats.push({ w: { x: b.x + 1, y: b.y + 1 }, t: '🔨', col: '#f0d9a0', a: 50 });
+    const sb = document.getElementById('cutSub'); if (sb && C.t === 1) sb.innerHTML = '<b>Building the camp…</b>';
+    if (C.t >= 330) { cutPlaceHq(); C.ph = 'done'; C.t = 0; C.line = 0; C.lineT = 50; crew.forEach((q) => { q.mode = 'cutIdle'; q.moving = false; q.path = null; }); }
+  } else if (C.ph === 'done') { if (cutSay('done') && C.t > 60) { C.ph = 'out'; C.t = 0; const bx = document.getElementById('cutBox'); if (bx) bx.classList.add('out'); } }
+  else if (C.ph === 'out') { if (C.t >= 70) return cutEnd(false); }
+  /* camera: follows the middle of the group, a little ahead of them; zooms back out at the end */
+  const cx = crew.reduce((a, q) => a + q.w.x, 0) / crew.length, cy = crew.reduce((a, q) => a + q.w.y, 0) / crew.length, k = C.ph === 'run' ? .06 : .03;
+  const lx = C.ph === 'run' ? -1.2 : 0, ly = C.ph === 'run' ? .4 : .5; C.cx += (cx + lx - C.cx) * k; C.cy += (cy + ly - C.cy) * k;
+  const zt = C.ph === 'out' ? C.z0 : C.ph === 'run' ? C.z0 * 1.85 : C.z0 * 2.05; cam.z += (zt - cam.z) * (C.ph === 'out' ? .08 : .02); centerOn(C.cx, C.cy);
+}
+function cutPlaceHq() {
+  const C = S.cut; if (!C || !C.hq) return; if (!world.buildings.includes(C.hq)) world.buildings.push(C.hq); Wd.bump(world);
+  (window.ZH_BURSTS ||= []).push({ x: C.hq.x + C.hq.w / 2, y: C.hq.y + C.hq.h / 2, t: performance.now() }); SFX('reward'); banner('⛺ THE CAMP IS UP'); C.hq = null;
+}
+function cutEnd(skip) {
+  const C = S.cut; if (!C) return; cutPlaceHq(); const crew = S.sv.slice(0, 4);
+  crew.forEach((q, i) => { if (skip || !Wd.walkable(world, Math.floor(q.w.x), Math.floor(q.w.y))) q.w = { ...CUT_SPOT[i] }; q.pv = { ...q.w }; q.mode = 'free'; q.moving = false; q.path = null; q.dest = null; q.bark = null; q.cutWp = undefined; q.stateTicks = 30 + i * 20; });
+  for (const z of C.zs || []) if (z.hp > 0) { z.cut = false; z.mode = 'zleave'; z.retreat = true; z.target = null; z.path = null; z.leaveTo = tc(Wd.COLS - 1, Wd.HWY_Y + (z === C.zs[0] ? 0 : 1)); if (skip) z.hp = 0; }
+  S.cut = null; cutUi(false); cam.z = C.z0; centerOn(7.5 + OFF, 10 + OFF); updateZoomLabel(); 
+  spawn(5 + OFF, 3 + OFF, 'walker'); spawn(9 + OFF, 3 + OFF, 'crawler'); spawn(12 + OFF, 4 + OFF, 'walker');
+  if (!S.mission) beginMission(); say('Day 1. Build up the camp before night falls.'); saveGame(); ui();
 }
 const INTRO_B = ['generator', 'fuelstill', 'ammobench', 'ammofactory', 'pump', 'greenhouse', 'coldstore', 'radio', 'armory', 'workshop', 'barracks', 'hospital', 'quarry', 'lumber'];
 function introTick() {   /* every few seconds: what is new on screen? */
@@ -5330,6 +5415,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 
 /* ---------------- loop ---------------- */
 function simTick() {
+  if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); } S.expClock = (S.expClock || 0) + 1000 / 60; S.sv.forEach(ai); spreadOut(); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
@@ -5360,12 +5446,12 @@ async function init() {
   if (!restored) {
     let o = {}; if (!titleOn) { try { o = JSON.parse(localStorage.getItem('zhNewOpts') || '{}') || {}; localStorage.removeItem('zhNewOpts'); } catch (e) { o = {}; } } const tq = (k) => QS.get(k);   /* V2.46: chosen on the new-game screen (?start=&diff= for testing) */
     S.diff = DIFFS[tq('diff') || o.diff] ? (tq('diff') || o.diff) : 'normal'; applyStart(tq('start') || o.start || 'camp');
-    spawn(5, 3, 'walker'); spawn(9, 3, 'crawler'); spawn(12, 4, 'walker');
+    cutFence(); if (!titleOn && !ZOO && G3D && !QS.get('nocut')) S.cutPending = true; else { spawn(5 + OFF, 3 + OFF, 'walker'); spawn(9 + OFF, 3 + OFF, 'crawler'); spawn(12 + OFF, 4 + OFF, 'walker'); }   /* 3D.102 the broken farm fence; the opening cutscene (the zombies come after it) */
   } else { for (let i = 0; i < 3; i++) spawn(); if (restored.cam && restored.cam.z) { cam.z = restored.cam.z; cam.x = restored.cam.x; cam.y = restored.cam.y; clampCam(); } }
   if (!restored || !restored.cam) centerOn(7.5 + OFF, 10 + OFF, Math.max(.7, Math.min(1.1, VW / 430)) * (G3D ? 1.25 : 1));
   if (titleOn) { $('loading').style.display = 'none'; showTitle(); requestAnimationFrame(frame); return; }
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
-  autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
+  if (S.cutPending) { delete S.cutPending; cutStart(); } autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission && !S.cut) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
   if (ZOO) zooStart();
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
   if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
