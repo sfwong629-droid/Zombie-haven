@@ -74,6 +74,7 @@
     ammofactory: D({ name: 'Ammo Factory', role: 'ammo', fam: 'ammo2', tier: 3, w: 2, slot: true, out: 64, a: 6, q: 12, stone: 12, mat: 16, fuel: 2, power: 2 }),
     // 3D.104 the building study (approved): civic, dogs, school and the power / defence extras
     tradepost: D({ name: 'Trading Post', role: 'trade', tier: 1, w: 2, a: 8, q: 10, wood: 14, mat: 8, cloth: 2 }),   // traders come twice as often and pay better; a civic project (Banner)
+    garage:   D({ name: 'Garage',       role: 'vehicles', tier: 2, w: 2, a: 6, q: 10, wood: 12, mat: 10 }),   // 3D.109 one vehicle each; restores found wrecks
     kennel:   D({ name: 'Kennel',       role: 'dogs', tier: 1, a: 6, q: 8, wood: 8, mat: 2 }),   // keeps two dogs; strays come to it
     school:   D({ name: 'School',       role: 'train', tier: 2, w: 2, cap: 3, train: 'int', a: 10, q: 10, wood: 12, mat: 4, cloth: 2 }),   // trains intelligence; children grow up faster
     floodlight: D({ name: 'Floodlight', role: 'light', tier: 3, a: 3, q: 8, stone: 2, mat: 6, power: 1 }),   // at night zombies near it slow down

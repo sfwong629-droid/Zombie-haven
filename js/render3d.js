@@ -743,6 +743,14 @@ function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5
 function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
 function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
 const BUILD = {
+  /* 3D.109 Garage: a corrugated shed with the roller door up (the vehicle shows inside), a lean-to on the left for the Hand Cart */
+  garage: (P, w, d) => { const sx = w * .14, sw = w * .7, h = 1.75;
+    P.put(box(sw + .3, .08, d * .86), '#8c8478', M4(sx, .04, 0)); P.put(box(sw, h, .12), '#8a8f86', M4(sx, h / 2, -d * .41));
+    for (const k of [-1, 1]) P.put(box(.12, h, d * .84), '#7d8279', M4(sx + k * sw / 2, h / 2, 0));
+    for (let i = 0; i < 7; i++) P.put(box(sw + .4, .05, d * .92 / 7 + .02), i % 2 ? '#9a9f96' : '#8a8f86', M4(sx, h + .1 + (3 - i) * .045, -d * .46 + (i + .5) * d * .92 / 7, 0, .09));
+    P.put(cyl(.14, .14, sw - .1, 10), '#6d6a62', M4(sx, h - .12, d * .4, 0, 0, Math.PI / 2)); P.put(box(sw - .1, .06, .1), '#c8a23a', M4(sx, .03, d * .43));
+    P.put(box(w * .24, .05, d * .26), '#6a4528', M4(-w * .35, 1.1, -d * .33, 0, .35)); for (const k of [-1, 1]) P.put(cyl(.04, .04, 1.1, 5), '#5e3e24', M4(-w * .35 + k * w * .1, .55, -d * .22));
+    P.put(box(.5, .35, .3), '#b2493f', M4(sx + sw / 2 - .4, .18, -d * .3)); P.put(box(.3, .5, .25), '#5a5f66', M4(sx - sw / 2 + .3, .25, -d * .3)); },
   /* 3D.104 the building study: Trading Post, Kennel, School, Floodlight, Wind Turbine, Solar Array, Power Pole */
   tradepost: (P, w, d) => { P.put(box(w * .8, .12, d * .7), '#7a5232', M4(0, .06, 0)); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.put(cyl(.06, .07, 1.5, 6), '#5e3e24', M4(x * w * .36, .75, z * d * .3)); P.put(box(w * .86, .06, d * .78), '#c8603a', M4(0, 1.55, 0, 0, .12)); P.put(box(w * .6, .5, .3), '#8a6038', M4(0, .35, d * .18)); crates(P, -w * .28, -d * .15, 3); P.put(box(.6, .3, .04), '#e8d8a8', M4(0, 1.3, d * .36)); for (let i = 0; i < 3; i++) P.put(cyl(.08, .08, .2, 8), ['#c8a040', '#6f8a3a', '#a04a3a'][i], M4(-w * .15 + i * .18, .7, d * .18)); },
   kennel: (P, w, d) => { P.put(box(w * .5, .55, d * .45), '#8a6038', M4(-w * .08, .28, -d * .08)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, .3)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, -.3)); P.put(box(.26, .3, .02), '#2e1f14', M4(-w * .08, .2, d * .15)); P.put(cyl(.13, .1, .06, 10), '#9aa0a6', M4(w * .28, .03, d * .25)); P.put(box(.3, .06, .06), '#e8e2d4', M4(w * .22, .05, -d * .25, .5)); fenceRing(P, w * .9, d * .9, .35); },
@@ -1725,6 +1733,36 @@ function inkButton() {
 // ---------------------------------------------------------------- frame
 let ready = false, lastT = 0, frames = 0, fpsT = 0;
 
+
+/* 3D.109 vehicles: low-detail toon models (Hand Cart, Pickup Truck, Armored Van). Parked in their Garage, or driving the
+   road between the Garage and the highway when a trip leaves or comes home. Never placed on top of a building. */
+const VEHM = {};
+function vehModel(k) {
+  if (VEHM[k]) return VEHM[k].clone(); const P = new Parts(), g = new THREE.Group(), wheel = (x, z, r = .2) => P.put(cyl(r, r, .14, 12), '#26262a', M4(x, r, z, 0, Math.PI / 2, 0)).put(cyl(r * .45, r * .45, .15, 8), '#9aa0a6', M4(x, r, z, 0, Math.PI / 2, 0));
+  if (k === 'cart') { P.put(box(.95, .1, .6), '#b07a44', M4(0, .42, 0)); for (const z of [-1, 1]) P.put(box(.95, .2, .05), '#c48a4e', M4(0, .55, z * .3)); for (const x of [-1, 1]) P.put(box(.05, .2, .6), '#c48a4e', M4(x * .47, .55, 0)); P.put(cyl(.03, .03, .8, 5), '#5a3b23', M4(.85, .5, -.2, 0, 0, Math.PI / 2 - .2)); P.put(cyl(.03, .03, .8, 5), '#5a3b23', M4(.85, .5, .2, 0, 0, Math.PI / 2 - .2)); for (const z of [-1, 1]) { P.put(cyl(.3, .3, .06, 12), '#6a4528', M4(-.1, .3, z * .36, 0, Math.PI / 2, 0)); P.put(cyl(.06, .06, .08, 6), '#3a2a1a', M4(-.1, .3, z * .4, 0, Math.PI / 2, 0)); } P.put(box(.3, .18, .25), '#c8a23a', M4(-.15, .56, 0)); }
+  if (k === 'pickup') { const c = '#3f6e8c'; P.put(box(2.4, .26, 1.1), c, M4(0, .42, 0)); P.put(box(.95, .55, 1.04), c, M4(.38, .82, 0)); P.put(box(.5, .3, 1.06), '#2b3a44', M4(.4, .9, 0)); P.put(box(.04, .3, .9), '#2b3a44', M4(.86, .88, 0)); P.put(box(.5, .3, 1.1), c, M4(1.0, .64, 0));
+    for (const z of [-1, 1]) P.put(box(1.15, .22, .06), c, M4(-.68, .66, z * .52)); P.put(box(.06, .22, 1.1), c, M4(-1.24, .66, 0)); P.put(box(.1, .14, 1.12), '#8a8f96', M4(1.25, .4, 0)); P.put(box(.1, .14, 1.12), '#8a8f96', M4(-1.25, .38, 0));
+    for (const z of [-1, 1]) P.put(box(.04, .08, .16), '#f2e6a0', M4(1.27, .58, z * .38)); P.put(box(.5, .3, .4), '#a0743c', M4(-.6, .68, .15)); P.put(box(.35, .2, .3), '#6d7a4a', M4(-.85, .62, -.22)); P.put(box(.4, .14, .5), '#b5603a', M4(-.2, .72, 0, 0, 0, .1));
+    for (const x of [-.75, .75]) for (const z of [-1, 1]) wheel(x, z * .55, .22); }
+  if (k === 'van') { const c = '#7a8556', pl = '#55606b'; P.put(box(2.5, .95, 1.2), c, M4(-.1, .78, 0)); P.put(box(.55, .7, 1.16), c, M4(1.35, .62, 0)); P.put(box(.04, .26, 1.0), '#2b3a44', M4(1.63, .86, 0)); P.put(box(.12, .32, 1.1), pl, M4(1.66, .44, 0));
+    for (let i = 0; i < 5; i++) P.put(box(.05, .32, 1.12), '#3a4048', M4(1.73, .44, -.45 + i * .225)); for (const z of [-1, 1]) { P.put(box(2.2, .5, .06), pl, M4(-.15, .72, z * .62)); P.put(box(.5, .1, .065), '#1e2024', M4(.45, 1.02, z * .63)); } P.put(box(2.4, .08, 1.1), pl, M4(-.1, 1.29, 0));
+    P.put(box(.6, .12, .5), '#3a4048', M4(-.5, 1.38, 0)); for (const z of [-1, 1]) P.put(box(.04, .08, .16), '#f2e6a0', M4(1.64, .66, z * .42)); for (const x of [-.85, .95]) for (const z of [-1, 1]) wheel(x, z * .6, .25); }
+  P.build(g, .026); VEHM[k] = g; return g.clone();
+}
+const vehShown = new Map();
+function syncVehicles() {
+  const V = G.S.veh || {}, D = G.S.drive, gs = G.world.buildings.filter((b) => b.type === 'garage' && !b.unpaid), want = new Map();
+  const motors = ['van', 'pickup'].filter((k) => V[k] && !V[k].waiting), trip = G.S.trip;
+  motors.forEach((k, i) => { if (D && D.k === k) return; if (trip && trip.veh === k && !trip.vehBroke) return; if (V[k].broken && trip && trip.veh === k) return; const b = gs[i]; if (b) want.set(k, { b, x: .14, z: 0, tint: V[k].restoring > 0 }); });
+  if (V.cart && gs[0] && !(trip && trip.veh === 'cart')) want.set('cart', { b: gs[0], x: -.37, z: .36, cart: true });
+  if (D && D.path && D.path.length > 1) { const i = Math.min(D.path.length - 2, Math.floor(D.i)), f = D.i - i, a = D.path[i], c = D.path[i + 1]; want.set(D.k, { drive: true, x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, yaw: Math.atan2(c.y - a.y, c.x - a.x) }); }
+  for (const [k, m] of vehShown) if (!want.has(k)) { scene.remove(m); vehShown.delete(k); }
+  for (const [k, o] of want) { let m = vehShown.get(k); if (!m) { m = vehModel(k); scene.add(m); vehShown.set(k, m); }
+    if (o.drive) { m.position.set(o.x * T, 0, o.y * T); m.rotation.y = -o.yaw; continue; }
+    const b = o.b, r = ((b.rot | 0) & 3) * Math.PI / 2, odd = r % Math.PI !== 0, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T, lx = o.x * w, lz = o.z * d;
+    m.position.set((b.x + b.w / 2) * T + Math.cos(r) * lx + Math.sin(r) * lz, 0, (b.y + b.h / 2) * T - Math.sin(r) * lx + Math.cos(r) * lz); m.rotation.y = r + (o.cart ? Math.PI / 2 : 0); m.scale.setScalar(o.cart ? 1.05 : .92);
+    if (o.tint !== m.userData.tint) { m.userData.tint = o.tint; m.traverse((n) => { if (n.isMesh && !n.userData.hull && n.material.color) { if (!n.userData.c0) n.userData.c0 = n.material.color.clone(); n.material = n.material.clone(); n.material.color.copy(n.userData.c0); if (o.tint) n.material.color.lerp(new THREE.Color('#9a9488'), .6); } }); } }
+}
 /* 3D.108 the stronghold arena: three rooms joined by doors, well off the town map. Built when a squad goes in, removed after. */
 let arena = null;
 function buildArena() {
@@ -1768,7 +1806,7 @@ function frame() {
   placeCamera();
   let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = buildHighway() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
-  dirty = buildArena() || dirty;
+  dirty = buildArena() || dirty; syncVehicles();
   light(G.S.sh && G.S.sh.view ? 12.5 : ((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
@@ -1913,7 +1951,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 // 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
-window.ZH3D = { shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
