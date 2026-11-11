@@ -39,8 +39,9 @@ let size = [0, 0];
 function placeCamera() {
   const VW = G.VW(), VH = G.VH(), c = G.cam;
   if (size[0] !== VW || size[1] !== VH) { size = [VW, VH]; renderer.setSize(VW, VH, false); }
-  const ppu = (G.BASE_TW / 2 * c.z) / (T / SQ2);                     // screen px per world unit
-  const ctr = G.unproject(VW / 2, VH / 2);                          // tile under the screen centre (ground level)
+  const ppu = (G.BASE_TW / 2 * (G.S.sh && G.S.sh.view ? G.S.sh.cz * Math.min(1.3, Math.max(.75, VW / 700)) : c.z)) / (T / SQ2);                     // screen px per world unit
+  const H = G.S.sh && G.S.sh.view ? G.S.sh : null;   /* 3D.108 watching the stronghold: the camera follows the squad in the arena */
+  const ctr = H ? { x: H.cx, y: H.cy } : G.unproject(VW / 2, VH / 2);                          // tile under the screen centre (ground level)
   const tgt = new THREE.Vector3(ctr.x * T, 0, ctr.y * T);
   cam.left = -VW / 2 / ppu; cam.right = VW / 2 / ppu; cam.top = VH / 2 / ppu; cam.bottom = -VH / 2 / ppu;
   cam.position.copy(tgt).addScaledVector(DIR, 120); cam.lookAt(tgt); cam.updateProjectionMatrix();
@@ -1413,7 +1414,7 @@ function makeCart() {   // V3D.17 rescue cart: a wooden barrow on two wheels wit
 }
 function syncPeople(dt, vis) {
   const seen = new Set();
-  for (const s of G.S.sv) {
+  for (const s of (G.S.sh ? G.S.sv.concat(G.S.sh.units) : G.S.sv)) {   /* 3D.108 the stronghold squad too */
     seen.add(s); let a = people.get(s);
     if (!a) { a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     if (a.job !== s.job) { a.dispose(); a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
@@ -1453,7 +1454,7 @@ function zombieAnim(a, z) {
 }
 function syncZombies(dt, vis) {
   const seen = new Set();
-  for (const z of G.S.z) {
+  for (const z of (G.S.sh ? G.S.z.concat(G.S.sh.zs) : G.S.z)) {   /* 3D.108 the stronghold's dead too */
     if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
     if (!a) {
       if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(!!z.leader); if (z.leader) a.big = 1.25; }   /* 3D.104 the Toll Collector is bigger and armoured */
@@ -1468,7 +1469,7 @@ function syncZombies(dt, vis) {
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
-    a.place(z.w.x, z.w.y, tgt, dt, a.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis);
+    a.place(z.w.x, z.w.y, tgt, dt, a.big || z.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
@@ -1723,6 +1724,43 @@ function inkButton() {
 
 // ---------------------------------------------------------------- frame
 let ready = false, lastT = 0, frames = 0, fpsT = 0;
+
+/* 3D.108 the stronghold arena: three rooms joined by doors, well off the town map. Built when a squad goes in, removed after. */
+let arena = null;
+function buildArena() {
+  const H = G.S.sh, key = H ? H.dest : '';
+  if (arena && arena.key === key) { if (H) { for (const [k, d] of arena.doors) d.visible = H.area <= k && !(H.area === k && H.doorT); } return false; }
+  if (arena) { scene.remove(arena.g); arena.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); arena = null; }
+  if (!H || !window.ZH || !ZH.SH_DEFS) return false;
+  const D = ZH.SH_DEFS[H.dest], AX = -110, AY = 6, AW = 10, GAP = 2, AH = 8, g = new THREE.Group(), doors = [];
+  const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  const under = new THREE.Mesh(new THREE.PlaneGeometry(60 * T, 30 * T).rotateX(-Math.PI / 2), toon('#3b3a36')); under.position.set((AX + 17) * T, -.02, (AY + 4) * T); g.add(under);
+  for (let k = 0; k < 3; k++) {
+    const x0 = AX + k * (AW + GAP);
+    box(AW, .06, AH, D.floor[k], x0 + AW / 2, .0, AY + AH / 2);
+    for (let i = 0; i < AW; i += 2) box(.04, .065, AH, D.props === 'clinic' ? '#bcc4c0' : '#8f8a7e', x0 + i, .0, AY + AH / 2);   /* tile lines */
+    box(AW + .3, .9, .3, D.wall, x0 + AW / 2, .45, AY - .15);   /* back wall (low, so the camera sees in) */
+    box(AW + .3, .35, .3, D.wall, x0 + AW / 2, .17, AY + AH + .15);   /* front kerb */
+    if (k === 0) box(.3, .9, AH, D.wall, x0 - .15, .45, AY + AH / 2);
+    if (k === 2) box(.3, .9, AH, D.wall, x0 + AW + .15, .45, AY + AH / 2);
+    if (k < 2) { box(.3, .9, 3, D.wall, x0 + AW + .15, .45, AY + 1.5); box(.3, .9, 3, D.wall, x0 + AW + .15, .45, AY + AH - 1.5);   /* the wall with a door gap */
+      box(GAP, .06, 2, D.floor[k], x0 + AW + GAP / 2, 0, AY + 4);   /* the corridor */
+      box(.3, .9, 3, D.wall, x0 + AW + GAP - .15, .45, AY + 1.5); box(.3, .9, 3, D.wall, x0 + AW + GAP - .15, .45, AY + AH - 1.5);
+      const dr = box(.18, 1.1, 2, D.props === 'prison' ? '#5d6066' : '#8a6a48', x0 + AW + GAP - .15, .55, AY + 4); doors.push([k, dr]); }
+    /* props, kept to the edges so the fight has room */
+    const rng = ((s) => () => (s = (s * 9301 + 49297) % 233280) / 233280)(7 + k * 13);
+    if (D.props === 'clinic') { for (let i = 0; i < 3; i++) { const bx = x0 + 1.5 + i * 3.2; box(1.6, .32, .7, '#f2f2ee', bx, .3, AY + .6); box(1.6, .05, .7, '#8fb6c9', bx, .48, AY + .6); box(.1, .3, .1, '#9aa2a8', bx - .7, .15, AY + .35); }
+      if (k === 1) for (let i = 0; i < 2; i++) box(.5, .9, .4, '#c9d7de', x0 + 2 + i * 6, .45, AY + AH - .45);
+      if (k === 2) { box(1.8, .5, .9, '#9aa2a8', x0 + 5, .25, AY + AH / 2); }
+      box(.8, .5, .5, '#b2493f', x0 + AW - 1, .25, AY + AH - .5); }
+    else { if (k === 1) for (let i = 0; i <= AW; i += .5) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.2, 5), toon('#4a4d52')); b.position.set((x0 + i) * T, .6, (AY + .9) * T); g.add(b); }
+      if (k !== 1) for (let i = 0; i < 4; i++) box(.9, .5, .9, '#8a7d62', x0 + 1 + rng() * 8, .25, AY + (rng() < .5 ? .6 : AH - .6));
+      if (k === 2) { box(.4, 2.2, .4, '#6b6f75', x0 + 1, 1.1, AY + .4); box(.4, 2.2, .4, '#6b6f75', x0 + AW - 1, 1.1, AY + .4); box(AW - 2, .2, .3, '#6b6f75', x0 + AW / 2, 2.1, AY + .4); } }
+  }
+  scene.add(g); arena = { key, g, doors }; return true;
+}
+const _shv = new THREE.Vector3();
+function shProject(x, y, h = 1.8) { if (!G.S.sh || !G.S.sh.view) return null; _shv.set(x * T, h, y * T).project(cam); const VW = G.VW(), VH = G.VH(); return { x: (_shv.x + 1) / 2 * VW, y: (1 - _shv.y) / 2 * VH }; }
 function frame() {
   if (!ready) return;
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
@@ -1730,7 +1768,8 @@ function frame() {
   placeCamera();
   let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = buildHighway() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
-  light(((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
+  dirty = buildArena() || dirty;
+  light(G.S.sh && G.S.sh.view ? 12.5 : ((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
@@ -1874,7 +1913,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 // 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
-window.ZH3D = { zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

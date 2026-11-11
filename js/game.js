@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.107', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.108', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -734,7 +734,7 @@ function drawWreck(tx, ty) {
 const DEBRIS_SPOTS = [[3, 3], [6, 3], [9, 2], [12, 3], [1, 8], [14, 9], [0, 17], [5, 18], [11, 18], [15, 6], [15, 18]].map(SH);
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (G3D) { ctx.clearRect(0, 0, VW, VH); if (window.ZH3D) ZH3D.frame(); }   /* the 3D canvas underneath draws the world; this canvas keeps the overlays */
+  if (G3D) { ctx.clearRect(0, 0, VW, VH); if (window.ZH3D) ZH3D.frame(); if (S.sh && S.sh.view) { shDraw(); return; } }   /* the 3D canvas underneath draws the world; this canvas keeps the overlays */
   else { ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH); drawGround(); }
   if (G3D && !(window.ZH3D && ZH3D.ready)) {   /* 3D.76: say the world is still loading (big model files on a phone connection) instead of an empty screen */
     const t0 = draw.t0 || (draw.t0 = performance.now()), sec = Math.round((performance.now() - t0) / 1000);
@@ -3335,7 +3335,7 @@ const campB = () => world.buildings.find((b) => DEFS[b.type] && DEFS[b.type].rol
 const unhoused = () => S.sv.filter((q) => !homeOf(q) && !housingOf(q));
 const campCap = () => { const c = campB(); return c ? CAMP_CAP[c.type] || 10 : 0; };
 function housingTidy() {   // drop residents who left or died; old saves get their beds filled once
-  for (const b of world.buildings) if (isHousing(b)) b.res = (b.res || []).filter((id) => S.sv.some((q) => q.id === id) || (S.trip && S.trip.members.some((m) => m.id === id))).slice(0, cap(b));
+  for (const b of world.buildings) if (isHousing(b)) b.res = (b.res || []).filter((id) => S.sv.some((q) => q.id === id) || (S.trip && S.trip.members.some((m) => m.id === id)) || (S.sh && S.sh.units.some((m) => m.id === id))).slice(0, cap(b));
   if (!S.housingV) { S.housingV = 1; fillBeds(); }
 }
 function fillBeds(only) {   // put unhoused survivors into empty beds (longest-staying first)
@@ -4112,7 +4112,7 @@ const SKIP = new Set(['para', 'aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'com
 function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
-  const { requests, sv: _sv, z: _z, ...rest } = S;
+  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (_sh) rest.shHome = _sh.units.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; });   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
   return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
@@ -4234,6 +4234,7 @@ function applySave(raw, legacy, prev) {
     world.traps = new Map(); for (const [x, y, type, ch] of (d.traps || [])) if (TRAP_DEFS[type]) world.traps.set(x + ',' + y, { x, y, type, ch: Math.max(0, Math.min(TRAP_DEFS[type].ch, ch | 0)) });
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     if (COZY_HUD && S.trip && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
+    if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, m.hp || 1); m.target = null; S.sv.push(m); } setTimeout(() => say('The stronghold squad fell back and came home.'), 1500); delete S.shHome; }   /* 3D.108 */
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
     genRun = S.power ? gens() : []; powerGrid();   /* audit: power after staff are relinked */
@@ -4355,7 +4356,7 @@ function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time)
 function expLocked(destId) { return EXP_DEFS[destId].lock(); }
 function startExpedition(destId, riskId, ids) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId]; if (!d || !rk) return { ok: false, why: 'Unknown trip' };
-  if (S.trip) return { ok: false, why: 'A squad is already out' }; const r0 = startExpedition0(destId, riskId, ids); if (r0 && r0.ok) statAdd('exp'); return r0; }
+  if (S.trip) return { ok: false, why: 'A squad is already out' }; if (S.sh) return { ok: false, why: 'A squad is inside a stronghold' }; const r0 = startExpedition0(destId, riskId, ids); if (r0 && r0.ok) statAdd('exp'); return r0; }
 function startExpedition0(destId, riskId, ids) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId];
   const lock = expLocked(destId); if (lock) return { ok: false, why: lock };
@@ -4365,6 +4366,7 @@ function startExpedition0(destId, riskId, ids) {
   if (S.sv.length - ms.length < EXP_HOME_MIN) return { ok: false, why: `Keep at least ${EXP_HOME_MIN} survivors at home` };
   if (ms.some((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode))) return { ok: false, why: (ms.find((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)) || {}).name + ' is hurt or busy' };
   const pv = expPreview(destId, riskId, ms), take = (k, n) => { const g = Math.min(S[k], n); S[k] -= g; return g; };
+  if (d.stronghold && G3D && SH_DEFS[destId]) { if (S.sh) return { ok: false, why: 'A squad is already inside a stronghold' }; take('food', pv.need); take('water', pv.need); return startStronghold(destId, ids); }   /* 3D.108 */
   take('food', pv.need); take('water', pv.need);
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
   S.sv = S.sv.filter((q) => !ms.includes(q));
@@ -4515,6 +4517,140 @@ function expFinish(recalled) {
   S.lastTrip = { dest: t.dest, risk: t.risk, loot: t.loot, lost: t.lost.slice(), recalled: !!recalled, recruit: recruit && recruit.name };
   S.trip = null; autoStaff(); if (COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: 'EXPEDITION BACK', sub: `${d.icon} ${d.name} · ${rk.label} risk`, entries: lootEntries(t.loot, t.items), note: body }); else showEventPopup({ title: 'EXPEDITION REPORT', text: `<b>${d.name}</b> · ${rk.label} risk<br>${body}`, gains: tot.length ? '+' + tot.join(' · +') : 'Nothing found' }); saveGame(); ui(); expTick();
 }
+/* ---- 3D.108 Strongholds as their own map (owner 11 Nov: "Yes build them"). The squad of up to 4 leaves the town and fights
+   through three areas and a boss room in real time, on a separate arena that the camera follows. Live calls: Focus the boss,
+   Use a medkit, Fall back. The boss's strength is fixed, so a stronger squad is how you win. The town keeps running, slowed
+   to a quarter speed. Losing never kills outright: anyone knocked down comes home Wounded, with a 4% chance they don't make it. ---- */
+const SH_AX = -110, SH_AY = 6, SH_AW = 10, SH_GAP = 2, SH_AH = 8;   /* the arena, well off the town map: three 10x8 rooms joined by 2-tile doors */
+const SH_DEFS = {
+  clinic: { rec: 175, areas: [
+    { name: 'The Lobby', spawn: [['walker', 6], ['runner', 2]] },
+    { name: 'The Wards', spawn: [['walker', 6], ['runner', 2], ['bloated', 1], ['spitter', 1]] },
+    { name: 'The Operating Theatre', spawn: [['walker', 3]], boss: { type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011 } } ],
+    floor: ['#cfd6d2', '#d9d4c4', '#c9d3d6'], wall: '#e6ece6', props: 'clinic' },
+  prison: { rec: 350, areas: [
+    { name: 'The Outer Yard', spawn: [['walker', 7], ['runner', 2], ['riot', 1]] },
+    { name: 'Cell Block C', spawn: [['walker', 6], ['riot', 2], ['brute', 1]] },
+    { name: "The Warden's Yard", spawn: [['riot', 1], ['walker', 3]], boss: { type: 'riot', name: 'The Warden', hp: 860, atk: 14, big: 1.55, spd: .012 } } ],
+    floor: ['#a9a395', '#9a9a96', '#a9a395'], wall: '#7d7f84', props: 'prison' },
+};
+const shPower = (ms) => Math.round(ms.reduce((a, s) => a + 8 * (s.l || 1) + ((weaponOf(s) || {}).atk || 0), 0));
+const shRoomX = (k) => SH_AX + k * (SH_AW + SH_GAP);
+function startStronghold(destId, ids) {
+  const D = SH_DEFS[destId], d = EXP_DEFS[destId]; if (!D) return { ok: false, why: 'Unknown stronghold' };
+  const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean);
+  for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
+  S.sv = S.sv.filter((q) => !ms.includes(q));
+  ms.forEach((s, i) => { s.shHome = { w: s.w, mode: s.mode }; s.w = { x: shRoomX(0) + 1, y: SH_AY + 2.5 + i * 1 }; s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; });
+  S.sh = { dest: destId, units: ms, zs: [], area: 0, phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.9, cx: shRoomX(0) + 4, cy: SH_AY + 4, fx: [], kills: 0, power: shPower(ms), log: [] };
+  shSpawnArea(0); barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); shPanel(); ui(); return { ok: true, why: '' };
+}
+function shSpawnArea(k) {
+  const D = SH_DEFS[S.sh.dest], A = D.areas[k], x0 = shRoomX(k); let n = 0;
+  for (const [t, c] of A.spawn) for (let i = 0; i < c; i++, n++) { const zd = zombieTypes[t] || zombieTypes.walker; S.sh.zs.push({ type: t, area: k, w: { x: x0 + 5 + rnd() * 4.3, y: SH_AY + .7 + rnd() * (SH_AH - 1.4) }, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: zd.chase * 1.25, mode: 'appear', stateTicks: 20 + n * 6, target: null, moving: false, phase: rnd() * 100 }); }
+  if (A.boss) { const B = A.boss; S.sh.zs.push({ type: B.type, boss: true, name: B.name, area: k, big: B.big, w: { x: x0 + 8.4, y: SH_AY + SH_AH / 2 }, hp: B.hp, max: B.hp, atk: B.atk, spd: B.spd, mode: 'appear', stateTicks: 60, target: null, moving: false }); }
+  S.sh.log.push(A.name);
+}
+function shMove(o, to, sp) { const dx = to.x - o.w.x, dy = to.y - o.w.y, l = Math.hypot(dx, dy); if (l < .02) { o.moving = false; return true; } const st = Math.min(l, sp); o.w = { x: o.w.x + dx / l * st, y: o.w.y + dy / l * st }; o.moving = true; o.faceW = null; return l <= sp; }
+function shClamp(o) { const k = Math.max(0, Math.min(2, Math.floor((o.w.x - SH_AX) / (SH_AW + SH_GAP)))), x0 = shRoomX(k), inDoor = o.w.x > x0 + SH_AW - .3 && o.w.y > SH_AY + 3 && o.w.y < SH_AY + 5;
+  o.w.y = Math.max(SH_AY + .35, Math.min(SH_AY + SH_AH - .35, o.w.y)); if (!inDoor) o.w.x = Math.max(SH_AX + .35, Math.min(shRoomX(2) + SH_AW - .35, o.w.x)); }
+function shSep(list, r) { for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) { const a = list[i], b = list[j]; if (a.hp <= 0 || b.hp <= 0) continue; const dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, l = Math.hypot(dx, dy) || .01; if (l < r) { const p = (r - l) / 2 / l; a.w = { x: a.w.x - dx * p, y: a.w.y - dy * p }; b.w = { x: b.w.x + dx * p, y: b.w.y + dy * p }; } } }
+function shFx(w, t, col) { S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
+function shUnitDmg(s, z) { const w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s);
+  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1)); }
+function shTick() {
+  const H = S.sh; if (!H) return; H.t++; const D = SH_DEFS[H.dest], live = H.units.filter((s) => s.hp > 0), zs = H.zs.filter((z) => z.hp > 0 && z.area === H.area);
+  for (const f of H.fx) f.a--; H.fx = H.fx.filter((f) => f.a > 0);
+  if (H.phase === 'done') return;
+  if (!live.length) return shEnd(false);
+  if (H.back) { let home = 0; for (const s of live) { s.target = null; if (s.mode === 'attack' || s.mode === 'recover') s.mode = 'free'; if (shMove(s, { x: SH_AX + .5, y: SH_AY + SH_AH / 2 }, .045)) home++; s.mode = s.moving ? 'walk' : 'free'; } if (home === live.length || H.t - H.backT > 900) return shEnd(false, true); }
+  /* survivors */
+  if (!H.back) for (const s of H.units) {
+    if (s.hp <= 0) { s.mode = 'down'; s.moving = false; continue; }
+    if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) reloadGun(s); continue; }
+    const w = weaponOf(s), reach = w.ranged ? Math.min(4.5, rangeOf(s)) : .8;
+    if (s.mode === 'attack') { s.moving = false; if (--s.stateTicks > 0) continue; const z = s.target;
+      if (z && z.hp > 0 && dist(s.w, z.w) <= reach + .3) { const dm = shUnitDmg(s, z); z.hp -= dm; z.hitT = 9; SFX(w.ranged ? 'shot' : 'hit'); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+        if (w.ranged && usesAmmo(w)) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) s.reloadT = Math.round((w.reload || 2) * 60); }
+        if (z.hp <= 0) { H.kills++; S.kills++; gainXp(s, z.boss ? 12 : 2); if (z.boss) { SFX('reward'); bark(s, 'bossKill', {}, { pri: 2 }); } } }
+      s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); continue; }
+    if (s.mode === 'recover') { s.moving = false; if (--s.stateTicks > 0) continue; s.mode = 'free'; }
+    const boss = zs.find((z) => z.boss && z.mode !== 'appear');
+    let t = H.focus && boss ? boss : null; if (!t) { let bd = 1e9; for (const z of zs) { if (z.mode === 'appear' && z.stateTicks > 10) continue; const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = z; } } }
+    s.target = t;
+    if (t) { const d0 = dist(s.w, t.w); if (d0 > reach) { s.mode = 'chase'; shMove(s, t.w, .032); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } }
+    else if (H.doorT) { /* walking to the next door */ }
+    else { const gx = zs.length ? s.w.x : shRoomX(H.area) + 2.2, i = H.units.indexOf(s); s.mode = 'walk'; if (shMove(s, { x: gx, y: SH_AY + 2.5 + i }, .035)) { s.mode = 'free'; s.moving = false; } }
+    shClamp(s);
+  }
+  /* the dead */
+  for (const z of zs) {
+    if (z.mode === 'appear') { z.moving = false; if (--z.stateTicks <= 0) z.mode = 'idle'; continue; }
+    let t = null, bd = 1e9; for (const s of live) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = s; } } z.target = t; if (!t) { z.moving = false; continue; }
+    const reach = z.type === 'spitter' ? 2.4 : z.boss ? 1.15 : .75;
+    if (z.mode === 'zattack') { z.moving = false; if (--z.stateTicks > 0) continue;
+      if (dist(z.w, t.w) <= reach + .35 && t.hp > 0) { const dm = Math.max(1, Math.round(z.atk * (t.spec && hasSpec(t, 'swat') ? .8 : 1) * (1 - dmgReduce(t)))); t.hp -= dm; t.hitT = 9; shFx(t.w, '-' + dm, '#ff6e62'); SFX('hurt'); if (t.hp <= 0) { t.hp = 0; t.mode = 'down'; shFx(t.w, 'DOWN', '#ff6e62'); say(`${t.name} is down inside the stronghold!`); } }
+      z.mode = 'zrecover'; z.stateTicks = z.boss ? 70 : 45; continue; }
+    if (z.mode === 'zrecover') { z.moving = false; if (--z.stateTicks > 0) continue; z.mode = 'idle'; }
+    if (bd > reach) { z.mode = 'zchase'; shMove(z, t.w, z.spd); shClamp(z); } else { z.mode = 'zattack'; z.stateTicks = z.boss ? 38 : z.type === 'brute' ? 34 : 26; z.moving = false; }
+  }
+  shSep(H.units.filter((s) => s.hp > 0), .55); shSep(zs, .5);
+  for (const z of zs) shClamp(z);
+  /* the camera follows the squad */
+  if (live.length) { const cx = live.reduce((a, s) => a + s.w.x, 0) / live.length, cy = live.reduce((a, s) => a + s.w.y, 0) / live.length; H.cx += (cx + 1.6 - H.cx) * .05; H.cy += (cy + 1.1 - H.cy) * .05; }
+  if (!H.back && !zs.length && H.t > 40) { if (H.area >= D.areas.length - 1) return shEnd(true);
+    if (!H.doorT) { H.doorT = H.t; say(`${D.areas[H.area].name} is clear.`); }
+    if (H.t - H.doorT > 70) { for (const s of live) { s.mode = 'walk'; s.target = null; } if (live.map((s, i) => shMove(s, { x: shRoomX(H.area + 1) + 1.2, y: SH_AY + 3 + i * .6 }, .04)).every(Boolean)) { H.area++; H.doorT = 0; shSpawnArea(H.area); shPanel(); } for (const s of live) s.mode = s.moving ? 'walk' : 'free'; } }
+  if (H.t % 20 === 0) shPanelTick();
+}
+function shCall(k) { const H = S.sh; if (!H || H.phase === 'done') return;
+  if (k === 'focus') { H.focus = !H.focus; say(H.focus ? 'Focus the boss!' : 'Fight as you see fit.'); }
+  else if (k === 'med') { if ((S.meds || 0) < 1) { say('No medicine left in the stash.'); return; } const s = H.units.slice().sort((a, b) => a.hp / a.max - b.hp / b.max)[0]; if (!s) return; S.meds--; const up = s.hp <= 0; s.hp = Math.min(s.max, Math.max(s.hp, 0) + Math.round(s.max * .5)); if (up) s.mode = 'free'; shFx(s.w, '+' + Math.round(s.max * .5), '#7be08a'); say(`${s.name} used a medkit${up ? ' and is back up' : ''}.`); ui(); }
+  else if (k === 'back') { if (H.back) return; H.back = true; H.backT = H.t; say('Fall back! The squad retreats to the entrance.'); }
+  else if (k === 'view') { H.view = !H.view; }
+  shPanel(); }
+function shEnd(won, fled) {
+  const H = S.sh; if (!H || H.phase === 'done') return; H.phase = 'done'; const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest];
+  const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
+  const lost = [], hurt = [], loot = {}; let recruit = null; const items = [];
+  for (const [i, s] of H.units.entries()) {
+    const down = s.hp <= 0; if (down && !won && rnd() < .04) { lost.push(s.name); continue; }
+    if (down) { s.hp = Math.max(1, Math.round(s.max * .2)); hurt.push(s.name); }
+    s.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; s.mode = 'free'; s.target = null; s.moving = false; s.reloadT = 0; delete s.shHome; s.stateTicks = 60; S.sv.push(s); if (won) gainXp(s, 10);
+  }
+  if (won) { const r = (a) => a[0] + Math.floor(rnd() * (a[1] - a[0] + 1)); for (const k in d.loot) loot[k] = r(d.loot[k]) * 3;
+    const pool = H.dest === 'prison' ? ['rifle', 'shotgun', 'riot', 'kevlar', 'swathelm', 'tactvest'] : ['medpouch', 'hazmat', 'gasmask', 'kevlar', 'machete', 'crossbow']; for (const id of pool) if (ITEMS[id] && items.length < 2 && rnd() < .5) items.push(id); if (!items.length) items.push(pool.find((id) => ITEMS[id]));
+    S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id));
+    if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = names.find((n) => !S.sv.some((q) => q.name === n)) || freeFirst(), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
+      recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
+    renownGain(25, d.name + ' cleared'); S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
+  else if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day };
+  S.sh = null; shPanel(); autoStaff(); statAdd('exp');
+  const lines = [won ? `<b>${esc(D.areas[2].boss.name)} is dead.</b> ${esc(d.name)} is cleared.` : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
+  if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
+  if (won && COZY_HUD && !window.ZH_NO_REVEAL) lootReveal({ title: 'STRONGHOLD CLEARED', sub: `${d.icon} ${d.name}`, entries: lootEntries(loot, items.filter(Boolean)), note: lines.join('<br>') });
+  else showEventPopup({ title: won ? 'STRONGHOLD CLEARED' : 'BACK FROM THE STRONGHOLD', text: lines.join('<br>'), buttons: [{ label: 'OK' }] });
+  saveGame(); ui();
+}
+function shPanel() {
+  let el = $('shPanel'); const H = S.sh;
+  if (!H) { if (el) el.remove(); return; }
+  const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest];
+  if (!el) { el = document.createElement('div'); el.id = 'shPanel'; el.className = 'shPanel'; document.body.appendChild(el); el.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) shCall(b.dataset.c); }); }
+  const bossRoom = H.area === D.areas.length - 1;
+  el.innerHTML = `<div class="shHead"><b>${d.icon} ${esc(d.name)}</b><span class="shArea">${D.areas.map((a, i) => `<i class="${i < H.area ? 'done' : i === H.area ? 'on' : ''}">${esc(a.name)}</i>`).join('<span>›</span>')}</span></div>
+  <div class="shBoss"></div><div class="shUnits"></div>
+  <div class="shBtns"><button data-c="focus" class="${H.focus ? 'on' : ''}" ${bossRoom ? '' : 'disabled'}>🎯 Focus the boss</button><button data-c="med">💊 Medkit (${S.meds || 0})</button><button data-c="back" ${H.back ? 'disabled' : ''}>↩ Fall back</button><button data-c="view">${H.view ? '🏠 Watch town' : '⚔ Watch squad'}</button></div>`;
+  shPanelTick();
+}
+function shPanelTick() { const el = $('shPanel'), H = S.sh; if (!el || !H) return;
+  const u = el.querySelector('.shUnits'); if (u) u.innerHTML = H.units.map((s) => `<div class="shU ${s.hp <= 0 ? 'down' : ''}"><span>${esc(s.name)}</span><em><b style="width:${Math.max(0, Math.round(s.hp / s.max * 100))}%"></b></em></div>`).join('');
+  const b = el.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.area === H.area); if (b) b.innerHTML = bz ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span>${H.zs.filter((z) => z.hp > 0 && z.area === H.area).length} zombies in ${esc(SH_DEFS[H.dest].areas[H.area].name)}</span>`;
+  const m = el.querySelector('[data-c="med"]'); if (m) m.textContent = `💊 Medkit (${S.meds || 0})`; }
+function shDraw() {   /* the 2D overlay while watching the squad: damage numbers over the arena */
+  const H = S.sh; if (!H || !H.view || !window.ZH3D || !ZH3D.shProject) return; ctx.save(); ctx.textAlign = 'center'; ctx.font = '700 15px Fredoka, sans-serif';
+  for (const f of H.fx) { const p = ZH3D.shProject(f.w.x, f.w.y, 1.9 + (60 - f.a) / 60 * .8); if (!p) continue; ctx.globalAlpha = Math.min(1, f.a / 25); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(f.t, p.x, p.y); ctx.fillStyle = f.col; ctx.fillText(f.t, p.x, p.y); }
+  ctx.restore(); }
 /* ---- UI ---- */
 let expOpen = false; const expSel = { dest: 'houses', risk: 'low', ids: null };
 const mmss = (ms) => { if (COZY_HUD) { const gm = Math.max(0, Math.ceil(ms / EXP_HMS * 60)); return Math.floor(gm / 60) + 'h ' + String(gm % 60).padStart(2, '0') + 'm'; } const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -4579,7 +4715,7 @@ function showExpedition() {
     const ready = S.sv.filter(expEligible);
     const where = COZY_HUD ? `<div class="sm">Leads</div><div class="lst">${(S.leads || []).map((l) => { const v = EXP_DEFS[l.dest], on = l.id === expSel.lead; return `<div class="card" data-lead="${l.id}" style="${on ? 'border-color:var(--gold)' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp"><b>${v.name}</b> <span class="sm">${EXP_RISK[l.risk].label} risk · ${EXP_HOURS[l.risk]} h trip</span><div class="sm">${esc(l.text)} · gone in ${Math.max(1, Math.round(l.untilH - nowH()))} h</div></div>${on ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>` : '';
     const lootTxt = Object.entries(d.loot || {}).map(([r, [a0, a1]]) => `${(RES_NAME[r] || r)} ${Math.round(a0 * EXP_STAGES * pv.mult)}–${Math.round(a1 * EXP_STAGES * pv.mult)}`).join(' · ');   /* 3D.41: a rough total for the whole trip */
-    $('ib').innerHTML = COZY_HUD ? `<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${EXP_MAX_SQUAD}</b><small>squad</small></span><button class="act go" id="expGo">Send squad · ${EXP_HOURS[expSel.risk]} h</button></div><div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
+    $('ib').innerHTML = COZY_HUD ? `<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${EXP_MAX_SQUAD}</b><small>squad</small></span><button class="act go" id="expGo">${SH_DEFS[expSel.dest] && G3D ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${SH_DEFS[expSel.dest] && G3D ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
       + where + `<div class="sm">Squad (1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>` : `<div class="sm">Where to?</div><div class="lst">${Object.entries(EXP_DEFS).map(([k, v]) => { const lk = expLocked(k); return `<div class="card" data-d="${k}" style="${expSel.dest === k ? 'border-color:var(--gold)' : ''}${lk ? ';opacity:.5' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp">${v.name}<div class="sm">${lk ? '🔒 ' + lk : expSel.dest === k ? d.desc : ''}</div></div>${expSel.dest === k ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>
       <div class="sm">Risk</div><div class="tabs" style="position:static">${d.risks.map((r) => `<button data-r="${r}" class="${expSel.risk === r ? 'on' : ''}">${EXP_RISK[r].label} · ${EXP_RISK[r].min}m</button>`).join('')}</div>
       <div class="sm">Squad (1–${EXP_MAX_SQUAD}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}${['cautious', 'scrounger', 'loner'].includes(q.trait) ? ' · ' + TRAITS[q.trait].name + (q.trait === 'cautious' ? ': safer' : q.trait === 'loner' ? ': +loot in 1–2' : ': +loot') : ''}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>
@@ -5623,6 +5759,7 @@ $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('
 /* ---------------- loop ---------------- */
 function simTick() {
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
+  if (S.sh) { shTick(); S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; traderTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(STEP * 3); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
@@ -5799,7 +5936,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, unitPanel, raiderDown, spawn, spawnRaid, STORY, fac, exAdd, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, rotBurst, dawnRetreat, intro, introTick, INTRO, fieldNotesHtml, hDay, hordeCap, danger, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
+window.ZH = { BUILD_TAG, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, exAdd, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, rotBurst, dawnRetreat, intro, introTick, INTRO, fieldNotesHtml, hDay, hordeCap, danger, comebackConvoy, powerGrid, powerTick, powered, reloadGun, weaponOf, gunners, ammoCap, genFuel, newProduce, TRAP_DEFS, tryTrap, trapOkTile, trapAt, trapMap, trapMax, rearmAll, lureFire, trapsSpent, helpReady, facilityRules, repMix, fixCost, repairCost, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, careDest, lastStand, radioHelp, helpTick, barkLine, chatText, ageOf, newcomer, mk, impactFx, note, downAlert, showResidents, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, ARRIVE, TUNE, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, weaponRange, ui, showBuildingInfo, showBuild, showTown, showSurvivors, graceOn, avgLevel, STORY, triggerTownEvent, beginMission, MISSION_DEFS, addBond, bondOf, bondTick, bondsDaily, growUp, popCap, popNow, friendBoost, bondsHtml, GUIDE, guideProgress, guideSkipDone, showGoals, showLog, logEvent, missionProgress, pushUnitsOut, rankRules, BANDAGE: () => BANDAGE_COST, rush, rushRisk, rushCheck, startFire, burnDown, repairBurnt, breakIn, incidentTick, traderArrive, traderLeave, traderBuy, traderTrade, showTrader, traderDisc, givePet, takePet, newPet, PETS, petDaily, petSheet, hitTrader, S, world, Wd, Iso, cam, project, unproject, spriteRect, hitBuilding, hitUnit, insideBuilding, tapAt, unitPanel, doResearch, craft, havenReview, RESEARCH, researched, xpNeed, combos, payUpkeep, upkeepTotal, equip, unequip, stat, ITEMS, stashAdd, gearUpgrade, expandTerritory, spawnRaid, spawnBoss, changeProfession, unitExtra, gainXp, SKILLS, expBlock, isNight, startTool, updatePreview, confirmPreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, SPR, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, loadGame, saveGame, closeP, expAutoSquad, expEligible, expPreview, startExpedition, expRecall, tripUpdate, expTick, showExpedition, expLocked, EXP_DEFS, EXP_RISK, showEventPopup, autoStaff, tryWall, checkPerimeter, autoRepair, killSurvivor, useBandage, bleedMax, careTicks, BLEED_TICKS, CARE_TICKS, retreatCheck, wallBroken, perimText, upgradeBuilding, upgradeCheck, hourlyProduction, endOfDay, supplyStats, ration, workBoost, isWorking, prodMult, supplyCap, DEFS, setDebug(v) { debug = v; }, slotInfo, SLOT, SLOT_KEYS, finaleTest: () => finaleHour(), DIFFS, STARTS, DF, applyStart, LEGACY, legacyCheck, legacyDone, signalReady, startFinale, winGame, scoreOf, records, showGoals, tryPost, removePost, postsAssign, showPost, myPost, atPost, postLure, postMax, POST_R, patrolDest, eventQueue, encPopup, EXP_ENC, expEncounter, encResolve, encOdds, encDefault, encChoose, TRAITS, rollTrait, traitRange, traitWork, expTraitLoot, backupText, parseBackup, importBackup, exportBackup, showBackup, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, advisorTips, advisorUpdate, get advShown() { return advShown; }, militia, rally, POLICIES, setPolicy, policy, retreatPct, onShift, shifts, assignRescue, underAttack, engaged, wreckSpots, PIXSTAT, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, ecoLast24, showResource, workShare, ECO, findGaps, currentObjective, showObjective, suggestSpot, get objMarks() { return objMarks; }, alerts, note, OPTS, alertsTick, renderAlerts, sendDefender, bestDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, endBuildMode, demolish, moveBuilding, TWs, THs, BASE_TW, BASE_TH, TILE_PX, B4_DEFS, buildGround, get groundChunks() { return groundChunks; }, GR, GN };
 Object.assign(window.ZH, { awayCredit, goalsTick, claimGoal, goalsHtml, GOALS_DAILY, GOALS_WEEKLY, dayKey, weekKey, rankRoom, bedCount, orderRescue, focusBoss, townAppeal, hardshipCheck, hungryPen, medicFindPatient, startAid, fitBoost, fitOf, rangeOf, cookSave, FIELD_CAP, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, seasonOf, STORY, startErrand, errandTeam, dropCrate, BOSS_KINDS, traderSpot, nextEventPopup });   /* V3D.17 test hooks */
 init();
