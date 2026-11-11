@@ -72,6 +72,14 @@
     fuelstill: D({ name: 'Fuel Still',    role: 'fuel', fam: 'fuel', tier: 2, slot: true, out: 3, a: 4, q: 9, wood: 10, mat: 6 }),
     ammobench: D({ name: 'Ammo Bench',    role: 'ammo', fam: 'ammo', tier: 2, slot: true, out: 16, a: 4, q: 9, wood: 8, mat: 8 }),
     ammofactory: D({ name: 'Ammo Factory', role: 'ammo', fam: 'ammo2', tier: 3, w: 2, slot: true, out: 64, a: 6, q: 12, stone: 12, mat: 16, fuel: 2, power: 2 }),
+    // 3D.104 the building study (approved): civic, dogs, school and the power / defence extras
+    tradepost: D({ name: 'Trading Post', role: 'trade', tier: 1, w: 2, a: 8, q: 10, wood: 14, mat: 8, cloth: 2 }),   // traders come twice as often and pay better; a civic project (Banner)
+    kennel:   D({ name: 'Kennel',       role: 'dogs', tier: 1, a: 6, q: 8, wood: 8, mat: 2 }),   // keeps two dogs; strays come to it
+    school:   D({ name: 'School',       role: 'train', tier: 2, w: 2, cap: 3, train: 'int', a: 10, q: 10, wood: 12, mat: 4, cloth: 2 }),   // trains intelligence; children grow up faster
+    floodlight: D({ name: 'Floodlight', role: 'light', tier: 3, a: 3, q: 8, stone: 2, mat: 6, power: 1 }),   // at night zombies near it slow down
+    turbine:  D({ name: 'Wind Turbine', role: 'power', fam: 'turbine', tier: 3, a: 3, q: 9, stone: 4, mat: 12, cloth: 2 }),   // +2 power, no fuel
+    solar:    D({ name: 'Solar Array',  role: 'power', fam: 'solar', tier: 3, w: 2, a: 3, q: 9, stone: 2, mat: 14, meds: 0 }),   // +3 power in daylight, no fuel
+    pole:     D({ name: 'Power Pole',   role: 'power', fam: 'pole', tier: 3, a: 2, q: 6, wood: 2, mat: 2 }),   // carries a generator's boost 5 more tiles
     // V2.14 training buildings: each raises one survivor stat when visited
     gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
     library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
@@ -95,6 +103,7 @@
     wood:  { name: 'Wood Fence',     mat: 0, wood: 1, hp: 80,  rank: 1, tier: 1, lvl: 1 },   // 3D.103 owner: the starting fence is about a person high (planks on two rails)
     palisade: { name: 'Log Palisade', mat: 1, wood: 3, hp: 160, rank: 1, tier: 2, lvl: 2 },   // 3D.103 the old tall stake wall, now the Lodge-tier upgrade
     metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3, lvl: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
+    efence: { name: 'Electric Fence', mat: 3, wood: 1, stone: 2, hp: 200, rank: 1, tier: 3, lvl: 4, power: true },   // 3D.104 zaps zombies that hit it while the power is on
     gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1, tier: 1 },
   };
   const WALLZONE = { x0: 1 + OFF, y0: 5 + OFF, x1: 14 + OFF, y1: 18 + OFF };   // build zone grown by one tile so a ring can enclose it

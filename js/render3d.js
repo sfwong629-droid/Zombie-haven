@@ -535,6 +535,11 @@ function trapPiece(P, t, cx, cz, y0) {   // 3D.103 one trap (also used for the B
     for (const k of [-1, 1]) P.put(cyl(.04, .05, .7, 5), '#6a4528', M4(cx + k * .5, y0 + .35, cz));
     if (live) for (let k = -2; k <= 2; k++) P.put(new THREE.TorusGeometry(.17, .015, 4, 10), '#9aa0a6', M4(cx + k * .18, y0 + .3, cz, Math.PI / 2));
     else P.put(new THREE.TorusGeometry(.2, .015, 4, 10), '#7d7466', M4(cx, y0 + .03, cz, 0, Math.PI / 2));
+  } else if (t.type === 'trench') {   // 3D.104 Fire Trench: a dark ditch of brush, glowing when armed
+    P.put(box(1.4, .05, .5), '#3a2a1e', M4(cx, y0 + .02, cz, s)); for (let k = -2; k <= 2; k++) P.put(new THREE.ConeGeometry(.12, .22, 5), live ? '#8a5a2a' : '#4a3a2a', M4(cx + Math.cos(s) * k * .26, y0 + .1, cz - Math.sin(s) * k * .26));
+    if (live) P.put(box(1.3, .02, .3), '#ff8a3a', M4(cx, y0 + .06, cz, s));
+  } else if (t.type === 'mine') {   // 3D.104 Land Mine: a buried disc with a pressure cap
+    P.put(cyl(.24, .26, .06, 12), live ? '#5f6b3e' : '#4a4038', M4(cx, y0 + .03, cz)); if (live) P.put(cyl(.06, .06, .05, 8), '#c8a040', M4(cx, y0 + .08, cz)); else P.put(new THREE.DodecahedronGeometry(.25, 0).scale(1.4, .3, 1.2), '#3a3028', M4(cx, y0 + .02, cz));
   } else if (t.type === 'lure') {   // a pole with a bell and hanging cans
     P.put(cyl(.05, .06, 1.4, 6), '#6a4528', M4(cx, y0 + .7, cz)); P.put(box(.5, .05, .05), '#6a4528', M4(cx, y0 + 1.35, cz, s));
     P.put(new THREE.ConeGeometry(.13, .2, 8), live ? '#d8b04a' : '#7a6a4a', M4(cx, y0 + 1.2, cz));
@@ -621,6 +626,11 @@ function wallPiece(P, w, has, cx, cz) {   // one wall tile; has(x, y) = a standi
     P.put(box(1.5, .12, .12), '#6f4a2c', M4(cx, 1.42, cz, alongX ? 0 : Math.PI / 2));
     for (const k of [-.36, 0, .36]) P.put(box(.34, 1.0, .07), '#8a6038', M4(cx + (alongX ? k : 0), .58, cz + (alongX ? 0 : k), alongX ? 0 : Math.PI / 2));
     P.put(box(1.1, .1, .08), '#6f4a2c', M4(cx, .58, cz, alongX ? 0 : Math.PI / 2, 0, alongX ? .62 : 0));
+    return;
+  }
+  if (w.type === 'efence') {   // 3D.104 Electric Fence: steel posts, taut wires and white insulators
+    P.put(box(.12, 1.6, .12), '#5f666e', M4(cx, .8, cz)); P.put(new THREE.SphereGeometry(.06, 8, 6), '#f2efe8', M4(cx, 1.62, cz));
+    for (const [dx, dy] of (arms.length ? arms : [[1, 0], [-1, 0]])) for (const y of [.35, .7, 1.05, 1.4]) P.put(box(dx ? T / 2 : .025, .025, dy ? T / 2 : .025), dmg ? '#7d7466' : '#b8bec4', M4(cx + dx * T / 4, y, cz + dy * T / 4));
     return;
   }
   if (w.type === 'metal') {
@@ -732,6 +742,14 @@ function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5
 function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
 function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
 const BUILD = {
+  /* 3D.104 the building study: Trading Post, Kennel, School, Floodlight, Wind Turbine, Solar Array, Power Pole */
+  tradepost: (P, w, d) => { P.put(box(w * .8, .12, d * .7), '#7a5232', M4(0, .06, 0)); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.put(cyl(.06, .07, 1.5, 6), '#5e3e24', M4(x * w * .36, .75, z * d * .3)); P.put(box(w * .86, .06, d * .78), '#c8603a', M4(0, 1.55, 0, 0, .12)); P.put(box(w * .6, .5, .3), '#8a6038', M4(0, .35, d * .18)); crates(P, -w * .28, -d * .15, 3); P.put(box(.6, .3, .04), '#e8d8a8', M4(0, 1.3, d * .36)); for (let i = 0; i < 3; i++) P.put(cyl(.08, .08, .2, 8), ['#c8a040', '#6f8a3a', '#a04a3a'][i], M4(-w * .15 + i * .18, .7, d * .18)); },
+  kennel: (P, w, d) => { P.put(box(w * .5, .55, d * .45), '#8a6038', M4(-w * .08, .28, -d * .08)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, .3)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, -.3)); P.put(box(.26, .3, .02), '#2e1f14', M4(-w * .08, .2, d * .15)); P.put(cyl(.13, .1, .06, 10), '#9aa0a6', M4(w * .28, .03, d * .25)); P.put(box(.3, .06, .06), '#e8e2d4', M4(w * .22, .05, -d * .25, .5)); fenceRing(P, w * .9, d * .9, .35); },
+  school: (P, w, d) => { cabin(P, w * .82, d * .7, '#9a3a2a', { plank: true, wall: ['#d8c49a', '#cdb88e'], h: 1.25, windows: [-w * .1, w * .25] }); P.put(cyl(.03, .03, 1.1, 6), '#6a6a6a', M4(w * .32, 1.9, -d * .1)); P.put(cyl(.12, .1, .14, 8), '#d8b04a', M4(w * .32, 2.45, -d * .1)); },
+  floodlight: (P, w, d) => { P.put(box(.5, .12, .5), '#8c8478', M4(0, .06, 0)); P.put(cyl(.05, .07, 2.4, 6), '#5f666e', M4(0, 1.2, 0)); P.put(box(.7, .08, .08), '#5f666e', M4(0, 2.35, 0)); for (const k of [-1, 1]) { P.put(box(.26, .2, .16), '#3a3a36', M4(k * .26, 2.25, .06, 0, -.4)); P.win(box(.2, .14, .02), M4(k * .26, 2.23, .15, 0, -.4)); } },
+  turbine: (P, w, d) => { P.put(cyl(.24, .3, .2, 8), '#8c8478', M4(0, .1, 0)); P.put(cyl(.06, .1, 3, 8), '#e8e2d4', M4(0, 1.6, 0)); P.put(box(.18, .16, .4), '#d4d0c8', M4(0, 3.1, 0)); for (let i = 0; i < 3; i++) P.put(box(.08, 1.3, .03), '#f2efe8', M4(0, 3.1, .22, 0, 0, i * 2.094).multiply(new THREE.Matrix4().makeTranslation(0, .62, 0))); },
+  solar: (P, w, d) => { for (let i = 0; i < 2; i++) { const x = -w * .22 + i * w * .44; for (const k of [-1, 1]) P.put(cyl(.03, .03, .55, 5), '#6a6a6a', M4(x + k * w * .14, .28, 0)); P.put(box(w * .38, .04, d * .55), '#2c3e6a', M4(x, .62, 0, 0, -.45)); for (let j = 1; j < 3; j++) P.put(box(w * .38, .045, .015), '#b8c4d8', M4(x, .62, -d * .27 + j * d * .18, 0, -.45)); } P.put(box(.3, .25, .2), '#5f666e', M4(w * .38, .12, d * .3)); },
+  pole: (P, w, d) => { P.put(cyl(.06, .08, 2.6, 6), '#6a4528', M4(0, 1.3, 0)); P.put(box(.9, .07, .07), '#5e3e24', M4(0, 2.45, 0)); for (const k of [-.36, 0, .36]) P.put(cyl(.035, .035, .12, 6), '#e8e2d4', M4(k, 2.55, 0)); },
   /* 3D.77 power, fuel and ammo buildings (low detail toon parts) */
   pump: (P, w, d) => { P.put(box(w * .5, .14, d * .5), '#7d776d', M4(0, .07, 0)); P.put(cyl(.2, .22, .55, 10), '#5d7a8c', M4(-w * .1, .42, 0)); P.put(box(.34, .3, .26), '#4e6a4e', M4(w * .16, .3, -d * .05)); P.put(cyl(.05, .05, .7, 6), '#8f9aa6', M4(-w * .1, .9, 0)); P.put(cyl(.05, .05, w * .5, 6), '#8f9aa6', M4(0, 1.22, 0, 0, 0, Math.PI / 2)); P.put(cyl(.03, .03, .3, 6), '#2e2e2e', M4(w * .16, .5, -d * .05)); P.put(box(.12, .1, .02), '#e8c83a', M4(w * .16, .32, d * .085)); },
   greenhouse: (P, w, d) => { P.put(box(w * .86, .12, d * .8), '#8a847a', M4(0, .06, 0)); const H = 1.3; for (let i = 0; i < 5; i++) { const x = -w * .4 + i * w * .2; P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, -d * .38)); P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, d * .38)); } for (const k of [-1, 1]) P.put(box(w * .84, .04, d * .42), '#bfe3d8', M4(0, H + .15, k * d * .19, 0, k * .45)); P.put(box(w * .82, H * .9, .03), '#cfeee4', M4(0, H * .45, d * .38)); beds(P, w * .7, d * .5, 2); },
@@ -862,11 +880,16 @@ function syncSites(dt) {
   }
   for (const [st, e] of siteMeshes) if (!seen.has(st)) { scene.remove(e.g); if (e.model) scene.remove(e.model); for (const q of e.puffs) scene.remove(q.sp); siteMeshes.delete(st); }
   // V3D.23 completion confetti: paper bits shoot up and flutter down, plus a ring of dust
+  { const X = window.ZH_BOOMS; while (X && X.length) { const b = X.shift(), x = b.x * T, z = b.y * T;   /* 3D.104 explosions: a quick fireball, then smoke */
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: b.burn ? 0xff7a28 : 0xffc04a, transparent: true, opacity: .9 })); m.position.set(x, .4, z); m.scale.setScalar(.3); scene.add(m);
+      confetti.push({ m, boom: true, R: b.r * T * .55, t: 0, v: new THREE.Vector3() });
+      for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(dustMat.clone()); const a = i / 8 * 6.283; sp.position.set(x + Math.cos(a) * .5, .5, z + Math.sin(a) * .5); sp.scale.setScalar(.9); sp.material.color = new THREE.Color(0x555048); scene.add(sp); confetti.push({ m: sp, v: new THREE.Vector3(Math.cos(a) * 1.4, 1.2, Math.sin(a) * 1.4), t: 0, dust: true }); } } }
   const B = window.ZH_BURSTS; while (B && B.length) { const b = B.shift(), x = b.x * T, z = b.y * T;
     for (let i = 0; i < 46; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(.11, .07), new THREE.MeshBasicMaterial({ color: CONF_COL[i % CONF_COL.length], side: THREE.DoubleSide, transparent: true })); m.position.set(x, 1.2, z); scene.add(m);
       const a = Math.random() * 6.283, sp = 1.2 + Math.random() * 2.2; confetti.push({ m, v: new THREE.Vector3(Math.cos(a) * sp, 4 + Math.random() * 3, Math.sin(a) * sp), r: new THREE.Vector3(Math.random() * 9, Math.random() * 9, 0), t: 0 }); }
     for (let i = 0; i < 10; i++) { const sp = new THREE.Sprite(dustMat.clone()); const a = i / 10 * 6.283; sp.position.set(x + Math.cos(a) * .9, .25, z + Math.sin(a) * .9); sp.scale.setScalar(.7); scene.add(sp); confetti.push({ m: sp, v: new THREE.Vector3(Math.cos(a) * 1.2, .5, Math.sin(a) * 1.2), dust: true, t: 0 }); } }
   for (let i = confetti.length - 1; i >= 0; i--) { const c = confetti[i]; c.t += dt;
+    if (c.boom) { const k = Math.min(1, c.t / .35); c.m.scale.setScalar(.3 + c.R * k); c.m.material.opacity = .9 * (1 - k); if (c.t > .4) { scene.remove(c.m); c.m.material.dispose(); c.m.geometry.dispose(); confetti.splice(i, 1); } continue; }
     if (c.dust) { c.m.position.addScaledVector(c.v, dt); c.m.scale.setScalar(.7 + c.t * 1.2); c.m.material.opacity = .6 * Math.max(0, 1 - c.t / 1.2); }
     else { c.v.y -= 9 * dt; c.v.multiplyScalar(c.v.y < 0 ? .94 : 1); if (c.v.y < -1.6) c.v.y = -1.6; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.r.x * dt; c.m.rotation.y += c.r.y * dt; if (c.m.position.y < .03) { c.m.position.y = .03; c.v.set(0, 0, 0); } c.m.material.opacity = Math.max(0, Math.min(1, (3.2 - c.t) * 1.5)); }
     if (c.t > (c.dust ? 1.2 : 3.2)) { scene.remove(c.m); c.m.material.dispose(); if (c.m.geometry && !c.dust) c.m.geometry.dispose(); confetti.splice(i, 1); } }
