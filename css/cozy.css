@@ -316,3 +316,4 @@ html.cozy .lm { position: relative; }
 @media (max-width: 520px) { .shBtns button { font-size: 12px; padding: 8px 2px; } .shSel button { font-size: 11.5px; padding: 6px 5px; } .shTop { font-size: 11.5px; top: calc(env(safe-area-inset-top, 0px) + 150px); } }
 
 html.shView #lmenu, html.shView #bottom { visibility: hidden; pointer-events: none; }
+.shTop .shBoss { flex-wrap: wrap; } .shTop .shBoss .sm { white-space: normal; text-align: center; }

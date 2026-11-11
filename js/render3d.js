@@ -1780,10 +1780,19 @@ function syncVehicles() {
 /* 3D.114 the stronghold arena v2: rooms, door gaps with real doors, barricades and snares, built off the town map */
 let arena = null;
 function buildArena() {
-  const H = G.S.sh, key = H ? H.dest : '';
+  const H = G.S.sh, key = H ? H.akey || H.dest : '';
+  if (arena && arena.key === key && H && H.camp) { let ch = false; for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
   if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
   if (arena) { scene.remove(arena.g); arena = null; }
   if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
+  if (H.camp) {   /* 3D.116 a faction camp: their own town, built from the same buildings as ours */
+    const P = ZH.CAMP_PLAN[H.raid] || ZH.CAMP_PLAN.toll, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), bm = {};
+    const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+    const gr = new THREE.Mesh(new THREE.PlaneGeometry((H.gw + 30) * T, (H.gh + 24) * T).rotateX(-Math.PI / 2), toon(P.ground)); gr.position.set((AX + H.gw / 2) * T, -.02, (AY + H.gh / 2) * T); gr.receiveShadow = true; g.add(gr);
+    box(20, .03, 20, P.yard, AX + 14, 0, AY + 14);
+    for (let y = 0; y < H.gh; y++) for (let x = 0; x < H.gw; x++) { const v = H.grid[y][x]; if (v === 'W') { const hz = y === 3 || y === 24; box(hz ? 1 : .16, .75, hz ? .16 : 1, P.fence, AX + x + .5, .38, AY + y + .5); box(.2, 1, .2, '#4a3220', AX + x + .5, .5, AY + y + .5); } else if (v === 'G') box(.22, 1.4, .22, '#4a3220', AX + x + (x === 13 ? 0 : 1), .7, AY + y + .5); }
+    for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
+    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '' }; return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
   const under = new THREE.Mesh(new THREE.PlaneGeometry(70 * T, 40 * T).rotateX(-Math.PI / 2), toon('#3b3a36')); under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
@@ -1803,6 +1812,7 @@ function buildArena() {
   const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === 'R0') continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
   const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
 }
+function campB(b) { return makeBuilding({ type: b.type, x: ZH.SH_AX + b.x, y: ZH.SH_AY + b.y, w: b.bw, h: b.bh, rot: b.rot, burnt: b.dead, wrecked: b.dead }); }
 function syncArenaBits(H) {   /* barricades and snares come and go */
   const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length; if (bk === arena.bitKey) return; arena.bitKey = bk;
   while (arena.bits.children.length) arena.bits.remove(arena.bits.children[0]);
