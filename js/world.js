@@ -5,14 +5,24 @@
 })(typeof self !== 'undefined' ? self : this, function (Iso) {
   // V2.13: the map grew east and south (16x20 -> 28x30) so old saves keep their coordinates.
   // The town's TERRITORY starts as the old build zone and grows in tiers bought with Renown + parts.
-  const COLS = 28, ROWS = 30;
+  // 3D.101 owner: at least 8 tiles of open land round the biggest town on every side. The map grew 28x30 -> 40x42 and everything
+  // moved OFF tiles east and south (old saves are shifted on load, S.mapOff), so the largest territory (24x26) sits 8 tiles from each edge.
+  const OFF = 6, COLS = 40, ROWS = 42;
   const TERRITORY = [
     { x0: 2, y0: 6, x1: 13, y1: 17, ren: 0, mat: 0 },
     { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 8, wood: 20 },
     { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 15, wood: 35 },
     { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 25, wood: 50 },
-  ];
-  const BUILD = { x0: 2, y0: 6, x1: 13, y1: 17 };
+  ].map((t) => Object.assign(t, { x0: t.x0 + OFF, y0: t.y0 + OFF, x1: t.x1 + OFF, y1: t.y1 + OFF }));
+  const BUILD = { x0: 2 + OFF, y0: 6 + OFF, x1: 13 + OFF, y1: 17 + OFF };
+  /* 3D.101 the broken-down highway along the north-east edge (rows HWY_Y, HWY_Y + 1, the whole width) and its ramp towards the town.
+     It's a working route: the Trader, convoys and faction visits come and go along it. Each tile is 'ok', 'crack' or 'hole' (asphalt
+     gone, still walkable). Wrecks on it are salvage nodes (game.js). */
+  const HWY_Y = 3, HWY_RAMP_X = 19;
+  const hh = (x, y) => { let n = (x * 374761393 + y * 668265263) | 0; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const HWY = new Map();
+  for (let x = 0; x < COLS; x++) for (const y of [HWY_Y, HWY_Y + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .12 ? 'hole' : r < .42 ? 'crack' : 'ok'); }
+  for (let y = HWY_Y + 2; y <= HWY_Y + 4; y++) for (const x of [HWY_RAMP_X, HWY_RAMP_X + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .2 ? 'hole' : r < .55 ? 'crack' : 'ok'); }
 
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
@@ -86,7 +96,7 @@
     metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
     gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1, tier: 1 },
   };
-  const WALLZONE = { x0: 1, y0: 5, x1: 14, y1: 18 };   // build zone grown by one tile so a ring can enclose it
+  const WALLZONE = { x0: 1 + OFF, y0: 5 + OFF, x1: 14 + OFF, y1: 18 + OFF };   // build zone grown by one tile so a ring can enclose it
   function setTerritory(tier) {   // mutates BUILD and WALLZONE in place (everything reads them live)
     const t = TERRITORY[Math.max(0, Math.min(TERRITORY.length - 1, tier | 0))];
     Object.assign(BUILD, { x0: t.x0, y0: t.y0, x1: t.x1, y1: t.y1 });
@@ -162,7 +172,7 @@
     pop() { const a = this.a, t = a[0], l = a.pop(); if (a.length) { a[0] = l; let i = 0; for (;;) { let m = i, L = 2 * i + 1, R = L + 1; if (L < a.length && a[L].f < a[m].f) m = L; if (R < a.length && a[R].f < a[m].f) m = R; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return t; }
     get size() { return this.a.length; }
   }
-  const stepCost = (w, x, y) => isRoad(w, x, y) ? 1 : (inTown(x, y) ? 2.2 : 2.8);
+  const stepCost = (w, x, y) => isRoad(w, x, y) || HWY.has(x + ',' + y) ? 1 : (inTown(x, y) ? 2.2 : 2.8);   // 3D.101: the highway is quick to travel
   function nearestWalkable(w, gx, gy, z = false) {
     if (walkable(w, gx, gy, z)) return { x: gx, y: gy };
     for (let r = 1; r < 5; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walkable(w, gx + dx, gy + dy, z)) return { x: gx + dx, y: gy + dy };
@@ -201,5 +211,6 @@
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
-  return { famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
+  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

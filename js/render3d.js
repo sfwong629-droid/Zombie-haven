@@ -128,7 +128,7 @@ function groundH(wx, wz) {
   return (A[j * N + i] * (1 - fu) + A[j * N + i + 1] * fu) * (1 - fv) + (A[(j + 1) * N + i] * (1 - fu) + A[(j + 1) * N + i + 1] * fu) * fv;
 }
 function buildHeights(X0, Y0, NX, NY) {
-  const W = G.world, blk = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y);
+  const W = G.world, blk = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y) || (G.Wd.hwyAt && G.Wd.hwyAt(x, y));   // 3D.101: the highway lies on flat ground
   const D = new Float32Array(NX * NY).fill(9);   // distance (tiles) to the nearest built tile, up to 3
   for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) if (blk(x + X0, y + Y0)) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const d = Math.hypot(dx, dy); if (d < D[yy * NX + xx]) D[yy * NX + xx] = d; }
   const sm = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
@@ -295,6 +295,7 @@ function buildGround() {
     let k;
     if (inB && regrow(x, y) && !G.Wd.isRoad(W, x, y)) k = r < .5 ? '#90a046' : '#97a44a';   // V3D.6: grass growing back into the town dirt
     else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
+    else if (G.Wd.hwyAt && G.Wd.hwyAt(x, y)) k = DIRT[(r * 4) | 0];   // 3D.101: packed dirt under the highway (shows in the potholes)
     else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
     else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#73923a' : '#6f8d38';
     else k = GR[(r * 6) | 0];
@@ -550,6 +551,35 @@ function buildTraps() {
   }
   P.build(trapGroup, .02);
   return true;
+}
+// ---------------------------------------------------------------- 3D.101 the broken-down highway along the north-east edge
+// Two cracked asphalt lanes the width of the map with a ramp down towards the town: potholes where the asphalt is gone, a faded
+// yellow centre line, broken edge lines, concrete barriers (some knocked over) and a bent road sign. The cars on it are salvage nodes.
+let hwyGroup = null;
+function buildHighway() {
+  if (hwyGroup || !G.Wd.HWY) return false; hwyGroup = new THREE.Group(); scene.add(hwyGroup);
+  const P = new Parts(), Y = G.Wd.HWY_Y, at = (x, y) => G.Wd.hwyAt(x, y);
+  for (const [k, st] of G.Wd.HWY) {
+    const [x, y] = k.split(',').map(Number), cx = (x + .5) * T, cz = (y + .5) * T, r = hash(x * 3 + 1, y * 5 + 2);
+    if (st === 'hole') {   // asphalt gone: a few broken slabs tilted at the edges of the hole
+      for (let i = 0; i < 3; i++) { const a = hash(x + i, y * 7) * 6.28, d = .7 + hash(x * 2 + i, y) * .3; P.put(box(.5 + hash(i, x) * .4, .05, .35 + hash(y, i) * .3), '#4a4845', M4(cx + Math.cos(a) * d, .03, cz + Math.sin(a) * d, a, (hash(x, i) - .5) * .25, (hash(i, y) - .5) * .25)); }
+      continue;
+    }
+    P.put(box(T, .04, T), r < .5 ? '#4f4d4a' : '#55524e', M4(cx, .02, cz));
+    if (st === 'crack') for (let i = 0; i < 3; i++) { const a = hash(x * 7 + i, y * 3) * 3.14; P.put(box(.05, .012, .7 + hash(i, x * 3) * .9), '#2c2a28', M4(cx + (hash(x + i, y + 9) - .5) * 1.2, .045, cz + (hash(x + 9, y + i) - .5) * 1.2, a)); }
+  }
+  for (let x = 0; x < G.COLS; x++) {   // faded yellow dashes between the lanes, white edge lines with gaps
+    if (at(x, Y) !== 'hole' && at(x, Y + 1) !== 'hole' && x % 2 === 0) P.put(box(1.2, .012, .1), '#c9a640', M4((x + .5) * T, .045, (Y + 1) * T));
+    for (const [z, yy] of [[Y * T + .18, Y], [(Y + 2) * T - .18, Y + 1]]) if (at(x, yy) !== 'hole' && hash(x, yy * 11) > .3) P.put(box(T * .9, .012, .07), '#bdb8ac', M4((x + .5) * T, .045, z));
+  }
+  for (let x = 0; x < G.COLS; x += 2) {   // jersey barriers along the outer edge; some knocked over, some missing
+    const r = hash(x * 13, 77); if (r < .3) continue; const fell = r > .82, z = Y * T - .3;
+    P.put(box(1.7, .5, .3), '#bab5aa', M4((x + 1) * T, fell ? .15 : .25, z + (fell ? .25 : 0), (hash(x, 5) - .5) * .3, fell ? 1.4 : 0));
+    if (!fell) P.put(box(1.7, .12, .42), '#aaa59a', M4((x + 1) * T, .06, z));
+  }
+  { const sx = (G.Wd.HWY_RAMP_X + 2.3) * T, sz = (Y + 2.4) * T;   // a bent exit sign by the ramp
+    P.put(cyl(.05, .05, 2.2, 6), '#8a8f94', M4(sx, 1.0, sz, 0, 0, .18)); P.put(box(1.3, .7, .05), '#2f6b45', M4(sx + .2, 2.05, sz, .3, 0, .18)); P.put(box(1.1, .08, .06), '#e6e2d6', M4(sx + .2, 2.12, sz + .03, .3, 0, .18)); }
+  P.build(hwyGroup, .02); return true;
 }
 // ---------------------------------------------------------------- 3D.100 guard posts (owner: the old flat pixel sprite looked terrible)
 // A low sandbag nest open at the back, a sloped canvas lean-to over it, an ammo crate, a lantern and a flag on a pole coloured by the watch
@@ -1650,7 +1680,7 @@ function frame() {
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
   SWAY.uTime.value = now / 1000;
   placeCamera();
-  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
+  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = buildHighway() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
   light(((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
