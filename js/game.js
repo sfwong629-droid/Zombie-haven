@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.116', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.117', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4716,7 +4716,7 @@ const SH_AX = -150, SH_AY = 2, SH_GW = 46, SH_GH = 19;
 const SH_ROOMS = { R0: [0, 7, 10, 8], S: [2, 1, 6, 5], R1: [11, 7, 10, 8], A: [22, 3, 10, 6], C: [22, 12, 10, 6], B: [33, 4, 12, 12], L1: [12, 1, 8, 5], L2: [1, 16, 7, 3], L3: [12, 16, 8, 3], L4: [35, 0, 8, 3] };   /* x, y, w, h in grid tiles */
 const SH_DOORS = [['R0', 'S', 4, 6, 2, 1], ['R0', 'R1', 10, 10, 1, 2], ['R1', 'A', 21, 7, 1, 2], ['R1', 'C', 21, 13, 1, 2], ['A', 'B', 32, 6, 1, 2], ['C', 'B', 32, 13, 1, 2], ['R1', 'L1', 15, 6, 2, 1, 1], ['R0', 'L2', 4, 15, 2, 1, 1], ['R1', 'L3', 15, 15, 2, 1, 1], ['B', 'L4', 38, 3, 2, 1, 1]];   /* a, b, x, y, w, h, locked */
 /* 3D.115 owner: doors and locked rooms like Zomboid: every door starts shut, you can't see into a room until it is opened, and a locked room may hold good loot, nothing, or a nest */
-const SH_PACE = .6, SH_SLOW = .3;   /* owner: it felt sped up. The squad now runs at its own steady pace (60% of the old speed, 30% while someone is selected), whatever the town speed is */
+const SH_PACE = 1, SH_SLOW = 1;   /* owner: it felt sped up (it was running at the town's 2x/3x). 3D.117 owner: match normal speed, no slow-down: always 1x, whatever the town speed is */
 const SH_LROOM = { S: 'the side room', L1: 'a locked office', L2: 'a locked storeroom', L3: 'a locked closet', L4: 'the back room' };
 const SH_DEFS = {
   clinic: { rec: 175, areas: [
@@ -5159,7 +5159,7 @@ function showShPractice() {
     <div class="sm">Squad size</div><div class="row" style="gap:6px">${[4, 5, 6, 7, 8].map((n) => `<button class="vehB ${P.n === n ? 'on' : ''}" data-pn="${n}">${n}</button>`).join('')}</div>
     <div class="sm">Squad level</div><div class="row" style="gap:6px">${[3, 6, 9, 12].map((n) => `<button class="vehB ${P.lv === n ? 'on' : ''}" data-pl="${n}">Lv ${n}</button>`).join('')}</div>
     <button class="act go" id="prGo" style="margin-top:10px">Start practice</button>
-    <div class="sm" style="margin-top:8px"><b>Controls:</b> drag to look around, pinch or scroll to zoom. Tap a survivor (or 👥 All) to take control and time slows. Then tap the floor to move, an enemy to attack, a door to open or shut it. A 🔒 locked door: tap it and someone forces the lock (Mechanics, Scavengers and Engineers are quicker), or blow it open with a 💣. You can't see into a room until its door opens: it may hold supplies, nothing, or a nest. <b>Faction camps:</b> tap a building to send the squad at it; once it's down, tap it again to loot it. Stay unseen as long as you can: once the alarm goes up, every guard comes. 🏃 Get out leaves through the gate with what you took. The selected survivor's stance, ability and ✦ critical show above the bottom bar.</div>`;
+    <div class="sm" style="margin-top:8px"><b>Controls:</b> drag to look around, pinch or scroll to zoom. Tap a survivor (or 👥 All) to take control. Then tap the floor to move, an enemy to attack, a door to open or shut it. A 🔒 locked door: tap it and someone forces the lock (Mechanics, Scavengers and Engineers are quicker), or blow it open with a 💣. You can't see into a room until its door opens: it may hold supplies, nothing, or a nest. <b>Faction camps:</b> tap a building to send the squad at it; once it's down, tap it again to loot it. Stay unseen as long as you can: once the alarm goes up, every guard comes. 🏃 Get out leaves through the gate with what you took. The selected survivor's stance, ability and ✦ critical show above the bottom bar.</div>`;
   $('ib').querySelectorAll('[data-pm]').forEach((b) => { b.onclick = () => { P.map = b.dataset.pm; showShPractice(); }; }); $('ib').querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => { P.goal = b.dataset.pg; showShPractice(); }; });
   $('ib').querySelectorAll('[data-pn]').forEach((b) => { b.onclick = () => { P.n = +b.dataset.pn; showShPractice(); }; }); $('ib').querySelectorAll('[data-pl]').forEach((b) => { b.onclick = () => { P.lv = +b.dataset.pl; showShPractice(); }; });
   $('prGo').onclick = () => { if (S.sh) { say('A squad is already inside.'); return; } const jobs = ['Guard', 'Police Officer', 'Medic', 'Scavenger', 'Mechanic', 'Engineer', 'Guard', 'Police Officer'], wp = ['machete', 'rifle', 'pistol', 'crossbow', 'sledge', 'shotgun', 'katana', 'rifle'], ar = P.lv >= 9 ? 'kevlar' : P.lv >= 6 ? 'leather' : null;
