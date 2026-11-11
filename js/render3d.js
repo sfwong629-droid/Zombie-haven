@@ -1449,7 +1449,7 @@ function syncZombies(dt, vis) {
   for (const z of G.S.z) {
     if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
     if (!a) {
-      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(false); }
+      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(!!z.leader); if (z.leader) a.big = 1.25; }   /* 3D.104 the Toll Collector is bigger and armoured */
       else if (z.type === 'dog') { a = (ZSRC.dog && zombieOwn('dog')) || new DogActor(); if (!a.dog) { a.dogM = true; a.setWeapon(null); a.setArmor(false); } }   /* 3D.32 box dog; 3D.80 the user's dog model */
       else if (z.type === 'boss' && z.bk === 'stalker' && ZSRC.stalker) { a = zombieOwn('stalker'); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 */
       else if ((z.type === 'lasher' || z.type === 'rotbomb') && ZSRC[z.type]) { a = zombieOwn(z.type); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 no weapons on any zombie */
@@ -1461,7 +1461,7 @@ function syncZombies(dt, vis) {
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
-    a.place(z.w.x, z.w.y, tgt, dt, a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1); zombieAnim(a, z); tickMixer(a, dt, vis);
+    a.place(z.w.x, z.w.y, tgt, dt, a.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis);
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
