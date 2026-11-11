@@ -297,16 +297,22 @@ html.cozy .lm { position: relative; }
 .vehB small { font: 600 11px Nunito, sans-serif; color: #8a7666; }
 .vehB.on { border-color: #6aa84f; background: #e7f5d8; }
 .vehB:disabled { opacity: .55; cursor: default; }
-/* 3D.114 stronghold control panel */
-.shPanel { gap: 5px; padding: 7px 9px; max-height: 46vh; overflow-y: auto; }
-.shGoal { font-size: 12px; background: #ffe9b8; border-radius: 8px; padding: 1px 7px; } .shGoal.done { background: #d7f0c4; }
-.shUnits { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; }
-.shU { display: grid; grid-template-columns: 58px 1fr auto; gap: 5px; align-items: center; padding: 3px 5px; border-radius: 9px; border: 2px solid transparent; cursor: pointer; }
-.shU.sel { border-color: #5aa0d8; background: #e6f1fb; }
-.shU .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-.shU .ctl { display: flex; gap: 3px; } .shU .ctl button { position: relative; width: 28px; height: 26px; padding: 0; border-radius: 8px; border: 1.5px solid rgba(90,63,49,.4); background: #fff8ec; font-size: 14px; cursor: pointer; }
-.shU .ctl button:disabled { opacity: .5; } .shU .ctl button i { position: absolute; right: -3px; bottom: -4px; font: 700 10px Fredoka, sans-serif; font-style: normal; background: #4a3428; color: #fff; border-radius: 6px; padding: 0 3px; }
-.shU .ctl button.crit { background: #ffe08a; border-color: #c98a1e; }
-.shBtns button { flex: 1 1 70px; padding: 5px 4px; font-size: 12px; }
-.shHint { font-size: 11.5px; color: #8a7666; }
-@media (max-width: 520px) { .shU { grid-template-columns: 40px 1fr auto; gap: 3px; padding: 2px 3px; } .shU .nm { font-size: 11px; } .shU em { height: 6px; } .shU .ctl button { width: 23px; height: 22px; font-size: 12px; } .shHint { display: none; } .shBtns button { flex: 1 1 52px; font-size: 11px; padding: 4px 2px; } .shPanel { max-height: 40vh; } }
+/* 3D.115 stronghold controls, slimmed down (owner: too crowded): a pill on top, one bar at the bottom */
+.shPanel { background: none; border: 0; box-shadow: none; padding: 0; gap: 6px; max-height: none; overflow: visible; width: min(520px, calc(100vw - 16px)); }
+.shPanel.town { width: auto; }
+.shPanel.town .shSel, .shPanel.town .shBtns button:not([data-c="view"]) { display: none; }
+.shBtns { flex-wrap: nowrap; gap: 5px; }
+.shBtns button { flex: 1 1 0; min-width: 0; padding: 8px 4px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 0 rgba(90, 63, 49, .3); }
+.shBtns button small { font: 700 11px Fredoka, sans-serif; opacity: .75; }
+.shBtns button[data-c="follow"] { flex: 0 0 40px; }
+.shSel { display: flex; align-items: center; gap: 5px; background: #fff8ec; border: 2px solid #5aa0d8; border-radius: 12px; padding: 4px 6px; }
+.shSel .nm { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.shSel .nm em { height: 5px; background: #e8dccb; border-radius: 4px; overflow: hidden; display: block; } .shSel .nm em b { display: block; height: 100%; background: #5fae61; }
+.shSel button { flex: 0 0 auto; font: 700 12.5px Fredoka, sans-serif; padding: 6px 8px; border-radius: 10px; border: 1.5px solid rgba(90, 63, 49, .45); background: #ffe9b8; color: #4a3428; cursor: pointer; }
+.shSel button:disabled { opacity: .5; } .shSel button.crit { background: #ffe08a; border-color: #c98a1e; } .shSel button.x { background: #fff8ec; }
+.shTop { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 150px); z-index: 40; max-width: calc(100vw - 24px); background: rgba(255, 248, 236, .94); border: 2px solid var(--cocoa, #5a3f31); border-radius: 14px; padding: 4px 10px; font: 600 12.5px Fredoka, Nunito, sans-serif; color: #4a3428; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; justify-content: center; pointer-events: none; }
+.shTop .shBoss { flex: 1 0 100%; display: flex; gap: 6px; align-items: center; justify-content: center; } .shTop .shBoss em { flex: 0 1 160px; height: 7px; }
+.shTop .sm { color: #8a7666; font-size: 11.5px; }
+@media (max-width: 520px) { .shBtns button { font-size: 12px; padding: 8px 2px; } .shSel button { font-size: 11.5px; padding: 6px 5px; } .shTop { font-size: 11.5px; top: calc(env(safe-area-inset-top, 0px) + 150px); } }
+
+html.shView #lmenu, html.shView #bottom { visibility: hidden; pointer-events: none; }

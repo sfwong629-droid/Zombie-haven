@@ -1491,7 +1491,7 @@ function syncZombies(dt, vis) {
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
-    a.place(z.w.x, z.w.y, tgt, dt, a.big || z.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis);
+    a.place(z.w.x, z.w.y, tgt, dt, a.big || z.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
@@ -1781,16 +1781,16 @@ function syncVehicles() {
 let arena = null;
 function buildArena() {
   const H = G.S.sh, key = H ? H.dest : '';
-  if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); syncArenaBits(H); } return false; }
+  if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
   if (arena) { scene.remove(arena.g); arena = null; }
   if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
   const under = new THREE.Mesh(new THREE.PlaneGeometry(70 * T, 40 * T).rotateX(-Math.PI / 2), toon('#3b3a36')); under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
   const grid = ZH.shGridOf(), isFloor = (x, y) => !!(grid[y] && grid[y][x]);
-  const fl = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2] };
+  const fl = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] };
   for (const [k, [x0, y0, w, h]] of Object.entries(R)) { box(w, .06, h, fl[k], AX + x0 + w / 2, 0, AY + y0 + h / 2); for (let i = 2; i < w; i += 2) box(.04, .065, h, D.props === 'clinic' ? '#bcc4c0' : '#8f8a7e', AX + x0 + i, 0, AY + y0 + h / 2); }
-  DR.forEach(([a, b, x0, y0, w, h], i) => { box(w, .06, h, fl[a], AX + x0 + w / 2, 0, AY + y0 + h / 2); doors.push(box(w > 1 ? w : .25, 1.15, h > 1 ? h : .25, D.props === 'prison' || D.props === 'camp' ? '#5d6066' : '#8a6a48', AX + x0 + w / 2, .58, AY + y0 + h / 2)); });
+  DR.forEach(([a, b, x0, y0, w, h], i) => { box(w, .06, h, fl[a], AX + x0 + w / 2, 0, AY + y0 + h / 2); doors.push(box(w > 1 ? w : .25, 1.15, h > 1 ? h : .25, DR[i][6] ? '#7a3b2a' : D.props === 'prison' || D.props === 'camp' ? '#5d6066' : '#8a6a48', AX + x0 + w / 2, .58, AY + y0 + h / 2)); });
   /* walls: every non-floor tile next to a floor tile; low on the south side so the camera sees in */
   for (let y = -1; y <= 19; y++) for (let x = -1; x <= 46; x++) { if (isFloor(x, y)) continue; let n = false, south = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (isFloor(x + dx, y + dy)) { n = true; if (dy < 0) south = true; }
     if (n) { const hgt = south && !isFloor(x, y - 1) && isFloor(x, y - 1) === false && !isFloor(x - 1, y) && !isFloor(x + 1, y) ? .32 : south ? .32 : .95; box(1, hgt, 1, D.wall, AX + x + .5, hgt / 2, AY + y + .5); } }
@@ -1800,7 +1800,8 @@ function buildArena() {
     else { if (k % 2) box(.9, .5, .9, '#8a7d62', X, .25, Y); else box(.4, 1.6, .4, '#6b6f75', X, .8, Y); } };
   let k = 0; for (const [rk, [x0, y0, w, h]] of Object.entries(R)) { prop(k++, x0 + 1, y0 + .6); prop(k++, x0 + w - 1.2, y0 + .6); if (rk === 'B' || rk === 'R1') prop(k++, x0 + w / 2, y0 + .6); if (rk === 'A' && D.raid) for (let i = 0; i < 4; i++) box(.7, .5, .6, '#c8a23a', AX + x0 + 2 + i * 1.6, .25, AY + y0 + h - 1);   /* the stockpile */
     if (rk === 'C' && D.raid) for (let i = 0; i <= w * 2; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.2, 5), toon('#4a4d52')); b.position.set((AX + x0 + i / 2) * T, .6, (AY + y0 + 1.2) * T); g.add(b); } }
-  const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, bitKey: '' }; syncArenaBits(H); return true;
+  const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === 'R0') continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
+  const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
 }
 function syncArenaBits(H) {   /* barricades and snares come and go */
   const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length; if (bk === arena.bitKey) return; arena.bitKey = bk;
