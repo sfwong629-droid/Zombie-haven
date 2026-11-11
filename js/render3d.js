@@ -55,10 +55,11 @@ Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, n
 sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
 sun.position.copy(MC).add(new THREE.Vector3(-30, 52, 18)); sun.target.position.copy(MC); scene.add(sun, sun.target);
 const KEYS = [   // hour: sky, hemi colour, hemi intensity, sun colour, sun intensity, window glow 0..1
-  [0, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [4.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [6.5, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.3, .6],
-  [8, 0x9fb2bc, 0xfff0d8, 1.12, 0xffe8c4, 1.55, 0], [10.5, 0x9db8c6, 0xfff4dc, 1.22, 0xfff0d6, 1.85, 0], [13, 0x9cbac9, 0xfff6e2, 1.3, 0xfff4e0, 2.05, 0], [15.5, 0x9fb7c2, 0xfff2da, 1.24, 0xfff0d0, 1.85, 0],   /* 3D.58: the light climbs to noon and eases off through the afternoon */
-  [17.3, 0xb4b2a8, 0xffe8c8, 1.12, 0xffd8a8, 1.6, .1], [19, 0xd99a6c, 0xffc896, 1, 0xff9a5a, 1.4, .6],
-  [20.5, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [24, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1]];   // V3D.15: nights brighter again (.95 / .55 -> 1.18 / .72)   // V3D.12: nights brighter (were .7 / .35)
+  [0, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [4, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [5.4, 0x5c566a, 0xa8a4b8, 1.1, 0xc8b0b4, .86, .9],   /* 3D.100 owner: dawn and dusk fade like a dimmer (about twice as long, with in-between steps) */
+  [6.6, 0xb98a72, 0xf0bc9a, 1.02, 0xf4a070, 1.12, .6], [7.6, 0xd2a080, 0xffd0a6, 1.06, 0xffb27a, 1.38, .3],
+  [8.8, 0x9fb2bc, 0xfff0d8, 1.12, 0xffe8c4, 1.55, 0], [10.5, 0x9db8c6, 0xfff4dc, 1.22, 0xfff0d6, 1.85, 0], [13, 0x9cbac9, 0xfff6e2, 1.3, 0xfff4e0, 2.05, 0], [15.5, 0x9fb7c2, 0xfff2da, 1.24, 0xfff0d0, 1.85, 0],   /* 3D.58: the light climbs to noon and eases off through the afternoon */
+  [17, 0xb4b2a8, 0xffe8c8, 1.12, 0xffd8a8, 1.6, .1], [18.4, 0xd2a080, 0xffd0a6, 1.06, 0xffb27a, 1.45, .3], [19.4, 0xc8906c, 0xf8c09a, 1.02, 0xf4a070, 1.2, .6],
+  [20.5, 0x6a5e70, 0xb0a6bc, 1.1, 0xc8b0b4, .9, .85], [21.6, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [24, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1]];   // V3D.15: nights brighter again (.95 / .55 -> 1.18 / .72)   // V3D.12: nights brighter (were .7 / .35)
 const cA = new THREE.Color(), cB = new THREE.Color();
 let glowNow = -1, sunH = -1;
 function light(h) {
@@ -66,7 +67,8 @@ function light(h) {
   const a = KEYS[i], b = KEYS[i + 1], u = Math.max(0, Math.min(1, (h - a[0]) / (b[0] - a[0] || 1)));
   const mix = (k) => cA.set(a[k]).lerp(cB.set(b[k]), u).clone(), num = (k) => a[k] + (b[k] - a[k]) * u;
   scene.background = mix(1); hemi.color.copy(mix(2)); hemi.intensity = num(3); sun.color.copy(mix(4)); sun.intensity = num(5);
-  { const day = h > 5.5 && h < 20.5, f = day ? (h - 6) / 14 : .5, el = day ? Math.max(.12, Math.sin(Math.PI * Math.min(1, Math.max(0, f)))) : .75, az = (f - .5) * 1.7, bx = -30, bz = 18, L = Math.hypot(bx, bz) * (1.25 - .45 * el);   /* 3D.58 the sun crosses the sky: long shadows morning and evening */
+  { const ss = (a, b) => { const x = Math.max(0, Math.min(1, (h - a) / (b - a))); return x * x * (3 - 2 * x); }, dw = ss(4.5, 7) * (1 - ss(19.5, 21.6));   /* 3D.100: the sun slides into the night light (was a jump at 5:30 and 20:30) */
+    const f = Math.max(0, Math.min(1, (h - 6) / 14)), el = .75 + (Math.max(.12, Math.sin(Math.PI * f)) - .75) * dw, az = (f - .5) * 1.7 * dw, bx = -30, bz = 18, L = Math.hypot(bx, bz) * (1.25 - .45 * el);   /* 3D.58 the sun crosses the sky: long shadows morning and evening */
     const k = Math.round(h * 10) / 10; if (k !== sunH) { sunH = k; sun.position.set(MC.x + (bx * Math.cos(az) - bz * Math.sin(az)) / Math.hypot(bx, bz) * L, 22 + 34 * el, MC.z + (bx * Math.sin(az) + bz * Math.cos(az)) / Math.hypot(bx, bz) * L); renderer.shadowMap.needsUpdate = true; } }
   const g = Math.round(num(6) * 50) / 50;
   if (g !== glowNow) { glowNow = g; winMat.color.set(0x4a3a28).lerp(new THREE.Color(0xffc864), g); poolMat.opacity = .8 * g; lampSprite.opacity = .9 * g; beamMat.opacity = .45 * g; haloMat.opacity = .5 * g; for (const m of charMats) m.emissive.setScalar(m.userData.nightGlow * g); }
@@ -549,6 +551,32 @@ function buildTraps() {
   P.build(trapGroup, .02);
   return true;
 }
+// ---------------------------------------------------------------- 3D.100 guard posts (owner: the old flat pixel sprite looked terrible)
+// A low sandbag nest open at the back, a sloped canvas lean-to over it, an ammo crate, a lantern and a flag on a pole coloured by the watch
+// (blue night, gold day, red both). Low detail, same toon parts as the traps.
+let postGroup = null, postKey = '';
+const POST_COL = { night: '#4f7fd0', day: '#e8b73a', all: '#d0503c' };
+function buildPosts() {
+  const list = G.S.posts || [], key = list.map((p) => `${p.x},${p.y},${p.sched}`).join(';');
+  if (key === postKey) return false; postKey = key;
+  if (postGroup) scene.remove(postGroup); postGroup = new THREE.Group(); scene.add(postGroup);
+  const P = new Parts(), bagG = new THREE.SphereGeometry(.5, 8, 5);
+  for (const p of list) {
+    const cx = (p.x + .5) * T, cz = (p.y + .5) * T, y0 = groundH(cx, cz), r = .78, N = 11;
+    for (let i = 0; i < N; i++) {   // a horseshoe of sandbags, two rows, open towards the back (north)
+      const a = Math.PI * (.12 + 1.76 * i / (N - 1)), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, ry = -a + Math.PI / 2;
+      for (let row = 0; row < 2; row++) { const o = row ? .5 / N * Math.PI : 0, aa = a + o * (i < N - 1 ? 1 : 0); P.put(bagG, row ? '#b9a06a' : '#a68d58', M4(cx + Math.cos(aa) * (r - row * .03), y0 + .11 + row * .19, cz + Math.sin(aa) * (r - row * .03), ry, 0, 0, .42, .2, .24)); }
+    }
+    for (const [dx, dz, h] of [[-.78, -.62, 1.5], [.78, -.62, 1.5], [-.78, .48, 1.12], [.78, .48, 1.12]]) P.put(cyl(.045, .055, h, 6), '#6f4a2c', M4(cx + dx, y0 + h / 2, cz + dz));
+    P.put(box(1.86, .035, 1.3), '#c8b48a', M4(cx, y0 + 1.33, cz - .07, 0, .33));   // the canvas roof, sloping down to the front
+    P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.5, cz - .62)); P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.12, cz + .48));
+    P.put(box(.36, .24, .24), '#5f6b3e', M4(cx + .35, y0 + .12, cz - .3, .3)); P.put(box(.37, .04, .25), '#4a5430', M4(cx + .35, y0 + .25, cz - .3, .3));   // ammo crate
+    P.put(cyl(.035, .045, 2.3, 6), '#5a3c22', M4(cx - .78, y0 + 1.15, cz - .62));   // flag pole
+    P.put(box(.62, .38, .02), POST_COL[p.sched] || POST_COL.night, M4(cx - .45, y0 + 2.02, cz - .62, 0, 0, -.05));
+    P.put(cyl(.06, .07, .13, 8), '#3a3a36', M4(cx + .7, y0 + .98, cz + .48)); P.put(new THREE.SphereGeometry(.05, 8, 6), '#ffd27a', M4(cx + .7, y0 + .92, cz + .48));   // lantern
+  }
+  P.build(postGroup, .02); return true;
+}
 // ---------------------------------------------------------------- walls
 let wallGroup = null, wallKey = '';
 function buildWalls() {
@@ -974,15 +1002,20 @@ class Actor {
   place(wx, wy, faceTo, dt, scale = 1) {
     const x = wx * T, z = wy * T;
     let dx, dz; const mv = this.last ? Math.hypot(x - this.last.x, z - this.last.z) / Math.max(dt, 1e-3) / scale : 0;   /* 3D.57 audit: a body that is really moving faces where it goes, even with a target (no sideways or backwards walking) */
-    if (faceTo && !(mv > .3 && this.spd > .25)) { dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
+    if (faceTo && !(mv > .12 && this.spd > .12)) {   /* 3D.100 owner's log (Lena, Marcus SIDEWAYS): a body drifting at .12+ faces where it goes (was .3) */
+      dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
     if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
-    if (this.last && dt > 0) { const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale); this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = v > .07 ? 0 : (this.movT || 0) + dt; }   /* 3D.57: slow drifts (.07+) walk too, never glide in the idle pose */   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
+    if (this.last && dt > 0) {   /* 3D.100 owner's log (Maya sliding, FEET TOO FAST / WALK IN PLACE): 'moving' is the body's NET travel over the last .15 s, so a body
+       jostled back and forth on the spot counts as standing (per-frame speed saw that jitter as walking); the feet still follow the per-frame speed */
+      const h = this.hist || (this.hist = []); this.ht = (this.ht || 0) + dt; h.push([this.ht, x, z]); while (h.length > 2 && this.ht - h[0][0] > .15) h.shift();
+      const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale), span = this.ht - h[0][0], vn = span > .04 ? Math.hypot(x - h[0][1], z - h[0][2]) / span / scale : v;
+      this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = vn > .07 ? 0 : (this.movT ?? 9) + dt; }   /* 3D.57: slow drifts (.07+) walk too, never glide in the idle pose */   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
     const gy = groundH(x, z); this.o.position.set(x, gy, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
     this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
     if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
   }
-  isMov() { return !!this.last && (this.movT || 0) < .25; }   /* 3D.41: moving right now, measured from the body itself */
-  show(v) { if (!v) { this.spd = 0; this.last = null; this.movT = 9; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
+  isMov() { return !!this.last && (this.movT ?? 9) < .25; }   /* 3D.100: unknown = not moving (paused at the start, they all walked on the spot) */   /* 3D.41: moving right now, measured from the body itself */
+  show(v) { if (!v) { this.spd = 0; this.last = null; this.movT = 9; this.hist = null; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
   dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
 }
 // ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
@@ -1216,7 +1249,8 @@ const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = ne
 const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']), STRIKE_RE = /punch|swing|fire|attack|blunt|shoot/;
 const TOOL_OF = { work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
-const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker' };
+const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker',   /* 3D.100 owner: punching at work: every outdoor post has a work clip now (the 2D hoe swing came through as a punch) */
+  irrig: 'work_dig', barrel: 'work_tinker', crates: 'carry_idle', bench: 'work_hammer', scrapyard: 'work_tinker', lumber: 'work_chop', quarry: 'work_dig', bonfire: 'work_tinker', radio: 'work_tinker', track: 'idle', range: 'idle', sparring: 'punch' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
   const has = (c) => !!a.acts[c], still = !a.isMov() && !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
@@ -1245,6 +1279,8 @@ function personAnim(a, s, dt) {
   if (anim === 'collapse') { a.play('collapse', true); return; }
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }   /* 3D.30: pushing the cart wins over the carry clip */
   const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
+  if (ATTACK.has(anim) && anim === 'shoot' && hold && a.isMov() && a.spd > .15) { a.attacking = false; a.play(hold + '_hold_walk'); return; }   /* 3D.100 owner (bow: frozen and sliding): a shooter stepping back between shots walks with the weapon up instead of gliding in the aim pose */
   if (ATTACK.has(anim)) {
     const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
     if (!a.attacking || (burst && a.comboSeen !== step)) {
@@ -1614,16 +1650,42 @@ function frame() {
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
   SWAY.uTime.value = now / 1000;
   placeCamera();
-  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
+  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
   light(((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
   if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
+}
+/* 3D.100 owner: arrows you can see fly (slow enough to read as an arrow, on a shallow arc) and a muzzle flash with a quick
+   tracer for guns. The game pushes each shot into G.shots at the moment it lands; this replays it as a projectile. */
+const shotSeen = new WeakSet(), flights = [];
+const arrowProto = (() => { const g = new THREE.Group(), wood = new THREE.MeshBasicMaterial({ color: 0x8a6238 }), tip = new THREE.MeshBasicMaterial({ color: 0x9aa2a8 }), fl = new THREE.MeshBasicMaterial({ color: 0xe8e0cc, side: THREE.DoubleSide });
+  const sh = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, .62, 5).rotateX(Math.PI / 2), wood); g.add(sh);
+  const hd = new THREE.Mesh(new THREE.ConeGeometry(.034, .09, 6).rotateX(Math.PI / 2), tip); hd.position.z = .35; g.add(hd);
+  for (const r of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(.07, .12), fl); f.rotation.set(Math.PI / 2, 0, r); f.position.z = -.26; g.add(f); }
+  return g; })();
+const flashMat = new THREE.SpriteMaterial({ map: glowT, color: 0xffd76a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const tracerMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }), tracerGeo = new THREE.CylinderGeometry(.012, .012, .9, 4).rotateX(Math.PI / 2);
+function shotPt(w, h) { const x = w.x * T, z = w.y * T; return new THREE.Vector3(x, groundH(x, z) + h, z); }
+function syncShots(dt) {
+  for (const sh of G.shots || []) {
+    if (shotSeen.has(sh)) continue; shotSeen.add(sh);
+    const a = shotPt(sh.a, .74), b = shotPt(sh.b, .62), dir = b.clone().sub(a); dir.y = 0; const len = dir.length(); if (len < .05) continue; dir.normalize();
+    a.addScaledVector(dir, .32);   // from the weapon, not the chest
+    if (sh.bow) { const o = arrowProto.clone(); o.scale.setScalar(1.5); o.position.copy(a); scene.add(o); flights.push({ o, a, b, t: 0, dur: Math.max(.22, a.distanceTo(b) / 13), arc: Math.min(.6, a.distanceTo(b) * .07), kind: 'arrow' }); }
+    else { const f = new THREE.Sprite(flashMat); f.position.copy(a).addScaledVector(dir, .12); f.scale.setScalar(.55); scene.add(f); flights.push({ o: f, t: 0, dur: .07, kind: 'flash' });
+      const tr = new THREE.Mesh(tracerGeo, tracerMat); tr.position.copy(a); tr.lookAt(b); scene.add(tr); flights.push({ o: tr, a, b, t: 0, dur: Math.max(.05, a.distanceTo(b) / 45), kind: 'tracer' }); }
+  }
+  for (let i = flights.length - 1; i >= 0; i--) { const f = flights[i]; f.t += dt; const u = Math.min(1, f.t / f.dur);
+    if (f.kind === 'arrow') { const p = f.a.clone().lerp(f.b, u); p.y += f.arc * 4 * u * (1 - u); const q = f.a.clone().lerp(f.b, Math.min(1, u + .02)); q.y += f.arc * 4 * (u + .02) * (1 - u - .02); f.o.position.copy(p); f.o.lookAt(q); }
+    else if (f.kind === 'tracer') f.o.position.copy(f.a.clone().lerp(f.b, u));
+    else f.o.scale.setScalar(.55 * (1 - u * .6));
+    if (u >= 1) { scene.remove(f.o); flights.splice(i, 1); } }
 }
 // ---------------------------------------------------------------- portraits (V3D.12): the People page's chest-up shots
 // rendered from the real 3D survivor in their outfit, weapon and armour (cached per look)

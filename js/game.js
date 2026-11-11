@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.99', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.100', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -768,7 +768,7 @@ function draw() {
   if (!G3D) CAR_SPOTS.forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawProp('car', x, y) }));
   if (!G3D) wreckSpots().forEach(([x, y]) => vis(x + .5, y + .5) && !Wd.wallAt(world, x, y) && !Wd.buildingAt(world, x, y) && items.push({ ...box(x + .5, y + .5, .3), fn: () => drawWreck(x, y) }));
   if (!G3D) for (const wl of world.walls.values()) if (vis(wl.x + .5, wl.y + .5)) items.push({ x1: wl.x, y1: wl.y, x2: wl.x + 1, y2: wl.y + 1, fn: () => drawWall(wl) });
-  for (const gp of S.posts || []) if (vis(gp.x + .5, gp.y + .5)) items.push({ x1: gp.x + .1, y1: gp.y + .1, x2: gp.x + .9, y2: gp.y + .9, fn: () => drawPost(gp) });
+  if (!G3D) for (const gp of S.posts || []) if (vis(gp.x + .5, gp.y + .5)) items.push({ x1: gp.x + .1, y1: gp.y + .1, x2: gp.x + .9, y2: gp.y + .9, fn: () => drawPost(gp) });
   world.buildings.forEach((b) => vis(b.x + b.w / 2, b.y + b.h / 2) && items.push({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h, fn: () => { if (!G3D) drawBuilding(b); if ((b.fire || b.burnt) && !G3D) drawFire(b); if (selected && selected.ref === b) selectRing(b); drawStaffBadge(b); } }));
   if (!G3D && preview && sel && sel.kind === 'building') items.push({ x1: preview.x, y1: preview.y, x2: preview.x + preview.w, y2: preview.y + preview.h, bias: .01, fn: () => drawBuilding(preview, true, preview.ok) });
   S.z.forEach((z) => { if (z.hp > 0 && vis(z.w.x, z.w.y)) items.push({ ...box(z.w.x, z.w.y, .12), fn: () => drawZombie(z) }); });
@@ -778,8 +778,9 @@ function draw() {
   if (S.trader) items.push({ ...box(S.trader.w.x, S.trader.w.y, .12), fn: drawTrader });
   Iso.sortDrawables(items).forEach((o) => o.fn());
   drawCombatFocus(); if (!G3D) { drawDaylight(); drawNightLights(); } drawObjMarks(); drawAlertMarks();
-  for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;
+  if (!G3D) for (let i = shots.length - 1; i >= 0; i--) { const sh = shots[i], a = project(sh.a.x, sh.a.y), b = project(sh.b.x, sh.b.y), hy = CHAR_H * TWs() * .55;   /* 3D.100: the 3D view flies real arrows and muzzle flashes instead */
     ctx.save(); ctx.globalAlpha = Math.min(1, sh.t / 4); ctx.strokeStyle = sh.bow ? '#d8c08a' : '#ffe9a0'; ctx.lineWidth = Math.max(1, cam.z * (sh.bow ? 1.4 : 1)); ctx.beginPath(); ctx.moveTo(a.x, a.y - hy); ctx.lineTo(b.x, b.y - hy * .8); ctx.stroke(); ctx.restore(); if (--sh.t <= 0) shots.splice(i, 1); }
+  if (G3D) for (let i = shots.length - 1; i >= 0; i--) if (--shots[i].t <= 0) shots.splice(i, 1);
   drawSpits(); drawHitFx();
   if (COZY_HUD) for (const c of S.crates || []) if (c.grab > 0 && !c.taken) { const p = project(c.w.x, c.w.y), u = hudU(), y = p.y - 40 * u;   /* V3D.17: prying the crate loose */
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, y, 12 * u, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.lineWidth = 4 * u; ctx.lineCap = 'round'; ctx.strokeStyle = '#7fbf5a'; ctx.beginPath(); ctx.arc(p.x, y, 12 * u, -Math.PI / 2, -Math.PI / 2 + c.grab * Math.PI * 2); ctx.stroke(); ctx.restore();
@@ -1211,7 +1212,7 @@ const zombieTypes = {
   lasher: { name: 'Lasher', hp: 34, atk: 5, aggro: 3.6, chase: .012, reward: 34, ren: 3, weight: 2, alert: 6, isNew: 1, desc: 'Gaunt, with arms far too long: from up to 2 tiles away it hooks a survivor holding a gun, bow or crossbow, drags them in and leaves them paralysed for about 8 seconds. Kill it first; Guards often brace and hold.' },   /* 3D.80 the user's model; from day 8 */
   rotbomb: { name: 'Rotbomb', hp: 45, atk: 5, aggro: 2.2, chase: .0095, reward: 30, ren: 3, weight: 2, alert: 4, isNew: 1, desc: 'A swollen clown full of rot: it bursts when it dies, hurting everyone and every wall within about 2 tiles (other zombies too). Kill it at range, or outside the walls.' },   /* 3D.80 the user's model; from day 9 */
   raider: { name: 'Raider', hp: 55, atk: 7, aggro: 2.6, chase: .019, reward: 0, ren: 3, weight: 0, alert: 0 },   /* V2.13: human raiders */
-  boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 4.2, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
+  boss: { name: 'Mutant Boss', hp: 260, atk: 14, aggro: 7.5, chase: .0085, reward: 0, ren: 25, weight: 0, alert: 7 },   /* V2.13: boss every 3rd night */
 };
 
 /* V3D.17 boss kinds: the name, look and feel change with the kind (look = the zombie skin it is drawn with) */
@@ -1878,8 +1879,9 @@ function spreadOut() {   /* V3D.17: two people never stand in the same spot; a s
   for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j], dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, d = Math.hypot(dx, dy), R = (a.chatWith === b || b.chatWith === a) ? .5 : .42;
     if (d >= R) continue; const ux = d > 1e-4 ? dx / d : Math.cos(i + j), uy = d > 1e-4 ? dy / d : Math.sin(i + j), k = (R - d) * .12;
     const am = !!a.moving, bm = !!b.moving, only = am !== bm ? (am ? a : b) : null;   /* V3D.21: someone walking past steps around a person standing still (who used to get shoved along) */
-    if (!am && !bm && d >= .3) continue;   /* 3D.64 owner's log (Amy, Rosa): two people standing a little close were pushed apart slowly, a visible glide; now only a real overlap, fixed in a few frames */
-    for (const [o, sg] of [[a, -1], [b, 1]]) { if (o === S.trader && o.mode === 'stay' && o !== a) continue; if (only && o !== only) continue; const kk = only ? k * 2 : (!am && !bm ? (R - d) * .5 : k), nx = o.w.x + ux * kk * sg, ny = o.w.y + uy * kk * sg; if (Wd.walkable(world, Math.floor(nx), Math.floor(ny))) { o.w.x = nx; o.w.y = ny; } } }
+    if (!am && !bm && d >= .3) continue;   /* 3D.100 owner's log (Maya sliding at the wreck): two people standing on top of each other were snapped apart in a few frames (a fast
+       glide); now the push is capped at half walking pace, so the one moved takes a little side-step (the renderer walks it) */   /* 3D.64 owner's log (Amy, Rosa): two people standing a little close were pushed apart slowly, a visible glide; now only a real overlap, fixed in a few frames */
+    for (const [o, sg] of [[a, -1], [b, 1]]) { if (o === S.trader && o.mode === 'stay' && o !== a) continue; if (only && o !== only) continue; const kk = only ? k * 2 : (!am && !bm ? Math.min((R - d) * .5, .005) : k), nx = o.w.x + ux * kk * sg, ny = o.w.y + uy * kk * sg; if (Wd.walkable(world, Math.floor(nx), Math.floor(ny))) { o.w.x = nx; o.w.y = ny; } } }
 }
 const zombieNear = (p, r) => S.z.some((z) => z.hp > 0 && z.mode !== 'appear' && dist(z.w, p) < r);
 function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: fighters chase them; others go in pairs on the nearest one */
@@ -2182,10 +2184,11 @@ function nightPrep(s) {
   s.facility = need; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `Getting ready for the night → ${DEFS[need.type].name}`; return true;
 }
 /* combat: a survivor under attack shouts for help; the two nearest free fighters come */
+let helpEmoT = 0;
 function callHelp(s, z) {
-  if ((s.helpT || 0) > tick) return; s.helpT = tick + 240; if (!bark(s, isFighter(s) ? 'engage' : 'help', {}, { pri: 2 })) emote(s, isFighter(s) ? '😤' : '🆘', 90, true);
+  if ((s.helpT || 0) > tick) return; s.helpT = tick + 240; if (!bark(s, isFighter(s) ? 'engage' : 'help', {}, { pri: 2 }) && (s.helpEmoT || 0) < tick && helpEmoT < tick) { s.helpEmoT = tick + 1500; helpEmoT = tick + 240; emote(s, isFighter(s) ? '😤' : '🆘', 90, true); }   /* 3D.100 owner: a spam of angry faces in long fights (every fighter every 4 s); now one face per person per 25 s, one every 4 s town-wide */
   S.sv.filter((q) => q !== s && isFighter(q) && canFight(q) && !(q.carriedLoot && q.carryAmt) && !['chase', 'attack', 'recover', 'down', 'hospital', 'away', 'errand', 'rescueTo', 'rescueCarry'].includes(q.mode) && dist(q.w, s.w) < (gearFx(s, 'radio') || gearFx(q, 'radio') ? 18 : 9))
-    .sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w)).slice(0, 2).forEach((q) => { engage(q, z); q.why = `Answering ${s.name}'s call for help`; if (!(rnd() < .6 && bark(q, 'answer', { other: s.name }, { pri: 2 }))) emote(q, '💪', 80, true); });
+    .sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w)).slice(0, 2).forEach((q) => { engage(q, z); q.why = `Answering ${s.name}'s call for help`; if (!(rnd() < .6 && bark(q, 'answer', { other: s.name }, { pri: 2 })) && helpEmoT - 200 < tick) emote(q, '💪', 80, true); });
 }
 function chooseLifePurpose(s) {
   if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
@@ -2368,7 +2371,7 @@ function ai(s) {
       if (near) { const dx = s.w.x - near.w.x, dy = s.w.y - near.w.y, l = Math.hypot(dx, dy) || 1; moveSlide(s, { x: s.w.x + dx / l, y: s.w.y + dy / l }, CHASE * .9); s.moving = true; if (rnd() < .02) emote(s, '😰', 50); return; }
     }
     if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) { reloadGun(s); if (!s.dry) emote(s, '👌', 50); } return; }   /* V3D.16: reloading: can't shoot (zombies still can) */
-    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0 && !weaponOf(s).ranged && dist(s.w, s.target.w) > rangeOf(s) + .25) { s.mode = 'chase'; return; } if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * comboMult(s, z, w) * (z.type === 'raider' && s.job === 'Police Officer' ? 1.5 : 1) * (hungryPen(s) < 1 ? .8 : 1) * (z.type === 'boss' && s.focusUntil > tick ? 1.3 : 1)); z.hp -= dmg; if (s.comboFin) { if (!w.ranged) impactFx({ type: w.kind === 'blunt' ? 'brute' : 'walker' }, z.w); } z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (usesAmmo(w)) { S.stat = S.stat || {}; S.stat.shots = (S.stat.shots || 0) + 1; } if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+    if (s.mode === 'attack') { s.moving = false; if (s.stateTicks <= 0 && !weaponOf(s).ranged && dist(s.w, s.target.w) > rangeOf(s) + .25) { s.mode = 'chase'; return; } if (s.stateTicks <= 0) { const z = s.target, w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s), dmg = Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * friendBoost(s) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * comboMult(s, z, w) * (z.type === 'raider' && s.job === 'Police Officer' ? 1.5 : 1) * (hungryPen(s) < 1 ? .8 : 1) * (z.type === 'boss' && s.focusUntil > tick ? 1.3 : 1)); z.hp -= dmg; if (z.type === 'boss' && z.hp > 0 && ['zmarch', 'zbash', 'zwall', 'zbreak', 'idle'].includes(z.mode) && !insideBuilding(s)) { z.target = s; z.mode = 'zchase'; z.path = null; z.blocked = 0; }   /* 3D.100 owner: the boss walked about while being shot; it now turns on whoever hits it */ if (s.comboFin) { if (!w.ranged) impactFx({ type: w.kind === 'blunt' ? 'brute' : 'walker' }, z.w); } z.hitT = 9; SFX('hit'); if (w.mag) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (usesAmmo(w)) { S.stat = S.stat || {}; S.stat.shots = (S.stat.shots || 0) + 1; } if (s.ammo <= 0) { s.reloadT = Math.round(w.reload * 60); s.ammo = 0; emote(s, '🔄', Math.max(60, s.reloadT), true); } } floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffe06b', a: 55 }); gainXp(s, .5); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (z.hp <= 0) { S.kills++; SFX('kill'); gainXp(s, 2); if (z.type === 'boss') bark(s, 'bossKill', {}, { pri: 2 }); else if (rnd() < .3) bark(s, 'kill', {}, { pri: 1 }); else if (rnd() < .5) emote(s, rnd() < .5 ? '💪' : '😎', 80, true); raiderDown(z); if (z.type === 'boss') { { const pool = ['katana', 'kevlar', 'shotgun', 'rifle', 'military', 'riot', 'crossbow', 'dogtags'], it = pool[Math.floor(rnd() * pool.length)]; if (COZY_HUD) dropBag(z.w, 15, s, { meds: 2, fuel: 2, cloth: 2, ...(rnd() < .7 ? { item: it } : {}) }, 'epic'); else S.mat += 15; } S.bossKills = (S.bossKills || 0) + 1; screenToast('☠ BOSS DEFEATED'); SFX('reward'); } const zd = zombieTypes[z.type] || zombieTypes.walker, pd = PART_DROP[z.type] || PART_DROP.walker; const zx = {}; for (const [ch, k, n] of ZDROP[z.type] || []) if (rnd() < ch) zx[k] = (zx[k] || 0) + n; if (rnd() < pd[0] || Object.keys(zx).length) { if (COZY_HUD) dropBag(z.w, rnd() < pd[0] ? pd[1] : 0, s, Object.keys(zx).length ? zx : null); else { S.mat += pd[1]; flow('mat', 'Zombie drops', pd[1]); floats.push({ w: { ...z.w }, t: '+' + pd[1] + ' ⚙', col: '#9fe0ff', a: 70 }); } }
         if (z.type === 'boss' || z.human) { renownGain(zd.ren, zd.name + ' defeated'); say(s.name + ' defeated a ' + zd.name + '!'); } else { S.ren += zd.ren; floats.push({ w: { x: z.w.x, y: z.w.y - .3 }, t: '+' + zd.ren + '★', col: '#ffd56b', a: 50 }); ui(); }   /* V2.33: no pop-up or log line for every ordinary zombie */ stageCheck(); if (!fetchBag(s)) enterPost(s); return; }
       s.mode = 'recover'; s.stateTicks = s.recDur = s.comboQ > 0 ? 14 : Math.round((48 + s.i * 9) * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); } return; }   /* 3D.58 combo follow-ups come fast */
@@ -2718,7 +2721,7 @@ function zai0(z) {
   }
   if (z.mode === 'zchase') {
     if (!z.target || z.target.hp <= 0 || ['down', 'hospital'].includes(z.target.mode) || insideBuilding(z.target)) { z.target = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 40; return; }
-    const dd = dist(z.target.w, z.w); if (dd > 4.8) { z.target = null; z.mode = 'idle'; z.stateTicks = 60; return; }
+    const dd = dist(z.target.w, z.w); if (dd > (z.type === 'boss' ? 11 : 4.8)) { z.target = null; z.mode = z.type === 'boss' && z.siege ? 'zmarch' : 'idle'; z.stateTicks = 60; return; }   /* 3D.100: the boss keeps after a shooter (gave up at 4.8 tiles, then wandered) */
     const lq = z.type === 'lasher' && !(z.lashCd > 0) ? lashPick(z) : null;
     if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
     else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 135; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
@@ -4562,7 +4565,7 @@ function endBuildMode(restore) {
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
   if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else if (tool.kind === 'trap') { const td = TRAP_DEFS[tool.ttype]; $('confirmName').textContent = `${td.name.toUpperCase()} · ${costShort(bCost(td))} · tap outside the walls to set · tap a spent one to re-arm · ${trapMap().size}/${trapMax()} traps`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  else if (tool.kind === 'trap') { const td = TRAP_DEFS[tool.ttype]; $('confirmName').textContent = `${td.name.toUpperCase()} · ${costShort(bCost(td))} · tap any open ground to set · tap a spent one to re-arm · ${trapMap().size}/${trapMax()} traps`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
   else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their scrap'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
   else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} scrap per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
@@ -4701,7 +4704,7 @@ function checkPerimeter() {
   if (!p.sealed && S.sealed) { note('important', '⚠ PERIMETER OPEN', { log: 'The perimeter is open: zombies can walk in through a gap.' }); }
   S.sealed = p.sealed; return p;
 }
-/* ---------------- 3D.76 traps: set outside the wall ring, they wear out and are re-armed with scrap (a choice made before the night) ---------------- */
+/* ---------------- 3D.76 traps (3D.100: anywhere open, not only outside the wall ring), they wear out and are re-armed with scrap (a choice made before the night) ---------------- */
 const TRAP_DEFS = {
   spikes: { name: 'Spike Strip', rank: 2, mat: 2, wood: 2, rearm: { mat: 2 }, ch: 5, dmg: 15, icon: '🔺', desc: 'Sharpened stakes. A zombie that steps on it takes 15 damage and stumbles. Blunt after 5 hits: re-arm for 2 scrap.' },
   wire:   { name: 'Barbed Wire', rank: 2, mat: 3, wood: 1, rearm: { mat: 2 }, ch: 12, icon: '〰', desc: 'Zombies crossing it move at half speed. Torn after 12 crossings: re-arm for 2 scrap.' },
@@ -4711,14 +4714,14 @@ const trapMap = () => world.traps || (world.traps = new Map());
 const trapAt = (x, y) => trapMap().get(x + ',' + y) || null;
 const trapMax = () => 4 + 2 * (S.rank || 1);
 const trapsSpent = () => [...trapMap().values()].filter((t) => t.ch <= 0);
-const trapOkTile = (x, y) => Wd.inMap(x, y) && x > 0 && y > 0 && x < Wd.COLS - 1 && y < Wd.ROWS - 1 && !Wd.inWallZone(x, y) && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y) && !isTreeSpot(x, y);
+const trapOkTile = (x, y) => Wd.inMap(x, y) && x > 0 && y > 0 && x < Wd.COLS - 1 && y < Wd.ROWS - 1 && !Wd.buildingAt(world, x, y) && !Wd.wallAt(world, x, y) && !isTreeSpot(x, y);   /* 3D.100 owner: traps go anywhere open, inside the walls too */
 function tryTrap(x, y, type) {
   const td = TRAP_DEFS[type]; if (!td) return { ok: false, why: 'type' };
   const ex = trapAt(x, y), k = x + ',' + y;
   if (ex && ex.type === type && ex.ch <= 0) { if (!canPay(td.rearm)) { say('Not enough: need ' + missText(td.rearm) + ' to re-arm.'); return { ok: false, why: 'cost' }; } payCost(td.rearm); ex.ch = td.ch; say(td.name + ' re-armed.'); Wd.bump(world); saveGame(); ui(); return { ok: true, why: 'rearm' }; }
   if (ex && ex.type === type) { if (!confirmTile('t', x, y, `Tap the ${td.name} again to remove it.`)) return { ok: false, why: 'confirm' }; trapMap().delete(k); refundCost(bCost(td), .5); Wd.bump(world); say(td.name + ' removed.'); saveGame(); ui(); return { ok: true, why: 'removed' }; }
   if (ex) { say('A ' + TRAP_DEFS[ex.type].name + ' is already there.'); return { ok: false, why: 'taken' }; }
-  if (!trapOkTile(x, y)) { say(Wd.inWallZone(x, y) ? 'Traps go outside the wall ring, where the zombies come from.' : 'Something is in the way.'); return { ok: false, why: 'tile' }; }
+  if (!trapOkTile(x, y)) { say('Something is in the way.'); return { ok: false, why: 'tile' }; }
   if (S.rank < td.rank) { say(td.name + ' needs Haven rank ' + td.rank + '.'); return { ok: false, why: 'rank' }; }
   if (trapMap().size >= trapMax()) { say(`Room for ${trapMax()} traps at this rank.`); return { ok: false, why: 'max' }; }
   if (!canPay(bCost(td))) { say('Not enough: need ' + missText(bCost(td)) + '.'); return { ok: false, why: 'cost' }; }
@@ -4957,7 +4960,7 @@ function perimText() {
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
-  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = ''; { let n = 0; for (const [k, t] of [...trapMap()]) if (Wd.inWallZone(t.x, t.y)) { trapMap().delete(k); refundCost(bCost(TRAP_DEFS[t.type]), 1); n++; } if (n) say(`${n} trap${n > 1 ? 's' : ''} now inside the new walls: packed up and refunded.`); }   /* audit */
+  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); groundKey = '';   /* 3D.100: traps inside the new walls stay (they go anywhere now) */
   banner('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`, true); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
 let tTab = 'overview';
@@ -5040,13 +5043,13 @@ const INTRO = {
   // features
   'f:night': ['🌙', 'Nights', 'At dusk a horde comes in three waves: the big one first, then two smaller pushes. Kill them all and the night goes quiet.', 'Get people inside before dark, keep fighters at the walls, and heal up during the day.'],
   'f:down': ['🩸', 'Downed survivors', 'A survivor knocked to 0 HP is down: they bleed out unless someone carries them to medical care in time.', 'Tap Send rescue on the alert. A medical building and a Medic give them much longer.'],
-  'f:boss': ['☠', 'Boss night', 'Scouts saw a boss gathering a horde. It attacks tonight at 21:00.', 'Re-arm traps, set a Noise Lure, heal the hurt and make sure the gunners have ammo.'],
+  'f:boss': ['☠', 'Boss night', 'Scouts saw a boss gathering a horde. It attacks tonight at 21:00.', 'Re-arm traps, set a Noise Lure, give the gunners ammo, and get the hurt healed: build a Medical Tent (hurt fighters go there by themselves before dark; beds heal up to 75% too). Anyone knocked down in the fight: tap them, then Bandage or Send rescue.'],
   'f:rank': ['⭐', 'Upgrading the town', 'The Haven grows by rank. Each rank needs enough people living here and enough buildings standing; then you press Upgrade Town.', 'Upgrading unlocks buildings and room for more people, but raises the zombie threat ceiling too. Upgrade when you are ready.'],
   'f:ceiling': ['☠', 'The threat ceiling', 'Zombies grow tougher every day, but only up to a ceiling set by your rank.', 'If the nights feel too hard, hold off on the next upgrade and build up first.'],
   'f:explore': ['🧭', 'Expeditions', 'Send a squad out to scavenge places on the map: food, scrap, medicine, fuel, ammo, and sometimes survivors.', 'Higher risk brings more loot and more danger. Always keep a fighter at home.'],
   'f:power': ['⚡', 'Power', 'Generators burn fuel and each gives 4 power. Powered buildings take it in order: water first, the Ammo Factory last.', 'Keep fuel coming (Gas Station trips, wrecks, a Fuel Still). Food and water never depend on power.'],
   'f:ammo': ['🔸', 'Ammo', 'Guns now use rounds from the town stock (the 🔸 count). Out of ammo, a gunner clubs with the empty gun.', 'A Mechanic at an Ammo Bench makes about 16 rounds a day. Crossbows and melee never need ammo.'],
-  'f:traps': ['🔺', 'Traps', 'Spike Strips, Barbed Wire and (rank 3) the Noise Lure go outside the wall ring, where zombies come from.', 'They wear out: re-arm them with scrap before the night, especially on boss days.'],
+  'f:traps': ['🔺', 'Traps', 'Spike Strips, Barbed Wire and (rank 3) the Noise Lure go on any open ground, inside or outside the walls: best on the paths zombies come along.', 'They wear out: re-arm them with scrap before the night, especially on boss days.'],
   'f:convoy': ['🚚', 'The comeback convoy', 'When the town is down to its last few people, a convoy sometimes finds it with help and supplies.', 'Use the second chance: food and water first, then beds.'],
   'f:fire': ['🔥', 'Fire', 'A burning building spreads fire and stops working.', 'People rush to put it out; a Firefighter Coat helps. Burnt buildings can be repaired.'],
   'f:trader': ['🛒', 'The trader', 'A travelling trader visits by day with goods to swap.', 'Trade spare food or water for what you lack. They leave at dusk.'],
@@ -5099,7 +5102,7 @@ const GUIDE_TXT = [
   ['The threat ceiling', 'Zombies grow tougher every day, but only up to a ceiling set by your rank (rank 1: day 9, rank 2: day 14, rank 3: day 20, rank 4: day 28, rank 5: day 38, then slowly beyond). Upgrading the town raises the ceiling, so upgrade when you are ready for it.'],
   ['Power', 'Generators burn fuel (a Mechanic on shift saves a quarter) and each gives 4 power. The Electric Pump, Cold Store, Greenhouse lamps, Hospital surgery, Radio Tower and Ammo Factory draw power: water first, the Ammo Factory last. Food and water never depend on power: a pump without power still works by hand.'],
   ['Ammo', 'Guns use rounds from the town stock (the 🔸 count). Crossbows and melee never do. Out of ammo, a gunner clubs with the empty gun. A Mechanic at an Ammo Bench makes about 16 rounds a day; a powered Ammo Factory about 64. Raiders and the Military Checkpoint drop rounds.'],
-  ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go outside the wall ring, where zombies come from. They wear out: re-arm them with scrap before the night. Scouts warn you at noon when a boss is coming.'],
+  ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go on any open ground, inside or outside the walls; the paths zombies come along are best. They wear out: re-arm them with scrap before the night. Scouts warn you at noon when a boss is coming.'],
 ];
 function showGuide() {
   endBuildMode(true); closeP();
@@ -5316,7 +5319,7 @@ function simTick() {
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
+window.ZHG = { shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => simSpeed, paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];

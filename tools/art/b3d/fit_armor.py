@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ARMOR_J = {'pelvis': ((0, 0, .58), (0, 0, .72)), 'chest': ((0, 0, .72), (0, 0, 1.08)),
            'upperarm.L': ((.17, 0, .97), (.27, 0, .82)), 'forearm.L': ((.27, 0, .82), (.37, 0, .62)),
            'thigh.L': ((.12, 0, .58), (.13, 0, .33)), 'shin.L': ((.13, 0, .33), (.13, 0, .09)), 'foot.L': ((.13, 0, .09), (.13, -.09, .02))}
+RIGID = set(); FORCE = []; BLEND = []; ISLANDS = False
 K = {'pelvis': .96, 'chest': .95, 'upperarm': 1.0, 'forearm': .98, 'thigh': 1.08, 'shin': 1.08, 'foot': 1.1}
 
 def mirror(J):
@@ -33,9 +34,9 @@ def frame(a, b):
     e1 = ref - (ref @ u) * u; e1 /= np.linalg.norm(e1); e2 = np.cross(u, e1); return u, e1, e2
 
 def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
-    global ARMOR_J, K
+    global ARMOR_J, K, RIGID, FORCE, BLEND, ISLANDS
     if joints:   # Nov 9: a JSON file {"J": {bone: [head, tail]}, "K": {...}} for another armour set (marked on its own front/side plot)
-        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}
+        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}; RIGID = set(d.get('rigid', [])); FORCE = d.get('force', []); BLEND = d.get('blend', []); ISLANDS = d.get('islands', False)
     bpy.ops.wm.open_mainfile(filepath=rig_blend)
     ao = bpy.data.objects['rig']; body = bpy.data.objects['body']
     have = set(bpy.data.objects)
@@ -63,6 +64,49 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
         if n.endswith('.R'): D[P[:, 0] > 0, i] = 9
     W = np.exp(-(D - D.min(1, keepdims=True)) / .018); W[D > D.min(1, keepdims=True) + .06] = 0
     top = np.argsort(-W, 1)[:, 2:]; np.put_along_axis(W, top, 0, 1); W /= W.sum(1, keepdims=True)
+    for b, xmin, zmin, zmax in FORCE:   # Nov 9: regions (raw armour coords, |x|) that belong to one bone, e.g. the whole shoulder pad to the upper arm
+        for sd in ('.L', '.R'):
+            if b + sd not in names: continue
+            i = names.index(b + sd); m = (np.abs(P[:, 0]) > xmin) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & ((P[:, 0] > 0) == (sd == '.L')); W[m] = 0; W[m, i] = 1
+    shared = np.zeros(len(P), bool)
+    for b, o2, x0, x1, z0, z1, wmax in BLEND:   # Nov 9: a piece shared by two bones (a shoulder pad on the vest): a smooth ramp across x, so it bends instead of tearing
+        for sd in ('.L', '.R'):
+            if b + sd not in names: continue
+            i = names.index(b + sd); j = names.index(o2 if o2 in names else o2 + sd)
+            m = (P[:, 2] > z0) & (P[:, 2] <= z1) & ((P[:, 0] > 0) == (sd == '.L')) & (np.abs(P[:, 0]) > x0 - .02)
+            t = np.clip((np.abs(P[m, 0]) - x0) / (x1 - x0), 0, 1); w = wmax * t * t * (3 - 2 * t)
+            W[m] = 0; W[m, i] = w; W[m, j] = 1 - w; shared |= m
+    if ISLANDS:   # Nov 9: each separate piece (vest, belt, thigh pad, shin guard, arm guard) follows only the bones most of it is on: no piece bends on a bone it barely touches
+        import bmesh
+        bm = bmesh.new(); bm.from_mesh(arm.data); bm.verts.ensure_lookup_table(); lab = -np.ones(len(P), int); k = 0
+        for v in bm.verts:
+            if lab[v.index] >= 0: continue
+            st = [v]; lab[v.index] = k
+            while st:
+                x = st.pop()
+                for e in x.link_edges:
+                    w = e.other_vert(x)
+                    if lab[w.index] < 0: lab[w.index] = k; st.append(w)
+            k += 1
+        bm.free(); am_ = W.argmax(1)
+        for c in range(k):
+            m = lab == c
+            if m.sum() < 30: W[m] = 0; W[m, np.bincount(am_[m], minlength=len(names)).argmax()] = 1; continue
+            share = np.bincount(am_[m], minlength=len(names)) / m.sum(); keep = share > .15
+            if P[m, 0].min() < -.03 and P[m, 0].max() > .03:   # a piece across the middle (vest, belt) is trunk: no leg or arm bone may pull on it
+                trunk = np.array([not n.endswith(('.L', '.R')) for n in names]); keep &= trunk
+                if not keep.any(): keep = trunk & (share == share[trunk].max())
+                share = np.where(trunk, share, 0) / max(1e-9, share[trunk].sum())
+            for i, n in enumerate(names):
+                if keep[i] and n.split('.')[0] in RIGID and share[i] > .6: keep[:] = False; keep[i] = True   # a piece almost all on one limb bone: rigid
+            Wm = W[m] * keep[None]; Wm[shared[m]] = W[m][shared[m]]
+            z = Wm.sum(1) < 1e-6; Wm[z] = 0; Wm[z, int(np.argmax(np.where(keep, share, -1)))] = 1   # a vertex left with no weight goes to the piece's main bone (else the exporter adds a 'neutral_bone')
+            W[m] = Wm
+        W /= np.maximum(W.sum(1, keepdims=True), 1e-9); print('pieces', k, flush=True)
+    for i, n in enumerate(names):   # Nov 9: pieces on these bones move rigidly with them (a shoulder pad shared with the chest stretched into a flap when the arm went overhead)
+        if n.split('.')[0] in RIGID and not ISLANDS:
+            own = (W.argmax(1) == i) & ~shared; W[own] = 0; W[own, i] = 1; W[~own & ~shared, i] = 0   # and nothing else leans on that bone (shared pieces keep their blend)
+    W /= np.maximum(W.sum(1, keepdims=True), 1e-9)
     NP = np.zeros_like(P)
     for i, n in enumerate(names):
         a0, a1 = np.array(J[n][0], float), np.array(J[n][1], float); b0, b1 = BJ[n]
@@ -75,6 +119,14 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
     for i, n in enumerate(names):
         vg = arm.vertex_groups.new(name=n); idx = np.nonzero(W[:, i] > .001)[0]
         for j in idx: vg.add([int(j)], float(W[j, i]), 'REPLACE')
+    if RIGID and not ISLANDS:   # faces bridging a rigid arm piece and the body (pieces touching, joined by the weld or the decimate) would stretch: cut them
+        import bmesh
+        side = np.zeros(len(P), int)
+        for i, n in enumerate(names):
+            if n.split('.')[0] in RIGID: side[(W[:, i] > .5) & ~shared] = 1 + i   # each rigid bone its own group: no face may join two of them
+        bm = bmesh.new(); bm.from_mesh(arm.data); bm.faces.ensure_lookup_table()
+        cut = [f for f in bm.faces if len({side[v.index] for v in f.verts}) > 1]
+        bmesh.ops.delete(bm, geom=cut, context='FACES'); bm.to_mesh(arm.data); arm.data.update(); bm.free(); print('bridging faces cut', len(cut), flush=True)
     arm.parent = ao; am = arm.modifiers.new('arm', 'ARMATURE'); am.object = ao
     for p in arm.data.polygons: p.use_smooth = False
     if check: np.save(check, NP)                            # fitted points, for a quick overlay check

@@ -15,13 +15,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ai_render, anims, armor
 
 FPS = 30
-TWO_HAND = {'pistol_fire': ('pistol', 'grip2'), 'work_dig': ('hoe', 'grip_low'), 'melee_swing_d': ('bat', 'grip_low'), 'work_chop': ('axe', 'grip_low')}   # action -> weapon whose grip2 the left hand holds
+TWO_HAND = {'pistol_fire': ('pistol', 'grip2'), 'work_dig': ('hoe', 'grip_low'), 'melee_swing_d': ('bat', 'grip_low'), 'melee_combo2h_1': ('bat', 'grip_low'), 'melee_combo2h_2': ('bat', 'grip_low'), 'melee_combo2h_3': ('bat', 'grip_low'), 'work_chop': ('axe', 'grip_low')}   # action -> weapon whose grip2 the left hand holds
 FACE_OUT = None      # set by main: path stem for the extra expression textures
 FACE = not os.environ.get('ZH_NOFACE')   # Nov 9: ZH_NOFACE=1 for models with their own drawn face (Tripo)
 # paint the face touch-up (narrower eyes, smile, brows; facepaint.py)
 WELD = 1e-3          # merge vertices closer than this: the AI mesh is full of hairline cracks the background shows through
 FLAT = True          # flat colour regions (see flat_regions); False = the filtered texture
-COLORS = {'w_crate': '#c8924f', 'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
+COLORS = {'w_crate': '#c8924f', 'w_plank': '#b5824a', 'w_wood': '#a8703c', 'w_dark': '#4a3324', 'w_metal': '#a9afb5', 'w_gun': '#3c3f42', 'w_gunwood': '#7a4a26',
           'w_tape': '#d8cfb8', 'a_steel': armor.STEEL, 'a_trim': armor.TRIM, 'a_leather': armor.LEATHER}
 
 def plain(m, hexc=None, image=None, rough=.9, metal=0.0):
@@ -79,6 +79,11 @@ def clip_plan():
     plan.append(('haymaker_kick', 'haymaker_kick', None, 3.25, lambda s: min(1.0, s / 3.25)))   # 3D.93 owner: slower   # 3D.89 Stalker combo: haymaker then front kick
     plan.append(('heavy_walk', 'heavy_walk', None, 1.2, lambda s: s / 1.2))   # 3D.93 slower
     plan.append(('heavy_run', 'heavy_run', None, .8, lambda s: s / .8))   # 3D.93 owner: Stalker run, less arm and shoulder, slow   # 3D.87 Stalker walk, small arm swing
+    for nm, dur in (('combo_1', 1.0), ('combo_2', 1.6), ('combo_3', 2.4), ('combo2h_1', 1.3), ('combo2h_2', 2.1), ('combo2h_3', 3.0)):   # Nov 10 melee combos
+        plan.append(('melee_' + nm, nm, 'melee', dur, lambda s, d=dur: min(1.0, s / d)))
+    for nm, clip, cls, dur, loop in (('shove', 'shove', 'none', 1.1, 0), ('grabbed', 'grabbed', 'none', 2.8, 0), ('knockdown', 'knockdown', 'none', 3.4, 0),
+                                     ('gun_reload', 'reload_rifle', 'gun', 2.4, 0), ('limp_walk', 'limp_walk', 'none', 1.5, 1), ('work_barricade', 'barricade', 'tool', 1.6, 1)):   # Nov 10 batch 2
+        plan.append((nm, clip, cls, dur, (lambda s, d=dur: s / d) if loop else (lambda s, d=dur: min(1.0, s / d))))
     plan += [('crawl', 'crawl', None, 1.6, lambda s: s / 1.6), ('crawl_idle', 'crawl_idle', None, 2.4, lambda s: s / 2.4),   # 3D.34 legless crawler
              ('crawl_attack', 'crawl_attack', None, 1.0, lambda s: min(1.0, s / 1.0)), ('crawl_die', 'crawl_die', None, 1.2, lambda s: min(1.0, s / 1.2))]
     return plan
@@ -268,7 +273,7 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
     arm = armor.build(ao, body)
     for i, o in enumerate(arm): o.name = f'armor_{i}'
     W = {}
-    for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol', 'hammer', 'hoe', 'wrench', 'bowl', 'crate'):
+    for k in ('bat', 'axe', 'rifle', 'ak47', 'pistol', 'hammer', 'hoe', 'wrench', 'bowl', 'crate', 'plank'):
         W[k] = anims.build_weapon(ao, k)
         for e in ('grip1', 'grip2', 'grip_low'):
             if W[k][e]: W[k][e].name = f'{k}_{e}'
@@ -280,10 +285,10 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
             if base in COLORS: plain(m, COLORS[base], rough=.5 if base.startswith('a_') else .9, metal=.0)
     # animations
     for name, clip, cls, dur, tf in clip_plan():
-        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack', 'bloated_attack', 'crawl_attack', 'crawl_die', 'brute_attack', 'spit', 'spore_combo', 'scream', 'lash', 'haymaker', 'rot_swell', 'smash', 'haymaker_kick')
+        loop = anims.CLIPS[clip][3] if clip in anims.CLIPS else clip not in ('pickup', 'zombie_attack', 'bloated_attack', 'crawl_attack', 'crawl_die', 'brute_attack', 'spit', 'spore_combo', 'scream', 'lash', 'haymaker', 'rot_swell', 'smash', 'haymaker_kick', 'shove', 'grabbed', 'knockdown', 'reload_rifle') and not clip.startswith('combo')
         fn = anims.pose_fn(clip, cls) if clip in anims.CLIPS else getattr(anims, clip)
         if cls == 'gun':
-            anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.hand_ik(ao, 'R', W['rifle']['grip1'], True)
+            anims.left_hand_ik(ao, W['rifle']['grip2'], True); anims.gun_grip_r(ao, W['rifle'], True)
         two = TWO_HAND.get(name)   # V3D.19: the left hand follows a second grip on these one-weapon clips
         if two: anims.left_hand_ik(ao, W[two[0]][two[1]], True)
         nf = max(2, round(dur * FPS)) + (0 if loop else 1)
@@ -292,9 +297,11 @@ def main(blend, out, tex=1024, decimate=1.0, median=5, colors=24):
         for f in range(nf):
             s = f / FPS; t = tf(s) % 1.0 if loop else tf(s)
             ai_render.apply_pose(ao, fn(t)); bpy.context.view_layer.update()
+            if name == 'gun_reload': anims.reload_ik(ao, W['rifle'], t)
             frames.append({b: ao.pose.bones[b].matrix.copy() for b in order})
+        if name == 'gun_reload': anims.reload_ik(ao, W['rifle'], None)
         if cls == 'gun':
-            anims.left_hand_ik(ao, W['rifle']['grip2'], False); anims.hand_ik(ao, 'R', W['rifle']['grip1'], False)
+            anims.left_hand_ik(ao, W['rifle']['grip2'], False); anims.gun_grip_r(ao, W['rifle'], False)
         if two: anims.left_hand_ik(ao, W[two[0]][two[1]], False)
         key_frames(ao, name, frames)
         print('baked', name, nf, 'frames', flush=True)

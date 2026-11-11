@@ -15,13 +15,23 @@ import survivor, ai_render
 D = math.radians
 def ease(x): return x * x * (3 - 2 * x)
 def lerp(a, b, u): return a + (b - a) * u
+def blend_pose(a, b, u):
+    out = {}
+    for k in set(a) | set(b):
+        x, y = a.get(k), b.get(k)
+        if x is None or y is None: out[k] = y if x is None else x
+        elif isinstance(x, (int, float)): out[k] = lerp(x, y, u)
+        else: out[k] = tuple(lerp(i, j, u) for i, j in zip(x, y))
+    return out
 
 def keys(K, t, loop=False):
     """K: [(time, {name: value or (x, y, z)}), ...] -> interpolated dict at t (0..1)."""
     if loop: t = t % 1.0
-    for (t0, a), (t1, b) in zip(K, K[1:]):
+    for k0, k1 in zip(K, K[1:]):
+        (t0, a), (t1, b) = k0[:2], k1[:2]
         if t0 <= t <= t1:
-            u = ease((t - t0) / max(t1 - t0, 1e-6)); out = {}
+            x = (t - t0) / max(t1 - t0, 1e-6)
+            u = x * x if k1[2:] == ('in',) else ease(x); out = {}   # ('in': speeds up into the key, e.g. falling)
             for k in set(a) | set(b):
                 va, vb = a.get(k, b.get(k)), b.get(k, a.get(k))
                 out[k] = tuple(lerp(x, y, u) for x, y in zip(va, vb)) if isinstance(va, tuple) else lerp(va, vb, u)
@@ -52,10 +62,10 @@ def walk_legs(t, stride=1.0):
         p['thigh.' + n] = (th + 10, 0, 0)
         p['shin.' + n] = (-kn, 0, 0)
         p['foot.' + n] = (-(th - kn) * .35 + kn * .45, 0, 0)
-        p['upperarm.' + n] = (-36 * sg * sn, 0, 0)
+        p['upperarm.' + n] = (-36 * sg * sn, 0, 14 * sg)   # Nov 10 owner: arms swing a little out from the body, not through it
         p['forearm.' + n] = (32 + 30 * max(0.0, -sg * sn), 0, 0)
     p['bob'] = .032 * math.cos(2 * ph) - .055
-    p['pelvis'] = (0, 10 * sn, 0); p['chest'] = (7, -14 * sn, 0); p['head'] = (-12, 0, 0)
+    p['pelvis'] = (0, 5 * sn, 0); p['chest'] = (7, -14 * sn, 0); p['head'] = (-12, 0, 0)   # Nov 10: less hip twist, legs stay under the body
     return steady_head(p, 0, 0)
 
 def steady_head(p, base=0.0, k=.15):
@@ -77,7 +87,8 @@ def legs_walk(p, t, stride=1.0):
 def idle(t):
     w = math.sin(2 * math.pi * t)
     p = soft_legs({'chest': (3 * w, 0, 0), 'neck': (-2 * w, 0, 0), 'head': (-6 - 2.5 * w, 0, 5 * math.sin(2 * math.pi * t + 1)),
-                   'upperarm.L': (4, 0, 6 + 4 * w), 'upperarm.R': (4, 0, -6 - 4 * w), 'forearm.L': (22 + 8 * w, 0, 0), 'forearm.R': (22 + 8 * w, 0, 0)})
+                   'upperarm.L': (4, 0, 15 + 3 * w), 'upperarm.R': (4, 0, -15 - 3 * w),
+                   'forearm.L': (22 + 8 * w, 0, 0), 'forearm.R': (22 + 8 * w, 0, 0)})   # Nov 10 owner: arms a little away from the body (were through the hips)
     p['bob'] = -.035 - .014 * (1 - w) / 2
     return p
 
@@ -156,7 +167,7 @@ def punch(t):
     line of the body while the left arm pulls back to the ribs; recover to guard."""
     K = [(0, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30, 'le': 26}),
          (.28, {'ua': 28, 'fa': 136, 'la': 48, 'lf': 124, 'tw': -36, 'lean': 6, 'w': -.6, 'dip': .02, 'el': -34, 'le': 28}),
-         (.46, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07, 'el': -20, 'le': 34}),
+         (.5, {'ua': 104, 'fa': 4, 'la': -46, 'lf': 118, 'tw': 30, 'lean': 50, 'w': 1.7, 'dip': .07, 'el': -20, 'le': 34}),
          (.64, {'ua': 106, 'fa': 4, 'la': -48, 'lf': 118, 'tw': 30, 'lean': 52, 'w': 1.7, 'dip': .07, 'el': -20, 'le': 34}),
          (1, {'ua': 38, 'fa': 128, 'la': 44, 'lf': 122, 'tw': -18, 'lean': 12, 'w': .1, 'dip': 0, 'el': -30, 'le': 26})]
     k = keys(K, t)
@@ -198,8 +209,8 @@ def swing_a(t):
     K = [(0, R0),
          (.36, {'ua': 150, 'fa': 74, 'wr': 4, 'wy': -22, 'lean': -14, 'tw': -26, 'w': -1, 'ab': -34, 'la': 70}),
          (.46, {'ua': 156, 'fa': 80, 'wr': 4, 'wy': -24, 'lean': -16, 'tw': -28, 'w': -1, 'ab': -36, 'la': 75}),
-         (.56, {'ua': 84, 'fa': 14, 'wr': -10, 'wy': -16, 'lean': 16, 'tw': 12, 'w': .8, 'ab': -34, 'la': 20}),
-         (.62, {'ua': 34, 'fa': 4, 'wr': -18, 'wy': 0, 'lean': 26, 'tw': 18, 'w': 1, 'ab': -4, 'la': 0}),
+         (.55, {'ua': 84, 'fa': 14, 'wr': -10, 'wy': -16, 'lean': 16, 'tw': 12, 'w': .8, 'ab': -34, 'la': 20}),
+         (.64, {'ua': 34, 'fa': 4, 'wr': -18, 'wy': 0, 'lean': 26, 'tw': 18, 'w': 1, 'ab': -4, 'la': 0}),
          (.7, {'ua': 22, 'fa': 8, 'wr': -18, 'wy': 0, 'lean': 28, 'tw': 20, 'w': 1, 'ab': -4, 'la': -5}),
          (1, R0)]
     return _swing(t, K)
@@ -225,6 +236,229 @@ def swing_c(t):
          (.7, {'ua': 36, 'fa': 12, 'wr': -15, 'wy': 35, 'lean': 24, 'tw': 26, 'w': 1, 'ab': -26, 'la': 0}),
          (1, R0)]
     return _swing(t, K)
+
+# ------------------------------------------------------------------ Nov 10: melee combos (3D only, one-shot), 1, 2 and 3 hits, one-hand and two-hand
+# Reference (mocaponline sword/melee guides, slynyrd melee pixelblog): short anticipation on the first hit, each next hit
+# swings the opposite way with more body rotation, the third is the finisher: full wind-up, the widest arc, a lunge, the
+# longest hold and recovery. Peak speed in the middle of the arc, 30-60 degrees of follow-through past the target.
+# Every hit steps in: the front knee lifts and plants further forward, the weight goes onto it and the hips turn first.
+CB = {'ua': -4, 'fa': 52, 'wr': 0, 'wy': 18, 'ab': -22, 'lean': 6, 'tw': -10, 'w': 0, 'st': 0, 'lift': 0, 'roll': 0,
+      'la': 10, 'laz': 10, 'lf': 40}                                      # = the one-hand ready pose
+CB2 = dict(CB, ua=40, fa=62, wr=-40, wy=0, ab=50)                         # two hands on the bat in front of the belly (as swing_d)
+def _ck(base, t, **kw): return (t, dict(base, **kw))
+
+def _combo(t, K, two=False):
+    k = keys(K, t)
+    p = stance({'upperarm.R': (k['ua'], 0, k['ab']), 'forearm.R': (k['fa'], -20 if two else 0, 0), 'hand.R': (k['wr'], k['wy'], 0),
+                'chest': (k['lean'], k['tw'], ROLL * k['roll']), 'pelvis': (k['lean'] * .25, k['tw'] * .5, 0),
+                'head': (-10 - k['lean'] * .55, -k['tw'] * .6, -ROLL * .6 * k['roll'])}, k['w'])
+    if two:   # elbow seed only: the left hand is held on the handle by IK (export3d TWO_HAND)
+        p['upperarm.L'] = (k['ua'], 0, -36); p['forearm.L'] = (k['fa'] + 6, 0, 0)   # steady seed: the elbow no longer flips sides mid wind-up
+    else:     # the free arm swings opposite for balance
+        p['upperarm.L'] = (k['la'], 0, k['laz']); p['forearm.L'] = (k['lf'], 0, 0)
+    st, lf = k['st'], k['lift']                                           # step: lift the front knee, plant it further forward
+    a = p['thigh.L']; p['thigh.L'] = (a[0] + 12 * st + 38 * lf, a[1], a[2])
+    a = p['shin.L']; p['shin.L'] = (a[0] - 8 * st - 62 * lf, a[1], a[2])
+    a = p['foot.L']; p['foot.L'] = (a[0] + 22 * lf, a[1], a[2])
+    a = p['thigh.R']; p['thigh.R'] = (a[0] - 10 * st, a[1], a[2])
+    a = p['shin.R']; p['shin.R'] = (a[0] + 6 * st, a[1], a[2])
+    p['bob'] -= .025 * st - .02 * lf
+    return p
+
+# one-hand hits (a, b, c = forehand diagonal, backhand flat, overhead finisher), keys relative to the hit's start
+def _h1_fore(s, d):   # s: start time, d: length
+    return [_ck(CB, s + d * .38, ua=150, ab=-56, fa=74, wy=35, lean=-12, tw=-48, w=-1, la=60, laz=24, lf=70, lift=.2),
+            _ck(CB, s + d * .58, ua=92, ab=-14, fa=22, wy=35, lean=12, tw=6, w=.4, lift=.7, la=30, laz=20, lf=50),
+            _ck(CB, s + d * .72, ua=36, ab=30, fa=10, wr=-16, wy=35, lean=26, tw=44, w=1, st=1, la=-20, laz=26, lf=30),
+            _ck(CB, s + d * .9, ua=30, ab=36, fa=14, wr=-18, wy=35, lean=26, tw=48, w=1, st=1, la=-22, laz=26, lf=30)]
+def _h1_back(s, d, st0=1):
+    return [_ck(CB, s + d * .3, ua=78, ab=58, fa=104, wy=-70, lean=6, tw=56, w=.2, st=st0, la=-10, laz=30, lf=50),
+            _ck(CB, s + d * .5, ua=86, ab=10, fa=40, wy=-80, lean=10, tw=8, w=.6, st=st0, lift=.7, la=10, laz=40, lf=50),
+            _ck(CB, s + d * .66, ua=84, ab=-52, fa=16, wy=-84, lean=14, tw=-44, w=1.1, st=st0 + .5, la=40, laz=34, lf=60),
+            _ck(CB, s + d * .86, ua=80, ab=-70, fa=24, wy=-84, lean=14, tw=-56, w=1.1, st=st0 + .5, la=44, laz=34, lf=60)]
+def _h1_over(s, d, st0=1.5):
+    return [_ck(CB, s + d * .36, ua=168, ab=-30, fa=84, wr=6, wy=-10, lean=-18, tw=-24, w=-1, st=st0 * .4, la=80, laz=20, lf=40),
+            _ck(CB, s + d * .46, ua=170, ab=-30, fa=88, wr=6, wy=-10, lean=-20, tw=-26, w=-1, st=st0 * .4, lift=.9, la=84, laz=20, lf=40),
+            _ck(CB, s + d * .57, ua=80, ab=-20, fa=12, wr=-10, wy=-6, lean=24, tw=10, w=1.3, st=st0 + .5, la=10, laz=20, lf=40),
+            _ck(CB, s + d * .7, ua=26, ab=-6, fa=4, wr=-22, wy=0, lean=36, tw=16, w=1.4, st=st0 + .6, la=-30, laz=20, lf=30),
+            _ck(CB, s + d * .86, ua=22, ab=-6, fa=6, wr=-22, wy=0, lean=36, tw=18, w=1.4, st=st0 + .6, la=-32, laz=20, lf=30)]
+
+def combo_1(t):
+    """One-hand, 1 hit: step in with a big forehand slash from over the right shoulder down across to the left hip."""
+    return _combo(t, [(0, CB)] + _h1_fore(0, .8) + [(1, CB)])
+def combo_2(t):
+    """One-hand, 2 hits: forehand diagonal slash, then a flat backhand sweep back across to the right on a second step."""
+    return _combo(t, [(0, CB)] + _h1_fore(0, .5) + _h1_back(.45, .45) + [(1, CB)])
+def combo_3(t):
+    """One-hand, 3 hits: forehand slash, backhand sweep, then the finisher: weapon cocked high behind the head, a big
+    lunge and a chop straight down, held, then a slow recovery."""
+    return _combo(t, [(0, CB)] + _h1_fore(0, .34) + _h1_back(.3, .3) + _h1_over(.56, .38) + [(1, CB)])
+
+# two-hand hits (Nov 10 owner): hit 1 a flat swing to the left, hit 2 a flat swing back to the right, hit 3 the overhead chop
+def _h2_fore(s, d):   # left swing: bat cocked by the right shoulder, sweeps level across the chest to the left
+    return [_ck(CB2, s + d * .38, ua=108, ab=-12, fa=80, wr=-10, lean=-6, tw=-56, w=-1, lift=.2),
+            _ck(CB2, s + d * .58, ua=92, ab=18, fa=30, wr=-62, lean=8, tw=-6, w=.4, lift=.7),
+            _ck(CB2, s + d * .72, ua=86, ab=66, fa=14, wr=-80, lean=14, tw=50, w=1, st=1),
+            _ck(CB2, s + d * .9, ua=84, ab=74, fa=18, wr=-82, lean=14, tw=56, w=1, st=1)]
+def _h2_back(s, d, st0=1):   # right swing: from the left side back level across the chest to the right
+    return [_ck(CB2, s + d * .3, ua=96, ab=84, fa=64, wr=-60, lean=10, tw=62, w=.3, st=st0),
+            _ck(CB2, s + d * .5, ua=92, ab=30, fa=26, wr=-80, lean=10, tw=8, w=.6, st=st0, lift=.7),
+            _ck(CB2, s + d * .66, ua=94, ab=-30, fa=22, wr=-74, lean=12, tw=-48, w=1.1, st=st0 + .5),
+            _ck(CB2, s + d * .86, ua=94, ab=-38, fa=26, wr=-70, lean=12, tw=-56, w=1.1, st=st0 + .5)]
+def _h2_over(s, d, st0=1.5):
+    return [_ck(CB2, s + d * .36, ua=166, ab=40, fa=48, wr=0, lean=-12, tw=0, w=-.8, st=st0 * .4, roll=1),
+            _ck(CB2, s + d * .46, ua=168, ab=40, fa=50, wr=0, lean=-14, tw=0, w=-.8, st=st0 * .4, lift=.9, roll=1),
+            _ck(CB2, s + d * .6, ua=78, ab=26, fa=4, wr=-40, lean=30, tw=0, w=1.3, st=st0 + .5),
+            _ck(CB2, s + d * .74, ua=48, ab=26, fa=6, wr=-72, lean=36, tw=0, w=1.4, st=st0 + .6),
+            _ck(CB2, s + d * .86, ua=46, ab=26, fa=8, wr=-74, lean=36, tw=0, w=1.4, st=st0 + .6)]
+
+def combo2h_1(t):
+    """Two-hand, 1 hit: step in with a wide flat swing to the left."""
+    return _combo(t, [(0, CB2)] + _h2_fore(0, .8) + [(1, CB2)], True)
+def combo2h_2(t):
+    """Two-hand, 2 hits: flat swing to the left, then flat swing back to the right on a second step."""
+    return _combo(t, [(0, CB2)] + _h2_fore(0, .5) + _h2_back(.45, .45) + [(1, CB2)], True)
+def combo2h_3(t):
+    """Two-hand, 3 hits: left swing, right swing, then the overhead chop straight down the centre on a lunge."""
+    return _combo(t, [(0, CB2)] + _h2_fore(0, .34) + _h2_back(.3, .3) + _h2_over(.56, .38) + [(1, CB2)], True)
+
+# ------------------------------------------------------------------ Nov 10: survivor batch 2 (3D only)
+def _step_in(p, st, lf=0.0):
+    """Front (left) foot steps further forward by st; lf lifts the knee mid-step."""
+    a = p['thigh.L']; p['thigh.L'] = (a[0] + 12 * st + 38 * lf, a[1], a[2])
+    a = p['shin.L']; p['shin.L'] = (a[0] - 8 * st - 62 * lf, a[1], a[2])
+    a = p['foot.L']; p['foot.L'] = (a[0] + 22 * lf, a[1], a[2])
+    a = p['thigh.R']; p['thigh.R'] = (a[0] - 10 * st, a[1], a[2])
+    a = p['shin.R']; p['shin.R'] = (a[0] + 6 * st, a[1], a[2])
+    p['bob'] -= .025 * st - .02 * lf
+    return p
+
+def _two_arms(p, ua, fa, ab, wr=0.0):
+    p['upperarm.L'] = (ua, 0, ab); p['upperarm.R'] = (ua, 0, -ab)
+    p['forearm.L'] = (fa, 0, 0); p['forearm.R'] = (fa, 0, 0)
+    p['hand.L'] = (wr, 0, 0); p['hand.R'] = (wr, 0, 0)
+    return p
+
+def shove(t):
+    """Two-hand shove to make space: elbows pull in to the ribs, then both palms drive straight out at chest height on
+    a step, the body behind it; hold a beat, recover to guard."""
+    K = [(0, {'ua': 34, 'fa': 96, 'ab': 18, 'wr': 0, 'lean': 6, 'w': 0, 'st': 0, 'lf': 0}),
+         (.3, {'ua': 30, 'fa': 128, 'ab': 26, 'wr': -30, 'lean': -4, 'w': -.7, 'st': 0, 'lf': .3}),
+         (.46, {'ua': 84, 'fa': 8, 'ab': 12, 'wr': -55, 'lean': 22, 'w': 1.3, 'st': 1, 'lf': 0}),
+         (.64, {'ua': 86, 'fa': 10, 'ab': 12, 'wr': -55, 'lean': 22, 'w': 1.3, 'st': 1, 'lf': 0}),
+         (1, {'ua': 34, 'fa': 96, 'ab': 18, 'wr': 0, 'lean': 6, 'w': 0, 'st': 0, 'lf': 0})]
+    k = keys(K, t)
+    p = stance(_two_arms({'chest': (k['lean'] * .7, 0, 0), 'pelvis': (k['lean'] * .3, 0, 0), 'head': (-12 - k['lean'] * .5, 0, 0)},
+                         k['ua'], k['fa'], k['ab'], k['wr']), k['w'])
+    return _step_in(p, k['st'], k['lf'])
+
+def grabbed(t):
+    """Grabbed from the front: jolted back, both hands on the attacker's shoulders holding it off, twisting and leaning
+    away (face turned aside), feet braced and scrabbling; then a big two-hand shove breaks free and he stumbles back a
+    step and squares up again."""
+    K = [(0, {'ua': 30, 'fa': 70, 'ab': 16, 'wr': 0, 'lean': 4, 'w': 0, 'hd': 0}),
+         (.07, {'ua': 70, 'fa': 70, 'ab': 22, 'wr': -20, 'lean': -16, 'w': -1, 'hd': 30}),
+         (.68, {'ua': 74, 'fa': 62, 'ab': 20, 'wr': -25, 'lean': -14, 'w': -1, 'hd': 34}),
+         (.76, {'ua': 66, 'fa': 110, 'ab': 24, 'wr': -30, 'lean': -6, 'w': -.4, 'hd': 10}),
+         (.82, {'ua': 88, 'fa': 6, 'ab': 12, 'wr': -55, 'lean': 20, 'w': 1.2, 'hd': 0}),
+         (.9, {'ua': 40, 'fa': 50, 'ab': 22, 'wr': -10, 'lean': -8, 'w': -1.2, 'hd': 0}),
+         (1, {'ua': 30, 'fa': 70, 'ab': 16, 'wr': 0, 'lean': 4, 'w': 0, 'hd': 0})]
+    k = keys(K, t)
+    st = max(0.0, min(1.0, (t - .07) / .05)) * max(0.0, min(1.0, (.72 - t) / .05))   # struggle amount
+    tw = 22 * math.sin(2 * math.pi * 3.5 * t) * st; sh = 10 * math.sin(2 * math.pi * 7 * t) * st
+    p = _two_arms({}, k['ua'], k['fa'], k['ab'], k['wr'])
+    p['upperarm.L'] = (k['ua'] + sh, 0, k['ab']); p['upperarm.R'] = (k['ua'] - sh, 0, -k['ab'])
+    p['chest'] = (k['lean'] * .7, tw, 0); p['pelvis'] = (k['lean'] * .3, -tw * .4, 0)
+    p['head'] = (-14 - k['lean'] * .4, -tw * .5 + k['hd'] * (math.sin(2 * math.pi * 1.5 * t) * st + (1 - st)), 0)   # face turned away, side to side
+    p = stance(p, k['w'] + .25 * math.sin(2 * math.pi * 3.5 * t + 1) * st)
+    if .84 < t < .97:   # the stumble: the front foot comes back off the ground
+        u = math.sin(math.pi * (t - .84) / .13); a = p['thigh.L']; p['thigh.L'] = (a[0] + 26 * u, a[1], a[2]); a = p['shin.L']; p['shin.L'] = (a[0] - 50 * u, a[1], a[2])
+    return p
+
+def knockdown(t):
+    """Knocked flat and getting back up: snapped back by the hit, falls onto the back, lies a beat, rolls up onto an
+    elbow, sits up, gets a foot under him, kneels on the right knee, pushes up off the left knee to stand."""
+    K = [(0, {'pel': 0, 'bob': -.035, 'thl': 20, 'shl': -36, 'thr': 16, 'shr': -30, 'lean': 0, 'hd': -10, 'ua': 4, 'fa': 22, 'uaz': 14, 'tw': 0}),
+         (.05, {'pel': -12, 'bob': -.04, 'thl': 30, 'shl': -40, 'thr': 10, 'shr': -20, 'lean': -20, 'hd': 10, 'ua': 50, 'fa': 30, 'uaz': 40, 'tw': 0}),
+         (.18, {'pel': -88, 'bob': -.215, 'thl': 14, 'shl': -12, 'thr': 10, 'shr': -10, 'lean': -4, 'hd': -22, 'ua': 10, 'fa': 10, 'uaz': 40, 'tw': 0}, 'in'),   # Nov 10 owner: one accelerating fall (the mid key made it pause), a little quicker
+         (.24, {'pel': -86, 'bob': -.205, 'thl': 18, 'shl': -16, 'thr': 12, 'shr': -12, 'lean': -6, 'hd': -14, 'ua': 14, 'fa': 12, 'uaz': 42, 'tw': 0}),   # small bounce on landing
+         (.42, {'pel': -88, 'bob': -.215, 'thl': 14, 'shl': -12, 'thr': 10, 'shr': -10, 'lean': -4, 'hd': -10, 'ua': 10, 'fa': 10, 'uaz': 40, 'tw': 0}),
+         (.54, {'pel': -60, 'bob': -.2, 'thl': 30, 'shl': -40, 'thr': 20, 'shr': -20, 'lean': 30, 'hd': 0, 'ua': -40, 'fa': 70, 'uaz': 30, 'tw': 20}),   # up on the right elbow
+         (.64, {'pel': -30, 'bob': -.22, 'thl': 100, 'shl': -130, 'thr': 70, 'shr': -60, 'lean': 50, 'hd': -10, 'ua': -30, 'fa': 20, 'uaz': 20, 'tw': 10}),  # sitting up, feet drawn in, hands behind
+         (.76, {'pel': 0, 'bob': -.2, 'thl': 85, 'shl': -88, 'thr': -8, 'shr': -100, 'lean': 30, 'hd': -10, 'ua': 30, 'fa': 30, 'uaz': 10, 'tw': 0}),     # kneeling on the right knee
+         (.86, {'pel': 0, 'bob': -.12, 'thl': 70, 'shl': -70, 'thr': 20, 'shr': -60, 'lean': 40, 'hd': -20, 'ua': 40, 'fa': 40, 'uaz': 10, 'tw': 0}),     # pushing up off the left knee
+         (1, {'pel': 0, 'bob': -.035, 'thl': 20, 'shl': -36, 'thr': 16, 'shr': -30, 'lean': 0, 'hd': -10, 'ua': 4, 'fa': 22, 'uaz': 14, 'tw': 0})]
+    k = keys(K, t)
+    if .05 < t < .18:   # knees fold during the fall
+        b = math.sin(math.pi * (t - .05) / .13); k['thl'] += 34 * b; k['shl'] -= 44 * b; k['thr'] += 28 * b; k['shr'] -= 46 * b
+    return {'pelvis': (k['pel'], k['tw'], 0), 'chest': (k['lean'], 0, 0), 'head': (k['hd'], 0, 0),
+            'thigh.L': (k['thl'], 0, -4), 'shin.L': (k['shl'], 0, 0), 'foot.L': (10, 0, 0), 'thigh.R': (k['thr'], 0, 4), 'shin.R': (k['shr'], 0, 0), 'foot.R': (10, 0, 0),
+            'upperarm.L': (k['ua'], 0, k['uaz']), 'upperarm.R': (k['ua'], 0, -k['uaz']), 'forearm.L': (k['fa'], 0, 0), 'forearm.R': (k['fa'], 0, 0), 'bob': k['bob']}
+
+RELOAD_GUN = {'gun': (-12, -10, 70), 'gun_loc': (.06, -.14, -.02)}   # rifle brought up in front of the chest, magazine side towards the left hand
+def reload_rifle(t):
+    """Rifle reload: lift and tilt the rifle in front of the chest, the left hand drops to the pouch at the left hip,
+    brings a magazine up and rams it in under the receiver, slaps it, back to the handguard, rifle down to the carry.
+    The left hand's path is blended between IK targets per frame (RELOAD_IK, used by export3d)."""
+    p = hold_idle_gun(0)
+    g = keys([(0, {'g': 0}), (.14, {'g': 1}), (.84, {'g': 1}), (1, {'g': 0})], t)['g']
+    a, b = CARRY, RELOAD_GUN
+    p['gun'] = tuple(lerp(x, y, g) for x, y in zip(a['gun'], b['gun'])); p['gun_loc'] = tuple(lerp(x, y, g) for x, y in zip(a['gun_loc'], b['gun_loc']))
+    if .66 < t < .74: s = math.sin(math.pi * (t - .66) / .08); x = p['gun']; p['gun'] = (x[0] + 6 * s, x[1], x[2])   # the slap jolts the rifle
+    k = keys([(0, {'u': 40, 'z': 0, 'f': 70}), (.22, {'u': 40, 'z': 0, 'f': 70}), (.34, {'u': -12, 'z': 22, 'f': 50}), (.44, {'u': -10, 'z': 20, 'f': 56}),
+              (.56, {'u': 40, 'z': 0, 'f': 90}), (1, {'u': 40, 'z': 0, 'f': 70})], t)
+    p['upperarm.L'] = (k['u'], 0, k['z']); p['forearm.L'] = (k['f'], 0, 0)
+    p['chest'] = (5 + 6 * g, 0, 0); p['head'] = (-8 + 14 * g, 8 * g, 0)
+    return p
+def RELOAD_IK(t):
+    """Weights of the left hand's IK target over (handguard, hip pouch, magazine well) for reload_rifle."""
+    return keys([(0, {'g': 1, 'p': 0, 'm': 0}), (.2, {'g': 1, 'p': 0, 'm': 0}), (.34, {'g': 0, 'p': 1, 'm': 0}), (.44, {'g': 0, 'p': 1, 'm': 0}),
+                 (.58, {'g': 0, 'p': 0, 'm': 1}), (.72, {'g': 0, 'p': 0, 'm': 1}), (.82, {'g': 1, 'p': 0, 'm': 0}), (1, {'g': 1, 'p': 0, 'm': 0})], t)
+
+def reload_ik(ao, W, t):
+    """Per frame, after the pose is applied: the left hand stays on full IK and its target travels handguard -> pouch
+    at the left hip -> magazine well -> handguard (no IK fading, which made the elbow jump)."""
+    if 'mag' not in W:
+        w = W['obj']; g = W['grip1'].matrix_world.translation.copy(); fwd = Vector((0, -1, 0)); up = (fwd + Vector((0, 0, .08))).normalized()
+        def emp(nm, at, par):
+            e = bpy.data.objects.new(nm, None); bpy.context.scene.collection.objects.link(e); e.location = at; bpy.context.view_layer.update()
+            if par: mw = e.matrix_world.copy(); e.parent = par; bpy.context.view_layer.update(); e.matrix_world = mw
+            return e
+        W['mag'] = emp('mag', g + up * .06 - Vector((0, 0, .04)), w); W['lh'] = emp('lh', g, None)
+    pb = ao.pose.bones['forearm.L']; c = pb.constraints['ik']
+    if t is None: c.target = W['grip2']; return
+    k = RELOAD_IK(t); M = ao.matrix_world
+    pouch = M @ ao.pose.bones['thigh.L'].head + Vector((.07, -.03, .0))
+    push = Vector((0, 0, .025 * math.sin(math.pi * min(1, max(0, (t - .58) / .1)))))
+    tg = W['grip2'].matrix_world.translation * k['g'] + pouch * k['p'] + (W['mag'].matrix_world.translation + push) * k['m']
+    sh = M @ ao.pose.bones['upperarm.L'].head; L = (ao.data.bones['upperarm.L'].length + ao.data.bones['forearm.L'].length) * .93
+    if (tg - sh).length > L: tg = sh + (tg - sh).normalized() * L      # never at full stretch: the elbow snapped straight there
+    W['lh'].location = tg
+    c.target = W['lh']; c.influence = 1.0; bpy.context.view_layer.update()
+
+def limp_walk(t):
+    """Injured right leg: a short, stiff step onto it, hurried off it, the body tipping over to the left to take the
+    weight off; the right hand clutches the right thigh, head down."""
+    tt = (t + .05 * math.sin(2 * math.pi * t)) % 1.0              # the injured stance phase is quicker
+    p = walk_legs(tt, .7)
+    for k in ('thigh.L', 'thigh.R', 'shin.L', 'shin.R', 'foot.L', 'foot.R'): p[k] = tuple(x * .72 for x in p[k])
+    th = p['thigh.R']; p['thigh.R'] = (th[0] * .6, th[1], th[2]); sh = p['shin.R']; p['shin.R'] = (sh[0] * .35 - 6, 0, 0)   # stiff knee
+    onr = max(0.0, math.sin(2 * math.pi * tt + math.pi))             # weight on the bad leg
+    p['bob'] = p.get('bob', 0) - .012 * onr
+    p['chest'] = (16, -6 * math.sin(2 * math.pi * tt), -12 * onr); p['pelvis'] = (4, p['pelvis'][1] * .5, 6 * onr)
+    p['upperarm.R'] = (th[0] * .45 + 14, 0, -10); p['forearm.R'] = (34, 0, 0); p['hand.R'] = (-20, 0, 0)        # hand on the thigh
+    p['upperarm.L'] = (-14 * math.sin(2 * math.pi * tt), 0, 20 + 8 * onr); p['forearm.L'] = (30, 0, 0)
+    p['head'] = (6, 0, 6 * onr)
+    return steady_head(p)
+
+def barricade(t):
+    """Boarding up a window: standing square to the wall, the left hand holds a plank flat at chest height, the right
+    hand hammers nails into it, two blows per loop, the body putting a little into each."""
+    s = math.sin(2 * math.pi * t * 2); hit = max(0.0, s)
+    p = soft_legs({'chest': (8 + 3 * hit, -14, 0), 'pelvis': (0, -6, 0), 'head': (-4, 14, 0),
+                   'upperarm.L': (78, 0, -8), 'forearm.L': (20, 0, 0), 'hand.L': (-60, 0, 0),
+                   'upperarm.R': (56 + 20 * s, 0, -26), 'forearm.R': (70 - 55 * s, 0, 0), 'hand.R': (-20 - 50 * s, 0, 0)}, .7)   # the hammer head lands on the plank
+    return p
 
 def rescue(t):
     """Pushing the rescue cart: lean in hard, both arms forward low, heavy steps."""
@@ -286,8 +520,10 @@ def cheer(t):
     u = (t - .14) / .72                           # 0..1 in the air
     h = math.sin(math.pi * u) ** .45              # flat top = hang time
     tuck = math.sin(math.pi * u) ** 2
+    ar = ease(min(1.0, u / .3)) * ease(min(1.0, (1 - u) / .3))    # Nov 10: arms swing up/down over a few frames (was a 139 deg one-frame snap)
+    fa = lerp(40, -5 + 15 * tuck, ar)
     p = {'chest': (-8, 0, 0), 'head': (-20, 0, 4 * math.sin(4 * math.pi * u)),
-         'upperarm.L': (8, -CHEER_TW, 142), 'upperarm.R': (8, CHEER_TW, -142), 'forearm.L': (-5 + 15 * tuck, 0, 0), 'forearm.R': (-5 + 15 * tuck, 0, 0),
+         'upperarm.L': (8 * ar, -CHEER_TW * ar, lerp(30, 142, ar)), 'upperarm.R': (8 * ar, CHEER_TW * ar, -lerp(30, 142, ar)), 'forearm.L': (fa, 0, 0), 'forearm.R': (fa, 0, 0),
          'thigh.L': (10 + 45 * tuck, 0, 0), 'thigh.R': (5 + 35 * tuck, 0, 0), 'shin.L': (-15 - 70 * tuck, 0, 0), 'shin.R': (-12 - 60 * tuck, 0, 0),
          'foot.L': (20 * tuck, 0, 0), 'foot.R': (20 * tuck, 0, 0)}
     p['bob'] = .22 * h
@@ -308,15 +544,15 @@ def run(t):
     """Survivor run (3D only): long strides with a flight phase, high knees, forward lean, bent arms pumping."""
     ph = 2 * math.pi * t; sn, cs = math.sin(ph), math.cos(ph); p = {}
     for n, sg in (('L', 1), ('R', -1)):
-        th = 52 * sg * sn; kn = 34 + 96 * max(0.0, sg * cs) ** 1.2
-        p['thigh.' + n] = (th + 16, 0, 0)
+        th = 52 * sg * sn; kn = 34 + 80 * max(0.0, sg * cs) ** 1.2   # Nov 10 owner: less heel kick
+        p['thigh.' + n] = (th + 16, 0, -2 * sg)                         # feet stay under the hips
         p['shin.' + n] = (-kn, 0, 0)
         p['foot.' + n] = (-(th - kn) * .3 + kn * .4, 0, 0)
         p['upperarm.' + n] = (-58 * sg * sn + 6, 0, 10 * sg)
         p['forearm.' + n] = (88 + 10 * max(0.0, -sg * sn), 0, 0)
         p['hand.' + n] = (10, 0, 0)
     p['bob'] = .045 * math.cos(2 * ph) - .06
-    p['pelvis'] = (6, 12 * sn, 0); p['chest'] = (16, -18 * sn, 0); p['neck'] = (-6, 0, 0); p['head'] = (-16, 0, 0)
+    p['pelvis'] = (6, 4 * sn, 0); p['chest'] = (16, -7 * sn, 0); p['neck'] = (-6, 0, 0); p['head'] = (-16, 0, 0)   # Nov 10 owner: the hip twist swung the back foot 6 cm out
     return steady_head(p, 0, 0)
 
 def zombie_run(t):
@@ -433,7 +669,7 @@ def haymaker(t):
     return p
 
 HK_PUNCH = .55   # 3D.89 haymaker_kick: the haymaker part ends here (its own t .0 -> .78, the punch lands at combo t ~.41)
-def haymaker_kick(t):
+def haymaker_kick(t, _raw=False):
     """3D.89 Stalker combo (3D only, one-shot, ~2.6 s): the haymaker (closed fists, feet parallel), then straight into a
     heavy front kick with the right leg (lands at t = .78), then it stamps back down beside the left foot, feet parallel
     again. The fists come up to guard during the kick.
@@ -441,6 +677,8 @@ def haymaker_kick(t):
     straight out, and the upper body leans back a little as the kick lands."""
     if t < HK_PUNCH: return haymaker(t / HK_PUNCH * .78)
     u = (t - HK_PUNCH) / (1 - HK_PUNCH)   # 0..1 over the kick
+    if u < .14 and not _raw:   # Nov 10: crossfade out of the haymaker (the left arm snapped 51 deg in one frame)
+        return blend_pose(haymaker(.78), haymaker_kick(HK_PUNCH + .14 * (1 - HK_PUNCH), True), ease(u / .14))
     K = [(0, {'th': 0, 'sh': -36, 'ft': 18, 'lean': 26, 'tw': 46, 'ux': 92, 'uz': 24, 'fa': 30, 'kn': 1.0}),
          (.3, {'th': 108, 'sh': -125, 'ft': 30, 'lean': 4, 'tw': 6, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .9}),   # ready: knee chambered high, support knee bent
          (.42, {'th': 108, 'sh': -125, 'ft': 30, 'lean': 2, 'tw': 2, 'ux': 40, 'uz': -10, 'fa': 110, 'kn': .9}),
@@ -835,7 +1073,7 @@ CLIPS = {  # name: (pose fn, frames, ms per frame, loop, weapon class: None/'mel
     'cheer': (cheer, 10, 100, True, None)}
 SWING_T = [0, .2, .38, .46, .54, .6, .66, .82]          # uneven times: slow wind-up, fast strike
 SWING_MS = [160, 130, 120, 160, 60, 60, 200, 160]
-WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun', 'pistol': 'pistol', 'hammer': 'tool', 'hoe': 'tool', 'wrench': 'tool', 'crate': 'tool', 'bowl': 'tool'}   # pistol: one-handed gun
+WEAPONS = {'bat': 'melee', 'axe': 'melee', 'rifle': 'gun', 'ak47': 'gun', 'pistol': 'pistol', 'hammer': 'tool', 'hoe': 'tool', 'wrench': 'tool', 'crate': 'tool', 'bowl': 'tool', 'plank': 'tool'}   # pistol: one-handed gun
 
 def pose_fn(clip, wclass):
     if clip == 'hold_idle': return hold_idle_gun if wclass == 'gun' else hold_idle_melee
@@ -942,6 +1180,11 @@ def build_weapon(ao, kind):
     elif kind == 'bowl':            # food bowl in the left hand
         hl = ao.data.bones['hand.L']; ga = (ao.matrix_world @ hl.head_local).lerp(ao.matrix_world @ hl.tail_local, .6)
         T(ga + Vector((0, 0, -.02)), ga + Vector((0, 0, .03)), .03, .055, wood, seg=12); tip = ga
+    elif kind == 'plank':           # Nov 10: plank held flat against the wall by the left hand in barricade()
+        import ai_render as _ar
+        _ar.apply_pose(ao, barricade(0)); bpy.context.view_layer.update()
+        pl = ao.pose.bones['hand.L']; c = (ao.matrix_world @ pl.head).lerp(ao.matrix_world @ pl.tail, .6) + Vector((0, -.06, 0)); c.x = -.1   # across the front, under both hands
+        Bx(c, (.62, .022, .1), toon_mat('w_plank', '#b5824a')); tip = c
     elif kind == 'crate':           # carried crate, centred between the hands in the carry pose (rides on the chest bone)
         import ai_render as _ar
         _ar.apply_pose(ao, carry_idle(0)); bpy.context.view_layer.update()
@@ -954,7 +1197,7 @@ def build_weapon(ao, kind):
     def bone_parent(ob, bone):
         mw = ob.matrix_world.copy(); ob.parent = ao; ob.parent_type = 'BONE'; ob.parent_bone = bone
         bpy.context.view_layer.update(); ob.matrix_world = mw
-    bone_parent(w, 'gun' if isgun else 'hand.L' if kind == 'bowl' else 'chest' if kind == 'crate' else 'hand.R')
+    bone_parent(w, 'gun' if isgun else 'hand.L' if kind in ('bowl', 'plank') else 'chest' if kind == 'crate' else 'hand.R')
     def empty(name, at):
         e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e); e.location = at
         bpy.context.view_layer.update(); mw = e.matrix_world.copy(); e.parent = w; bpy.context.view_layer.update(); e.matrix_world = mw
@@ -981,8 +1224,24 @@ def hand_ik(ao, side, target, on):
     pb = ao.pose.bones['forearm.' + side]
     c = pb.constraints.get('ik') or pb.constraints.new('IK'); c.name = 'ik'
     c.target = target; c.chain_count = 2; c.influence = 1.0 if on else 0.0
+    pb.lock_ik_y = on   # Nov 10: no IK twist on the forearm (it flicked ~50 deg in 3 frames during two-hand wind-ups)
 
 def left_hand_ik(ao, target, on): hand_ik(ao, 'L', target, on)
+
+def gun_grip_r(ao, W, on):
+    """Nov 10: the right hand wraps the rifle's pistol grip. The plain IK put the wrist on the grip, so the palm hung
+    5-6 cm off it; now the wrist goes just behind the grip and the hand bone is aimed through it (palm centre ~5 mm from
+    the grip on the Tripo survivor)."""
+    if 'wrist_r' not in W:
+        w = W['obj']; g = W['grip1'].matrix_world.translation.copy(); mid = g + Vector((0, -.01, .025)); L = ao.data.bones['hand.R'].length
+        d = Vector((1, 0, 0))                                         # across the grip, towards the body's centre line
+        def emp(nm, at):
+            e = bpy.data.objects.new(nm, None); bpy.context.scene.collection.objects.link(e); e.location = at; bpy.context.view_layer.update()
+            mw = e.matrix_world.copy(); e.parent = w; bpy.context.view_layer.update(); e.matrix_world = mw; return e
+        W['wrist_r'] = emp('wrist_r', mid - d * L * .45); W['aim_r'] = emp('aim_r', mid + d * L)
+    hand_ik(ao, 'R', W['wrist_r'], on)
+    pb = ao.pose.bones['hand.R']; c = pb.constraints.get('dt') or pb.constraints.new('DAMPED_TRACK'); c.name = 'dt'
+    c.target = W['aim_r']; c.influence = 1.0 if on else 0.0
 
 # ------------------------------------------------------------------ effects
 class FX:
