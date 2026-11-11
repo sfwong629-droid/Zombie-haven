@@ -13,6 +13,7 @@
     { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 8, wood: 20 },
     { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 15, wood: 35 },
     { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 25, wood: 50 },
+    { x0: 1, y0: 1, x1: 28, y1: 30, ren: 520, mat: 40, wood: 70 },   // 3D.113 City Limits (level 16)
   ].map((t) => Object.assign(t, { x0: t.x0 + OFF, y0: t.y0 + OFF, x1: t.x1 + OFF, y1: t.y1 + OFF }));
   const BUILD = { x0: 2 + OFF, y0: 6 + OFF, x1: 13 + OFF, y1: 17 + OFF };
   /* 3D.101 the broken-down highway along the north-east edge (rows HWY_Y, HWY_Y + 1, the whole width) and its ramp towards the town.
@@ -74,6 +75,9 @@
     ammofactory: D({ name: 'Ammo Factory', role: 'ammo', fam: 'ammo2', tier: 3, w: 2, slot: true, out: 64, a: 6, q: 12, stone: 12, mat: 16, fuel: 2, power: 2 }),
     // 3D.104 the building study (approved): civic, dogs, school and the power / defence extras
     tradepost: D({ name: 'Trading Post', role: 'trade', tier: 1, w: 2, a: 8, q: 10, wood: 14, mat: 8, cloth: 2 }),   // traders come twice as often and pay better; a civic project (Banner)
+    townhall: D({ name: 'Town Hall',     role: 'civic', tier: 3, w: 2, h: 2, a: 14, q: 14, stone: 30, wood: 20, mat: 20, cloth: 4, lvl: 16 }),   // 3D.113 the City
+    market:   D({ name: 'Market Square', role: 'trade', tier: 3, w: 2, h: 2, a: 12, q: 12, stone: 16, wood: 24, mat: 12, lvl: 17 }),
+    watertower: D({ name: 'Water Tower', role: 'water', fam: 'pump', tier: 3, slot: true, out: 30, a: 5, q: 12, stone: 14, mat: 14, power: 1, lvl: 16 }),
     garage:   D({ name: 'Garage',       role: 'vehicles', tier: 2, w: 2, a: 6, q: 10, wood: 12, mat: 10 }),   // 3D.109 one vehicle each; restores found wrecks
     kennel:   D({ name: 'Kennel',       role: 'dogs', tier: 1, a: 6, q: 8, wood: 8, mat: 2 }),   // keeps two dogs; strays come to it
     school:   D({ name: 'School',       role: 'train', tier: 2, w: 2, cap: 3, train: 'int', a: 10, q: 10, wood: 12, mat: 4, cloth: 2 }),   // trains intelligence; children grow up faster

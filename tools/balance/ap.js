@@ -23,7 +23,7 @@
     Z.newSite(t, best.x, best.y); AP.built.push(t + '@d' + S.day); return true;
   }
   const PLAN = ['barrel', 'farm', 'tent', 'medic', 'bench', 'hq2', 'scrapyard', 'water', 'tent', 'lumber', 'crates', 'farm', 'quarry', 'armory', 'gym', 'cabin', 'library', 'storage', 'field', 'clinic', 'workshop'];
-  const LATE = ['hq3', 'well', 'generator', 'stonehouse', 'irrig', 'fuelstill', 'radio', 'greenhouse', 'barracks', 'hospital', 'pump', 'mess', 'warehouse', 'ammofactory', 'coldstore', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];   /* 3D.77 power for growth, fuel and ammo */
+  const LATE = ['garage', 'kennel', 'tradepost', 'school', 'turbine', 'solar', 'hq3', 'well', 'generator', 'stonehouse', 'irrig', 'fuelstill', 'radio', 'greenhouse', 'barracks', 'hospital', 'pump', 'mess', 'warehouse', 'ammofactory', 'coldstore', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];   /* 3D.77 power for growth, fuel and ammo */
   const RES = ['blades', 'salvage', 'walls', 'medicine', 'gadgets', 'bodyArmor', 'firearms', 'stockpile'];
   function ring() {   /* wood ring on the WALLZONE border, gates next to roads */
     const Zn = Wd.WALLZONE, out = [];
@@ -58,6 +58,8 @@
   AP.deaths = []; AP.nf = 0; AP.downs = []; const last = new Map();
   AP.tick = function () {
     if (AP.expert) expertTick();
+    if (S.sh && on('stronghold')) { const H = S.sh, D = Z.SH_DEFS[H.dest]; if (H.area === D.areas.length - 1 && !H.focus) Z.shCall('focus'); const low = H.units.find((q) => q.hp > 0 && q.hp < q.max * .3) || H.units.find((q) => q.hp <= 0); if (low && (S.meds || 0) > 0 && !(AP.medT > Z.tick)) { Z.shCall('med'); AP.medT = Z.tick + 300; }
+      if (!AP.shSeen) { AP.shSeen = true; } } else if (AP.shSeen) { AP.shSeen = false; AP.events.push((S.shCleared && Object.values(S.shCleared).reduce((a, b) => a + b, 0) > (AP.shWins || 0) ? 'stronghold WON' : 'stronghold lost') + '@d' + S.day); AP.shWins = S.shCleared ? Object.values(S.shCleared).reduce((a, b) => a + b, 0) : 0; }
     if (on('radio') && Z.radioHelp && Z.helpReady && AP.radio !== false && S.sv.filter((q) => q.mode === 'down').length >= 2 && Z.helpReady()) { Z.radioHelp(); AP.events.push('radio@d' + S.day); }   /* 3D.64: a player radios for help when two are down */
     for (const s of S.sv) { const prev = last.get(s);
       if (s.mode === 'down' && prev && prev.mode !== 'down') { let zt = null, zd = 9; for (const z of S.z) if (z.hp > 0) { const d = Math.hypot(z.w.x - s.w.x, z.w.y - s.w.y); if (d < zd) { zd = d; zt = z.type + (z.human ? '' : '') ; } }
@@ -90,6 +92,13 @@
       const dest = jn('meds') && !Z.expLocked('pharmacy') ? 'pharmacy' : jn('fuel') && !Z.expLocked('gasstation') ? 'gasstation' : (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' || dest === 'gasstation' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
       if (sq.length >= 2) { const r = Z.startExpedition(dest, risk, sq); if (r.ok) AP.events.push('exp ' + dest + '/' + risk + '@d' + S.day); }
     }
+    /* 3D.110 the newer systems, as a sensible player uses them */
+    if (on('veh') && Z.VEH) { if (!(S.veh || {}).cart && (S.wood || 0) > 20 && S.mat > 12) Z.vehBuildCart(); for (const k of ['pickup', 'van', 'cart']) if ((S.veh || {})[k] && S.veh[k].broken && S.mat > 25) Z.vehRepair(k);
+      const vk = ['van', 'pickup', 'cart'].find((k) => Z.vehReady(k) && (k === 'cart' || (S.fuel || 0) >= Z.VEH[k].fuel + 4)); Z.setExpVeh(vk || null); }
+    if (on('class') && Z.promoteSpec && S.hour === 11) { for (const q of S.sv) if (!q.spec && !Z.specWhy(q)) Z.promoteSpec(q); if (Z.hybOptions) for (const q of S.sv) if (q.spec && !q.hyb) { const o = Z.hybOptions(q)[0]; if (o) Z.promoteHyb(q, o.k); } }
+    if (on('stronghold') && Z.startStronghold && !S.sh && !S.trip && S.hour === 10 && Z.needsBanner() && !(S.banners || []).some((b) => !b.used)) {
+      const dest = (S.lvl || 1) >= 10 ? 'prison' : 'clinic', sq = Z.expAutoSquad(4); if (sq.length >= 3 && S.sv.length - sq.length >= 2 && !Z.expLocked(dest) && (S.shTryDay || {})[dest] !== S.day - 1) { const pw = Z.shPower(sq), rec = Z.SH_DEFS[dest].rec;
+        if (pw >= rec * .9 || S.day > (AP.shWait || 0) + 6) { const r = Z.startStronghold(dest, sq.map((q) => q.id)); if (r.ok) { AP.events.push('stronghold ' + dest + ' p' + pw + '@d' + S.day); AP.shWait = S.day; } } } }
     // bandage the downed
     if (on('bandage')) for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
     for (const s of S.sv) if (s.mode !== 'down') s.bandaged = 0;
@@ -115,7 +124,7 @@
     if (S.hour === 12) { AP.wTrend = S.water - (AP.w12 ?? S.water); AP.fTrend = S.food - (AP.f12 ?? S.food); AP.w12 = S.water; AP.f12 = S.food; }
     const needW = st.wNet < .5 || (S.water < 25 && (AP.wTrend || 0) < 0), needF = st.fNet < .5 || (S.food < 25 && (AP.fTrend || 0) < 0);
     const famN = (f) => W.buildings.filter((b) => D[b.type].fam === f).length + (S.sites || []).filter((q) => D[q.type].fam === f).length;
-    if (on('supply') && needW) { if (!place('well') && !place('water') && famN('water') < 3) place('barrel'); }
+    if (on('supply') && needW) { if (!place('well') && !place('water') && famN('water') < 3 + Math.floor(S.sv.length / 4)) place('barrel'); }   /* 3D.110: water grows with the town, as a player would build it */
     if (on('supply') && needF) { if (!place('irrig') && !place('field') && famN('farm') < 4) place('farm'); }
     if (on('supply') && needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
     // the building the next town star needs (Upgrade Town "Build X" condition)
@@ -157,7 +166,7 @@
       inc: S.incidents || 0, burnt: W.buildings.filter((b) => b.burnt).length, boss: S.bossKills || 0, unpaid: W.buildings.filter((b) => b.unpaid).length, upkeep: +Z.upkeepTotal().toFixed(1),
       lvl: +(sv.reduce((a, q) => a + q.l, 0) / Math.max(1, sv.length)).toFixed(1), sat: Math.round(sv.reduce((a, q) => a + (q.sat || 0), 0) / Math.max(1, sv.length)),
       hpAvg: Math.round(100 * sv.reduce((a, q) => a + q.hp / q.max, 0) / Math.max(1, sv.length)), z: S.z.filter((z) => z.hp > 0).length, res: Object.keys(S.res || {}).length,
-      grade: S.lastReview ? S.lastReview.grade + S.lastReview.total : '',
+      grade: S.lastReview ? S.lastReview.grade + S.lastReview.total : '', hl: S.lvl || 0, lvUp: S.lvUp ? Math.round(S.lvUp.left / 1000) : null, ban: (S.banners || []).map((b) => b.route[0] + (b.used ? '·' : '')).join(''), fac: S.fac ? Object.entries(S.fac).map(([k, f]) => k[0] + Math.round(f.att || 0) + (f.ally ? 'A' : '') + (f.beaten ? 'B' + f.beaten : '')).join(' ') : '', ex: S.ex ? Object.values(S.ex).reduce((a, b) => a + b, 0) : 0, spec: S.sv.filter((q) => q.spec).length, hyb: S.sv.filter((q) => q.hyb).length, veh: Object.keys(S.veh || {}).join('+'), fuel: Math.round(S.fuel || 0), dogs: (S.pets || []).length, stone: Math.round(S.stone || 0), meds: Math.round(S.meds || 0), ammo: Math.round(S.ammo || 0),
       friends: (() => { let f = 0, c = 0; for (const a of sv) for (const [id, v] of Object.entries(a.rel || {})) if (+id > a.id) { if (v >= 80) c++; else if (v >= 50) f++; } return f + '/' + c; })(), couples: sv.filter((q) => q.partner).length / 2 | 0, kids: (S.kids || []).length, born: S.born || 0, pop: sv.length + (S.kids || []).length + '/' + Z.popCap() };
   };
 })();
