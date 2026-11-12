@@ -22,8 +22,8 @@
   const HWY_Y = 3, HWY_RAMP_X = 19;
   const hh = (x, y) => { let n = (x * 374761393 + y * 668265263) | 0; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
   const HWY = new Map();
-  for (let x = 0; x < COLS; x++) for (const y of [HWY_Y, HWY_Y + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .12 ? 'hole' : r < .42 ? 'crack' : 'ok'); }
-  for (let y = HWY_Y + 2; y <= HWY_Y + 4; y++) for (const x of [HWY_RAMP_X, HWY_RAMP_X + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .2 ? 'hole' : r < .55 ? 'crack' : 'ok'); }
+  for (let x = 0; x < COLS; x++) for (const y of [HWY_Y, HWY_Y + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .42 ? 'crack' : 'ok'); }   /* 3D.133 owner: the asphalt is continuous (no holes); cracks, weeds and litter stay */
+  for (let y = HWY_Y + 2; y <= HWY_Y + 4; y++) for (const x of [HWY_RAMP_X, HWY_RAMP_X + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .55 ? 'crack' : 'ok'); }
 
   // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
   // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
@@ -163,6 +163,7 @@
   function footprintCheck(w, x, y, def, ignore = null) {
     if (x < BUILD.x0 || y < BUILD.y0 || x + def.w - 1 > BUILD.x1 || y + def.h - 1 > BUILD.y1) return { ok: false, why: 'Outside the build zone' };
     for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (isRoad(w, x + xx, y + yy)) return { ok: false, why: 'Blocked by road' };
+    for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (wallAt(w, x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' };   /* 3D.133 owner: buildings could be placed on top of walls */
     const cand = { x, y, w: def.w, h: def.h };
     if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
     if ((w.sites || []).some(b => Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Under construction' };

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.132', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.133', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -494,7 +494,7 @@ function draw() {
     for (let y = Wd.BUILD.y0; y <= Wd.BUILD.y1; y++) for (let x = Wd.BUILD.x0; x <= Wd.BUILD.x1; x++) {
       const occ = Wd.buildingAt(world, x, y), road = Wd.isRoad(world, x, y);
       if (sel.kind === 'road') diamond(x, y, road ? 'rgba(113,129,138,.55)' : (occ ? 'rgba(183,90,85,.45)' : 'rgba(95,174,97,.30)'), road ? '#b4c2c8' : 'rgba(155,220,133,.5)');
-      else diamond(x, y, road ? 'rgba(113,129,138,.35)' : (occ ? 'rgba(183,90,85,.40)' : 'rgba(95,174,97,.22)'), 'rgba(155,220,133,.35)');
+      else diamond(x, y, road ? 'rgba(113,129,138,.35)' : (occ || Wd.wallAt(world, x, y) ? 'rgba(183,90,85,.40)' : 'rgba(95,174,97,.22)'), 'rgba(155,220,133,.35)');   /* 3D.133 a wall or fence tile is taken (was shown green) */
     }
     if (preview && sel.kind === 'building') for (let yy = 0; yy < preview.h; yy++) for (let xx = 0; xx < preview.w; xx++) diamond(preview.x + xx, preview.y + yy, preview.ok ? 'rgba(114,217,223,.62)' : 'rgba(226,91,85,.62)', preview.ok ? '#d7ffff' : '#ffb0a8');
     if ((preview) && sel.kind === 'building') entranceArrow(preview);
@@ -1017,6 +1017,7 @@ function engineerRepairs() {   /* idle Engineers patch damaged buildings: 1 wood
   for (const q of S.sv) { if (q.job !== 'Engineer' || !['free', 'wait', 'walk'].includes(q.mode) || q.sleeping || q.purpose || q.carriedLoot || isNight() || insideBuilding(q) || threatOf(q)) continue;   /* 3D.63: not out of bed, not mid-delivery */ const b = dmg.sort((a, c) => dist(q.w, Wd.approachPoint(a)) - dist(q.w, Wd.approachPoint(c)))[0]; q.mode = 'fix'; q.fixB = b; q.path = null; q.why = 'Repairing the ' + DEFS[b.type].name; return; }
 }
 function fixTick(s) {
+  if (s.fixW) { fixWallTick(s); return; }
   const b = s.fixB; if (!b || !world.buildings.includes(b) || b.burnt || bHp(b) >= b.max || threatOf(s)) { s.fixB = null; s.activity = null; enterFree(s, 30); return; }
   const r = followPath(s, Wd.approachPoint(b), WALK); if (r === 'moving') return; if (r === 'fail') { s.fixB = null; enterFree(s, 60); return; }
   s.moving = false; s.activity = 'Building'; if (tick % Math.round(40 / TUNE.work) === 0) { const rk = repStep(b); if ((S[rk] || 0) < 1) { floats.push({ w: { ...s.w }, t: 'Needs ' + RES_ICON[rk] + ' ' + RES_NAME[rk], col: '#ff8a7a', a: 80 }); s.fixB = null; s.activity = null; enterFree(s, 60); return; } b.hp = Math.min(b.max, b.hp + 12); S[rk] -= 1; b.repUse[rk] = (b.repUse[rk] || 0) + 1; if (b.hp >= b.max) b.repUse = {}; flow(rk, 'Repairs', -1); ui(); floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 }, t: '+12', col: '#9fe08a', a: 40 }); }
@@ -2563,14 +2564,28 @@ function wallBroken(wl) {
   breachAlert(wl); ui();
 }
 let repairFrac = 0;
-function autoRepair() {   // every second: the most damaged segment that can be worked on is patched up (no zombie close by, nobody standing in a broken gap); engineers and mechanics work twice as fast; a full repair costs 60% of a new segment
+/* 3D.133 owner: 'why does the fence repair itself? doesn't someone need to work on it?' It did: every second the worst segment was patched from
+   nowhere. Now a free survivor walks to it and hammers (Engineers, Mechanics and the handy first, and twice as fast). Same scrap cost as before
+   (a full repair is 60% of a new segment). Nobody goes while a zombie is at that segment, or while they have something more urgent to do. */
+function autoRepair() {   // every second: send someone to the most damaged segment that can be worked on
   const near = (wl) => S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6), inGap = (wl) => S.z.some((z) => z.hp > 0 && Math.floor(z.w.x) === wl.x && Math.floor(z.w.y) === wl.y) || S.sv.some((q) => Math.floor(q.w.x) === wl.x && Math.floor(q.w.y) === wl.y);
   const cand = [...world.walls.values()].filter((wl) => wl.hp < wl.max).sort((a, b) => a.hp / a.max - b.hp / b.max);
   if (repairFirst && (repairFirst.hp >= repairFirst.max || !world.walls.has(Wd.key(repairFirst.x, repairFirst.y)))) repairFirst = null;
-  const ok = (wl) => !near(wl) && !(wl.broken && inGap(wl)), best = repairFirst && ok(repairFirst) ? repairFirst : cand.find(ok); if (!best) return;
-  const fast = S.sv.some((q) => q.hp > 0 && ((q.job === 'Engineer' && !['away', 'errand', 'down', 'hospital'].includes(q.mode)) || hasSkill(q, 'handy')))   /* 3D.67: an Engineer in town, not away or hurt */, amt = Math.min(best.max - best.hp, fast ? 8 : 4), cost = amt / best.max * Wd.WALL_DEFS[best.type].mat * .6;
-  repairFrac += cost; if (repairFrac >= 1) { if (S.mat < 1) { repairFrac = 1; return; } S.mat -= 1; repairFrac -= 1; flow('mat', 'Wall repairs', -1); }
-  best.hp += amt; if (best.broken && best.hp >= best.max * .3) { best.broken = false; Wd.bump(world); } if (best.hp >= best.max) { best.hp = best.max; floats.push({ w: { x: best.x + .5, y: best.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); }
+  const busy = S.sv.filter((q) => q.mode === 'fix' && q.fixW), taken = (wl) => busy.some((q) => q.fixW.x === wl.x && q.fixW.y === wl.y);
+  const ok = (wl) => !near(wl) && !(wl.broken && inGap(wl)) && !taken(wl), best = repairFirst && ok(repairFirst) ? repairFirst : cand.find(ok); if (!best || busy.length >= 2 || S.mat < 1) return;
+  const handy = (q) => q.job === 'Engineer' || q.job === 'Mechanic' || hasSkill(q, 'handy'), free = S.sv.filter((q) => q.hp > 0 && ['free', 'wait', 'walk'].includes(q.mode) && !q.sleeping && !q.purpose && !q.carriedLoot && !q.carrying && !insideBuilding(q) && !threatOf(q));
+  const who = free.sort((a, b) => (handy(b) - handy(a)) || dist(a.w, { x: best.x + .5, y: best.y + .5 }) - dist(b.w, { x: best.x + .5, y: best.y + .5 }))[0]; if (!who) return;
+  who.mode = 'fix'; who.fixB = null; who.fixW = { x: best.x, y: best.y }; who.fixWAt = null; who.path = null; who.why = 'Repairing the ' + Wd.WALL_DEFS[best.type].name.toLowerCase();
+}
+function fixWallTick(s) {
+  const wl = Wd.wallAt(world, s.fixW.x, s.fixW.y), done = (t) => { s.fixW = null; s.fixWAt = null; s.activity = null; enterFree(s, t); };
+  if (!wl || wl.hp >= wl.max || threatOf(s)) { done(30); return; }
+  if (!s.fixWAt) { const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: wl.x + dx, y: wl.y + dy })).filter((t) => Wd.walkable(world, t.x, t.y)).sort((a, b) => (Wd.inTown(b.x, b.y) - Wd.inTown(a.x, a.y)) || dist(s.w, a) - dist(s.w, b)); if (!opts.length) { done(120); return; } s.fixWAt = { x: opts[0].x + .5, y: opts[0].y + .5 }; }
+  const r = followPath(s, s.fixWAt, WALK); if (r === 'moving') return; if (r === 'fail') { done(120); return; }
+  s.moving = false; s.activity = 'Building'; s.faceW = { x: wl.x + .5, y: wl.y + .5 }; if (tick % Math.round(40 / TUNE.work) !== 0) return;
+  const fast = s.job === 'Engineer' || s.job === 'Mechanic' || hasSkill(s, 'handy'), amt = Math.min(wl.max - wl.hp, fast ? 6 : 3), cost = amt / wl.max * Wd.WALL_DEFS[wl.type].mat * .6;
+  repairFrac += cost; if (repairFrac >= 1) { if (S.mat < 1) { repairFrac = 1; floats.push({ w: { ...s.w }, t: 'Needs ' + RES_ICON.mat, col: '#ff8a7a', a: 80 }); done(200); return; } S.mat -= 1; repairFrac -= 1; flow('mat', 'Wall repairs', -1); }
+  wl.hp += amt; SFX('hit'); if (wl.broken && wl.hp >= wl.max * .3) { wl.broken = false; Wd.bump(world); } if (wl.hp >= wl.max) { wl.hp = wl.max; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); done(30); }
 }
 
 /* ---------------- town systems ---------------- */
@@ -2935,7 +2950,7 @@ const TRADES = [{ give: { food: 6 }, get: { mat: 4 } }, { give: { water: 6 }, ge
 const RES_NAME = { food: 'food', water: 'water', mat: 'scrap', wood: 'wood', stone: 'stone', cloth: 'cloth', meds: 'medicine', fuel: 'fuel', ammo: 'ammo' };
 function traderDisc() { const c = Math.max(5, ...S.sv.filter((q) => q.hp > 0 && q.mode !== 'away').map((q) => stat(q, 'cha'))); return Math.min(.35, Math.max(0, (c - 5) * .02) + (bOf('tradepost').length ? .15 : 0)); }   /* 3D.104 a Trading Post: better deals */
 const priced = (cost) => Object.fromEntries(Object.entries(cost).map(([k, v]) => [k, Math.max(1, Math.ceil(v * (1 - traderDisc())))]));
-const costText = (c) => Object.entries(c).map(([k, v]) => v + ' ' + RES_NAME[k]).join(' + ');
+const costText = (c) => Object.entries(c).map(([k, v]) => (RES_ICON[k] || RES_NAME[k]) + ' ' + v).join('  ');   /* 3D.133 owner: icons, not words */
 const canPay = (c) => Object.entries(c).every(([k, v]) => (S[k] || 0) >= v);
 /* V3D.22 resources: costs are objects { wood, mat (= scrap), ... } */
 const RES_ICON = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', cloth: '🧵', meds: '💊', fuel: '⛽', ammo: '🔸' };
@@ -2943,7 +2958,7 @@ const bCost = (d) => { const c = {}; for (const k of ['wood', 'stone', 'mat', 'c
 const payCost = (c) => { for (const [k, v] of Object.entries(c)) S[k] = (S[k] || 0) - v; };
 const refundCost = (c, f) => { for (const [k, v] of Object.entries(c)) S[k] = (S[k] || 0) + Math.floor(v * f); };
 const costShort = (c) => Object.entries(c).map(([k, v]) => (RES_ICON[k] || '') + ' ' + v).join('  ') || 'free';
-const missText = (c) => Object.entries(c).filter(([k, v]) => (S[k] || 0) < v).map(([k, v]) => (v - Math.floor(S[k] || 0)) + ' ' + RES_NAME[k]).join(' + ');
+const missText = (c) => Object.entries(c).filter(([k, v]) => (S[k] || 0) < v).map(([k, v]) => (RES_ICON[k] || RES_NAME[k]) + ' ' + (v - Math.floor(S[k] || 0))).join('  ');
 function traderStock() {
   const gear = Object.keys(ITEMS).filter((id) => id !== 'pipe' && ITEMS[id].cost >= 4), st = [];
   while (st.length < 3 && gear.length) { const id = gear.splice(Math.floor(rnd() * gear.length), 1)[0]; st.push({ k: 'item', id, cost: { mat: Math.ceil(ITEMS[id].cost * 1.1), food: 3 } }); }
@@ -3672,11 +3687,11 @@ function nextEventPopup() {
   const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); modalOpen = true;
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
   if ((e.stage)) {   /* V3D.12: DV2-style stage card */
-    m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
+    m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX(e.stage.scene === 'sad' || e.stage.scene === 'danger' ? 'alarm' : 'event'); return;
   }
-  m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${i === 0 ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
+  m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
   m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
@@ -3809,7 +3824,7 @@ function ui() {
 }
 
 /* ---------------- save / load / migration ---------------- */
-const SKIP = new Set(['para', 'aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
+const SKIP = new Set(['fixW', 'fixWAt', 'skipZ', 'noReach', 'fixB', 'order', 'moveTo', 'para', 'aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'comboStep', 'reloadT', 'avoid', 'visits', 'stays', 'emo', 'chatWith', 'chatLines', 'chatStep', 'chatT', 'faceW', 'fire', 'helpAt', 'helpT', '_lastKills', 'lootId', '_lvT', '_ghost', '_ghostHold', 'post', 'target', 'facility', 'rescuer', 'rescuing', 'carrying', 'path', 'pathGoal', 'pathVer', 'lastFacility', 'moving', 'stuck', 'lastD', 'hideAt', 'fireAt', 'careAt', 'fixB', 'careTo', 'arrG', 'prog', 'nearT', 'talk', 'talkBy']);   /* 3D.58: fixB (a building) broke saves while someone was repairing */   /* V2.36: hideAt / fireAt are building links too: saving while someone hid in a staffed building failed silently */
 function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
@@ -4093,7 +4108,7 @@ function expResolveStage(t, quiet) {
   t.stage++; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], ms = t.members; vehStage(t); if (t.stage >= EXP_STAGES) vehFind(t);
   const kinds = new Set(ms.map(expKind).filter((k) => k !== 'other')).size, avgL = ms.reduce((a, s) => a + (s.l || 1), 0) / (ms.length || 1), f = rk.mult * (1 + .12 * Math.max(0, kinds - 1)) * (1 + .04 * (avgL - 1)) * (1 + .15 * ms.filter((m) => hasSkill(m, 'lootSense')).length) * (1 + .2 * ms.filter((m) => hasSkill(m, 'treasureHunter')).length) * expTraitLoot(ms) * vehLoot(t);
   const got = [], r = (a) => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
-  for (const k in d.loot) { const n = Math.max(1, Math.round(r(d.loot[k]) * f)); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${n} ${RES_NAME[k] || k}`); }
+  for (const k in d.loot) { const n = Math.max(1, Math.round(r(d.loot[k]) * f)); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${RES_ICON[k] || k} ${n}`); }
   if (Math.random() < .2 * Math.sqrt(rk.mult) * (d.gear || 1) * (ms.some((m) => hasSkill(m, 'treasureHunter')) ? 2 : 1)) { const pool = ['gloves', 'belt', 'shoes', 'goggles', 'glasses', 'charm', 'backpack', 'hikerpack', 'watch', 'walkie', 'medpouch', 'raincoat', 'firecoat', 'hazmat', 'ghillie', 'tactcap', 'gasmask', 'shovel', 'roadsign', 'leather', 'hockey', 'biker', 'crowbar', 'nailbat', 'machete', 'spear', 'axe', 'bow', 'revolver', 'riot', 'kevlar', 'rifle', 'shotgun', 'plate', 'dogtags', 'katana', 'smg', 'military', 'assault'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 7 + Math.round(rk.mult * 1.3)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }   /* V2.14: gear finds */
   const rm = expRiskMult(t); let trouble = [];
   for (const m of [...ms]) {
@@ -4173,7 +4188,7 @@ function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null
   let who = actor ? actor.name : 'The squad';
   if (o.toll) { for (const k in t.loot) t.loot[k] = Math.floor(t.loot[k] * (1 - o.toll)); }
   if (ok && o.win) {
-    for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${n} ${RES_NAME[k] || k}`); }
+    for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${RES_ICON[k] || k} ${n}`); }
     if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun', 'strawhat', 'army', 'football'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
     if (o.win.recruit) { if (popNow() < popCap()) { t.recruitNow = true; got.push('The survivor will follow the squad home.'); } else { const n = r([1, 2]); t.loot.food += n; t.ren = (t.ren || 0) + 3; got.push(`The Haven has no room, so the survivor gave them ${n} food (+3 Renown)`); } }
     if (o.win.gift) { const n = r([1, 2]); t.loot.food += n; t.loot.water += n; got.push(`They threw down ${n} food and ${n} water in thanks.`); }
@@ -4220,7 +4235,7 @@ function expFinish(recalled) {
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
   barkSquad = { ids: t.members.map((m) => m.id), lost: (t.lost || []).length, at: tick + 90 };
   if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
-  let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${v} ${RES_NAME[k] || k}`).concat((t.items || []).map((id) => ITEMS[id].name));
+  let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${RES_ICON[k] || k} ${v}`).concat((t.items || []).map((id) => ITEMS[id].name));
   if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
     const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
     recruit = mk(nm, jb, 1, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); t.log.push(`${nm}, a ${jb} (${TRAITS[recruit.trait].icon} ${TRAITS[recruit.trait].name}), was found and followed the squad home.`);
@@ -4435,7 +4450,7 @@ const SH_DEFS = {
 Object.assign(SH_DEFS, {
   sh_spring: { tough: 1.35, rec: 450, areas: [ { name: 'The Potting Sheds', spawn: [['walker', 8], ['bloated', 2], ['spitter', 2]] }, { name: 'The Flooded Glasshouse', spawn: [['bloated', 2], ['sporehead', 1], ['walker', 6]] },
     { name: 'The Pump House', spawn: [['bloated', 2], ['walker', 4]], boss: { type: 'bloated', name: 'The Mire Mother', hp: 1100, atk: 16, big: 1.9, spd: .009 } } ], floor: ['#8fa38a', '#9cb39a', '#7d9479'], wall: '#cfe0d6', props: 'clinic', side: 'A seed store', wings: ['The Palm House', 'The Orchid Rooms'] },
-  sh_summer: { tough: 1.55, rec: 450, areas: [ { name: 'The Gate Yard', spawn: [['burnt', 8], ['runner', 3]] }, { name: 'The Tank Farm', spawn: [['burnt', 7], ['brute', 1], ['rotbomb', 2]] },
+  sh_summer: { tough: 1.4, rec: 450, areas: [ { name: 'The Gate Yard', spawn: [['burnt', 8], ['runner', 3]] }, { name: 'The Tank Farm', spawn: [['burnt', 7], ['brute', 1], ['rotbomb', 2]] },
     { name: 'The Cracking Tower', spawn: [['burnt', 4], ['runner', 2]], boss: { type: 'brute', name: 'Cinder', hp: 1100, atk: 17, big: 1.7, spd: .012 } } ], floor: ['#a68f74', '#9a8166', '#8a6f58'], wall: '#6b5d52', props: 'prison', side: 'A control room', wings: ['The Pipe Racks', 'The Pump Station'] },
   sh_autumn: { tough: 1.5, rec: 450, areas: [ { name: 'The Midway', spawn: [['walker', 8], ['runner', 3], ['rotbomb', 1]] }, { name: 'The Livestock Barns', spawn: [['walker', 6], ['dog', 3], ['lasher', 1]] },
     { name: 'The Haunted Ride', spawn: [['lasher', 2], ['walker', 4]], boss: { type: 'lasher', name: 'The Scarecrow', hp: 1050, atk: 16, big: 1.7, spd: .013 } } ], floor: ['#b39064', '#a68458', '#9a7a52'], wall: '#8a5a32', props: 'prison', side: 'A prize booth', wings: ['The Barns', 'The Hall of Mirrors'] },
@@ -4486,7 +4501,7 @@ function shPickup(H, live) {   /* walk into a revealed room with nobody hostile 
   for (const [r, m] of Object.entries(H.myst || {})) { if (m.took || !H.rev[r]) continue; const s = live.find((q) => shRoomAt(q.w) === r); if (!s || H.zs.some((z) => z.hp > 0 && z.room === r && !z.hid)) continue; m.took = true;
     for (const [k, n] of Object.entries(m.loot || {})) H.loot[k] = (H.loot[k] || 0) + n; (H.items ||= []).push(...(m.items || []));
     if (m.kind === 'survivor') { H.found = (H.found || 0) + 1; shFx(s.w, '🙋 They will come home with you', '#7be08a'); }
-    const t = Object.entries(m.loot || {}).map(([k, n]) => '+' + n + ' ' + (RES_NAME[k] || k)).concat((m.items || []).map((k) => '🎁 ' + ITEMS[k].name)); if (t.length) { shFx(s.w, t.join('  '), '#ffe9b8'); SFX('reward'); } else if (m.kind !== 'survivor') shFx(s.w, 'Nothing here.', '#b4a296'); } }
+    const t = Object.entries(m.loot || {}).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n).concat((m.items || []).map((k) => '🎁 ' + ITEMS[k].name)); if (t.length) { shFx(s.w, t.join('  '), '#ffe9b8'); SFX('reward'); } else if (m.kind !== 'survivor') shFx(s.w, 'Nothing here.', '#b4a296'); } }
 function shFx(w, t, col) { if (S.sh) S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
 function shUnitDmg(s, z) { const w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s);
   return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
@@ -4505,7 +4520,7 @@ function shUseAbil(s) { const H = S.sh, A = shAbil(s), sp = s.spec ? 1.5 : 1; if
   if (A.k === 'taunt') { s.tauntT = H.t + 360 * sp; for (const z of H.zs) if (z.hp > 0 && dist(z.w, s.w) < 4 * sp) { z.target = s; z.tauntBy = s; } shFx(s.w, '🛡 TAUNT', '#9fd8ff'); }
   else if (A.k === 'aim') { s.aimNext = true; shFx(s.w, '🎯 AIM', '#ffd56b'); }
   else if (A.k === 'patch') { for (const q of H.units) if (dist(q.w, s.w) < 3 * sp && q.hp > -1) { const up = q.hp <= 0, add = Math.round(q.max * .3 * sp); q.hp = Math.min(q.max, Math.max(0, q.hp) + add); if (up) q.mode = 'free'; shFx(q.w, '+' + add, '#7be08a'); } }
-  else if (A.k === 'search') { const r = shRoomAt(s.w) || 'R0'; const got = rnd() < .5 ? { meds: 1 + (rnd() < .4 ? 1 : 0) } : rnd() < .5 ? { mat: 2 + Math.floor(rnd() * 3) } : { cloth: 1, food: 2 }; if (rnd() < .25 * sp) got.ammo = 4; for (const [k, n] of Object.entries(got)) H.loot[k] = (H.loot[k] || 0) + n; shFx(s.w, '🔍 ' + Object.entries(got).map(([k, n]) => '+' + n + ' ' + (RES_NAME[k] || k)).join(' '), '#ffe9b8'); if (H.goal && RAID_GOALS[H.goal] && RAID_GOALS[H.goal].room === r && H.goal !== 'leader' && !H.zs.some((z) => z.hp > 0 && z.room === r)) shGoalDone(); }
+  else if (A.k === 'search') { const r = shRoomAt(s.w) || 'R0'; const got = rnd() < .5 ? { meds: 1 + (rnd() < .4 ? 1 : 0) } : rnd() < .5 ? { mat: 2 + Math.floor(rnd() * 3) } : { cloth: 1, food: 2 }; if (rnd() < .25 * sp) got.ammo = 4; for (const [k, n] of Object.entries(got)) H.loot[k] = (H.loot[k] || 0) + n; shFx(s.w, '🔍 ' + Object.entries(got).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n).join(' '), '#ffe9b8'); if (H.goal && RAID_GOALS[H.goal] && RAID_GOALS[H.goal].room === r && H.goal !== 'leader' && !H.zs.some((z) => z.hp > 0 && z.room === r)) shGoalDone(); }
   else if (A.k === 'breach') { const ds = H.doors.map((d, i) => ({ d, i, r: dist(shDoorW(i), s.w) })).filter((q) => !q.d.broken && q.r < 3 * sp).sort((a, b) => a.r - b.r), lk = ds.find((q) => q.d.locked && !q.d.open);
     if (lk) { shDoorOpen(lk.d, 'pick'); shFx(shDoorW(lk.i), '🔧 Breached!', '#7be08a'); } else { const sh = ds.find((q) => !q.d.open) || ds.find((q) => q.d.open && ![...H.units, ...H.zs].some((o) => o.hp > 0 && shDoorAt(shCell(o.w).x, shCell(o.w).y) === q.d)); if (!sh) { s.abT = 0; say('No door close enough.'); return false; } sh.d.open = false; sh.d.hp = Math.max(sh.d.hp, 120) * 4; shFx(shDoorW(sh.i), '🔧 Braced', '#ffe9b8'); } }
   else if (A.k === 'peek') { let n = 0; for (const [r, m] of Object.entries(H.myst || {})) { if (H.rev[r] || m.peek) continue; const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) > 8 * sp) continue; m.peek = true; n++; } for (const r of ['R1', 'A', 'C', 'B']) if (!H.rev[r]) { const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) <= 8 * sp) { (H.peekR ||= {})[r] = true; n++; } } shFx(s.w, n ? `🔦 Peeked into ${n} room${n > 1 ? 's' : ''}` : '🔦 Nothing new nearby', '#9fd8ff'); }
@@ -4544,7 +4559,7 @@ function shTick() {
   /* rooms wake when someone walks in */
   if (!H.camp) for (const z of H.zs) z.hid = z.hp > 0 && !H.rev[shRoomAt(z.w) || z.room];   /* behind a shut door: unseen */
   if (!H.camp) for (const s of live) { const r = shRoomAt(s.w); if ((r === 'A' || r === 'C') && !H.wing) H.wing = r; if (r) shReveal(r); if (r && !H.woke[r]) { H.woke[r] = H.t; if (!H.seen) H.seen = {}; if (!H.seen[r]) { H.seen[r] = 1; const D = SH_DEFS[H.dest], nm = r === 'R0' ? D.areas[0].name : r === 'R1' ? D.areas[1].name : r === 'B' ? D.areas[2].name : r === 'S' ? D.side : r === 'A' ? D.wings[0] : r === 'C' ? D.wings[1] : SH_LROOM[r]; if (r !== 'R0') say(`The squad enters ${nm}.`); } } }
-  if (H.back) { let home = 0; for (const s of live) { s.target = null; s.mode = 'walk'; if (shGo(s, H.camp ? { x: H.exit.x + (H.units.indexOf(s) % 4 - 1.5) * .5, y: H.exit.y } : shWorld(.6, 10.5 + (H.units.indexOf(s) % 3) * .4), .045, 'u')) { home++; s.mode = 'free'; } } if (home === live.length || H.t - H.backT > 1200) return shEnd(false, true); }
+  if (H.back) { let home = 0; for (const s of live) { s.target = null; s.mode = 'walk'; if (shGo(s, H.camp ? { x: H.exit.x + (H.units.indexOf(s) % 4 - 1.5) * .5, y: H.exit.y } : shWorld(.6, 10.5 + (H.units.indexOf(s) % 3) * .4), .026, 'u')) { home++; s.mode = 'free'; } } if (home === live.length || H.t - H.backT > 1200) return shEnd(false, true); }
   const zsLive = shLiveZs();
   if (!H.back) for (const s of H.units) (H.camp ? campUnitAI : shUnitAI)(s, zsLive, live);
   for (const z of zsLive) (H.camp ? campEnemyAI : shZombieAI)(z, live);
@@ -4573,21 +4588,21 @@ function shUnitAI(s, zs, live) {
   if (s.mode === 'recover') { s.moving = false; if (--s.stateTicks > 0) return; s.mode = 'free'; }
   /* player orders come first: move, then attack */
   if (s.pick != null) { const d = H.doors[s.pick]; if (!d || !d.locked || d.open || d.broken) { s.pick = null; s.pickT = 0; s.mode = 'free'; } else { const dw = shDoorW(s.pick), near = dist(s.w, s.pickAt || dw) < .5 || dist(s.w, dw) < 1.05;
-      if (!near) { s.mode = 'walk'; s.target = null; if (!shGo(s, s.pickAt || dw, .042, 'u') && !s.path) { s.pick = null; say(`${s.name} can't reach that door.`); } return; }
+      if (!near) { s.mode = 'walk'; s.target = null; if (!shGo(s, s.pickAt || dw, .024, 'u') && !s.path) { s.pick = null; say(`${s.name} can't reach that door.`); } return; }
       s.mode = 'fix'; s.moving = false; s.faceW = dw; s.pickT = (s.pickT || 0) + 1; const need = ['Mechanic', 'Scavenger', 'Engineer'].includes(s.job) ? 150 : 300; d.prog = s.pickT / need;
       if (s.pickT >= need) { shDoorOpen(d, 'pick'); d.prog = 0; shFx(dw, '🔓 Unlocked', '#7be08a'); s.pick = null; s.pickT = 0; s.mode = 'free'; } return; } }
-  if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .042, 'u')) { s.moveTo = null; s.mode = 'free'; s.holdAt = { ...s.w }; } return; }
+  if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .024, 'u')) { s.moveTo = null; s.mode = 'free'; s.holdAt = { ...s.w }; } return; }
   if (s.order && (s.order.hp <= 0)) s.order = null;
   const st = s.stance || 'attack', hurt = s.hp < s.max * .3;
-  if (st === 'back' && hurt) { const safe = live.filter((q) => q !== s).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0]; const away = zs.filter((z) => dist(z.w, s.w) < 3); if (away.length) { const e = shWorld(1, 10); s.mode = 'walk'; shGo(s, safe && !away.some((z) => dist(z.w, safe.w) < 2) ? safe.w : e, .045, 'u'); return; } }
+  if (st === 'back' && hurt) { const safe = live.filter((q) => q !== s).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0]; const away = zs.filter((z) => dist(z.w, s.w) < 3); if (away.length) { const e = shWorld(1, 10); s.mode = 'walk'; shGo(s, safe && !away.some((z) => dist(z.w, safe.w) < 2) ? safe.w : e, .026, 'u'); return; } }
   const awake = zs.filter((z) => !z.hid && (z.mode !== 'sleep' || dist(z.w, s.w) < 3));
   let t = s.order || H.order || null; if (!t && H.focus) t = awake.find((z) => z.boss) || null;
   if (!t) { let bd = st === 'hold' ? reach + .2 : 1e9; for (const z of awake) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = z; } } }
-  if (st === 'guard' && !s.order) { const ward = live.find((q) => q !== s && (q.job === 'Medic' || q.hp < q.max * .5)) || live.find((q) => q !== s); if (ward && dist(ward.w, s.w) > 1.6 && (!t || dist(t.w, ward.w) > 2.5)) { s.mode = 'walk'; shGo(s, ward.w, .042, 'u'); return; } }
+  if (st === 'guard' && !s.order) { const ward = live.find((q) => q !== s && (q.job === 'Medic' || q.hp < q.max * .5)) || live.find((q) => q !== s); if (ward && dist(ward.w, s.w) > 1.6 && (!t || dist(t.w, ward.w) > 2.5)) { s.mode = 'walk'; shGo(s, ward.w, .024, 'u'); return; } }
   s.target = t;
-  if (t) { const d0 = dist(s.w, t.w); if (d0 > reach) { if (st === 'hold' && !s.order && !H.order) { s.mode = 'free'; s.moving = false; return; } s.mode = 'chase'; shGo(s, t.w, .032, 'u'); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } return; }
+  if (t) { const d0 = dist(s.w, t.w); if (d0 > reach) { if (st === 'hold' && !s.order && !H.order) { s.mode = 'free'; s.moving = false; return; } s.mode = 'chase'; shGo(s, t.w, .02, 'u'); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } return; }
   /* nothing to fight and no orders: move on to the next room on the route (Hold stays put) */
-  if (st !== 'hold' && !H.sel.includes(s.id)) { const nx = shNextRoom(); if (nx) { const [x0, y0, w, h] = SH_ROOMS[nx], i = H.units.indexOf(s), to = shWorld(x0 + 1.5 + (i % 3) * .9, y0 + h / 2 - 1 + Math.floor(i / 3) * .9); if (dist(s.w, to) > .5) { s.mode = 'walk'; shGo(s, to, .038, 'u'); return; } } }
+  if (st !== 'hold' && !H.sel.includes(s.id)) { const nx = shNextRoom(); if (nx) { const [x0, y0, w, h] = SH_ROOMS[nx], i = H.units.indexOf(s), to = shWorld(x0 + 1.5 + (i % 3) * .9, y0 + h / 2 - 1 + Math.floor(i / 3) * .9); if (dist(s.w, to) > .5) { s.mode = 'walk'; shGo(s, to, .022, 'u'); return; } } }
   s.mode = 'free'; s.moving = false;
 }
 function shNextRoom() {   /* the default route: entrance, hall, the wing for the goal (north for the stockpile, south for the prisoners), boss room */
@@ -4878,7 +4893,7 @@ function campFall(b) { const H = S.sh; b.dead = true; b.hp = 0; SFX('hit'); if (
    A level-9 squad of eight used to walk out with about 150. What does not fit stays in the building. */
 const CAMP_CARRY = 10, campBag = (H) => CAMP_CARRY * H.units.length, campBagLoad = (H) => Object.values(H.loot).reduce((a, n) => a + n, 0);
 function campTake(b, s) { const H = S.sh; let room = campBag(H) - campBagLoad(H); const got = [];
-  for (const [k, n] of Object.entries(b.loot)) { const t = Math.min(n, room); if (t > 0) { H.loot[k] = (H.loot[k] || 0) + t; b.loot[k] = n - t; room -= t; got.push('+' + t + ' ' + (RES_NAME[k] || k)); } }
+  for (const [k, n] of Object.entries(b.loot)) { const t = Math.min(n, room); if (t > 0) { H.loot[k] = (H.loot[k] || 0) + t; b.loot[k] = n - t; room -= t; got.push((RES_ICON[k] || k) + ' +' + t); } }
   (H.items ||= []).push(...b.items); got.push(...b.items.map((k) => '🎁 ' + ITEMS[k].name)); b.items = []; const left = Object.values(b.loot).some((n) => n > 0); b.looted = !left;
   shFx(s.w, got.join('  ') || (left ? '🎒 Bags are full' : 'Nothing left'), '#ffe9b8'); if (left) say(`The squad can't carry any more (${campBagLoad(H)}/${campBag(H)}). Time to get out.`); SFX('reward'); shPanel(); }
 function campUnitAI(s, zs, live) {
@@ -4895,17 +4910,17 @@ function campUnitAI(s, zs, live) {
     s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); return; }
   if (s.mode === 'recover') { s.moving = false; if (--s.stateTicks > 0) return; s.mode = 'free'; }
   if (s.loot != null) { const b = H.blds[s.loot]; if (!b || b.looted) { s.loot = null; s.lootT = 0; } else { const near = zs.find((z) => !z.worker && dist(z.w, s.w) < 2); if (near) { s.target = near; s.mode = 'attack'; s.stateTicks = 14; return; }
-      if (campDist(s, b) > .95) { s.mode = 'walk'; s.target = null; if (!shGo(s, s.lootAt || (s.lootAt = campSpot(b, s)), .042, 'u') && !s.path && campDist(s, b) > .95) { s.loot = null; say(`${s.name} can't get to the ${b.name}.`); } return; }
+      if (campDist(s, b) > .95) { s.mode = 'walk'; s.target = null; if (!shGo(s, s.lootAt || (s.lootAt = campSpot(b, s)), .024, 'u') && !s.path && campDist(s, b) > .95) { s.loot = null; say(`${s.name} can't get to the ${b.name}.`); } return; }
       s.mode = 'fix'; s.moving = false; s.faceW = b.w; s.lootT = (s.lootT || 0) + 1; b.prog = s.lootT / 150; if (s.lootT >= 150) { campTake(b, s); b.prog = 0; s.loot = null; s.lootT = 0; s.mode = 'free'; } return; } }
-  if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .042, 'u')) { s.moveTo = null; s.mode = 'free'; } return; }
+  if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .024, 'u')) { s.moveTo = null; s.mode = 'free'; } return; }
   if (s.order && s.order.hp <= 0) s.order = null;
   const st = s.stance || 'attack', hurt = s.hp < s.max * .3;
-  if (st === 'back' && hurt && zs.some((z) => dist(z.w, s.w) < 3)) { s.mode = 'walk'; shGo(s, H.exit, .045, 'u'); return; }
+  if (st === 'back' && hurt && zs.some((z) => dist(z.w, s.w) < 3)) { s.mode = 'walk'; shGo(s, H.exit, .026, 'u'); return; }
   let t = s.order && !s.order.bld ? s.order : null;
   if (!t) { let bd = st === 'hold' ? reach + .2 : w.ranged ? Math.max(reach, 3) : 3.2; for (const z of zs) { if (z.worker && !H.alarm) continue; const d0 = dist(s.w, z.w); if (!H.alarm && d0 > 1.6) continue;   /* 3D.130 while the camp has not seen them the squad holds its fire (the riflemen used to open up on the gate guards at once, so no raid was ever quiet); it still defends itself at arm's length and attacks whoever you point at */ if (d0 < bd) { bd = d0; t = z; } } }
   if (!t && s.order && s.order.bld) t = s.order;
   s.target = t;
-  if (t) { const d0 = campDist(s, t); if (d0 > reach) { if (st === 'hold' && !s.order) { s.mode = 'free'; s.moving = false; return; } s.mode = 'chase'; if (t.bld) { if (!s.spotFor || s.spotFor !== t) { s.spotFor = t; s.spotAt = campSpot(t, s); } if (!w.ranged || d0 > reach) shGo(s, s.spotAt, .036, 'u'); } else shGo(s, t.w, .032, 'u'); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } return; }
+  if (t) { const d0 = campDist(s, t); if (d0 > reach) { if (st === 'hold' && !s.order) { s.mode = 'free'; s.moving = false; return; } s.mode = 'chase'; if (t.bld) { if (!s.spotFor || s.spotFor !== t) { s.spotFor = t; s.spotAt = campSpot(t, s); } if (!w.ranged || d0 > reach) shGo(s, s.spotAt, .022, 'u'); } else shGo(s, t.w, .02, 'u'); } else { s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...t.w }; } return; }
   s.mode = 'free'; s.moving = false; }
 function campEnemyAI(z, live) {
   const H = S.sh; if (z.stuckT > H.t) { z.moving = false; return; }
@@ -4992,7 +5007,7 @@ function showExpedition() {
     const d = EXP_DEFS[t.dest];
     $('ib').innerHTML = `<b>${d.icon} ${d.name}</b> · ${EXP_RISK[t.risk].label} risk<br><span id="expStage">${t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`}</span> · <b id="expTime">${mmss(expTripLeft(t))}</b> left<br>
       Squad: ${t.members.map((m) => `${esc(m.name)} (${m.job}, HP ${Math.ceil(m.hp)}/${m.max})`).join(', ')}<br>
-      Loot so far: ${['food', 'water', 'wood', 'stone', 'mat'].filter((k) => k !== 'wood' && k !== 'stone' || t.loot[k]).map((k) => `${t.loot[k] || 0} ${RES_NAME[k]}`).join(' · ')}<br>${t.enc ? `<div class="card encCard"><b>${EXP_ENC[t.enc.k].title}</b><div class="sm">${EXP_ENC[t.enc.k].text} Decide before the next stage, or the squad decides.</div>${encButtons(t).map((b, i) => `<button class="act${i === 0 ? ' go' : ''}" data-enc="${i}" style="width:100%;margin:4px 0 0">${b.label}</button>`).join('')}</div>` : ''}<small>${t.log.map(esc).join('<br>')}</small><br>
+      Loot so far: ${['food', 'water', 'wood', 'stone', 'mat'].filter((k) => k !== 'wood' && k !== 'stone' || t.loot[k]).map((k) => `${RES_ICON[k]} ${t.loot[k] || 0}`).join('  ')}<br>${t.enc ? `<div class="card encCard"><b>${EXP_ENC[t.enc.k].title}</b><div class="sm">${EXP_ENC[t.enc.k].text} Decide before the next stage, or the squad decides.</div>${encButtons(t).map((b, i) => `<button class="act${i === 0 ? ' go' : ''}" data-enc="${i}" style="width:100%;margin:4px 0 0">${b.label}</button>`).join('')}</div>` : ''}<small>${t.log.map(esc).join('<br>')}</small><br>
       ${t.phase === 'out' ? '<button class="act danger" id="expRecall">RECALL SQUAD</button><br><small>Recall keeps the loot from finished stages and skips the risk of the rest. Leaving mid-stage forfeits that stage’s loot. The trip keeps running while the game is closed.</small>' : '<small>The squad is heading back.</small>'}`;
     const rb = $('expRecall'); if (rb) rb.onclick = () => { if (expRecall()) showExpedition(); };
     $('ib').querySelectorAll('[data-enc]').forEach((b) => { const en = t.enc; b.onclick = () => encChoose(en, +b.dataset.enc); });
@@ -5009,7 +5024,7 @@ function showExpedition() {
     const members = ids.map((id) => S.sv.find((q) => q.id === id)).filter(Boolean), pv = expPreview(expSel.dest, expSel.risk, members), rk = EXP_RISK[expSel.risk];
     const ready = S.sv.filter(expEligible);
     const where = (`<div class="sm">Leads</div><div class="lst">${(S.leads || []).map((l) => { const v = EXP_DEFS[l.dest], on = l.id === expSel.lead; return `<div class="card" data-lead="${l.id}" style="${on ? 'border-color:var(--gold)' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp"><b>${v.name}</b> <span class="sm">${EXP_RISK[l.risk].label} risk · ${EXP_HOURS[l.risk]} h trip</span><div class="sm">${esc(l.text)} · gone in ${Math.max(1, Math.round(l.untilH - nowH()))} h</div></div>${on ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>`);
-    const lootTxt = Object.entries(d.loot || {}).map(([r, [a0, a1]]) => `${(RES_NAME[r] || r)} ${Math.round(a0 * EXP_STAGES * pv.mult)}–${Math.round(a1 * EXP_STAGES * pv.mult)}`).join(' · ');   /* 3D.41: a rough total for the whole trip */
+    const lootTxt = Object.entries(d.loot || {}).map(([r, [a0, a1]]) => `${(RES_ICON[r] || RES_NAME[r] || r)} ${Math.round(a0 * EXP_STAGES * pv.mult)}–${Math.round(a1 * EXP_STAGES * pv.mult)}`).join('  ');   /* 3D.41: a rough total for the whole trip */
     $('ib').innerHTML = (`<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${expMax()}</b><small>squad</small></span><button class="act go" id="expGo">${(SH_DEFS[expSel.dest]) ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${vehCard()}${EXP_DEFS[expSel.dest].raid ? `<div class="etLine sm">Their camp: pick which buildings to bring down and what to loot. Gear, ammo and the leader are in the middle. Get out through the gate with what you took.</div>` : ''}${(SH_DEFS[expSel.dest]) ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
       + where + `<div class="sm">Squad (1–${expMax()}, ${EXP_HOME_MIN} stay home)</div><div class="lst">${S.sv.map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>`);
     $('ib').querySelectorAll('[data-lead]').forEach((b) => { b.onclick = () => { expSel.lead = b.dataset.lead; showExpedition(); }; });
@@ -5453,12 +5468,16 @@ function showBuild() {
 function buildDetail(k) {
   const d = DEFS[k], lk = buildLock(k), have = bOf(k).length, afford = canPay(bCost(d)), size = d.w === 1 && d.h === 1 ? 'Small 1×1' : d.w * d.h === 4 ? 'Large 2×2' : 'Medium 2×1';
   const fx = [];
-  if (d.out && d.fam === 'water') fx.push(`💧 +${d.out} water / day`); if (d.out && d.fam === 'farm') fx.push(`🍖 +${d.out} food / day · 💧 −${d.waterUse}`);
-  if (d.fam === 'scrap') fx.push(`⚙ +${d.out} scrap / day`); if (d.fam === 'lumber') fx.push(`🪵 +${d.out} wood / day`); if (d.fam === 'quarry') fx.push(`🪨 +${d.out} stone / day`); if (d.cap > 1 && d.role === 'inn') fx.push(`🛏 beds for ${d.cap}`); if (d.tier) fx.push(['', '⛺ Camp tier', '🪵 Timber tier', '🪨 Stone tier'][d.tier]); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
+  /* 3D.133 owner: "+4 food / day · -2" read as one muddle, and nobody knew what upkeep was. One small table: what it makes a day, what it uses a day
+     (running cost = the scrap every building needs each midnight; unpaid buildings work at half speed). Icons, not words. */
+  const mk = [], us = []; if (d.out && d.fam === 'water') mk.push(`💧 +${d.out}`); if (d.out && d.fam === 'farm') { mk.push(`🍖 +${d.out}`); if (d.waterUse) us.push(`💧 −${d.waterUse}`); }
+  if (d.fam === 'scrap') mk.push(`⚙ +${d.out}`); if (d.fam === 'lumber') mk.push(`🪵 +${d.out}`); if (d.fam === 'quarry') mk.push(`🪨 +${d.out}`); { const u = UPKEEP[k] ?? .3; if (u > 0) us.push(`⚙ −${u.toFixed(1)}`); }
+  const perDay = `<div class="perDay"><div><small>Each day</small></div>${mk.length ? `<div><span>Makes</span><b class="good">${mk.join('  ')}</b></div>` : ''}${us.length ? `<div><span>Uses</span><b class="bad">${us.join('  ')}</b></div>` : ''}</div>`;
+  if (d.cap > 1 && d.role === 'inn') fx.push(`🛏 beds for ${d.cap}`); if (d.tier) fx.push(['', '⛺ Camp tier', '🪵 Timber tier', '🪨 Stone tier'][d.tier]); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
   if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) fx.push('👷 1 worker: ' + (STAFF_JOBS[d.fam] || []).join(' / '));
   $('ib').innerHTML = `<div class="bdetail"><div class="big">${bImg(k, 300, 140)}</div>
-    <div class="row" style="justify-content:center;gap:14px;font-size:21px"><span><b>${costShort(bCost(d))}</b></span><span>${size}</span><span class="sm">upkeep ${(UPKEEP[k] ?? .3).toFixed(1)}/day</span></div>
-    <p class="desc">${BDESC[k] || ''}</p><div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
+    <div class="row" style="justify-content:center;gap:14px;font-size:21px"><span><b>${costShort(bCost(d))}</b></span><span>${size}</span></div>
+    <p class="desc">${BDESC[k] || ''}</p>${perDay}<div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="desc sm" style="margin-top:6px">Quality ${d.q} · Appeal ${d.a}${have ? ` · you have ${have}` : ''}</div>
     ${lk ? `<p style="color:var(--bad)">🔒 Needs ${lk}</p>` : `<button class="act go" id="bdGo" style="width:70%;margin-top:10px">${afford ? 'Build' : 'Place site · still need ' + missText(bCost(d))}</button>`}</div>`;
   showPanel(d.name, showBuild);

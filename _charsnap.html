@@ -1,0 +1,22 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const K = 96, W = 220, H = 260;   // px per world unit (orthographic), canvas size
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.setClearColor(0, 0); document.body.appendChild(r.domElement); r.outputColorSpace = THREE.SRGBColorSpace;
+const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.4)); const dl = new THREE.DirectionalLight(0xfff0d8, 1.8); dl.position.set(2, 4, 3); sc.add(dl);
+const E = Math.PI / 6, DIR = new THREE.Vector3(Math.cos(E) / Math.SQRT2, Math.sin(E), Math.cos(E) / Math.SQRT2);
+const cam = new THREE.OrthographicCamera(-W / 2 / K, W / 2 / K, H / 2 / K, -H / 2 / K, .1, 100);
+const feet = new THREE.Vector3(0, 0, 0); cam.position.copy(feet).addScaledVector(DIR, 20); cam.lookAt(feet); cam.position.y += 0; 
+// shift so feet sit near the bottom: move target up
+const tgt = new THREE.Vector3(0, 0.62, 0); cam.position.copy(tgt).addScaledVector(DIR, 20); cam.lookAt(tgt);
+new GLTFLoader().load('assets/characters/ai3d_male/realtime/male_mid.glb', (g) => {
+  const o = g.scene; o.traverse((n) => { if (n.name && n.name.startsWith('weapon_')) n.visible = false; if (n.name && n.name.startsWith('armor_')) n.visible = false; });
+  sc.add(o); const mx = new THREE.AnimationMixer(o); const clip = g.animations.find((a) => a.name === 'idle') || g.animations[0]; if (clip) { mx.clipAction(clip).play(); mx.update(.3); }
+  o.rotation.y = Math.PI / 4;   // face the camera
+  o.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(o);
+  r.render(sc, cam);
+  // feet screen point
+  const p = feet.clone().project(cam); window.__feet = [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H]; window.__h = bb.max.y - bb.min.y; window.__names = g.animations.map((a) => a.name).slice(0, 12); window.__done = true;
+});
+</script></body></html>

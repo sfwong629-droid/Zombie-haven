@@ -1899,8 +1899,10 @@ const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2();
 function pickBuilding(px, py) { if (!cam) return null; _ndc.set(px / G.VW() * 2 - 1, 1 - py / G.VH() * 2); _ray.setFromCamera(_ndc, cam); let best = null, bd = Infinity;
   for (const [b, v] of bGroups) { let h; try { h = _ray.intersectObject(v.g, true); } catch (e) { h = []; } if (h.length && h[0].distance < bd) { bd = h[0].distance; best = b; } } return best; }
 function shProject(x, y, h = 1.8) { if (!G.S.sh || !G.S.sh.view) return null; _shv.set(x * T, h, y * T).project(cam); const VW = G.VW(), VH = G.VH(); return { x: (_shv.x + 1) / 2 * VW, y: (1 - _shv.y) / 2 * VH }; }
+let dprNext = 0, fastT = 0;
 function frame() {
   if (!ready) return;
+  if (dprNext) { dpr = dprNext; dprNext = 0; renderer.setPixelRatio(dpr); size = [0, 0]; }
   const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
   SWAY.uTime.value = now / 1000;
   placeCamera();
@@ -1914,7 +1916,7 @@ function frame() {
   syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
   if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
   frames++; fpsT += dt;
-  if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fps > 57 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); size = [0, 0]; } window.ZH3D.fps = fps; }
+  if (fpsT > 1) { const fps = frames / fpsT; frames = 0; fpsT = 0; fastT = fps > 57 ? fastT + 1 : 0; const nd = fps < 45 ? Math.max(1, dpr - .25) : fastT >= 4 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dprNext = nd; fastT = 0; } window.ZH3D.fps = fps; }   /* 3D.133 owner: 'a black flash every now and then'. Changing the resolution right after drawing cleared the picture for one frame, and it stepped up and down about once a second. Now it changes before the next frame is drawn, and only steps up after four good seconds */
 }
 /* 3D.100 owner: arrows you can see fly (slow enough to read as an arrow, on a shallow arc) and a muzzle flash with a quick
    tracer for guns. The game pushes each shot into G.shots at the moment it lands; this replays it as a projectile. */
