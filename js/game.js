@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.121', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.122', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -399,7 +399,7 @@ function drawCombatFocus() {   // selected fighter: line to the target, ring on 
   if (!selected || selected.kind !== 'unit') return; const s = selected.ref; if (!S.sv.includes(s) || insideBuilding(s)) return;
   const tw = TWs(), p = project(s.w.x, s.w.y), w = weaponOf(s), rg = weaponRange(w), t = s.target && s.target.hp > 0 && ['chase', 'attack', 'recover'].includes(s.mode) ? s.target : null, inR = t && dist(s.w, t.w) <= rg + .1;
   ctx.save(); if (t || isFighter(s)) { ctx.strokeStyle = t ? (inR ? 'rgba(127,211,90,.55)' : 'rgba(255,200,90,.45)') : 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(p.x, p.y, rg * tw * .707, rg * tw * .354, 0, 0, 7); ctx.stroke(); }
-  if (t) { const q = project(t.w.x, t.w.y); ctx.strokeStyle = inR ? '#7fd35a' : '#ffc85a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y - CHAR_H * tw * .5); ctx.lineTo(q.x, q.y - CHAR_H * tw * .5); ctx.stroke(); ctx.setLineDash([]); ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(q.x, q.y, .3 * tw, .13 * tw, 0, 0, 7); ctx.stroke();
+  if (t) { const q = project(t.w.x, t.w.y); ctx.strokeStyle = inR ? '#7fd35a' : '#ffc85a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y - CHAR_H * tw * .5); ctx.lineTo(q.x, q.y - CHAR_H * tw * .5); ctx.stroke(); ctx.setLineDash([]); spinArrow(q.x, q.y - CHAR_H * tw - HUD_LIFT * hudU() - 14 * hudU(), '#ff5a4a', hudU());
     stampText(inR ? 'IN RANGE' : 'CLOSING IN', q.x, q.y + .3 * tw, `${Math.round(Math.max(12, 12 * cam.z))}px 'Jersey 15', Arial`, inR ? '#bff0a0' : '#ffe0a0'); }
   ctx.restore();
 }
@@ -407,6 +407,10 @@ function drawCombatFocus() {   // selected fighter: line to the target, ring on 
    and a Dungeon Village 2 style LEVEL UP burst over the head. The 2D look keeps the old flat bars and pixel font. */
 const COZY_HUD = G3D;
 const hudU = () => Math.max(.72, Math.min(1.5, cam.z * .82)), HUD_SMALL = .8;   /* V3D.21: HP bars, damage numbers, LEVEL UP and emoji bubbles 20% smaller */
+/* 3D.122 owner: no rings anywhere: a small arrow over the head marks who is selected or targeted, and it spins */
+function spinArrow(x, y, col, sz = 1) { const t = performance.now() / 1000, c = Math.cos(t * 3.2), w = 7 * sz * Math.max(.12, Math.abs(c)), yy = y - Math.sin(t * 4) * 2.2 * sz, h = 9 * sz;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(x - w, yy - h); ctx.lineTo(x + w, yy - h); ctx.lineTo(x, yy); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); if (c < 0) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fill(); }
+  ctx.lineWidth = 1.8 * sz; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(40,26,18,.9)'; ctx.stroke(); ctx.beginPath(); ctx.moveTo(x - w * .55, yy - h + 2 * sz); ctx.lineTo(x, yy - 2.5 * sz); ctx.strokeStyle = 'rgba(255,255,255,' + (c > 0 ? .55 : .15) + ')'; ctx.lineWidth = 1.2 * sz; ctx.stroke(); ctx.restore(); }
 function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function hudText(t, x, y, font, fill, stroke, lw) { ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y); }
 function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, lv, col, w, u } */
@@ -501,7 +505,7 @@ function drawHuman(s) {
   if (s.mode === 'down' && beingCarried(s)) { if (s.bleed != null) bleedRing(s, project(s.rescuer.w.x, s.rescuer.w.y), -CHAR_H * TWs() * .62, TWs() * .45 * (facing(s.rescuer).right ? 1 : -1)); return; }   /* V2.33: drawn lying in the rescuer's cart */
   if (window.ZHChars && ZHChars.ready) { const sc = ZHChars.sheetFor(s); if (sc && !(s.mode === 'rescueCarry' && s.carrying && drawCart(s, p))) drawChar(s, sc, p, s.mode === 'work' ? null : s.eq && s.eq.weapon); }
   const tw = TWs(), top = p.y - CHAR_H * tw - 3; hitSpark(s, p);
-  if (underAttack(s)) { ctx.strokeStyle = 'rgba(255,80,60,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .3 * tw, .13 * tw, 0, 0, 7); ctx.stroke(); }
+  const hit0 = underAttack(s);
   let tagY = top - 2; const selU = selected && selected.ref === s, near = cam.z >= 1.7, fighting = ['attack', 'chase', 'recover'].includes(s.mode);   /* V3D.17: fewer markers on people */
   if (COZY_HUD ? (fighting || s.hp < s.max * .7 || selU || (near && s.hp < s.max)) : (s.hp < s.max || s.mode === 'attack' || s.mode === 'chase')) {
     if (COZY_HUD) { const u = hudU(); tagY = hpPill(s, p.x + 3 * u, top - HUD_LIFT * u, { lv: s.l || 1 }) - 3 * u; }
@@ -519,7 +523,8 @@ function drawHuman(s) {
   if (s._lvT > 0) { /* the LEVEL UP burst takes the space above the head */ }
   else if (tagT && (!COZY_HUD || selU || near || s.mode === 'goFire')) statusTag(p.x, tagY, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
   else if (ic && s.mode !== 'down' && !(COZY_HUD && (s.emo || s.bark))) bubble({ x: p.x, y: tagY - 1 }, ic);
-  if (selected && selected.ref === s) { ctx.strokeStyle = '#ffe145'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, .34 * tw, .14 * tw, 0, 0, 7); ctx.stroke(); stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
+  if ((selected && selected.ref === s) || hit0) spinArrow(p.x, tagY - 24 * hudU(), selected && selected.ref === s ? '#ffe145' : '#ff5a4a', hudU() * .9);
+  if (selected && selected.ref === s) { stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
 }
 const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .5, alpha: 1.6, dog: .55, riot: 1.08, boss: 1.6 };
 const tintCache = {};
@@ -1499,9 +1504,9 @@ function drawAlertMarks() {   // pulsing ring on the spot, red rings on nearby t
   const t = performance.now() / 1000;
   for (const a of alerts.values()) {
     if (a.dismissed || performance.now() - (a.seen || 0) > 12000) continue;   /* 3D.63 owner: 25 alerts left 25 orange rings on the map that said nothing; a ring now shows for 12 s when the alert is new or when you tap it */ const w = atOf(a); if (!w) continue; const p = project(w.x, w.y), tw = TWs(), pulse = .5 + .5 * Math.sin(t * 2.5);   /* V2.35: slow, soft pulse */
-    if (a.threats) for (const z of S.z) if (z.hp > 0 && dist(z.w, w) < 5) { const q = project(z.w.x, z.w.y); ctx.save(); ctx.strokeStyle = 'rgba(255,70,60,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(q.x, q.y, .22 * tw, .11 * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+    if (a.threats) for (const z of S.z) if (z.hp > 0 && dist(z.w, w) < 5) { const q = project(z.w.x, z.w.y); spinArrow(q.x, q.y - CHAR_H * tw - 4, '#ff5a4a', hudU() * .8); }
     const on = p.x > 20 && p.x < VW - 20 && p.y > 20 && p.y < VH - 20;
-    if (on) { ctx.save(); ctx.strokeStyle = `rgba(255,120,70,${.6 + .25 * pulse})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(p.x, p.y, (.4 + .06 * pulse) * tw, (.2 + .03 * pulse) * tw, 0, 0, 7); ctx.stroke(); ctx.restore(); continue; }
+    if (on) { spinArrow(p.x, p.y - .55 * tw, '#ff8a46', hudU()); continue; }   /* 3D.122 owner: no rings; an arrow marks the spot */
     const cx = VW / 2, cy = VH / 2, dx = p.x - cx, dy = p.y - cy, k = Math.min((VW / 2 - 30) / Math.abs(dx || 1e-6), (VH / 2 - 70) / Math.abs(dy || 1e-6)), ex = cx + dx * k, ey = cy + dy * k, ang = Math.atan2(dy, dx);
     ctx.save(); ctx.translate(ex, ey); ctx.globalAlpha = .9; ctx.fillStyle = '#d8352b'; ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, 0, 17, 0, 7); ctx.fill(); ctx.stroke(); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(15, -7); ctx.lineTo(15, 7); ctx.closePath(); ctx.fillStyle = '#fff3d6'; ctx.fill(); ctx.restore();
@@ -5066,11 +5071,11 @@ function shAct(c) { const H = S.sh, pool = () => (H.sel.length ? H.units.filter(
     for (const q of H.units) if (q.pick === dn.i && q !== who) q.pick = null; who.pick = dn.i; who.pickT = 0; who.pickAt = ok.sort((a, b) => dist(a, who.w) - dist(b, who.w))[0]; who.moveTo = null; who.order = null; shFx(dn.w, `🔒 ${who.name}: forcing the lock`, '#ffe9b8'); return; }
   const [, , dx, dy, dw, dh] = SH_DOORS[dn.i]; const busy = [...H.units, ...H.zs].some((o) => o.hp > 0 && (() => { const q = shCell(o.w); return q.x >= dx && q.x < dx + dw && q.y >= dy && q.y < dy + dh; })()); if (busy && dn.d.open) { say('Someone is standing in the doorway.'); return; } if (dn.d.open) { dn.d.open = false; dn.d.hp = 120; SFX('hit'); } else shDoorOpen(dn.d); shFx(dn.w, dn.d.open ? 'Door open' : 'Door shut', '#ffe9b8'); }
 /* 3D.119 owner: the rings were too big. Marker styles to choose from (try ?mark=disc|chevron|brackets|tag; the owner picks one) */
-const SH_MARK = (() => { try { const q = new URLSearchParams(location.search).get('mark'); return q || 'chevron'; } catch (e) { return 'chevron'; } })();
+const SH_MARK = 'chevron';   /* 3D.122 owner picked the arrow overhead (spinning); the other styles stay only for reference */
 function shMark(f, hd, col, label, wide) { const st = window.ZH_MARK || SH_MARK, t = performance.now() / 1000; ctx.save();
   if (st === 'ring') { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(f.x, f.y, 20 + (wide || 0), 10 + (wide || 0) / 2, 0, 0, 6.29); ctx.stroke(); }
   else if (st === 'disc') { const k = 1 + Math.sin(t * 5) * .08; ctx.fillStyle = col; ctx.globalAlpha = .38; ctx.beginPath(); ctx.ellipse(f.x, f.y, (11 + (wide || 0)) * k, (5.5 + (wide || 0) / 2) * k, 0, 0, 6.29); ctx.fill(); ctx.globalAlpha = .9; ctx.lineWidth = 1.5; ctx.strokeStyle = col; ctx.stroke(); }
-  else if (st === 'chevron') { const y = hd.y - 16 - Math.sin(t * 4) * 2.5; ctx.fillStyle = col; ctx.strokeStyle = 'rgba(30,20,15,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hd.x - 6, y - 7); ctx.lineTo(hd.x + 6, y - 7); ctx.lineTo(hd.x, y); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if (st === 'chevron') spinArrow(hd.x, hd.y - 12, col, 1.05);
   else if (st === 'brackets') { const h = Math.max(18, f.y - hd.y + 8), w = Math.max(12, h * .42) + (wide || 0), x0 = f.x - w, x1 = f.x + w, y0 = f.y - h, y1 = f.y + 4, L = 6; ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.beginPath();
     for (const [x, y, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) { ctx.moveTo(x, y + dy * L); ctx.lineTo(x, y); ctx.lineTo(x + dx * L, y); } ctx.stroke(); }
   else if (st === 'tag') { ctx.font = '700 11px Fredoka, sans-serif'; const tx = label || '', w = ctx.measureText(tx).width + 12, y = hd.y - 24; ctx.fillStyle = 'rgba(255,248,236,.95)'; ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(hd.x - w / 2, y - 9, w, 17, 8); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#4a3428'; ctx.textAlign = 'center'; ctx.fillText(tx, hd.x, y + 3.5); }
