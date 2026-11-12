@@ -1894,6 +1894,10 @@ function syncArenaBits(H) {   /* barricades and snares come and go */
   for (const n of (H.snares || []).filter((q) => !q.used)) { const m = new THREE.Mesh(new THREE.TorusGeometry(.22, .04, 6, 12).rotateX(Math.PI / 2), toon('#5a5f66')); m.position.set(n.w.x * T, .04, n.w.y * T); arena.bits.add(m); }
 }
 const _shv = new THREE.Vector3();
+/* 3D.129 the building under a tap: a ray from the camera through the finger against the building models (was the outline of the old 2D picture) */
+const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2();
+function pickBuilding(px, py) { if (!cam) return null; _ndc.set(px / G.VW() * 2 - 1, 1 - py / G.VH() * 2); _ray.setFromCamera(_ndc, cam); let best = null, bd = Infinity;
+  for (const [b, v] of bGroups) { let h; try { h = _ray.intersectObject(v.g, true); } catch (e) { h = []; } if (h.length && h[0].distance < bd) { bd = h[0].distance; best = b; } } return best; }
 function shProject(x, y, h = 1.8) { if (!G.S.sh || !G.S.sh.view) return null; _shv.set(x * T, h, y * T).project(cam); const VW = G.VW(), VH = G.VH(); return { x: (_shv.x + 1) / 2 * VW, y: (1 - _shv.y) / 2 * VH }; }
 function frame() {
   if (!ready) return;
@@ -2047,7 +2051,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 // 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
-window.ZH3D = { zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

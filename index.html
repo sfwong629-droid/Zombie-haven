@@ -9,7 +9,7 @@
 <style>/* 3D.125 the fonts ship with the game (it must start offline) */@font-face{font-family:'Fredoka';font-weight:500;font-style:normal;font-display:swap;src:url('assets/fonts/fredoka-latin-500-normal.woff2') format('woff2')}@font-face{font-family:'Fredoka';font-weight:600;font-style:normal;font-display:swap;src:url('assets/fonts/fredoka-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Nunito';font-weight:700;font-style:normal;font-display:swap;src:url('assets/fonts/nunito-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Nunito';font-weight:800;font-style:normal;font-display:swap;src:url('assets/fonts/nunito-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Lilita One';font-weight:400;font-style:normal;font-display:swap;src:url('assets/fonts/lilita-one-latin-400-normal.woff2') format('woff2')}</style>
 <link rel="stylesheet" href="css/cozy.css?v=3d.20">
 <link rel="stylesheet" href="css/glass.css?v=3d.20">
-<script>/* V2.56: the 3D mode uses the Cozy Apocalypse UI theme (css/cozy.css) */ (function () { try { var q = new URLSearchParams(location.search).get('3d'); var on = window.ZH_FORCE3D || q === '1' || (q !== '0' && localStorage.getItem('zh3D') === '1'); if (on) document.documentElement.classList.add('cozy', 'glass'); } catch (e) { if (window.ZH_FORCE3D) document.documentElement.classList.add('cozy', 'glass'); } })();</script>
+<script>document.documentElement.classList.add('cozy', 'glass');   /* the 3D game's UI theme (css/cozy.css, css/glass.css) */</script>
 <style>
 @font-face{font-family:'Jersey 15';src:url('assets/fonts/Jersey15-Regular.ttf') format('truetype');font-display:block}
 @font-face{font-family:'Bangers';src:url('assets/fonts/Bangers-Regular.woff2') format('woff2');font-display:swap}
@@ -179,12 +179,11 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <script src="js/iso.js?v=3d.20"></script>
 <script src="js/world.js?v=3d.20"></script>
 <script src="js/chars.js?v=3d.20"></script>
-<script src="js/procart.js?v=3d.20"></script>
 <script src="js/icons.js?v=3d.20"></script>
 <script src="js/barks.js?v=3d.20"></script>
 <script src="js/itemicons.js?v=3d.20"></script>
 <script src="js/sound.js?v=3d.20"></script>
 <script src="js/game.js?v=3d.20"></script>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }</script>
-<script>if (window.ZH_3D) { const s = document.createElement('script'); s.type = 'module'; s.src = 'js/render3d.js?v=3d.20'; document.head.appendChild(s); }</script>
+<script>{ const s = document.createElement('script'); s.type = 'module'; s.src = 'js/render3d.js?v=3d.20'; document.head.appendChild(s); }</script>
 </body></html>
