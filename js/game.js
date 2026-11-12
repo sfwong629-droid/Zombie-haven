@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.134', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.135', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1035,6 +1035,49 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const tileOf = (w) => ({ x: Math.max(0, Math.min(COLS - 1, Math.floor(w.x))), y: Math.max(0, Math.min(ROWS - 1, Math.floor(w.y))) });
 const tc = (x, y) => ({ x: x + .5, y: y + .5 });
 const rnd = () => Math.random();
+/* ======================= 3D.135 RADIO CALLS (owner: tips and news read like a monotone; make them a radio call, funny or at least interesting) =======================
+   radio(voice, text, { more, act, key }): a small card slides in above the tab bar with a named voice and one short line.
+   Tap it for the details (more = text for a card, act = a function), or let it fade. One at a time, queued (3 at most), every call goes to the event log.
+   Voices: dj = Dusk Radio (tips, level-ups, the morning show), toll = the Toll Kings (threats), green = Greenwater Commune (friendly news). */
+const RADIO_V = { dj: { name: 'Dusk Radio', who: 'DJ Moth', col: '#f2b84a' }, toll: { name: 'Toll Kings', who: 'the Collector', col: '#e8584a' }, green: { name: 'Greenwater', who: 'Sister June', col: '#7fd35a' } };
+const RADIO_L = {
+  morning: ["Good morning, survivors. Day {day}. The sky is the colour of old soup. Lovely.", "Day {day} and you're still breathing. Statistically, that's showing off.", "This is Dusk Radio, the only station left, which makes us number one. Day {day}.", "Weather for day {day}: cloudy, with a chance of teeth.",
+    "Day {day}. Reminder: zombies can't climb fences. Probably. Nobody has checked twice.", "Rise and shine. The dead got up early, so you might as well.", "Day {day} traffic report: one highway, zero cars, several pedestrians. Do not offer them a lift.", "Morning. If you can hear this, your radio works. If you can't, well.",
+    "Day {day}. Today's lucky number is however many of you are left. Keep it.", "Good morning. Breakfast is whatever didn't run away."],
+  dusk: ["Sun's going. Lock the gate, count your people, then count them again.", "Dusk Radio signing off. We're called that because this is when it gets bad.", "Night's coming. If something knocks, it is not the post.", "Dark soon. Fighters to the fence. Everyone else, pretend to be furniture.", "That's the sun done for today. Try to be here when it comes back."],
+  level: ["Word on the road: the Haven hit level {n}. Somebody out there is actually organised.", "Level {n}! I'd send a cake, but I ate it. Years ago.", "The Haven is level {n} now. Bigger town, bigger target. Congratulations, I think.", "Level {n}. At this rate you'll have a parking problem by spring.", "Level {n}. Somebody tell the zombies you've gone upmarket."],
+  trader: ["Trader on the highway, heading your way. Hide the good stuff. No, wait. Show the good stuff.", "A trader's coming. Prices are terrible, but so is everything."],
+  guest: ["Somebody's walking up your road. Two legs, normal speed. Promising.", "Visitor on the highway. Walking, not shambling. I'd open the gate."],
+  boss: ["Scouts say something big is leading tonight's crowd. Big as in 'bring friends'. 21:00.", "Bad news with a time on it: a boss comes with the horde at 21:00. Sharpen something."],
+  convoy: ["A convoy rolled into the Haven with people and supplies. Be nice. They have a truck."],
+  goal: ["Listener request:", "Free advice, worth every penny:", "If I were you, and I'm glad I'm not:", "Today's homework:"],
+  note: ["New on the dial:", "Fresh gossip:", "Heard about this one?"],
+  tip: ["Word is:", "A little bird says:", "Between you and me:"],
+  tollRev: ["You took from the Kings. The Kings collect. See you very soon."], tollBack: ["Miss us? The Toll Kings are back on the highway. The toll went up."],
+  greenRev: ["That was ours. We're coming to get it back, and we won't be bringing vegetables."], greenGift: ["Greenwater here. We left food and water at your gate. Don't thank us. Just don't raid us."],
+};
+const radioQ = []; let radioOn = null;
+const rLine = (k, v = {}) => { const L = RADIO_L[k]; return L[Math.floor(Math.random() * L.length)].replace(/\{(\w+)\}/g, (_, n) => v[n] ?? ''); };
+function radio(voice, text, o = {}) {
+  const V = RADIO_V[voice] || RADIO_V.dj; logEvent(`📻 ${V.name}: ${text}`, o.level || 'routine');
+  if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
+  radioQ.push({ voice, text, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null }); if (radioQ.length > 3) radioQ.shift(); radioNext();
+}
+function radioNext() {
+  if (radioOn || !radioQ.length) return; const w = $('world'); if (!w) return; const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c;
+  let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); }
+  const tap = c.more || c.act;
+  el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
+  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b>${esc(c.text)}</b></span>${tap ? '<span class="rcA">›</span>' : ''}`;
+  const close = () => { clearTimeout(radioNext.t); el.classList.remove('in'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
+  el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else if (c.more) showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more }); };
+  requestAnimationFrame(() => el.classList.add('in')); SFX('event');
+  radioNext.t = setTimeout(close, Math.min(11000, 4500 + c.text.length * 55));
+}
+function radioHour() {   /* the morning show (08:00) and the sign-off at dusk (19:00) */
+  if (S.hour === 8 && S.day > 1) { const t = OPTS.advisor && !S.introOff ? advisorTips()[0] : null; radio('dj', rLine('morning', { day: S.day }) + (t ? ` ${rLine('tip')} ${t.text.charAt(0).toLowerCase() + t.text.slice(1)}.` : ''), { key: 'morning', act: t && t.act ? t.act : null }); }
+  if (S.hour === 19) radio('dj', rLine('dusk'), { key: 'dusk' });
+}
 function say(t, log = false) { if (log) logEvent(t, 'important'); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
 function screenToast(t, log) { note('important', t, log ? { log } : {}); }
 function renownGain(n, why = '') { if (!isFinite(n)) n = 0; if (!isFinite(S.ren)) S.ren = 0; S.ren += n; const el = $('ren'); if (el) { el.parentElement.classList.remove('renFlash'); void el.offsetWidth; el.parentElement.classList.add('renFlash'); } note(n >= 5 ? 'important' : 'routine', `★ RENOWN +${n}${why ? ' · ' + why : ''}`); ui(); }   /* V2.34: small gains only flash the Renown wheel and go to the log */
@@ -2392,7 +2435,7 @@ function eventSchedule() {   /* called every game hour */
   if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
-  if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) note('important', '☠ Scouts: a boss leads the horde tonight at 21:00', { log: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00. Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
+  if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
@@ -2976,7 +3019,7 @@ function traderArrive() {
   const a = hwyEnd(), cx = Math.round((Wd.BUILD.x0 + Wd.BUILD.x1) / 2), cy = Math.round((Wd.BUILD.y0 + Wd.BUILD.y1) / 2), g = traderSpot(cx, cy);
   S.trader = { human: true, w: tc(a[0], a[1]), home: tc(a[0], a[1]), goal: tc(g.x, g.y), mode: 'arrive', stock: traderStock(), ex: TRADES.map(() => 0), path: null };
   S.nextTrader = S.day + (bOf('market').length ? 1 : bOf('tradepost').length ? 1 + Math.floor(rnd() * 2) : 3 + Math.floor(rnd() * 2));   /* 3D.113 the Market Square: a trader every day */   /* 3D.104 a Trading Post brings traders twice as often */
-  screenToast('🛒 A WANDERING TRADER ARRIVES'); barkSomeone('trader', {}, { pri: 1 }); say('A wandering trader is coming to the Haven until 19:00. Tap them (or Town → Trade) to buy gear, pets or research.');
+  barkSomeone('trader', {}, { pri: 1 }); radio('dj', rLine('trader'), { key: 'trader', level: 'important', act: () => { if (S.trader && S.trader.w) centerOn(S.trader.w.x, S.trader.w.y); } });
 }
 function traderTick() {
   const T = S.trader; if (!T) return; T.moving = false;
@@ -3139,7 +3182,7 @@ function comebackConvoy() {   /* Phase 1 (approved): a town down to its last few
   const got = []; for (const j of ['Farmer', rnd() < .5 ? 'Guard' : 'Scavenger']) { const v = newcomer(j, 1); if (v) { v.src = 'convoy'; got.push(`${v.name} (${j})`); } }
   S.food = keepCap(supplyCap(), S.food, 15); S.water = keepCap(supplyCap(), S.water, 15); S.mat += 6;
   showEventPopup({ title: '🚚 A CONVOY FOUND THE HAVEN', text: `A battered truck rolls up at dawn. ${got.length ? got.join(' and ') + ' climb down to stay, and they' : 'They'} unload 15 food, 15 water and some scrap.<br><br>“Heard there were people still holding out here. Don't waste it.”` });
-  note('important', '🚚 A convoy brought help', { log: `A convoy brought ${got.length} survivors, 15 food, 15 water and 6 scrap.` });
+  radio('dj', rLine('convoy'), { key: 'convoy', level: 'important', more: `The convoy brought ${got.length} survivors, 🍖 15, 💧 15 and ⚙ 6.` });
 }
 function hardshipCheck() {
   if (S.food < 1 || S.water < 1) S.hardship = (S.hardship || 0) + 1; else S.hardship = 0;
@@ -3308,7 +3351,7 @@ function visitorArrival() {
      and only then does the card ask. Until the player decides they are a guest: not in the town list, not saved, and zombies ignore them. */
   const a = hwyEnd(), hq = world.buildings.find((b) => b.type === 'hq'), g = traderSpot(hq ? hq.x + 1 : 7 + OFF, hq ? hq.y - 2 : 6 + OFF), v = mk(name, job, lv, a[0], a[1], S.sv.length);
   v.sat = 3; v.src = 'gate'; v.w = tc(a[0], a[1]); v.pv = { ...v.w }; v.home = tc(a[0], a[1]); v.goal = tc(g.x, g.y); v.mode = 'arrive'; v.path = null; v.guest = true; guest = v;
-  screenToast('🚶 SOMEONE IS WALKING IN');
+  radio('dj', rLine('guest'), { key: 'guest', act: () => { if (guest && guest.w) centerOn(guest.w.x, guest.w.y); } });
 }
 function guestAsk(v) {
   const name = v.name, job = v.job, lv = v.l; centerOn(v.w.x, v.w.y, Math.max(cam.z, 1.5));
@@ -3336,7 +3379,7 @@ const GUIDE = [
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
 ];
 const guideActive = () => { if (!S.guideV41) { S.guideV41 = 1; if ((S.guide || 0) > 2) S.guide--; } return S.stage >= 2 && (S.guide || 0) < GUIDE.length; };   /* 3D.41: 'Make It Home' (move-in) goal removed; old saves past it shift back one */
-function guideIntro() { const g = GUIDE[S.guide]; if (g) showEventPopup({ title: 'NEXT GOAL · ' + g.name.toUpperCase(), text: g.hint, gains: g.desc + ` · reward +${g.parts} scrap, +${g.parts * 2} wood, +${g.ren} Renown` }); }
+function guideIntro() { const g = GUIDE[S.guide]; if (g) radio('dj', `${rLine('goal')} ${g.desc.charAt(0).toLowerCase() + g.desc.slice(1)}. ⚙ ${g.parts}  🪵 ${g.parts * 2}  ★ ${g.ren}`, { key: 'goal', title: 'Next goal · ' + g.name, more: g.hint }); }   /* 3D.135 was a pop-up in the middle of the screen */
 function guideProgress() {
   const g = GUIDE[S.guide || 0]; if (!g || !g.done()) return;
   S.mat += g.parts; S.wood = Math.min(matCap(), (S.wood || 0) + g.parts * 2); renownGain(g.ren, g.name); SFX('reward'); banner('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); questFlash(); say(`Goal complete: ${g.name} (+${g.parts} scrap).`, true);
@@ -3541,8 +3584,8 @@ function fac(k) { S.fac = S.fac || {}; return (S.fac[k] ||= { att: k === 'green'
 const facOk = (k) => !(fac(k).goneUntil > S.day);
 function facAttText(a) { return a >= 60 ? 'Friendly' : a >= 25 ? 'Warm' : a > -25 ? 'Wary' : a > -60 ? 'Hostile' : 'At war'; }
 function factionsHtml() { return crisisCard() + `<div class="card"><b>🎯 Stronghold practice</b><div class="sm">Try the squad controls on any stronghold or faction camp. Nothing is lost.</div><button class="act" id="shPrac">Practice</button></div>` + `<div class="card"><b>Raids</b><div class="sm">Hit a faction camp with up to ${shCap(true)} people: steal their stockpile, free their prisoners or take out their leader. They will remember.</div><div class="row" style="gap:6px;flex-wrap:wrap">${['raid_toll', 'raid_green'].map((k) => `<button class="act" data-raid="${k}" ${expLocked(k) ? 'disabled' : ''} title="${esc(expLocked(k))}">${EXP_DEFS[k].icon} ${EXP_DEFS[k].name.replace('Raid: ', '')}${expLocked(k) ? ` <small>(${esc(expLocked(k))})</small>` : ''}</button>`).join('')}</div></div>` + `<div class="card"><b>Factions</b>${Object.entries(FACTIONS).map(([k, F]) => { const f = (S.fac || {})[k]; return `<div class="row" style="gap:6px;margin-top:3px"><span>${F.icon}</span><span class="sp"><b>${F.name}</b><br><small>${f && f.met ? `${facAttText(f.att)} (${Math.round(f.att)})${f.ally ? ' · ally' : ''}${f.goneUntil > S.day ? ` · beaten, regroup day ${f.goneUntil}` : ''}` : 'Not met yet'} · ${F.desc}</small></span></div>`; }).join('')}</div>`; }
-function allyDaily() { for (const k of ['toll', 'green']) { const F = (S.fac || {})[k]; if (F && F.revenge && S.day >= F.revenge) { F.revenge = 0; if (!(F.goneUntil > S.day)) { note('important', k === 'toll' ? '👑 The Toll Kings ride in for revenge!' : '🌿 Greenwater fighters come for what you took!'); spawnRaid(k); } } }   /* 3D.114 raids have consequences */
-  const g = (S.fac || {}).green; if (g && g.ally && S.day % 4 === 0) { S.food = keepCap(supplyCap(), S.food, 6); S.water = keepCap(supplyCap(), S.water, 6); note('routine', '🌿 Greenwater sent their allies 6 food and 6 water.'); } const t = (S.fac || {}).toll; if (t && t.goneUntil && t.goneUntil === S.day) { t.goneUntil = 0; t.att = -40; t.defied = 0; t.str = .6; note('important', '👑 The Toll Kings have regrouped on the highway (weaker than before).'); } }
+function allyDaily() { for (const k of ['toll', 'green']) { const F = (S.fac || {})[k]; if (F && F.revenge && S.day >= F.revenge) { F.revenge = 0; if (!(F.goneUntil > S.day)) { radio(k === 'toll' ? 'toll' : 'green', rLine(k === 'toll' ? 'tollRev' : 'greenRev'), { level: 'important' }); banner(k === 'toll' ? '👑 THE TOLL KINGS RIDE IN' : '🌿 GREENWATER FIGHTERS AT THE GATE'); spawnRaid(k); } } }   /* 3D.114 raids have consequences */
+  const g = (S.fac || {}).green; if (g && g.ally && S.day % 4 === 0) { S.food = keepCap(supplyCap(), S.food, 6); S.water = keepCap(supplyCap(), S.water, 6); radio('green', rLine('greenGift'), { key: 'gift', more: '🍖 +6 &nbsp; 💧 +6' }); } const t = (S.fac || {}).toll; if (t && t.goneUntil && t.goneUntil === S.day) { t.goneUntil = 0; t.att = -40; t.defied = 0; t.str = .6; radio('toll', rLine('tollBack'), { level: 'important', more: 'The Toll Kings have regrouped on the highway, weaker than before.' }); } }
 /* story events: one a day at most; some are chains that continue a few days later */
 const pickSv = (f = () => true) => { const c = S.sv.filter((q) => q.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(q.mode) && f(q)); return c.length ? c[Math.floor(rnd() * c.length)] : null; };
 const storyLater = (id, days) => { S.storyQ = S.storyQ || []; S.storyQ.push({ id, day: S.day + days }); };
@@ -3753,7 +3796,7 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   else { S.food = keepCap(supplyCap(), S.food, 2); S.water = keepCap(supplyCap(), S.water, 2); S.mat += 2; }
   SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl);
   showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
-  say('HAVEN LEVEL ' + S.lvl + '!', true); saveGame(); ui();
+  say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' }); saveGame(); ui();
 }
 function lvTick(ms) {   /* ms of real time; while playing the timer runs 3x faster */
   if (!S.lvUp) return; S.lvUp.left -= ms; if (S.lvUp.left <= 0) levelUpDone();
@@ -5789,6 +5832,7 @@ const introOff = () => !!S.introOff || (/[?&]test=/.test(location.search) && !wi
 function intro(key) {   /* show a Field Note once per game */
   S.intro = S.intro || {}; if (S.intro[key]) return false; const d = INTRO[key] || (key.startsWith('b:') && DEFS[key.slice(2)] && [ '🏗️', DEFS[key.slice(2)].name, BDESC[key.slice(2)] || '', 'Tap it to see how it is doing, who works there and what it needs.' ]); if (!d) return false;
   S.intro[key] = S.day || 1; if (introOff()) return true;
+  if (!key.startsWith('z:') && !key.startsWith('boss:')) { radio('dj', `${rLine('note')} ${d[1]}. ${String(d[2]).split('. ')[0].replace(/\.$/, '')}.`, { key: 'fn' + key, title: d[1], more: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Guide → Field Notes keeps every note.</div>` }); return true; }   /* 3D.135 */
   let pic = '';   /* 3D.102: a new zombie gets its picture, seen from the game's iso angle, in the middle of the card */
   if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
   showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `${pic}<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
@@ -6154,7 +6198,7 @@ function simTick() { Wd.touch();
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */
   if (tick % 60 === 40) helpTick();
-  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); radioHour(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */

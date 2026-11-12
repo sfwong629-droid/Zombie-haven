@@ -311,3 +311,17 @@ html.glass .evStage .fence { opacity: .55; filter: saturate(.5) brightness(.7); 
 .pfSeg button.on { background: rgba(255, 255, 255, .22); }
 .pfSort { flex: 0 0 auto; background: rgba(255, 255, 255, .08); padding: 8px 12px; border-radius: 12px; white-space: nowrap; }
 .jbUp { color: var(--good, #7fd35a); font-size: 20px; }
+
+/* 3D.135 radio calls */
+.radioCard { position: absolute; z-index: 12; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: min(400px, calc(100% - 24px)); transform: translate(-50%, 24px); opacity: 0; pointer-events: none; transition: transform .3s cubic-bezier(.2, .9, .3, 1.2), opacity .25s;
+  display: flex; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border: 0; border-left: 4px solid var(--rc, #f2b84a); border-radius: 16px; background: rgba(20, 26, 32, .82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: #E6ECF2; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); font: inherit; cursor: pointer; }
+.radioCard.in { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.radioCard .rcI { position: relative; flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; }
+.radioCard .rcI i { position: absolute; right: -3px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--rc, #f2b84a); animation: rcBar .7s ease-in-out infinite alternate; }
+.radioCard .rcI i:nth-child(2) { height: 6px; } .radioCard .rcI i:nth-child(3) { right: -8px; height: 11px; animation-delay: .2s; } .radioCard .rcI i:nth-child(4) { right: -13px; height: 8px; animation-delay: .4s; }
+@keyframes rcBar { from { transform: scaleY(.4); } to { transform: scaleY(1.2); } }
+.radioCard .rcT { flex: 1; min-width: 0; padding-left: 8px; } .radioCard .rcT small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rc, #f2b84a); margin-bottom: 2px; }
+.radioCard .rcT b { display: block; font-size: 15px; line-height: 1.25; font-weight: 600; }
+.radioCard .rcA { color: var(--rc, #f2b84a); font-size: 22px; }
+html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .radioCard .rcI i { animation: none; } .radioCard { transition: opacity .2s; } }
