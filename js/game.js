@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.126', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.127', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -98,10 +98,10 @@ async function loadAll() {
       let m = null; try { m = await (await fetch(`assets/buildings/${type}.json?v=${VERSION}`)).json(); } catch (e) { console.warn('grid meta unavailable for', type, e); }
       m = m || { canvas_px: [448, 560], anchor_px: [224, 536], tile_px: [192, 128] };
       SPR[type] = { img: new Image(), w: m.canvas_px[0], h: m.canvas_px[1], ax: m.anchor_px[0], ay: m.anchor_px[1], grid: true, tileW: m.tile_px[0] };
-      jobs.push(new Promise((r) => { SPR[type].img.onload = r; SPR[type].img.onerror = r; SPR[type].img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
+      if (!G3D) jobs.push(new Promise((r) => { SPR[type].img.onload = r; SPR[type].img.onerror = r; SPR[type].img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));   /* 3D.127 the 3D town never draws the old building pictures: don't ask for them */
     } else {
       const m = legacy[type] || null; SPR[type] = { img: new Image(), w: m ? m.w : 0, h: m ? m.h : 0, ax: m ? m.anchor[0] : 0, ay: m ? m.anchor[1] : 0, grid: false, fit: 1.04 };
-      jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
+      if (!G3D) jobs.push(new Promise((r) => { const s = SPR[type]; s.img.onload = () => { if (!s.w) { s.w = s.img.naturalWidth; s.h = s.img.naturalHeight; s.ax = s.w / 2; s.ay = s.h - 1; } r(); }; s.img.onerror = r; s.img.src = `assets/buildings/${type}.png?v=${VERSION}`; }));
     }
   }
   if (HD) Object.assign(B4_DEFS, HD_BUILD); if (C64) Object.assign(B4_DEFS, C64_BUILD);

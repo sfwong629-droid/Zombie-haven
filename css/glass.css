@@ -254,3 +254,28 @@ html.glass .expTop .etLine { font-size: 14px; margin: 3px 0; } html.glass .expTo
 html.glass #plaque .res.tight { gap: 5px; padding: 4px 9px 4px 6px; }
 html.glass #plaque .res.tight i .zi { width: 22px; height: 22px; }
 html.glass #plaque .res.tight b { font-size: 14px; }
+
+/* ---- 3D.127 squad controls (strongholds and raids) in the same glass as the town ---- */
+html.shView #plaque, html.shView #gauge, html.shView #alertBtn { display: none !important; }   /* the town's resources, mission, clock, renown and alerts step aside while you watch the squad */
+html.glass .shTop { top: calc(10px + env(safe-area-inset-top, 0px)); background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--edge); border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); color: var(--tx); font: 800 12.5px/1.35 var(--f); padding: 6px 12px; }
+html.glass .shTop .sm { color: var(--mu); font-weight: 700; }
+html.glass .shTop .shBoss span { color: var(--tx); } html.glass .shTop .shBoss em { background: rgba(255, 255, 255, .18); } html.glass .shTop .shBoss em b { background: var(--coralG); }
+html.glass .shBtns button, html.glass .shSel, html.glass .shList {
+  background: rgba(16, 22, 28, .5); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--edge); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); color: var(--tx); }
+html.glass .shBtns button { font: 800 13px var(--f); border-radius: 16px; padding: 10px 4px; }
+html.glass .shBtns button small { font: 700 11px var(--f); color: var(--mu); opacity: 1; }
+html.glass .shBtns button.on { background: var(--lime); color: var(--limeInk); border-color: transparent; } html.glass .shBtns button.on small { color: var(--limeInk); }
+html.glass .shBtns button:active, html.glass .shSel button:active, html.glass .shList button:active { transform: scale(.95); filter: brightness(1.15); }
+html.glass .shSel { border-radius: 16px; padding: 6px 8px; border-color: rgba(198, 255, 77, .55); }
+html.glass .shSel .nm { font: 800 13px var(--f); } html.glass .shSel .nm em, html.glass .shList .shU em { background: rgba(255, 255, 255, .18); } html.glass .shSel .nm em b, html.glass .shList .shU em b { background: #7BD389; }
+html.glass .shSel button, html.glass .shLHead button, html.glass .shList .ctl button { background: var(--gl2); border: 1px solid var(--edge); color: var(--tx); font-family: var(--f); font-weight: 800; border-radius: 12px; }
+html.glass .shSel button.crit, html.glass .shList .ctl button.crit { background: var(--lime); color: var(--limeInk); border-color: transparent; }
+html.glass .shSel button.x, html.glass .shLHead button.x { background: none; }
+html.glass .shList { background: rgba(16, 22, 28, .66); border-radius: 18px; padding: 8px 10px; }
+html.glass .shLHead b { font: 800 14px var(--f); }
+html.glass .shList .shU { border: 1px solid transparent; border-radius: 12px; } html.glass .shList .shU.sel { border-color: rgba(198, 255, 77, .6); background: rgba(198, 255, 77, .12); }
+html.glass .shList .shU .nm { font: 800 13px/1.15 var(--f); } html.glass .shList .shU .nm small { font: 700 10.5px var(--f); color: var(--mu); } html.glass .shList .shU.down .nm { color: var(--coralG); }
+html.glass .shList .ctl button.med { background: rgba(123, 211, 137, .25); } html.glass .shList .ctl button i { background: var(--lime); color: var(--limeInk); font-family: var(--f); }
+@media (max-width: 520px) { html.glass .shBtns button { font-size: 12px; padding: 10px 2px; } html.glass .shTop { font-size: 11.5px; } }

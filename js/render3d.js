@@ -1336,7 +1336,7 @@ function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture wit
    (bones matched by name, the set's bind pose), so they bend with every clip. */
 const ARMOR3D = {}, SUIT3D = { riot: '#262b35' };   // the undersuit colour: shirt, trousers and boots under the set
 function setArmor3D(a, id) {
-  const key = id && ARMOR3D[id] && a.src === MALE ? id : '';
+  const key = id && ARMOR3D[id] && (a.src === MALE || a.src === FEMALE3D) ? id : '';
   if ((a.arm3dKey || '') === key) return; if (a.arm3d) { a.arm3d.parent && a.arm3d.parent.remove(a.arm3d); a.arm3d = null; } a.arm3dKey = key; if (!key) return;
   const m = a.skin[0]; if (!m || !m.skeleton) return; const src = ARMOR3D[key], by = {}; for (const b of m.skeleton.bones) by[b.name] = b;
   const bones = src.skeleton.bones.map((b) => by[b.name]); if (bones.some((b) => !b)) return;
@@ -1345,7 +1345,7 @@ function setArmor3D(a, id) {
 }
 function setClothing(a, s) {   // 3D.28 shirt colour from the Clothing slot; 3D.31 plus skin and hair colour (v2 models only)
   const id = (s.eq && s.eq.armor) || null, lk = s.id ? look2(s) : null, sig = id + '|' + (lk ? lk.sk + '.' + lk.hr : ''); if (a.clothSig === sig || !MALE || !MALE.v2) return; a.clothSig = sig; a.clothId = id;
-  const mat = clothMaterial(a.src === FEMALE3D, id, lk, lk ? headZone(a) : null, id && ARMOR3D[id] && a.src === MALE ? SUIT3D[id] : null); for (const n of a.skin) n.material = mat; a.faces = () => mat;
+  const mat = clothMaterial(a.src === FEMALE3D, id, lk, lk ? headZone(a) : null, id && ARMOR3D[id] && (a.src === MALE || a.src === FEMALE3D) ? SUIT3D[id] : null); for (const n of a.skin) n.material = mat; a.faces = () => mat;
   setArmor3D(a, id);
 }
 function hairFor(a, style, col) {   // -> [{ g, top }] pieces in model space at the rest pose
