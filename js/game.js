@@ -4400,7 +4400,7 @@ function shUseLayout(dest) { const k = SH_LAYOF[dest] || 'hall'; if (k === SH_LK
 const SH_PACE = 1, SH_SLOW = 1;   /* owner: it felt sped up (it was running at the town's 2x/3x). 3D.117 owner: match normal speed, no slow-down: always 1x, whatever the town speed is */
 const SH_LROOM = { S: 'the side room', L1: 'a locked office', L2: 'a locked storeroom', L3: 'a locked closet', L4: 'the back room' };
 const SH_DEFS = {
-  clinic: { tough: 1.38, rec: 175, areas: [
+  clinic: { tough: 1.2,   /* the first stronghold, met with bats and a pistol: 1.38 beat a real early squad too often */ rec: 175, areas: [
     { name: 'The Lobby', spawn: [['walker', 6], ['runner', 2]] },
     { name: 'The Wards', spawn: [['walker', 6], ['runner', 2], ['bloated', 1], ['spitter', 1]] },
     { name: 'The Operating Theatre', spawn: [['walker', 3]], boss: { type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011 } } ],

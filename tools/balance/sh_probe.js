@@ -5,13 +5,14 @@
 // The bot: strongholds are left to the squad's own advance; in a camp it sends everyone at the nearest building on its list, has one person loot each
 // building that falls, uses a medkit on anyone under 30% health, and calls everyone out when the list is done, half the squad is down, or 8 minutes pass.
 const { chromium } = require('playwright'); const fs = require('fs');
-const BOT = `window.BOT = (map, lv, n, night, strat, meds, seed, plan) => { for (const k in (plan || {})) Object.assign(ZH.CAMP_PLAN[k], plan[k]);   /* ZH_PLAN='{"toll":{"tough":1.5}}' tries other camp settings */ let x = seed; Math.random = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
+const BOT = `window.BOT = (map, lv, n, night, strat, meds, seed, plan, weak) => { for (const k in (plan || {})) Object.assign(ZH.CAMP_PLAN[k], plan[k]);   /* ZH_PLAN='{"toll":{"tough":1.5}}' tries other camp settings */ let x = seed; Math.random = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
   if (ZH.S.sh) return { err: 'busy' }; ZH.S.shCoached = true; ZH.showShPractice(); const cl = (q) => { const e = document.querySelector(q); if (e) e.click(); };
   cl('[data-pm="' + map + '"]'); cl('[data-pn="' + n + '"]'); cl('[data-pl="' + lv + '"]'); cl('[data-pt="' + (night ? 1 : 0) + '"]'); cl('#prGo'); const H = ZH.S.sh; if (!H) return { err: 'no start' };
   const D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), P = ZH.CAMP_PLAN[H.raid] || {}, ni = (P.inner || []).length, nm = (P.mid || []).length;
   const ring = (b) => b.i < ni ? 'inner' : b.i < ni + nm ? 'mid' : 'outer', want = (b) => !b.fence && (strat === 'all' || (strat === 'deep' ? ring(b) === 'inner' : strat === 'mid' ? ring(b) !== 'inner' : ring(b) === 'outer')) && (Object.values(b.loot || {}).some((v) => v > 0) || (b.items || []).length);
   const kk = String(strat).split('@'); strat = kk[0]; const sneak = /^sneak/.test(strat); if (sneak) strat = strat.slice(5) || 'outer';   /* sneakouter, sneakall: first break the fence section farthest from any guard, then work the list from there */ const kh = +(kk[1] || 1), ka = +(kk[2] || kk[1] || 1); if (kh !== 1 || ka !== 1) for (const z of H.zs) { z.hp *= kh; z.max *= kh; z.atk *= ka; }   /* STRAT@hp[@atk]: a what-if multiplier on every enemy */
-  let used = 0, alarmT = null, power = H.power, guards0 = H.zs.length;
+  let power = H.power; if (weak) { const W = ['bat', 'knife', 'pistol', 'crowbar', 'bat', 'pipe', 'knife', 'bat'], I = (window.ZHG || {}).ITEMS || {}; power = 0; H.units.forEach((u, i) => { u.eq.weapon = I[W[i]] ? W[i] : 'bat'; u.eq.armor = null; power += 8 * (u.l || 1) + ((I[u.eq.weapon] || {}).atk || 0); }); }   /* ZH_WEAK=1: the gear a real early squad carries (bats, knives, a pistol; no armour) instead of the practice kit */
+  let used = 0, alarmT = null, guards0 = H.zs.length;
   for (let t = 0; t < 60 * 480 && ZH.S.sh === H; t += 20) { ZH.step(20); if (ZH.S.sh !== H) break; if (H.alarm && alarmT == null) alarmT = H.t;
     const live = H.units.filter((u) => u.hp > 0); if (!live.length) continue;
     for (const u of live) if (used < meds && u.hp < u.max * .3) { ZH.shBot.call('med:' + u.id); used++; }
@@ -37,7 +38,7 @@ const BOT = `window.BOT = (map, lv, n, night, strat, meds, seed, plan) => { for 
   for (const spec of specs) { const [map, lv, n, time, strat, meds, trials] = spec.split(':'); const pg = await b.newPage({ viewport: { width: 420, height: 860 } }); const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
     await pg.goto('http://localhost:8765/index.html?nocut=1&shtest=1&s=' + seed); await pg.waitForTimeout(3500);
     await pg.evaluate((bot) => { window.requestAnimationFrame = () => 0; document.querySelectorAll('#eventModal button').forEach((q) => q.click()); eval(bot); }, BOT);
-    for (let i = 0; i < +(trials || 10); i++) { const r = await pg.evaluate(([map, lv, n, night, strat, meds, seed, plan]) => { const r = BOT(map, lv, n, night, strat, meds, seed, plan); document.querySelectorAll('#eventModal button').forEach((q) => { if (/DONE/.test(q.textContent)) q.click(); }); return r; }, [map, +lv, +n, time === 'night', strat, +meds, seed++, JSON.parse(process.env.ZH_PLAN || '{}')]);
+    for (let i = 0; i < +(trials || 10); i++) { const r = await pg.evaluate(([map, lv, n, night, strat, meds, seed, plan, weak]) => { const r = BOT(map, lv, n, night, strat, meds, seed, plan, weak); document.querySelectorAll('#eventModal button').forEach((q) => { if (/DONE/.test(q.textContent)) q.click(); }); return r; }, [map, +lv, +n, time === 'night', strat, +meds, seed++, JSON.parse(process.env.ZH_PLAN || '{}'), !!process.env.ZH_WEAK]);
       r.err2 = errs.length; fs.writeSync(f, JSON.stringify(r) + '\n'); }
     if (errs.length) console.log(spec, 'errors', errs.slice(0, 3)); await pg.close(); }
   fs.closeSync(f); await b.close(); })();
