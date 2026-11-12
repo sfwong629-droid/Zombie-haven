@@ -1788,19 +1788,41 @@ function buildArena() {
   if (H.camp) {   /* 3D.116 a faction camp: their own town, built from the same buildings as ours */
     const P = ZH.CAMP_PLAN[H.raid] || ZH.CAMP_PLAN.toll, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), bm = {};
     const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
-    /* 3D.118 owner: the ground looks like our town: painted grass outside, packed dirt in the yard, a track out of the gate, trees around */
-    const GR = SEASON_PAL[season()].grass, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], X0 = -22, Y0 = -16, NX = H.gw + 44, NY = H.gh + 40, tcs = new Float32Array(NX * NY * 3), cc = new THREE.Color();
-    for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), e = Math.max(0, 3 - x, x - 24, 3 - y, y - 24), path = x >= 12 && x <= 15 && y > 24;
-      cc.set(e === 0 || path ? DIRT[(r * 4) | 0] : e === 1 && r < .55 ? DIRT[(r * 4) | 0] : e <= 3 && r < .3 ? '#a39150' : GR[(r * 6) | 0]); const i = ((y - Y0) * NX + (x - X0)) * 3; tcs[i] = cc.r; tcs[i + 1] = cc.g; tcs[i + 2] = cc.b; }
+    /* 3D.119 owner: "copy the same map as our town": the same painted ground material, the same grass tufts, bushes, pebbles,
+       yard clutter, pines and leafy trees, rocks, and the town's own fence pieces */
+    const GR = SEASON_PAL[season()].grass, SP = SEASON_PAL[season()], DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], X0 = -22, Y0 = -16, NX = H.gw + 44, NY = H.gh + 40, tcs = new Float32Array(NX * NY * 3), cc = new THREE.Color();
+    const ed = (x, y) => Math.max(0, 3 - x, x - 24, 3 - y, y - 24), isPath = (x, y) => x >= 12 && x <= 15 && y > 24, cell = (x, y) => (H.grid[y] && H.grid[y][x]) || '';
+    const grow = (x, y) => { const d = Math.min(x - 4, 23 - x, y - 4, 23 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3); return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55); };
+    for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), e = ed(x, y), inB = e === 0 && cell(x, y) !== 'W';
+      cc.set(inB && grow(x, y) && cell(x, y)[0] !== 'K' ? (r < .5 ? '#90a046' : '#97a44a') : inB || isPath(x, y) || (e === 1 && r < .55) ? DIRT[(r * 4) | 0] : e <= 4 && r < .4 ? '#a39150' : GR[(r * 6) | 0]);
+      const i = ((y - Y0) * NX + (x - X0)) * 3; tcs[i] = cc.r; tcs[i + 1] = cc.g; tcs[i + 2] = cc.b; }
     const corner = (x, y) => { let r = 0, gg = 0, bb = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tcs[i]; gg += tcs[i + 1]; bb += tcs[i + 2]; n++; } return [r / n, gg / n, bb / n]; };
-    const pos = [], col = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, 0, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz)); }
-    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); gg.computeVertexNormals();
-    const gm = new THREE.Mesh(gg, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad })); gm.receiveShadow = true; g.add(gm);
-    const far = new THREE.Mesh(new THREE.PlaneGeometry(160 * T, 120 * T).rotateX(-Math.PI / 2), toon(GR[2])); far.position.set((AX + 14) * T, -.03, (AY + 14) * T); g.add(far);
-    const leafM = toon(season() === 'winter' ? '#dfe8e4' : season() === 'autumn' ? '#9a7a3a' : '#4d7a3a'), trunkM = toon('#6b4a2e');
-    for (let k = 0, n = 0; k < 400 && n < 46; k++) { const x = -8 + hash(k, 3) * (H.gw + 16), y = -6 + hash(k, 7) * (H.gh + 12), e = Math.max(3 - x, x - 25, 3 - y, y - 25); if (e < 1.6 || (x > 10.5 && x < 17.5 && y > 24)) continue; n++;
-      const t = new THREE.Group(), sc = .8 + hash(k, 11) * .5; const a1 = new THREE.Mesh(pineG, leafM), a2 = new THREE.Mesh(pineTrunkG, trunkM); a1.castShadow = a2.castShadow = true; t.add(a1, a2); t.scale.setScalar(sc); t.position.set((AX + x) * T, 0, (AY + y) * T); t.rotation.y = hash(k, 13) * 6; g.add(t); }
-    for (let y = 0; y < H.gh; y++) for (let x = 0; x < H.gw; x++) { const v = H.grid[y][x]; if (v === 'W') { const hz = y === 3 || y === 24; box(hz ? 1 : .16, .75, hz ? .16 : 1, P.fence, AX + x + .5, .38, AY + y + .5); box(.2, 1, .2, '#4a3220', AX + x + .5, .5, AY + y + .5); } else if (v === 'G') box(.22, 1.4, .22, '#4a3220', AX + x + (x === 13 ? 0 : 1), .7, AY + y + .5); }
+    const pos = [], col = [], nrm = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, 0, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz)); nrm.push(0, 1, 0); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); gg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    const gm = new THREE.Mesh(gg, groundMat()); gm.receiveShadow = true; g.add(gm);
+    /* scatter, the same rules as the town (buildForest) */
+    const at = (x, y, a, b) => [(AX + x + a) * T, (AY + y + b) * T];
+    const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], pines = [], rounds = [], rocks = [];
+    for (let y = Y0 + 1; y < Y0 + NY - 1; y++) for (let x = X0 + 1; x < X0 + NX - 1; x++) { const v = cell(x, y); if (v === 'W' || v === 'G' || v[0] === 'K') continue;
+      const e = ed(x, y), inB = e === 0, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9), rg = inB && grow(x, y);
+      if (e >= 2 && !(x > 10 && x < 17 && y > 24)) { const r = hash(x * 7 + 3, y * 5 + 1); if (r < Math.min(.55, .02 + (e - 1) * .07)) { const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + q * .6) * 1.35, q]); continue; } if (r > .985) { rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; } }
+      const nt = inB ? (rg ? (h1 < .7 ? 2 : 1) : h1 < .1 ? 1 : 0) : isPath(x, y) ? 0 : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+      if (inB && !rg) { const h4 = hash(x * 41 + 7, y * 23 + 5); if (h4 < .09) planks.push([...at(x, y, .2 + .6 * h2, .2 + .6 * h3), 1.45, h1]); else if (h4 < .14) junk.push([...at(x, y, .25 + .5 * h3, .25 + .5 * h1), 1.45, h2]); else if (h4 < .175) barrels.push([...at(x, y, .3 + .4 * h1, .3 + .4 * h2), (1 + h3 * .15) * 1.45, h3]); else if (h4 < .205) tyres.push([...at(x, y, .3 + .4 * h2, .3 + .4 * h1), 1.45, h1]); else if (h4 < .26) lone.push([...at(x, y, .2 + .6 * h1, .2 + .6 * h3), 1.45, h2]); }
+      for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(x, y, .1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
+      if (!inB && h2 < .10) bushes.push([...at(x, y, .2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]);
+      if (h3 < (inB ? .3 : .12)) pebbles.push([...at(x, y, .15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]); }
+    const put = (m) => { g.add(m); return m; };
+    put(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true)); put(instD(plankG, lone, (r) => ['#8a6a44', '#9a7a52', '#7a6248'][(r * 3) | 0]));
+    put(instD(smallCrateG, junk, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true)); put(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true)); put(instD(tyreG, tyres, () => '#2e2c2a', true));
+    put(instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0])).userData.noInk = true; put(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true)); put(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0])).userData.noInk = true;
+    const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t)), PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = SP.crown, dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
+    put(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8)); put(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7)); put(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
+    put(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4)); put(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5)); put(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX)); put(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
+    put(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); put(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
+    /* the fence: the town's own wall pieces (Toll Kings a palisade, Greenwater a wooden fence), an open gateway with posts */
+    { const FP = new Parts(), ft = H.raid === 'toll' ? 'palisade' : 'wood', has = (x, y) => cell(x - AX, y - AY) === 'W';
+      for (let y = 0; y < H.gh; y++) for (let x = 0; x < H.gw; x++) if (H.grid[y][x] === 'W') wallPiece(FP, { x: AX + x, y: AY + y, type: ft, hp: 100, max: 100 }, has, (AX + x + .5) * T, (AY + y + .5) * T);
+      FP.build(g, .03); }
     for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
     scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '' }; return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
