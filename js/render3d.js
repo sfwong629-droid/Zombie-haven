@@ -986,7 +986,8 @@ const CHAR_V2 = (() => {   // #v2 turns the new survivor on and remembers it; #v
   let ls = false; try { ls = localStorage.getItem('zh_char') === 'v1'; } catch (e) {}
   return !(new URLSearchParams(location.search).get('char') === 'v1' || location.hash === '#v1' || ls); })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
 let v2Mat = null; const v2MatF = { m: null };
-let FEMALE3D = null;   // V3D.19 test: the female survivor model (only with #v2)
+let FEMALE3D = null, ZFEMALE = null;   /* 3D.124 FEMALE3D = the owner's original female survivor; ZFEMALE = the old female, kept for reskinned zombies (their skins fit its UVs) */
+let _fem0 = null;   // V3D.19 test: the female survivor model (only with #v2)
 function isFemale(s) { try { return !!(window.ZHChars && ZHChars.look(s).sex === 'f'); } catch (e) { return false; } }
 function newPerson(s) {   // a survivor's 3D actor: with #v2 women get the female model, each model keeps its own texture
   if (MALE && MALE.v2 && FEMALE3D && isFemale(s)) { const m = (v2MatF.m ||= nightLit(new THREE.MeshToonMaterial({ map: FEMALE3D.body.material.map, gradientMap: grad }), .32)); return new Actor(FEMALE3D, m, false, () => m); }
@@ -1033,7 +1034,7 @@ function zombieOwn(type) {
 const OWN_SHARE = { walker: .7 };
 function zombieV2(type, female, v, noOwn = false) {
   const own = !noOwn && Math.random() < (OWN_SHARE[type] ?? 1) && zombieOwn(type); if (own) return own;   // 3D.33: runners, brutes and bloated always wear their own model; walkers 70% (the rest a reskinned survivor for variety)
-  const src = female ? FEMALE3D : (ZMALE || MALE), tx = src && src.zTex2; if (!tx || !tx.length) return null;
+  const src = female ? (ZFEMALE || FEMALE3D) : (ZMALE || MALE), tx = src && src.zTex2; if (!tx || !tx.length) return null;
   const key = 'v2|' + type + '|' + (female ? 'f' : 'm') + v, t = ZSKIN_TINT[type] || [1, 1, 1];
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: tx[v % tx.length], color: new THREE.Color(...t), gradientMap: grad }), .2);
   return new Actor(src, m, true);
@@ -1296,7 +1297,8 @@ function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture wit
 { vec3 lin = diffuseColor.rgb, h = zhHsv(lin), sc = zhHsv(pow(max(lin, vec3(0.)), vec3(.4545)));
   float skinM = step(.03, sc.x) * step(sc.x, .115) * step(.18, sc.y) * (1. - step(.53, sc.y)) * step(.55, sc.z);
   float hairM = step(.02, sc.x) * step(sc.x, .15) * step(.5, sc.y) * (1. - step(.29, sc.z)) * max(max(step(zhZ.x, vZh.y), step(vZh.z, zhZ.y)), step(zhZ.w, abs(vZh.x - zhZ.z)));   /* not the eyes: above the brow or behind the head's middle */
-  float shirtM = ${col ? (fem ? 'step(.052, h.x) * step(h.x, .115) * step(.72, h.y) * step(.28, h.z)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)') : '0.'} * (1. - skinM);
+  ${fem ? 'float headY = step(zhZ.x - .17, vZh.y); hairM = max(hairM, step(.085, sc.x) * step(sc.x, .17) * step(.6, sc.y) * step(.55, sc.z) * headY);   /* 3D.124 her yellow hair streaks and ponytail (the same yellow as her shirt) count as hair on the head */' : 'float headY = 0.;'}
+  float shirtM = ${col ? (fem ? 'step(.052, h.x) * step(h.x, .16) * step(.72, h.y) * step(.28, h.z) * (1. - headY)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)') : '0.'} * (1. - skinM);
   vec3 o = mix(lin, min(lin * skinK, vec3(1.)), skinM);
   if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${HAIR_REF_LUM.toFixed(3)}, .55, 1.7); o = mix(o, hairT * l, hairM); }
   o = mix(o, shirt * min(1.25, h.z / ${fem ? '.72' : '.25'}), shirtM);
@@ -2019,13 +2021,14 @@ inkButton();
   toonScene(m.scene, null, CHAR_V2); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2; MALE.m3 = CHAR_V2; if (CHAR_V2) MALE.stride = STRIDE.m3;
   if (CHAR_V2) { try { const z = await load('assets/characters/ai3d_v2/survivor_v2.glb'); z.scene.traverse((o) => { if (o.isSkinnedMesh && !z.body) z.body = o; }); toonScene(z.scene, null, true); z.v2 = true; ZMALE = z; } catch (e) { console.warn('zombie base model', e); } }
-  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); FEMALE3D = f; } catch (e) { console.warn('female model', e); } }
+  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); ZFEMALE = f; } catch (e) { console.warn('old female model', e); } }
+  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_f3.glb'); f.body = null; f.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') f.body = o; }); if (!f.body) f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); f.v2 = true; f.m3 = true; f.stride = STRIDE.m3; FEMALE3D = f; } catch (e) { console.warn('female model', e); FEMALE3D = ZFEMALE; } }   /* 3D.124 the owner's original female (rigged like the original male, with finger bones) */
   if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
   if (CHAR_V2) for (const id of ['riot']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
-  if (CHAR_V2) for (const [src, k] of [[ZMALE || MALE, 'm'], [FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
+  if (CHAR_V2) for (const [src, k] of [[ZMALE || MALE, 'm'], [ZFEMALE || FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));

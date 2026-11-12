@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.123', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.124', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -281,8 +281,8 @@ const EMOJI = { Chopping: '🪓', Mining: '⛏', Salvaging: '🔧', Searching: '
 const textCache = new Map();
 function textImg(txt, font, col) {   /* V2.18: text and emoji are rasterised once and stamped (fillText was ~16% of frame time) */
   const key = txt + '|' + font + '|' + col + '|' + DPR; let c = textCache.get(key); if (c) return c;
-  const m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 4, px = parseFloat(font.match(/(\d+(\.\d+)?)px/)[1]), h = Math.ceil(px * 1.4) + 4;
-  const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR); g.font = font; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText(txt, w / 2, px * 1.1 + 2);
+  const m = document.createElement('canvas').getContext('2d'); m.font = font; const px = parseFloat(font.match(/(\d+(\.\d+)?)px/)[1]), w = Math.ceil(m.measureText(txt).width) + 4 + Math.ceil(px * .5), h = Math.ceil(px * 1.4) + 4;
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR); g.font = font; g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if (/Fredoka/.test(font)) { g.lineJoin = 'round'; g.lineWidth = Math.max(2.5, px * .24); g.strokeStyle = '#3a2a22'; g.strokeText(txt, w / 2, px * 1.1 + 2); }   /* 3D.124 owner: names, timers and counts in the game's rounded font with an ink outline (was the old pixel font) */ g.fillText(txt, w / 2, px * 1.1 + 2);
   if (textCache.size > 300) textCache.clear(); c = { cv, w, h, base: px * 1.1 + 2 }; textCache.set(key, c); return c;
 }
 function stampText(txt, x, y, font, col) { const c = textImg(txt, font, col); ctx.imageSmoothingEnabled = false; ctx.drawImage(c.cv, Math.round((x - c.w / 2) * DPR) / DPR, Math.round((y - c.base) * DPR) / DPR, c.cv.width / DPR, c.cv.height / DPR); ctx.imageSmoothingEnabled = true; }
@@ -301,7 +301,7 @@ function statusTag(x, y, txt, col) {   /* V2.25: DV2-style status plate above a 
     g.font = font; g.fillStyle = fight ? '#FFFFFF' : '#1E2328'; g.textBaseline = 'middle'; g.fillText(txt, padX + (dot ? dot + 4 * u : 0), h / 2 + .5 * u);
     c = { cv, w: w + sh * 2, h: h + sh * 2, smooth: true }; tagCache.set(key, c);
   }
-  if (!c) { const font = `${fs}px 'Jersey 15', Arial, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
+  if (!c) { const font = `600 ${Math.round((fs) * .85)}px Fredoka, Nunito, sans-serif`, m = document.createElement('canvas').getContext('2d'); m.font = font; const w = Math.ceil(m.measureText(txt).width) + 8, h = fs + 5;
     const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR); const g = cv.getContext('2d'); g.scale(DPR, DPR);
     g.fillStyle = '#1b2016e6'; g.fillRect(0, 0, w, h); g.strokeStyle = '#6e5638'; g.lineWidth = 1.5; g.strokeRect(.75, .75, w - 1.5, h - 1.5); g.font = font; g.fillStyle = '#000'; g.textAlign = 'center'; g.fillText(txt, w / 2 + 1, fs + 1.5); g.fillStyle = col; g.fillText(txt, w / 2, fs + .5);
     if (tagCache.size > 120) tagCache.clear(); c = { cv, w, h }; tagCache.set(key, c); }
@@ -385,7 +385,7 @@ function drawCart(s, p) {   /* V2.33: the rescuer pushes a hand cart with the in
   ctx.restore(); ctx.imageSmoothingEnabled = true; return true;
 }
 function bleedRing(s, p, dy = 0, dx = 0) {   /* the bleed-out timer; while carried it rides above the cart bed */
-  const tw = TWs(); p = { x: p.x + dx, y: p.y }; const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45 + dy, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); stampText(String(Math.ceil(s.bleed / 60)), p.x, cy + 5 * cam.z, `${Math.round(Math.max(13, 13 * cam.z))}px 'Jersey 15', monospace`, '#fff'); }
+  const tw = TWs(); p = { x: p.x + dx, y: p.y }; const mx = bleedMax() + (s.bleed > bleedMax() ? s.bleed - bleedMax() : 0), fr = Math.max(0, Math.min(1, s.bleed / mx)), r = 13 * cam.z, cy = p.y - CHAR_H * tw * .45 + dy, carried = beingCarried(s); ctx.lineWidth = 3 * cam.z; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.arc(p.x, cy, r, 0, 7); ctx.stroke(); ctx.strokeStyle = carried ? '#6fc3ff' : fr < .25 ? '#ff3b30' : '#ffb347'; ctx.beginPath(); ctx.arc(p.x, cy, r, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); stampText(String(Math.ceil(s.bleed / 60)), p.x, cy + 5 * cam.z, `600 ${Math.round(13 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, '#fff'); }
 /* V2.37 combat readability: hit sparks on real hits, contextual HP bars, who-attacks-whom for the selected fighter */
 function hitSpark(o, p) {
   if (!(o.hitT > 0)) return; const tw = TWs(), k = o.hitT / 9, cy = p.y - CHAR_H * tw * .55, r = (4 + 6 * (1 - k)) * cam.z;
@@ -400,7 +400,7 @@ function drawCombatFocus() {   // selected fighter: line to the target, ring on 
   const tw = TWs(), p = project(s.w.x, s.w.y), w = weaponOf(s), rg = weaponRange(w), t = s.target && s.target.hp > 0 && ['chase', 'attack', 'recover'].includes(s.mode) ? s.target : null, inR = t && dist(s.w, t.w) <= rg + .1;
   ctx.save(); if (t || isFighter(s)) { ctx.strokeStyle = t ? (inR ? 'rgba(127,211,90,.55)' : 'rgba(255,200,90,.45)') : 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(p.x, p.y, rg * tw * .707, rg * tw * .354, 0, 0, 7); ctx.stroke(); }
   if (t) { const q = project(t.w.x, t.w.y); ctx.strokeStyle = inR ? '#7fd35a' : '#ffc85a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y - CHAR_H * tw * .5); ctx.lineTo(q.x, q.y - CHAR_H * tw * .5); ctx.stroke(); ctx.setLineDash([]); spinArrow(q.x, q.y - CHAR_H * tw - HUD_LIFT * hudU() - 14 * hudU(), '#ff5a4a', hudU());
-    stampText(inR ? 'IN RANGE' : 'CLOSING IN', q.x, q.y + .3 * tw, `${Math.round(Math.max(12, 12 * cam.z))}px 'Jersey 15', Arial`, inR ? '#bff0a0' : '#ffe0a0'); }
+    stampText(inR ? 'IN RANGE' : 'CLOSING IN', q.x, q.y + .3 * tw, `600 ${Math.round(12 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, inR ? '#bff0a0' : '#ffe0a0'); }
   ctx.restore();
 }
 /* V3D.11 cozy combat HUD (3D mode): clay-pill HP bars with a white trail of recent damage, "cozy pop" numbers,
@@ -524,7 +524,7 @@ function drawHuman(s) {
   else if (tagT && (!COZY_HUD || selU || near || s.mode === 'goFire')) statusTag(p.x, tagY, tagT, s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'goFire' ? '#e8603a' : '#cfe08a');
   else if (ic && s.mode !== 'down' && !(COZY_HUD && (s.emo || s.bark))) bubble({ x: p.x, y: tagY - 1 }, ic);
   if ((selected && selected.ref === s) || hit0) spinArrow(p.x, tagY - 24 * hudU(), selected && selected.ref === s ? '#ffe145' : '#ff5a4a', hudU() * .9);
-  if (selected && selected.ref === s) { stampText(s.name, p.x, p.y + .36 * tw, `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', Arial`, '#fff0b0'); }
+  if (selected && selected.ref === s) { stampText(s.name, p.x, p.y + .36 * tw, `600 ${Math.round(15 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, '#fff0b0'); }
 }
 const ZSCALE = { bloated: 1.2, brute: 1.28, crawler: .5, alpha: 1.6, dog: .55, riot: 1.08, boss: 1.6 };
 const tintCache = {};
@@ -686,7 +686,7 @@ function drawZombie(zm) {
     const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Raider', zm.look.sex);
     if (sc) drawChar(Object.assign(zm, { eq: { weapon: zm.wpn } }), sc, p, zm.wpn);
     const top = p.y - CHAR_H * tw - 3; hitSpark(zm, p); if (COZY_HUD) hpPill(zm, p.x, top - HUD_LIFT * hudU(), { col: '#f6c445' }); else { ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 11 * cam.z, top, 22 * cam.z, 4 * cam.z); ctx.fillStyle = '#ff9a3a'; ctx.fillRect(p.x - 10 * cam.z, top + cam.z, 20 * cam.z * Math.max(0, zm.hp / zm.max), 2 * cam.z); }
-    if (zm.carried) stampText('⚙' + zm.carried, p.x, top - 4, `${Math.round(Math.max(14, 14 * cam.z))}px 'Jersey 15', monospace`, '#ffe06b');
+    if (zm.carried) stampText('⚙' + zm.carried, p.x, top - 4, `600 ${Math.round(14 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, '#ffe06b');
     return;
   }
   const top = drawZSprite(zm, p); if (top == null || zm.dead != null) return;
@@ -701,7 +701,7 @@ function drawZombie(zm) {
   if (zm.type === 'boss') {
     if (COZY_HUD) { const u = hudU(), bt = hpPill(zm, p.x, top - (HUD_LIFT + 6) * u, { col: '#e8453c', w: 70 }); hudText('BOSS', p.x, bt - 4 * u, `600 ${Math.round(14 * u)}px Fredoka, sans-serif`, '#f2c8ff', '#5a3f31', 3.5 * u); return; }
     const bt = top - 10; ctx.fillStyle = '#1a1715'; ctx.fillRect(p.x - 28 * cam.z, bt, 56 * cam.z, 7 * cam.z); ctx.fillStyle = '#c74bff'; ctx.fillRect(p.x - 27 * cam.z, bt + cam.z, 54 * cam.z * Math.max(0, zm.hp / zm.max), 5 * cam.z);
-    stampText('BOSS', p.x, bt - 3, `${Math.round(Math.max(16, 16 * cam.z))}px 'Jersey 15', monospace`, '#f2c8ff'); return;
+    stampText('BOSS', p.x, bt - 3, `600 ${Math.round(16 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, '#f2c8ff'); return;
   }
   hitSpark(zm, p); if (!engaged(zm)) return;   /* V2.37: HP bar only once it is hurt or fighting someone */
   if (COZY_HUD) { hpPill(zm, p.x, top - 3 - HUD_LIFT * hudU(), { zed: true, w: 34 }); return; }
@@ -792,7 +792,7 @@ function draw() {
     ctx.save(); ctx.beginPath(); ctx.arc(p.x, y, 12 * u, 0, 7); ctx.fillStyle = '#fff8ec'; ctx.fill(); ctx.lineWidth = 2 * u; ctx.strokeStyle = '#5a3f31'; ctx.stroke(); ctx.lineWidth = 4 * u; ctx.lineCap = 'round'; ctx.strokeStyle = '#7fbf5a'; ctx.beginPath(); ctx.arc(p.x, y, 12 * u, -Math.PI / 2, -Math.PI / 2 + c.grab * Math.PI * 2); ctx.stroke(); ctx.restore();
     const im = window.ZHIcons && ZHIcons.img && ZHIcons.img('box'); if (im && im.complete) ctx.drawImage(im, p.x - 8 * u, y - 8 * u, 16 * u, 16 * u); }
   if (COZY_HUD) { drawSites(); drawBagFx(); for (const f of floats) { if (!f.a0) { f.a0 = f.a; f.dx = Math.random() < .5 ? -1 : 1; } floatCozy(f, project(f.w.x, f.w.y)); } drawLevelUps(); }
-  else for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `${Math.round(Math.max(15, 16 * cam.z))}px 'Jersey 15', Arial`, f.col); ctx.globalAlpha = 1; }
+  else for (const f of floats) { const p = project(f.w.x, f.w.y); ctx.globalAlpha = Math.min(1, f.a / 15); stampText(f.t, p.x, p.y - CHAR_H * TWs() - 8 - (55 - f.a) * .25, `600 ${Math.round(15 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, f.col); ctx.globalAlpha = 1; }
   if (floats.length > 80) floats.splice(0, floats.length - 80);   /* a burst of numbers can't pile up */
   for (let i = floats.length - 1; i >= 0; i--) if (--floats[i].a <= 0) floats.splice(i, 1);
   if (debug) drawDebug();
@@ -939,10 +939,10 @@ function drawStaffBadge(b) {   /* V2.36 building status: producers get a ring th
     clayBadge(cx, cy, z, sl ? 'sleep' : icon, d.slot ? (b.staff ? (isWorking(b) ? '#7cc95a' : '#a9c49f') : '#f2c14e') : null, n || 0);
     ctx.restore(); return;
   } else if (d.slot) {   // staffed non-producers (medical, kitchen): the old dot
-    if (d.fam === 'medical') { const n = S.sv.filter((q) => q.mode === 'hospital' && (q.careAt === b || (!q.careAt && medSite() === b))).length; if (n) stampText(`✚${n}`, cx + 14 * z, cy + 4 * z, `bold ${Math.round(12 * z)}px 'Jersey 15', Arial`, '#ff9a9a'); }
+    if (d.fam === 'medical') { const n = S.sv.filter((q) => q.mode === 'hospital' && (q.careAt === b || (!q.careAt && medSite() === b))).length; if (n) stampText(`✚${n}`, cx + 14 * z, cy + 4 * z, `600 ${Math.round((Math.round(12 * z)) * .85)}px Fredoka, Nunito, sans-serif`, '#ff9a9a'); }
     ctx.beginPath(); ctx.arc(cx, cy, 5.5 * z, 0, 7); ctx.fillStyle = b.staff ? (isWorking(b) ? '#4fd36a' : '#2f8f48') : 'rgba(240,176,48,.9)'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#102418'; ctx.stroke();
   }
-  if (facilityRules[b.type]) { const n = S.sv.filter((q) => q.facility === b && q.mode === 'useFacility').length; if (n > 0) { const sl = isT(b, 'house') && S.sv.some((q) => q.facility === b && q.sleeping); stampText(`${sl ? '💤' : '👤'}${n}`, cx + (fi || d.slot ? -R * 1.9 : 0), cy + 4 * z, `${Math.round(11 * z)}px 'Jersey 15', Arial`, '#fff3c4'); } }
+  if (facilityRules[b.type]) { const n = S.sv.filter((q) => q.facility === b && q.mode === 'useFacility').length; if (n > 0) { const sl = isT(b, 'house') && S.sv.some((q) => q.facility === b && q.sleeping); stampText(`${sl ? '💤' : '👤'}${n}`, cx + (fi || d.slot ? -R * 1.9 : 0), cy + 4 * z, `600 ${Math.round((Math.round(11 * z)) * .85)}px Fredoka, Nunito, sans-serif`, '#fff3c4'); } }
   ctx.restore();
 }
 function selectRing(b) {
@@ -1911,7 +1911,7 @@ function acquireEnemy(s) {   // V2.12: only fighters go looking for a fight; the
   const cfg = jobAI[s.job] || jobAI.Civilian, rng = (S.alert > 0 && (s.job === 'Guard' || s.job === 'Police Officer') ? 9 : cfg.aggro) * (policy() === 'defend' ? 1.4 : policy() === 'produce' ? .8 : 1) * traitRange(s) * (atPost(s) ? 1.25 : 1);
   let best = null, bs = 1e9;
   for (const z of S.z) {
-    if (z.hp <= 0 || z.mode === 'appear' || z.zoo || z.mode === 'zleave') continue; const d = dist(s.w, z.w); if (!z.human && !nearTown(z.w) && !(z.target && S.sv.includes(z.target) && d < 3)) continue;   /* 3D.64: they hold the town; zombies out past the edge or walking away are left alone */
+    if (z.hp <= 0 || z.mode === 'appear' || z.zoo || z.mode === 'zleave') continue; if (s.skipZ && s.skipZ.z === z && s.skipZ.t > tick && !(z.target === s && dist(s.w, z.w) < 1.5)) continue; const d = dist(s.w, z.w); if (!z.human && !nearTown(z.w) && !(z.target && S.sv.includes(z.target) && d < 3)) continue;   /* 3D.64: they hold the town; zombies out past the edge or walking away are left alone */
     const onPerson = z.target && z.target !== s && z.target.job !== undefined && ['zchase', 'zattack', 'zrecover'].includes(z.mode);
     const sneaking = z.human && z.mode === 'rsneak' && !z.carried && !(S.alert > 0);
     if (sneaking && d > (2.5 + (stat(s, 'per') - 5) * .15 + traitSpot(s) + (atPost(s) ? 1.5 : 0)) * (s.job === 'Police Officer' ? 2 : 1)) continue;   /* 3D.67: Police spot sneaking raiders twice as far */   /* raiders sneaking in are hard to spot */
@@ -2412,7 +2412,7 @@ function ai(s) {
     if (!s.target || s.target.hp <= 0) { enterPost(s); return; }
     if (retreatCheck(s)) return;
     { const t = s.target, tt = tileOf(t.w);   /* 3D.64 owner: no chasing a zombie that is leaving, or out past the edge of town */
-      if (t.mode === 'zleave' || (s.mode === 'chase' && !t.human && !nearTown(t.w) && dist(s.w, t.w) > 1.5 && !(t.target && S.sv.includes(t.target)))) { s.target = null; s.why = 'Let it go'; enterPost(s); return; } }
+      if (t.mode === 'zleave' || (s.mode === 'chase' && !t.human && !nearTown(t.w) && dist(s.w, t.w) > 1.5 && !(t.target && S.sv.includes(t.target)))) { s.skipZ = { z: t, t: tick + 600 }; s.target = null; s.why = 'Let it go'; enterPost(s); return; } }
     if (tick % 30 === s.i % 30 && !(s.target.mode === 'zattack' && s.target.target && S.sv.includes(s.target.target))) {   /* 3D.64 owner: break off to save someone being eaten close by */
       const z2 = S.z.filter((z) => z.hp > 0 && !z.human && z !== s.target && z.mode === 'zattack' && z.target && z.target !== s && S.sv.includes(z.target) && dist(z.w, s.w) < 4).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0];
       if (z2) { s.target = z2; s.mode = 'chase'; s.path = null; s.comboQ = 0; s.why = 'Helping ' + z2.target.name; if (rnd() < .4) emote(s, '❗', 60, true); return; } }
@@ -2423,7 +2423,7 @@ function ai(s) {
       if (mates.length > 1) { const t = s.target.w, f = mates[0] === s ? mates[1] : mates[0], base = Math.atan2(f.w.y - t.y, f.w.x - t.x), k = mates.indexOf(s), n = mates.length, a = base + (k * 2 * Math.PI) / n, rr = Math.max(.35, Math.min(rng * .8, .6));
         const slot = { x: t.x + Math.cos(a) * rr, y: t.y + Math.sin(a) * rr }, bx = s.w.x, by = s.w.y; moveSlide(s, slot, CHASE); s.moving = true;
         if (Math.hypot(s.w.x - bx, s.w.y - by) > CHASE * TUNE.move * .2) return; }
-      const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.target = null; enterPost(s); } } else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
+      const r = followPath(s, s.target.w, CHASE); if (r === 'fail') { s.skipZ = { z: s.target, t: tick + 600 }; s.target = null; s.why = "Can't get to it"; enterPost(s); } }   /* 3D.124 owner's video: a zombie behind the fence was picked, dropped and picked again every second ('Fighting' flashing) */ else { s.moving = false; s.mode = 'attack'; s.path = null; s.stateTicks = Math.round((32 + s.i * 8) * (weaponOf(s).rate || 1)); } return; }
     if (s.mode === 'attack' && dist(s.w, s.target.w) > rangeOf(s) + (weaponOf(s).ranged ? .6 : .2)) { s.mode = 'chase'; return; }   /* 3D.64 owner: melee swings landed from about a tile away (reach + .6); now reach + .2 */   /* target slipped out of reach: follow, don't swing at air */
     if ((s.mode === 'attack' || s.mode === 'recover') && weaponOf(s).ranged) {   /* V3D.14: shooters step back from a zombie that gets in close (3D.64: between shots too) */
       const near = S.z.find((z) => z.hp > 0 && !z.human && z.target === s && dist(z.w, s.w) < .75);
@@ -3297,7 +3297,7 @@ function drawTrader() {
   const T = S.trader, p = project(T.w.x, T.w.y); if (!T.look) T.look = { sex: 'm', skin: 1, hair: 5 }; T.job = 'Trader';
   if (G3D) { const u = hudU(), y = p.y - CHAR_H * TWs() * 1.05; if (T.mode === 'stay') bubble({ x: p.x, y: y - 6 * u }, '🛒'); return; }   /* V3D.17: the 3D renderer draws the trader */
   const sc = window.ZHChars && ZHChars.ready && ZHChars.sheet('Trader', 'm'); if (sc) drawChar(T, sc, p, null);
-  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); stampText('TRADER', p.x, p.y + .36 * TWs(), `${Math.round(Math.max(15, 15 * cam.z))}px 'Jersey 15', monospace`, '#9fffe0');
+  const top = p.y - CHAR_H * TWs() - 3; bubble({ x: p.x, y: top - 3 }, '🛒'); stampText('TRADER', p.x, p.y + .36 * TWs(), `600 ${Math.round(15 * .95 * hudU())}px Fredoka, Nunito, sans-serif`, '#9fffe0');
 }
 function hitTrader(px, py) { const T = S.trader; if (!T) return false; const p = project(T.w.x, T.w.y), d = Math.hypot(px - p.x, py - (p.y - CHAR_H * TWs() * .5)); return d < Math.max(24, .45 * TWs()); }
 function drawFire(b) {   /* pixel flames on a burning building, smoke over a burnt one */
