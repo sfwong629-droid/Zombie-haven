@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.135', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.136', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1043,9 +1043,15 @@ const RADIO_V = { dj: { name: 'Dusk Radio', who: 'DJ Moth', col: '#f2b84a' }, to
 const RADIO_L = {
   morning: ["Good morning, survivors. Day {day}. The sky is the colour of old soup. Lovely.", "Day {day} and you're still breathing. Statistically, that's showing off.", "This is Dusk Radio, the only station left, which makes us number one. Day {day}.", "Weather for day {day}: cloudy, with a chance of teeth.",
     "Day {day}. Reminder: zombies can't climb fences. Probably. Nobody has checked twice.", "Rise and shine. The dead got up early, so you might as well.", "Day {day} traffic report: one highway, zero cars, several pedestrians. Do not offer them a lift.", "Morning. If you can hear this, your radio works. If you can't, well.",
-    "Day {day}. Today's lucky number is however many of you are left. Keep it.", "Good morning. Breakfast is whatever didn't run away."],
-  dusk: ["Sun's going. Lock the gate, count your people, then count them again.", "Dusk Radio signing off. We're called that because this is when it gets bad.", "Night's coming. If something knocks, it is not the post.", "Dark soon. Fighters to the fence. Everyone else, pretend to be furniture.", "That's the sun done for today. Try to be here when it comes back."],
-  level: ["Word on the road: the Haven hit level {n}. Somebody out there is actually organised.", "Level {n}! I'd send a cake, but I ate it. Years ago.", "The Haven is level {n} now. Bigger town, bigger target. Congratulations, I think.", "Level {n}. At this rate you'll have a parking problem by spring.", "Level {n}. Somebody tell the zombies you've gone upmarket."],
+    "Day {day}. Today's lucky number is however many of you are left. Keep it.", "Good morning. Breakfast is whatever didn't run away.",
+    "Day {day}. Horoscope for everyone: avoid tall, quiet strangers who drool.", "Morning. Coffee ran out years ago. We are all just like this now.", "Day {day}. Dusk Radio's listener survey is in: both of you love the show.", "Up you get. That fence won't stare nervously at itself.",
+    "Day {day}. Property values in your area are, frankly, incredible. No neighbours.", "Good morning. Today's word is 'perimeter'. Use it in a sentence. Then build one.", "Day {day}. Somebody out there is having a worse morning, and it's chewing on your gate.", "Morning news: still the apocalypse. Sport: running. Weather: outside.",
+    "Day {day}. Fun fact: zombies never sleep in. Be more like... no, don't.", "Rise and shine. If the rooster's quiet, check on the rooster.", "Day {day}. This broadcast is brought to you by scrap. Scrap: it's what everything is made of now.", "Good morning. Check your boots for spiders and your yard for uncles.",
+    "Day {day}. I had a dream the phones worked. It was mostly spam.", "Morning. Hydrate, stretch, and try not to get bitten. In that order."],
+  dusk: ["Sun's going. Lock the gate, count your people, then count them again.", "Dusk Radio signing off. We're called that because this is when it gets bad.", "Night's coming. If something knocks, it is not the post.", "Dark soon. Fighters to the fence. Everyone else, pretend to be furniture.", "That's the sun done for today. Try to be here when it comes back.",
+    "Evening. Tonight's film is 'Things At The Fence'. It's a long one.", "Sun's clocking off. The night shift is hungrier and has worse manners.", "Getting dark. Now's a bad time to remember you left the gate open.", "Bedtime story: once upon a time everyone stayed inside. The end.",
+    "Dusk. If you've got a favourite weapon, go and stand near it."],
+  level: ["Word on the road: the Haven hit level {n}. Somebody out there is actually organised.", "Level {n}! I'd send a cake, but I ate it. Years ago.", "The Haven is level {n} now. Bigger town, bigger target. Congratulations, I think.", "Level {n}. At this rate you'll have a parking problem by spring.", "Level {n}. Somebody tell the zombies you've gone upmarket.", "Level {n}! That's practically a town. Next you'll want a mayor, and then you'll be sorry.", "Hearing good things about the Haven. Level {n}. Do you do tours?", "Level {n}. The zombies have noticed too. They're your biggest fans."],
   trader: ["Trader on the highway, heading your way. Hide the good stuff. No, wait. Show the good stuff.", "A trader's coming. Prices are terrible, but so is everything."],
   guest: ["Somebody's walking up your road. Two legs, normal speed. Promising.", "Visitor on the highway. Walking, not shambling. I'd open the gate."],
   boss: ["Scouts say something big is leading tonight's crowd. Big as in 'bring friends'. 21:00.", "Bad news with a time on it: a boss comes with the horde at 21:00. Sharpen something."],
