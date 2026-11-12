@@ -1400,6 +1400,7 @@ function personAnim(a, s, dt) {
   if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
   const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
   if (anim === 'collapse') { a.play('collapse', true); return; }
+  if (s.mode === 'greet' && a.acts.wave && !a.isMov()) { a.attacking = false; a.setWeapon(null); a.play('wave'); return; }   /* 3D.134 the newcomer at the edge of town: the real wave */
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }
   if (s.para > 0 && a.acts.grabbed) { a.attacking = false; a.play('grabbed'); return; }   /* 3D.107 hooked by a Lasher: struggles, breaks free */
   if (s.reloadT > 0 && hold === 'gun' && !a.isMov() && a.acts.gun_reload) { a.attacking = false; a.play('gun_reload'); return; }   /* 3D.107 the real rifle reload */   /* 3D.30: pushing the cart wins over the carry clip */
@@ -1463,7 +1464,7 @@ function makeCart() {   // V3D.17 rescue cart: a wooden barrow on two wheels wit
 }
 function syncPeople(dt, vis) {
   const seen = new Set();
-  for (const s of (G.S.sh ? G.S.sv.concat(G.S.sh.units) : G.S.sv)) {   /* 3D.108 the stronghold squad too */
+  for (const s of (G.S.sh ? G.S.sv.concat(G.S.sh.units) : G.guest ? G.S.sv.concat([G.guest]) : G.S.sv)) {   /* 3D.108 the stronghold squad too; 3D.134 the newcomer walking in */
     seen.add(s); let a = people.get(s);
     if (!a) { a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
     if (a.job !== s.job) { a.dispose(); a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }

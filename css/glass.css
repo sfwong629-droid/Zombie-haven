@@ -290,3 +290,24 @@ html.glass .shList .ctl button.med { background: rgba(123, 211, 137, .25); } htm
 .perDay { display: grid; gap: 4px; margin: 6px auto 8px; max-width: 260px; padding: 8px 12px; border-radius: 14px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .16); font: 700 14px Manrope, system-ui, sans-serif; }
 .perDay > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; } .perDay small { opacity: .7; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 .perDay .good { color: #9fe08a; } .perDay .bad { color: #ffb0a0; } .perDay b { white-space: pre; font-size: 16px; }
+
+/* 3D.134 newcomer: a small card under the real scene (they are standing on the map, waving) */
+#eventModal.live { background: none !important; pointer-events: none; }
+html.glass .evBox.liveCard { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); top: auto; transform: translateX(-50%); width: min(440px, calc(100vw - 24px)); display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .45); pointer-events: auto; }
+.liveCard .lcFace { width: 54px; height: 72px; object-fit: contain; grid-row: 1; }
+.liveCard .lcTxt { text-align: left; } .liveCard .evLine { margin: 0 0 4px; font-size: 17px; } .liveCard .evChips { justify-content: flex-start; margin: 0; }
+.liveCard .lcBtns { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .liveCard .lcBtns button { margin: 0; }
+/* 3D.134 event cards: the scene behind the figures matches the map (dusk sky, olive ground), not the old cartoon clouds */
+html.glass .evStage { background: linear-gradient(#27323a, #55604a 62%); border: 0; }
+html.glass .evStage .cloud { display: none; }
+html.glass .evStage .hills { background: radial-gradient(ellipse 30% 60% at 20% 100%, #3d4a2e 98%, transparent), radial-gradient(ellipse 34% 75% at 62% 100%, #46532f 98%, transparent), radial-gradient(ellipse 24% 50% at 92% 100%, #3d4a2e 98%, transparent); }
+html.glass .evStage .ground { background: linear-gradient(#6b6a45, #58573a); border-top: 0; }
+html.glass .evStage .fence { opacity: .55; filter: saturate(.5) brightness(.7); }
+
+/* 3D.134 filter + sort bar on every list of people */
+.pfBar { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; }
+.pfSeg { display: flex; flex: 1; background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 3px; gap: 2px; }
+.pfSeg button, .pfSort { flex: 1; border: 0; background: none; color: var(--tx, #E6ECF2); font: 600 15px/1 inherit; padding: 8px 4px; border-radius: 9px; cursor: pointer; min-height: 36px; }
+.pfSeg button.on { background: rgba(255, 255, 255, .22); }
+.pfSort { flex: 0 0 auto; background: rgba(255, 255, 255, .08); padding: 8px 12px; border-radius: 12px; white-space: nowrap; }
+.jbUp { color: var(--good, #7fd35a); font-size: 20px; }

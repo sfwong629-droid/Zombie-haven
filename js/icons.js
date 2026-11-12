@@ -89,6 +89,17 @@
     radio: `<path class="l" sw="2.6" d="M9 11.5L22.5 4.5"/><rect fill="N" x="4" y="11.5" width="24" height="15.5" rx="2.5"/><circle fill="W" cx="11" cy="19.2" r="4.2"/><path class="l" sw="2" d="M18 16.5h6M18 20.5h6M18 24h4"/>`,
     shop: `<path class="l" sw="2.6" d="M3 5h4l3 15"/><path fill="Y" d="M8 8.5h20l-2.5 10H10z"/><circle fill="K" cx="12" cy="25.5" r="2.4"/><circle fill="K" cx="23" cy="25.5" r="2.4"/><path class="l" sw="2.2" d="M10 20.5h15"/>`,
     meal: `<path fill="O" d="M4.5 16.5h23a11.5 9 0 0 1-23 0z"/><path class="l" sw="1.8" d="M12 12.5c0-2.2 2-2.2 2-4.4M17.5 12.5c0-2.2 2-2.2 2-4.4"/><path class="h" d="M8.5 19.5a7 5 0 0 0 4 4"/>`,
+    /* 3D.134 style check (owner): the emoji that still showed as phone emoji get a sticker of their own */
+    ammo: `<path fill="Y" d="M12 13c0-5 1.8-8.5 4-9.5 2.2 1 4 4.5 4 9.5v11.5h-8z"/><rect fill="N" x="10.5" y="24" width="11" height="4.5" rx="1"/><path class="l" sw="1.6" d="M12 13.5h8"/><path class="h" d="M14.3 9.5v9"/>`,
+    bandage: `<rect fill="T" x="3" y="11" width="26" height="10" rx="5" transform="rotate(-35 16 16)"/><rect fill="W" x="11.5" y="11" width="9" height="10" transform="rotate(-35 16 16)"/>`,
+    crown: `<path fill="Y" d="M4.5 10.5l5.5 6 6-9 6 9 5.5-6-2 14h-19z"/><circle fill="R" cx="16" cy="17" r="1.9"/><path class="l" sw="1.8" d="M7 21.5h18"/>`,
+    leaf: `<path fill="G" d="M27 4.5c1 12-4 21-15 21-3.5 0-6-2-6-5.5C6 11 14 5 27 4.5z"/><path class="l" sw="2" d="M5 28c3-7 8.5-12.5 16-17"/>`,
+    target: `<circle fill="W" cx="16" cy="16" r="12"/><circle fill="R" cx="16" cy="16" r="7.6"/><circle fill="W" cx="16" cy="16" r="3.2"/>`,
+    bomb: `<circle fill="D" cx="14" cy="19" r="9.5"/><rect fill="S" x="17.5" y="7" width="5" height="5" rx="1" transform="rotate(35 20 9.5)"/><path class="l" sw="2" d="M22 7.5c1.5-3 4-3.5 6-2.5"/><path class="h" d="M9.5 16c.6-2 2-3.3 3.8-3.8"/>`,
+    tree: `<rect fill="N" x="13.5" y="19" width="5" height="9.5" rx="1"/><path fill="G" d="M16 3l9.5 12h-5l5.5 7h-20l5.5-7h-5z"/>`,
+    bell: `<path fill="Y" d="M16 4.5c5 0 8 3.6 8 8.5v6l2.5 4h-21L8 19v-6c0-4.9 3-8.5 8-8.5z"/><circle fill="N" cx="16" cy="26" r="2.3"/>`,
+    truck: `<rect fill="O" x="3" y="9" width="15" height="13"/><path fill="S" d="M18 13h6l4.5 5v4H18z"/><circle fill="D" cx="9" cy="23.5" r="3.3"/><circle fill="D" cx="23" cy="23.5" r="3.3"/>`,
+    boot: `<path fill="N" d="M10 4.5h8v12l8.5 4.5c1.5.8 2 2 2 3.5V27H10z"/><path class="l" sw="2" d="M10 23h18.5"/>`,
     pill: `<rect fill="W" x="4.5" y="10.8" width="23" height="10.4" rx="5.2" transform="rotate(-40 16 16)"/><path fill="R" d="M16 10.8h-6.3a5.2 5.2 0 0 0 0 10.4H16z" transform="rotate(-40 16 16)"/>`,
     medic: `<rect fill="W" x="5" y="5" width="22" height="22" rx="5"/><path fill="R" d="M13.3 9h5.4v4.3H23v5.4h-4.3V23h-5.4v-4.3H9v-5.4h4.3z"/>`,
     bed: `<path class="l" sw="2.8" d="M4 24V9.5M28 24v-7"/><rect fill="B" x="4" y="16.5" width="24" height="5.5"/><rect fill="W" x="6" y="12" width="7.5" height="4.5" rx="2"/>`,
@@ -166,9 +177,13 @@
     '🛒': 'shop', '💪': 'strong', '🎶': 'music', '🌱': 'sprout', '❓': 'question', '❔': 'question', '🚪': 'door', '⏸': 'pause', '💬': 'chat', '💭': 'chat', '⏰': 'clock', '🗺️': 'map', '🗺': 'map',
     '📣': 'alarm', '📢': 'alarm', '🩸': 'blood', '⛺': 'tent', '🏕': 'tent', '🏰': 'fort', '🔊': 'sound', '🔉': 'soundLow', '🔇': 'soundOff', '⌖': 'locate',
     '😊': 'happy', '🙂': 'happy', '😄': 'happy', '😌': 'happy', '👍': 'happy', '🙏': 'happy', '👌': 'happy', '😂': 'laugh', '😅': 'laugh', '😤': 'angry', '😠': 'angry', '😰': 'scared', '😱': 'scared', '😨': 'scared', '🆘': 'bang',
+    '🔸': 'ammo', '🩹': 'bandage', '👑': 'crown', '🌿': 'leaf', '🍂': 'leaf', '🍄': 'leaf', '🌾': 'sprout', '🎯': 'target', '💣': 'bomb', '🧨': 'bomb', '🌳': 'tree', '🌲': 'tree', '🔔': 'bell', '🛎': 'bell',
+    '🚚': 'truck', '🚗': 'truck', '🚙': 'truck', '🛻': 'truck', '🚐': 'truck', '🚌': 'truck', '🥾': 'boot', '👣': 'boot', '🏃': 'boot', '🚶': 'boot', '🏗': 'build', '⬆': 'upgrade', '❗': 'warn', '🔺': 'warn', '🌅': 'sun', '📅': 'clock', '🗓': 'clock',
+    '🧺': 'box', '🪖': 'shield', '⛑': 'shield', '🦺': 'shield', '📓': 'guide', '🧯': 'fire', '🍳': 'meal', '🔫': 'fight', '🗡': 'fight', '🏭': 'town', '🏛': 'town', '🏙': 'town', '💗': 'heart', '🧬': 'research', '📍': 'locate',
+    '🐈': 'pet', '⚕': 'medic', '🎓': 'train', '⛓': 'lock', '🌊': 'water', '🏁': 'flag', '🤝': 'people', '🙋': 'person', '👮': 'person', '😵': 'hurt', '😖': 'hurt', '🤢': 'sick', '🤮': 'sick',
     '😢': 'sad', '😟': 'sad', '😞': 'sad', '😩': 'sad', '🥱': 'tired', '😴': 'tired', '😋': 'yum', '😎': 'cool', '😣': 'hurt', '🫂': 'love', '💥': 'bang' };
   /* DOM: swap emoji in UI text for icons. Faces stay as text in the DOM (survivor cards); canvas emotes use the mood icons. */
-  const DOM_SKIP = new Set(['😊', '🙂', '😄', '😌', '👍', '🙏', '👌', '😂', '😅', '😤', '😠', '😰', '😱', '😨', '🆘', '😢', '😟', '😞', '😩', '🥱', '😴', '😋', '😎', '😣', '🫂', '💥']);
+  const DOM_SKIP = new Set(['😵', '😖', '🤢', '🤮', '😊', '🙂', '😄', '😌', '👍', '🙏', '👌', '😂', '😅', '😤', '😠', '😰', '😱', '😨', '🆘', '😢', '😟', '😞', '😩', '🥱', '😴', '😋', '😎', '😣', '🫂', '💥']);
   const esc = (e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const RE = new RegExp('(' + Object.keys(EMOJI).filter((e) => !DOM_SKIP.has(e)).sort((a, b) => b.length - a.length).map(esc).join('|') + ')\\uFE0F?', 'g');
   const SPLIT = new RegExp('(' + Object.keys(EMOJI).sort((a, b) => b.length - a.length).map(esc).join('|') + ')\\uFE0F?', 'g');
@@ -181,6 +196,8 @@
       if (last < v.length) f.appendChild(document.createTextNode(v.slice(last))); t.parentNode.replaceChild(f, t); }
   }
   function watch(ids) { for (const id of ids) { const el = document.getElementById(id); if (!el) continue; swap(el); new MutationObserver(() => swap(el)).observe(el, { childList: true, subtree: true, characterData: true }); } }
-  const api = { svg, img, standalone, EMOJI, swap, watch, split, names: Object.keys(P), PAL, INK };
+  /* 3D.134 one watcher for the whole page: any text that lands anywhere in the DOM gets its emoji swapped (the squad bar, coach cards and toasts used to be missed) */
+  function watchAll() { swap(document.body); new MutationObserver((ms) => { for (const m of ms) { if (m.type === 'characterData') { if (m.target.parentNode) swap(m.target.parentNode); } else for (const n of m.addedNodes) { if (n.nodeType === 1) { if (!n.classList.contains('zi-t') && n.tagName !== 'svg') swap(n); } else if (n.nodeType === 3 && n.parentNode) { RE.lastIndex = 0; if (RE.test(n.nodeValue)) swap(n.parentNode); } } } }).observe(document.body, { childList: true, subtree: true, characterData: true }); }
+  const api = { svg, img, standalone, EMOJI, swap, watch, watchAll, split, names: Object.keys(P), PAL, INK };
   if (typeof window !== 'undefined') window.ZHIcons = api; if (typeof module !== 'undefined') module.exports = api;
 })();
