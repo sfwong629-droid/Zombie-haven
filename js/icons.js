@@ -90,6 +90,7 @@
     shop: `<path class="l" sw="2.6" d="M3 5h4l3 15"/><path fill="Y" d="M8 8.5h20l-2.5 10H10z"/><circle fill="K" cx="12" cy="25.5" r="2.4"/><circle fill="K" cx="23" cy="25.5" r="2.4"/><path class="l" sw="2.2" d="M10 20.5h15"/>`,
     meal: `<path fill="O" d="M4.5 16.5h23a11.5 9 0 0 1-23 0z"/><path class="l" sw="1.8" d="M12 12.5c0-2.2 2-2.2 2-4.4M17.5 12.5c0-2.2 2-2.2 2-4.4"/><path class="h" d="M8.5 19.5a7 5 0 0 0 4 4"/>`,
     /* 3D.134 style check (owner): the emoji that still showed as phone emoji get a sticker of their own */
+    factory: `<path fill="D" d="M3.5 27.5V15l7 4.5V15l7 4.5V15l4 2.5V5h5v22.5z"/><rect fill="Y" x="7" y="22" width="4" height="3"/><rect fill="Y" x="14" y="22" width="4" height="3"/><path class="l" sw="1.8" d="M24 3c1-1.5 2.5-1.5 3.5 0"/>`,
     ammo: `<path fill="Y" d="M12 13c0-5 1.8-8.5 4-9.5 2.2 1 4 4.5 4 9.5v11.5h-8z"/><rect fill="N" x="10.5" y="24" width="11" height="4.5" rx="1"/><path class="l" sw="1.6" d="M12 13.5h8"/><path class="h" d="M14.3 9.5v9"/>`,
     bandage: `<rect fill="T" x="3" y="11" width="26" height="10" rx="5" transform="rotate(-35 16 16)"/><rect fill="W" x="11.5" y="11" width="9" height="10" transform="rotate(-35 16 16)"/>`,
     crown: `<path fill="Y" d="M4.5 10.5l5.5 6 6-9 6 9 5.5-6-2 14h-19z"/><circle fill="R" cx="16" cy="17" r="1.9"/><path class="l" sw="1.8" d="M7 21.5h18"/>`,
@@ -179,7 +180,7 @@
     '😊': 'happy', '🙂': 'happy', '😄': 'happy', '😌': 'happy', '👍': 'happy', '🙏': 'happy', '👌': 'happy', '😂': 'laugh', '😅': 'laugh', '😤': 'angry', '😠': 'angry', '😰': 'scared', '😱': 'scared', '😨': 'scared', '🆘': 'bang',
     '🔸': 'ammo', '🩹': 'bandage', '👑': 'crown', '🌿': 'leaf', '🍂': 'leaf', '🍄': 'leaf', '🌾': 'sprout', '🎯': 'target', '💣': 'bomb', '🧨': 'bomb', '🌳': 'tree', '🌲': 'tree', '🔔': 'bell', '🛎': 'bell',
     '🚚': 'truck', '🚗': 'truck', '🚙': 'truck', '🛻': 'truck', '🚐': 'truck', '🚌': 'truck', '🥾': 'boot', '👣': 'boot', '🏃': 'boot', '🚶': 'boot', '🏗': 'build', '⬆': 'upgrade', '❗': 'warn', '🔺': 'warn', '🌅': 'sun', '📅': 'clock', '🗓': 'clock',
-    '🧺': 'box', '🪖': 'shield', '⛑': 'shield', '🦺': 'shield', '📓': 'guide', '🧯': 'fire', '🍳': 'meal', '🔫': 'fight', '🗡': 'fight', '🏭': 'town', '🏛': 'town', '🏙': 'town', '💗': 'heart', '🧬': 'research', '📍': 'locate',
+    '🧺': 'box', '🪖': 'shield', '⛑': 'shield', '🦺': 'shield', '📓': 'guide', '🧯': 'fire', '🍳': 'meal', '🔫': 'fight', '🗡': 'fight', '🏭': 'factory', '🏛': 'town', '🏙': 'town', '💗': 'heart', '🧬': 'research', '📍': 'locate',
     '🐈': 'pet', '⚕': 'medic', '🎓': 'train', '⛓': 'lock', '🌊': 'water', '🏁': 'flag', '🤝': 'people', '🙋': 'person', '👮': 'person', '😵': 'hurt', '😖': 'hurt', '🤢': 'sick', '🤮': 'sick',
     '😢': 'sad', '😟': 'sad', '😞': 'sad', '😩': 'sad', '🥱': 'tired', '😴': 'tired', '😋': 'yum', '😎': 'cool', '😣': 'hurt', '🫂': 'love', '💥': 'bang' };
   /* DOM: swap emoji in UI text for icons. Faces stay as text in the DOM (survivor cards); canvas emotes use the mood icons. */
