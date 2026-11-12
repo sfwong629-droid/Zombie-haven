@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.124', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.125', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2329,7 +2329,7 @@ function finishFacility(s) {
 function ai(s) {
   if (s.para > 0 && s.hp > 0 && !['down', 'hospital', 'away'].includes(s.mode)) { s.para--; s.moving = false; if (s.para % 120 === 0) emote(s, '😵', 60); return; }   /* 3D.83 paralysed by a Lasher: cannot move, shoot or fight */
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) reloadGun(s);   /* reloads finish out of combat too */
-  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
+  if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); pantry(s); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
   if (s.fleeT > 0) s.fleeT--;
   if (s.sleeping && !(s.mode === 'useFacility' || (s.mode === 'wait' && s.sleeping === 'rough'))) s.sleeping = false;   /* 3D.66 overnight soak: someone woken by a fight, an SOS or a rescue kept the 'asleep' flag (shown asleep at midday, tired never rose) */
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
@@ -4132,7 +4132,7 @@ const SKIP = new Set(['para', 'aidTo', 'aidBy', 'aidT', 'comboZ', 'comboQ', 'com
 function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
-  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (_sh) rest.shHome = _sh.units.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; });   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
+  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (_sh && !_sh.practice) { rest.shHome = _sh.units.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
   return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
@@ -4256,7 +4256,9 @@ function applySave(raw, legacy, prev) {
     if (COZY_HUD && S.trip && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
     if (!isFinite(S.ren)) S.ren = 20 * (S.lvl || 1);   /* 3D.110 repair saves hit by the NaN renown bug */
     clearDoorways();   /* 3D.120 saves where a fence blocks a doorway */
-    if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, m.hp || 1); m.target = null; S.sv.push(m); } setTimeout(() => say('The stronghold squad fell back and came home.'), 1500); delete S.shHome; }   /* 3D.108 */
+    if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, Math.round((m.hp || 1) * .5)); m.target = null; S.sv.push(m); }   /* 3D.125 review bug 3: leaving mid-fight is a rout, not a free escape: they come home hurt, with nothing, and the place is on guard */
+      const L = S.shLeft; if (L && L.raid) { const F = fac(L.raid); F.att = Math.max(-100, (F.att || 0) - 15); F.raidUntil = S.day + 4; } else if (L) S.shTryDay = { ...(S.shTryDay || {}), [L.dest]: S.day };
+      setTimeout(() => say('Left without orders, the squad broke and ran home hurt. Whatever they carried was lost.'), 1500); delete S.shHome; delete S.shLeft; }   /* 3D.108 */
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
     genRun = S.power ? gens() : []; powerGrid();   /* audit: power after staff are relinked */
@@ -4335,8 +4337,8 @@ const EXP_DEFS = {
   sh_summer: { name: 'The Burning Refinery', icon: '☀️', desc: 'A seasonal stronghold: the refinery has smouldered for years. Summer only.', risks: ['high'], lock: () => seasonLock('summer'), loot: { fuel: [3, 5], mat: [3, 5], ammo: [8, 12] }, gear: 3, stronghold: true, lines: ['Heat shimmers over the tanks.'] },
   sh_autumn: { name: 'The Harvest Fair', icon: '🍂', desc: 'A seasonal stronghold: the old county fairground. Autumn only.', risks: ['high'], lock: () => seasonLock('autumn'), loot: { food: [4, 6], cloth: [2, 4], wood: [4, 6] }, gear: 3, stronghold: true, lines: ['Rides creak in the wind.'] },
   sh_winter: { name: 'The Frozen Depot', icon: '❄️', desc: 'A seasonal stronghold: a snowed-in army depot. Winter only.', risks: ['high'], lock: () => seasonLock('winter'), loot: { mat: [4, 6], stone: [3, 5], ammo: [10, 14] }, gear: 3.5, stronghold: true, lines: ['Snow drifts against the hangar doors.'] },
-  raid_toll: { name: "Raid: the Toll Kings' fort", icon: '👑', desc: 'Hit the Toll Kings where they live: a truck yard fort on the highway. Pick a goal before you go in.', risks: ['high'], lock: () => { const f = (S.fac || {}).toll; return !f || !f.met ? 'Meet the Toll Kings first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : ''; }, loot: { mat: [4, 6], fuel: [1, 3], ammo: [6, 10] }, gear: 2, stronghold: true, raid: true, lines: ['The squad creeps up on the fort.'] },
-  raid_green: { name: 'Raid: Greenwater Commune', icon: '🌿', desc: 'Greenwater is soft and well fed. Raiding them ends any friendship for good.', risks: ['high'], lock: () => { const f = (S.fac || {}).green; return !f || !f.met ? 'Meet Greenwater first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : ''; }, loot: { food: [5, 8], water: [3, 5], cloth: [2, 3] }, gear: 1, stronghold: true, raid: true, lines: ['The squad slips past the orchard.'] },
+  raid_toll: { name: "Raid: the Toll Kings' fort", icon: '👑', desc: 'Hit the Toll Kings where they live: a truck yard fort on the highway. Break what you like, loot what you can carry, and get out through the gate.', risks: ['high'], lock: () => { const f = (S.fac || {}).toll; return !f || !f.met ? 'Meet the Toll Kings first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : f.raidUntil > S.day ? `On high alert after the last raid: wait until day ${f.raidUntil}` : ''; }, loot: { mat: [4, 6], fuel: [1, 3], ammo: [6, 10] }, gear: 2, stronghold: true, raid: true, lines: ['The squad creeps up on the fort.'] },
+  raid_green: { name: 'Raid: Greenwater Commune', icon: '🌿', desc: 'Greenwater is soft and well fed. Raiding them ends any friendship for good.', risks: ['high'], lock: () => { const f = (S.fac || {}).green; return !f || !f.met ? 'Meet Greenwater first' : f.goneUntil > S.day ? `They are scattered until day ${f.goneUntil}` : f.raidUntil > S.day ? `On high alert after the last raid: wait until day ${f.raidUntil}` : ''; }, loot: { food: [5, 8], water: [3, 5], cloth: [2, 3] }, gear: 1, stronghold: true, raid: true, lines: ['The squad slips past the orchard.'] },
   warehouse: { name: 'Warehouse District', icon: '🏭', desc: 'Scrap, and plenty of it.',                  risks: ['medium', 'high'],  lock: () => (S.rank >= 3 ? '' : 'Needs Haven level 7'), loot: { mat: [3, 5] }, lines: ['The squad slips between loading docks.', 'Crates of hardware, half of it salvageable.', 'A forklift pins a stack of steel; they cut it free.'] },
 };
 const seasonIdx = () => Math.floor((S.day - 1) / SEASON_DAYS);
@@ -4819,6 +4821,7 @@ const SH_STANCE = { attack: { icon: '⚔', name: 'Attack' }, hold: { icon: '✋'
 /* starting a run */
 function startStronghold(destId, ids, opts = {}) {
   const D = SH_DEFS[destId], d = EXP_DEFS[destId] || { name: destId, icon: '⚔' }; if (!D) return { ok: false, why: 'Unknown stronghold' }; if (S.sh) return { ok: false, why: 'A squad is already inside' };
+  if (!opts.practice && (S.shTryDay || {})[destId] === S.day) return { ok: false, why: 'The squad was beaten back from there today: try again tomorrow' };   /* 3D.125 the loss cooldown was recorded but never read */
   const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
   if (!ms.length) return { ok: false, why: 'Pick at least one survivor' };
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
@@ -4955,6 +4958,7 @@ function shEnd(won, fled) {
     if (H.raid === 'green') { F.ally = false; F.revenge = S.day + 3; lines0.push('🌿 Greenwater will never forgive this. The alliance is over, and they will hit back.'); }
     if (H.raid === 'toll') { F.next = Math.min(F.next || 1e9, S.day + 2); F.revenge = S.day + 2; lines0.push('👑 The Toll Kings will come for revenge.'); }
     if (H.bossDown) { F.goneUntil = S.day + 60; F.beaten = (F.beaten || 0) + 1; if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own camp.'), 900); lines0.push(`${H.raid === 'toll' ? '👑' : '🌿'} Their leader is down: they scatter for 60 days.`); }
+    F.raidUntil = S.day + 4; F.ruins = [...(F.ruins || []).filter((r) => S.day - r.d < 10), ...H.blds.filter((b) => b.dead && !b.wasRuin).map((b) => ({ t: b.type, d: S.day }))];   /* 3D.125 review bug 2: a camp is on high alert for 4 days after a raid, and what was burnt stays burnt for 10 */
     if (down) lines0.push(`💥 ${down} of their buildings brought down.`); if (fled) renownGain(5 + 2 * down + (H.bossDown ? 10 : 0), d.name); if (!fled) H.loot = {}; }
   if ((won || fled) && H.found) { const n = Math.min(H.found, popCap() - S.sv.length - (S.kids || []).length); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Scavenger', 'Farmer', 'Medic'][i % 3], 2, entry.x, entry.y + .6, S.sv.length); q.src = 'trip'; q.sat = 3; S.sv.push(q); } if (n > 0) lines0.push(`🙋 ${n} survivor${n > 1 ? 's' : ''} found behind a locked door came home with the squad.`); }
   if (won || fled) items.push(...(H.items || []));
@@ -5143,6 +5147,7 @@ function campBuild() {   /* lay out the camp: a fenced square, the gate south, r
       H.blds.push({ i, bld: true, type, name: L.name || d.name, x, y, bw: w, bh: h, rot, hp, max: hp, icon: L.icon, loot: L.loot, items: L.items.filter(Boolean), pris: L.pris || 0, dead: false, looted: false, inner, w: shWorld(x + w / 2 - .5, y + h / 2 - .5) });
       for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) g[yy][xx] = 'K' + i; return; } };
   for (const t of P.inner) place(t, 0, 4.5); for (const t of P.mid) place(t, 4, 7.2); for (const t of P.outer) place(t, 6.5, 9.5);
+  if (!H.practice) for (const r of ((S.fac || {})[H.raid] || {}).ruins || []) { if (S.day - r.d >= 10) continue; const b = H.blds.find((q) => q.type === r.t && !q.dead); if (b) { b.dead = true; b.looted = true; b.hp = 0; b.wasRuin = true; } }   /* still in ruins from the last raid */
   /* the people: guards on posts and patrols, workers going about their jobs, the leader by the hall */
   const yard = () => { for (let k = 0; k < 200; k++) { const x = rint(F0 + 1, F1 - 1), y = rint(F0 + 1, F1 - 5); if (g[y][x] === 'y') return shWorld(x, y); } return shWorld(13, 13); };
   const mk0 = (t, w, ex) => { const zd = zombieTypes.raider || zombieTypes.walker, wpn = t === 'raiderG' ? 'rifle' : t === 'raiderB' ? 'bow' : t === 'worker' ? 'pipe' : ['bat', 'crowbar', 'machete'][H.zs.length % 3], hp = Math.round(zd.hp * (t === 'worker' ? .55 : 1.3));
@@ -5380,6 +5385,14 @@ function killSurvivor(s, cause) {
 }
 function giveSpare(v) {
   for (const sl of SLOTS) { const ids = Object.keys(S.inv || {}).filter((id) => ITEMS[id] && ITEMS[id].slot === sl).sort((a, b) => itemScore(ITEMS[b]) - itemScore(ITEMS[a])); if (ids[0] && itemScore(ITEMS[ids[0]]) > itemScore(itemOf(v, sl))) equip(v, ids[0]); }
+}
+/* 3D.125 review bug 1: people sat at 100 hunger and lost health beside a stocked pantry when the town had no food or water
+   building (the daily rations were paid, but hunger only dropped at a food building). Now anyone very hungry or thirsty eats
+   or drinks straight from the stores when there is no such building, and nobody ever starves while there is stock. */
+function pantry(s) {
+  const has = (need) => world.buildings.some((b) => !b.burnt && facilityRules[b.type] && facilityRules[b.type].need === need);
+  if (s.hunger >= (has('hunger') ? 97 : 70) && S.food >= 1) { s.hunger = Math.max(0, s.hunger - 40); floats.push({ w: { ...s.w }, t: '🍖', col: '#ffe9b8', a: 60 }); if (!has('hunger') && S.pantryDay !== S.day) { S.pantryDay = S.day; say('People are eating straight from the stores: a Garden Plot or Canteen feeds them better.'); } }
+  if (s.thirst >= (has('thirst') ? 97 : 70) && S.water >= 1) { s.thirst = Math.max(0, s.thirst - 40); floats.push({ w: { ...s.w }, t: '💧', col: '#cfe9ff', a: 60 }); }
 }
 function starve(s) {
   if (s.hunger >= 100 || s.thirst >= 100) {

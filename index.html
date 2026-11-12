@@ -7,7 +7,7 @@
 <link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="assets/fonts/Manrope-800.woff2" as="font" type="font/woff2" crossorigin>
 <title>Zombie Haven V2.49.0</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lilita+One&family=Nunito:wght@700;800&display=swap">
+<style>/* 3D.125 the fonts ship with the game (it must start offline) */@font-face{font-family:'Fredoka';font-weight:500;font-style:normal;font-display:swap;src:url('assets/fonts/fredoka-latin-500-normal.woff2') format('woff2')}@font-face{font-family:'Fredoka';font-weight:600;font-style:normal;font-display:swap;src:url('assets/fonts/fredoka-latin-600-normal.woff2') format('woff2')}@font-face{font-family:'Nunito';font-weight:700;font-style:normal;font-display:swap;src:url('assets/fonts/nunito-latin-700-normal.woff2') format('woff2')}@font-face{font-family:'Nunito';font-weight:800;font-style:normal;font-display:swap;src:url('assets/fonts/nunito-latin-800-normal.woff2') format('woff2')}@font-face{font-family:'Lilita One';font-weight:400;font-style:normal;font-display:swap;src:url('assets/fonts/lilita-one-latin-400-normal.woff2') format('woff2')}</style>
 <link rel="stylesheet" href="css/cozy.css?v=3d.20">
 <link rel="stylesheet" href="css/glass.css?v=3d.20">
 <script>/* V2.56: the 3D mode uses the Cozy Apocalypse UI theme (css/cozy.css) */ (function () { try { var q = new URLSearchParams(location.search).get('3d'); var on = window.ZH_FORCE3D || q === '1' || (q !== '0' && localStorage.getItem('zh3D') === '1'); if (on) document.documentElement.classList.add('cozy', 'glass'); } catch (e) { if (window.ZH_FORCE3D) document.documentElement.classList.add('cozy', 'glass'); } })();</script>
@@ -186,6 +186,6 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <script src="js/itemicons.js?v=3d.20"></script>
 <script src="js/sound.js?v=3d.20"></script>
 <script src="js/game.js?v=3d.20"></script>
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }</script>
 <script>if (window.ZH_3D) { const s = document.createElement('script'); s.type = 'module'; s.src = 'js/render3d.js?v=3d.20'; document.head.appendChild(s); }</script>
 </body></html>
