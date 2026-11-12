@@ -315,5 +315,18 @@ html.cozy .lm { position: relative; }
 .shTop .sm { color: #8a7666; font-size: 11.5px; }
 @media (max-width: 520px) { .shBtns button { font-size: 12px; padding: 8px 2px; } .shSel button { font-size: 11.5px; padding: 6px 5px; } .shTop { font-size: 11.5px; top: calc(env(safe-area-inset-top, 0px) + 150px); } }
 
-html.shView #lmenu, html.shView #bottom { visibility: hidden; pointer-events: none; }
+html.shView #lmenu, html.shView #bottom, html.shView #dock { display: none !important; }
 .shTop .shBoss { flex-wrap: wrap; } .shTop .shBoss .sm { white-space: normal; text-align: center; }
+/* 3D.118 the squad list you can open from the bar */
+.shList { background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 14px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; max-height: 42vh; overflow-y: auto; box-shadow: 0 2px 0 rgba(90, 63, 49, .3); }
+.shLHead { display: flex; align-items: center; gap: 6px; } .shLHead b { flex: 1; font-size: 14px; }
+.shLHead button { font: 700 12px Fredoka, sans-serif; padding: 4px 9px; border-radius: 9px; border: 1.5px solid rgba(90, 63, 49, .45); background: #ffe9b8; color: #4a3428; cursor: pointer; } .shLHead button.x { background: #fff8ec; }
+.shList .shU { display: grid; grid-template-columns: minmax(0, 92px) 1fr auto; gap: 6px; align-items: center; padding: 3px 5px; border-radius: 9px; border: 2px solid transparent; cursor: pointer; }
+.shList .shU.sel { border-color: #5aa0d8; background: #e6f1fb; } .shList .shU.down .nm { color: #b04a3a; text-decoration: line-through; }
+.shList .shU .nm { display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; line-height: 1.1; } .shList .shU .nm small { font: 600 10.5px Nunito, sans-serif; color: #8a7666; }
+.shList .shU em { height: 8px; background: #e8dccb; border-radius: 5px; overflow: hidden; display: block; } .shList .shU em b { display: block; height: 100%; background: #5fae61; }
+.shList .ctl { display: flex; gap: 4px; } .shList .ctl button { position: relative; width: 32px; height: 30px; padding: 0; border-radius: 9px; border: 1.5px solid rgba(90, 63, 49, .4); background: #fff8ec; font-size: 15px; cursor: pointer; }
+.shList .ctl button:disabled { opacity: .45; } .shList .ctl button i { position: absolute; right: -3px; bottom: -4px; font: 700 10px Fredoka, sans-serif; font-style: normal; background: #4a3428; color: #fff; border-radius: 6px; padding: 0 3px; }
+.shList .ctl button.crit { background: #ffe08a; border-color: #c98a1e; } .shList .ctl button.med { background: #e3f4dc; }
+@media (max-width: 520px) { .shList .shU { grid-template-columns: minmax(0, 70px) 1fr auto; gap: 4px; } .shList .ctl button { width: 29px; height: 28px; font-size: 14px; } }
+.shPick { position: fixed; z-index: 46; }

@@ -1788,8 +1788,18 @@ function buildArena() {
   if (H.camp) {   /* 3D.116 a faction camp: their own town, built from the same buildings as ours */
     const P = ZH.CAMP_PLAN[H.raid] || ZH.CAMP_PLAN.toll, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), bm = {};
     const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
-    const gr = new THREE.Mesh(new THREE.PlaneGeometry((H.gw + 30) * T, (H.gh + 24) * T).rotateX(-Math.PI / 2), toon(P.ground)); gr.position.set((AX + H.gw / 2) * T, -.02, (AY + H.gh / 2) * T); gr.receiveShadow = true; g.add(gr);
-    box(20, .03, 20, P.yard, AX + 14, 0, AY + 14);
+    /* 3D.118 owner: the ground looks like our town: painted grass outside, packed dirt in the yard, a track out of the gate, trees around */
+    const GR = SEASON_PAL[season()].grass, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], X0 = -22, Y0 = -16, NX = H.gw + 44, NY = H.gh + 40, tcs = new Float32Array(NX * NY * 3), cc = new THREE.Color();
+    for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), e = Math.max(0, 3 - x, x - 24, 3 - y, y - 24), path = x >= 12 && x <= 15 && y > 24;
+      cc.set(e === 0 || path ? DIRT[(r * 4) | 0] : e === 1 && r < .55 ? DIRT[(r * 4) | 0] : e <= 3 && r < .3 ? '#a39150' : GR[(r * 6) | 0]); const i = ((y - Y0) * NX + (x - X0)) * 3; tcs[i] = cc.r; tcs[i + 1] = cc.g; tcs[i + 2] = cc.b; }
+    const corner = (x, y) => { let r = 0, gg = 0, bb = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tcs[i]; gg += tcs[i + 1]; bb += tcs[i + 2]; n++; } return [r / n, gg / n, bb / n]; };
+    const pos = [], col = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, 0, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz)); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); gg.computeVertexNormals();
+    const gm = new THREE.Mesh(gg, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: grad })); gm.receiveShadow = true; g.add(gm);
+    const far = new THREE.Mesh(new THREE.PlaneGeometry(160 * T, 120 * T).rotateX(-Math.PI / 2), toon(GR[2])); far.position.set((AX + 14) * T, -.03, (AY + 14) * T); g.add(far);
+    const leafM = toon(season() === 'winter' ? '#dfe8e4' : season() === 'autumn' ? '#9a7a3a' : '#4d7a3a'), trunkM = toon('#6b4a2e');
+    for (let k = 0, n = 0; k < 400 && n < 46; k++) { const x = -8 + hash(k, 3) * (H.gw + 16), y = -6 + hash(k, 7) * (H.gh + 12), e = Math.max(3 - x, x - 25, 3 - y, y - 25); if (e < 1.6 || (x > 10.5 && x < 17.5 && y > 24)) continue; n++;
+      const t = new THREE.Group(), sc = .8 + hash(k, 11) * .5; const a1 = new THREE.Mesh(pineG, leafM), a2 = new THREE.Mesh(pineTrunkG, trunkM); a1.castShadow = a2.castShadow = true; t.add(a1, a2); t.scale.setScalar(sc); t.position.set((AX + x) * T, 0, (AY + y) * T); t.rotation.y = hash(k, 13) * 6; g.add(t); }
     for (let y = 0; y < H.gh; y++) for (let x = 0; x < H.gw; x++) { const v = H.grid[y][x]; if (v === 'W') { const hz = y === 3 || y === 24; box(hz ? 1 : .16, .75, hz ? .16 : 1, P.fence, AX + x + .5, .38, AY + y + .5); box(.2, 1, .2, '#4a3220', AX + x + .5, .5, AY + y + .5); } else if (v === 'G') box(.22, 1.4, .22, '#4a3220', AX + x + (x === 13 ? 0 : 1), .7, AY + y + .5); }
     for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
     scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '' }; return true; }
