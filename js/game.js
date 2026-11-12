@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.131', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.132', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -464,12 +464,12 @@ const CAR_SPOTS = [[0, 4], [10, 0]].map(SH);
 /* V2.32: wreckage scattered over the land that isn't unlocked yet (assets/map/v7/wreck.png); it clears as the territory grows */
 let wreckKey = '', wreckList = [];
 function wreckSpots() {
-  const k = Wd.BUILD.x0 + ',' + Wd.BUILD.y0 + ',' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + '#' + world.roads.size; if (k === wreckKey) return wreckList;
+  const k = curMap + Wd.BUILD.x0 + ',' + Wd.BUILD.y0 + ',' + Wd.BUILD.x1 + ',' + Wd.BUILD.y1 + '#' + world.roads.size; if (k === wreckKey) return wreckList;
   const taken = new Set([...TREE_SPOTS, ...CRATE_SPOTS, ...CAR_SPOTS, ...DEBRIS_SPOTS].map(([x, y]) => x + ',' + y)); wreckKey = k; wreckList = [];
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (Wd.inTown(x, y) || Wd.isRoad(world, x, y) || taken.has(x + ',' + y)) continue;
     if (Wd.inTown(x - 1, y) || Wd.inTown(x + 1, y) || Wd.inTown(x, y - 1) || Wd.inTown(x, y + 1)) continue;   // keep a clear strip along the border
-    if (hash2(x * 7 + 1, y * 13 + 5) < .11) wreckList.push([x, y]);
+    if (hash2(x * 7 + 1, y * 13 + 5) < (MAPS[curMap].wreck ?? .11)) wreckList.push([x, y]);
   }
   return wreckList;
 }
@@ -1326,6 +1326,27 @@ const ROCK_SPOTS = [[3, 1], [8, 1], [12, 1], [0, 9], [0, 13], [15, 9], [15, 14],
     if (r < .075) TREE_SPOTS.push([x, y]); else if (r < .1) ROCK_SPOTS.push([x, y]); else if (r < .11) BIN_SPOTS.push([x, y]); }
   for (const [x, y] of [[2, Wd.HWY_Y], [7, Wd.HWY_Y + 1], [13, Wd.HWY_Y], [26, Wd.HWY_Y + 1], [31, Wd.HWY_Y], [37, Wd.HWY_Y + 1]]) CAR_SPOTS.push([x, y]);
   for (const L of [TREE_SPOTS, ROCK_SPOTS, BIN_SPOTS, CRATE_SPOTS, DEBRIS_SPOTS]) for (let i = L.length - 1; i >= 0; i--) if (near(L[i][0], L[i][1])) L.splice(i, 1); }   // nothing old sits on the road
+
+/* 3D.132 review step 9: four lands to settle. A map decides where the trees, rock, wrecks and clothes bins are, so each one changes what
+   comes easily and what has to be fetched or traded for. 'road' is the land every town used until now. The lists are rebuilt in place
+   (the 3D view and the node code hold on to the same arrays). Thinning and adding use fixed hashes, so a map is the same every time. */
+const MAPS = {
+  road:     { name: 'Roadside',     icon: '🛣️', desc: 'The usual land: a bit of everything.' },
+  pines:    { name: 'Pine Hollow',  icon: '🌲', desc: 'Thick woods. Wood is easy; scrap and stone are scarce.', tree: .1, rockKeep: .5, wreck: .05 },
+  ridge:    { name: 'Quarry Ridge', icon: '⛰️', desc: 'Bare rock. Stone is easy; wood is scarce.', rock: .08, treeKeep: .45, wreck: .09 },
+  junction: { name: 'The Junction', icon: '🚗', desc: 'A choked crossroads. Wrecks and clothes bins everywhere; few trees.', car: .035, bin: .03, treeKeep: .55, wreck: .2 },
+};
+const MAP_BASE = { tree: TREE_SPOTS.map((p) => [...p]), rock: ROCK_SPOTS.map((p) => [...p]), car: CAR_SPOTS.map((p) => [...p]), bin: BIN_SPOTS.map((p) => [...p]) };
+let curMap = 'road';
+function setMap(k) { k = MAPS[k] ? k : 'road'; const M = MAPS[k]; S.map = k; curMap = k;
+  const L = { tree: TREE_SPOTS, rock: ROCK_SPOTS, car: CAR_SPOTS, bin: BIN_SPOTS }; for (const q in L) { L[q].length = 0; L[q].push(...MAP_BASE[q].map((p) => [...p])); }
+  if (k !== 'road') { const keep = (list, f, a, b) => { if (f == null) return; for (let i = list.length - 1; i >= 0; i--) if (hash2(list[i][0] * a + 3, list[i][1] * b + 5) >= f) list.splice(i, 1); };
+    keep(TREE_SPOTS, M.treeKeep, 11, 17); keep(ROCK_SPOTS, M.rockKeep, 13, 7);
+    const used = new Set([...TREE_SPOTS, ...ROCK_SPOTS, ...CAR_SPOTS, ...BIN_SPOTS, ...CRATE_SPOTS, ...DEBRIS_SPOTS].map(([x, y]) => x + ',' + y)), core = (x, y) => x >= OFF + 2 && x <= OFF + 13 && y >= OFF + 5 && y <= OFF + 16,   /* the camp and its first buildings stay clear */
+      road = (x, y) => [-1, 0, 1, 2].some((d) => Wd.hwyAt(x, y + d) || Wd.hwyAt(x + d, y)), t = M.tree || 0, r = t + (M.rock || 0), c = r + (M.car || 0), b = c + (M.bin || 0);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { if (core(x, y) || road(x, y) || used.has(x + ',' + y)) continue; const h = hash2(x * 31 + 7, y * 19 + 11);
+      if (h < t) TREE_SPOTS.push([x, y]); else if (h < r) ROCK_SPOTS.push([x, y]); else if (h < c) CAR_SPOTS.push([x, y]); else if (h < b) BIN_SPOTS.push([x, y]); } }
+  wreckKey = ''; S.nodeVer = (S.nodeVer || 0) + 1; }
 
 const nodeKey = (x, y) => x + ',' + y;
 function nodeList() {
@@ -3919,7 +3940,7 @@ function applySave(raw, legacy, prev) {
     if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, Math.round((m.hp || 1) * .5)); m.target = null; S.sv.push(m); }   /* 3D.125 review bug 3: leaving mid-fight is a rout, not a free escape: they come home hurt, with nothing, and the place is on guard */
       const L = S.shLeft; if (L && L.raid) { const F = fac(L.raid); F.att = Math.max(-100, (F.att || 0) - 15); F.raidUntil = S.day + 4; } else if (L) S.shTryDay = { ...(S.shTryDay || {}), [L.dest]: S.day };
       setTimeout(() => say('Left without orders, the squad broke and ran home hurt. Whatever they carried was lost.'), 1500); delete S.shHome; delete S.shLeft; }   /* 3D.108 */
-    S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
+    S.z = []; S.requests = []; setMap(S.map); S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
     genRun = S.power ? gens() : []; powerGrid();   /* audit: power after staff are relinked */
     for (const q of S.sv) if (q.ammo == null && usesAmmo(itemOf(q, 'weapon'))) { q.ammo = 0; reloadGun(q); }   /* audit: guns from older saves load from the stock, not a free magazine */
@@ -6072,7 +6093,7 @@ async function init() {
   const restored = titleOn || ZOO ? null : loadGame();
   if (!restored) {
     let o = {}; if (!titleOn) { try { o = JSON.parse(localStorage.getItem('zhNewOpts') || '{}') || {}; localStorage.removeItem('zhNewOpts'); } catch (e) { o = {}; } } const tq = (k) => QS.get(k);   /* V2.46: chosen on the new-game screen (?start=&diff= for testing) */
-    S.diff = DIFFS[tq('diff') || o.diff] ? (tq('diff') || o.diff) : 'normal'; applyStart(tq('start') || o.start || 'camp'); if (o.legacy) applyLegacy();   /* 3D.112 */
+    S.diff = DIFFS[tq('diff') || o.diff] ? (tq('diff') || o.diff) : 'normal'; setMap(tq('map') || o.map || 'road'); applyStart(tq('start') || o.start || 'camp'); if (o.legacy) applyLegacy();   /* 3D.112 */
     cutFence(); if ((!titleOn && !ZOO) && !QS.get('nocut')) S.cutPending = true; else { spawn(5 + OFF, 3 + OFF, 'walker'); spawn(9 + OFF, 3 + OFF, 'crawler'); spawn(12 + OFF, 4 + OFF, 'walker'); }   /* 3D.102 the broken farm fence; the opening cutscene (the zombies come after it) */
   } else { for (let i = 0; i < 3; i++) spawn(); if (restored.cam && restored.cam.z) { cam.z = restored.cam.z; cam.x = restored.cam.x; cam.y = restored.cam.y; clampCam(); } }
   if (!restored || !restored.cam) centerOn(7.5 + OFF, 10 + OFF, Math.max(.7, Math.min(1.1, VW / 430)) * ((1.25)));
@@ -6142,11 +6163,13 @@ function showSlots() {
   box.querySelectorAll('.sdel').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.del; if (slotDel === i) { clearSlot(i); slotDel = null; } else slotDel = i; showSlots(); }; });
   $('sBack').onclick = () => { slotDel = null; showTitle(); }; $('sBak').style.display = ''; $('sBak').onclick = () => { slotDel = null; showBackups(); };
 }
-let newOpt = { start: 'camp', diff: 'normal' };
+let newOpt = { start: 'camp', diff: 'normal', map: 'road' };
 function newSlot(i, keepName) {   /* V2.46: name, starting condition and difficulty */
   const box = $('slots'), nm = keepName ?? 'Zombie Haven', R = records(), rec = R[newOpt.start + '/' + newOpt.diff];
   box.querySelector('.slist').innerHTML = `<div class="card newGame" style="color:#2a2a5a;background:#f3f6f9"><b style="font-size:22px">Slot ${i + 1} · New haven</b>
     <div class="sm" style="margin:6px 0 2px;color:#5b6b7a">Name your town</div><input id="sName" maxlength="22" value="${esc(nm)}" style="width:100%;box-sizing:border-box;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #7f93a6;background:#f7fafc;color:#1f2a33;text-align:center">
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Land</div><div class="row" style="gap:4px;flex-wrap:wrap">${Object.entries(MAPS).map(([k, v]) => `<button class="act${(newOpt.map || 'road') === k ? ' go' : ''}" data-mp="${k}" style="flex:1 1 40%;margin:0;padding:6px 2px;font-size:16px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#5b6b7a">${MAPS[newOpt.map || 'road'].desc}</div>
     <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Difficulty</div><div class="row" style="gap:4px">${Object.entries(DIFFS).map(([k, v]) => `<button class="act${newOpt.diff === k ? ' go' : ''}" data-df="${k}" style="flex:1 1 0;margin:0;padding:6px 2px;font-size:17px">${v.icon} ${v.name}</button>`).join('')}</div>
     <div class="sm" style="margin-top:4px;color:#5b6b7a">${DIFFS[newOpt.diff].desc}</div>
     <div class="sm" style="margin-top:4px;color:#2a5ac8">${rec ? `🏆 Best here: ${rec.score} (${esc(rec.name)}, day ${rec.day})` : 'No win yet with this start and difficulty.'}</div>
@@ -6156,6 +6179,7 @@ function newSlot(i, keepName) {   /* V2.46: name, starting condition and difficu
   const nmNow = () => ($('sName').value || '').trim() || 'Zombie Haven';
   box.querySelectorAll('[data-st]').forEach((e) => { e.onclick = () => { newOpt.start = e.dataset.st; newSlot(i, nmNow()); }; });
   box.querySelectorAll('[data-df]').forEach((e) => { e.onclick = () => { newOpt.diff = e.dataset.df; newSlot(i, nmNow()); }; });
+  box.querySelectorAll('[data-mp]').forEach((e) => { e.onclick = () => { newOpt.map = e.dataset.mp; newSlot(i, nmNow()); }; });
   $('sCancel').onclick = showSlots; $('sGo').onclick = () => playSlot(i, nmNow(), { ...newOpt });
 }
 /* ---------------- V2.42 backups: export a slot to a file (or the clipboard / share sheet), import one into any slot ---------------- */
