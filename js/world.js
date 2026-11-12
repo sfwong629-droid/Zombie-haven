@@ -127,11 +127,18 @@
 
   const key = (x, y) => x + ',' + y;
   function createWorld() { return { roads: new Set(), buildings: [], walls: new Map(), ver: 0 }; }   /* 3D.39 owner: a new game starts with just the camp, no roads (ROAD_COORDS kept for reference) */
-  const bump = (w) => { w.ver++; };
+  const bump = (w) => { w.ver++; BAE++; };
   const isRoad = (w, x, y) => w.roads.has(key(x, y));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
   const inTown = (x, y) => x >= BUILD.x0 && x <= BUILD.x1 && y >= BUILD.y0 && y <= BUILD.y1;
-  function buildingAt(w, x, y) { for (const b of w.buildings) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; for (const b of w.sites || []) if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) return b; return null; }   // V3D.12: construction sites block too
+  /* 3D.131 buildingAt is asked millions of times a day by the path finder; it used to walk the whole building list each time (a third of
+     all simulation time in a 30-building town, and the cause of the slow siege days). Now a tile -> building table, rebuilt when the
+     building or site count changes, when the world is bumped, once a tick (touch), and at least every 50 ms. Buildings win over sites, as before. */
+  let BA = null, BAE = 0, BAC = 0; const touch = () => { BAE++; };
+  function buildingAt(w, x, y) { const nb = w.buildings.length, ns = (w.sites || []).length;
+    if (!BA || BA.w !== w || BA.e !== BAE || BA.nb !== nb || BA.ns !== ns || ((++BAC & 255) === 0 && performance.now() - BA.t > 50)) { const m = new Map(), put = (b) => { for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) m.set((xx + 512) * 4096 + yy + 512, b); };
+      for (const b of w.sites || []) put(b); for (let i = nb - 1; i >= 0; i--) put(w.buildings[i]); BA = { w, e: BAE, nb, ns, m, t: performance.now() }; }
+    return BA.m.get((Math.floor(x) + 512) * 4096 + Math.floor(y) + 512) || null; }   // V3D.12: construction sites block too
   const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
   const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
   // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
@@ -227,5 +234,5 @@
     return { sealed: !open, walls: n, gates, weakest, area: seen.size };
   }
   const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
-  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, touch, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

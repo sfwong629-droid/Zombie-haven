@@ -1,0 +1,4785 @@
+[
+ {
+  "log": [
+   {
+    "t": "6:18",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 3,
+     "hiding": 1,
+     "goFacility": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "hiding": 1,
+     "hide": 1,
+     "walk": 1,
+     "goFacility": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 4
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 2,
+     "hiding": 2,
+     "wait": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:20",
+    "z": 11,
+    "zk": {
+     "walker": 8,
+     "bloated": 1,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 3,
+     "zmarch": 4,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 4,
+     "hiding": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:20",
+    "z": 12,
+    "zk": {
+     "walker": 9,
+     "bloated": 1,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 4,
+     "zmarch": 6
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 3,
+     "walk": 1,
+     "gather": 1,
+     "hiding": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:21",
+    "z": 17,
+    "zk": {
+     "walker": 13,
+     "bloated": 1,
+     "crawler": 2,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zchase": 4,
+     "zmarch": 8,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 4,
+     "attack": 1,
+     "goFacility": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:21",
+    "z": 13,
+    "zk": {
+     "walker": 10,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zrecover": 1,
+     "zmarch": 8
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 4,
+     "recover": 1,
+     "free": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 12,
+    "zk": {
+     "walker": 9,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 7,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "wait": 2,
+     "walk": 1,
+     "hiding": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 12,
+    "zk": {
+     "walker": 9,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 7,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "wait": 3,
+     "hide": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:23",
+    "z": 11,
+    "zk": {
+     "walker": 8,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 7
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "wait": 4
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:23",
+    "z": 10,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 3,
+     "zchase": 3
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "hide": 1,
+     "wait": 4
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "7:00",
+    "z": 10,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 3,
+     "zchase": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hide": 2,
+     "wait": 4
+    },
+    "boss": "100% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 10,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zbash": 4,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 3,
+     "wait": 3
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "7:01",
+    "z": 10,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zrecover": 2,
+     "zmarch": 2,
+     "zattack": 1,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "attack": 1,
+     "hiding": 2,
+     "wait": 3
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "7:02",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 2,
+     "zchase": 1,
+     "zmarch": 1,
+     "zbash": 1,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "attack": 1,
+     "walk": 1,
+     "wait": 3,
+     "hiding": 1
+    },
+    "boss": "100% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:02",
+    "z": 6,
+    "zk": {
+     "walker": 3,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 2,
+     "zchase": 1,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "down": 1,
+     "walk": 1,
+     "rescueTo": 1,
+     "wait": 2,
+     "attack": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:03",
+    "z": 4,
+    "zk": {
+     "walker": 2,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zchase": 2
+    },
+    "sv": 6,
+    "sm": {
+     "down": 1,
+     "chase": 1,
+     "fieldAid": 2,
+     "hide": 1,
+     "rescueTo": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:03",
+    "z": 4,
+    "zk": {
+     "walker": 2,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zmarch": 1,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "attack": 1,
+     "wait": 3,
+     "hiding": 1
+    },
+    "boss": "90% zrecover",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 4,
+    "zk": {
+     "walker": 2,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zrecover": 1,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "recover": 1,
+     "hide": 1,
+     "wait": 3,
+     "hiding": 1
+    },
+    "boss": "66% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 3,
+    "zk": {
+     "walker": 2,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 5,
+     "hide": 1
+    },
+    "boss": "66% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:05",
+    "z": 3,
+    "zk": {
+     "walker": 2,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "walk": 1,
+     "wait": 4
+    },
+    "boss": "66% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:05",
+    "z": 3,
+    "zk": {
+     "walker": 2,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hide": 1,
+     "chase": 1,
+     "wait": 4
+    },
+    "boss": "63% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:06",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 1,
+     "postCombat": 1,
+     "free": 1,
+     "goFacility": 2,
+     "walk": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:06",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 5
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 1,
+     "goFacility": 2,
+     "chase": 2,
+     "attack": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:07",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 5
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 2,
+     "useFacility": 1,
+     "hide": 1,
+     "recover": 1,
+     "attack": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "hiding": 3,
+     "recover": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 6,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "hiding": 3,
+     "attack": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 6,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 3,
+     "hiding": 2,
+     "attack": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "boss": 1,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 6,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 4,
+     "hiding": 1,
+     "attack": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "boss": 1,
+     "walker": 3,
+     "runner": 2,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 1,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 2,
+     "hiding": 1,
+     "goFacility": 1,
+     "goWork": 1,
+     "walk": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "boss": 1,
+     "runner": 2,
+     "walker": 3,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "zattack": 1,
+     "idle": 1,
+     "zbash": 1,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "recover": 1,
+     "hiding": 4,
+     "useFacility": 1
+    },
+    "boss": "58% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "runner": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 1,
+     "zbash": 1,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 3,
+     "postCombat": 3
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "crawler": 1,
+     "walker": 5
+    },
+    "zm": {
+     "zleave": 1,
+     "zchase": 1,
+     "zbash": 1,
+     "zmarch": 2,
+     "idle": 1,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 5,
+     "chase": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zleave": 1,
+     "zbash": 1,
+     "zmarch": 2,
+     "idle": 2,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 2,
+     "walk": 1,
+     "postCombat": 3
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zleave": 1,
+     "zrecover": 1,
+     "zmarch": 1,
+     "idle": 3,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 1,
+     "wait": 1,
+     "recover": 2,
+     "chase": 1,
+     "attack": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:13",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 4
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 2,
+     "walk": 2,
+     "goWork": 2
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:14",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 4
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "goFacility": 1,
+     "fieldAid": 1,
+     "postCombat": 3
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:14",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 2,
+     "wait": 1,
+     "goWork": 2,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:15",
+    "z": 7,
+    "zk": {
+     "runner": 1,
+     "walker": 6
+    },
+    "zm": {
+     "zchase": 1,
+     "idle": 2,
+     "zleave": 3,
+     "zattack": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hide": 2,
+     "chase": 3,
+     "recover": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:15",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "idle": 2,
+     "zleave": 4,
+     "zchase": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 1,
+     "recover": 1,
+     "attack": 1,
+     "hide": 2,
+     "chase": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:16",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zbash": 1,
+     "zleave": 3,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 4,
+     "goFacility": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:16",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zattack": 1,
+     "zleave": 3,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "attack": 1,
+     "goFacility": 1,
+     "gather": 1,
+     "hiding": 3
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:17",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 4
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 2,
+     "gather": 1,
+     "goWork": 1,
+     "fieldAid": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:17",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 2,
+     "wait": 1,
+     "goWork": 1,
+     "fieldAid": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:18",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 1,
+     "walk": 2,
+     "goFacility": 2,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:18",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 1,
+     "walk": 2,
+     "useFacility": 1,
+     "goFacility": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:19",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "wait": 3,
+     "walk": 2,
+     "goFacility": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:19",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "zchase": 1,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "goFacility": 2,
+     "chase": 1,
+     "free": 1,
+     "wait": 1,
+     "hide": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   }
+  ],
+  "boss": {
+   "bk": "bloater",
+   "max": 395,
+   "mob": 4
+  },
+  "downs": [
+   {
+    "d": 7,
+    "h": 2,
+    "who": "Guard L2",
+    "was": "recover (Fighting a Bloated)",
+    "inTown": true,
+    "by": "bloated",
+    "broken": 0,
+    "walls": 15
+   }
+  ],
+  "deaths": [],
+  "fallen": [],
+  "levels": [
+   "Guard L2",
+   "Guard L7",
+   "Medic L4",
+   "Farmer L1",
+   "Medic L2",
+   "Cook L1"
+  ],
+  "seed": 3,
+  "errs": []
+ },
+ {
+  "log": [
+   {
+    "t": "6:18",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "runner": 3
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 1,
+     "zmarch": 2,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "fieldAid": 1,
+     "useFacility": 2,
+     "goFacility": 3,
+     "walk": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "runner": 3
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 3,
+     "zmarch": 1,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "goFacility": 2,
+     "chase": 2,
+     "attack": 1,
+     "recover": 1,
+     "pitch": 1,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "runner": 2,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 1,
+     "walk": 2,
+     "goFacility": 4,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:20",
+    "z": 11,
+    "zk": {
+     "walker": 6,
+     "runner": 2,
+     "crawler": 2,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3,
+     "zmarch": 3,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "goFacility": 6,
+     "chase": 1,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "6:20",
+    "z": 12,
+    "zk": {
+     "walker": 8,
+     "runner": 1,
+     "crawler": 2,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "zchase": 1,
+     "idle": 4,
+     "zmarch": 4,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 4,
+     "chase": 2,
+     "goFacility": 2
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "6:21",
+    "z": 17,
+    "zk": {
+     "walker": 11,
+     "runner": 1,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "zchase": 5,
+     "zbash": 1,
+     "idle": 3,
+     "zmarch": 7
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 3,
+     "chase": 2,
+     "recover": 1,
+     "hide": 1,
+     "goFacility": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 4
+   },
+   {
+    "t": "6:21",
+    "z": 16,
+    "zk": {
+     "walker": 10,
+     "runner": 1,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 2,
+     "zattack": 2,
+     "idle": 3,
+     "zmarch": 6,
+     "zbash": 3
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 3,
+     "recover": 3,
+     "attack": 1,
+     "hiding": 1
+    },
+    "boss": "100% zattack",
+    "fighters": 5
+   },
+   {
+    "t": "6:22",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 2,
+     "idle": 3,
+     "zmarch": 5,
+     "zbash": 4,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 3,
+     "chase": 1,
+     "hiding": 2,
+     "hide": 2
+    },
+    "boss": "100% zrecover",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 5,
+     "zbash": 5,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 3,
+     "hiding": 3,
+     "hide": 1,
+     "down": 1
+    },
+    "boss": "100% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "6:23",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zchase": 6,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "attack": 1,
+     "hiding": 3,
+     "hide": 1,
+     "down": 1,
+     "chase": 1,
+     "recover": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "6:23",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zchase": 4,
+     "zrecover": 3
+    },
+    "sv": 8,
+    "sm": {
+     "chase": 3,
+     "hiding": 3,
+     "down": 1,
+     "attack": 1
+    },
+    "boss": "97% zrecover",
+    "fighters": 2
+   },
+   {
+    "t": "7:00",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zrecover": 5,
+     "zattack": 1,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 3,
+     "hiding": 4,
+     "recover": 1
+    },
+    "boss": "90% zattack",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zrecover": 3,
+     "zbash": 1,
+     "zattack": 2,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hiding": 3,
+     "hide": 1
+    },
+    "boss": "90% zrecover",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 3,
+     "zchase": 7,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hiding": 3,
+     "hide": 1
+    },
+    "boss": "90% zchase",
+    "fighters": 2
+   },
+   {
+    "t": "7:02",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zbash": 6,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hiding": 3,
+     "hide": 1
+    },
+    "boss": "90% zchase",
+    "fighters": 2
+   },
+   {
+    "t": "7:02",
+    "z": 15,
+    "zk": {
+     "walker": 10,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 5,
+     "zattack": 3,
+     "zchase": 3
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "attack": 2,
+     "hide": 1,
+     "postCombat": 1
+    },
+    "boss": "90% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "7:03",
+    "z": 11,
+    "zk": {
+     "walker": 6,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zchase": 2,
+     "zattack": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "rescueTo": 2,
+     "goFacility": 1,
+     "attack": 1
+    },
+    "boss": "90% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:03",
+    "z": 10,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 3,
+     "zrecover": 2,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 5,
+     "hiding": 2,
+     "walk": 1
+    },
+    "boss": "90% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 10,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 4,
+     "zbash": 1,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 5,
+     "hiding": 1,
+     "walk": 1,
+     "rescueTo": 1
+    },
+    "boss": "90% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 10,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 6
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hide": 1,
+     "hiding": 1
+    },
+    "boss": "90% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:05",
+    "z": 10,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 6
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:05",
+    "z": 10,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "bloated": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 6
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "7:06",
+    "z": 9,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 8,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:06",
+    "z": 7,
+    "zk": {
+     "walker": 3,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 7
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:07",
+    "z": 7,
+    "zk": {
+     "walker": 3,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 7
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "walker": 3,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 7
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "hiding": 2
+    },
+    "boss": "90% zleave",
+    "fighters": 2
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "walker": 3,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 7
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "rescueCarry": 1,
+     "rescueTo": 1
+    },
+    "boss": "90% zleave",
+    "fighters": 2
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 5,
+     "zmarch": 1,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 6,
+     "rescueCarry": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 4,
+     "zmarch": 1,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hospital": 2,
+     "rescueTo": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 1,
+     "idle": 3
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hospital": 2,
+     "rescueCarry": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "down": 4,
+     "hospital": 2,
+     "rescueCarry": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 6,
+     "idle": 1
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "postCombat": 1,
+     "hiding": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:11",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "chase": 1,
+     "hiding": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:12",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 6
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "walk": 1,
+     "hiding": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:12",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 6
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "goFacility": 1,
+     "hiding": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:13",
+    "z": 6,
+    "zk": {
+     "walker": 4,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 6
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "useFacility": 1,
+     "walk": 1,
+     "goWork": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:14",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 5
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "walk": 1,
+     "wait": 1,
+     "goWork": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:14",
+    "z": 4,
+    "zk": {
+     "crawler": 1,
+     "walker": 3
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 1
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 4,
+     "wait": 2,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:15",
+    "z": 5,
+    "zk": {
+     "walker": 3,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 4
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 2,
+     "free": 2,
+     "chase": 1,
+     "wait": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "7:15",
+    "z": 5,
+    "zk": {
+     "walker": 3,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 4
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 2,
+     "goWork": 1,
+     "chase": 1,
+     "wait": 1,
+     "walk": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "7:16",
+    "z": 5,
+    "zk": {
+     "walker": 2,
+     "crawler": 3
+    },
+    "zm": {
+     "idle": 4,
+     "zmarch": 1
+    },
+    "sv": 7,
+    "sm": {
+     "hospital": 2,
+     "work": 2,
+     "chase": 1,
+     "wait": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "7:16",
+    "z": 5,
+    "zk": {
+     "walker": 2,
+     "crawler": 3
+    },
+    "zm": {
+     "zleave": 3,
+     "zchase": 1,
+     "zmarch": 1
+    },
+    "sv": 7,
+    "sm": {
+     "walk": 2,
+     "work": 2,
+     "attack": 1,
+     "gather": 1,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:17",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "zmarch": 1,
+     "idle": 2
+    },
+    "sv": 7,
+    "sm": {
+     "walk": 4,
+     "work": 2,
+     "goWork": 1
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:17",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "appear": 1
+    },
+    "sv": 7,
+    "sm": {
+     "walk": 3,
+     "work": 3,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:18",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 7,
+    "sm": {
+     "wait": 1,
+     "goFacility": 2,
+     "walk": 3,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:18",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zmarch": 1
+    },
+    "sv": 7,
+    "sm": {
+     "wait": 1,
+     "free": 1,
+     "walk": 3,
+     "fix": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:19",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zmarch": 1
+    },
+    "sv": 7,
+    "sm": {
+     "wait": 1,
+     "walk": 4,
+     "pitch": 2
+    },
+    "boss": "-",
+    "fighters": 5
+   },
+   {
+    "t": "7:19",
+    "z": 5,
+    "zk": {
+     "walker": 4,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 5
+    },
+    "sv": 7,
+    "sm": {
+     "wait": 2,
+     "walk": 3,
+     "pitch": 2
+    },
+    "boss": "-",
+    "fighters": 5
+   }
+  ],
+  "boss": {
+   "bk": "stalker",
+   "max": 225,
+   "mob": 4
+  },
+  "downs": [
+   {
+    "d": 6,
+    "h": 22,
+    "who": "Scavenger L1",
+    "was": "hide (Badly hurt \u2014 Hiding from a Mutant Boss \u2192 Canteen)",
+    "inTown": true,
+    "by": "walker",
+    "broken": 0,
+    "walls": 36
+   },
+   {
+    "d": 7,
+    "h": 0,
+    "who": "Farmer L3",
+    "was": "recover (Cornered \u2014 fighting back)",
+    "inTown": true,
+    "by": "boss",
+    "broken": 0,
+    "walls": 36
+   },
+   {
+    "d": 7,
+    "h": 0,
+    "who": "Medic L3",
+    "was": "attack (Cornered by a Mutant Boss)",
+    "inTown": true,
+    "by": "boss",
+    "broken": 0,
+    "walls": 36
+   },
+   {
+    "d": 7,
+    "h": 0,
+    "who": "Engineer L2",
+    "was": "recover (Cornered \u2014 fighting back)",
+    "inTown": true,
+    "by": "walker",
+    "broken": 0,
+    "walls": 36
+   },
+   {
+    "d": 7,
+    "h": 3,
+    "who": "Guard L1",
+    "was": "rescueCarry (Carrying June to the Lodge)",
+    "inTown": true,
+    "by": "bloated",
+    "broken": 0,
+    "walls": 36
+   },
+   {
+    "d": 7,
+    "h": 4,
+    "who": "Scavenger L4",
+    "was": "attack (Helping Maya)",
+    "inTown": true,
+    "by": "walker",
+    "broken": 0,
+    "walls": 36
+   }
+  ],
+  "deaths": [
+   {
+    "d": 7,
+    "h": 11,
+    "who": "Farmer L3",
+    "trait": "loner",
+    "z": {
+     "walker": 6,
+     "crawler": 2
+    },
+    "broken": 0,
+    "down": 1,
+    "med": 4
+   },
+   {
+    "d": 7,
+    "h": 12,
+    "who": "Medic L3",
+    "trait": "caring",
+    "z": {
+     "walker": 4,
+     "crawler": 2
+    },
+    "broken": 0,
+    "down": 0,
+    "med": 4
+   }
+  ],
+  "fallen": [
+   {
+    "name": "Noah",
+    "job": "Farmer",
+    "l": 3,
+    "day": 7,
+    "cause": "bled out",
+    "trait": "loner"
+   },
+   {
+    "name": "Amy",
+    "job": "Medic",
+    "l": 3,
+    "day": 7,
+    "cause": "bled out",
+    "trait": "caring"
+   }
+  ],
+  "levels": [
+   "Guard L1",
+   "Scavenger L4",
+   "Guard L5",
+   "Scavenger L2",
+   "Scavenger L1",
+   "Engineer L2",
+   "Cook L2"
+  ],
+  "seed": 7,
+  "errs": []
+ },
+ {
+  "log": [
+   {
+    "t": "6:18",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zchase": 2,
+     "zmarch": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 2,
+     "hide": 1,
+     "goFacility": 4,
+     "attack": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 1,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "goFacility": 4,
+     "walk": 1,
+     "useFacility": 1,
+     "hide": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 1,
+     "zbreak": 2,
+     "zmarch": 1
+    },
+    "sv": 8,
+    "sm": {
+     "useFacility": 3,
+     "goFacility": 3,
+     "walk": 2
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:20",
+    "z": 11,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 2,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 7,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 2,
+     "goFacility": 3,
+     "chase": 1,
+     "useFacility": 1,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:20",
+    "z": 12,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 3,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 6,
+     "zbash": 1,
+     "zchase": 2
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 1,
+     "goFacility": 2,
+     "useFacility": 2,
+     "chase": 2,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "6:21",
+    "z": 17,
+    "zk": {
+     "walker": 9,
+     "bloated": 1,
+     "crawler": 4,
+     "runner": 2,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 11,
+     "zchase": 2,
+     "zattack": 1
+    },
+    "sv": 8,
+    "sm": {
+     "chase": 3,
+     "useFacility": 4,
+     "recover": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "6:21",
+    "z": 16,
+    "zk": {
+     "walker": 9,
+     "bloated": 1,
+     "crawler": 4,
+     "boss": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 9,
+     "zchase": 2,
+     "zbreak": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hide": 1,
+     "rescueTo": 1,
+     "useFacility": 4,
+     "chase": 1,
+     "down": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 1
+   },
+   {
+    "t": "6:22",
+    "z": 15,
+    "zk": {
+     "walker": 8,
+     "bloated": 1,
+     "crawler": 4,
+     "boss": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 10,
+     "zchase": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 1,
+     "rescueCarry": 1,
+     "useFacility": 4,
+     "chase": 1,
+     "down": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 15,
+    "zk": {
+     "walker": 8,
+     "bloated": 1,
+     "crawler": 4,
+     "boss": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zchase": 2,
+     "zattack": 1,
+     "zmarch": 9
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 2,
+     "recover": 1,
+     "chase": 1,
+     "useFacility": 3,
+     "hospital": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 0
+   },
+   {
+    "t": "6:23",
+    "z": 14,
+    "zk": {
+     "walker": 7,
+     "bloated": 1,
+     "crawler": 4,
+     "boss": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zrecover": 1,
+     "zchase": 2,
+     "zmarch": 6,
+     "zbash": 1,
+     "zattack": 1
+    },
+    "sv": 8,
+    "sm": {
+     "attack": 1,
+     "hiding": 4,
+     "recover": 1,
+     "hospital": 1,
+     "useFacility": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "6:23",
+    "z": 11,
+    "zk": {
+     "walker": 6,
+     "crawler": 4,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "zmarch": 5,
+     "zbash": 3,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 6,
+     "walk": 1,
+     "hospital": 1
+    },
+    "boss": "100% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:00",
+    "z": 10,
+    "zk": {
+     "walker": 6,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "zchase": 5,
+     "zmarch": 3,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 5,
+     "chase": 1,
+     "attack": 1,
+     "hide": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 2
+   },
+   {
+    "t": "7:01",
+    "z": 9,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "zchase": 2,
+     "zmarch": 3,
+     "zbash": 2,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "chase": 1,
+     "hiding": 6,
+     "wait": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 9,
+    "zk": {
+     "walker": 5,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "zchase": 3,
+     "zbreak": 1,
+     "zrecover": 2,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hide": 4,
+     "hiding": 3,
+     "wait": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:02",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zbash": 2,
+     "zmarch": 6
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hiding": 6,
+     "wait": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 0
+   },
+   {
+    "t": "7:02",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zbash": 2,
+     "zmarch": 6
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hiding": 6,
+     "walk": 1
+    },
+    "boss": "100% zmarch",
+    "fighters": 0
+   },
+   {
+    "t": "7:03",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 4,
+     "zmarch": 3,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hide": 4,
+     "hiding": 2,
+     "walk": 1
+    },
+    "boss": "100% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:03",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 3,
+     "zmarch": 4,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hide": 7
+    },
+    "boss": "100% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:04",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zbash": 1,
+     "zmarch": 6,
+     "zchase": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hiding": 5,
+     "hide": 2
+    },
+    "boss": "100% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 1,
+     "zmarch": 6,
+     "zbash": 1
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "rescueTo": 1,
+     "hiding": 6
+    },
+    "boss": "100% zmarch",
+    "fighters": 0
+   },
+   {
+    "t": "7:05",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 3,
+     "zbash": 1,
+     "zmarch": 4
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "rescueCarry": 1,
+     "hide": 1,
+     "hiding": 5
+    },
+    "boss": "100% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:05",
+    "z": 8,
+    "zk": {
+     "walker": 4,
+     "crawler": 3,
+     "boss": 1
+    },
+    "zm": {
+     "zmarch": 1,
+     "zbash": 4,
+     "zchase": 2,
+     "zrecover": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "chase": 3,
+     "attack": 1,
+     "hiding": 3
+    },
+    "boss": "100% zrecover",
+    "fighters": 0
+   },
+   {
+    "t": "7:06",
+    "z": 4,
+    "zk": {
+     "runner": 2,
+     "crawler": 1,
+     "walker": 1
+    },
+    "zm": {
+     "zmarch": 3,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "walk": 4,
+     "useFacility": 1,
+     "fieldAid": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:06",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "crawler": 2,
+     "walker": 2
+    },
+    "zm": {
+     "zbreak": 1,
+     "zmarch": 5,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "walk": 4,
+     "postCombat": 1,
+     "fieldAid": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:07",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "crawler": 2,
+     "walker": 2
+    },
+    "zm": {
+     "zchase": 1,
+     "zmarch": 5,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "chase": 2,
+     "walk": 3,
+     "fieldAid": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 2,
+     "crawler": 2
+    },
+    "zm": {
+     "zrecover": 1,
+     "zbash": 1,
+     "zmarch": 4,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "hiding": 4,
+     "attack": 1,
+     "walk": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 2,
+     "crawler": 2
+    },
+    "zm": {
+     "zattack": 1,
+     "zchase": 2,
+     "zleave": 1,
+     "zmarch": 2,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hide": 3,
+     "hiding": 3,
+     "walk": 1,
+     "chase": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 2,
+     "crawler": 2
+    },
+    "zm": {
+     "zchase": 3,
+     "zleave": 3,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "hiding": 3,
+     "hide": 1,
+     "chase": 3
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "runner": 2,
+     "walker": 3,
+     "crawler": 2
+    },
+    "zm": {
+     "zattack": 1,
+     "zleave": 3,
+     "zchase": 1,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "hiding": 4,
+     "chase": 1,
+     "goFire": 1,
+     "attack": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "runner": 2,
+     "walker": 4,
+     "crawler": 1
+    },
+    "zm": {
+     "zrecover": 1,
+     "zleave": 3,
+     "zchase": 1,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "hide": 3,
+     "hiding": 3,
+     "goFire": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 4
+    },
+    "zm": {
+     "zbash": 2,
+     "zleave": 2,
+     "idle": 3
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 1,
+     "hiding": 6,
+     "fightFire": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 4
+    },
+    "zm": {
+     "zrecover": 1,
+     "zleave": 3,
+     "zchase": 1,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 2,
+     "hide": 3,
+     "recover": 1,
+     "chase": 2
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "runner": 3,
+     "walker": 4
+    },
+    "zm": {
+     "zattack": 2,
+     "zleave": 4,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hiding": 4,
+     "hide": 2,
+     "recover": 1,
+     "chase": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "runner": 2
+    },
+    "zm": {
+     "zleave": 5,
+     "zbreak": 1,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 2,
+     "postCombat": 3,
+     "fieldAid": 1,
+     "free": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "runner": 2,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zbreak": 1,
+     "idle": 2
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 3,
+     "wait": 1,
+     "fieldAid": 1,
+     "goFacility": 2,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:13",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "runner": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zchase": 1,
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 1,
+     "wait": 1,
+     "work": 1,
+     "chase": 2,
+     "free": 1,
+     "goFacility": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:14",
+    "z": 6,
+    "zk": {
+     "walker": 2,
+     "runner": 1,
+     "crawler": 2,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 3,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "walk": 1,
+     "wait": 1,
+     "work": 1,
+     "postCombat": 2,
+     "fieldAid": 1,
+     "free": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:14",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "runner": 1,
+     "crawler": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 5,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "chase": 2,
+     "wait": 1,
+     "free": 1,
+     "pitch": 1,
+     "recover": 1,
+     "goFacility": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:15",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "runner": 1,
+     "crawler": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 6,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "rescueTo": 1,
+     "hide": 2,
+     "chase": 3,
+     "down": 1,
+     "fix": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:15",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "runner": 2,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "zbash": 1,
+     "idle": 4,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "rescueTo": 1,
+     "hiding": 1,
+     "chase": 1,
+     "free": 1,
+     "postCombat": 2,
+     "down": 1,
+     "goWork": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:16",
+    "z": 9,
+    "zk": {
+     "walker": 5,
+     "runner": 3,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zattack": 1,
+     "idle": 2,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "rescueCarry": 1,
+     "hiding": 1,
+     "recover": 1,
+     "walk": 2,
+     "down": 1,
+     "goFacility": 1,
+     "goWork": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:16",
+    "z": 9,
+    "zk": {
+     "walker": 5,
+     "spitter": 1,
+     "runner": 2,
+     "sporehead": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zattack": 1,
+     "zmarch": 1,
+     "idle": 1
+    },
+    "sv": 8,
+    "sm": {
+     "rescueCarry": 1,
+     "hiding": 3,
+     "chase": 1,
+     "walk": 1,
+     "down": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:17",
+    "z": 9,
+    "zk": {
+     "spitter": 1,
+     "walker": 5,
+     "runner": 1,
+     "sporehead": 1,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "zmarch": 1,
+     "idle": 3
+    },
+    "sv": 8,
+    "sm": {
+     "down": 2,
+     "hiding": 3,
+     "goFacility": 1,
+     "rescueCarry": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:17",
+    "z": 9,
+    "zk": {
+     "spitter": 1,
+     "walker": 5,
+     "runner": 1,
+     "sporehead": 1,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "zbash": 1,
+     "idle": 3
+    },
+    "sv": 8,
+    "sm": {
+     "down": 1,
+     "hiding": 3,
+     "walk": 1,
+     "rescueTo": 1,
+     "hospital": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:18",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "sporehead": 1,
+     "bloated": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 4,
+     "zmarch": 2,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 2,
+     "walk": 2,
+     "goWork": 1,
+     "wait": 1,
+     "free": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:18",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "sporehead": 1,
+     "bloated": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1,
+     "zmarch": 3
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 2,
+     "wait": 1,
+     "walk": 3,
+     "fix": 1,
+     "pitch": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:19",
+    "z": 9,
+    "zk": {
+     "walker": 6,
+     "sporehead": 1,
+     "bloated": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1,
+     "zchase": 1,
+     "zmarch": 2
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 2,
+     "wait": 1,
+     "chase": 2,
+     "fix": 1,
+     "pitch": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:19",
+    "z": 8,
+    "zk": {
+     "walker": 5,
+     "sporehead": 1,
+     "bloated": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zmarch": 3,
+     "appear": 1
+    },
+    "sv": 8,
+    "sm": {
+     "hospital": 2,
+     "postCombat": 2,
+     "goFacility": 1,
+     "fix": 1,
+     "pitch": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   }
+  ],
+  "boss": {
+   "bk": "stalker",
+   "max": 225,
+   "mob": 4
+  },
+  "downs": [
+   {
+    "d": 6,
+    "h": 21,
+    "who": "Scavenger L4",
+    "was": "attack (Fighting a Runner)",
+    "inTown": true,
+    "by": "walker",
+    "broken": 0,
+    "walls": 52
+   },
+   {
+    "d": 7,
+    "h": 1,
+    "who": "Scavenger L1",
+    "was": "hide (Slipped out of the Tent \u2192 Canteen)",
+    "inTown": true,
+    "by": "walker",
+    "broken": 0,
+    "walls": 52
+   },
+   {
+    "d": 7,
+    "h": 8,
+    "who": "Scavenger L1",
+    "was": "hide (Badly hurt \u2014 Hiding from a Runner \u2192 Lodge)",
+    "inTown": true,
+    "by": "runner",
+    "broken": 1,
+    "walls": 52
+   },
+   {
+    "d": 7,
+    "h": 14,
+    "who": "Scavenger L4",
+    "was": "attack (Fighting a Raider)",
+    "inTown": true,
+    "by": "raider",
+    "broken": 1,
+    "walls": 52
+   },
+   {
+    "d": 7,
+    "h": 16,
+    "who": "Scavenger L1",
+    "was": "rescueCarry (Carrying Lena to the Lodge)",
+    "inTown": true,
+    "by": "runner",
+    "broken": 0,
+    "walls": 36
+   }
+  ],
+  "deaths": [],
+  "fallen": [],
+  "levels": [
+   "Scavenger L1",
+   "Guard L2",
+   "Scavenger L2",
+   "Guard L6",
+   "Scavenger L4",
+   "Engineer L1",
+   "Medic L3",
+   "Farmer L3"
+  ],
+  "seed": 11,
+  "errs": []
+ },
+ {
+  "log": [
+   {
+    "t": "6:18",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "free": 1,
+     "walk": 1,
+     "fieldAid": 1,
+     "useFacility": 1,
+     "goFacility": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "goFacility": 4,
+     "fieldAid": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:19",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "runner": 1,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "useFacility": 2,
+     "free": 1,
+     "fieldAid": 1,
+     "goFacility": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "6:20",
+    "z": 10,
+    "zk": {
+     "walker": 7,
+     "runner": 2,
+     "bloated": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 5,
+     "zmarch": 1,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "chase": 1,
+     "useFacility": 1,
+     "goFacility": 3
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "6:20",
+    "z": 12,
+    "zk": {
+     "walker": 6,
+     "runner": 4,
+     "bloated": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 8,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "postCombat": 1,
+     "useFacility": 3,
+     "goFacility": 1
+    },
+    "boss": "-",
+    "fighters": 4
+   },
+   {
+    "t": "6:21",
+    "z": 16,
+    "zk": {
+     "walker": 9,
+     "runner": 4,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 8,
+     "zmarch": 6,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 1,
+     "chase": 3,
+     "useFacility": 2
+    },
+    "boss": "100% zbash",
+    "fighters": 3
+   },
+   {
+    "t": "6:21",
+    "z": 16,
+    "zk": {
+     "walker": 9,
+     "runner": 4,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 7,
+     "zrecover": 2,
+     "zchase": 3,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "goFacility": 1,
+     "recover": 1,
+     "useFacility": 2,
+     "chase": 2
+    },
+    "boss": "100% zchase",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 13,
+    "zk": {
+     "walker": 7,
+     "runner": 3,
+     "bloated": 1,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 7,
+     "zchase": 1,
+     "zmarch": 1,
+     "zrecover": 2,
+     "zattack": 1
+    },
+    "sv": 6,
+    "sm": {
+     "rescueTo": 1,
+     "down": 1,
+     "useFacility": 2,
+     "attack": 2
+    },
+    "boss": "80% zrecover",
+    "fighters": 2
+   },
+   {
+    "t": "6:22",
+    "z": 12,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 6,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3,
+     "zmarch": 1,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "rescueTo": 1,
+     "down": 1,
+     "chase": 3,
+     "hide": 1
+    },
+    "boss": "76% zrecover",
+    "fighters": 2
+   },
+   {
+    "t": "6:23",
+    "z": 12,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 6,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3,
+     "zmarch": 1,
+     "zattack": 1
+    },
+    "sv": 6,
+    "sm": {
+     "rescueTo": 1,
+     "down": 1,
+     "recover": 1,
+     "hide": 2,
+     "attack": 1
+    },
+    "boss": "76% zattack",
+    "fighters": 1
+   },
+   {
+    "t": "6:23",
+    "z": 12,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 6,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3,
+     "zbash": 2
+    },
+    "sv": 6,
+    "sm": {
+     "down": 2,
+     "attack": 2,
+     "hiding": 2
+    },
+    "boss": "76% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:00",
+    "z": 12,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 6,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3,
+     "zbash": 2
+    },
+    "sv": 6,
+    "sm": {
+     "down": 2,
+     "chase": 2,
+     "hiding": 2
+    },
+    "boss": "76% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 11,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 5,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 2,
+     "attack": 3,
+     "hiding": 1
+    },
+    "boss": "76% zbash",
+    "fighters": 1
+   },
+   {
+    "t": "7:01",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 2,
+     "zattack": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 2,
+     "recover": 1,
+     "hiding": 1,
+     "chase": 1,
+     "attack": 1
+    },
+    "boss": "74% zattack",
+    "fighters": 1
+   },
+   {
+    "t": "7:02",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 3,
+     "chase": 2,
+     "hide": 1
+    },
+    "boss": "70% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:02",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 7,
+     "zchase": 2,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 4,
+     "hide": 1,
+     "chase": 1
+    },
+    "boss": "70% zbash",
+    "fighters": 0
+   },
+   {
+    "t": "7:03",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zbash": 4,
+     "idle": 5,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 4,
+     "hide": 1,
+     "postCombat": 1
+    },
+    "boss": "70% zbash",
+    "fighters": 0
+   },
+   {
+    "t": "7:03",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zbash": 3,
+     "idle": 4,
+     "zrecover": 1,
+     "zchase": 1,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 3,
+     "hide": 1,
+     "chase": 1,
+     "recover": 1
+    },
+    "boss": "70% zchase",
+    "fighters": 1
+   },
+   {
+    "t": "7:04",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zchase": 3,
+     "idle": 4,
+     "zbash": 2,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "walk": 1,
+     "wait": 1,
+     "hide": 2,
+     "hiding": 1
+    },
+    "boss": "70% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:04",
+    "z": 10,
+    "zk": {
+     "runner": 3,
+     "bloated": 1,
+     "walker": 4,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zrecover": 1,
+     "idle": 6,
+     "zchase": 2,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 1,
+     "walk": 1,
+     "wait": 1,
+     "hiding": 1,
+     "hide": 1,
+     "attack": 1
+    },
+    "boss": "70% zchase",
+    "fighters": 0
+   },
+   {
+    "t": "7:05",
+    "z": 9,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 2,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 5,
+     "zbash": 2,
+     "zchase": 1,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "chase": 1,
+     "hide": 1,
+     "hiding": 4
+    },
+    "boss": "67% zbash",
+    "fighters": 0
+   },
+   {
+    "t": "7:05",
+    "z": 9,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 2,
+     "crawler": 1,
+     "boss": 1
+    },
+    "zm": {
+     "idle": 5,
+     "zbash": 2,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 6
+    },
+    "boss": "67% zmarch",
+    "fighters": 0
+   },
+   {
+    "t": "7:06",
+    "z": 8,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 2,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zchase": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hide": 3,
+     "hiding": 2,
+     "chase": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:06",
+    "z": 8,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 2,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zchase": 1,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hide": 2,
+     "hiding": 3,
+     "attack": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:07",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zrecover": 1
+    },
+    "sv": 6,
+    "sm": {
+     "down": 1,
+     "hiding": 4,
+     "rescueCarry": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "hiding": 3,
+     "errand": 2
+    },
+    "boss": "67% zleave",
+    "fighters": 1
+   },
+   {
+    "t": "7:08",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "runner": 1,
+     "boss": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "zbash": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "hiding": 3,
+     "errand": 2
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:09",
+    "z": 9,
+    "zk": {
+     "bloated": 1,
+     "walker": 6,
+     "boss": 1,
+     "sporehead": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "zattack": 1,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "chase": 1,
+     "errand": 2,
+     "goWork": 1,
+     "walk": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:09",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 4,
+     "boss": 1,
+     "sporehead": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zchase": 1,
+     "idle": 3
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "chase": 1,
+     "errand": 2,
+     "work": 1,
+     "wait": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 3,
+     "boss": 1,
+     "sporehead": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 4
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "postCombat": 2,
+     "errand": 2,
+     "wait": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:10",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 3,
+     "boss": 1,
+     "sporehead": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 6,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "chase": 1,
+     "errand": 2,
+     "work": 1,
+     "wait": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 3,
+     "boss": 1,
+     "sporehead": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 1,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "recover": 1,
+     "fieldAid": 1,
+     "work": 2,
+     "wait": 1
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:11",
+    "z": 7,
+    "zk": {
+     "bloated": 1,
+     "walker": 3,
+     "boss": 1,
+     "sporehead": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "wait": 2,
+     "fieldAid": 1,
+     "work": 2
+    },
+    "boss": "67% zleave",
+    "fighters": 0
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "sporehead": 1,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 1,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "walk": 1,
+     "fieldAid": 1,
+     "goFacility": 2,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:12",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "spitter": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "idle": 2,
+     "zmarch": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hospital": 1,
+     "walk": 1,
+     "fieldAid": 1,
+     "useFacility": 1,
+     "goFacility": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:13",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "spitter": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zmarch": 2,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "wait": 2,
+     "fieldAid": 1,
+     "work": 1,
+     "free": 1
+    },
+    "boss": "-",
+    "fighters": 3
+   },
+   {
+    "t": "7:14",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "spitter": 1,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 4,
+     "zrecover": 1,
+     "zmarch": 1,
+     "idle": 1
+    },
+    "sv": 6,
+    "sm": {
+     "attack": 1,
+     "chase": 2,
+     "goFacility": 1,
+     "goWork": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:14",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 1,
+     "zmarch": 1,
+     "appear": 1
+    },
+    "sv": 6,
+    "sm": {
+     "postCombat": 3,
+     "goFacility": 1,
+     "goWork": 1,
+     "hiding": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:15",
+    "z": 7,
+    "zk": {
+     "bloated": 2,
+     "walker": 3,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 4,
+     "idle": 2,
+     "zmarch": 1
+    },
+    "sv": 6,
+    "sm": {
+     "gather": 1,
+     "chase": 2,
+     "fieldAid": 1,
+     "work": 1,
+     "walk": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:15",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "bloated": 1,
+     "crawler": 2
+    },
+    "zm": {
+     "zleave": 2,
+     "zmarch": 3,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "goFacility": 1,
+     "fieldAid": 1,
+     "goWork": 1,
+     "work": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:16",
+    "z": 7,
+    "zk": {
+     "walker": 4,
+     "crawler": 3
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "goFacility": 2,
+     "goWork": 1,
+     "work": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:16",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "crawler": 2
+    },
+    "zm": {
+     "zchase": 1,
+     "zleave": 1,
+     "zmarch": 3,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 1,
+     "postCombat": 1,
+     "goFacility": 1,
+     "chase": 1,
+     "work": 1,
+     "hide": 1
+    },
+    "boss": "-",
+    "fighters": 2
+   },
+   {
+    "t": "7:17",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zrecover": 1,
+     "zleave": 1,
+     "zbash": 1,
+     "zmarch": 2,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "hiding": 2,
+     "recover": 2,
+     "free": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:17",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "crawler": 1
+    },
+    "zm": {
+     "zleave": 2,
+     "idle": 2,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 3,
+     "chase": 1,
+     "free": 1,
+     "work": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:18",
+    "z": 7,
+    "zk": {
+     "walker": 7
+    },
+    "zm": {
+     "zleave": 1,
+     "idle": 3,
+     "zmarch": 3
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 3,
+     "chase": 1,
+     "goWork": 1,
+     "goFacility": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   },
+   {
+    "t": "7:18",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 3,
+     "zmarch": 2,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 2,
+     "postCombat": 1,
+     "goFacility": 1,
+     "free": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:19",
+    "z": 7,
+    "zk": {
+     "walker": 6,
+     "spitter": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "gather": 1,
+     "free": 1,
+     "postCombat": 2,
+     "useFacility": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 0
+   },
+   {
+    "t": "7:19",
+    "z": 7,
+    "zk": {
+     "walker": 5,
+     "spitter": 1,
+     "runner": 1
+    },
+    "zm": {
+     "zleave": 5,
+     "idle": 2
+    },
+    "sv": 6,
+    "sm": {
+     "walk": 1,
+     "goFacility": 2,
+     "fieldAid": 1,
+     "free": 1,
+     "wait": 1
+    },
+    "boss": "-",
+    "fighters": 1
+   }
+  ],
+  "boss": {
+   "bk": "butcher",
+   "max": 369,
+   "mob": 4
+  },
+  "downs": [
+   {
+    "d": 6,
+    "h": 22,
+    "who": "Guard L6",
+    "was": "attack (Fighting a Mutant Boss)",
+    "inTown": false,
+    "by": "walker",
+    "broken": 0,
+    "walls": 30
+   },
+   {
+    "d": 6,
+    "h": 23,
+    "who": "Scavenger L2",
+    "was": "rescueTo (Rescuing Marcus (Caring))",
+    "inTown": false,
+    "by": "boss",
+    "broken": 0,
+    "walls": 30
+   },
+   {
+    "d": 7,
+    "h": 7,
+    "who": "Scavenger L2",
+    "was": "hide (Badly hurt \u2014 Hiding from a Runner \u2192 Tent)",
+    "inTown": true,
+    "by": "runner",
+    "broken": 0,
+    "walls": 30
+   }
+  ],
+  "deaths": [],
+  "fallen": [],
+  "levels": [
+   "Scavenger L2",
+   "Guard L6",
+   "Medic L4",
+   "Scavenger L4",
+   "Farmer L2",
+   "Guard L2"
+  ],
+  "seed": 19,
+  "errs": []
+ }
+]
