@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.119', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.120', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -409,8 +409,8 @@ const COZY_HUD = G3D;
 const hudU = () => Math.max(.72, Math.min(1.5, cam.z * .82)), HUD_SMALL = .8;   /* V3D.21: HP bars, damage numbers, LEVEL UP and emoji bubbles 20% smaller */
 function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function hudText(t, x, y, font, fill, stroke, lw) { ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round'; if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.strokeText(t, x, y); } ctx.fillStyle = fill; ctx.fillText(t, x, y); }
-function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, lv, col, w } */
-  const u = hudU() * HUD_SMALL, w = (opt.w || 40) * u, h = 8 * u, x0 = x - w / 2, f = Math.max(0, o.hp / o.max);
+function hpPill(o, x, y, opt = {}) {   /* returns the bar's top y. opt: { zed, lv, col, w, u } */
+  const u = (opt.u || hudU()) * HUD_SMALL, w = (opt.w || 40) * u, h = 8 * u, x0 = x - w / 2, f = Math.max(0, o.hp / o.max);
   if (o._ghost == null || o._ghost < f) { o._ghost = f; o._ghostHold = 0; } else if (o._ghost > f) { if ((o._ghostHold = (o._ghostHold || 0) + 1) > 18) o._ghost = Math.max(f, o._ghost - .012); }
   ctx.save(); rrect(x0, y, w, h, h / 2); ctx.fillStyle = '#f6ead6'; ctx.fill(); ctx.save(); rrect(x0, y, w, h, h / 2); ctx.clip();
   ctx.fillStyle = '#ffffff'; ctx.fillRect(x0, y, w * o._ghost, h);
@@ -1856,7 +1856,7 @@ function needScore(s, b) {
 const useCap = (b) => { const n = facilityRules[b.type] && facilityRules[b.type].need; return n === 'hunger' || n === 'thirst' ? Math.max(3, cap(b)) : cap(b); };   /* 3D.63 study: a Rain Barrel or Garden Plot let one person at a time eat or drink, so with 8+ people half the town queued thirsty all day */
 const URGENT_FOR = { Hungry: 'hunger', Thirsty: 'thirst', Exhausted: 'fatigue', Hurt: 'injury' };   /* 3D.63 study: a thirsty worker's 'quick break' picked whichever facility scored best (often a Tent to nap in), so the thirst was never fixed */
 function chooseFacility(s, urgentOnly = false, need = null) {
-  let bed; const c = world.buildings.filter((b) => facilityRules[b.type] && facilityUsers(b) < useCap(b) && (!urgentOnly || URGENT_NEEDS.includes(facilityRules[b.type].need)) && (!need || facilityRules[b.type].need === need) && (facilityRules[b.type].need !== 'fatigue' || b === (bed === undefined ? (bed = bedFor(s)) : bed))); if (!c.length) return null;   /* 3D.30: rest only in your own housing (or the Camp) */
+  let bed; const nr = s.noReach && s.noReach.t > tick ? s.noReach.b : null; const c = world.buildings.filter((b) => b !== nr && facilityRules[b.type] && facilityUsers(b) < useCap(b) && (!urgentOnly || URGENT_NEEDS.includes(facilityRules[b.type].need)) && (!need || facilityRules[b.type].need === need) && (facilityRules[b.type].need !== 'fatigue' || b === (bed === undefined ? (bed = bedFor(s)) : bed))); if (!c.length) return null;   /* 3D.30: rest only in your own housing (or the Camp) */
   c.sort((a, b) => needScore(s, b) - needScore(s, a)); return need || needScore(s, c[0]) > 24 ? c[0] : null;
 }
 /* V2.36 task commitment: staffed survivors keep a shift (7-12, 13-18) and only leave it for something urgent; free time is lunch, evening and night */
@@ -2396,7 +2396,7 @@ function ai(s) {
     const r = followPath(s, Wd.doorPoint(s.facility), WALK * 1.15);
     if (r === 'arrived') { const ru = facilityRules[s.facility.type]; if (!OPEN_AIR.has(s.facility.type)) s.w = { ...Wd.doorPoint(s.facility) }; s.mode = 'useFacility';   /* 3D.61: in through the door */ s.activity = ru.label; s.stateTicks = ru.use + (ru.need === 'injury' ? Math.round(900 * (1 - s.hp / s.max)) : 0); s.path = null; s.why = ru.label + ' at ' + DEFS[s.facility.type].name;
       if (ru.need === 'fatigue' && isNight()) { s.sleeping = true; s.activity = 'Sleeping'; s.stateTicks = Math.min(9500, ((S.hour >= 20 ? 30 : 6) - S.hour) * 1000 - (tick % 1000) + wakeOff(s)); s.why = `Sleeping at the ${DEFS[s.facility.type].name} until 6:00`; } }   /* V2.36: a bed for the night = fully rested */
-    else if (r === 'fail') { s.facility = null; enterFree(s, 90); s.why = "Couldn't reach it — trying later"; } return;
+    else if (r === 'fail') { s.noReach = { b: s.facility, t: tick + 3000 }; s.facility = null; enterFree(s, 90); s.why = "Couldn't reach it — trying later"; } return;
   }
   if (s.mode === 'useFacility') { s.moving = false; if (!s.facility || !world.buildings.includes(s.facility)) { s.facility = null; s.activity = null; enterFree(s, 40); return; }
     if ((s.talk || talkOk(s)) && s.stateTicks < 25) s.stateTicks = 25;   /* finish the sentence before leaving */
@@ -4250,6 +4250,7 @@ function applySave(raw, legacy, prev) {
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
     if (COZY_HUD && S.trip && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
     if (!isFinite(S.ren)) S.ren = 20 * (S.lvl || 1);   /* 3D.110 repair saves hit by the NaN renown bug */
+    clearDoorways();   /* 3D.120 saves where a fence blocks a doorway */
     if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, m.hp || 1); m.target = null; S.sv.push(m); } setTimeout(() => say('The stronghold squad fell back and came home.'), 1500); delete S.shHome; }   /* 3D.108 */
     S.z = []; S.requests = []; S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
@@ -5072,16 +5073,16 @@ function shMark(f, hd, col, label, wide) { const st = window.ZH_MARK || SH_MARK,
   else if (st === 'tag') { ctx.font = '700 11px Fredoka, sans-serif'; const tx = label || '', w = ctx.measureText(tx).width + 12, y = hd.y - 24; ctx.fillStyle = 'rgba(255,248,236,.95)'; ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(hd.x - w / 2, y - 9, w, 17, 8); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#4a3428'; ctx.textAlign = 'center'; ctx.fillText(tx, hd.x, y + 3.5); }
   ctx.restore(); }
 function shDraw() {   /* the 2D overlay while watching the squad */
-  shTapLayer(); const H = S.sh; if (!H || !H.view || !window.ZH3D || !ZH3D.shProject) return; ctx.save(); ctx.textAlign = 'center';
+  shTapLayer(); const H = S.sh; if (!H || !H.view || !window.ZH3D || !ZH3D.shProject) return; ctx.save(); ctx.textAlign = 'center'; const HU = Math.max(.72, Math.min(1.5, H.cz * .62));
   for (const u of H.units) { if (u.hp <= 0) continue; const p = ZH3D.shProject(u.w.x, u.w.y, 1.2), f = ZH3D.shProject(u.w.x, u.w.y, 0); if (!p) continue;
-    if (H.sel.includes(u.id) && f) { shMark(f, p, '#5fb4ff', u.name); ctx.strokeStyle = '#9fd8ff'; ctx.lineWidth = 2; if (u.moveTo) { const m = ZH3D.shProject(u.moveTo.x, u.moveTo.y, 0); if (m) { ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(m.x, m.y); ctx.stroke(); ctx.setLineDash([]); } } }
-    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(p.x - 15, p.y - 9, 30, 5); ctx.fillStyle = u.hp < u.max * .3 ? '#e2574c' : '#6ccf6e'; ctx.fillRect(p.x - 15, p.y - 9, 30 * u.hp / u.max, 5);
-    if ((u.crit || 0) >= 100 || u.critNext || u.aimNext) { ctx.font = '700 18px Fredoka, sans-serif'; ctx.fillStyle = u.critNext || u.aimNext ? '#ff9f43' : '#ffd56b'; ctx.fillText('✦', p.x, p.y - 12); } else { ctx.fillStyle = '#ffd56b'; ctx.fillRect(p.x - 15, p.y - 3, 30 * (u.crit || 0) / 100, 2); }
-    ctx.font = '600 11px Fredoka, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(SH_STANCE[u.stance || 'attack'].icon, p.x + 22, p.y - 3); }
+    if (H.sel.includes(u.id) && f) { shMark(f, { x: p.x, y: p.y - 12 * HU }, '#5fb4ff', u.name); ctx.strokeStyle = '#9fd8ff'; ctx.lineWidth = 2; if (u.moveTo) { const m = ZH3D.shProject(u.moveTo.x, u.moveTo.y, 0); if (m) { ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(m.x, m.y); ctx.stroke(); ctx.setLineDash([]); } } }
+    const by = hpPill(u, p.x + 3 * HU, p.y - 10 * HU, { lv: u.l || 1, u: HU });   /* 3D.120 owner: the same bar as the town (outline, round ends, the level beside it) */
+    if ((u.crit || 0) >= 100 || u.critNext || u.aimNext) { ctx.font = `700 ${Math.round(15 * HU)}px Fredoka, sans-serif`; ctx.fillStyle = u.critNext || u.aimNext ? '#ff9f43' : '#ffd56b'; ctx.strokeStyle = '#5a3f31'; ctx.lineWidth = 3; ctx.strokeText('✦', p.x + 24 * HU, by + 7 * HU); ctx.fillText('✦', p.x + 24 * HU, by + 7 * HU); }
+    if ((u.stance || 'attack') !== 'attack') { ctx.font = `600 ${Math.round(12 * HU)}px Fredoka, sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText(SH_STANCE[u.stance].icon, p.x - 30 * HU, by + 7 * HU); } }
   if (H.camp) for (const b of H.blds) { if (b.dead ? !(b.prog > 0) : b.hp >= b.max) continue; const p = ZH3D.shProject(b.w.x, b.w.y, b.bw * b.bh >= 4 ? 2.6 : 1.9); if (!p) continue;   /* 3D.118 owner: no icons over the buildings; tap one to see what it is */
-    if (b.dead) { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(p.x - 20, p.y, 40, 5); ctx.fillStyle = '#ffe08a'; ctx.fillRect(p.x - 20, p.y, 40 * b.prog, 5); } else { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(p.x - 20, p.y, 40, 5); ctx.fillStyle = '#e8a23a'; ctx.fillRect(p.x - 20, p.y, 40 * b.hp / b.max, 5); } }
+    if (b.dead) hpPill({ hp: b.prog, max: 1 }, p.x, p.y, { col: '#ffd45c', w: 46, u: HU }); else { const k = b.hp / b.max; hpPill(b, p.x, p.y, { col: k > .5 ? '#7fbf5a' : k > .25 ? '#f2b84a' : '#e8584a', w: 46, u: HU }); } }
   if (!H.camp) for (const [r, [x0, y0, w, h]] of Object.entries(SH_ROOMS)) if (!H.rev[r]) { const p = ZH3D.shProject(SH_AX + x0 + w / 2, SH_AY + y0 + h / 2, 1.3); if (p) { const m = H.myst && H.myst[r], pk = m && m.peek, pr = H.peekR && H.peekR[r], n = pr ? H.zs.filter((z) => z.hp > 0 && z.room === r).length : 0; ctx.font = pk || pr ? '700 14px Fredoka, sans-serif' : '700 22px Fredoka, sans-serif'; ctx.fillStyle = pk && m.kind === 'nest' || n > 3 ? '#ff8a7a' : 'rgba(255,233,184,.85)'; ctx.fillText(pk ? { cache: '📦 Supplies', empty: 'Empty', nest: '💢 Nest', guarded: '📦 + 2 enemies', survivor: '🙋 Someone' }[m.kind] : pr ? `${n} enem${n === 1 ? 'y' : 'ies'}` : '?', p.x, p.y); } }
-  for (const z of H.zs) { if (z.hp <= 0 || z.hid || (z.mode === 'sleep' && !H.woke[z.room])) continue; if (z.boss || z.human) { const p = ZH3D.shProject(z.w.x, z.w.y, z.boss ? 1.75 : 1.2); if (p) { ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(p.x - 18, p.y - 4, 36, 5); ctx.fillStyle = '#e2574c'; ctx.fillRect(p.x - 18, p.y - 4, 36 * z.hp / z.max, 5); } } }
+  for (const z of H.zs) { if (z.hp <= 0 || z.hid || (z.mode === 'sleep' && !H.woke[z.room])) continue; if (z.boss || z.human || z.hp < z.max) { const p = ZH3D.shProject(z.w.x, z.w.y, z.boss ? 1.75 : 1.2); if (p) hpPill(z, p.x, p.y - 8 * HU, z.boss ? { col: '#e8453c', w: 70, u: HU } : z.human ? { col: '#f6c445', u: HU } : { zed: true, w: 34, u: HU }); } }
   const ord = new Set([H.order, ...H.units.map((q) => q.order)].filter((z) => z && z.hp > 0)); for (const z of ord) { const p = ZH3D.shProject(z.w.x, z.w.y, .05), hd = ZH3D.shProject(z.w.x, z.w.y, z.bld ? (z.bw * z.bh >= 4 ? 2.6 : 1.9) : z.boss ? 1.75 : 1.2); if (p && hd) shMark(p, hd, '#ff5a4e', z.bld ? z.name : shFoeName(z), z.bld ? 10 * Math.max(z.bw, z.bh) : 0); }
   H.doors.forEach((d, i) => { if (d.open && !d.broken) return; const [, , dx, dy, dw, dh] = SH_DOORS[i], w = shWorld(dx + (dw - 1) / 2, dy + (dh - 1) / 2), p = ZH3D.shProject(w.x, w.y, 1.4); if (!p) return; ctx.font = '600 13px Fredoka, sans-serif'; ctx.fillStyle = d.broken ? '#ff8a7a' : '#ffe9b8'; ctx.fillText(d.broken ? 'broken' : d.prog > 0 && d.locked ? `🔓 ${Math.round(d.prog * 100)}%` : (d.locked ? '🔒' : '🚪') + (d.hp < (d.locked ? 160 : 120) ? ' ' + Math.max(0, Math.round(d.hp)) : ''), p.x, p.y); });
   if (H.ring) { const u = H.units.find((q) => q.id === H.ring.id), k = (performance.now() - H.ring.t0) / 1000, rad = 70 - 60 * k; if (!u || rad < 6) { if (u) { u.crit = 0; shFx(u.w, 'Too slow', '#b4a296'); } H.ring = null; } else { const p = ZH3D.shProject(u.w.x, u.w.y, .7);
@@ -6004,8 +6005,11 @@ const CUT_LINES = {
   farm: [[2, "Look! An old farm. The fence is half down, but it's something.", 'talk'], [0, "We lost them. A fence, open ground, a road out... we can settle here.", 'talk'], [3, "Soil's still good. I could grow something here.", 'talk'], [1, "And there's scrap lying all over the place. Enough to build a camp.", 'talk'], [0, "Then this is it. Let's build.", 'shout']],
   done: [[1, 'Home. For now.', 'talk'], [0, "Rest while you can. They'll come at night.", 'talk']],
 };
+function clearDoorways() {   /* 3D.120 owner's video: the old farm fence ran across the Camp's doorway, so tired people walked up, failed to get in, and shuffled in front of it forever. Nothing but a gate may stand on a building's doorway */
+  let n = 0; for (const b of world.buildings) { const t = Wd.approachTile(b), k = t.x + ',' + t.y, w = world.walls.get(k); if (w && w.type !== 'gate') { world.walls.delete(k); n++; } } if (n) Wd.bump(world); return n; }
 function cutFence() {   /* the broken farm fence: placed on any new game (with or without the cutscene) */
-  for (const [x, y] of CUT_FENCE) { const k = x + ',' + y; if (CUT_GAP.has(k) || world.walls.has(k) || Wd.buildingAt(world, x, y)) continue; const def = Wd.WALL_DEFS.wood, h = (x * 7 + y * 13) % 5;
+  const door = new Set(world.buildings.map((b) => { const t = Wd.approachTile(b); return t.x + ',' + t.y; }));
+  for (const [x, y] of CUT_FENCE) { const k = x + ',' + y; if (CUT_GAP.has(k) || door.has(k) || world.walls.has(k) || Wd.buildingAt(world, x, y)) continue; const def = Wd.WALL_DEFS.wood, h = (x * 7 + y * 13) % 5;
     const hp = CUT_RUBBLE.has(k) ? 0 : Math.round(def.hp * (h < 2 ? .45 : h < 4 ? .7 : 1)); world.walls.set(k, { x, y, type: 'wood', hp, max: def.hp, ...(CUT_RUBBLE.has(k) ? { broken: true } : {}) }); }
   Wd.bump(world); for (const q of S.sv) if (q.w && solidWall(q.w.x, q.w.y)) { const t = Wd.nearestWalkable(world, Math.floor(q.w.x), Math.floor(q.w.y)); if (t) q.w = { x: t.x + .5, y: t.y + .5 }; }   /* 3D.106: nobody starts inside the fence line */
 }
