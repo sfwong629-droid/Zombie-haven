@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';   /* 3D.126 the character models are stored compressed */
 
 const G = window.ZHG;
 const T = 2.4;                                                    // world units per tile; the survivor is 1.09 tall. V3D.3: 1.6 -> 2.4 (buildings 1.5x vs survivors, the ink-town mockup proportions)
@@ -918,7 +919,7 @@ function syncSites(dt) {
 }
 
 // ---------------------------------------------------------------- characters
-const loader = new GLTFLoader();
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const parse = (buf) => new Promise((ok, bad) => loader.parse(buf, '', ok, bad));
 async function load(url) {   // hosts that can't serve .glb get a base64 copy next to it (<name>.glb.txt)
   if (!window.ZH_GLB_TXT) return new Promise((ok, bad) => loader.load(url, ok, undefined, bad));
@@ -1024,14 +1025,38 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   lasher: { url: 'assets/characters/ai3d_v2/zombie_lasher.glb', stride: { creepy_walk: .5, walk: 1.08, naruto_run: 1.45, zombie_walk: .6, zombie_run: 1.3 }, human: true, walkClip: 'creepy_walk', runClip: 'naruto_run' },   /* 3D.82 owner: ninja run; 3D.84 creepy walk */   /* 3D.80 the user's gaunt model */
   rotbomb: { url: 'assets/characters/ai3d_v2/zombie_rotbomb.glb', stride: { zombie_walk: .48, zombie_run: 1.1 } },   /* 3D.80 the user's clown */
   stalker: { url: 'assets/characters/ai3d_v2/zombie_stalker.glb', stride: { walk: 1.0, heavy_walk: .75, run: 1.6, heavy_run: 1.25, zombie_walk: .55, zombie_run: 1.25 }, human: true, walkClip: 'heavy_walk', runClip: 'heavy_run', atkClip: 'haymaker_kick' },   /* 3D.87 owner: heavy walk (small arm swing), hulk smash; 3D.88 fingers bone: fists in the haymaker, palm-to-palm smash */   /* 3D.82 owner: walks and runs like a human, wide slow haymaker */   /* 3D.86 new Stalker model from the owner's Gemini sheet (no coat), 1.5x scale in BOSS_KINDS */
-  dog: { url: 'assets/characters/ai3d_v2/zombie_dog.glb', stride: { zombie_walk: .3, zombie_run: .62 }, dog: true } }, ZSRC = {};   /* 3D.80 the user's dog (four-legged rig, tools/art/b3d/ai_dog.py) */   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
-function zombieOwn(type) {
-  const src = ZSRC[type] || ZSRC[ZALIAS[type]]; if (!src) return null;
-  const t = (['spitter', 'sporehead', 'screamer', 'riot', 'lasher', 'rotbomb', 'stalker', 'dog'].includes(type) ? null : ZSKIN_TINT[type]) || [1, 1, 1], key = 'own|' + type;   /* 3D.35: the spitter's own model keeps its colours */
-  const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, color: new THREE.Color(...t), gradientMap: grad }), .2);
+  dog: { url: 'assets/characters/ai3d_v2/zombie_dog.glb', stride: { zombie_walk: .3, zombie_run: .62 }, dog: true },
+  /* 3D.126 the owner's new zombie set: female / male variants, the Burnt, and a model each for the Alpha and the bosses */
+  walker_f: { url: 'assets/characters/ai3d_v2/zombie_walker_f.glb', stride: { zombie_walk: .525, zombie_run: 1.197 }, kind: 'walker' },
+  runner_f: { url: 'assets/characters/ai3d_v2/zombie_runner_f.glb', stride: { zombie_walk: .538, zombie_run: 1.273 }, kind: 'runner' },
+  burnt: { url: 'assets/characters/ai3d_v2/zombie_burnt.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
+  burnt_f: { url: 'assets/characters/ai3d_v2/zombie_burnt_f.glb', stride: { zombie_walk: .53, zombie_run: 1.2 }, kind: 'burnt' },
+  crawler_m: { url: 'assets/characters/ai3d_v2/zombie_crawler_m.glb', stride: { crawl: .24 }, crawl: true, kind: 'crawler' },
+  alpha: { url: 'assets/characters/ai3d_v2/zombie_alpha.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'brute' },
+  queen: { url: 'assets/characters/ai3d_v2/zombie_queen.glb', stride: { bloated_walk: .395 }, kind: 'bloated' },
+  butcher: { url: 'assets/characters/ai3d_v2/zombie_butcher.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'brute' },
+  mutant: { url: 'assets/characters/ai3d_v2/zombie_mutant.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'mutant' },
+  thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: .53, zombie_run: 1.2 }, atkClip: 'melee_swing_a' },
+  gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.0, gun_hold_walk: .93, run: 1.6 }, human: true, kind: 'gatling' } }, ZSRC = {};
+const ZVAR = { walker: ['walker', 'walker_f'], runner: ['runner', 'runner_f'], burnt: ['burnt', 'burnt_f'], crawler: ['crawler', 'crawler_m'] };   /* a type's models; one is picked per zombie */
+const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher' };   /* boss kind -> its model */
+const ZFIRST = ['walker', 'walker_f', 'runner', 'runner_f', 'crawler', 'crawler_m'];   /* loaded at the start; every other type loads the first time one shows up */
+const ZLOAD = {}, ZFAIL = {};
+function zLoad(k) { const d = ZMODEL[k]; if (!d || ZSRC[k] || ZLOAD[k] || ZFAIL[k]) return ZLOAD[k] || null;
+  return (ZLOAD[k] = load(d.url).then((g) => { g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; g.kind = d.kind || k; g.zkey = k; ZSRC[k] = g; }).catch((e) => { console.warn('zombie model', k, e); ZFAIL[k] = true; }).finally(() => { delete ZLOAD[k]; })); }
+const zGat = (z) => !!z.leader && (z.fk === 'toll' || z.fac === 'toll');   /* only the Toll Kings' leader is the Gatling Boss */
+function zKeys(z) {   /* the models this zombie needs */
+  if (z.type === 'raider') return zGat(z) ? ['gatling'] : []; if (z.type === 'boss') return [ZBOSS[z.bk] || 'mutant'];
+  return (ZVAR[z.type] || [z.type]).filter((k) => ZMODEL[k]); }
+function zWaiting(z) { let w = false; for (const k of zKeys(z)) if (!ZSRC[k] && !ZFAIL[k]) { zLoad(k); w = true; } return w; }   /* 3D.80 the user's dog (four-legged rig, tools/art/b3d/ai_dog.py) */   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
+function zombieOwn(type, fem) {   /* 3D.126 every zombie wears the owner's model for its type, in its own colours; fem picks the female / male variant */
+  const keys = (ZVAR[type] || [type]).filter((k) => ZSRC[k]); for (const k of ZVAR[type] || [type]) if (!ZSRC[k]) zLoad(k);
+  let k = keys.length ? keys[(Math.random() * keys.length) | 0] : null; if (keys.length > 1 && fem !== undefined) k = keys.find((q) => /_f$/.test(q) === !!fem) || k;
+  const src = k ? ZSRC[k] : ZSRC[ZALIAS[type]]; if (!src) return null; const key = 'own|' + (k || type);
+  const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
-const OWN_SHARE = { walker: .7 };
+const OWN_SHARE = {};   /* 3D.126 was walker .7: no more repainted survivors among the walkers */
 function zombieV2(type, female, v, noOwn = false) {
   const own = !noOwn && Math.random() < (OWN_SHARE[type] ?? 1) && zombieOwn(type); if (own) return own;   // 3D.33: runners, brutes and bloated always wear their own model; walkers 70% (the rest a reskinned survivor for variety)
   const src = female ? (ZFEMALE || FEMALE3D) : (ZMALE || MALE), tx = src && src.zTex2; if (!tx || !tx.length) return null;
@@ -1296,11 +1321,11 @@ function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture wit
       sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
 { vec3 lin = diffuseColor.rgb, h = zhHsv(lin), sc = zhHsv(pow(max(lin, vec3(0.)), vec3(.4545)));
   float skinM = step(.03, sc.x) * step(sc.x, .115) * step(.18, sc.y) * (1. - step(.53, sc.y)) * step(.55, sc.z);
-  float hairM = step(.02, sc.x) * step(sc.x, .15) * step(.5, sc.y) * (1. - step(.29, sc.z)) * max(max(step(zhZ.x, vZh.y), step(vZh.z, zhZ.y)), step(zhZ.w, abs(vZh.x - zhZ.z)));   /* not the eyes: above the brow or behind the head's middle */
-  ${fem ? 'float headY = step(zhZ.x - .17, vZh.y); hairM = max(hairM, step(.085, sc.x) * step(sc.x, .17) * step(.6, sc.y) * step(.55, sc.z) * headY);   /* 3D.124 her yellow hair streaks and ponytail (the same yellow as her shirt) count as hair on the head */' : 'float headY = 0.;'}
+  float hairM = step(.02, sc.x) * step(sc.x, .15) * step(${fem ? '.38' : '.5'}, sc.y) * (1. - step(${fem ? '.36' : '.29'}, sc.z)) * max(max(step(zhZ.x, vZh.y), step(vZh.z, zhZ.y)), step(zhZ.w, abs(vZh.x - zhZ.z)));   /* not the eyes: above the brow or behind the head's middle */
+  ${fem ? 'float headY = step(zhZ.x - .07, vZh.y); hairM = max(hairM, step(.085, sc.x) * step(sc.x, .17) * step(.6, sc.y) * step(.55, sc.z) * headY);   /* 3D.124 her yellow hair streaks and ponytail (the same yellow as her shirt) count as hair on the head */' : 'float headY = 0.;'}
   float shirtM = ${col ? (fem ? 'step(.052, h.x) * step(h.x, .16) * step(.72, h.y) * step(.28, h.z) * (1. - headY)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)') : '0.'} * (1. - skinM);
   vec3 o = mix(lin, min(lin * skinK, vec3(1.)), skinM);
-  if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${HAIR_REF_LUM.toFixed(3)}, .55, 1.7); o = mix(o, hairT * l, hairM); }
+  if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${fem ? (HAIR_REF_LUM * 1.9).toFixed(3) : HAIR_REF_LUM.toFixed(3)}, .55, ${fem ? '1.1' : '1.7'}); o = mix(o, hairT * l, hairM); }
   o = mix(o, shirt * min(1.25, h.z / ${fem ? '.72' : '.25'}), shirtM);
   if (suit.x >= 0.) o = mix(o, suit * clamp(h.z / .3, .55, 1.3), (1. - skinM) * (1. - hairM) * step(vPy, .9));
   diffuseColor.rgb = o; }`).replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb;'); };
@@ -1469,20 +1494,24 @@ function zombieAnim(a, z) {
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
-  if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { a.play(z.ranged ? 'gun_fire' : (z.swingN = (z.swingN || 0) + 1) % 2 ? 'melee_swing_a' : 'melee_swing_b', true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people */
-  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = a.src === ZSRC.spitter && a.acts.spit && z.mode === 'zattack'; a.play(a.src === ZSRC.lasher && z.lash && a.acts.lash ? 'lash' : z.smash && a.acts.smash ? 'smash' : a.src.atkClip && a.acts[a.src.atkClip] ? a.src.atkClip : a.src === ZSRC.bloated && a.acts.bloated_attack ? 'bloated_attack' : a.src === ZSRC.brute && a.acts.brute_attack ? 'brute_attack' : a.src === ZSRC.sporehead && a.acts.spore_combo ? 'spore_combo' : a.src === ZSRC.screamer && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
+  if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { a.play(z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_fire' : (z.swingN = (z.swingN || 0) + 1) % 2 ? 'melee_swing_a' : 'melee_swing_b', true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people */
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = (a.src && a.src.kind === 'spitter') && a.acts.spit && z.mode === 'zattack'; a.play((a.src && a.src.kind === 'lasher') && z.lash && a.acts.lash ? 'lash' : z.smash && a.acts.smash ? 'smash' : a.src.atkClip && a.acts[a.src.atkClip] ? a.src.atkClip : (a.src && a.src.kind === 'bloated') && a.acts.bloated_attack ? 'bloated_attack' : (a.src && a.src.kind === 'brute') && a.acts.brute_attack ? 'brute_attack' : (a.src && a.src.kind === 'sporehead') && a.acts.spore_combo ? 'spore_combo' : (a.src && a.src.kind === 'screamer') && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
-  if (z.type === 'raider') { const h = z.ranged ? 'gun_hold' : 'melee_hold'; a.play(z.moving === false ? h + '_idle' : z.mode === 'rflee' && !z.ranged ? 'run' : h + '_walk'); return; }
+  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? h + '_idle' : z.mode === 'rflee' && !z.ranged ? 'run' : h + '_walk'); return; }
   if (a.src && a.src.human && a.acts.walk) { const rc = a.acts[a.src.runClip] ? a.src.runClip : 'run', wc = a.acts[a.src.walkClip] ? a.src.walkClip : 'walk'; a.play(a.spd > (a.name === rc ? .6 : .75) ? rc : wc); return; }   /* 3D.82 Lasher and Stalker move like people */
   if (z.type === 'runner' || a.dogM) { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) * (a.dogM ? .8 : 1) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.80 the dog gallops, the Stalker runs */   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
-  a.play(a.src === ZSRC.bloated && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
+  a.play((a.src && a.src.kind === 'bloated') && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
 }
 function syncZombies(dt, vis) {
   const seen = new Set();
   for (const z of (G.S.sh ? G.S.z.concat(G.S.sh.zs) : G.S.z)) {   /* 3D.108 the stronghold's dead too */
     if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
+    if (!a && MALE.v2 && zWaiting(z)) continue;   /* 3D.126 its model is still loading: it appears a moment later */
     if (!a) {
-      if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(!!z.leader); if (z.leader) a.big = 1.25; }   /* 3D.104 the Toll Collector is bigger and armoured */
+      if (z.type === 'raider' && zGat(z) && ZSRC.gatling) { a = zombieOwn('gatling'); a.setWeapon(null); a.setArmor(false); a.big = 1.2; }   /* the Toll Kings' leader: the Gatling Boss */
+      else if (z.type === 'boss' && ZSRC[ZBOSS[z.bk] || 'mutant']) { a = zombieOwn(ZBOSS[z.bk] || 'mutant'); a.setWeapon(null); a.setArmor(false); a.bossOwn = true; }
+      else if (z.type !== 'raider' && z.type !== 'dog' && z.type !== 'boss' && (ZVAR[z.type] || [z.type]).some((k) => ZSRC[k])) { a = zombieOwn(z.type, z.turned ? !!z.turned.fem : undefined); a.setWeapon(null); a.setArmor(false); }
+      else if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(!!z.leader); if (z.leader) a.big = 1.25; }   /* 3D.104 the Toll Collector is bigger and armoured */
       else if (z.type === 'dog') { a = (ZSRC.dog && zombieOwn('dog')) || new DogActor(); if (!a.dog) { a.dogM = true; a.setWeapon(null); a.setArmor(false); } }   /* 3D.32 box dog; 3D.80 the user's dog model */
       else if (z.type === 'boss' && z.bk === 'stalker' && ZSRC.stalker) { a = zombieOwn('stalker'); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 */
       else if ((z.type === 'lasher' || z.type === 'rotbomb') && ZSRC[z.type]) { a = zombieOwn(z.type); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 no weapons on any zombie */
@@ -1494,7 +1523,7 @@ function syncZombies(dt, vis) {
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
-    a.place(z.w.x, z.w.y, tgt, dt, a.big || z.big || (a.dogM ? 1 : bk && a.src === ZSRC.stalker ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
+    a.place(z.w.x, z.w.y, tgt, dt, a.big || z.big || (a.dogM ? 1 : bk && a.bossOwn ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
@@ -2011,7 +2040,7 @@ const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: 
 const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
 // 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
-window.ZH3D = { vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
@@ -2020,15 +2049,13 @@ inkButton();
   m.bodyImage = m.body.material.map && m.body.material.map.image;
   toonScene(m.scene, null, CHAR_V2); toonScene(l.scene);
   MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2; MALE.m3 = CHAR_V2; if (CHAR_V2) MALE.stride = STRIDE.m3;
-  if (CHAR_V2) { try { const z = await load('assets/characters/ai3d_v2/survivor_v2.glb'); z.scene.traverse((o) => { if (o.isSkinnedMesh && !z.body) z.body = o; }); toonScene(z.scene, null, true); z.v2 = true; ZMALE = z; } catch (e) { console.warn('zombie base model', e); } }
-  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_v2_f.glb'); f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); ZFEMALE = f; } catch (e) { console.warn('old female model', e); } }
+  /* 3D.126 the old survivor bases (survivor_v2, survivor_v2_f) and their zombie skins are no longer loaded: every zombie type has its own model */
   if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_f3.glb'); f.body = null; f.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') f.body = o; }); if (!f.body) f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); f.v2 = true; f.m3 = true; f.stride = STRIDE.m3; FEMALE3D = f; } catch (e) { console.warn('female model', e); FEMALE3D = ZFEMALE; } }   /* 3D.124 the owner's original female (rigged like the original male, with finger bones) */
   if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
   if (CHAR_V2) for (const id of ['riot']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
-  if (CHAR_V2) await Promise.all(Object.entries(ZMODEL).map(async ([k, d]) => { try { const g = await load(d.url); g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; ZSRC[k] = g; } catch (e) { console.warn('zombie model', k, e); } }));
-  if (CHAR_V2) for (const [src, k] of [[ZMALE || MALE, 'm'], [ZFEMALE || FEMALE3D, 'f']]) if (src) src.zTex2 = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync('assets/characters/ai3d_v2/zombie_' + k + '_' + i + '.webp?e=1').then(v2Tex).catch(() => null)))).filter(Boolean);
+  if (CHAR_V2) await Promise.all(ZFIRST.map((k) => zLoad(k)));   /* 3D.126 the rest load on first sight */
   LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
   if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
   await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));

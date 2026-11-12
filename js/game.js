@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.125', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.126', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -662,18 +662,18 @@ function drawHitFx() {
   const tw = TWs(), H = CHAR_H * tw;
   for (let i = hitFx.length - 1; i >= 0; i--) { const f = hitFx[i], q = (tick - f.t0) / FX_DUR[f.k]; if (q > 1) { hitFx.splice(i, 1); continue; } fxDraw(ctx, f, q, project(f.w.x, f.w.y), tw, H); }
 }
-const SPIT_COL = ['#7cc242', '#8e4fb0', '#6b4a2b', '#a6d94a'];   /* green, purple and brown mucus */
+const SPIT_COL = ['#7cc242', '#8e4fb0', '#6b4a2b', '#a6d94a'], ROCK_COL = ['#8a7f72', '#6e655b', '#a39a8c', '#7a7066'];   /* 3D.126 the Thrower's rubble */   /* green, purple and brown mucus */
 function drawSpits() {   /* 3D.35: an arcing glob with a dripping trail; a splat where it lands */
   const tw = TWs() * .55, H = CHAR_H * TWs();
   for (let i = spits.length - 1; i >= 0; i--) {
     const g = spits[i], k = (tick - g.t0) / g.dur, a = project(g.a.x, g.a.y), b = project(g.b.x, g.b.y);
-    if (k >= 1) { if (!g.splat) { g.splat = tick; g.drops = Array.from({ length: 7 }, (_, j) => ({ a: rnd() * 6.28, v: .5 + rnd(), c: SPIT_COL[j % 3] })); } const q = (tick - g.splat) / 40; if (q > 1) { spits.splice(i, 1); continue; }
-      ctx.save(); ctx.globalAlpha = 1 - q; ctx.fillStyle = 'rgba(110,170,50,.55)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, (8 + 10 * Math.min(1, q * 3)) * tw / 40, (4 + 5 * Math.min(1, q * 3)) * tw / 40, 0, 0, 7); ctx.fill();
+    if (k >= 1) { if (!g.splat) { g.splat = tick; g.drops = Array.from({ length: 7 }, (_, j) => ({ a: rnd() * 6.28, v: .5 + rnd(), c: (g.rock ? ROCK_COL : SPIT_COL)[j % 3] })); } const q = (tick - g.splat) / 40; if (q > 1) { spits.splice(i, 1); continue; }
+      ctx.save(); ctx.globalAlpha = 1 - q; ctx.fillStyle = g.rock ? 'rgba(120,105,90,.45)' : 'rgba(110,170,50,.55)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, (8 + 10 * Math.min(1, q * 3)) * tw / 40, (4 + 5 * Math.min(1, q * 3)) * tw / 40, 0, 0, 7); ctx.fill();
       for (const d of g.drops) { const r = Math.min(1, q * 2.5) * 16 * d.v * tw / 40; ctx.fillStyle = d.c; ctx.beginPath(); ctx.arc(b.x + Math.cos(d.a) * r, b.y - H * .35 + Math.sin(d.a) * r * .5 + q * q * H * .4, Math.max(1, 2.6 * tw / 40 * (1 - q * .5)), 0, 7); ctx.fill(); } ctx.restore(); continue; }
     const pt = (u) => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u - H * (.7 - .38 * u) - Math.sin(Math.PI * u) * H * .45 });   /* 3D.36: from the mouth */
     ctx.save();
-    for (let j = 6; j >= 1; j--) { const u = Math.max(0, k - j * .045), p = pt(u); ctx.globalAlpha = .75 - j * .1; ctx.fillStyle = SPIT_COL[(j + ((g.seed * 4) | 0)) % 3]; ctx.beginPath(); ctx.arc(p.x, p.y + j * .6, Math.max(1, (4.2 - j * .45) * tw / 40), 0, 7); ctx.fill(); }
-    const p = pt(k), r = 6 * tw / 40; ctx.globalAlpha = 1; ctx.fillStyle = '#6fb53a'; ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 1.15, r, Math.atan2(b.y - a.y, b.x - a.x), 0, 7); ctx.fill();
+    for (let j = 6; j >= 1; j--) { const u = Math.max(0, k - j * .045), p = pt(u); ctx.globalAlpha = .75 - j * .1; ctx.fillStyle = (g.rock ? ROCK_COL : SPIT_COL)[(j + ((g.seed * 4) | 0)) % 3]; ctx.beginPath(); ctx.arc(p.x, p.y + j * .6, Math.max(1, (4.2 - j * .45) * tw / 40), 0, 7); ctx.fill(); }
+    const p = pt(k), r = 6 * tw / 40; ctx.globalAlpha = 1; ctx.fillStyle = g.rock ? '#8a7f72' : '#6fb53a'; ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 1.15, r, Math.atan2(b.y - a.y, b.x - a.x), 0, 7); ctx.fill();
     ctx.fillStyle = '#8e4fb0'; ctx.beginPath(); ctx.arc(p.x - r * .35, p.y + r * .2, r * .45, 0, 7); ctx.fill(); ctx.fillStyle = '#6b4a2b'; ctx.beginPath(); ctx.arc(p.x + r * .4, p.y - r * .25, r * .32, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x - r * .4, p.y - r * .45, r * .22, 0, 7); ctx.fill(); ctx.restore();
   }
@@ -1126,7 +1126,7 @@ const ARMORY_STOCK = { weapon: ['knife', 'golf', 'hatchet', 'cleaver', 'bat', 'c
 const itemOf = (s, slot) => (s.eq && s.eq[slot] && ITEMS[s.eq[slot]]) || null;
 /* V3D.25 extra drops per zombie type: [chance, resource, amount] */
 const ZDROP = { runner: [[.3, 'cloth', 1]], brute: [[.4, 'cloth', 1], [.15, 'meds', 1]], bloated: [[.35, 'meds', 1]], spitter: [[.3, 'meds', 1]], crawler: [[.15, 'cloth', 1]], raider: [[.45, 'fuel', 1], [.3, 'meds', 1], [.3, 'cloth', 1], [.5, 'ammo', 6]], walker: [[.04, 'ammo', 2]] };   /* 3D.77: rounds from raiders and the odd dead cop */
-const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
+const PART_DROP = { walker: [.55, 1], runner: [.55, 1], crawler: [.45, 1], spitter: [.7, 1], thrower: [.8, 2], bloated: [.75, 2], brute: [1, 2], raider: [0, 0] };   /* V2.33: [chance, parts] per kill (was 25% for 1) */
 const fairRound = (x) => Math.floor(x) + (rnd() < x - Math.floor(x) ? 1 : 0);   /* V3D.16: 3.7 is 4 seven times in ten, so every point of armor counts */
 const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, rate: .9, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
 const GUN_BUTT = { name: 'Empty gun (swung)', slot: 'weapon', atk: 5, rate: 1.1, kind: 'blunt', cost: 0 };   /* 3D.77: out of ammo, a gunner clubs with the gun */
@@ -1228,6 +1228,7 @@ const zombieTypes = {
   runner: { name: 'Runner', hp: 25, atk: 5, aggro: 3.2, chase: .027, reward: 25, ren: 2, weight: 12, alert: 6 },
   bloated: { name: 'Bloated', hp: 60, atk: 8, aggro: 2, chase: .009, reward: 40, ren: 3, weight: 6, alert: 4 },
   spitter: { name: 'Spitter', hp: 28, atk: 6, aggro: 3.7, chase: .0125, reward: 32, ren: 2, weight: 3, alert: 5.5 },
+  thrower: { name: 'Thrower', hp: 46, atk: 9, aggro: 4.8, chase: .0105, reward: 45, ren: 3, weight: 2, alert: 6, desc: 'Lobs rubble from four tiles away: hits hard, slow to wind up.' },   /* 3D.126 the owner's Thrower model: a slow ranged zombie from day 12 */
   brute: { name: 'Brute', hp: 105, atk: 12, aggro: 2.4, chase: .008, reward: 70, ren: 5, weight: 1, alert: 5 },
   /* 3D.32 new zombies (from the story plan; weight 0 = not in normal waves yet, only the test page and later acts) */
   screamer: { name: 'Screamer', hp: 30, atk: 5, aggro: 3.6, chase: .013, reward: 30, ren: 3, weight: 0, alert: 9, isNew: 1, desc: 'Area attack: throws its head back and shrieks, hurting everyone within about 2 tiles, and every shriek calls a walker. Kill it fast from range.' },
@@ -2469,7 +2470,7 @@ function lootFind(s) {
 function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s.mode = 'walk'; s.purpose = 'scav-back'; s.dest = tc(7 + OFF, 9 + OFF); s.why = 'Returning with supplies'; s.stateTicks = 900; } }
 
 /* ---------------- zombies ---------------- */
-const Z_ARRIVE = { walker: 1, crawler: 1, runner: 3, dog: 4, bloated: 5, spitter: 6, sporehead: 7, riot: 8, lasher: 8, rotbomb: 9, brute: 10 };   /* 3D.80 dog, riot, lasher, rotbomb */
+const Z_ARRIVE = { walker: 1, crawler: 1, runner: 3, dog: 4, bloated: 5, spitter: 6, sporehead: 7, riot: 8, lasher: 8, rotbomb: 9, brute: 10, thrower: 12 };   /* 3D.80 dog, riot, lasher, rotbomb */
 function weightedZombie() {
   /* 3D.64 balance study: the strong ones came on day 2-3 (bloated and spitters as soon as the Camp became a Lodge, a boss on night 3)
      and early nights topped out at 15 zombies, so the auto-played town lost 8.5 people in 12 days. Each type now has an arrival day
@@ -2790,7 +2791,7 @@ function zai0(z) {
     if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
     else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 135; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
     else if (z.bk === 'stalker' && dd <= ZREACH) { z.mode = 'zattack'; z.combo = true; z.stateTicks = 195; }   /* 3D.89 owner: haymaker then a front kick (clip 'haymaker_kick') */
-    else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
+    else if (z.type === 'thrower' && dd < 4.4) { z.mode = 'zattack'; z.stateTicks = 56; } else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
   }
   if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
     if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
@@ -2813,8 +2814,8 @@ function zai0(z) {
     if (z.stateTicks <= 0) { z.lash = false; z.lashCd = 420 + rnd() * 120; z.mode = z.target && z.target.hp > 0 ? 'zchase' : 'idle'; } return; }
   if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 70 + rnd() * 20; } return; }   /* 3D.37 three-hit combo, in time with spore_combo */
-  if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
-    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : 58) + rnd() * 22; } return; }
+  if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() }); if (z.type === 'thrower' && z.stateTicks === 22 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 22, seed: rnd(), rock: true });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
+    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target) && !(z.type === 'thrower' && dist(z.w, z.target.w) > 5.6)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : z.type === 'thrower' ? 96 : 58) + rnd() * 22; } return; }
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
@@ -5971,6 +5972,7 @@ const INTRO = {
   'z:bloated': ['🤢', 'Bloated', 'Swollen and tough. It soaks up hits and hits hard.', 'Gang up on it with two fighters. A Gas Mask or Hazmat Suit cuts its damage.'],
   'z:spitter': ['🤮', 'Spitter', 'Spits acid from a few tiles away: it hurts people who think they are safe.', 'Close in fast or shoot it first. A Gas Mask or Hazmat Suit cuts the acid damage.'],
   'z:brute': ['💪', 'Brute', 'A huge zombie that breaks walls and buildings fast and hits like a truck.', 'Focus it with your best fighters and guns. Stone walls hold it longer than wood.'],
+  'z:thrower': ['🪨', 'Thrower', 'Stands back and lobs rubble from about four tiles away. Slow, but it hits hard.', 'Rush it between throws, or outrange it with rifles. Walls block its line.'],
   'z:sporehead': ['🍄', 'Sporehead', 'A fungus-headed brawler: every attack is a three-hit combo.', 'Keep your distance between its combos, or fight it with ranged weapons.'],
   'z:screamer': ['😱', 'Screamer', 'Throws its head back and shrieks: hurts everyone close and calls more zombies.', 'Kill it from range before it screams, and don\'t let your people bunch up near it.'],
   'z:riot': ['🛡️', 'Riot Zombie', 'Still wearing riot gear: blades and knives do half damage.', 'Use blunt weapons or guns on it.'],
@@ -6394,7 +6396,7 @@ async function init() {
 }
 /* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
    Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
-const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
+const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
 function zooLine() {
   S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
     const S0 = 11 + r * 2.1, D = -3 + (i - (row.length - 1) / 2) * 2.2, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* a compact grid that runs across the screen (iso), north of the camp */
