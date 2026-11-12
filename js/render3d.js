@@ -1376,6 +1376,7 @@ function personAnim(a, s, dt) {
   if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }
   if (s.para > 0 && a.acts.grabbed) { a.attacking = false; a.play('grabbed'); return; }   /* 3D.107 hooked by a Lasher: struggles, breaks free */
   if (s.reloadT > 0 && hold === 'gun' && !a.isMov() && a.acts.gun_reload) { a.attacking = false; a.play('gun_reload'); return; }   /* 3D.107 the real rifle reload */   /* 3D.30: pushing the cart wins over the carry clip */
+  { const sp = G.simSpeed ? G.simSpeed() : 1; if (anim === 'walk' && !hold && !s.carrying && a.acts.run && a.spd > (a.name === 'run' ? 1.6 : 1.8) * sp) { a.attacking = false; a.setWeapon(null); a.play('run'); return; } }   /* 3D.123 owner: anyone hurrying (faster than a walk) runs; women's hurried hip-sway walk looked sped up */
   const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); if (a.w.plank) a.w.plank.visible = day === 'work_barricade'; a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
   if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
   if (ATTACK.has(anim) && anim === 'shoot' && hold && a.isMov() && a.spd > .15) { a.attacking = false; a.play(hold + '_hold_walk'); return; }   /* 3D.100 owner (bow: frozen and sliding): a shooter stepping back between shots walks with the weapon up instead of gliding in the aim pose */
@@ -1628,7 +1629,7 @@ function strideOf(a) {
   return t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
 }
 function tickMixer(a, dt, vis) {
-  const st = a.cur && strideOf(a); if (st) a.cur.timeScale = Math.max(.15, Math.min(8, a.spd / st));   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
+  const st = a.cur && strideOf(a); if (st) { const run = /run/.test(a.name); a.cur.timeScale = Math.max(.15, Math.min((run ? 1.25 : 1.45) * (G.simSpeed ? G.simSpeed() : 1), (a.spd / st) * (run ? .85 : 1))); }   /* the caps grow with the 2x/3x game speed so nobody skates */   /* 3D.123 owner: the run played too fast; it now plays at 85% and no clip is pushed past 1.25x (run) or 1.45x (walk) */   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
   if (a.acc >= every) { a.mixer.update(a.acc); a.hands(); a.acc = 0; }
