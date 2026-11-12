@@ -1857,7 +1857,7 @@ function buildArena() {
     scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H) }; return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
-  const under = new THREE.Mesh(new THREE.PlaneGeometry(70 * T, 40 * T).rotateX(-Math.PI / 2), toon('#3b3a36')); under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
+  const under = new THREE.Mesh(new THREE.PlaneGeometry(90 * T, 60 * T).rotateX(-Math.PI / 2), toon(SEASON_PAL[season()].grass[2]));   /* 3D.128 the building stands on the same grass as the town (was a dark slab) */ under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
   const grid = ZH.shGridOf(), isFloor = (x, y) => !!(grid[y] && grid[y][x]);
   const fl = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] };
   for (const [k, [x0, y0, w, h]] of Object.entries(R)) { box(w, .06, h, fl[k], AX + x0 + w / 2, 0, AY + y0 + h / 2); for (let i = 2; i < w; i += 2) box(.04, .065, h, D.props === 'clinic' ? '#bcc4c0' : '#8f8a7e', AX + x0 + i, 0, AY + y0 + h / 2); }
@@ -1871,6 +1871,13 @@ function buildArena() {
     else { if (k % 2) box(.9, .5, .9, '#8a7d62', X, .25, Y); else box(.4, 1.6, .4, '#6b6f75', X, .8, Y); } };
   let k = 0; for (const [rk, [x0, y0, w, h]] of Object.entries(R)) { prop(k++, x0 + 1, y0 + .6); prop(k++, x0 + w - 1.2, y0 + .6); if (rk === 'B' || rk === 'R1') prop(k++, x0 + w / 2, y0 + .6); if (rk === 'A' && D.raid) for (let i = 0; i < 4; i++) box(.7, .5, .6, '#c8a23a', AX + x0 + 2 + i * 1.6, .25, AY + y0 + h - 1);   /* the stockpile */
     if (rk === 'C' && D.raid) for (let i = 0; i <= w * 2; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.2, 5), toon('#4a4d52')); b.position.set((AX + x0 + i / 2) * T, .6, (AY + y0 + 1.2) * T); g.add(b); } }
+  /* 3D.128 the town's own yard pieces along the walls of every room: crates, barrels, plank piles, tyres (review step 7: built from town pieces) */
+  { const crates = [], barrels = [], planks = [], tyres = [], doorNear = (x, y) => DR.some(([, , dx, dy, dw, dh]) => x >= dx - 1 && x <= dx + dw && y >= dy - 1 && y <= dy + dh);
+    for (const [rk, [x0, y0, w, h]] of Object.entries(R)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const edge = x === x0 || x === x0 + w - 1 || y === y0 || y === y0 + h - 1; if (!edge || doorNear(x, y) || (rk === 'R0' && x < 4 && y > 6 && y < 13)) continue;
+      const r = hash(x * 17 + 3, y * 29 + 7), q = hash(x * 5 + 1, y * 13 + 9), P = [(AX + x + .3 + .4 * q) * T, (AY + y + .3 + .4 * r) * T, 1.35, q];
+      if (r < .07) crates.push(P); else if (r < .12) barrels.push(P); else if (r < .16) planks.push(P); else if (r < .185 && D.props !== 'clinic') tyres.push(P); }
+    g.add(instD(smallCrateG, crates, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true)); g.add(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
+    g.add(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true)); g.add(instD(tyreG, tyres, () => '#2e2c2a', true)); }
   const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === 'R0') continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
   const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
 }
@@ -1896,7 +1903,7 @@ function frame() {
   let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = buildHighway() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
   if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
   dirty = buildArena() || dirty; syncVehicles();
-  light(G.S.sh && G.S.sh.view ? 12.5 : ((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
+  light(G.S.sh && G.S.sh.view ? (G.S.sh.night ? 22.5 : 12.5) : ((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;

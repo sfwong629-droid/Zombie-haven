@@ -33,7 +33,7 @@
   }
   function walls(reserve) {
     let n = 0; const r = ring(), set = new Set(r.map(([x, y]) => x + ',' + y));
-    if ([...W.walls.values()].some((wl) => !set.has(wl.x + ',' + wl.y))) { for (const wl of [...W.walls.values()]) if (!set.has(wl.x + ',' + wl.y)) W.walls.delete(wl.x + ',' + wl.y); Wd.bump(W); AP.ringDone = false; }   /* old inner ring after expanding: removed */
+    if ((S.wood || 0) >= 30 && [...W.walls.values()].some((wl) => !set.has(wl.x + ',' + wl.y))) {   /* 3D.128: only once the new ring can be afforded (a player would not tear the fence down with nothing to replace it) */ for (const wl of [...W.walls.values()]) if (!set.has(wl.x + ',' + wl.y)) W.walls.delete(wl.x + ',' + wl.y); Wd.bump(W); AP.ringDone = false; }   /* old inner ring after expanding: removed */
     r.sort((a, b) => a[1] - b[1]);   /* north side first: most zombies come from the north */
     for (const [x, y] of r) {
       if (S.mat < reserve || (S.wood || 0) < 4 + Math.min(10, AP.saveW || 0)) break;   /* V3D.23: walls cost wood now; keep wood for the build plan */ const ex = Wd.wallAt(W, x, y); if (ex && ex.type !== 'wood') continue;
