@@ -1781,7 +1781,7 @@ function syncVehicles() {
 let arena = null;
 function buildArena() {
   const H = G.S.sh, key = H ? H.akey || H.dest : '';
-  if (arena && arena.key === key && H && H.camp) { let ch = false; for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
+  if (arena && arena.key === key && H && H.camp) { let ch = false; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
   if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
   if (arena) { scene.remove(arena.g); arena = null; }
   if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
@@ -1820,11 +1820,9 @@ function buildArena() {
     put(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4)); put(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5)); put(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX)); put(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
     put(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); put(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
     /* the fence: the town's own wall pieces (Toll Kings a palisade, Greenwater a wooden fence), an open gateway with posts */
-    { const FP = new Parts(), ft = H.raid === 'toll' ? 'palisade' : 'wood', has = (x, y) => cell(x - AX, y - AY) === 'W';
-      for (let y = 0; y < H.gh; y++) for (let x = 0; x < H.gw; x++) if (H.grid[y][x] === 'W') wallPiece(FP, { x: AX + x, y: AY + y, type: ft, hp: 100, max: 100 }, has, (AX + x + .5) * T, (AY + y + .5) * T);
-      FP.build(g, .03); }
+    const fg = campFence(H); g.add(fg);
     for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
-    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '' }; return true; }
+    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H) }; return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
   const under = new THREE.Mesh(new THREE.PlaneGeometry(70 * T, 40 * T).rotateX(-Math.PI / 2), toon('#3b3a36')); under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
@@ -1844,6 +1842,11 @@ function buildArena() {
   const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === 'R0') continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
   const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
 }
+function campFenceKey(H) { return Object.values(H.fence || {}).map((f) => (f.dead ? 2 : f.hp < f.max * .6 ? 1 : 0)).join(''); }
+function campFence(H) {   /* 3D.121 the camp fence from the town's own wall pieces; a broken section is rubble you can walk through */
+  const g = new THREE.Group(), FP = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, F = H.fence || {}, has = (x, y) => { const f = F[(x - AX) + ',' + (y - AY)]; return !!f && !f.dead; };
+  for (const f of Object.values(F)) wallPiece(FP, { x: AX + f.x, y: AY + f.y, type: f.type, hp: f.hp, max: f.max, broken: f.dead }, has, (AX + f.x + .5) * T, (AY + f.y + .5) * T);
+  FP.build(g, .03); return g; }
 function campB(b) { return makeBuilding({ type: b.type, x: ZH.SH_AX + b.x, y: ZH.SH_AY + b.y, w: b.bw, h: b.bh, rot: b.rot, burnt: b.dead, wrecked: b.dead }); }
 function syncArenaBits(H) {   /* barricades and snares come and go */
   const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length; if (bk === arena.bitKey) return; arena.bitKey = bk;
