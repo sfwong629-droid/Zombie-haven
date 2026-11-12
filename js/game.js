@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.130', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.131', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1379,7 +1379,7 @@ function gatherTick(s) {
   if (s.stateTicks > 0) return;
   const n = treeNode(x, y); n.left--; if (n.left <= 0) { n.regrow = nowH() + K.regrow; n.mark = false; } S.nodeVer = (S.nodeVer || 0) + 1;
   const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' ? 1 : 0) : (s.job === 'Scavenger' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
-  if (s.gatherK === 'wreck' && rnd() < .22) { S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); bark(s, 'fuel', {}, { pri: 1 }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
+  if (s.gatherK === 'wreck' && rnd() < .4) {   /* 3D.131 was .22 */ S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); bark(s, 'fuel', {}, { pri: 1 }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
   if (rnd() < .2) bark(s, { tree: 'chop', rock: 'mine', wreck: 'wreck', bin: 'bin' }[s.gatherK || 'tree']);
   s.carriedLoot = K.res; s.carryAmt = (K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)]) + carryBonus(s);   /* 3D.28 backpacks */ s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
   const jb = jobFor(K.res); s.gjob = null;
@@ -2910,7 +2910,7 @@ function drawPet(s, pp) {
   drawPix('pet' + s.pet.kind, sh.c, f, sh.fw, sh.fh, project(pp.w.x, pp.w.y), fc.right);
 }
 /* wandering trader */
-const TRADES = [{ give: { food: 6 }, get: { mat: 4 } }, { give: { water: 6 }, get: { mat: 4 } }, { give: { mat: 5 }, get: { food: 6 } }, { give: { mat: 5 }, get: { water: 6 } }];
+const TRADES = [{ give: { food: 6 }, get: { mat: 4 } }, { give: { water: 6 }, get: { mat: 4 } }, { give: { mat: 5 }, get: { food: 6 } }, { give: { mat: 5 }, get: { water: 6 } }, { give: { mat: 8 }, get: { wood: 4 } }];   /* 3D.131 owner: spare scrap buys wood, at a poor rate (scrap piled up to 300-480 with nothing to spend it on) */
 const RES_NAME = { food: 'food', water: 'water', mat: 'scrap', wood: 'wood', stone: 'stone', cloth: 'cloth', meds: 'medicine', fuel: 'fuel', ammo: 'ammo' };
 function traderDisc() { const c = Math.max(5, ...S.sv.filter((q) => q.hp > 0 && q.mode !== 'away').map((q) => stat(q, 'cha'))); return Math.min(.35, Math.max(0, (c - 5) * .02) + (bOf('tradepost').length ? .15 : 0)); }   /* 3D.104 a Trading Post: better deals */
 const priced = (cost) => Object.fromEntries(Object.entries(cost).map(([k, v]) => [k, Math.max(1, Math.ceil(v * (1 - traderDisc())))]));
@@ -2938,7 +2938,7 @@ function traderSpot(cx, cy) {   /* V3D.17: an open patch for the stall: walkable
 const hwyEnd = () => [rnd() < .5 ? 0 : COLS - 1, Wd.HWY_Y + (rnd() < .5 ? 0 : 1)];   /* 3D.101: one end of the north-east highway */
 function traderArrive() {
   const a = hwyEnd(), cx = Math.round((Wd.BUILD.x0 + Wd.BUILD.x1) / 2), cy = Math.round((Wd.BUILD.y0 + Wd.BUILD.y1) / 2), g = traderSpot(cx, cy);
-  S.trader = { human: true, w: tc(a[0], a[1]), home: tc(a[0], a[1]), goal: tc(g.x, g.y), mode: 'arrive', stock: traderStock(), ex: [0, 0, 0, 0], path: null };
+  S.trader = { human: true, w: tc(a[0], a[1]), home: tc(a[0], a[1]), goal: tc(g.x, g.y), mode: 'arrive', stock: traderStock(), ex: TRADES.map(() => 0), path: null };
   S.nextTrader = S.day + (bOf('market').length ? 1 : bOf('tradepost').length ? 1 + Math.floor(rnd() * 2) : 3 + Math.floor(rnd() * 2));   /* 3D.113 the Market Square: a trader every day */   /* 3D.104 a Trading Post brings traders twice as often */
   screenToast('🛒 A WANDERING TRADER ARRIVES'); barkSomeone('trader', {}, { pri: 1 }); say('A wandering trader is coming to the Haven until 19:00. Tap them (or Town → Trade) to buy gear, pets or research.');
 }
@@ -2958,8 +2958,8 @@ function traderBuy(i) {
   saveGame(); ui(); return true;
 }
 function traderTrade(i) {
-  const T = S.trader, t = TRADES[i]; if (!T || T.ex[i] >= 3) return false; const c = i < 2 ? t.give : priced(t.give); if (!canPay(c)) return false;
-  for (const [k, v] of Object.entries(c)) S[k] -= v; for (const [k, v] of Object.entries(t.get)) S[k] += v; T.ex[i]++; saveGame(); ui(); return true;
+  const T = S.trader, t = TRADES[i]; if (!T || (T.ex[i] || 0) >= 3) return false; const c = i < 2 ? t.give : priced(t.give); if (!canPay(c)) return false;
+  for (const [k, v] of Object.entries(c)) S[k] -= v; for (const [k, v] of Object.entries(t.get)) S[k] += v; T.ex[i] = (T.ex[i] || 0) + 1; saveGame(); ui(); return true;
 }
 function showTrader() {
   const T = S.trader; if (!T) return; selected = null; closeP(); $('it').textContent = 'WANDERING TRADER'; const disc = Math.round(traderDisc() * 100);
@@ -2967,7 +2967,7 @@ function showTrader() {
   const offer = (o) => tIcon(o) + (o.k === 'item' ? `${ITEMS[o.id].name}<small> · ${itemText(ITEMS[o.id])}</small>` : o.k === 'ex' ? `${EX_DEFS[o.id].icon} ${o.n} ${EX_DEFS[o.id].name}s<small> · ${EX_DEFS[o.id].desc}</small>` : o.k === 'pet' ? `${PETS[o.id].name}<small> · ${PETS[o.id].desc}</small>` : `Research notes<small> · +${o.n} RP</small>`);
   $('ib').innerHTML = `Leaves at 19:00. Prices ${disc ? `<b>−${disc}%</b> (your best Charisma)` : 'are full price — a survivor with high Charisma gets a discount'}.<br><b>For sale</b><br>`
     + T.stock.map((o, i) => o.sold ? `<div><small>✔ sold: ${o.k === 'item' ? ITEMS[o.id].name : o.k === 'ex' ? EX_DEFS[o.id].name : o.k === 'pet' ? PETS[o.id].name : 'Research notes'}</small></div>` : `<button class="act" data-buy="${i}" ${canPay(priced(o.cost)) ? '' : 'style="opacity:.45"'}>${offer(o)} · ${costText(priced(o.cost))}</button>`).join('')
-    + '<br><b>Exchange</b> <small>(3 times each per visit)</small><br>' + TRADES.map((t, i) => { const c = i < 2 ? t.give : priced(t.give); return `<button class="act" data-trade="${i}" ${T.ex[i] < 3 && canPay(c) ? '' : 'style="opacity:.45"'}>${costText(c)} → ${costText(t.get)} <small>(${3 - T.ex[i]} left)</small></button>`; }).join('');
+    + '<br><b>Exchange</b> <small>(3 times each per visit)</small><br>' + TRADES.map((t, i) => { const c = i < 2 ? t.give : priced(t.give); return `<button class="act" data-trade="${i}" ${(T.ex[i] || 0) < 3 && canPay(c) ? '' : 'style="opacity:.45"'}>${costText(c)} → ${costText(t.get)} <small>(${3 - (T.ex[i] || 0)} left)</small></button>`; }).join('');
   showPanel();
   $('ib').querySelectorAll('[data-buy]').forEach((x) => { x.onclick = () => { if (traderBuy(+x.dataset.buy)) showTrader(); }; });
   $('ib').querySelectorAll('[data-trade]').forEach((x) => { x.onclick = () => { if (traderTrade(+x.dataset.trade)) showTrader(); }; });
@@ -3986,7 +3986,7 @@ const EXP_DEFS = {
   houses:    { name: 'Abandoned Houses',   icon: '🏚️', desc: 'Food, water and cloth from empty homes.',          risks: ['low'],             lock: () => '', loot: { food: [1, 2], water: [1, 2], cloth: [1, 2] }, lines: ['The squad searches a row of empty houses.', 'They check cellars and cupboards.', 'A quiet street, a few useful cans.'] },
   pharmacy:  { name: 'Pharmacy and Clinic', icon: '🏥', desc: 'Medicine, a little scrap, and a chance to find survivors.', risks: ['low', 'medium'], lock: () => (world.walls.size ? '' : 'Build a wall first'), loot: { meds: [1, 2], mat: [1, 2] }, recruit: { low: .3, medium: .55 }, lines: ['The squad forces the pharmacy shutters.', 'Shelves are mostly bare, but the back room is intact.', 'They hear someone calling from the clinic.'] },
   lumberyard: { name: 'Lumber Yard', icon: '🪵', desc: 'Stacks of cut timber: wood, and lots of it.', risks: ['low', 'medium'], lock: () => '', loot: { wood: [3, 5] }, lines: ['The squad pries open the yard gate.', 'They load cut planks and logs onto a cart.', 'A sawmill shed still holds dry timber.'] },   /* V3D.23 */
-  gasstation: { name: 'Gas Station', icon: '⛽', desc: 'Fuel from the underground tanks, and scrap from the garage.', risks: ['medium', 'high'], lock: () => (hqTier() >= 2 ? '' : 'Needs the Lodge'), loot: { fuel: [1, 3], mat: [1, 2] }, lines: ['The squad rigs a hand pump over the tank hatch.', 'Jerrycans fill slowly; the noise carries.', 'The garage still has tools on the wall.'] },   /* V3D.25 */
+  gasstation: { name: 'Gas Station', icon: '⛽', desc: 'Fuel from the underground tanks, and scrap from the garage.', risks: ['medium', 'high'], lock: () => (hqTier() >= 2 ? '' : 'Needs the Lodge'), loot: { fuel: [2, 4], mat: [1, 2] }   /* 3D.131 owner: more fuel (was 1-3): towns owned a Pickup and a Van and could rarely afford a trip */, lines: ['The squad rigs a hand pump over the tank hatch.', 'Jerrycans fill slowly; the noise carries.', 'The garage still has tools on the wall.'] },   /* V3D.25 */
   military: { name: 'Military Checkpoint', icon: '🪖', desc: 'Dangerous, but rich: a bit of everything and good gear.', risks: ['high'], lock: () => (S.rank >= 3 ? '' : 'Needs Haven level 7'), loot: { mat: [2, 4], meds: [1, 2], fuel: [1, 2], cloth: [1, 2], ammo: [6, 10] }, gear: 2.5, lines: ['Sandbags and an overturned truck block the road.', 'The squad works through the supply tents one by one.', 'A radio crackles in an empty guard hut.'] },
   quarrysite: { name: 'Old Quarry', icon: '🪨', desc: 'Cut stone blocks left behind: stone for the stone tier.', risks: ['medium', 'high'], lock: () => (hqTier() >= 2 ? '' : 'Needs the Lodge'), loot: { stone: [3, 5] }, lines: ['The squad climbs down into the old quarry.', 'They lever cut blocks onto a sled.', 'Something moves in the flooded pit below.'] },
   clinic:   { name: 'The Overrun Clinic', icon: '🏚', desc: 'A stronghold: the old clinic, packed with the dead. Clear it and raise a Banner over the Haven.', risks: ['high'], lock: () => ((S.lvl || 1) >= 3 ? '' : 'Needs Haven level 3'),   /* 3D.128 was 4: the first stronghold comes early */ loot: { meds: [2, 3], mat: [2, 3], cloth: [1, 2] }, gear: 2, stronghold: true, lines: ['The squad breaks into the clinic lobby. Dozens of shapes turn.', 'Ward by ward, they clear the ground floor.', 'In the operating theatre, something huge is waiting.'] },   /* 3D.104 first pass of the strongholds: a hard expedition that earns the Stronghold Banner */
@@ -4693,7 +4693,7 @@ function shPanelTick(inner) { const el = $('shPanel'), top = $('shTop'), H = S.s
     const cr = row.querySelector('.crit'); if (cr) cr.hidden = !((s.crit || 0) >= 100 && s.hp > 0); const md = row.querySelector('.med'); if (md) md.disabled = s.hp >= s.max; });
   const nm = el.querySelector('.shSel .nm em b'), s1 = H.sel.length === 1 && H.units.find((q) => q.id === H.sel[0]); if (nm && s1) nm.style.width = Math.max(0, Math.round(s1.hp / s1.max * 100)) + '%';
   const b = top && top.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.hp > 0 && H.rev.B), left = H.zs.filter((z) => z.hp > 0 && !z.hid).length, hidden = Object.keys(SH_ROOMS).filter((r) => !H.rev[r]).length;
-  if (b && H.camp) { const gl = H.zs.filter((z) => z.hp > 0 && !z.worker).length, dn = H.blds.filter((q) => q.dead).length; const rs = H.alarm && H.reinAt ? Math.max(0, Math.ceil((H.reinAt - H.t) / 60)) : 0; b.innerHTML = `<span class="sm">${H.night ? '🌙 ' : ''}${H.alarm ? '🔔 Alarm!' + (rs ? ` More in ${Math.floor(rs / 60)}:${String(rs % 60).padStart(2, '0')}` : '') : '🤫 Unseen'} · ${gl} guards · ${dn}/${H.blds.length} buildings down${Object.keys(H.loot).length || (H.items || []).length ? ' · 📦 loaded' : ''}</span>`; }
+  if (b && H.camp) { const gl = H.zs.filter((z) => z.hp > 0 && !z.worker).length, dn = H.blds.filter((q) => q.dead).length; const rs = H.alarm && H.reinAt ? Math.max(0, Math.ceil((H.reinAt - H.t) / 60)) : 0; b.innerHTML = `<span class="sm">${H.night ? '🌙 ' : ''}${H.alarm ? '🔔 Alarm!' + (rs ? ` More in ${Math.floor(rs / 60)}:${String(rs % 60).padStart(2, '0')}` : '') : '🤫 Unseen'} · ${gl} guards · ${dn}/${H.blds.length} buildings down · 🎒 ${campBagLoad(H)}/${campBag(H)}${(H.items || []).length ? ' +' + H.items.length + ' gear' : ''}</span>`; }
   else if (b) b.innerHTML = bz && H.woke.B ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span class="sm">${left} in sight · ${hidden} room${hidden === 1 ? '' : 's'} unexplored</span>`;
   if (!inner && !H.list && s1 && (((s1.crit || 0) >= 100) !== !!el.querySelector('.crit') || (s1.abT && s1.abT - H.t <= 0 && el.querySelector(`[data-c="ab:${s1.id}"][disabled]`)) || (s1.abT - H.t > 0 && H.t % 60 === 0))) shPanel(); }
 /* the tap layer over the 3D view */
@@ -4853,8 +4853,13 @@ function campAlarm(at, why) { const H = S.sh; if (!H || H.alarm) return; H.alarm
 function campFall(b) { const H = S.sh; b.dead = true; b.hp = 0; SFX('hit'); if (b.fence) { shFx(b.w, '💥 A way through the fence', '#ffb060'); for (const q of H.units) if (q.order === b) q.order = null; shPanel(); return; } shFx(b.w, `💥 ${b.name} is down`, '#ffb060');
   if (b.pris) { H.found = (H.found || 0) + b.pris; shFx({ x: b.w.x, y: b.w.y + .6 }, `🔓 ${b.pris} prisoner${b.pris > 1 ? 's' : ''} freed`, '#7be08a'); b.looted = true; }
   else if (!Object.values(b.loot).some((n) => n > 0) && !b.items.length) b.looted = true; shPanel(); }
-function campTake(b, s) { const H = S.sh; b.looted = true; for (const [k, n] of Object.entries(b.loot)) if (n > 0) H.loot[k] = (H.loot[k] || 0) + n; (H.items ||= []).push(...b.items);
-  const t = Object.entries(b.loot).filter(([, n]) => n > 0).map(([k, n]) => '+' + n + ' ' + (RES_NAME[k] || k)).concat(b.items.map((k) => '🎁 ' + ITEMS[k].name)); shFx(s.w, t.join('  ') || 'Nothing left', '#ffe9b8'); SFX('reward'); shPanel(); }
+/* 3D.131 owner: a raid must not be overpowering. The squad carries home 10 resources a head (gear does not count): 40 for four, 80 for eight.
+   A level-9 squad of eight used to walk out with about 150. What does not fit stays in the building. */
+const CAMP_CARRY = 10, campBag = (H) => CAMP_CARRY * H.units.length, campBagLoad = (H) => Object.values(H.loot).reduce((a, n) => a + n, 0);
+function campTake(b, s) { const H = S.sh; let room = campBag(H) - campBagLoad(H); const got = [];
+  for (const [k, n] of Object.entries(b.loot)) { const t = Math.min(n, room); if (t > 0) { H.loot[k] = (H.loot[k] || 0) + t; b.loot[k] = n - t; room -= t; got.push('+' + t + ' ' + (RES_NAME[k] || k)); } }
+  (H.items ||= []).push(...b.items); got.push(...b.items.map((k) => '🎁 ' + ITEMS[k].name)); b.items = []; const left = Object.values(b.loot).some((n) => n > 0); b.looted = !left;
+  shFx(s.w, got.join('  ') || (left ? '🎒 Bags are full' : 'Nothing left'), '#ffe9b8'); if (left) say(`The squad can't carry any more (${campBagLoad(H)}/${campBag(H)}). Time to get out.`); SFX('reward'); shPanel(); }
 function campUnitAI(s, zs, live) {
   const H = S.sh; if (s.hp <= 0) { s.mode = 'down'; s.moving = false; s.loot = null; return; }
   if (s.reloadT > 0) { s.moving = false; if (--s.reloadT <= 0) reloadGun(s); return; }

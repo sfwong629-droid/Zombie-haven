@@ -25,7 +25,8 @@ const BOT = `window.BOT = (map, lv, n, night, strat, meds, seed, plan, weak) => 
       else if (H.wayS < 2) { if (live.every((u) => D(u.w, at) < 1.8)) H.wayS++; else if (live.some((u) => !u.moveTo) && t - (H.wayT || -999) >= 120) { H.wayT = t; H.sel = live.map((u) => u.id); ZH.shBot.move(at); H.sel = []; } if (t > 60 * 90) H.way = true; H.fx.length = 0; continue; }
       else { const idle = live.filter((u) => u.order !== F); if (idle.length) { H.sel = idle.map((u) => u.id); ZH.shBot.act({ k: 'b', o: F }); H.sel = []; } continue; } }
     const list = H.blds.filter(want), todo = list.filter((b) => !b.looted);
-    if (!todo.length || live.length <= Math.floor(H.units.length / 2)) { ZH.shBot.call('back'); continue; }
+    const full = Object.values(H.loot).reduce((q, v) => q + v, 0) >= 10 * H.units.length;   /* bags full (3D.131) */
+    if (!todo.length || full || live.length <= Math.floor(H.units.length / 2)) { ZH.shBot.call('back'); continue; }
     const c = { x: live.reduce((a, u) => a + u.w.x, 0) / live.length, y: live.reduce((a, u) => a + u.w.y, 0) / live.length };
     for (const b of todo.filter((b) => b.dead)) if (!live.some((u) => u.loot === b.i)) { H.sel = []; ZH.shBot.act({ k: 'b', o: b }); }
     const tgt = todo.filter((b) => !b.dead).sort((a, b) => D(a.w, c) - D(b.w, c))[0]; if (!tgt) continue;
