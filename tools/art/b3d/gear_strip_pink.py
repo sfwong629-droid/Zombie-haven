@@ -27,6 +27,12 @@ if opt.get("vpose"):   # Nov 13: the V-pose mannequin (batch 2 on): taller torso
     J={"pelvis":[[0,yt,.40],[0,yt,.50]],"chest":[[0,yt,.50],[0,yt,.78]],"neck":[[0,yt,.78],[0,yt,.82]],"head":[[0,yh,.82],[0,yh,1.0]],
        "upperarm.L":[[.13,ya,.745],[.215,ya,el]],"forearm.L":[[.215,ya,el],[.285,ya,.48]],"hand.L":[[.285,ya,.48],[.31,ya,.40]],
        "thigh.L":[[.105,yl,.42],[.12,yl,kn]],"shin.L":[[.12,yl,kn],[.125,yl,.08]],"foot.L":[[.125,yl,.08],[.125,yl-.085,.02]]}
+if opt.get("vpose"):   # Nov 13: arms drawn at another angle: turn the arm chain about the shoulder to point at the measured hand (outermost 0.5% of the model)
+    import math
+    R=C[C[:,0]>.2]; xt=np.percentile(R[:,0],99.5); tz=R[R[:,0]>xt-.03,2].mean()
+    ang=math.atan2(tz-.745,xt-.13)-math.atan2(-.271,.192); ang=opt.get("armrot",ang); print('arm turn %.1f deg'%math.degrees(ang))
+    for b in ("upperarm.L","forearm.L","hand.L"):
+        J[b]=[[.13+(p[0]-.13)*math.cos(ang)-(p[2]-.745)*math.sin(ang),p[1],.745+(p[0]-.13)*math.sin(ang)+(p[2]-.745)*math.cos(ang)] for p in J[b]]
 dx=opt.get("armdx",0)
 for b in ("upperarm.L","forearm.L","hand.L"): J[b]=[[p[0]+dx*(i>0 or b!="upperarm.L"),p[1],p[2]] for i,p in enumerate(J[b])]
 for b in list(J):
