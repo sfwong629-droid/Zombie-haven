@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.139', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.140', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5090,36 +5090,33 @@ const CAMP_W = 28, CAMP_H = 28, CAMP_GATE = [13, 14];
    (about 145 resources and 3 pieces of gear) in two and a half minutes with at most one person down.
    tough = guard and leader health and damage; reinFirst / reinEvery = seconds from the alarm to the first patrol and between patrols; reinN0 = size of the
    first patrol (each one after is one bigger); reinMax = how many patrols; hear = how far (tiles) a guard hears a building being smashed (workers half, night 60%). */
-/* 3D.139 owner: "the faction camps look so empty". Each camp gets its own set dressing: props that stand on a tile (they block the way and
-   give cover), placed against buildings and the fence so the yard reads as a working place, plus watchtowers and banners.
-   SAMPLE: only the Foundry is dressed until the owner has seen it. [kind, how many, where] where: b = against a building, e = building or fence, a = anywhere */
-const CAMP_DRESS = {
-  foundry: { towers: true, kinds: [['chimney', 3, 'b'], ['furnace', 3, 'b'], ['anvil', 3, 'b'], ['slag', 8, 'e'], ['beams', 9, 'e'], ['coal', 7, 'e'], ['drums', 8, 'e'], ['cart', 3, 'a'], ['stack', 8, 'e'], ['lamp', 6, 'a']] },
+/* 3D.140 owner: "make it more tidy ... add more building, less scattered barrel, box ... make it look like a community".
+   Every camp is now laid out like a small town: a boulevard from the gate to the hall, a square across the middle, a road round the inside
+   of the fence, and buildings in straight rows facing the same way with a lane between rows (valuables in the rows nearest the hall,
+   homes in the outer rows). Lots that are left over hold the faction's own things, set down in order (CAMP_KIT), not scattered.
+   Props stand on a tile: they block the way and give cover. */
+const CAMP_KIT = {
+  toll: { homes: ['cabin', 'cabin', 'cabin', 'cabin', 'tent', 'tent', 'tent', 'tent'], kit: ['tyres', 'spikes', 'sign', 'drums', 'stack'], street: 'lamp' },
+  foundry: { homes: ['cabin', 'cabin', 'cabin', 'cabin', 'cabin', 'cabin', 'cabin', 'cabin'], kit: ['chimney', 'furnace', 'anvil', 'beams', 'coal', 'slag', 'cart', 'drums'], street: 'lamp' },
+  quar: { homes: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'tent'], kit: ['sandbags', 'ocrate', 'mast', 'wire', 'flagpole', 'drums'], street: 'mast' },
+  helix: { homes: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'cabin', 'cabin'], kit: ['container', 'hazard', 'cage', 'dish', 'container'], street: 'lamp' },
+  hollow: { homes: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'tent'], kit: ['candles', 'ragpole', 'stakes', 'bones'], street: 'ragpole', tower: 'ragpole' },
+  green: { homes: ['cabin', 'cabin', 'cabin', 'cabin', 'cabin', 'cabin', 'house', 'house'], kit: ['beds', 'hay', 'fruit', 'scarecrow', 'line', 'beds'], street: 'fruit' },
 };
-function campDress(H, g, F0, F1) {
-  const D = CAMP_DRESS[H.raid]; H.props = []; if (!D) return;
-  const free = (x, y) => g[y] && g[y][x] === 'y' && !(x >= 11 && x <= 16 && y >= 18), put = (k, x, y) => { g[y][x] = 'P'; H.props.push({ k, x, y, r: rint(0, 3), v: rnd() }); };
-  const near = (x, y, ch, d) => { for (let yy = y - d; yy <= y + d; yy++) for (let xx = x - d; xx <= x + d; xx++) { const v = g[yy] && g[yy][xx]; if (v && ch.includes(v[0])) return true; } return false; };
-  const roomy = (x, y) => { let n = 0; for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (g[yy] && g[yy][xx] === 'y') n++; return n >= 6; };   /* never wall a passage shut */
-  if (D.towers) for (const [x, y] of [[F0 + 1, F0 + 1], [F1 - 1, F0 + 1], [F0 + 1, F1 - 1], [F1 - 1, F1 - 1], [10, F1 - 1], [17, F1 - 1]]) if (g[y][x] === 'y') put('tower', x, y);
-  for (const [x, y] of [[10, F1 - 3], [17, F1 - 3]]) if (g[y][x] === 'y') put('banner', x, y);
-  for (const [k, n, wh] of D.kinds) for (let i = 0, t = 0; i < n && t < 300; t++) { const x = rint(F0 + 1, F1 - 1), y = rint(F0 + 1, F1 - 1); if (!free(x, y) || !roomy(x, y)) continue;
-    if (wh === 'b' ? !near(x, y, 'K', 1) : wh === 'e' ? !(near(x, y, 'K', 1) || near(x, y, 'W', 1) || near(x, y, 'P', 1)) : false) continue; put(k, x, y); i++; }
-}
 const CAMP_PLAN = {
-  toll: { inner: ['hq3', 'armory', 'ammobench'], mid: ['warehouse', 'storage', 'workshop', 'medic', 'kennel', 'generator', 'crates'], outer: ['barrel', 'barrel', 'well', 'farm', 'farm', 'tent', 'tent', 'tent', 'scrapyard', 'bonfire', 'bonfire'],
-    guards: [['raider', 5], ['raiderG', 3]], workers: 5, tough: 1.4, reinFirst: 40, reinEvery: 30, reinN0: 3, reinMax: 8, hear: 7, ground: '#8a7d68', yard: '#9a8a70', fence: '#6b4a2e' },
-  foundry: { dirt: ['#8b857b', '#837d73', '#8f897e', '#7d776d'], path: '#a39a8a', bare: true, flag: '#c9772e',
+  toll: { dirt: ['#9a8566', '#93805f', '#9e896a', '#8d7a5c'], path: '#b59c74', flag: '#b83a2e', inner: ['hq3', 'armory', 'ammobench'], mid: ['warehouse', 'storage', 'workshop', 'medic', 'kennel', 'generator', 'crates'], outer: ['barrel', 'barrel', 'well', 'farm', 'farm', 'tent', 'tent', 'tent', 'scrapyard', 'bonfire', 'bonfire'],
+    guards: [['raider', 5], ['raiderG', 3]], workers: 5, tough: 1.05, reinFirst: 55, reinEvery: 30, reinN0: 3, reinMax: 8, hear: 5, ground: '#8a7d68', yard: '#9a8a70', fence: '#6b4a2e' },
+  foundry: { dirt: ['#8b857b', '#837d73', '#8f897e', '#7d776d'], path: '#a39a8a', flag: '#c9772e',
     inner: ['hq3', 'workshop', 'armory'], mid: ['warehouse', 'generator', 'ammobench', 'scrapyard', 'storage', 'quarry', 'crates'], outer: ['scrapyard', 'lumber', 'barrel', 'well', 'cabin', 'cabin', 'cabin', 'generator', 'bonfire', 'crates', 'tent'],
-    guards: [['raiderG', 4], ['raider', 5]], workers: 6, tough: 1.6, reinFirst: 35, reinEvery: 28, reinN0: 3, reinMax: 9, hear: 8, ground: '#77736d', yard: '#857f76', fence: '#4f4a46' },
-  quar: { inner: ['hq3', 'armory', 'ammofactory'], mid: ['barracks', 'clinic', 'generator', 'storage', 'warehouse', 'radio', 'crates'], outer: ['tent', 'tent', 'tent', 'tent', 'floodlight', 'floodlight', 'barrel', 'well', 'bonfire', 'crates', 'kennel'],
-    guards: [['raiderG', 5], ['raider', 3]], workers: 4, tough: 1.25, reinFirst: 30, reinEvery: 28, reinN0: 3, reinMax: 9, hear: 9, ground: '#7d8068', yard: '#888a72', fence: '#55583f' },
-  helix: { inner: ['hq3', 'hospital', 'workshop'], mid: ['generator', 'generator', 'coldstore', 'clinic', 'storage', 'pump', 'kennel'], outer: ['tent', 'tent', 'tent', 'floodlight', 'floodlight', 'solar', 'solar', 'barrel', 'crates', 'kennel', 'medic'],
-    guards: [['raiderG', 5], ['raider', 4]], workers: 5, tough: 1.35, reinFirst: 30, reinEvery: 26, reinN0: 3, reinMax: 10, hear: 9, ground: '#9aa0a2', yard: '#aeb4b6', fence: '#7d8588' },
-  hollow: { inner: ['hq2', 'canteen', 'storage'], mid: ['medic', 'crates', 'crates', 'bonfire', 'bonfire', 'bonfire', 'kennel'], outer: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'farm', 'barrel', 'bonfire', 'bonfire', 'kennel'],
-    guards: [['raider', 9], ['raiderB', 2]], workers: 8, tough: 1.3, reinFirst: 35, reinEvery: 24, reinN0: 4, reinMax: 12, hear: 6, ground: '#6d6470', yard: '#776d79', fence: '#463f49' },
-  green: { inner: ['hq2', 'armory', 'clinic'], mid: ['storage', 'greenhouse', 'canteen', 'well', 'crates', 'medic'], outer: ['field', 'field', 'field', 'farm', 'farm', 'barrel', 'barrel', 'water', 'cabin', 'cabin', 'cabin', 'bonfire'],
-    guards: [['raiderB', 3], ['raider', 3]], workers: 7, tough: 1.15, reinFirst: 40, reinEvery: 30, reinN0: 2, reinMax: 6, hear: 7, ground: '#7f8f5e', yard: '#93a06a', fence: '#8a6038' },
+    guards: [['raiderG', 4], ['raider', 5]], workers: 6, tough: 1.4, reinFirst: 35, reinEvery: 28, reinN0: 3, reinMax: 9, hear: 6, ground: '#77736d', yard: '#857f76', fence: '#4f4a46' },
+  quar: { dirt: ['#8c8e74', '#85876d', '#909278', '#7f8168'], path: '#a8a88c', flag: '#4d6b45', inner: ['hq3', 'armory', 'ammofactory'], mid: ['barracks', 'clinic', 'generator', 'storage', 'warehouse', 'radio', 'crates'], outer: ['tent', 'tent', 'tent', 'tent', 'floodlight', 'floodlight', 'barrel', 'well', 'bonfire', 'crates', 'kennel'],
+    guards: [['raiderG', 5], ['raider', 3]], workers: 4, tough: 1.1, reinFirst: 30, reinEvery: 28, reinN0: 3, reinMax: 9, hear: 6, ground: '#7d8068', yard: '#888a72', fence: '#55583f' },
+  helix: { dirt: ['#a9afb1', '#a2a8aa', '#aeb4b6', '#9ba1a3'], path: '#c6cbcc', flag: '#3f8fb5', inner: ['hq3', 'hospital', 'workshop'], mid: ['generator', 'generator', 'coldstore', 'clinic', 'storage', 'pump', 'kennel'], outer: ['tent', 'tent', 'tent', 'floodlight', 'floodlight', 'solar', 'solar', 'barrel', 'crates', 'kennel', 'medic'],
+    guards: [['raiderG', 5], ['raider', 4]], workers: 5, tough: 1.2, reinFirst: 30, reinEvery: 26, reinN0: 3, reinMax: 10, hear: 6, ground: '#9aa0a2', yard: '#aeb4b6', fence: '#7d8588' },
+  hollow: { dirt: ['#6f6672', '#69606c', '#746b77', '#635b66'], path: '#877e8a', flag: '#7a5aa8', inner: ['hq2', 'canteen', 'storage'], mid: ['medic', 'crates', 'crates', 'bonfire', 'bonfire', 'bonfire', 'kennel'], outer: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'farm', 'barrel', 'bonfire', 'bonfire', 'kennel'],
+    guards: [['raider', 9], ['raiderB', 2]], workers: 8, tough: 1.3, reinFirst: 35, reinEvery: 24, reinN0: 4, reinMax: 12, hear: 4, ground: '#6d6470', yard: '#776d79', fence: '#463f49' },
+  green: { dirt: ['#93a45a', '#8c9d54', '#98a95f', '#869750'], path: '#b89a66', flag: '#5f9a3c', inner: ['hq2', 'armory', 'clinic'], mid: ['storage', 'greenhouse', 'canteen', 'well', 'crates', 'medic'], outer: ['field', 'field', 'field', 'farm', 'farm', 'barrel', 'barrel', 'water', 'cabin', 'cabin', 'cabin', 'bonfire'],
+    guards: [['raiderB', 3], ['raider', 3]], workers: 7, tough: 1.1, reinFirst: 55, reinEvery: 30, reinN0: 2, reinMax: 6, hear: 5, ground: '#7f8f5e', yard: '#93a06a', fence: '#8a6038' },
 };
 const rint = (a, b) => a + Math.floor(rnd() * (b - a + 1));
 function campLoot(type, H) {   /* what each building holds */
@@ -5138,28 +5135,42 @@ function campLoot(type, H) {   /* what each building holds */
   return { icon: '', loot: {}, items: [] }; }
 function campBuild() {   /* lay out the camp: a fenced square, the gate south, rings of buildings with the valuables in the middle */
   const H = S.sh, P = CAMP_PLAN[H.raid] || CAMP_PLAN.toll, W = CAMP_W, Ht = CAMP_H, g = [];
-  for (let y = 0; y < Ht; y++) { g.push(new Array(W).fill('o')); } const F0 = 3, F1 = 24;
-  for (let y = F0; y <= F1; y++) for (let x = F0; x <= F1; x++) g[y][x] = x === F0 || x === F1 || y === F0 || y === F1 ? 'W' : 'y';
+  for (let y = 0; y < Ht; y++) { g.push(new Array(W).fill('o')); } const FX0 = 5, FX1 = 22, FY0 = 7, F1 = 24;   /* 3D.140 a smaller compound (16 x 16 inside, was 20 x 20): the same people and more buildings in less space */
+  H.box = [FX0, FY0, FX1, F1];
+  for (let y = FY0; y <= F1; y++) for (let x = FX0; x <= FX1; x++) g[y][x] = x === FX0 || x === FX1 || y === FY0 || y === F1 ? 'W' : 'y';
   for (const x of CAMP_GATE) g[F1][x] = 'G';
   H.grid = g; H.gw = W; H.gh = Ht; H.blds = []; H.exit = shWorld(13.5, 26.6);
   /* 3D.121 owner: the fence has health like the town's walls; break a section to make a way in (loud: guards close by hear it) */
   const fType = H.raid === 'green' || H.raid === 'hollow' ? 'wood' : 'palisade', fHp = (Wd.WALL_DEFS[fType] || { hp: 80 }).hp; H.fence = {};
-  for (let y = F0; y <= F1; y++) for (let x = F0; x <= F1; x++) if (g[y][x] === 'W') H.fence[x + ',' + y] = { bld: true, fence: true, type: fType, name: 'fence', x, y, bw: 1, bh: 1, hp: fHp, max: fHp, dead: false, looted: true, loot: {}, items: [], w: shWorld(x, y) };
-  const c = 13.5, ring = (x, y, w, h) => Math.max(Math.abs(x + w / 2 - c), Math.abs(y + h / 2 - c));
-  const place = (type, r0, r1) => { const d = DEFS[type]; if (!d) return; for (let k = 0; k < 400; k++) { const rot = rint(0, 3), w = rot & 1 ? d.h : d.w, h = rot & 1 ? d.w : d.h, x = rint(F0 + 2, F1 - 1 - w), y = rint(F0 + 2, F1 - 1 - h), rr = ring(x, y, w, h);
-      if (rr < r0 || rr > r1) continue; if (x <= 15 && x + w >= 12 && y + h >= 19) continue;   /* keep the way in from the gate open */
-      let ok = true; for (let yy = y - 1; yy <= y + h && ok; yy++) for (let xx = x - 1; xx <= x + w && ok; xx++) { const v = g[yy] && g[yy][xx]; if (v && v[0] === 'K') ok = false; if (xx >= x && xx < x + w && yy >= y && yy < y + h && v !== 'y') ok = false; }
-      if (!ok) continue; const i = H.blds.length, L = campLoot(type, H), inner = rr <= 4.5, hp = Math.round((w * h >= 4 ? 240 : w * h >= 2 ? 150 : 90) * (inner ? 1.4 : 1) * (type === 'bonfire' ? .4 : 1));
-      H.blds.push({ i, bld: true, type, name: L.name || d.name, x, y, bw: w, bh: h, rot, hp, max: hp, icon: L.icon, loot: L.loot, items: L.items.filter(Boolean), pris: L.pris || 0, dead: false, looted: false, inner, w: shWorld(x + w / 2 - .5, y + h / 2 - .5) });
-      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) g[yy][xx] = 'K' + i; return; } };
-  for (const t of P.inner) place(t, 0, 4.5); for (const t of P.mid) place(t, 4, 7.2); for (const t of P.outer) place(t, 6.5, 9.5);
-  campDress(H, g, F0, F1);
+  for (let y = FY0; y <= F1; y++) for (let x = FX0; x <= FX1; x++) if (g[y][x] === 'W') H.fence[x + ',' + y] = { bld: true, fence: true, type: fType, name: 'fence', x, y, bw: 1, bh: 1, hp: fHp, max: fHp, dead: false, looted: true, loot: {}, items: [], w: shWorld(x, y) };
+  const c = 13.5, ring = (x, y, w, h) => Math.max(Math.abs(x + w / 2 - c), Math.abs(y + h / 2 - 15.5)) * 1.25, K = CAMP_KIT[H.raid] || CAMP_KIT.toll; H.props = [];
+  const putB = (type, x, y) => { const d = DEFS[type], w = d.w, h = d.h, i = H.blds.length, L = campLoot(type, H), rr = ring(x, y, w, h), inner = rr <= 4.5, hp = Math.round((w * h >= 4 ? 240 : w * h >= 2 ? 150 : 90) * (inner ? 1.4 : 1) * (type === 'bonfire' ? .4 : 1));
+    H.blds.push({ i, bld: true, type, name: L.name || d.name, x, y, bw: w, bh: h, rot: 0, hp, max: hp, icon: L.icon, loot: L.loot, items: L.items.filter(Boolean), pris: L.pris || 0, dead: false, looted: false, inner, w: shWorld(x + w / 2 - .5, y + h / 2 - .5) });
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) g[yy][xx] = 'K' + i; };
+  const putP = (k, x, y, r) => { if (g[y][x] !== 'y') return; g[y][x] = 'P'; H.props.push({ k, x, y, r: r || 0, v: rnd() }); };
+  /* rows of lots, nearest the hall first; the west rows fill from the boulevard outward, the east rows the same */
+  const rows = []; for (const y of [13, 18, 11, 20, 22, 9]) for (const side of ['W', 'E']) rows.push({ y, side, cur: side === 'W' ? 11 : 16, last: null });
+  /* a row is 5 tiles; buildings of the same kind stand shoulder to shoulder (a terrace), different kinds leave one tile between */
+  const lot = (row, w, t) => { const gap = row.last === null || (t && row.last === t) ? 0 : 1; if (row.side === 'W') { const x0 = row.cur - gap - w + 1; if (x0 < 7) return -1; row.cur = x0 - 1; row.last = t; return x0; } const x0 = row.cur + gap; if (x0 + w - 1 > 20) return -1; row.cur = x0 + w; row.last = t; return x0; };
+  const all = [...P.inner, ...P.mid, ...P.outer.slice().sort(), '*kit', ...K.homes].filter((t) => t === '*kit' || DEFS[t]); let back = false, kn = 0;
+  const kitNext = () => K.kit[Math.floor(kn / 2) % K.kit.length];
+  for (const t of all) { if (t === '*kit') { for (let i = 0; i < 8; i++) { const k = kitNext(); for (const row of rows) { const x = lot(row, 1, k); if (x >= 0) { putP(k, x, row.y, 0); kn++; break; } } } continue; }   /* the faction's own things sit among the work buildings, before the homes fill the outer rows */
+    const d = DEFS[t];
+    if (d.role === 'hq' && !H.blds.some((b) => DEFS[b.type].role === 'hq')) { putB(t, 13, 15); continue; }
+    if (d.h > 1) { if (!back) { back = true; putB(t, 13, 10); } continue; }
+    for (const row of rows) { const x = lot(row, d.w, t); if (x >= 0) { putB(t, x, row.y); break; } } }
+  /* what is left of the rows: the faction's own things, two of a kind side by side */
+  for (const row of rows) for (let k = kitNext(), x = lot(row, 1, k); x >= 0; k = kitNext(), x = lot(row, 1, k)) { putP(k, x, row.y, 0); kn++; }
+  /* the boulevard stays four tiles wide (a two-wide one was a death trap at the gate): towers and banners stand back from it, lamps mark the corners of the square */
+  for (const [x, y] of [[6, 8], [21, 8], [6, 23], [21, 23], [10, 23], [17, 23]]) putP(K.tower || 'tower', x, y, 0);
+  for (const [x, y] of [[12, 17], [15, 17], [12, 14], [15, 14]]) putP(K.street, x, y, x < 13 ? 0 : 2);
+  putP('banner', 11, 23, 0); putP('banner', 16, 23, 2);
   if (!H.practice) for (const r of ((S.fac || {})[H.raid] || {}).ruins || []) { if (S.day - r.d >= 10) continue; const b = H.blds.find((q) => q.type === r.t && !q.dead); if (b) { b.dead = true; b.looted = true; b.hp = 0; b.wasRuin = true; } }   /* still in ruins from the last raid */
   /* the people: guards on posts and patrols, workers going about their jobs, the leader by the hall */
-  const yard = () => { for (let k = 0; k < 200; k++) { const x = rint(F0 + 1, F1 - 1), y = rint(F0 + 1, F1 - 5); if (g[y][x] === 'y') return shWorld(x, y); } return shWorld(13, 13); };
+  const yard = () => { for (let k = 0; k < 200; k++) { const x = rint(FX0 + 1, FX1 - 1), y = rint(FY0 + 1, F1 - 4); if (g[y][x] === 'y') return shWorld(x, y); } return shWorld(13, 17); };
   const mk0 = (t, w, ex) => { const zd = zombieTypes.raider || zombieTypes.walker, wpn = t === 'raiderG' ? 'rifle' : t === 'raiderB' ? 'bow' : t === 'worker' ? 'pipe' : ['bat', 'crowbar', 'machete'][H.zs.length % 3], TKc = (CAMP_PLAN[H.raid] || {}).tough || 1, hp = Math.round(zd.hp * (t === 'worker' ? .55 : 1.3 * TKc));
     H.zs.push({ type: 'raider', human: true, wpn, ranged: wpn === 'rifle' || wpn === 'bow', room: 'y', w, hp, max: hp, atk: zd.atk * (t === 'worker' ? .4 : 1.2 * TKc), spd: (zd.chase || .012) * 1.25, mode: 'patrol', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, fk: H.raid, worker: t === 'worker', home: { ...w }, ...ex }); };
-  mk0('raider', shWorld(12, 21.5), { post: true }); mk0(P.guards[1][0], shWorld(15, 21.5), { post: true });
+  mk0('raider', shWorld(12.7, 21.3), { post: true }); mk0(P.guards[1][0], shWorld(14.3, 21.3), { post: true });
   const hq = H.blds.find((b) => DEFS[b.type].role === 'hq'), arm = H.blds.find((b) => DEFS[b.type].role === 'gear');
   for (const b of [arm, hq].filter(Boolean)) mk0(P.guards[0][0], shWorld(b.x + b.bw, b.y + b.bh), { post: true, keep: true });
   let n = 0; for (const [t, k] of P.guards) for (let i = 0; i < k; i++) if (n++ >= 3) mk0(t, yard(), {});
@@ -5170,7 +5181,7 @@ function campDist(s, t) { if (!t.bld) return dist(s.w, t.w); const x0 = SH_AX + 
 function campSpot(b, s) {   /* a free tile beside the building, spread out by who is going */
   const g = S.sh.grid, c = []; for (let y = b.y - 1; y <= b.y + b.bh; y++) for (let x = b.x - 1; x <= b.x + b.bw; x++) { if (x >= b.x && x < b.x + b.bw && y >= b.y && y < b.y + b.bh) continue; const v = g[y] && g[y][x]; if (v === 'y' || v === 'o' || v === 'G') c.push(shWorld(x, y)); }
   c.sort((a, q) => dist(a, s.w) - dist(q, s.w)); return c[S.sh.units.indexOf(s) % Math.max(1, Math.min(3, c.length))] || c[0] || b.w; }
-function campAlarm(at, why) { const H = S.sh; if (!H || H.alarm) return; H.alarm = true; H.reinAt = H.t + 60 * ((CAMP_PLAN[H.raid] || {}).reinFirst || 50); H.reinN = 0; for (const z of H.zs) z.asleep = false; SFX('alarm'); shFx(at, '❗ ' + (why || 'Spotted!'), '#ff6e62'); say(`${why || 'The squad was spotted'}: the whole camp is on alert!`);
+function campAlarm(at, why) { const H = S.sh; if (!H || H.alarm) return; H.alarm = true; H.reinAt = H.t + 60 * ((CAMP_PLAN[H.raid] || {}).reinFirst || 50); H.reinN = 0; for (const z of H.zs) { z.asleep = false; z.joinAt = H.t + Math.round(60 * Math.max(0, dist(z.w, at) - 5) * 3.5); }   /* 3D.140 the camp is smaller: guards far from the shout take a while to arrive (3.5 s a tile past 5) instead of all landing at once */ SFX('alarm'); shFx(at, '❗ ' + (why || 'Spotted!'), '#ff6e62'); say(`${why || 'The squad was spotted'}: the whole camp is on alert!`);
   const hq = H.blds.find((b) => DEFS[b.type].role === 'hq' && !b.dead); for (const z of H.zs) if (z.hp > 0) { z.mode = 'idle'; if (z.worker) z.hide = hq ? campSpot(hq, H.units[0]) : z.home; } shPanel(); }
 function campFall(b) { const H = S.sh; b.dead = true; b.hp = 0; SFX('hit'); if (b.fence) { shFx(b.w, '💥 A way through the fence', '#ffb060'); for (const q of H.units) if (q.order === b) q.order = null; shPanel(); return; } shFx(b.w, `💥 ${b.name} is down`, '#ffb060');
   if (b.pris) { H.found = (H.found || 0) + b.pris; shFx({ x: b.w.x, y: b.w.y + .6 }, `🔓 ${b.pris} prisoner${b.pris > 1 ? 's' : ''} freed`, '#7be08a'); b.looted = true; }
@@ -5213,9 +5224,10 @@ function campEnemyAI(z, live) {
   if (!H.alarm && z.asleep) { z.moving = false; z.mode = 'patrol'; if (live.some((s) => dist(s.w, z.w) < 1.2)) campAlarm(z.w, 'A sleeper woke and shouted'); return; }   /* 3D.128 night: the workers sleep; only stepping on one wakes it */
   if (!H.alarm) { const sp = live.find((s) => dist(s.w, z.w) < (z.worker ? 3 : z.post ? 4.2 : 4.5) * (H.night ? .6 : 1)); if (sp) { campAlarm(z.w, z.worker ? 'A worker raised the alarm' : `${z.leader ? z.name : 'A guard'} spotted the squad`); return; }
     if (z.post) { z.moving = false; z.mode = 'patrol'; return; }
-    if (!z.dest || (z.waitT = (z.waitT || 0) - 1) === 0) { const bs = H.blds.filter((b) => !b.dead); const b = bs[Math.floor(rnd() * bs.length)]; z.dest = z.worker && b ? campSpot(b, z) : (() => { for (let k = 0; k < 30; k++) { const x = rint(5, 22), y = rint(5, 22); if (H.grid[y][x] === 'y') return shWorld(x, y); } return z.home; })(); }
+    if (!z.dest || (z.waitT = (z.waitT || 0) - 1) === 0) { const bs = H.blds.filter((b) => !b.dead); const b = bs[Math.floor(rnd() * bs.length)]; z.dest = z.worker && b ? campSpot(b, z) : (() => { for (let k = 0; k < 30; k++) { const x = rint(6, 21), y = rint(8, 23); if (H.grid[y][x] === 'y') return shWorld(x, y); } return z.home; })(); }
     if (z.waitT > 0) { z.moving = false; z.mode = 'patrol'; return; }
     z.mode = 'patrol'; if (shGo(z, z.dest, z.spd * .6, 'z') || !z.path) { z.waitT = rint(150, 360); } return; }
+  if (!z.worker && !z.keep && z.joinAt > H.t && z.hp >= (z.hpJ ?? z.hp) && !live.some((s) => dist(s.w, z.w) < 4.5)) { z.hpJ = z.hp; z.moving = false; z.mode = 'patrol'; return; }
   if (z.worker) { const t = live.find((s) => dist(s.w, z.w) < 1.1); if (t) { shZombieAI(z, [t]); return; } z.mode = 'rflee'; if (z.hide) shGo(z, z.hide, z.spd * 1.1, 'z'); else z.moving = false; return; }
   if (z.keep) {   /* 3D.128 the armoury guard, the hall guard and the leader stay with what they guard: they fight whoever comes close (or shoots them), and walk back when the squad pulls away */
     if (z.hp < (z.hpSeen ?? z.hp)) z.keepOff = H.t + 600; z.hpSeen = z.hp; const near = z.keepOff > H.t ? live : live.filter((s) => dist(s.w, z.home) < 6.5);
