@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.143', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.144', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2384,10 +2384,10 @@ function monsterGeneration() {
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
 function spawnRaid(fk = 'toll', leader = false) {
   setTimeout(() => barkSomeone('raiders', {}, { pri: 2 }), 600); if (!facOk('toll') && fk === 'toll' && !leader) fk = 'drifters';
-  const n = Math.min(7, 3 + (S.terr || 0) + Math.floor(hDay() / 5) + (leader ? 2 : 0)), a = rnd() < .6 ? hwyEnd() : spawnPoint();   /* 3D.101: raiders mostly ride in on the highway */   /* 3D.71: raids grow with the days, not town upgrades */
+  const n = Math.min(7, 3 + (S.terr || 0) + Math.floor(hDay() / 5) + (leader ? 2 : 0)) + (leader ? 3 : 0),   /* 3D.144 owner: a leader is not bigger than his people; he always has a knot of them round him */ a = rnd() < .6 ? hwyEnd() : spawnPoint();   /* 3D.101: raiders mostly ride in on the highway */   /* 3D.71: raids grow with the days, not town upgrades */
   for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, fk, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); rollRaider(S.z[S.z.length - 1], i); S.z[S.z.length - 1].fac = fk; }
   { const R = FAC_RAID[fk]; if (R) for (const z of S.z.slice(-n)) { z.hp = z.max = Math.round(z.max * R.hp); z.pw = (z.pw || 1) * (R.pw || 1); z.plate = true; } }   /* 3D.137/138 each faction's people fight differently */
-  if (leader) { const L = S.z[S.z.length - 1]; L.kind = 'brute'; L.leader = true; L.name = (FAC_RAID[fk] || {}).lead || 'The Toll Collector'; L.hp = L.max = Math.round(L.max * 3.2); L.pw = (L.pw || 1) * 1.4; }   /* 3D.104 */
+  if (leader) { const L = S.z[S.z.length - 1]; L.kind = 'brute'; L.leader = true; L.name = (FAC_RAID[fk] || {}).lead || 'The Toll Collector'; L.hp = L.max = Math.round(L.max * 3.2); L.pw = (L.pw || 1) * 1.4; for (const q of S.z.slice(-4, -1)) { q.esc = true; q.kind = 'brute'; q.w = { x: L.w.x + (rnd() - .5) * .8, y: L.w.y + (rnd() - .5) * .8 }; q.stateTicks = L.stateTicks; } }   /* 3D.104 */
   SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
 /* V3D.13 raider personalities (Walking Dead style): most raiders are Thieves; some are Brutes who come to hurt people
@@ -2406,9 +2406,11 @@ function raidTarget(z) { let best = null, bd = 1e9; for (const b of world.buildi
 function rai(z) {
   const d = zombieTypes.raider; if (z.mode === 'idle' || z.mode === 'zmarch') { z.mode = z.carried > 0 ? 'rflee' : 'rsneak'; z.path = null; }
   if (z.hp < z.max * RK(z).flee && z.mode !== 'rflee') { z.mode = 'rflee'; z.path = null; z.target = null; }
+  if (z.esc && z.mode !== 'rflee') { const L = S.z.find((q) => q.leader && q.hp > 0 && q.fac === z.fac && q !== z); if (!L) z.esc = false; else if (dist(z.w, L.w) > 2.4 && !S.sv.some((q) => q.hp > 0 && q.mode !== 'down' && dist(q.w, z.w) < 1.4)) { const r = followPath(z, L.w, d.chase * 1.2); z.moving = r === 'moving'; z.mode = 'rsneak'; return; } }   /* 3D.144 a bodyguard never strays from the leader */
   if (RK(z).hunt && z.mode !== 'rflee') {   /* Brute: goes straight for the nearest person and fights to the end */
     let t = null, td = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < td) { td = dd; t = s; } }
-    if (t) { z.target = t; z.mode = 'zchase'; z.path = null; return; }
+    if (t && td > 4.4) { const r = followPath(z, t.w, d.chase); z.moving = r === 'moving'; z.mode = 'rsneak'; if (r !== 'fail') return; }   /* 3D.144 fix: a chase gives up past 4.8 tiles, so a far-off Brute stood still; now he walks in first */
+    else if (t) { z.target = t; z.mode = 'zchase'; z.path = null; return; }
   }
   // dodge zombies: step away from any zombie that gets close
   if (z.evadeT > 0) { z.evadeT--; moveSlide(z, z.evadeTo, d.chase * 1.1); return; }
@@ -2505,12 +2507,13 @@ function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors 
   for (const o of S.z) if (o !== z && o.hp > 0 && !o.human && dist(o.w, z.w) < ROT_R) { o.hp -= 25; o.hitT = 9; }
   if (hurt) note('important', `💥 A Rotbomb burst and hurt ${hurt} ${hurt === 1 ? 'survivor' : 'survivors'}.`);
 }
-function zai(z) { if (z.burnT > 0) { z.burnT--; if (z.burnT % 60 === 0) { z.hp -= 3; z.hitT = 6; if (z.hp <= 0) { S.kills++; return; } } }   /* 3D.104 molotov fire */ if (z.slowT > tick && tick % 3 === 0) return; if (z.stunT > tick) { z.moving = false; return; }   /* a dog has it by the leg */ if (z.fuseT > 0) { z.moving = false; return; }   /* 3D.85 a dying Rotbomb stands and swells */ if (!z.zoo) zSpecial(z); const px = z.w.x, py = z.w.y; if (z.zoo || !lureStep(z)) zai0(z); if (!z.human && z.hp > 0) zPushOut(z); if (z.hp > 0 && !z.zoo && (z.stun > 0 || trapMap().size)) trapStep(z, px, py); }
+function zai(z) { if (z.burnT > 0) { z.burnT--; if (z.burnT % 60 === 0) { z.hp -= 3; z.hitT = 6; if (z.hp <= 0) { S.kills++; return; } } }   /* 3D.104 molotov fire */ if (z.slowT > tick && tick % 3 === 0) return; if (z.stunT > tick) { z.moving = false; return; }   /* a dog has it by the leg */ if (z.fuseT > 0) { z.moving = false; return; }   /* 3D.85 a dying Rotbomb stands and swells */ if (!z.zoo) zSpecial(z); const px = z.w.x, py = z.w.y; if (z.zoo || !lureStep(z)) zai0(z); if (!z.human && z.hp > 0) zPushOut(z); if (z.human && z.hp > 0 && z.mode !== 'appear') for (const o of S.z) if (o !== z && o.human && o.hp > 0) { const dx = z.w.x - o.w.x, dy = z.w.y - o.w.y, l = Math.hypot(dx, dy); if (l < .55) { const ux = l > .01 ? dx / l : Math.cos(z.phase), uy = l > .01 ? dy / l : Math.sin(z.phase); moveSlide(z, { x: z.w.x + ux, y: z.w.y + uy }, .012); break; } }   /* 3D.144 raiders walking together keep a shoulder apart */ if (z.hp > 0 && !z.zoo && (z.stun > 0 || trapMap().size)) trapStep(z, px, py); }
 function zai0(z) {
   if (z.zoo) { z.moving = false; z.mode = 'zoo'; return; }   /* 3D.32 test page: stand still on display */
   if (z.human && z.para > 0) { z.para--; z.moving = false; return; }   /* 3D.107 hooked by a Lasher */
   if (z.human && z.hp < z.max * RK(z).flee && ['zchase', 'zattack', 'zrecover'].includes(z.mode)) { z.mode = 'rflee'; z.target = null; z.path = null; }
   if (z.human && z.mode === 'idle' && RK(z).hunt) { z.mode = 'rsneak'; }   /* brutes skip the idle wander */
+  if (z.esc && z.mode === 'zchase') { const L = S.z.find((q) => q.leader && q.hp > 0 && q.fac === z.fac && q !== z); if (L && dist(z.w, L.w) > 4) { z.mode = 'rsneak'; z.target = null; z.path = null; } }   /* 3D.144 a bodyguard breaks off a chase that pulls him away from the leader */
   if (z.human && !['zchase', 'zattack', 'zrecover', 'appear'].includes(z.mode)) return rai(z);
   const d = zDef(z); if (z.cool > 0) z.cool--; if (z.stateTicks > 0) z.stateTicks--;
   if (z.mode === 'appear') { z.moving = false; if (z.stateTicks <= 0) { z.mode = 'idle'; z.stateTicks = 35 + rnd() * 70; } return; }
@@ -5177,6 +5180,7 @@ function campBuild() {   /* lay out the camp: a fenced square, the gate south, r
   let n = 0; for (const [t, k] of P.guards) for (let i = 0; i < k; i++) if (n++ >= 3) mk0(t, yard(), {});
   for (let i = 0; i < P.workers; i++) mk0('worker', yard(), H.night ? { asleep: true } : {});
   const D = SH_DEFS[H.dest], boss = D.areas[2].boss; if (boss && hq) H.zs.push({ type: 'raider', human: true, wpn: boss.wpn || null, ranged: boss.wpn === 'bow' || boss.wpn === 'rifle', leader: true, boss: true, name: boss.name, room: 'y', big: boss.big, w: shWorld(hq.x - 1, hq.y + hq.bh / 2), hp: Math.round(boss.hp * (P.tough || 1)), max: Math.round(boss.hp * (P.tough || 1)), atk: boss.atk * (P.tough || 1), spd: boss.spd, mode: 'patrol', post: true, keep: true, target: null, moving: false, fk: H.raid, home: shWorld(hq.x - 1, hq.y + hq.bh / 2) });
+  if (boss && hq) for (const [i, [dx, dy]] of [[-2, 0], [-2, 1], [-1, 0], [-2, 2]].entries()) { const x = hq.x + dx, y = hq.y + dy; if (g[y] && g[y][x] === 'y') { mk0(P.guards[i % 2][0], shWorld(x, y), { post: true, keep: true }); H.zs[H.zs.length - 1].esc = true; } }   /* 3D.144 the leader's bodyguards */
 }
 function campDist(s, t) { if (!t.bld) return dist(s.w, t.w); const x0 = SH_AX + t.x, y0 = SH_AY + t.y, dx = Math.max(x0 - s.w.x, 0, s.w.x - (x0 + t.bw)), dy = Math.max(y0 - s.w.y, 0, s.w.y - (y0 + t.bh)); return Math.hypot(dx, dy); }
 function campSpot(b, s) {   /* a free tile beside the building, spread out by who is going */
@@ -5231,7 +5235,7 @@ function campEnemyAI(z, live) {
   if (!z.worker && !z.keep && z.joinAt > H.t && z.hp >= (z.hpJ ?? z.hp) && !live.some((s) => dist(s.w, z.w) < 4.5)) { z.hpJ = z.hp; z.moving = false; z.mode = 'patrol'; return; }
   if (z.worker) { const t = live.find((s) => dist(s.w, z.w) < 1.1); if (t) { shZombieAI(z, [t]); return; } z.mode = 'rflee'; if (z.hide) shGo(z, z.hide, z.spd * 1.1, 'z'); else z.moving = false; return; }
   if (z.keep) {   /* 3D.128 the armoury guard, the hall guard and the leader stay with what they guard: they fight whoever comes close (or shoots them), and walk back when the squad pulls away */
-    if (z.hp < (z.hpSeen ?? z.hp)) z.keepOff = H.t + 600; z.hpSeen = z.hp; const near = z.keepOff > H.t ? live : live.filter((s) => dist(s.w, z.home) < 6.5);
+    if (z.hp < (z.hpSeen ?? z.hp)) z.keepOff = H.t + 600; z.hpSeen = z.hp; if (z.esc || z.boss) { for (const q of H.zs) if (q !== z && q.hp > 0 && (q.esc || q.boss) && q.keepOff > H.t) z.keepOff = Math.max(z.keepOff || 0, q.keepOff); }   /* the leader and his bodyguards fight as one */ const near = z.keepOff > H.t ? live : live.filter((s) => dist(s.w, z.home) < 6.5);
     if (!near.length) { z.target = null; z.mode = 'patrol'; if (dist(z.w, z.home) > .5) shGo(z, z.home, z.spd, 'z'); else z.moving = false; return; }
     if (z.mode === 'patrol') z.mode = 'idle'; shZombieAI(z, near); return; }
   if (z.mode === 'patrol') z.mode = 'idle'; shZombieAI(z, live); }

@@ -118,6 +118,10 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
             Wm = W[m] * keep[None]; Wm[shared[m]] = W[m][shared[m]]
             z = Wm.sum(1) < 1e-6; Wm[z] = 0; Wm[z, int(np.argmax(np.where(keep, share, -1)))] = 1   # a vertex left with no weight goes to the piece's main bone (else the exporter adds a 'neutral_bone')
             W[m] = Wm
+        for b, xmin, zmin, zmax in FORCE:   # Nov 13: a forced region wins over the island rule (an armband fused to the vest stayed on the chest)
+            for sd in ('.L', '.R'):
+                if b + sd not in names: continue
+                i = names.index(b + sd); m = (np.abs(P[:, 0]) > xmin) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & ((P[:, 0] > 0) == (sd == '.L')); W[m] = 0; W[m, i] = 1
         W /= np.maximum(W.sum(1, keepdims=True), 1e-9); print('pieces', k, flush=True)
     for i, n in enumerate(names):   # Nov 9: pieces on these bones move rigidly with them (a shoulder pad shared with the chest stretched into a flap when the arm went overhead)
         if n.split('.')[0] in RIGID and not ISLANDS:
