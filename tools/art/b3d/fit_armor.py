@@ -69,11 +69,27 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
             if b + sd not in names: continue
             i = names.index(b + sd); m = (np.abs(P[:, 0]) > xmin) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & ((P[:, 0] > 0) == (sd == '.L')); W[m] = 0; W[m, i] = 1
     shared = np.zeros(len(P), bool)
+    trunkV = np.ones(len(P), bool)
+    if ISLANDS:   # Nov 12: a blend (an apron shared by the pelvis and the thighs) applies only to pieces that cross the middle, never to a glove hanging beside it
+        import bmesh
+        bm = bmesh.new(); bm.from_mesh(arm.data); bm.verts.ensure_lookup_table(); lab0 = -np.ones(len(P), int); k0 = 0
+        for v in bm.verts:
+            if lab0[v.index] >= 0: continue
+            st = [v]; lab0[v.index] = k0
+            while st:
+                x = st.pop()
+                for e in x.link_edges:
+                    w = e.other_vert(x)
+                    if lab0[w.index] < 0: lab0[w.index] = k0; st.append(w)
+            k0 += 1
+        bm.free()
+        for c in range(k0):
+            m = lab0 == c; trunkV[m] = P[m, 0].min() < -.03 and P[m, 0].max() > .03
     for b, o2, x0, x1, z0, z1, wmax in BLEND:   # Nov 9: a piece shared by two bones (a shoulder pad on the vest): a smooth ramp across x, so it bends instead of tearing
         for sd in ('.L', '.R'):
             if b + sd not in names: continue
             i = names.index(b + sd); j = names.index(o2 if o2 in names else o2 + sd)
-            m = (P[:, 2] > z0) & (P[:, 2] <= z1) & ((P[:, 0] > 0) == (sd == '.L')) & (np.abs(P[:, 0]) > x0 - .02)
+            m = (P[:, 2] > z0) & (P[:, 2] <= z1) & ((P[:, 0] > 0) == (sd == '.L')) & (np.abs(P[:, 0]) > x0 - .02) & trunkV
             t = np.clip((np.abs(P[m, 0]) - x0) / (x1 - x0), 0, 1); w = wmax * t * t * (3 - 2 * t)
             W[m] = 0; W[m, i] = w; W[m, j] = 1 - w; shared |= m
     if ISLANDS:   # Nov 9: each separate piece (vest, belt, thigh pad, shin guard, arm guard) follows only the bones most of it is on: no piece bends on a bone it barely touches
