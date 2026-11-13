@@ -182,7 +182,9 @@
     '🚚': 'truck', '🚗': 'truck', '🚙': 'truck', '🛻': 'truck', '🚐': 'truck', '🚌': 'truck', '🥾': 'boot', '👣': 'boot', '🏃': 'boot', '🚶': 'boot', '🏗': 'build', '⬆': 'upgrade', '❗': 'warn', '🔺': 'warn', '🌅': 'sun', '📅': 'clock', '🗓': 'clock',
     '🧺': 'box', '🪖': 'shield', '⛑': 'shield', '🦺': 'shield', '📓': 'guide', '🧯': 'fire', '🍳': 'meal', '🔫': 'fight', '🗡': 'fight', '🏭': 'factory', '🏛': 'town', '🏙': 'town', '💗': 'heart', '🧬': 'research', '📍': 'locate',
     '🐈': 'pet', '⚕': 'medic', '🎓': 'train', '⛓': 'lock', '🌊': 'water', '🏁': 'flag', '🤝': 'people', '🙋': 'person', '👮': 'person', '😵': 'hurt', '😖': 'hurt', '🤢': 'sick', '🤮': 'sick',
-    '😢': 'sad', '😟': 'sad', '😞': 'sad', '😩': 'sad', '🥱': 'tired', '😴': 'tired', '😋': 'yum', '😎': 'cool', '😣': 'hurt', '🫂': 'love', '💥': 'bang' };
+    '😢': 'sad', '😟': 'sad', '😞': 'sad', '😩': 'sad', '🥱': 'tired', '😴': 'tired', '😋': 'yum', '😎': 'cool', '😣': 'hurt', '🫂': 'love', '💥': 'bang',
+    /* 3D.145 the last phone emoji in the game text get the nearest sticker */
+    '🔦': 'search', '🛣️': 'map', '🛣': 'map', '✊': 'fight', '👆': 'locate', '💢': 'angry', '✋': 'person', '🦁': 'strong', '🐺': 'pet', '🦉': 'moon', '🫣': 'scared', '⛰️': 'stone', '⛰': 'stone', '👀': 'search', '⚖': 'shop', '⚖️': 'shop', '👋': 'happy', '🤔': 'question', '💡': 'research', '☕': 'meal', '🔄': 'upgrade', '🦝': 'stash', '🪝': 'crowbar', '🐫': 'truck', '🪤': 'lock', '🤫': 'chat', '🍾': 'party', '🧢': 'shield', '💍': 'heart', '📐': 'build', '♻': 'wrench', '♻️': 'wrench', '🪢': 'cloth', '🗑': 'box', '🗑️': 'box' };
   /* DOM: swap emoji in UI text for icons. Faces stay as text in the DOM (survivor cards); canvas emotes use the mood icons. */
   const DOM_SKIP = new Set(['😵', '😖', '🤢', '🤮', '😊', '🙂', '😄', '😌', '👍', '🙏', '👌', '😂', '😅', '😤', '😠', '😰', '😱', '😨', '🆘', '😢', '😟', '😞', '😩', '🥱', '😴', '😋', '😎', '😣', '🫂', '💥']);
   const esc = (e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
