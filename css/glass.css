@@ -331,3 +331,17 @@ html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { dis
 .radioCard.talk .rcI { animation: rcBuzz .12s linear 3; }
 @keyframes rcBuzz { 0% { transform: translate(0, 0); } 33% { transform: translate(-1px, 1px); } 66% { transform: translate(1px, -1px); } 100% { transform: translate(0, 0); } }
 @media (prefers-reduced-motion: reduce) { .radioCard.talk .rcT b::after { animation: none; } .radioCard.talk .rcI { animation: none; } }
+
+/* 3D.151 gear test page (?gear) */
+.gearPanel { position: fixed; inset: 0; z-index: 60; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: #171d24; color: #fff; font-family: Manrope, system-ui, sans-serif; }
+.gearPanel .gh { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .gearPanel .gh b { font: 800 20px Manrope, sans-serif; } .gearPanel .gh .sm { flex: 1; color: #C9D1D9; font-size: 12px; font-weight: 600; } .gearPanel .gh .act { min-height: 38px; padding: 0 16px; }
+.gearPanel .gtabs { display: flex; gap: 6px; overflow-x: auto; position: sticky; top: 0; z-index: 2; background: #171d24; padding: 4px 0 8px; }
+.gearPanel .gt { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); color: #fff; font: 800 13px Manrope, sans-serif; } .gearPanel .gt small { color: #C9D1D9; font-weight: 700; margin-left: 3px; } .gearPanel .gt.on { background: #C6FF4D; color: #14200A; border-color: #C6FF4D; } .gearPanel .gt.on small { color: #3b5212; }
+.gearPanel .gbig:empty { display: none; } .gearPanel .gbig { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; padding: 8px 10px 10px; margin-bottom: 10px; }
+.gearPanel .gbf { display: flex; gap: 2px; overflow-x: auto; } .gearPanel .gbf img { flex: none; height: 190px; width: auto; image-rendering: auto; }
+.gearPanel .gbt { font-size: 13px; font-weight: 600; line-height: 1.45; color: #E6ECF2; } .gearPanel .gbt b { font: 800 16px Manrope, sans-serif; color: #fff; } .gearPanel .gbt .sm { color: #9aa6b2; font-size: 11px; }
+.gearPanel .ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.gearPanel .gc { position: relative; text-align: left; padding: 6px 8px 8px; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: #fff; min-width: 0; }
+.gearPanel .gi { height: 128px; display: flex; align-items: flex-end; justify-content: center; } .gearPanel .gi img { height: 128px; width: auto; }
+.gearPanel .gc b { display: block; font-size: 12px; font-weight: 800; line-height: 1.2; } .gearPanel .gc small { display: block; color: #C9D1D9; font-size: 10px; font-weight: 700; line-height: 1.25; margin-top: 2px; }
+.gearPanel .g3, .gearPanel .g0 { font: 800 9px Manrope, sans-serif; font-style: normal; border-radius: 6px; padding: 1px 5px; } .gearPanel .g3 { background: #C6FF4D; color: #14200A; } .gearPanel .g0 { background: rgba(255,255,255,.16); color: #E6ECF2; } .gearPanel .gc .g3 { position: absolute; top: 6px; right: 6px; }

@@ -3,11 +3,11 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.150', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.151', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
-let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune', 'zoo'].some((k) => QS.has(k)), ZOO = QS.has('zoo');   /* 3D.32 ?zoo = zombie test page (never saves) */
+let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune', 'zoo', 'gear'].some((k) => QS.has(k)), GEAR = QS.has('gear'), ZOO = QS.has('zoo') || GEAR;   /* 3D.151 ?gear = gear test page (never saves, like ?zoo) */   /* 3D.32 ?zoo = zombie test page (never saves) */
 /* V2.42 save safety: a day backup per slot (<key>_bak), a copy of a save that would not load (<key>_bad), a session id so a second tab on the same slot is noticed */
 const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
 let saveBlocked = '', saveErr = '', loadedFrom = '';
@@ -6582,7 +6582,7 @@ async function init() {
   if (!restored) { let nm = null; try { nm = localStorage.getItem('zhNewName'); localStorage.removeItem('zhNewName'); } catch (e) { /* ignore */ } if (nm) S.townName = nm.slice(0, 22); }
   if (QS.get('shtest')) setTimeout(() => showShPractice(), 1200);   /* 3D.114 the practice page */
   if (S.cutPending) { delete S.cutPending; cutStart(); } autoStaff(); tripUpdate(); expTick(); if (S.trip && S.trip.enc) encPopup(S.trip); if (!S.mission && !S.cut) beginMission(); updateZoomLabel(); ui(); $('loading').style.display = 'none'; requestAnimationFrame(frame);
-  if (ZOO) zooStart();
+  if (GEAR) gearStart(); else if (ZOO) zooStart();
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {}); } catch (e) { /* not supported */ }   /* V2.42: ask the browser not to evict saves */
   if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
   if (saveBlocked === 'load') showEventPopup({ title: '💾 SAVE COULD NOT BE OPENED', text: `The town in slot ${SLOT} could not be loaded. <b>Nothing was overwritten</b>: this town will not save while you look around.<br><br>On the main screen, <b>Start → Backups</b> can export the file or import an older backup.`, buttons: [{ label: 'MAIN SCREEN', fn: () => { location.href = location.pathname; } }, { label: 'LOOK AROUND' }] });
@@ -6598,6 +6598,27 @@ function zooLine() {
     if (t === 'boss') { S.z.push({ type: 'boss', boss: true, pw: 1, w: tc(x, y), hp: 260, max: 260, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
     spawn(x, y, t); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max;
   }));
+}
+/* ---------------- 3D.151 Gear test page (?gear): every weapon, armour, helmet and accessory in ITEMS, worn by a survivor.
+   It reads ITEMS, so a new item shows up here by itself. Never saves. */
+function gearStart() {
+  S.mission = null; simSpeed = 0; const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id));
+  const TABS = [['armor', 'Armour'], ['head', 'Helmets'], ['weapon', 'Weapons'], ['acc', 'Accessories']], by = (sl) => Object.keys(ITEMS).filter((k) => ITEMS[k].slot === sl).sort((a, b) => (a3(b) ? 1 : 0) - (a3(a) ? 1 : 0) || (ITEMS[a].cost || 0) - (ITEMS[b].cost || 0));
+  const fem = (q) => { try { return !!(window.ZHChars && ZHChars.look(q).sex === 'f'); } catch (e) { return false; } }, M = S.sv.find((q) => !fem(q)) || S.sv[0], F = S.sv.find((q) => fem(q)) || S.sv[1] || M;
+  const fig = (s, id, pose) => { const it = ITEMS[id], old = s.eq; s.eq = { weapon: null, armor: null, head: null, acc: null, [it.slot]: id }; let u = null; try { u = ZH3D.figure(s, pose); } catch (e) { /* a broken item must not break the page */ } s.eq = old; return u; };
+  const d = document.createElement('div'); d.id = 'gearPanel'; d.className = 'gearPanel'; let tab = 'armor', job = 0;
+  d.innerHTML = `<div class="gh"><b>Gear test</b><span class="sm" id="gearN"></span><button class="act" id="gearExit">Exit</button></div><div class="gtabs">${TABS.map(([k, n]) => `<button class="gt" data-k="${k}">${n} <small>${by(k).length}</small></button>`).join('')}</div><div class="gbig" id="gearBig"></div><div class="ggrid" id="gearGrid"></div>`;
+  document.body.appendChild(d);
+  const big = (id) => { const it = ITEMS[id], poses = it.slot === 'weapon' ? [[M, 'ready'], [F, 'ready']] : [[M, 'ready'], [M, 'wave'], [M, 'cheer'], [F, 'ready'], [F, 'cheer']];
+    $('gearBig').innerHTML = `<div class="gbf">${poses.map(([s, p]) => { const u = fig(s, id, p); return u ? `<img src="${u}" alt="">` : ''; }).join('')}</div><div class="gbt"><b>${esc(it.name)}</b> ${it.slot === 'armor' ? (a3(id) ? '<i class="g3">3D model</i>' : '<i class="g0">recolour only</i>') : ''}<br>${esc(itemText(it))} · ${it.cost} scrap${iQuip(id)}<br><span class="sm">id: ${id}${it.slot === 'weapon' ? ' · model: ' + (ZH3D.wModel(id) || 'bat') : it.shape ? ' · shape: ' + it.shape : ''}</span></div>`; $('gearBig').scrollIntoView({ block: 'nearest' }); };
+  const show = (k) => { tab = k; const my = ++job, ids = by(k); d.querySelectorAll('.gt').forEach((b) => b.classList.toggle('on', b.dataset.k === k)); $('gearN').textContent = `${Object.keys(ITEMS).length} items · tap one to see it in every pose`; $('gearBig').innerHTML = '';
+    $('gearGrid').innerHTML = ids.map((id) => `<button class="gc" data-id="${id}"><div class="gi" id="gi_${id}"></div><b>${esc(ITEMS[id].name)}</b>${ITEMS[id].slot === 'armor' && a3(id) ? '<i class="g3">3D</i>' : ''}<small>${esc(itemText(ITEMS[id]))}</small></button>`).join('');
+    d.querySelectorAll('.gc').forEach((b) => { b.onclick = () => big(b.dataset.id); });
+    let i = 0; const step = () => { if (my !== job) return; for (let n = 0; n < 2 && i < ids.length; n++, i++) { const u = fig(M, ids[i], 'ready'), el = $('gi_' + ids[i]); if (u && el) el.innerHTML = `<img src="${u}" alt="">`; } if (i < ids.length) setTimeout(step, 30); }; step(); };   /* two pictures per frame, so the page stays smooth */
+  d.querySelectorAll('.gt').forEach((b) => { b.onclick = () => show(b.dataset.k); });
+  $('gearExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('gear'); location.search = q.toString(); };
+  $('gearGrid').innerHTML = '<div class="sm" style="padding:20px">Loading the models…</div>';
+  const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady() && ZH3D.figure(M, 'ready')) { clearInterval(wait); d.querySelectorAll('.gt small').forEach((e, i) => { e.textContent = by(TABS[i][0]).length; }); show('armor'); } }, 300);
 }
 function zooStart() {
   S.mission = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;
@@ -6630,7 +6651,7 @@ function showTitle() {
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
   if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
-  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; }   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
+  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; } { const gb = $('tGear'); if (gb) gb.onclick = () => { const q = new URLSearchParams(location.search); q.set('gear', '1'); location.search = q.toString(); }; }   /* 3D.151 */   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;
 function showSlots() {
