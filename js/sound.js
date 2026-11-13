@@ -54,6 +54,7 @@
     reward: (c, o, t) => { [12, 16, 19, 24].forEach((s, i) => bell(c, o, t + i * .08, N(s), .08)); pluck(c, o, t, N(0), .2, 1); },
     coin: (c, o, t) => { clang(c, o, t, 1800, .07, .35); clang(c, o, t + .07, 2400, .07, .5); },
     breach: (c, o, t) => { thud(c, o, t, 55, .5, .5); noise(c, o, t, .5, .5, 900, .5, 'lowpass', 80); for (let i = 0; i < 5; i++) knock(c, o, t + .05 + Math.random() * .3, 500 + Math.random() * 500, .12); },
+    caralarm: (c, o, t) => { for (let i = 0; i < 8; i++) tone(c, o, t + i * .22, i % 2 ? 980 : 760, .2, 'square', .045, i % 2 ? 760 : 980); },   /* 3D.147 a wreck's alarm: two-tone whoop */
     alarm: (c, o, t) => { for (let i = 0; i < 4; i++) clang(c, o, t + i * .28, 880, .12, .5); },
     boss: (c, o, t) => { formant(c, o, t, 58, 1.8, .3, [[300, 4, 1], [700, 5, .7], [1600, 7, .2]], 40, 5); thud(c, o, t, 45, .4, .8); noise(c, o, t + .1, 1.3, .12, 220, .5, 'lowpass'); },
     night: (c, o, t) => { [0, -5, -9].forEach((s, i) => bell(c, o, t + i * .45, N(s - 12), .07)); },
@@ -81,6 +82,7 @@
     },
     rescued: (c, o, t) => { [0, 4, 7, 12].forEach((s, i) => pluck(c, o, t + i * .07, N(s), .18, 1.2)); bell(c, o, t + .3, N(19), .07); },
     rankup: (c, o, t) => { [0, 4, 7].forEach((s2, i) => stab(c, o, t + i * .13, [N(s2), N(s2 + 7)], .07)); stab(c, o, t + .42, [N(12), N(16), N(19)], .09); [12, 16, 19].forEach((s2) => bell(c, o, t + .42, N(s2 + 12), .05)); },
+    radio: (c, o, t) => { noise(c, o, t, .42, .1, 1800, .6, 'bandpass', 900); for (let i = 0; i < 7; i++) noise(c, o, t + Math.random() * .4, .012 + Math.random() * .025, .14, 2200 + Math.random() * 3000, 2); tone(c, o, t + .05, 1400, .22, 'sine', .018, 700); noise(c, o, t + .38, .08, .05, 1200, .8); },   /* 3D.147 static and a tuning whistle when the radio comes on */
     event: (c, o, t) => { [7, 12, 16, 12, 19].forEach((s2, i) => bell(c, o, t + i * .1, N(s2 + 12), .06)); },
     woof: (c, o, t) => { formant(c, o, t, 330, .1, .3, [[900, 4, 1], [1800, 6, .4]], 210); formant(c, o, t + .16, 310, .11, .28, [[880, 4, 1], [1700, 6, .4]], 200); },
     hammer: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .38, 1.2)) { knock(c, o, t, 340, .2); return; } sfx(c, o, t, 'metalL' + rnd3(), .18, 1.35); },   /* 3D.57 one hammer blow (builders at work) */

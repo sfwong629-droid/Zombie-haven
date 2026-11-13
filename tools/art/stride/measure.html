@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>stride</title>
+<script type="importmap">{ "imports": { "three": "../../../vendor/three/three.module.min.js", "three/addons/": "../../../vendor/three/addons/" } }</script>
+<script type="module">
+/* 3D.147 measure how fast each zombie clip walks: the planted foot slides backwards at the ground speed. Speed per model height, per second at timeScale 1.
+   Open with ?m=walker,runner,... ; result in window.OUT */
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), names = new URLSearchParams(location.search).get('m').split(','), out = {};
+for (const n of names) { try {
+  const g = await L.loadAsync('../../../assets/characters/ai3d_v2/' + n + '.glb'); const sc = g.scene; sc.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(sc), H = box.max.y - box.min.y; const feet = []; sc.traverse((o) => { if (o.isBone && /foot|ankle/i.test(o.name) && !/toe|end/i.test(o.name)) feet.push(o); });
+  const L2 = feet.filter((f) => /l(eft)?[._]?$|left|_l\b|\.l\b|l_/i.test(f.name)).slice(0, 1), R2 = feet.filter((f) => /r(ight)?[._]?$|right|_r\b|\.r\b|r_/i.test(f.name)).slice(0, 1);
+  const fs = (L2.length && R2.length) ? [L2[0], R2[0]] : feet.slice(0, 2); out[n] = { H: +H.toFixed(3), feet: fs.map((f) => f.name), clips: {} };
+  for (const clip of g.animations) { if (!/walk|run|crawl/i.test(clip.name)) continue; const mx = new THREE.AnimationMixer(sc); const act = mx.clipAction(clip); act.play(); const N = 240, dt = clip.duration / N;
+    const P = []; for (let i = 0; i <= N; i++) { mx.setTime(i * dt); sc.updateMatrixWorld(true); P.push(fs.map((f) => new THREE.Vector3().setFromMatrixPosition(f.matrixWorld))); }
+    /* forward axis = horizontal axis with most foot travel */ const rng = (k) => Math.max(...P.map((p) => p[0][k])) - Math.min(...P.map((p) => p[0][k])); const ax = rng('x') > rng('z') ? 'x' : 'z';
+    let dist = 0; for (let i = 1; i <= N; i++) { const lo = P[i][0].y < P[i][1].y ? 0 : 1; dist += Math.abs(P[i][lo][ax] - P[i - 1][lo][ax]) * (Math.sign(P[i][lo][ax] - P[i - 1][lo][ax]) === Math.sign(P[1][lo][ax] - P[0][lo][ax]) || 1 ? 1 : 1); }
+    /* only count the planted foot moving the stance way: use the dominant sign of low-foot motion */
+    let pos = 0, neg = 0; for (let i = 1; i <= N; i++) { const lo = P[i][0].y < P[i][1].y ? 0 : 1, d = P[i][lo][ax] - P[i - 1][lo][ax]; if (d > 0) pos += d; else neg -= d; }
+    out[n].clips[clip.name] = { dur: +clip.duration.toFixed(3), speedH: +(Math.max(pos, neg) / clip.duration / H).toFixed(4) }; mx.stopAllAction(); }
+  } catch (e) { out[n] = { err: String(e) }; } }
+window.OUT = out;
+</script>

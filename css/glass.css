@@ -325,3 +325,9 @@ html.glass .evStage .fence { opacity: .55; filter: saturate(.5) brightness(.7); 
 .radioCard .rcA { color: var(--rc, #f2b84a); font-size: 22px; }
 html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .radioCard .rcI i { animation: none; } .radioCard { transition: opacity .2s; } }
+/* 3D.147 the radio talks: words arrive one after another, a caret blinks while the voice is still going */
+.radioCard.talk .rcT b::after { content: ''; display: inline-block; width: 7px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--rc, #f2b84a); border-radius: 1px; animation: rcCaret .55s steps(1) infinite; }
+@keyframes rcCaret { 50% { opacity: 0; } }
+.radioCard.talk .rcI { animation: rcBuzz .12s linear 3; }
+@keyframes rcBuzz { 0% { transform: translate(0, 0); } 33% { transform: translate(-1px, 1px); } 66% { transform: translate(1px, -1px); } 100% { transform: translate(0, 0); } }
+@media (prefers-reduced-motion: reduce) { .radioCard.talk .rcT b::after { animation: none; } .radioCard.talk .rcI { animation: none; } }

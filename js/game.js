@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.146', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.147', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1093,21 +1093,32 @@ const RADIO_L = {
 };
 const radioQ = []; let radioOn = null;
 const rLine = (k, v = {}) => { const L = RADIO_L[k]; return L[Math.floor(Math.random() * L.length)].replace(/\{(\w+)\}/g, (_, n) => v[n] ?? ''); };
-function radio(voice, text, o = {}) {
+function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: they are spoken one after another on the same card */
+  const lines = (Array.isArray(text) ? text : [text]).filter(Boolean); text = lines.join(' ');
   const V = RADIO_V[voice] || RADIO_V.dj; logEvent(`📻 ${V.name}: ${text}`, o.level || 'routine');
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
-  radioQ.push({ voice, text, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null }); if (radioQ.length > 3) radioQ.shift(); radioNext();
+  radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
 function radioNext() {
   if (radioOn || !radioQ.length) return; const w = $('world'); if (!w) return; const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c;
   let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); }
   const tap = c.more || c.act;
   el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
-  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b>${esc(c.text)}</b></span>${tap ? '<span class="rcA">›</span>' : ''}`;
-  const close = () => { clearTimeout(radioNext.t); el.classList.remove('in'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
+  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}`;
+  const close = () => { clearTimeout(radioNext.t); clearTimeout(radioNext.ty); el.classList.remove('in', 'talk'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
   el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else if (c.more) showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more }); };
-  requestAnimationFrame(() => el.classList.add('in')); SFX('event');
-  radioNext.t = setTimeout(close, Math.min(11000, 4500 + c.text.length * 55));
+  requestAnimationFrame(() => el.classList.add('in')); SFX('radio');
+  /* 3D.147 owner: the words come out in order, as if someone is talking, not all at once. Each line types out word by word, a breath between lines */
+  const box = el.querySelector('.rcT b'), lines = c.lines && c.lines.length ? c.lines : [c.text], quiet = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const done = () => { el.classList.remove('talk'); radioNext.t = setTimeout(close, Math.min(9000, 2600 + c.text.length * 22)); };
+  if (quiet) { box.innerHTML = lines.map((l) => `<span class="rcL">${esc(l)}</span>`).join(' '); done(); return; }
+  el.classList.add('talk');   /* each word has its own due time; a slow frame shows the late ones together instead of stretching the speech */
+  const toks = []; let at = 380; lines.forEach((l, li) => { if (li) at += 520; String(l).split(/(\s+)/).forEach((w) => { if (!w) return; toks.push({ li, w, at }); if (!/\s/.test(w)) at += 40 + w.length * 28 + (/[,:;]$/.test(w) ? 160 : /[.!?]$/.test(w) ? 260 : 0); }); });
+  const spans = [], t0 = performance.now(); let k = 0;
+  const step = () => { if (radioOn !== c) return; const now = performance.now() - t0;
+    while (k < toks.length && toks[k].at <= now) { const q = toks[k++]; if (!spans[q.li]) { if (q.li) box.appendChild(document.createTextNode(' ')); spans[q.li] = box.appendChild(Object.assign(document.createElement('span'), { className: 'rcL' })); } spans[q.li].appendChild(document.createTextNode(q.w)); }
+    if (k >= toks.length) { done(); return; } radioNext.ty = setTimeout(step, 45); };
+  radioNext.ty = setTimeout(step, 45);   /* a moment of static first */
 }
 function radioHour() {   /* the morning show (08:00) and the sign-off at dusk (19:00) */
   if (S.hour === 8 && S.day > 1) { const t = OPTS.advisor && !S.introOff ? advisorTips()[0] : null; radio('dj', rLine('morning', { day: S.day }) + (t ? ` ${rLine('tip')} ${t.text.charAt(0).toLowerCase() + t.text.slice(1)}.` : ''), { key: 'morning', act: t && t.act ? t.act : null }); }
@@ -1514,6 +1525,7 @@ function dropWood(s) {   // (name kept) drop whatever the survivor carries: into
 function tapTree(x, y) {   // tap a node: mark / unmark it
   const k = nodeKindAt(x, y), st = nodeState(x, y); if (!k || !st) return false; const K = NODE[k], nm = { tree: 'Tree', rock: 'Rock', wreck: 'Wreck', bin: 'Clothes bin' }[k];
   if (st === 'empty') { const n = treeNode(x, y); say(`${k === 'tree' ? 'Stump' : k === 'rock' ? 'Broken rock' : k === 'bin' ? 'Empty bin' : 'Stripped wreck'}: back in about ${Math.max(1, Math.ceil(n.regrow - nowH()))} h.`, true); return true; }
+  if (k === 'wreck' && !tapTree.alarmAsked && alarmCands(x, y).length) { tapTree.alarmAsked = true; showEventPopup({ title: '🚨 CAR ALARM', text: `The dead are close to this wreck. Its alarm still works: set it off and up to ${ALARM.pull} nearby zombies (not bosses) shamble over to it for a while. Once per wreck per day.`, buttons: [{ label: '🚨 Set it off', fn: () => { tapTree.alarmAsked = false; carAlarm(x, y); } }, { label: 'Mark for salvage', fn: () => { tapTree.alarmAsked = false; tapTree(x, y); } }] }); setTimeout(() => { tapTree.alarmAsked = false; }, 400); return true; }   /* 3D.147 */
   const n = treeNode(x, y); n.mark = !n.mark; S.nodeVer = (S.nodeVer || 0) + 1;
   if (n.mark) barkSomeone('mark', {}, { pri: 1 }, tc(x, y));
   say(n.mark ? `${nm} marked: a free survivor will ${K.verb} it next (${n.left} left, ${K.amt} ${RES_NAME[K.res]} each).` : 'Mark removed.', true); saveGame(); return true;
@@ -2460,7 +2472,7 @@ function rai(z) {
   }
 }
 function raiderDown(z) {   /* a beaten raider drops what they carried */
-  if (!z.human || z.escaped) return; if (z.leader && !z.leaderDone) { z.leaderDone = true; const fk0 = FACTIONS[z.fac] ? z.fac : 'toll', F = fac(fk0); F.goneUntil = S.day + 60; F.beaten = (F.beaten || 0) + 1; F.war = false; for (const q of S.z) if (q.human && q.hp > 0 && q.fac === fk0) { q.mode = 'rflee'; } setTimeout(() => earnBanner('faction', `${z.name || 'Their leader'} fell at your gate. ${FACTIONS[fk0].name} scatter${fk0 === 'toll' ? '' : 's'}.`), 500); } S.raiderKills = (S.raiderKills || 0) + 1; for (const k of ['food', 'water', 'mat']) if (z.loot && z.loot[k]) { S[k] += z.loot[k]; floats.push({ w: { ...z.w }, t: '+' + z.loot[k] + ' ' + SHORT_ICON[k], col: '#9fe58a', a: 80 }); }
+  if (!z.human || z.escaped) return; if (z.leader && !z.leaderDone) { z.leaderDone = true; const fk0 = FACTIONS[z.fac] ? z.fac : 'toll', F = fac(fk0); F.goneUntil = S.day + 60; { const fk = Object.keys(S.fac || {}).find((q) => S.fac[q] === F) || 'toll', t0 = facTier(fk); F.beaten = (F.beaten || 0) + 1; facTierUp(fk, t0); }   /* 3D.147 gear tier */ F.war = false; for (const q of S.z) if (q.human && q.hp > 0 && q.fac === fk0) { q.mode = 'rflee'; } setTimeout(() => earnBanner('faction', `${z.name || 'Their leader'} fell at your gate. ${FACTIONS[fk0].name} scatter${fk0 === 'toll' ? '' : 's'}.`), 500); } S.raiderKills = (S.raiderKills || 0) + 1; for (const k of ['food', 'water', 'mat']) if (z.loot && z.loot[k]) { S[k] += z.loot[k]; floats.push({ w: { ...z.w }, t: '+' + z.loot[k] + ' ' + SHORT_ICON[k], col: '#9fe58a', a: 80 }); }
 }
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
 const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(hDay() / 5)) * (S.day <= 14 ? .7 : 1));
@@ -3433,7 +3445,27 @@ const GUIDE = [
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
 ];
 const guideActive = () => { if (!S.guideV41) { S.guideV41 = 1; if ((S.guide || 0) > 2) S.guide--; } return S.stage >= 2 && (S.guide || 0) < GUIDE.length; };   /* 3D.41: 'Make It Home' (move-in) goal removed; old saves past it shift back one */
-function guideIntro() { const g = GUIDE[S.guide]; if (g) radio('dj', `${rLine('goal')} ${g.desc.charAt(0).toLowerCase() + g.desc.slice(1)}. ⚙ ${g.parts}  🪵 ${g.parts * 2}  ★ ${g.ren}`, { key: 'goal', title: 'Next goal · ' + g.name, more: g.hint }); }   /* 3D.135 was a pop-up in the middle of the screen */
+/* 3D.147 owner: the radio is the tutorial. DJ Moth talks the player through each step in two or three short lines; the full hint is one tap away */
+const TUT = {
+  start: ['Morning, new folks. This is Dusk Radio, and I will walk you through it.', 'First thing: water. Tap Build, pick a Rain Barrel, and put it down inside the fence.', 'Your people carry the wood and scrap over and build it themselves.'],
+  fight: ['Water, sorted. Now the bad news: walkers wander in at the edge of town.', 'Your fighters go for them on their own. Put down three, and keep everyone else near the camp.'],
+  'Grow Food': ['Tap Build, then Garden Plot, and drop it on open ground.', 'A Farmer works it on their own and grows more. No Farmer? Anybody will do, just slower.'],
+  'A Second Garden': ['One garden will not feed a growing camp.', 'Put down a second Garden Plot before the new mouths arrive.'],
+  'A Place to Rest': ['Tired people sleep where they drop, and they wake up grumpy.', 'Build a Tent: two beds each. Later you can upgrade it to a Cabin.'],
+  'Scrap Economy': ['Every building eats a little scrap each day to keep running.', 'Build a Scrapyard and let a Scavenger work it. Kills and trips bring in scrap too.'],
+  'Grow the Camp': ['Time to move up. Tap your Camp, then Upgrade.', 'It needs wood and scrap. Idle people chop trees and strip wrecks on their own.'],
+  'Gear Up': ['A jacket stops more teeth than you would think.', 'Build an Armory and they buy basic gear themselves, or tap a survivor, then Gear, and pick from the stash.'],
+  'Train Up': ['Brains and muscles both rust. Build a Gym, a Library or a Lounge.', 'People train there in their free time, and every full bar is a permanent point.'],
+  Research: ['Build a Workbench and tap it to pick a project.', 'An Engineer there works fastest. Research unlocks gear recipes and town upgrades.'],
+  'Hold the Line': ['Most of the dead come from the north. Give them something to chew on.', 'Build, then Wood Fence or Gate, and tap the tiles in the glowing ring. Ten pieces will do for now.'],
+  'Go Out There': ['There is a whole world of loot out there, and it bites.', 'Tap Expedition, pick a place, a risk and a squad. Trips keep going even with the game closed. Leave a fighter at home.'],
+  'More Land': ['Feeling cramped? Tap Town, then Expand territory.', 'More room to build. More directions for trouble to come from, too.'],
+};
+function guideIntro() { const g = GUIDE[S.guide]; if (g) radio('dj', [`${rLine('goal')} ${g.desc.charAt(0).toLowerCase() + g.desc.slice(1)}. ⚙ ${g.parts}  🪵 ${g.parts * 2}  ★ ${g.ren}`, ...(S.introOff ? [] : TUT[g.name] || [])], { key: 'goal', title: 'Next goal · ' + g.name, more: g.hint }); }   /* 3D.135 was a pop-up in the middle of the screen */
+function tutTick() { if (S.cut || S.introOff || S.won) return; S.tut = S.tut || {};   /* the first two steps come before the goal list */
+  if ((S.stage || 0) === 0 && !S.tut.start && S.day <= 2) { S.tut.start = 1; radio('dj', TUT.start, { key: 'tut', title: 'Getting started', more: 'Build → Rain Barrel, then tap a spot inside the fence. Builders carry the wood and scrap over and put it up.' }); }
+  else if (!S.tut.alarm && S.day >= 3 && isNight() && tick % 960 === 120) { const w = nodeList().find((n) => n.k === 'wreck' && nodeState(n.x, n.y) && alarmCands(n.x, n.y).length >= 3); if (w) { S.tut.alarm = 1; radio('dj', ['Got company at the fence? Here is a trick.', 'Tap a wreck near them. Most of those old cars still have a working alarm.', 'Set it off and the dead go and argue with it instead of your walls.'], { key: 'tut', title: 'Car alarms', more: 'Tap a wreck with zombies near it, then Set it off: up to 6 of them (never a boss) walk to the wreck and stay there a while, unless someone comes close. Each wreck works once a day.' }); } }
+  else if (S.stage === 1 && !S.tut.fight) { S.tut.fight = 1; radio('dj', TUT.fight, { key: 'tut', title: 'First blood', more: 'Guards, Police and Scavengers fight walkers on their own. Defeat 3 to finish this goal. Everyone else runs inside when zombies come close.' }); } }   /* 3D.135 was a pop-up in the middle of the screen */
 function guideProgress() {
   const g = GUIDE[S.guide || 0]; if (!g || !g.done()) return;
   S.mat += g.parts; S.wood = Math.min(matCap(), (S.wood || 0) + g.parts * 2); renownGain(g.ren, g.name); SFX('reward'); banner('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); questFlash(); say(`Goal complete: ${g.name} (+${g.parts} scrap).`, true);
@@ -3648,7 +3680,7 @@ function allyDaily() { for (const k of ['toll', 'green', 'foundry', 'quar', 'hel
    guard post or a dog can catch. At -60 it is war: armoured raids every 4 days, the Forgemaster himself in every third. Beat him (at your
    gate or in their yard) for a Victory Banner; or buy a truce; or stay behind them on purpose. */
 const FOUNDRY_GEAR = ['kevlar', 'riot', 'military', 'plate', 'riothelm', 'hardhat', 'shotgun', 'rifle', 'sledge', 'katana'];
-const foundryGear = () => { const L = FOUNDRY_GEAR.filter((k) => ITEMS[k]); return L[Math.floor(rnd() * L.length)]; };
+const foundryGear = () => facGear('foundry');   /* 3D.147 tiered */
 const facAdd = (k, n) => { const F = fac(k); F.att = Math.max(-100, Math.min(100, (F.att || 0) + n)); return F; };
 function foundryDaily() {
   const F = (S.fac || {}).foundry; if (!F || !F.met) return; if (F.goneUntil && F.goneUntil === S.day) { F.goneUntil = 0; F.att = -30; F.war = false; F.ren = Math.round(S.ren * .7); radio('foundry', rLine('foundryBack'), { level: 'important' }); } if (F.goneUntil > S.day) return;
@@ -3692,7 +3724,19 @@ function foundrySabotage() {
      and leave a gate cut open), walk a Shepherd in with the night horde (extra waves until he is killed), and finally bring the Alpha. */
 const FAC_RAID = { foundry: { hp: 1.35, lead: 'The Forgemaster' }, quar: { hp: 1.25, pw: 1.25, lead: 'Captain Vance' }, helix: { hp: 1.5, pw: 1.2, lead: 'The Handler' }, hollow: { hp: .9, pw: 1.1, lead: 'The Shepherd' } };
 const FAC_GEAR = { foundry: FOUNDRY_GEAR, quar: ['military', 'army', 'assault', 'rifle', 'tactical', 'swatarmor', 'kneepads', 'walkie'], helix: ['hazmat', 'gasmask', 'swatarmor', 'smg', 'assault', 'headlamp', 'medpouch', 'goggles'], hollow: ['ghillie', 'machete', 'cleaver', 'bandana', 'charm', 'spiked', 'hatchet'] };
-const facGear = (k) => { const L = (FAC_GEAR[k] || FOUNDRY_GEAR).filter((id) => ITEMS[id]); return L[Math.floor(rnd() * L.length)]; };
+/* 3D.147 faction gear tiers: beat a faction's leader (or become allies) and their better kit starts turning up, in their camps, their gifts and their trades */
+const FAC_TIER = {
+  toll: [['roadsign', 'spiked', 'biker', 'bikehelm'], ['riot', 'revolver', 'football', 'kevlar'], ['magnum', 'riothelm', 'plate', 'shotgun']],
+  green: [['bow', 'raincoat', 'hoodie', 'strawhat', 'shovel'], ['crossbow', 'leather', 'hikerpack', 'medpouch'], ['crossbow', 'ghillie', 'toolbelt', 'dogtags']],
+  foundry: [['hardhat', 'hatchet', 'kneepads', 'leather', 'toolbelt'], ['sledge', 'riot', 'shotgun', 'riothelm', 'kevlar'], ['plate', 'military', 'katana', 'rifle']],
+  quar: [['army', 'kneepads', 'walkie', 'rifle'], ['kevlar', 'tactical', 'military', 'revolver'], ['assault', 'swatarmor', 'swathelm']],
+  helix: [['headlamp', 'medpouch', 'gasmask', 'goggles'], ['hazmat', 'smg', 'tactcap'], ['swatarmor', 'assault', 'swathelm']],
+  hollow: [['bandana', 'cleaver', 'hatchet', 'charm'], ['machete', 'ghillie', 'spiked'], ['axe', 'katana', 'dogtags']],
+};
+const facTier = (k) => { const F = (S.fac || {})[k] || {}; return Math.min(2, (F.beaten || 0) + (F.ally ? 1 : 0)); };
+const facPool = (k) => { const T = FAC_TIER[k]; if (!T) return (FAC_GEAR[k] || FOUNDRY_GEAR).filter((id) => ITEMS[id]); const t = facTier(k), top = T[t].filter((id) => ITEMS[id]); return rnd() < .6 && top.length ? top : T.slice(0, t + 1).flat().filter((id) => ITEMS[id]); };
+const facGear = (k) => { const L = facPool(k); return L[Math.floor(rnd() * L.length)]; };
+function facTierUp(k, t0) { const t = facTier(k); if (t > t0 && FACTIONS[k]) radio('dj', [`Word is ${FACTIONS[k].name} are scraping the bottom of the armoury now.`, t === 2 ? 'Their best kit is turning up in their camps and their trades.' : 'Better pieces of their kit will turn up in what you take from them.'], { key: 'tier' + k, level: 'important' }); }
 const facLive = (k) => { const F = (S.fac || {})[k]; return F && F.met && !(F.goneUntil > S.day) ? F : null; };
 function facBack(k, att) { const F = (S.fac || {})[k]; if (F && F.goneUntil && F.goneUntil === S.day) { F.goneUntil = 0; F.att = att; F.war = false; radio(k, rLine(k + 'Back'), { level: 'important' }); } }
 
@@ -4969,20 +5013,20 @@ function shEnd(won, fled) {
     if (H.raid === 'toll') { F.next = Math.min(F.next || 1e9, S.day + 2); F.revenge = S.day + 2; lines0.push('👑 The Toll Kings will come for revenge.'); }
     if (FAC_RAID[H.raid]) { F.revenge = S.day + 2; F.ally = false; lines0.push(`${FACTIONS[H.raid].icon} ${FACTIONS[H.raid].name} will hit back.`); }
     if (H.raid === 'helix' && F.taken && H.blds.some((b) => b.type === 'kennel' && (b.looted || b.dead)) && (fled || won)) { const q = helixFree(entry); if (q) { H.found = Math.max(0, (H.found || 0) - 1); lines0.push(`🧬 ${q.name} was in the cages, and is home.`); } }
-    if (H.bossDown) { F.goneUntil = S.day + 60; F.beaten = (F.beaten || 0) + 1; F.war = false; F.revenge = 0; if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own camp.'), 900); if (FAC_RAID[H.raid]) setTimeout(() => earnBanner('faction', `${FAC_RAID[H.raid].lead} fell in ${H.raid === 'hollow' ? 'the chapel' : 'their own camp'}.`), 900); lines0.push(`${FACTIONS[H.raid].icon} Their leader is down: they scatter for 60 days.`); }
+    if (H.bossDown) { F.goneUntil = S.day + 60; { const fk = Object.keys(S.fac || {}).find((q) => S.fac[q] === F) || 'toll', t0 = facTier(fk); F.beaten = (F.beaten || 0) + 1; facTierUp(fk, t0); }   /* 3D.147 gear tier */ F.war = false; F.revenge = 0; if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own camp.'), 900); if (FAC_RAID[H.raid]) setTimeout(() => earnBanner('faction', `${FAC_RAID[H.raid].lead} fell in ${H.raid === 'hollow' ? 'the chapel' : 'their own camp'}.`), 900); lines0.push(`${FACTIONS[H.raid].icon} Their leader is down: they scatter for 60 days.`); }
     F.raidUntil = S.day + 4; F.ruins = [...(F.ruins || []).filter((r) => S.day - r.d < 10), ...H.blds.filter((b) => b.dead && !b.wasRuin).map((b) => ({ t: b.type, d: S.day }))];   /* 3D.125 review bug 2: a camp is on high alert for 4 days after a raid, and what was burnt stays burnt for 10 */
     if (down) lines0.push(`💥 ${down} of their buildings brought down.`); if (fled) renownGain(5 + 2 * down + (H.bossDown ? 10 : 0), d.name); if (!fled) H.loot = {}; }
   if ((won || fled) && H.found) { const n = Math.min(H.found, popCap() - S.sv.length - (S.kids || []).length); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Scavenger', 'Farmer', 'Medic'][i % 3], 2, entry.x, entry.y + .6, S.sv.length); q.src = 'trip'; q.sat = 3; S.sv.push(q); } if (n > 0) lines0.push(`🙋 ${n} survivor${n > 1 ? 's' : ''} found behind a locked door came home with the squad.`); }
   if (won || fled) items.push(...(H.items || []));
   if (fled) { const r = { ...H.loot }; S.mat += r.mat || 0; addLoot({ wood: r.wood, stone: r.stone, cloth: r.cloth, meds: r.meds, fuel: r.fuel, ammo: r.ammo, food: r.food, water: r.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); if (Object.keys(r).length || items.length) lines0.push('📦 They got out with what they found in the side rooms.'); H.loot = {}; }
   if (won) { const r = (a) => a[0] + Math.floor(rnd() * (a[1] - a[0] + 1)), mult = H.raid ? (H.goal === 'loot' ? 3 : 1) : 3; for (const k in d.loot) loot[k] = (loot[k] || 0) + r(d.loot[k]) * mult;
-    const pool = H.raid === 'toll' ? ['roadsign', 'spikedclub', 'biker', 'riot', 'rifle'] : FAC_GEAR[H.raid] ? FAC_GEAR[H.raid] : H.raid === 'green' ? ['bow', 'crossbow', 'raincoat', 'hoodie'] : H.dest.startsWith('sh_') ? ['katana', 'military', 'swathelm', 'tactvest', 'shotgun', 'smg', 'kevlar'] : H.dest === 'prison' ? ['rifle', 'shotgun', 'riot', 'kevlar', 'swathelm', 'tactvest'] : ['medpouch', 'hazmat', 'gasmask', 'kevlar', 'machete', 'crossbow'];
+    const pool = H.raid === 'toll' ? ['roadsign', 'spikedclub', 'biker', 'riot', 'rifle'] : FAC_TIER[H.raid] ? facPool(H.raid) : H.dest.startsWith('sh_') ? ['katana', 'military', 'swathelm', 'tactvest', 'shotgun', 'smg', 'kevlar'] : H.dest === 'prison' ? ['rifle', 'shotgun', 'riot', 'kevlar', 'swathelm', 'tactvest'] : ['medpouch', 'hazmat', 'gasmask', 'kevlar', 'machete', 'crossbow'];
     const nf = items.length; for (const id of pool) if (ITEMS[id] && items.length < nf + 2 && rnd() < .5) items.push(id); if (items.length === nf) items.push(pool.find((id) => ITEMS[id]));
     if (H.raid) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - (H.raid === 'green' ? 120 : 30)); F.raided = (F.raided || 0) + 1;
       if (H.raid === 'green') { F.ally = false; F.revenge = S.day + 3; lines0.push('🌿 Greenwater will never forgive this. The alliance is over, and they will hit back.'); }
       if (H.raid === 'toll') { F.next = Math.min(F.next || 1e9, S.day + 2); F.revenge = S.day + 2; lines0.push('👑 The Toll Kings will come for revenge.'); }
       if (H.goal === 'free') { const n = Math.min(3, popCap() - S.sv.length - (S.kids || []).length); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Farmer', 'Engineer', 'Scavenger'][i % 3], 2 + i, entry.x, entry.y + .6, S.sv.length); q.src = 'event'; q.sat = 3; S.sv.push(q); } lines0.push(n > 0 ? `🔓 ${n} prisoner${n > 1 ? 's' : ''} came home with the squad.` : '🔓 The prisoners were freed, but there were no beds for them.'); }
-      if (H.goal === 'leader' || H.bossDown) { F.goneUntil = S.day + 60; F.beaten = (F.beaten || 0) + 1; if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own hall.'), 900); lines0.push(`${H.raid === 'toll' ? '👑' : '🌿'} Their leader is down: they scatter for 60 days.`); } }
+      if (H.goal === 'leader' || H.bossDown) { F.goneUntil = S.day + 60; { const fk = Object.keys(S.fac || {}).find((q) => S.fac[q] === F) || 'toll', t0 = facTier(fk); F.beaten = (F.beaten || 0) + 1; facTierUp(fk, t0); }   /* 3D.147 gear tier */ if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own hall.'), 900); lines0.push(`${H.raid === 'toll' ? '👑' : '🌿'} Their leader is down: they scatter for 60 days.`); } }
     else { if (H.dest.startsWith('sh_')) { S.shSeason = { ...(S.shSeason || {}), [H.dest]: seasonIdx() }; S.trophies = [...(S.trophies || []), { k: H.dest, day: S.day }]; renownGain(15, 'Seasonal trophy'); lines0.push(`🏆 A ${d.name} trophy now hangs in the HQ.`); }
       if (H.dest === 'prison' && !vehOf('van')) setTimeout(() => vehArrive('van', 'In the prison motor pool the squad found'), 2500);
       if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = names.find((n) => !S.sv.some((q) => q.name === n)) || freeFirst(), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
@@ -5163,7 +5207,7 @@ const CAMP_PLAN = {
 };
 const rint = (a, b) => a + Math.floor(rnd() * (b - a + 1));
 function campLoot(type, H) {   /* what each building holds */
-  const role = (DEFS[type] || {}).role, pool = H.raid === 'toll' ? ['rifle', 'shotgun', 'roadsign', 'spikedclub', 'biker', 'riot', 'kevlar'] : FAC_GEAR[H.raid] ? FAC_GEAR[H.raid] : ['bow', 'crossbow', 'raincoat', 'hoodie', 'machete', 'leather'], pick = () => pool.filter((k) => ITEMS[k])[Math.floor(rnd() * pool.filter((k) => ITEMS[k]).length)];
+  const role = (DEFS[type] || {}).role, pool = FAC_TIER[H.raid] ? facPool(H.raid) : ['bow', 'crossbow', 'raincoat', 'hoodie', 'machete', 'leather'], pick = () => pool.filter((k) => ITEMS[k])[Math.floor(rnd() * pool.filter((k) => ITEMS[k]).length)];
   if (type === 'kennel') return { icon: '🔓', name: 'Cages', loot: {}, items: [], pris: rint(1, 3) };
   if (role === 'hq') return { icon: '👑', loot: { mat: rint(6, 10), meds: 1, fuel: 1 }, items: [pick()] };
   if (role === 'gear') return { icon: '🛡', loot: { ammo: rint(6, 10) }, items: [pick(), pick()] };
@@ -5723,6 +5767,14 @@ function trapStep(z, px, py) {   /* after a zombie moves: wire slows it, spikes 
     floats.push({ w: { ...z.w }, t: '-' + dmg, col: '#ffcf6a', a: 45 }); if (t.ch <= 0) { Wd.bump(world); floats.push({ w: { x: tx + .5, y: ty + .5 }, t: 'spikes blunt', col: '#c9c4b8', a: 70 }); }
   }
 }
+/* 3D.147 car alarm lure: tap a wreck while zombies are near it and set its alarm off; the nearest few (never a boss) go to it and mill there until someone comes close */
+const ALARM = { reach: 12, pull: 6, hold: 1500 };
+function alarmCands(x, y) { const n = (S.nodes || {})[nodeKey(x, y)]; if (n && n.alarm === S.day) return []; const at = { x: x + .5, y: y + .5 };
+  return S.z.filter((z) => z.hp > 0 && !z.human && z.type !== 'boss' && !z.zoo && !z.lure && z.mode !== 'appear' && dist(z.w, at) < ALARM.reach).sort((a, b) => dist(a.w, at) - dist(b.w, at)).slice(0, ALARM.pull); }
+function carAlarm(x, y) { const at = { x: x + .5, y: y + .5 }, c = alarmCands(x, y); if (!c.length) { say('Nothing near it to hear the alarm.', true); return 0; }
+  const n = treeNode(x, y); n.alarm = S.day; for (const z of c) { z.lure = at; z.lureUntil = tick + ALARM.hold; z.target = null; z.path = null; if (['zchase', 'zattack'].includes(z.mode)) z.mode = 'idle'; }
+  SFX('caralarm'); floats.push({ w: at, t: '🚨 WEE-OO WEE-OO', col: '#ff6a5a', a: 110 }); S.alarmPulled = (S.alarmPulled || 0) + c.length;
+  note('important', `🚨 The car alarm screams: ${c.length} zombie${c.length > 1 ? 's' : ''} turn${c.length > 1 ? '' : 's'} toward the wreck.`); saveGame(); return c.length; }
 function lureFire() {   /* a boss attacks: each armed lure rattles once and pulls a few of the horde near it aside */
   let pulled = 0;
   for (const t of trapMap().values()) {
@@ -6230,7 +6282,7 @@ function cutEnd(skip) {
 }
 const INTRO_B = ['generator', 'fuelstill', 'ammobench', 'ammofactory', 'pump', 'greenhouse', 'coldstore', 'radio', 'armory', 'workshop', 'barracks', 'hospital', 'quarry', 'lumber'];
 function introTick() {   /* every few seconds: what is new on screen? */
-  if (tick % 60) return; S.intro = S.intro || {};
+  if (tick % 60) return; S.intro = S.intro || {}; if (tick % 240 === 120) tutTick();
   if (S.day <= 1 && S.hour < 9) for (const q of S.sv) S.intro['job:' + q.job] = S.intro['job:' + q.job] || 1;   /* the starting crew needs no introduction */
   for (const z of S.z) if (z.hp > 0 && !z.zoo && z.mode !== 'appear') { if (z.type === 'boss') { if (intro('boss:' + (z.bk || 'mutant'))) return; } else if (intro('z:' + z.type)) return; }
   for (const q of S.sv) if (intro('job:' + q.job)) return;
@@ -6657,7 +6709,7 @@ function showBackup(msg) {   /* in game (event log → Backup): export this town
   wireExport($('ib'), (m) => showBackup(m)); showPanel();
 }
 // test / debug hook (no effect on gameplay)
-window.ZH = { BUILD_TAG, showGoals: () => showGoals(), showTrophies: () => showTrophies(), DF: () => DF(),  ARRIVE, TUNE,   /* balance knobs (tools/balance/README.md) */ shBot: { act: (c) => shAct(c), move: (at) => shMoveTo(at), call: (k) => shCall(k) },   /* 3D.130 orders without the screen, for the balance bot (tools/balance/sh_probe.py) */ CAMP_PLAN, get SH_ROOMS() { return SH_ROOMS; }, get SH_DOORS() { return SH_DOORS; }, SH_AX, SH_AY, shGridOf: () => shGrid(), shWorldOf: (x, y) => shWorld(x, y), showShPractice, shTap, showLegacy, legSel, crisisDaily, promoteSpec, promoteHyb, hybOptions, specWhy, needsBanner, setExpVeh: (k) => { expSel.veh = k || null; }, vehReady, VEH, vehArrive, vehBuildCart, vehRepair, vehDrive, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, intro, INTRO, danger, powerTick, powered, gunners, tryTrap, trapAt, trapMap, trapMax, rearmAll, trapsSpent, helpReady, facilityRules, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, radioHelp, ageOf, newcomer, mk, impactFx, note, downAlert, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, ui, showBuildingInfo, showBuild, showTown, showSurvivors, STORY, bondOf, popCap, popNow, BANDAGE: () => BANDAGE_COST, repairBurnt, traderArrive, traderBuy, traderTrade, givePet, S, world, Wd, cam, project, unproject, insideBuilding, tapAt, unitPanel, doResearch, craft, RESEARCH, researched, upkeepTotal, equip, stat, ITEMS, stashAdd, expandTerritory, spawnRaid, spawnBoss, changeProfession, gainXp, SKILLS, isNight, startTool, updatePreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, saveGame, closeP, expAutoSquad, startExpedition, tripUpdate, showExpedition, expLocked, EXP_DEFS, showEventPopup, autoStaff, tryWall, killSurvivor, useBandage, upgradeBuilding, upgradeCheck, hourlyProduction, supplyStats, isWorking, supplyCap, DEFS, setDebug(v) { debug = v; }, finaleTest: () => finaleHour(), legacyDone, signalReady, startFinale, scoreOf, tryPost, postMax, encOdds, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, get advShown() { return advShown; }, militia, setPolicy, policy, onShift, wreckSpots, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, showResource, ECO, get objMarks() { return objMarks; }, alerts, note, sendDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, demolish, BASE_TW, get groundChunks() { return groundChunks; } };
+window.ZH = { BUILD_TAG, carAlarm: (x, y) => carAlarm(x, y), alarmCands: (x, y) => alarmCands(x, y), facTier: (k) => facTier(k), facGear: (k) => facGear(k),  showGoals: () => showGoals(), showTrophies: () => showTrophies(), DF: () => DF(),  ARRIVE, TUNE,   /* balance knobs (tools/balance/README.md) */ shBot: { act: (c) => shAct(c), move: (at) => shMoveTo(at), call: (k) => shCall(k) },   /* 3D.130 orders without the screen, for the balance bot (tools/balance/sh_probe.py) */ CAMP_PLAN, get SH_ROOMS() { return SH_ROOMS; }, get SH_DOORS() { return SH_DOORS; }, SH_AX, SH_AY, shGridOf: () => shGrid(), shWorldOf: (x, y) => shWorld(x, y), showShPractice, shTap, showLegacy, legSel, crisisDaily, promoteSpec, promoteHyb, hybOptions, specWhy, needsBanner, setExpVeh: (k) => { expSel.veh = k || null; }, vehReady, VEH, vehArrive, vehBuildCart, vehRepair, vehDrive, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, intro, INTRO, danger, powerTick, powered, gunners, tryTrap, trapAt, trapMap, trapMax, rearmAll, trapsSpent, helpReady, facilityRules, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, radioHelp, ageOf, newcomer, mk, impactFx, note, downAlert, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, ui, showBuildingInfo, showBuild, showTown, showSurvivors, STORY, bondOf, popCap, popNow, BANDAGE: () => BANDAGE_COST, repairBurnt, traderArrive, traderBuy, traderTrade, givePet, S, world, Wd, cam, project, unproject, insideBuilding, tapAt, unitPanel, doResearch, craft, RESEARCH, researched, upkeepTotal, equip, stat, ITEMS, stashAdd, expandTerritory, spawnRaid, spawnBoss, changeProfession, gainXp, SKILLS, isNight, startTool, updatePreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, saveGame, closeP, expAutoSquad, startExpedition, tripUpdate, showExpedition, expLocked, EXP_DEFS, showEventPopup, autoStaff, tryWall, killSurvivor, useBandage, upgradeBuilding, upgradeCheck, hourlyProduction, supplyStats, isWorking, supplyCap, DEFS, setDebug(v) { debug = v; }, finaleTest: () => finaleHour(), legacyDone, signalReady, startFinale, scoreOf, tryPost, postMax, encOdds, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, get advShown() { return advShown; }, militia, setPolicy, policy, onShift, wreckSpots, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, showResource, ECO, get objMarks() { return objMarks; }, alerts, note, sendDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, demolish, BASE_TW, get groundChunks() { return groundChunks; } };
 Object.assign(window.ZH, { rankRoom, bedCount, orderRescue, focusBoss, ai, });   /* 3D.67 test hooks */
 Object.assign(window.ZH, { forecastFor, STORY, BOSS_KINDS, quarDaily, quarClean, helixDaily, helixFree, helixStalkerDown, hollowDaily, facHour, foundryDaily });   /* V3D.17 test hooks */
 init();

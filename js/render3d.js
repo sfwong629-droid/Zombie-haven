@@ -1013,31 +1013,32 @@ const zMats = {};
 // V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
 function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
 // V3D.21: each zombie type gets its own Hunyuan model when there is one (ZMODEL); the rest wear reskinned survivor bodies
-const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: .525, zombie_run: 1.197 } },
-  runner: { url: 'assets/characters/ai3d_v2/zombie_runner.glb', stride: { zombie_walk: .538, zombie_run: 1.273 } },
-  brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: .540, zombie_run: 1.264 } },
-  bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: .395 } },
+/* 3D.147 strides re-measured from the current models: planted-foot speed at timeScale 1, model size, walks x.91 / runs x1 to match the survivor table */
+const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: 0.413, zombie_run: 1.049 } },
+  runner: { url: 'assets/characters/ai3d_v2/zombie_runner.glb', stride: { zombie_walk: 0.469, zombie_run: 1.197 } },
+  brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: 0.398, zombie_run: 1.059 } },
+  bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: 0.232 } },
   crawler: { url: 'assets/characters/ai3d_v2/zombie_crawler.glb', stride: { crawl: .24 }, crawl: true },
-  spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  lasher: { url: 'assets/characters/ai3d_v2/zombie_lasher.glb', stride: { creepy_walk: .5, walk: 1.08, naruto_run: 1.45, zombie_walk: .6, zombie_run: 1.3 }, human: true, walkClip: 'creepy_walk', runClip: 'naruto_run' },   /* 3D.82 owner: ninja run; 3D.84 creepy walk */   /* 3D.80 the user's gaunt model */
-  rotbomb: { url: 'assets/characters/ai3d_v2/zombie_rotbomb.glb', stride: { zombie_walk: .48, zombie_run: 1.1 } },   /* 3D.80 the user's clown */
-  stalker: { url: 'assets/characters/ai3d_v2/zombie_stalker.glb', stride: { walk: 1.0, heavy_walk: .75, run: 1.6, heavy_run: 1.25, zombie_walk: .55, zombie_run: 1.25 }, human: true, walkClip: 'heavy_walk', runClip: 'heavy_run', atkClip: 'haymaker_kick' },   /* 3D.87 owner: heavy walk (small arm swing), hulk smash; 3D.88 fingers bone: fists in the haymaker, palm-to-palm smash */   /* 3D.82 owner: walks and runs like a human, wide slow haymaker */   /* 3D.86 new Stalker model from the owner's Gemini sheet (no coat), 1.5x scale in BOSS_KINDS */
+  spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: 0.469, zombie_run: 1.211 } },
+  sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: 0.374, zombie_run: 0.991 } },
+  screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: 0.365, zombie_run: 1.018 } },
+  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: 0.489, zombie_run: 1.241 } },
+  lasher: { url: 'assets/characters/ai3d_v2/zombie_lasher.glb', stride: { creepy_walk: 0.412, walk: 1.389, naruto_run: 2.576, zombie_walk: 0.635, zombie_run: 1.752 }, human: true, walkClip: 'creepy_walk', runClip: 'naruto_run' },   /* 3D.82 owner: ninja run; 3D.84 creepy walk */   /* 3D.80 the user's gaunt model */
+  rotbomb: { url: 'assets/characters/ai3d_v2/zombie_rotbomb.glb', stride: { zombie_walk: 0.26, zombie_run: 0.666 } },   /* 3D.80 the user's clown */
+  stalker: { url: 'assets/characters/ai3d_v2/zombie_stalker.glb', stride: { walk: 0.895, heavy_walk: 0.633, run: 1.536, heavy_run: 1.186, zombie_walk: 0.353, zombie_run: 1.049 }, human: true, walkClip: 'heavy_walk', runClip: 'heavy_run', atkClip: 'haymaker_kick' },   /* 3D.87 owner: heavy walk (small arm swing), hulk smash; 3D.88 fingers bone: fists in the haymaker, palm-to-palm smash */   /* 3D.82 owner: walks and runs like a human, wide slow haymaker */   /* 3D.86 new Stalker model from the owner's Gemini sheet (no coat), 1.5x scale in BOSS_KINDS */
   dog: { url: 'assets/characters/ai3d_v2/zombie_dog.glb', stride: { zombie_walk: .3, zombie_run: .62 }, dog: true },
   /* 3D.126 the owner's new zombie set: female / male variants, the Burnt, and a model each for the Alpha and the bosses */
-  walker_f: { url: 'assets/characters/ai3d_v2/zombie_walker_f.glb', stride: { zombie_walk: .525, zombie_run: 1.197 }, kind: 'walker' },
-  runner_f: { url: 'assets/characters/ai3d_v2/zombie_runner_f.glb', stride: { zombie_walk: .538, zombie_run: 1.273 }, kind: 'runner' },
-  burnt: { url: 'assets/characters/ai3d_v2/zombie_burnt.glb', stride: { zombie_walk: .53, zombie_run: 1.2 } },
-  burnt_f: { url: 'assets/characters/ai3d_v2/zombie_burnt_f.glb', stride: { zombie_walk: .53, zombie_run: 1.2 }, kind: 'burnt' },
+  walker_f: { url: 'assets/characters/ai3d_v2/zombie_walker_f.glb', stride: { zombie_walk: 0.408, zombie_run: 1.073 }, kind: 'walker' },
+  runner_f: { url: 'assets/characters/ai3d_v2/zombie_runner_f.glb', stride: { zombie_walk: 0.453, zombie_run: 1.293 }, kind: 'runner' },
+  burnt: { url: 'assets/characters/ai3d_v2/zombie_burnt.glb', stride: { zombie_walk: 0.487, zombie_run: 1.265 } },
+  burnt_f: { url: 'assets/characters/ai3d_v2/zombie_burnt_f.glb', stride: { zombie_walk: 0.489, zombie_run: 1.292 }, kind: 'burnt' },
   crawler_m: { url: 'assets/characters/ai3d_v2/zombie_crawler_m.glb', stride: { crawl: .24 }, crawl: true, kind: 'crawler' },
-  alpha: { url: 'assets/characters/ai3d_v2/zombie_alpha.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'brute' },
-  queen: { url: 'assets/characters/ai3d_v2/zombie_queen.glb', stride: { bloated_walk: .395 }, kind: 'bloated' },
-  butcher: { url: 'assets/characters/ai3d_v2/zombie_butcher.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'brute' },
-  mutant: { url: 'assets/characters/ai3d_v2/zombie_mutant.glb', stride: { zombie_walk: .54, zombie_run: 1.264 }, kind: 'mutant' },
-  thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: .53, zombie_run: 1.2 }, atkClip: 'melee_swing_a' },
-  gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.0, gun_hold_walk: .93, run: 1.6 }, human: true, kind: 'gatling' } }, ZSRC = {};
+  alpha: { url: 'assets/characters/ai3d_v2/zombie_alpha.glb', stride: { zombie_walk: 0.428, zombie_run: 1.225 }, kind: 'brute' },
+  queen: { url: 'assets/characters/ai3d_v2/zombie_queen.glb', stride: { bloated_walk: 0.157 }, kind: 'bloated' },
+  butcher: { url: 'assets/characters/ai3d_v2/zombie_butcher.glb', stride: { zombie_walk: 0.276, zombie_run: 0.716 }, kind: 'brute' },
+  mutant: { url: 'assets/characters/ai3d_v2/zombie_mutant.glb', stride: { zombie_walk: 0.481, zombie_run: 1.306 }, kind: 'mutant' },
+  thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: 0.353, zombie_run: 0.92 }, atkClip: 'melee_swing_a' },
+  gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.111, gun_hold_walk: 1.026, run: 1.709 }, human: true, kind: 'gatling' } }, ZSRC = {};
 const ZVAR = { walker: ['walker', 'walker_f'], runner: ['runner', 'runner_f'], burnt: ['burnt', 'burnt_f'], crawler: ['crawler', 'crawler_m'] };   /* a type's models; one is picked per zombie */
 const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher', gatling: 'gatling' };   /* boss kind -> its model */
 const ZFIRST = ['walker', 'walker_f', 'runner', 'runner_f', 'crawler', 'crawler_m'];   /* loaded at the start; every other type loads the first time one shows up */
@@ -1665,7 +1666,8 @@ const STRIDE = {
 };
 function strideOf(a) {
   const t = a.src.stride || STRIDE[a.src === FEMALE3D && FEMALE3D ? 'v2f' : a.src.v2 ? 'v2m' : 'v1'], n = a.name;
-  return t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
+  const v = t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
+  return a.src.zkey && !a.src.crawl && !a.dogM ? v * (a.o.scale.x || 1) : v;   /* 3D.147 zombie strides are measured at model size (tools/art/stride/measure.html); a Brute drawn 1.32x big steps 1.32x as far */
 }
 function tickMixer(a, dt, vis) {
   const st = a.cur && strideOf(a); if (st) { const run = /run/.test(a.name); a.cur.timeScale = Math.max(.15, Math.min((run ? 1.25 : 1.45) * (G.simSpeed ? G.simSpeed() : 1), (a.spd / st) * (run ? .85 : 1))); }   /* the caps grow with the 2x/3x game speed so nobody skates */   /* 3D.123 owner: the run played too fast; it now plays at 85% and no clip is pushed past 1.25x (run) or 1.45x (walk) */   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
