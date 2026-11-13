@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.148', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.149', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -784,6 +784,11 @@ const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own c
   magnum: { name: "Magnum", slot: "weapon", kind: "gun", atk: 27, rate: 1.4, range: 3.8, mag: 6, reload: 3.2, cost: 14, ranged: true },
   hoodie: { name: "Hoodie", slot: "armor", def: 1, cost: 2, st: { end: 1 } },
   // ---- 3D.148 the owner's gear list, batch 1 (Tripo models fitted to the survivor) ----
+  bubblewrap: { name: "Bubble Wrap", slot: "armor", def: 2, cost: 2, fx: "pop" },
+  cardboard: { name: "Cardboard Box Armour", slot: "armor", def: 3, cost: 3, st: { agi: 1 }, fx: "hide" },
+  mattress: { name: "Mattress Vest", slot: "armor", def: 5, cost: 4, st: { agi: -1 }, fx: "rest" },
+  phonebook: { name: "Phone Book Armour", slot: "armor", def: 6, cost: 5, st: { agi: -1 }, fx: "bite" },
+  tyre: { name: "Tyre Armour", slot: "armor", def: 6, cost: 5, st: { agi: -1 }, fx: "bounce" },
   lifejacket: { name: "Life Jacket", slot: "armor", def: 3, cost: 3, fx: "float" },
   footpads: { name: "Football Pads", slot: "armor", def: 7, cost: 8, st: { str: 1 }, fx: "charge" },
   hawaii: { name: "Hawaiian Shirt", slot: "armor", def: 1, cost: 2, st: { cha: 2 }, fx: "aloha" },
@@ -808,6 +813,7 @@ const ITEMS = {   // V3D.16 balanced set (tools/balance: sim of the game's own c
   walkie: { name: "Walkie-Talkie", slot: "acc", cost: 4, st: { cha: 2 }, fx: "radio" },
 };
 const IQUIP = {   /* 3D.146 owner: funny first, facts second. One line of character per item, shown above its numbers */
+  bubblewrap: "Fragile: handle with care.", cardboard: "Totally not a person.", mattress: "Memory foam. It remembers every bite.", phonebook: "Let your fingers do the blocking.", tyre: "Michelin-starred.",
   lifejacket: "Keeps you afloat. Metaphorically.", footpads: "Blitz.", hawaii: "Aloha, undead.", beekeeper: "Not the bees. Something worse.", cookware: "Pots, pans and pure confidence.",
   pipe: "Plumbing, repurposed.", knife: "Still smells of onions.", bat: "Batter up.", crowbar: "Opens doors and arguments.", nailbat: "A bat with opinions.", machete: "Gardening, but angrier.", spear: "Pointy stick, version two.", axe: "In case of zombie, break glass.", sledge: "For when subtle has failed.", katana: "Someone's mall-ninja dream came true.", pistol: "Small, loud, hungry for ammo.", revolver: "Six chances to be right.", shotgun: "Aiming is optional.", smg: "Eats ammo like popcorn.", rifle: "For conversations at a distance.", assault: "Very loud. Very thirsty.", bow: "Quiet, reusable, judgemental.", crossbow: "A bow that went to the gym.", jacket: "Pockets for days.", leather: "Cool, and a bit bite-proof.", hockey: "Body-checks the dead.", biker: "Loud fashion.", riot: "Previously owned by the law.", kevlar: "Stops a lot. Not everything.", military: "Heavy, ugly, alive.", plate: "Bin lids, but hopeful.", gloves: "Grip it and rip it.", belt: "Lift with your legs anyway.", shoes: "Not running away. Running towards safety.", goggles: "See them before they see you.", glasses: "Read the manual. Finally.", charm: "Luck you can wear.", dogtags: "Somebody's story. Wear it well.", bandana: "Instant charm, no washing required.", cap: "Shade for the eyes, focus for the aim.", beanie: "Warm head, warm heart.", strawhat: "Farmer chic.", hardhat: "Safety first. Zombies second.", bikehelm: "Brain bucket.", football: "Huddle up.", army: "Standard issue, non-standard times.", riothelm: "A visor between you and drool.", golf: "Fore!", hatchet: "Small axe, big plans.", cleaver: "The butcher's best friend.", shovel: "Digs graves. Fills them too.", roadsign: "STOP. It means it.", spiked: "Medieval, but make it scrap.", magnum: "Six shots of very bad news.", hoodie: "Hood up, problems down.", raincoat: "Dry outside, scared inside.", firecoat: "Hot stuff, handled.", hazmat: "Fashionably airtight.", ghillie: "Is that a bush? Yes. Definitely.", tactical: "So many pouches.", swatarmor: "Kicks in doors for you.", headlamp: "Hands free, nights brighter.", gasmask: "Breathe easy. Look terrifying.", tactcap: "Looks like it knows something.", swathelm: "Built for bad days.", backpack: "Still has a maths book in it.", hikerpack: "The trail is long. The pack is longer.", toolbelt: "A place for every wrench.", medpouch: "Bandages within reach.", watch: "Knows when dinner is.", kneepads: "Crawl with confidence.", walkie: "Over. Over? Hello?" };
 const iQuip = (id) => (IQUIP[id] ? `<br><i style="opacity:.75">${IQUIP[id]}</i>` : '');   /* owner: numbers first, the joke last */
@@ -850,6 +856,7 @@ const MELEE_R = (.45), ZREACH = (.45);   /* V3D.12: 3D bodies are bigger than th
 const rangeOf = (s) => { const w = weaponOf(s); return weaponRange(w) + (w && w.ranged && s.job === 'Police Officer' ? 1.5 : 0); };   /* 3D.67: Police Officers shoot 1.5 tiles further */
 const weaponRange = (w) => (w && w.ranged ? w.range || RANGE[Object.keys(ITEMS).find((k) => ITEMS[k] === w)] || 4 : MELEE_R);
 const gearFx = (s, fx) => !!s && SLOTS.some((sl) => { const it = itemOf(s, sl); return it && it.fx === fx; });   /* 3D.28 special gear effects */
+const boxHid = (s) => gearFx(s, 'hide') && !s.moving && !['attack', 'chase', 'recover'].includes(s.mode);   /* 3D.149 Cardboard Box: zombies walk past a survivor standing still */
 const carryBonus = (s) => (gearFx(s, 'carry2') ? 2 : gearFx(s, 'carry1') ? 1 : 0);
 function stat(s, k) { let v = ((s.st && s.st[k]) || 5) + (hasSkill(s, 'jackOfAll') ? 1 : 0); for (const sl of SLOTS) { const it = itemOf(s, sl); if (it && it.st && it.st[k]) v += it.st[k]; } if (s.pet && PETS[s.pet.kind] && PETS[s.pet.kind].st[k]) v += PETS[s.pet.kind].st[k]; if (k === 'per' && gearFx(s, 'night') && isNight()) v += 2; return Math.max(1, v); }
 const sMod = (s, k, per) => 1 + (stat(s, k) - 5) * per;   // 5 = average; each point above/below changes the effect by `per`
@@ -2238,7 +2245,7 @@ function ai(s) {
   if (s.mode === 'postCombat') { s.moving = false; if (downedUnassigned().length) { assignRescue(); if (s.mode === 'rescueTo') return; }
     if (s.hp < s.max * .5 && medSite() && facilityUsers(medSite()) < cap(medSite())) { const m = medSite(); s.facility = m; s.mode = 'goFacility'; s.stateTicks = 9999; s.path = null; s.why = 'Hurt after the fight → ' + DEFS[m.type].name; return; }   /* V2.18: patch up before the next one */ if (s.stateTicks <= 0) enterFree(s, 20); return; }
   if (s.mode === 'wait' && s.purpose === 'post-hold') { s.moving = false; const gp = myPost(s); if (!gp || !postActive(gp)) { s.purpose = null; enterFree(s, 20); return; } if (downedUnassigned().length && tick % 30 === 0) { assignRescue(); if (s.mode === 'rescueTo') return; } if (tick % 15 === s.i % 15 && acquireEnemy(s)) { s.purpose = null; return; } if (s.stateTicks <= 0) { s.purpose = null; s.mode = 'free'; s.stateTicks = 0; } return; }
-  if (s.mode === 'wait') { s.moving = false; if (s.sleeping === 'rough' && ((s.thirst >= 92 && S.water >= 1) || (s.hunger >= 92 && S.food >= 1))) s.stateTicks = 0; if (s.stateTicks <= 0) { if (s.sleeping === 'rough') { s.fatigue = Math.max(0, s.fatigue - 50); s.sleeping = false; s.why = 'Woke up stiff (slept rough)'; } s.mode = 'free'; s.stateTicks = 0; scavWait(s); } return; }
+  if (s.mode === 'wait') { s.moving = false; if (s.sleeping === 'rough' && ((s.thirst >= 92 && S.water >= 1) || (s.hunger >= 92 && S.food >= 1))) s.stateTicks = 0; if (s.stateTicks <= 0) { if (s.sleeping === 'rough') { const mt = gearFx(s, 'rest'); s.fatigue = mt ? 0 : Math.max(0, s.fatigue - 50); s.sleeping = false; s.why = mt ? 'Slept on the Mattress Vest. Fully rested' : 'Woke up stiff (slept rough)'; }   /* 3D.149 Mattress Vest */ s.mode = 'free'; s.stateTicks = 0; scavWait(s); } return; }
   if (s.mode === 'walk') {
     if (acquireEnemy(s)) return;
     const r = s.dest ? followPath(s, s.dest, WALK) : 'arrived';
@@ -2566,7 +2573,7 @@ function zai0(z) {
   if (z.mode === 'idle' && z.siege) { z.mode = 'zmarch'; z.goalT = 0; }
   if (z.mode === 'zmarch') {            // mobs head for the nearest survivor or building; elites aim for the weakest wall segment or the gate
     { const lu = (S.posts || []).length ? postLure(z) : null; if (lu) { z.target = lu; z.mode = 'zchase'; z.path = null; z.blocked = 0; alertPack(z, lu); return; } }   /* V2.45 */
-    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; z.blocked = 0; alertPack(z, best); SFX('groan'); return; }
     if (tick % 20 === (z.phase | 0) % 20) { const b = bashTarget(z, d, true); if (b && startBash(z, b)) return; }   /* V3D.17 */
     if (--z.goalT <= 0) { z.goal = siegeGoal(z); z.goalT = 90; }
@@ -2574,7 +2581,7 @@ function zai0(z) {
   }
   if (z.mode === 'zbash') {   /* V3D.17: pounding on a building */
     const b = z.bldT; if (!b || !world.buildings.includes(b) || b.burnt || !occupied(b)) { z.bldT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 30; return; }
-    let best = null, bd = d.aggro * .8; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = d.aggro * .8; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.bldT = null; z.path = null; alertPack(z, best); return; }
     if (dist(z.w, z.bpt) > .35) { const r = followPath(z, z.bpt, d.chase); if (r === 'fail') { z.bldT = null; z.mode = 'idle'; z.stateTicks = 60; } return; }
     z.moving = false; z.faceB = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
@@ -2587,7 +2594,7 @@ function zai0(z) {
     if (!wl || wl.broken || world.walls.get(wl.x + ',' + wl.y) !== wl) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
     if (z.stateTicks <= 0) { const dmg = d.atk * (z.pw || 1) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); if (wl.type === 'efence' && S.power) { z.hp -= 6; z.hitT = 9; floats.push({ w: { ...z.w }, t: '⚡6', col: '#9fd8ff', a: 40 }); }   /* 3D.104 Electric Fence */ const dmg2 = townHyb('fortifier') ? dmg * .8 : dmg; wl.hp -= dmg2 - dmg; wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
       if (wl.hp <= 0) wallBroken(wl); }
-    let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
   }
   if (z.mode === 'idle') {
@@ -2596,7 +2603,7 @@ function zai0(z) {
       z.dest = { x: z.w.x + (rnd() - .5) * 3 + dx / l * pull, y: z.w.y + (rnd() - .5) * 3 + dy / l * pull }; z.stateTicks = 60 + rnd() * 100; }
     if (z.dest) { if (moveSlide(z, z.dest, d.chase * .35)) z.stateTicks = Math.min(z.stateTicks, 20); }
     { const lu = (S.posts || []).length ? postLure(z) : null; if (lu) { z.target = lu; z.mode = 'zchase'; z.path = null; alertPack(z, lu); return; } }   /* V2.45 */
-    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
+    let best = null, bd = 1e9; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best && bd < d.aggro) { z.target = best; z.mode = 'zchase'; z.path = null; alertPack(z, best); return; }
     if (tick % 30 === (z.phase | 0) % 30 && (!best || bd > d.aggro * 1.6)) { const b = bashTarget(z, d, isNight() && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (b) startBash(z, b); }   /* V3D.17: nobody about → go for the building with people in it */
     return;
@@ -2632,7 +2639,7 @@ function zai0(z) {
   if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 70 + rnd() * 20; } return; }   /* 3D.37 three-hit combo, in time with spore_combo */
   if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() }); if (z.type === 'thrower' && z.stateTicks === 22 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 22, seed: rnd(), rock: true });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
-    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target) && !(z.type === 'thrower' && dist(z.w, z.target.w) > 5.6)) { const dmg = Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat */ z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : z.type === 'thrower' ? 96 : 58) + rnd() * 22 + (z.target && gearFx(z.target, 'clang') && z.type !== 'boss' ? 30 : 0); if (z.target && gearFx(z.target, 'clang')) SFX('hit'); } return; }   /* 3D.148 Cookware Cuirass: a clang stuns the zombie half a second */
+    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target) && !(z.type === 'thrower' && dist(z.w, z.target.w) > 5.6)) { const popd = gearFx(z.target, 'pop') && tick - (z.target.popAt || -1e9) > 1800 && (z.target.popAt = tick), dmg = popd ? 0 : Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (gearFx(z.target, 'bite') ? .8 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat; 3D.149 Phone Book: bites 20% less; Bubble Wrap: the first hit in 30 s pops a bubble instead */ if (popd) floats.push({ w: { ...z.target.w }, t: 'pop!', col: '#bfe3ff', a: 55 }); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (rnd() < .4) emote(z.target, '😣', 60); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : z.type === 'thrower' ? 96 : 58) + rnd() * 22 + (z.target && gearFx(z.target, 'clang') && z.type !== 'boss' ? 30 : 0) + (z.target && gearFx(z.target, 'bounce') && z.type !== 'boss' ? 24 : 0); if (z.target && gearFx(z.target, 'clang')) SFX('hit'); } return; }   /* 3D.148 Cookware Cuirass: a clang stuns the zombie half a second */
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
@@ -4512,7 +4519,7 @@ function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null
   if (o.toll) { for (const k in t.loot) t.loot[k] = Math.floor(t.loot[k] * (1 - o.toll)); }
   if (ok && o.win) {
     for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${RES_ICON[k] || k} ${n}`); }
-    if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun', 'strawhat', 'army', 'football', 'lifejacket', 'hawaii', 'beekeeper', 'footpads', 'cookware'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
+    if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun', 'strawhat', 'army', 'football', 'lifejacket', 'hawaii', 'beekeeper', 'footpads', 'cookware', 'bubblewrap', 'cardboard', 'mattress', 'phonebook', 'tyre'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
     if (o.win.recruit) { if (popNow() < popCap()) { t.recruitNow = true; got.push('The survivor will follow the squad home.'); } else { const n = r([1, 2]); t.loot.food += n; t.ren = (t.ren || 0) + 3; got.push(`The Haven has no room, so the survivor gave them ${n} food (+3 Renown)`); } }
     if (o.win.gift) { const n = r([1, 2]); t.loot.food += n; t.loot.water += n; got.push(`They threw down ${n} food and ${n} water in thanks.`); }
     if (o.win.ren) { t.ren = (t.ren || 0) + o.win.ren; got.push(`(+${o.win.ren} Renown)`); }
@@ -5990,7 +5997,7 @@ function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
   return nx ? `Next skill: ${nx.name} at Lv.${nx.at}` : 'All skills learned';
 }
 const itemText = (it) => !it ? '—' : [it.atk ? `ATK ${it.atk}${it.ranged ? ' (range)' : ''}` : '', it.slot === 'weapon' && it.rate ? (it.rate < .85 ? 'Fast' : it.rate > 1.2 ? 'Slow' : '') : '', it.mag ? `${it.mag} ${it.mag > 1 ? 'rounds' : 'bolt'} · ${it.reload}s reload` : '', it.def ? `DEF ${it.def}` : '', ...Object.entries(it.st || {}).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`), FX_TEXT[it.fx] || ''].filter(Boolean).join(' · ');
-const FX_TEXT = { float: 'Downed: bleeds out 50% slower', charge: 'Melee: 1 in 4 hits knocks a zombie off balance', aloha: 'Friendships grow 25% faster', clang: 'Stuns the zombie that hits it (0.5 s)', carry1: 'Carries +1', carry2: 'Carries +2', build: 'Builds 30% faster', fire: 'Puts out fires faster', gas: 'Spit & gas hurt 60% less', night: '+2 PER at night', rain: 'Happy in rain', regen: 'Slowly heals', radio: 'Calls help from twice as far' };   /* 3D.28 */
+const FX_TEXT = { pop: 'The first hit in 30 s does nothing (pop!)', hide: 'Standing still: zombies walk past', rest: 'Sleeps rough at full rest', bite: 'Bites do 20% less', bounce: 'Shoves attackers back', float: 'Downed: bleeds out 50% slower', charge: 'Melee: 1 in 4 hits knocks a zombie off balance', aloha: 'Friendships grow 25% faster', clang: 'Stuns the zombie that hits it (0.5 s)', carry1: 'Carries +1', carry2: 'Carries +2', build: 'Builds 30% faster', fire: 'Puts out fires faster', gas: 'Spit & gas hurt 60% less', night: '+2 PER at night', rain: 'Happy in rain', regen: 'Slowly heals', radio: 'Calls help from twice as far' };   /* 3D.28 */
 
 function statsHtml(u) {
   const rows = ['str', 'agi', 'int', 'end', 'per', 'cha'].map((k) => { const base = (u.st && u.st[k]) || 5, tot = stat(u, k), main = (JOB_STATS[u.job] || []).includes(k);

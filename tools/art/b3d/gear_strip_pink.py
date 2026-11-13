@@ -22,6 +22,11 @@ el=opt.get('elbow',.56); kn=opt.get('knee',.275)
 J={"pelvis":[[0,yt,.38],[0,yt,.46]],"chest":[[0,yt,.46],[0,yt,.70]],"neck":[[0,yt,.70],[0,yt,.74]],"head":[[0,yh,opt.get("head0",.74)],[0,yh,opt.get("head1",.97)]],
    "upperarm.L":[[.105,ya,.675],[.148,ya,el]],"forearm.L":[[.148,ya,el],[.168,ya,.47]],"hand.L":[[.168,ya,.47],[.178,ya,.37]],
    "thigh.L":[[.07,yl,.40],[.076,yl,kn]],"shin.L":[[.076,yl,kn],[.078,yl,.10]],"foot.L":[[.078,yl,.10],[.078,yl-.085,.02]]}
+if opt.get("vpose"):   # Nov 13: the V-pose mannequin (batch 2 on): taller torso, legs further apart, arms out at about 30 degrees
+    kn=opt.get('knee',.29); el=opt.get('elbow',.60)
+    J={"pelvis":[[0,yt,.40],[0,yt,.50]],"chest":[[0,yt,.50],[0,yt,.78]],"neck":[[0,yt,.78],[0,yt,.82]],"head":[[0,yh,.82],[0,yh,1.0]],
+       "upperarm.L":[[.13,ya,.745],[.215,ya,el]],"forearm.L":[[.215,ya,el],[.285,ya,.48]],"hand.L":[[.285,ya,.48],[.31,ya,.40]],
+       "thigh.L":[[.105,yl,.42],[.12,yl,kn]],"shin.L":[[.12,yl,kn],[.125,yl,.08]],"foot.L":[[.125,yl,.08],[.125,yl-.085,.02]]}
 dx=opt.get("armdx",0)
 for b in ("upperarm.L","forearm.L","hand.L"): J[b]=[[p[0]+dx*(i>0 or b!="upperarm.L"),p[1],p[2]] for i,p in enumerate(J[b])]
 for b in list(J):

@@ -68,8 +68,23 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
         for sd in ('.L', '.R'):
             if b + sd not in names: continue
             i = names.index(b + sd); m = (np.abs(P[:, 0]) > xmin) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & ((P[:, 0] > 0) == (sd == '.L')); W[m] = 0; W[m, i] = 1
-    for b, xmax, zmin, zmax in CORE:   # Nov 13: the middle of the body (|x| < xmax) belongs to one trunk bone: a vest's sides or a shoulder pad don't stretch out with the arm
-        if b in names: i = names.index(b); m = (np.abs(P[:, 0]) < xmax) & (P[:, 2] > zmin) & (P[:, 2] <= zmax); W[m] = 0; W[m, i] = 1
+    mainV = None
+    for c in CORE:   # Nov 13: the middle of the body (|x| < xmax) belongs to one trunk bone: a vest's sides or a shoulder pad don't stretch out with the arm
+        b, xmax, zmin, zmax = c[:4]
+        if len(c) > 4 and c[4] == 'main' and mainV is None:   # only the biggest connected piece (a box joined to the trousers), never a separate arm guard beside it
+            import bmesh
+            bm = bmesh.new(); bm.from_mesh(arm.data); bm.verts.ensure_lookup_table(); lb = -np.ones(len(P), int); kk = 0
+            for v in bm.verts:
+                if lb[v.index] >= 0: continue
+                st = [v]; lb[v.index] = kk
+                while st:
+                    x = st.pop()
+                    for e in x.link_edges:
+                        w = e.other_vert(x)
+                        if lb[w.index] < 0: lb[w.index] = kk; st.append(w)
+                kk += 1
+            bm.free(); mainV = lb == np.bincount(lb).argmax()
+        if b in names: i = names.index(b); m = (np.abs(P[:, 0]) < xmax) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & (mainV if len(c) > 4 and c[4] == 'main' else True); W[m] = 0; W[m, i] = 1
     shared = np.zeros(len(P), bool)
     trunkV = np.ones(len(P), bool)
     if ISLANDS:   # Nov 12: a blend (an apron shared by the pelvis and the thighs) applies only to pieces that cross the middle, never to a glove hanging beside it
