@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.151', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.152', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -294,6 +294,7 @@ function drawHuman(s) {
   let tagY = top - 2; const selU = selected && selected.ref === s, near = cam.z >= 1.7, fighting = ['attack', 'chase', 'recover'].includes(s.mode);   /* V3D.17: fewer markers on people */
   if (!S.cut && (fighting || s.hp < s.max * .7 || selU || (near && s.hp < s.max))) {
     { const u = hudU(); tagY = hpPill(s, p.x + 3 * u, top - HUD_LIFT * u, { lv: s.l || 1 }) - 3 * u; } }
+  if (s.dummy && s.tag) { const u = hudU(), fs = Math.round(9 * u), y = top - 9 * u; ctx.save(); ctx.font = `800 ${fs}px Manrope, sans-serif`; const w = ctx.measureText(s.tag).width + 9 * u, h = 13 * u; ctx.fillStyle = 'rgba(16,22,28,.82)'; ctx.beginPath(); ctx.roundRect(p.x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s.tag, p.x, y + .5); ctx.restore(); }   /* 3D.152 gear test: the item's name over each dummy */
   if (s.mode === 'down' && s.bleed != null) bleedRing(s, p);
   const ic = s.activity ? EMOJI[s.activity] : (s.mode === 'chase' || s.mode === 'attack' ? '⚔️' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? '🚑' : s.mode === 'down' ? '💀' : s.mode === 'hospital' ? '💊' : s.purpose === 'patrol' ? '🛡️' : (s.purpose || '').startsWith('scav') ? '🔍' : s.mode === 'wait' && s.idleBubble && (tick + s.phase) % 600 < 130 ? s.idleBubble : '');
   let tagT = s.mode === 'down' ? '' : s.activity ? (TAGTXT[s.activity] || s.activity) : s.mode === 'chase' || s.mode === 'attack' || s.mode === 'recover' ? 'Fighting' : s.mode === 'rescueTo' || s.mode === 'rescueCarry' ? 'Rescue' : s.mode === 'hospital' ? 'In care' : s.mode === 'goFire' ? 'Fire!' : s.purpose === 'patrol' ? 'Patrol' : (s.purpose || '').startsWith('scav') ? 'Scavenging' : '';
@@ -2097,7 +2098,7 @@ function chooseLifePurpose(s) {
   s.dest = roamDest(s); s.mode = 'walk'; s.purpose = 'roam'; s.why = 'Strolling through town'; s.stateTicks = 600;
 }
 const activeZ = () => S.z.filter((z) => z.hp > 0 && !z.human).length;
-function gearUpgrade(s) {   /* best improvement for any slot: free from the stash first, else buy basic gear at the Armory with scrap */
+function gearUpgrade(s) { if (s.dummy) return null;   /* best improvement for any slot: free from the stash first, else buy basic gear at the Armory with scrap */
   let best = null, gain = 0;
   for (const slot of SLOTS) {
     const cur = itemScore(itemOf(s, slot)), opts = [];
@@ -2139,6 +2140,7 @@ function finishFacility(s) {
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
 }
 function ai(s) {
+  if (s.dummy && !s.go) { s.moving = false; s.mode = 'wait'; s.stateTicks = 99; s.hunger = s.thirst = s.fatigue = 0; return; }   /* 3D.152 gear test: the line-up stands still until released */
   if (s.para > 0 && s.hp > 0 && !['down', 'hospital', 'away'].includes(s.mode)) { s.para--; s.moving = false; if (s.para % 120 === 0) emote(s, '😵', 60); return; }   /* 3D.83 paralysed by a Lasher: cannot move, shoot or fight */
   if (s.cool > 0) s.cool--; if (s.stateTicks > 0) s.stateTicks--; emoTick(s); if (s.reloadT > 0 && !['attack', 'recover'].includes(s.mode) && --s.reloadT <= 0) reloadGun(s);   /* reloads finish out of combat too */
   if (tick % 90 === (s.i * 17) % 90 && !['down', 'hospital', 'away'].includes(s.mode)) { { const ns = (hasSkill(s, 'ironStomach') ? .8 : 1) * Math.max(.6, 1 - (stat(s, 'end') - 5) * .02); s.hunger = Math.min(100, s.hunger + .3 * ns); s.thirst = Math.min(100, s.thirst + .36 * ns); } /* V2.11.1: ~3.3 hunger / ~4 thirst per game hour (was ~17 / ~20, which pinned everyone at 100) */ if (!s.sleeping) s.fatigue = Math.min(100, s.fatigue + .45 * (hasT(s, 'diligent') ? 1.2 : 1)); pantry(s); starve(s); }   /* 3D.63 study: fatigue rose ~11/hour (3x hunger), so everyone was 'Exhausted' by 13:00, napped through lunch and skipped the bonfire; now ~5/hour, and it doesn't rise while asleep (rough sleepers woke exhausted) */
@@ -6184,7 +6186,7 @@ const INTRO = {
   'f:trader': ['🛒', 'The trader', 'A travelling trader visits by day with goods to swap.', 'Trade spare food or water for what you lack. They leave at dusk.'],
 };
 const introOff = () => !!S.introOff || (/[?&]test=/.test(location.search) && !window.ZH_INTRO);
-function intro(key) {   /* show a Field Note once per game */
+function intro(key) {   /* show a Field Note once per game */ if (ZOO) return;   /* 3D.152 no tips on the test pages */
   S.intro = S.intro || {}; if (S.intro[key]) return false; const d = INTRO[key] || (key.startsWith('b:') && DEFS[key.slice(2)] && [ '🏗️', DEFS[key.slice(2)].name, BDESC[key.slice(2)] || '', 'Tap it to see how it is doing, who works there and what it needs.' ]); if (!d) return false;
   S.intro[key] = S.day || 1; if (introOff()) return true;
   if (!key.startsWith('z:') && !key.startsWith('boss:')) { radio('dj', `${rLine('note')} ${d[1]}. ${String(d[2]).split('. ')[0].replace(/\.$/, '')}.`, { key: 'fn' + key, title: d[1], more: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Guide → Field Notes keeps every note.</div>` }); return true; }   /* 3D.135 */
@@ -6601,8 +6603,8 @@ function zooLine() {
 }
 /* ---------------- 3D.151 Gear test page (?gear): every weapon, armour, helmet and accessory in ITEMS, worn by a survivor.
    It reads ITEMS, so a new item shows up here by itself. Never saves. */
-function gearStart() {
-  S.mission = null; simSpeed = 0; const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id));
+function gearGallery() {
+  if ($('gearPanel')) return; const sp0 = simSpeed; simSpeed = 0; const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id));
   const TABS = [['armor', 'Armour'], ['head', 'Helmets'], ['weapon', 'Weapons'], ['acc', 'Accessories']], by = (sl) => Object.keys(ITEMS).filter((k) => ITEMS[k].slot === sl).sort((a, b) => (a3(b) ? 1 : 0) - (a3(a) ? 1 : 0) || (ITEMS[a].cost || 0) - (ITEMS[b].cost || 0));
   const fem = (q) => { try { return !!(window.ZHChars && ZHChars.look(q).sex === 'f'); } catch (e) { return false; } }, M = S.sv.find((q) => !fem(q)) || S.sv[0], F = S.sv.find((q) => fem(q)) || S.sv[1] || M;
   const fig = (s, id, pose) => { const it = ITEMS[id], old = s.eq; s.eq = { weapon: null, armor: null, head: null, acc: null, [it.slot]: id }; let u = null; try { u = ZH3D.figure(s, pose); } catch (e) { /* a broken item must not break the page */ } s.eq = old; return u; };
@@ -6616,9 +6618,40 @@ function gearStart() {
     d.querySelectorAll('.gc').forEach((b) => { b.onclick = () => big(b.dataset.id); });
     let i = 0; const step = () => { if (my !== job) return; for (let n = 0; n < 2 && i < ids.length; n++, i++) { const u = fig(M, ids[i], 'ready'), el = $('gi_' + ids[i]); if (u && el) el.innerHTML = `<img src="${u}" alt="">`; } if (i < ids.length) setTimeout(step, 30); }; step(); };   /* two pictures per frame, so the page stays smooth */
   d.querySelectorAll('.gt').forEach((b) => { b.onclick = () => show(b.dataset.k); });
-  $('gearExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('gear'); location.search = q.toString(); };
+  $('gearExit').textContent = 'Back to the map'; $('gearExit').onclick = () => { job++; clearInterval(wait); d.remove(); simSpeed = sp0 || 1; };
   $('gearGrid').innerHTML = '<div class="sm" style="padding:20px">Loading the models…</div>';
   const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady() && ZH3D.figure(M, 'ready')) { clearInterval(wait); d.querySelectorAll('.gt small').forEach((e, i) => { e.textContent = by(TABS[i][0]).length; }); show('armor'); } }, 300);
+}
+/* 3D.152 the gear test on the map: one dummy survivor per item, lined up north of the camp, with a few Walkers to fight.
+   Tabs pick the slot; the line-up reads ITEMS, so new gear appears by itself. Never saves. */
+const GEAR_TABS = [['armor', 'Armour'], ['head', 'Helmets'], ['weapon', 'Weapons'], ['acc', 'Accessories']];
+let gearTab = 'armor';
+function gearLine() {
+  const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id)), ids = Object.keys(ITEMS).filter((k) => ITEMS[k].slot === gearTab).sort((a, b) => (a3(b) ? 1 : 0) - (a3(a) ? 1 : 0) || (ITEMS[a].cost || 0) - (ITEMS[b].cost || 0));
+  const per = 5, rows = Math.ceil(ids.length / per), S00 = 17.5 - rows * 2.5, spot = (r, i, n) => { const S0 = S00 + r * 2.5, D = -3 + (i - (n - 1) / 2) * 2; return [(S0 + D) / 2 + OFF, (S0 - D) / 2 + OFF]; };   /* four across so the name tags don't overlap; the last row sits just north of the camp */
+  S.sv = []; S.z = []; S.inv = {}; S.mat = 0;
+  { const pts = []; for (let r = 0; r <= rows + 1; r++) for (let i = 0; i < per; i++) pts.push(spot(r, i, per)); for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (pts.some(([x, y]) => Math.abs(tx - x) < 1.6 && Math.abs(ty - y) < 1.6)) { const n = treeNode(tx, ty); n.left = 0; n.regrow = 1e9; } if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); }   /* 3D.152 clear the trees and rocks off the line-up so nobody stands inside one */
+  ids.forEach((id, k) => { const r = Math.floor(k / per), n = Math.min(per, ids.length - r * per), [x, y] = spot(r, k % per, n), q = mk(FIRST_NAMES[(k * 7 + 3) % FIRST_NAMES.length], 'Guard', 3, x, y, k);
+    q.eq = { weapon: null, armor: null, head: null, acc: null, [gearTab]: id }; q.dummy = true; q.tag = ITEMS[id].name; q.gid = id; q.resident = true; q.max = 400; q.hp = 400; S.sv.push(q); });
+  for (let i = 0; i < 4; i++) { const [x, y] = spot(rows + .6, i, 4); spawn(x, y, 'walker'); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; }   /* four Walkers in front of the line-up */
+  if (typeof autoStaff === 'function') try { autoStaff(); } catch (e) { /* no posts for dummies */ }
+  { const Sm = S00 + Math.max(0, rows - 1.6) * 2.5, D = -3; centerOn((Sm + D) / 2 + OFF, (Sm - D) / 2 + OFF, Math.max(.85, Math.min(1.2, VW / 360))); }   /* open on the front rows and the Walkers; drag up for the rest */
+  const row = $('gearRow'); if (row) { row.innerHTML = ids.map((id) => `<button class="zc" data-id="${id}"><b>${esc(ITEMS[id].name)}</b>${gearTab === 'armor' && a3(id) ? '<i>3D</i>' : ''}<small>${esc(itemText(ITEMS[id])) || '—'}</small></button>`).join('');
+    row.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { const id = b.dataset.id, q = S.sv.find((v) => v.gid === id), it = ITEMS[id]; if (q) centerOn(q.w.x, q.w.y, 2.4); $('gearInfo').innerHTML = `<b>${esc(it.name)}</b> · ${esc(itemText(it))} · ${it.cost} scrap${iQuip(id)}`; }; }); }
+  document.querySelectorAll('#gearMap .gt').forEach((b) => b.classList.toggle('on', b.dataset.k === gearTab));
+  if ($('gearInfo')) $('gearInfo').innerHTML = 'Each dummy wears one item, with its name under the feet. Tap a card to fly to it. Four Walkers stand in front.';
+}
+function gearStart() {
+  S.mission = null; simSpeed = 1;
+  const d = document.createElement('div'); d.id = 'gearMap'; d.className = 'zooPanel';
+  d.innerHTML = `<div class="zh"><b>Gear test</b><span class="sm">${Object.keys(ITEMS).length} items</span><button class="act" id="gmHide" style="margin-left:auto;min-height:30px;padding:0 12px;font-size:12px">Hide</button></div><div id="gmBody"><div class="gtabs">${GEAR_TABS.map(([k, n]) => `<button class="gt" data-k="${k}">${n}</button>`).join('')}</div><div class="zrow" id="gearRow"></div><div class="zinfo" id="gearInfo"></div><div class="zbtns"><button class="act" id="gmExit">Exit</button><button class="act" id="gmLine">Line up</button><button class="act" id="gmWalk">Walk about</button><button class="act go" id="gmGo">Walkers attack</button></div><div class="zbtns" style="margin-top:6px"><button class="act" id="gmGal">Open the picture gallery</button></div></div>`;
+  $('world').appendChild(d);
+  d.querySelectorAll('.gt').forEach((b) => { b.onclick = () => { gearTab = b.dataset.k; gearLine(); }; });
+  $('gmExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('gear'); location.search = q.toString(); };
+  $('gmLine').onclick = gearLine; $('gmGal').onclick = gearGallery; $('gmHide').onclick = () => { const b = $('gmBody'), h = !b.hidden; b.hidden = h; $('gmHide').textContent = h ? 'Show' : 'Hide'; };   /* fold the panel away to see the whole line-up */
+  $('gmWalk').onclick = () => { for (const q of S.sv) if (q.dummy) { q.go = true; q.mode = 'free'; q.stateTicks = 0; } $('gearInfo').innerHTML = 'The dummies are living in the town now: walking, working and resting. "Line up" brings them back.'; };
+  $('gmGo').onclick = () => { for (const q of S.sv) if (q.dummy) { q.go = true; q.mode = 'free'; q.stateTicks = 0; } const n = S.z.filter((z) => z.zoo).length; for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } if (!n) for (let i = 0; i < 4; i++) { const q = S.sv[Math.floor(rnd() * S.sv.length)]; if (q) spawn(q.w.x + 3 + i * .6, q.w.y + 3, 'walker'); } $('gearInfo').innerHTML = 'The Walkers are loose and the dummies fight back. Tap again for four more Walkers.'; };
+  gearLine(); const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady && ZH3D.armorsReady()) { clearInterval(wait); gearLine(); } }, 400);   /* line up again once every model is in, so the 3D tags and order are right */
 }
 function zooStart() {
   S.mission = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;

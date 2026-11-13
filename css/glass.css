@@ -345,3 +345,7 @@ html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { dis
 .gearPanel .gi { height: 128px; display: flex; align-items: flex-end; justify-content: center; } .gearPanel .gi img { height: 128px; width: auto; }
 .gearPanel .gc b { display: block; font-size: 12px; font-weight: 800; line-height: 1.2; } .gearPanel .gc small { display: block; color: #C9D1D9; font-size: 10px; font-weight: 700; line-height: 1.25; margin-top: 2px; }
 .gearPanel .g3, .gearPanel .g0 { font: 800 9px Manrope, sans-serif; font-style: normal; border-radius: 6px; padding: 1px 5px; } .gearPanel .g3 { background: #C6FF4D; color: #14200A; } .gearPanel .g0 { background: rgba(255,255,255,.16); color: #E6ECF2; } .gearPanel .gc .g3 { position: absolute; top: 6px; right: 6px; }
+
+/* 3D.152 gear test on the map */
+#gearMap .gtabs { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 6px; } #gearMap .gt { flex: none; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); color: #fff; font: 800 12px Manrope, sans-serif; } #gearMap .gt.on { background: #C6FF4D; color: #14200A; border-color: #C6FF4D; }
+#gearMap .zbtns .act { font-size: 12px; padding: 0 6px; min-height: 38px; }
