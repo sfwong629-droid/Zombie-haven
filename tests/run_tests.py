@@ -34,7 +34,7 @@ async def open_game(browser, port, tag, init=None):
     if init: await ctx.add_init_script(init)
     pg = await ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(f'http://127.0.0.1:{port}/index.html?test={tag}')
+    await pg.goto(f'http://127.0.0.1:{port}/index.html?test={tag}&nocut=1')   # 3D.146: the opening cutscene hides the HUD and pulls the Camp off the map; bots that build during it got stuck
     await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length > 0', timeout=15000)
     await pg.evaluate("()=>{window.requestAnimationFrame=()=>0}")
     return ctx, pg, errs

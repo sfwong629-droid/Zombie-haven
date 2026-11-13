@@ -5157,7 +5157,7 @@ const CAMP_PLAN = {
   helix: { dirt: ['#a9afb1', '#a2a8aa', '#aeb4b6', '#9ba1a3'], path: '#c6cbcc', flag: '#3f8fb5', inner: ['hq3', 'hospital', 'workshop'], mid: ['generator', 'generator', 'coldstore', 'clinic', 'storage', 'pump', 'kennel'], outer: ['tent', 'tent', 'tent', 'floodlight', 'floodlight', 'solar', 'solar', 'barrel', 'crates', 'kennel', 'medic'],
     guards: [['raiderG', 5], ['raider', 4]], workers: 5, tough: 1.2, reinFirst: 30, reinEvery: 26, reinN0: 3, reinMax: 10, hear: 6, ground: '#9aa0a2', yard: '#aeb4b6', fence: '#7d8588' },
   hollow: { dirt: ['#6f6672', '#69606c', '#746b77', '#635b66'], path: '#877e8a', flag: '#7a5aa8', inner: ['hq2', 'canteen', 'storage'], mid: ['medic', 'crates', 'crates', 'bonfire', 'bonfire', 'bonfire', 'kennel'], outer: ['tent', 'tent', 'tent', 'tent', 'tent', 'tent', 'farm', 'barrel', 'bonfire', 'bonfire', 'kennel'],
-    guards: [['raider', 9], ['raiderB', 2]], workers: 8, tough: 1.3, reinFirst: 35, reinEvery: 24, reinN0: 4, reinMax: 12, hear: 4, ground: '#6d6470', yard: '#776d79', fence: '#463f49' },
+    guards: [['raider', 9], ['raiderB', 2]], workers: 8, tough: 1, reinFirst: 50, reinEvery: 24, reinN0: 4, reinMax: 12, hear: 4, ground: '#6d6470', yard: '#776d79', fence: '#463f49' },
   green: { dirt: ['#93a45a', '#8c9d54', '#98a95f', '#869750'], path: '#b89a66', flag: '#5f9a3c', inner: ['hq2', 'armory', 'clinic'], mid: ['storage', 'greenhouse', 'canteen', 'well', 'crates', 'medic'], outer: ['field', 'field', 'field', 'farm', 'farm', 'barrel', 'barrel', 'water', 'cabin', 'cabin', 'cabin', 'bonfire'],
     guards: [['raiderB', 3], ['raider', 3]], workers: 7, tough: 1.1, reinFirst: 55, reinEvery: 30, reinN0: 2, reinMax: 6, hear: 5, ground: '#7f8f5e', yard: '#93a06a', fence: '#8a6038' },
 };
