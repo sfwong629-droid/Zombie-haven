@@ -1296,7 +1296,7 @@ function setOutfit(a, id, mode) {   // 3D.94 compare: mode 'rigid' | 'shell' | '
   else for (const [bn, g] of clothRigid(a, col)) { const b = boneOf(a, bn); if (b) a.outfit.push(attachTo(a, b, g)); }
   a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
 }
-const CLOTHES = { foundry: '#a4553a', toll: '#3a3a40', quar: '#5d6b44', helix: '#e6eaec', green: '#d8c9a0', hollow: '#4a3f52', jacket: '#3d5f91', leather: '#6b4226', hockey: '#e6e1d4', biker: '#2c2c31', riot: '#3b4a5a', kevlar: '#4b5540', military: '#5d6b44', plate: '#5a5a55',
+const CLOTHES = { footpads: '#c8242c', hawaii: '#17a58c', foundry: '#a4553a', toll: '#3a3a40', quar: '#5d6b44', helix: '#e6eaec', green: '#d8c9a0', hollow: '#4a3f52', jacket: '#3d5f91', leather: '#6b4226', hockey: '#e6e1d4', biker: '#2c2c31', riot: '#3b4a5a', kevlar: '#4b5540', military: '#5d6b44', plate: '#5a5a55',
   hoodie: '#8a8f96', raincoat: '#f2c230', firecoat: '#b8432f', hazmat: '#c9d34a', ghillie: '#6b7a3a', tactical: '#3f4636', swatarmor: '#262a30' };   // 3D.28 new clothing
 /* 3D.31 looks: skin tone, hair colour and hairstyle per survivor (v2 models), together with the Clothing shirt colour.
    One shader on the v2 texture: skin = the peach areas scaled to the new tone (shading kept), hair = the near-black brown
@@ -1312,14 +1312,16 @@ function headZone(a) {   // 3D.31: where the face is, in the model's rest space,
   a.o.updateMatrixWorld(true); const M = new THREE.Matrix4().copy(a.o.matrixWorld).invert().multiply(m.matrixWorld);
   const z = { M, brow: f.hb + (f.top - f.hb) * .46, cz: f.z, cx: f.x, hw: f.hw }; headZones.set(a.src, z); return z;
 }
-const PANTS3D = { toll: '#1d1f24', foundry: '#3b3836', quar: '#5d6b44', green: '#7a5a3c', hollow: '#2e2833' }, CAMO3D = { quar: 1 };   /* 3D.144 owner: a shirt and a trouser colour per faction; Quarantine Command in green-and-brown camouflage; the Toll Kings dark */
+const SHORTS3D = { hawaii: .33 }, SLEEVE3D = { hawaii: .59, footpads: .66 },   /* short sleeves painted on the upper arm, down to this height */
+   FLORAL3D = { hawaii: 1 };   /* 3D.148 soft clothes are painted on the survivor's own clothes: shorts turn the legs below this height to skin, a floral shirt gets flowers */
+const PANTS3D = { footpads: '#ecebe6', hawaii: '#c9b07a', toll: '#1d1f24', foundry: '#3b3836', quar: '#5d6b44', green: '#7a5a3c', hollow: '#2e2833' }, CAMO3D = { quar: 1 };   /* 3D.144 owner: a shirt and a trouser colour per faction; Quarantine Command in green-and-brown camouflage; the Toll Kings dark */
 function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture with skin, hair and (Clothing) shirt recoloured; suit: everything below the neck that isn't skin in one colour (under a 3D armour set)
-  const col = CLOTHES[id], sk = lk ? lk.sk : -1, hr = lk ? lk.hr : -1, pt = PANTS3D[id] || null, cm = CAMO3D[id] ? 1 : 0, key = (fem ? 'f' : 'm') + (col || '') + '|' + sk + '|' + hr + (zone ? 'z' : '') + (suit || '') + (pt || '') + cm; if (clothMats[key]) return clothMats[key];
+  const col = CLOTHES[id], sk = lk ? lk.sk : -1, hr = lk ? lk.hr : -1, pt = PANTS3D[id] || null, cm = CAMO3D[id] ? 1 : FLORAL3D[id] ? 2 : 0, shy = SHORTS3D[id] || 0, sly = SLEEVE3D[id] || 0, key = (fem ? 'f' : 'm') + (col || '') + '|' + sk + '|' + hr + (zone ? 'z' : '') + (suit || '') + (suit && SUITSKIN3D[id] ? 'k' : '') + (pt || '') + cm + (shy ? 'h' : '') + (sly ? 'v' + sly : ''); if (clothMats[key]) return clothMats[key];
   const src = fem ? FEMALE3D : MALE, m = new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad });
   const c = new THREE.Color(col || '#000'), su = suit ? new THREE.Color(suit) : null, ref = SKIN_REF2[fem ? 'f' : 'm'], st = sk >= 0 ? new THREE.Color(SKIN2[sk]) : ref, ht = hr >= 0 ? new THREE.Color(HAIR2[hr]) : null;
-  m.onBeforeCompile = (sh) => { sh.uniforms.shirt = { value: new THREE.Vector3(c.r, c.g, c.b) }; sh.uniforms.suit = { value: su ? new THREE.Vector3(su.r, su.g, su.b) : new THREE.Vector3(-1, 0, 0) }; { const pc = pt ? new THREE.Color(pt) : null; sh.uniforms.pants = { value: pc ? new THREE.Vector3(pc.r, pc.g, pc.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.camo = { value: cm }; } sh.uniforms.skinK = { value: new THREE.Vector3(st.r / ref.r, st.g / ref.g, st.b / ref.b) }; sh.uniforms.hairT = { value: ht ? new THREE.Vector3(ht.r, ht.g, ht.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.zhM = { value: zone ? zone.M : new THREE.Matrix4() }; sh.uniforms.zhZ = { value: new THREE.Vector4(zone ? zone.brow : -1e9, zone ? zone.cz : 1e9, zone ? zone.cx : 0, zone ? zone.hw * .5 : 0) };
-    sh.vertexShader = 'uniform mat4 zhM; varying vec3 vZh; varying float vPy;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvZh = (zhM * vec4(position, 1.)).xyz; vPy = position.y;');
-    sh.fragmentShader = 'uniform vec3 shirt; uniform vec3 suit; uniform vec3 pants; uniform float camo; varying float vPy; uniform vec3 skinK; uniform vec3 hairT; uniform vec4 zhZ; varying vec3 vZh;\nvec3 zhHsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.*d+1e-10)),d/(q.x+1e-10),q.x);}\n' +
+  m.onBeforeCompile = (sh) => { sh.uniforms.shirt = { value: new THREE.Vector3(c.r, c.g, c.b) }; sh.uniforms.suit = { value: su ? new THREE.Vector3(su.r, su.g, su.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.suitSk = { value: su && SUITSKIN3D[id] ? 1 : 0 }; { const pc = pt ? new THREE.Color(pt) : null; sh.uniforms.pants = { value: pc ? new THREE.Vector3(pc.r, pc.g, pc.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.camo = { value: cm }; sh.uniforms.shortsY = { value: shy }; sh.uniforms.sleeveY = { value: sly || 9 }; sh.uniforms.skinC = { value: new THREE.Vector3(st.r, st.g, st.b) }; } sh.uniforms.skinK = { value: new THREE.Vector3(st.r / ref.r, st.g / ref.g, st.b / ref.b) }; sh.uniforms.hairT = { value: ht ? new THREE.Vector3(ht.r, ht.g, ht.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.zhM = { value: zone ? zone.M : new THREE.Matrix4() }; sh.uniforms.zhZ = { value: new THREE.Vector4(zone ? zone.brow : -1e9, zone ? zone.cz : 1e9, zone ? zone.cx : 0, zone ? zone.hw * .5 : 0) };
+    sh.vertexShader = 'uniform mat4 zhM; varying vec3 vZh; varying float vPy; varying float vPx;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvZh = (zhM * vec4(position, 1.)).xyz; vPy = position.y; vPx = abs(position.x);');
+    sh.fragmentShader = 'uniform vec3 shirt; uniform vec3 suit; uniform float suitSk; uniform vec3 pants; uniform float camo; uniform float shortsY; uniform float sleeveY; varying float vPx; uniform vec3 skinC; varying float vPy; uniform vec3 skinK; uniform vec3 hairT; uniform vec4 zhZ; varying vec3 vZh;\nvec3 zhHsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.*d+1e-10)),d/(q.x+1e-10),q.x);}\n' +
       sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
 { vec3 lin = diffuseColor.rgb, h = zhHsv(lin), sc = zhHsv(pow(max(lin, vec3(0.)), vec3(.4545)));
   float skinM = step(.03, sc.x) * step(sc.x, .115) * step(.18, sc.y) * (1. - step(.53, sc.y)) * step(.55, sc.z);
@@ -1330,18 +1332,20 @@ function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture wit
   if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${fem ? (HAIR_REF_LUM * 1.9).toFixed(3) : HAIR_REF_LUM.toFixed(3)}, .55, ${fem ? '1.1' : '1.7'}); o = mix(o, hairT * l, hairM); }
   float pantsM = step(.52, h.x) * step(h.x, .70) * step(.25, h.y) * (1. - skinM) * (1. - hairM) * step(vPy, .9);   /* the blue jeans */
   vec3 sC = shirt, pC = pants;
-  if (camo > .5) { vec3 q = vZh * 26.; float n = sin(q.x * 1.7 + sin(q.y * 1.3) * 1.6) * sin(q.y * 1.9 + sin(q.z * 1.1 + q.x * .7) * 1.6) + .55 * sin(q.z * 2.3 + q.x * .9 + q.y * .6);
+  if (camo > 1.5) { vec3 q = vZh * 30.; float n = sin(q.x * 1.9 + sin(q.y * 1.4) * 1.5) * sin(q.y * 2.1 + sin(q.z * 1.2 + q.x * .8) * 1.5); if (n > .62) sC = n > .86 ? vec3(.9, .3, .05) : vec3(1., .78, .1); }   /* a Hawaiian shirt: yellow flowers with orange hearts */
+  else if (camo > .5) { vec3 q = vZh * 26.; float n = sin(q.x * 1.7 + sin(q.y * 1.3) * 1.6) * sin(q.y * 1.9 + sin(q.z * 1.1 + q.x * .7) * 1.6) + .55 * sin(q.z * 2.3 + q.x * .9 + q.y * .6);
     vec3 cc = n > .42 ? vec3(.078, .058, .035) : n < -.38 ? vec3(.028, .045, .02) : n > .05 ? vec3(.115, .14, .058) : vec3(.07, .095, .04); sC = cc; pC = cc; }
   o = mix(o, sC * min(1.25, h.z / ${fem ? '.72' : '.25'}), shirtM);
-  if (pants.x >= 0.) o = mix(o, pC * clamp(h.z / .22, .6, 1.3), pantsM);
-  if (suit.x >= 0.) o = mix(o, suit * clamp(h.z / .3, .55, 1.3), (1. - skinM) * (1. - hairM) * step(vPy, .9));
+  o = mix(o, sC * clamp(sc.z / .8, .6, 1.15), skinM * step(sleeveY, vPy) * step(vPy, .86) * step(.105, vPx));
+  if (pants.x >= 0.) o = mix(o, (vPy < shortsY ? skinC * .9 : pC) * clamp(h.z / .22, .6, 1.3), pantsM);
+  if (suit.x >= 0.) o = mix(o, suit * mix(clamp(h.z / .3, .55, 1.3), .92, skinM), (1. - skinM * (1. - suitSk * step(vPy, .86))) * (1. - hairM) * step(vPy, .9));   /* 3D.148 a full suit (beekeeper) covers the arms too: no bare skin shows through a gap in the sleeve */
   diffuseColor.rgb = o; }`).replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb;'); };
   m.customProgramCacheKey = () => 'look2' + (fem ? 'f' : 'm') + (col ? 's' : '');   // suit is a uniform: same program
   return (clothMats[key] = nightLit(m, .32));
 }
 /* 3D.96 converter-made armour sets, fitted to the male rig by tools/art/b3d/fit_armor.py. Bound to the wearer's own skeleton
    (bones matched by name, the set's bind pose), so they bend with every clip. */
-const HEAD3D = { quar: 1, helix: 1, foundry: 1, green: 1, hollow: 1 }, ARMOR3D = {}, SUIT3D = { riot: '#262b35', helix: '#e6eaec' }, FAC_GEAR3D = { foundry: 'foundry', toll: 'toll', quar: 'quar', helix: 'helix', green: 'green', hollow: 'hollow' };   /* 3D.142 the owner's Tripo kits, one per faction (Helix: a white suit under the hood and harness) */   // the undersuit colour: shirt, trousers and boots under the set
+const HEAD3D = { quar: 1, helix: 1, foundry: 1, green: 1, hollow: 1 }, ARMOR3D = {}, SUIT3D = { riot: '#262b35', helix: '#e6eaec', beekeeper: '#efede6', lifejacket: '#2b3550', cookware: '#6b4a30' }, SUITSKIN3D = { beekeeper: 1 }, FAC_GEAR3D = { foundry: 'foundry', toll: 'toll', quar: 'quar', helix: 'helix', green: 'green', hollow: 'hollow' };   /* 3D.142 the owner's Tripo kits, one per faction (Helix: a white suit under the hood and harness) */   // the undersuit colour: shirt, trousers and boots under the set
 function setArmor3D(a, id) {
   const key = id && ARMOR3D[id] && (a.src === MALE || a.src === FEMALE3D) ? id : '';
   if ((a.arm3dKey || '') === key) return; if (a.arm3d) { a.arm3d.parent && a.arm3d.parent.remove(a.arm3d); a.arm3d = null; } a.arm3dKey = key; if (!key) return;
@@ -1400,7 +1404,7 @@ function everyday(a, s, anim, hold) {   // returns a clip name when one of the e
 function personAnim(a, s, dt) {
   const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? (s.dry && WCLASS[model] === 'gun' ? 'melee' : WCLASS[model]) : null;   /* 3D.77: out of ammo, they swing the gun */
   a.setWeapon(model);
-  const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7; a.setArmor(!!arm && !a.arm3d);
+  const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]; a.setArmor(!!arm && !a.arm3d);   /* 3D.148 a fitted 3D armour never gets the old grey plates too */
   let [anim] = G.humanAnim(s, G.facing(s));
   if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
   if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name) && performance.now() - (a.atkT || 0) < 600)) anim = 'walk';
@@ -2016,7 +2020,7 @@ function inkEdge(d, W, H, r) {   // a dark outline r px wide just outside the op
 function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
   if (!ready || !MALE) return null;
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
-  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), lk = s.id ? look2(s) : { sk: 0, hr: 0, hs: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, lk.hs, s.id && isFemale(s) ? 'f' : 'm'].join('|');
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]), lk = s.id ? look2(s) : { sk: 0, hr: 0, hs: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, lk.hs, s.id && isFemale(s) ? 'f' : 'm'].join('|');
   if (portraits.has(key)) return portraits.get(key);
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
@@ -2040,7 +2044,7 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
 }
 function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the survivor once and renders a list of poses o.frames = [[clip, t], ...] -> data URLs
   if (!ready || !MALE) return [];
-  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7), W = o.W || 256, H = o.H || 256;
+  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]), W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
   const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
   const R = pRig.rts[rk], a = s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, 'neutral', s.id ? lookOf(s) : null), false, null);
@@ -2125,7 +2129,7 @@ inkButton();
   /* 3D.126 the old survivor bases (survivor_v2, survivor_v2_f) and their zombie skins are no longer loaded: every zombie type has its own model */
   if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_f3.glb'); f.body = null; f.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') f.body = o; }); if (!f.body) f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); f.v2 = true; f.m3 = true; f.stride = STRIDE.m3; FEMALE3D = f; } catch (e) { console.warn('female model', e); FEMALE3D = ZFEMALE; } }   /* 3D.124 the owner's original female (rigged like the original male, with finger bones) */
   if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
-  if (CHAR_V2) for (const id of ['riot', 'foundry', 'toll', 'quar', 'helix', 'green', 'hollow']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
+  if (CHAR_V2) for (const id of ['riot', 'foundry', 'toll', 'quar', 'helix', 'green', 'hollow', 'beekeeper', 'lifejacket', 'cookware', 'footpads', 'hawaii']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */
   const il = new THREE.ImageLoader();
   await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
   if (CHAR_V2) await Promise.all(ZFIRST.map((k) => zLoad(k)));   /* 3D.126 the rest load on first sight */

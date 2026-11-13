@@ -22,8 +22,12 @@ el=opt.get('elbow',.56); kn=opt.get('knee',.275)
 J={"pelvis":[[0,yt,.38],[0,yt,.46]],"chest":[[0,yt,.46],[0,yt,.70]],"neck":[[0,yt,.70],[0,yt,.74]],"head":[[0,yh,opt.get("head0",.74)],[0,yh,opt.get("head1",.97)]],
    "upperarm.L":[[.105,ya,.675],[.148,ya,el]],"forearm.L":[[.148,ya,el],[.168,ya,.47]],"hand.L":[[.168,ya,.47],[.178,ya,.37]],
    "thigh.L":[[.07,yl,.40],[.076,yl,kn]],"shin.L":[[.076,yl,kn],[.078,yl,.10]],"foot.L":[[.078,yl,.10],[.078,yl-.085,.02]]}
+dx=opt.get("armdx",0)
+for b in ("upperarm.L","forearm.L","hand.L"): J[b]=[[p[0]+dx*(i>0 or b!="upperarm.L"),p[1],p[2]] for i,p in enumerate(J[b])]
+for b in list(J):
+    if b.split(".")[0] in opt.get("nob",[]): del J[b]
 K={"upperarm":1.1,"forearm":1.05,"hand":.95,"chest":1.08,"pelvis":1.02,"thigh":1.05,"shin":1.12,"head":1.28,"neck":1.1,"foot":1.3}; K.update(opt.get('K',{}))
-json.dump({"J":J,"K":K,"rigid":opt.get('rigid',["shin","head","hand"]),"islands":True,"force":opt.get("force",[])},open(k+'.json','w'))
+json.dump({"J":J,"K":K,"rigid":opt.get('rigid',["shin","head","hand"]),"islands":opt.get("islands",True),"core":opt.get("core",[]),"force":opt.get("force",[])},open(k+'.json','w'))
 bm=bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table(); bm.verts.ensure_lookup_table()
 pv=set()
 for f in bm.faces:

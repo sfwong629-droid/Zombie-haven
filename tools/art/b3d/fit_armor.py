@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ARMOR_J = {'pelvis': ((0, 0, .58), (0, 0, .72)), 'chest': ((0, 0, .72), (0, 0, 1.08)),
            'upperarm.L': ((.17, 0, .97), (.27, 0, .82)), 'forearm.L': ((.27, 0, .82), (.37, 0, .62)),
            'thigh.L': ((.12, 0, .58), (.13, 0, .33)), 'shin.L': ((.13, 0, .33), (.13, 0, .09)), 'foot.L': ((.13, 0, .09), (.13, -.09, .02))}
-RIGID = set(); FORCE = []; BLEND = []; ISLANDS = False
+RIGID = set(); FORCE = []; CORE = []; BLEND = []; ISLANDS = False
 K = {'pelvis': .96, 'chest': .95, 'upperarm': 1.0, 'forearm': .98, 'thigh': 1.08, 'shin': 1.08, 'foot': 1.1}
 
 def mirror(J):
@@ -34,9 +34,9 @@ def frame(a, b):
     e1 = ref - (ref @ u) * u; e1 /= np.linalg.norm(e1); e2 = np.cross(u, e1); return u, e1, e2
 
 def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
-    global ARMOR_J, K, RIGID, FORCE, BLEND, ISLANDS
+    global ARMOR_J, K, RIGID, FORCE, BLEND, ISLANDS, CORE
     if joints:   # Nov 9: a JSON file {"J": {bone: [head, tail]}, "K": {...}} for another armour set (marked on its own front/side plot)
-        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}; RIGID = set(d.get('rigid', [])); FORCE = d.get('force', []); BLEND = d.get('blend', []); ISLANDS = d.get('islands', False)
+        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}; RIGID = set(d.get('rigid', [])); FORCE = d.get('force', []); BLEND = d.get('blend', []); ISLANDS = d.get('islands', False); CORE = d.get('core', [])
     bpy.ops.wm.open_mainfile(filepath=rig_blend)
     ao = bpy.data.objects['rig']; body = bpy.data.objects['body']
     have = set(bpy.data.objects)
@@ -68,6 +68,8 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
         for sd in ('.L', '.R'):
             if b + sd not in names: continue
             i = names.index(b + sd); m = (np.abs(P[:, 0]) > xmin) & (P[:, 2] > zmin) & (P[:, 2] <= zmax) & ((P[:, 0] > 0) == (sd == '.L')); W[m] = 0; W[m, i] = 1
+    for b, xmax, zmin, zmax in CORE:   # Nov 13: the middle of the body (|x| < xmax) belongs to one trunk bone: a vest's sides or a shoulder pad don't stretch out with the arm
+        if b in names: i = names.index(b); m = (np.abs(P[:, 0]) < xmax) & (P[:, 2] > zmin) & (P[:, 2] <= zmax); W[m] = 0; W[m, i] = 1
     shared = np.zeros(len(P), bool)
     trunkV = np.ones(len(P), bool)
     if ISLANDS:   # Nov 12: a blend (an apron shared by the pelvis and the thighs) applies only to pieces that cross the middle, never to a glove hanging beside it
@@ -143,7 +145,7 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
         import bmesh
         side = np.zeros(len(P), int)
         for i, n in enumerate(names):
-            if n.split('.')[0] in RIGID: side[(W[:, i] > .5) & ~shared] = 1 + i   # each rigid bone its own group: no face may join two of them
+            if n.split('.')[0] in RIGID: side[(W[:, i] > .5) & ~shared] = (100 + ord(n[-1])) if n.split('.')[0] in ('upperarm', 'forearm', 'hand') else 1 + i   # each rigid bone its own group: no face may join two of them; Nov 13: a whole arm is one group (a full suit keeps its elbows, only the armpit seam is cut)
         bm = bmesh.new(); bm.from_mesh(arm.data); bm.faces.ensure_lookup_table()
         cut = [f for f in bm.faces if len({side[v.index] for v in f.verts}) > 1]
         bmesh.ops.delete(bm, geom=cut, context='FACES'); bm.to_mesh(arm.data); arm.data.update(); bm.free(); print('bridging faces cut', len(cut), flush=True)
