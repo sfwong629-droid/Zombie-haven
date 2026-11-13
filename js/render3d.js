@@ -1039,12 +1039,12 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: .53, zombie_run: 1.2 }, atkClip: 'melee_swing_a' },
   gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.0, gun_hold_walk: .93, run: 1.6 }, human: true, kind: 'gatling' } }, ZSRC = {};
 const ZVAR = { walker: ['walker', 'walker_f'], runner: ['runner', 'runner_f'], burnt: ['burnt', 'burnt_f'], crawler: ['crawler', 'crawler_m'] };   /* a type's models; one is picked per zombie */
-const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher' };   /* boss kind -> its model */
+const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher', gatling: 'gatling' };   /* boss kind -> its model */
 const ZFIRST = ['walker', 'walker_f', 'runner', 'runner_f', 'crawler', 'crawler_m'];   /* loaded at the start; every other type loads the first time one shows up */
 const ZLOAD = {}, ZFAIL = {};
 function zLoad(k) { const d = ZMODEL[k]; if (!d || ZSRC[k] || ZLOAD[k] || ZFAIL[k]) return ZLOAD[k] || null;
   return (ZLOAD[k] = load(d.url).then((g) => { g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; g.kind = d.kind || k; g.zkey = k; ZSRC[k] = g; }).catch((e) => { console.warn('zombie model', k, e); ZFAIL[k] = true; }).finally(() => { delete ZLOAD[k]; })); }
-const zGat = (z) => !!z.leader && (z.fk === 'toll' || z.fac === 'toll');   /* only the Toll Kings' leader is the Gatling Boss */
+const zGat = (z) => false;   /* 3D.143 owner: the Gatling Boss is a zombie, not a Toll King. He is a boss kind now (BOSS_KINDS.gatling); the Toll Collector is a man in the Toll Kings' kit */
 function zKeys(z) {   /* the models this zombie needs */
   if (z.type === 'raider') return zGat(z) ? ['gatling'] : []; if (z.type === 'boss') return [ZBOSS[z.bk] || 'mutant'];
   return (ZVAR[z.type] || [z.type]).filter((k) => ZMODEL[k]); }
@@ -1334,7 +1334,7 @@ function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture wit
 }
 /* 3D.96 converter-made armour sets, fitted to the male rig by tools/art/b3d/fit_armor.py. Bound to the wearer's own skeleton
    (bones matched by name, the set's bind pose), so they bend with every clip. */
-const ARMOR3D = {}, SUIT3D = { riot: '#262b35', helix: '#e6eaec' }, FAC_GEAR3D = { foundry: 'foundry', toll: 'toll', quar: 'quar', helix: 'helix', green: 'green' };   /* 3D.142 the owner's Tripo kits, one per faction (Helix: a white suit under the hood and harness) */   // the undersuit colour: shirt, trousers and boots under the set
+const HEAD3D = { quar: 1, helix: 1, foundry: 1, green: 1 }, ARMOR3D = {}, SUIT3D = { riot: '#262b35', helix: '#e6eaec' }, FAC_GEAR3D = { foundry: 'foundry', toll: 'toll', quar: 'quar', helix: 'helix', green: 'green' };   /* 3D.142 the owner's Tripo kits, one per faction (Helix: a white suit under the hood and harness) */   // the undersuit colour: shirt, trousers and boots under the set
 function setArmor3D(a, id) {
   const key = id && ARMOR3D[id] && (a.src === MALE || a.src === FEMALE3D) ? id : '';
   if ((a.arm3dKey || '') === key) return; if (a.arm3d) { a.arm3d.parent && a.arm3d.parent.remove(a.arm3d); a.arm3d = null; } a.arm3dKey = key; if (!key) return;
@@ -1361,10 +1361,10 @@ function hairFor(a, style, col) {   // -> [{ g, top }] pieces in model space at 
   return out;
 }
 function setHair(a, s) {   // 3D.31 add / swap the hairstyle pieces; pieces on top of the head hide under a hat
-  if (!MALE || !MALE.v2 || !s.id) return; const lk = look2(s), fem = a.src === FEMALE3D, style = STYLES[fem ? 'f' : 'm'][lk.hs % 7], sig = style + '|' + lk.hr + '|' + !!a.hat;
+  if (!MALE || !MALE.v2 || !s.id) return; const lk = look2(s), fem = a.src === FEMALE3D, style = STYLES[fem ? 'f' : 'm'][lk.hs % 7], cap = !!(s.eq && HEAD3D[s.eq.armor] && ARMOR3D[s.eq.armor]), sig = style + '|' + lk.hr + '|' + !!a.hat + cap;
   if (a.hairSig === sig) return; a.hairSig = sig; for (const p of a.hair || []) p.parent && p.parent.remove(p); a.hair = [];
   const head = boneOf(a, 'head'); if (!head) return; const keep = [a.o.position.clone(), a.o.rotation.clone(), a.o.scale.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.scale.setScalar(1);
-  for (const { g, top } of hairFor(a, style, HAIR2[lk.hr])) { if (top && a.hat) continue; a.hair.push(attachTo(a, head, g)); }
+  for (const { g, top } of hairFor(a, style, HAIR2[lk.hr])) { if ((top && a.hat) || cap) continue; a.hair.push(attachTo(a, head, g)); }   /* 3D.143 owner: no hair sticking out of a helmet, hood or hat */
   a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.scale.copy(keep[2]); a.o.updateMatrixWorld(true);
 }
 const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
