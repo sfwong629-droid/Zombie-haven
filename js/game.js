@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.157', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.158', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3446,6 +3446,7 @@ function visitorArrival() {
      and only then does the card ask. Until the player decides they are a guest: not in the town list, not saved, and zombies ignore them. */
   const a = hwyEnd(), hq = world.buildings.find((b) => b.type === 'hq'), g = traderSpot(hq ? hq.x + 1 : 7 + OFF, hq ? hq.y - 2 : 6 + OFF), v = mk(name, job, lv, a[0], a[1], S.sv.length);
   v.sat = 3; v.src = 'gate'; v.w = tc(a[0], a[1]); v.pv = { ...v.w }; v.home = tc(a[0], a[1]); v.goal = tc(g.x, g.y); v.mode = 'arrive'; v.path = null; v.guest = true; guest = v;
+  { const P = Wd.findPath(world, tileOf(v.w), { x: g.x, y: g.y }, false, 0); if (P && P.length > 21) { v.w = tc(P[P.length - 21].x, P[P.length - 21].y); v.pv = { ...v.w }; } }   /* 3D.158 owner (Noah sliding): the newcomer walks at an ordinary pace now, so he starts on the highway about 20 tiles out (about half a minute) instead of jogging in from the map's edge */
   radio('dj', rLine('guest'), { key: 'guest', act: () => { if (guest && guest.w) centerOn(guest.w.x, guest.w.y); } });
 }
 function guestAsk(v) {
@@ -3456,8 +3457,9 @@ function guestAsk(v) {
 }
 function guestTick() {
   const v = guest; if (!v) return; v.pv = { x: v.w.x, y: v.w.y }; v.moving = false; if (v.bark && --v.bark.f <= 0) v.bark = null;
-  if (v.mode === 'arrive') { const r = followPath(v, v.goal, WALK * 1.5); v.moving = r === 'moving'; if (r !== 'moving') { v.mode = 'greet'; v.path = null; v.faceW = { x: v.w.x + 1, y: v.w.y + 1.4 }; guestAsk(v); } }
-  else if (v.mode === 'leave') { const r = followPath(v, v.home, WALK * 1.5); v.moving = r === 'moving'; if (r !== 'moving') guest = null; }
+  if (v.mode === 'arrive') { const r = followPath(v, v.goal, WALK);   /* 3D.158 owner's log (Noah sliding): 1.5x walking pace was a jog the legs could not keep up with (85%), so he slid all the way in */
+    v.moving = r === 'moving'; if (r !== 'moving') { v.mode = 'greet'; v.path = null; v.faceW = { x: v.w.x + 1, y: v.w.y + 1.4 }; guestAsk(v); } }
+  else if (v.mode === 'leave') { const r = followPath(v, v.home, WALK); v.moving = r === 'moving'; if (r !== 'moving') guest = null; }
 }
 /* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */
 const GUIDE = [
