@@ -1,0 +1,9 @@
+// gpose.js OUT ids [poseset]  : each id in the gate poses (male then female), via ZH3D.snap
+const { chromium } = require('playwright'); const fs = require('fs');
+(async () => { const out = process.argv[2], ids = process.argv[3].split(','), set = process.argv[4] || 'gate'; const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] }); const p = await b.newPage({ viewport: { width: 420, height: 860 } }); p.on('pageerror', e => console.log('ERR', e.message));
+  await p.goto('http://localhost:8765/index.html?nocut=1&play=1&v=' + Date.now()); await p.waitForFunction(() => window.ZH3D && ZH3D.armorsReady && ZH3D.armorsReady() && ZH3D.ready, null, { timeout: 120000 }); await p.waitForTimeout(2500);
+  const r = await p.evaluate(([ids, set]) => { const S = ZH.S, out = [], names = ZH3D.clipNames ? ZH3D.clipNames() : []; const M = S.sv.find(q => !ZH3D.isFem(q)) || S.sv[0], F = S.sv.find(q => ZH3D.isFem(q)) || S.sv[1];
+    const P = set === 'quick' ? [['idle', .3, .5], ['cheer', .5, -.35], ['run', .3, .9]] : [['idle', .3, .5], ['cheer', .25, .35], ['cheer', .5, -.35], ['walk', .25, .9], ['run', .3, -.9], ['run', .7, 2.6], ['melee_swing_a', .45, .6], ['work_hammer', .45, -.6], ['collapse', .9, .5]];
+    for (const id of ids) for (const s of [M, F]) for (const [c, t, yaw] of (s === F ? P.slice(0, set === 'quick' ? 2 : 5) : P)) { s.eq = { weapon: null, armor: id, head: null, acc: null }; try { out.push(ZH3D.snap(s, { key: 'g_' + c + t + yaw, clip: () => c, t, yaw, noWeapon: true, half: .8, dy: .72, W: 240, H: 300 })); } catch (e) { out.push('ERR ' + e.message); } } return [out, names]; }, [ids, set]);
+  r[0].forEach((d, i) => { if (d && d.startsWith && d.startsWith('data:')) fs.writeFileSync(`${out}_${i}.png`, Buffer.from(d.split(',')[1], 'base64')); else console.log(i, String(d).slice(0, 100)); }); console.log('clips', r[1].join(' '));
+  await b.close(); })();

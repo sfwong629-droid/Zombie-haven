@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ARMOR_J = {'pelvis': ((0, 0, .58), (0, 0, .72)), 'chest': ((0, 0, .72), (0, 0, 1.08)),
            'upperarm.L': ((.17, 0, .97), (.27, 0, .82)), 'forearm.L': ((.27, 0, .82), (.37, 0, .62)),
            'thigh.L': ((.12, 0, .58), (.13, 0, .33)), 'shin.L': ((.13, 0, .33), (.13, 0, .09)), 'foot.L': ((.13, 0, .09), (.13, -.09, .02))}
-RIGID = set(); FORCE = []; CORE = []; BLEND = []; ISLANDS = False
+RIGID = set(); FORCE = []; CORE = []; BLEND = []; ISLANDS = False; SOLID = False
 K = {'pelvis': .96, 'chest': .95, 'upperarm': 1.0, 'forearm': .98, 'thigh': 1.08, 'shin': 1.08, 'foot': 1.1}
 
 def mirror(J):
@@ -34,9 +34,9 @@ def frame(a, b):
     e1 = ref - (ref @ u) * u; e1 /= np.linalg.norm(e1); e2 = np.cross(u, e1); return u, e1, e2
 
 def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
-    global ARMOR_J, K, RIGID, FORCE, BLEND, ISLANDS, CORE
+    global ARMOR_J, K, RIGID, FORCE, BLEND, ISLANDS, CORE, SOLID
     if joints:   # Nov 9: a JSON file {"J": {bone: [head, tail]}, "K": {...}} for another armour set (marked on its own front/side plot)
-        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}; RIGID = set(d.get('rigid', [])); FORCE = d.get('force', []); BLEND = d.get('blend', []); ISLANDS = d.get('islands', False); CORE = d.get('core', [])
+        import json; d = json.load(open(joints)); ARMOR_J = {k: tuple(map(tuple, v)) for k, v in d['J'].items()}; K = {**K, **d.get('K', {})}; RIGID = set(d.get('rigid', [])); FORCE = d.get('force', []); BLEND = d.get('blend', []); ISLANDS = d.get('islands', False); CORE = d.get('core', []); SOLID = d.get('solid', False)
     bpy.ops.wm.open_mainfile(filepath=rig_blend)
     ao = bpy.data.objects['rig']; body = bpy.data.objects['body']
     have = set(bpy.data.objects)
@@ -132,6 +132,7 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
                 share = np.where(trunk, share, 0) / max(1e-9, share[trunk].sum())
             for i, n in enumerate(names):
                 if keep[i] and n.split('.')[0] in RIGID and share[i] > .6: keep[:] = False; keep[i] = True   # a piece almost all on one limb bone: rigid
+            if SOLID and not (P[m, 0].min() < -.03 and P[m, 0].max() > .03): j = int(np.argmax(np.where(keep, share, -1))); keep[:] = False; keep[j] = True   # Nov 13 (rig plan): every hard piece moves with ONE body part, so nothing bends or stretches
             Wm = W[m] * keep[None]; Wm[shared[m]] = W[m][shared[m]]
             z = Wm.sum(1) < 1e-6; Wm[z] = 0; Wm[z, int(np.argmax(np.where(keep, share, -1)))] = 1   # a vertex left with no weight goes to the piece's main bone (else the exporter adds a 'neutral_bone')
             W[m] = Wm
@@ -151,6 +152,11 @@ def main(rig_blend, raw, out, tris=12000, tex=512, check=None, joints=None):
         r = np.linalg.norm(b1 - b0) / np.linalg.norm(a1 - a0); k = K[n.split('.')[0]]
         if n.startswith('foot'): r = k                          # boots keep their own shape, just smaller
         q = P - a0; NP += W[:, i:i + 1] * (b0 + np.outer(q @ ua, ub) * r + np.outer(q @ e1a, e1b) * k + np.outer(q @ e2a, e2b) * k)
+    if os.environ.get('FITDBG') and ISLANDS:
+        for c in range(int(lab.max()) + 1):
+            m = lab == c
+            if m.sum() > 200: print('DBG piece', m.sum(), names[int(W[m].sum(0).argmax())], 'raw', P[m].mean(0).round(3), 'fit', NP[m].mean(0).round(3), flush=True)
+        for n in ('thigh.L', 'shin.L', 'foot.L', 'chest'): print('DBG bone', n, np.round(J[n], 3).tolist(), np.round(BJ[n], 3).tolist(), flush=True)
     for v, p in zip(arm.data.vertices, NP): v.co = Vector(p)
     arm.data.update()
     for i, n in enumerate(names):
