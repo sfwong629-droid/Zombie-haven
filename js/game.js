@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.159', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.160', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3503,12 +3503,22 @@ function visitorArrival() {
   const a = hwyEnd(), hq = world.buildings.find((b) => b.type === 'hq'), g = traderSpot(hq ? hq.x + 1 : 7 + OFF, hq ? hq.y - 2 : 6 + OFF), v = mk(name, job, lv, a[0], a[1], S.sv.length);
   v.sat = 3; v.src = 'gate'; v.w = tc(a[0], a[1]); v.pv = { ...v.w }; v.home = tc(a[0], a[1]); v.goal = tc(g.x, g.y); v.mode = 'arrive'; v.path = null; v.guest = true; guest = v;
   { const P = Wd.findPath(world, tileOf(v.w), { x: g.x, y: g.y }, false, 0); if (P && P.length > 21) { v.w = tc(P[P.length - 21].x, P[P.length - 21].y); v.pv = { ...v.w }; } }   /* 3D.158 owner (Noah sliding): the newcomer walks at an ordinary pace now, so he starts on the highway about 20 tiles out (about half a minute) instead of jogging in from the map's edge */
+  v.quirk = newcomerQuirk(v);
   radio('dj', rLine('guest'), { key: 'guest', act: () => { if (guest && guest.w) centerOn(guest.w.x, guest.w.y); } });
 }
+/* 3D.160 the UX study: every newcomer has one thing you remember them by (a fact, sometimes a name you know) */
+function newcomerQuirk(v) {
+  const other = S.sv.length ? S.sv[Math.floor(rnd() * S.sv.length)].name : null;
+  const L = ['Afraid of the dark', 'Hums while working', 'Ex mail carrier: knows every road', 'Cannot cook, will not stop trying', 'Talks to the chickens', 'Collects bottle caps', 'Sleeps with boots on', 'Tells terrible jokes', 'Writes everything down', 'Up before dawn, every day'];
+  if (other) L.push(`Knows ${other} from before`, `Owes ${other} a sandwich`);
+  return L[Math.floor(rnd() * L.length)];
+}
+const HELP_FOOD = 3;
 function guestAsk(v) {
   const name = v.name, job = v.job, lv = v.l; centerOn(v.w.x, v.w.y, Math.max(cam.z, 1.5));
-  showEventPopup({ live: v, short: `${fullName(v)} wants in`, chips: [job + ' Lv.' + lv].concat(TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : []), title: 'NEWCOMER',
-    buttons: [{ label: 'Welcome', fn: () => { guest = null; S.arrivalClock = 0; v.guest = false; v.mode = 'free'; v.stateTicks = 80; v.faceW = null; v.i = S.sv.length; S.sv.push(v); say(name + ' joined the Haven!', true); if (!bark(v, 'newcomer', {}, { pri: 2 })) emote(v, '😊', 120, true); barkSomeone('welcome', { other: name }, { pri: 2 }, v.w, v); logEvent(`${name} (${job} Lv.${lv}) joined the Haven.`, 'important'); ui(); } },
+  showEventPopup({ live: v, short: `${fullName(v)} wants in`, chips: [job + ' Lv.' + lv].concat(TRAITS[v.trait] ? [TRAITS[v.trait].icon + ' ' + TRAITS[v.trait].name] : [], v.quirk ? ['💬 ' + v.quirk] : []), title: 'NEWCOMER',
+    buttons: [{ label: 'Welcome', fn: () => { guest = null; S.arrivalClock = 0; v.guest = false; v.mode = 'free'; v.stateTicks = 80; v.faceW = null; v.i = S.sv.length; S.sv.push(v); say(name + ' joined the Haven!', true); if (!bark(v, 'newcomer', {}, { pri: 2 })) emote(v, '😊', 120, true); barkSomeone('welcome', { other: name }, { pri: 2 }, v.w, v); logEvent(`${name} (${job} Lv.${lv}) joined the Haven.${v.quirk ? ' ' + v.quirk + '.' : ''}`, 'important'); ui(); } },
+      { label: `Give food (${HELP_FOOD} 🍖)`, disabled: S.food < HELP_FOOD, fn: () => { S.arrivalClock = 0; S.food -= HELP_FOOD; v.mode = 'leave'; v.path = null; v.faceW = null; emote(v, '😊', 120, true); renownGain(2, 'helped ' + name); logEvent(`${name} got food for the road and walked on, grateful. +2 Renown.`, 'routine'); say(name + ' waves thanks and walks on.', true); ui(); } },   /* 3D.160 the UX study: saying no does not have to be cruel */
       { label: 'Turn away', fn: () => { S.arrivalClock = 0; v.mode = 'leave'; v.path = null; v.faceW = null; logEvent(`${name} was turned away at the gate.`, 'routine'); say(name + ' walks off.', true); ui(); } }] });
 }
 function guestTick() {
@@ -4243,8 +4253,9 @@ function showMore() {
   endBuildMode(true); closeP(); const I = (n) => (window.ZHIcons ? ZHIcons.svg(n, 30) : '');
   $('ib').innerHTML = `<button class="moreRow" id="moGuide"><span class="moI">${I('guide')}</span><span class="moT"><b>Guide</b><small>Goals, how things work, the story so far</small></span><span class="moA">›</span></button>`
     + `<button class="moreRow" id="moJobs"><span class="moI">${I('worker')}</span><span class="moT"><b>Jobs</b><small>Who does what, promotions</small></span><span class="moA">›</span></button>`
+    + `<button class="moreRow" id="moLog"><span class="moI">📜</span><span class="moT"><b>Event log</b><small>Every message, news line and radio call, including the ones you missed</small></span><span class="moA">›</span></button>`
     + `<button class="moreRow" id="moSet"><span class="moI">${I('parts')}</span><span class="moT"><b>Settings</b><small>Save, sound, event log, tips, main menu</small></span><span class="moA">›</span></button>`;
-  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore);
+  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore); $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; };
   showPanel('MORE');
 }
 const DAYMUS = { mix: ['Mix', 'A different tune each day'], slow: ['Slow mix', 'Only the slow, calm tracks'], calm: ['Calm', 'Slow guitar, piano and strings'], hearth: ['Hearth', 'Slow fingerpicking and cello'], strum: ['Strum', 'Lively strummed guitar, cajon and shaker'], travis: ['Picking', 'Bright fingerstyle guitar with claps'], western: ['Western', 'Galloping guitar, whistle and trumpet'], jig: ['Jig', 'Celtic fiddle, guitar and drum'], rag: ['Honky-tonk', 'Old saloon piano'], day: ['Folk', 'Guitar picking and a whistle'], lounge: ['Lounge', 'Retro 50s swing: vibes, walking bass, brushes'], porch: ['Porch', 'Banjo, boom-chick guitar and harmonica'] };   /* 3D.51 */
@@ -6636,7 +6647,20 @@ function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two si
 }
 /* 3D.159 owner: People, Build, Town and a survivor's details pause the game (a "Paused" chip shows); map pop-ups, news and the radio do not */
 let menuEl = null; const menuPaused = () => { if (!menuEl) menuEl = typeof document !== 'undefined' && document.getElementById('infoPanel'); return !!(menuEl && menuEl.classList.contains('show')); };
-function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
+/* 3D.160 the UX study: nights never become waiting. Once every walker is down, a "Skip to dawn" button fast-forwards to 06:00;
+   it stops at once if anything turns up (walkers, a raid, an emergency). Before the last of the night's three waves it is
+   "Fast-forward to the next wave" and stops when that wave arrives. */
+let skipping = null;
+const nightClear = () => isNight() && !S.finale && !S.trip && !S.z.some((z) => z.hp > 0 && !z.human) && ![...alerts.values()].some((a) => !a.dismissed);
+function skipDawnTick() {
+  if (typeof document === 'undefined') return; const w = nStack('nBot'); if (!w) return; let b = $('skipDawn');
+  if (skipping && (!isNight() || S.z.some((z) => z.hp > 0 && !z.human) || modalOpen)) { simSpeed = skipping.sp; $('btnSpeed').textContent = simSpeed + '×'; skipping = null; }
+  const show = !skipping && nightClear() && S.hour !== 5, last = nightWave() === 2 && (S.nightSpawned || 0) >= Math.round((S.nightCap || 0) * NIGHT_WAVES.reduce((a, b) => a + b, 0));   /* nights come in three waves (20:00, 23:00, 02:00) */
+  if (!b && show) { b = document.createElement('button'); b.id = 'skipDawn'; b.className = 'skipDawn'; w.appendChild(b);
+    b.onclick = (e) => { e.stopPropagation(); if (!nightClear()) return; skipping = { sp: simSpeed }; simSpeed = 30; b.style.display = 'none'; }; }
+  if (b) { b.style.display = show ? '' : 'none'; const t = last ? '⏩ Skip to dawn' : '⏩ Fast-forward to the next wave'; if (b.textContent !== t) b.textContent = t; }
+}
+function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */

@@ -411,3 +411,5 @@ html.shortScr #nBot .radioCard .rcT small { display: none; }
 /* finger-sized taps at every scale: a button drawn at --u never ends up under 44 px */
 html.glass #bottom .bb, html.glass #bottom button { min-width: calc(44px / var(--u)); min-height: calc(44px / var(--u)); }
 html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }   /* the Renown chip stays slim but its tap area is 44 px tall */
+/* 3D.160 "Skip to dawn": sits on top of the bottom layer once the night is clear */
+#nBot .skipDawn { order: 0; pointer-events: auto; min-height: 44px; padding: 10px 18px; border-radius: 22px; border: 1px solid rgba(140, 170, 255, .5); background: rgba(18, 28, 60, .85); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
