@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.158', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.159', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -81,7 +81,18 @@ function resize() {
   const r = worldEl.getBoundingClientRect(); DPR = Math.min(window.devicePixelRatio || 1, 2); VW = Math.max(50, r.width); VH = Math.max(50, r.height);
   cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); clampCam();
 }
-window.addEventListener('resize', () => { resize(); layoutTop(); });
+/* 3D.159 owner (UI check): one size rule for the whole HUD. Everything on top of the map is drawn at --u times its phone size, worked out from
+   the game's phone-shaped column: 390 px wide is 1, a small phone shrinks a little, a tablet or a computer window grows a little (0.85 .. 1.2). A phone on its side gets
+   the compact layout (html.shortScr) instead of shrinking further. */
+let UI_U = 1;
+function uiScale() {
+  const a = typeof document !== 'undefined' && document.getElementById('app'); if (!a) return; const r = a.getBoundingClientRect(); if (!r.width || !r.height) return;
+  UI_U = Math.round(Math.max(.85, Math.min(1.2, r.width / 390, r.height / 700)) * 100) / 100;   /* never below .85: buttons stay at least 44 px */
+  document.documentElement.style.setProperty('--u', UI_U); document.documentElement.classList.toggle('shortScr', r.height < 560);   /* a phone on its side */
+}
+uiScale();
+window.addEventListener('resize', () => { uiScale(); resize(); layoutTop(); });
+if (typeof ResizeObserver !== 'undefined' && document.getElementById('app')) new ResizeObserver(() => { const u = UI_U; uiScale(); if (u !== UI_U) layoutTop(); }).observe(document.getElementById('app'));   /* the column can change size after the window's resize event (address bar, rotation) */
 
 /* ---------------- ground layer: true pixel art, one art pixel = one character pixel (docs/ART_STANDARD.md) ----------------
    Tile = APX x APY art px (42 x 28, the 2:3 projection). Grass and roads are generated pixel by pixel into one native-size
@@ -976,7 +987,7 @@ const fixCost = (b) => (b.burnt ? repairCost(b) : repCostFrac(b, (1 - bHp(b) / b
 function repStep(b) {   // the material for the next 12 HP patch: whichever of the building's materials is least used so far
   const m = repMix(b), u = b.repUse || (b.repUse = {}); return Object.keys(m).sort((x, y) => (u[x] || 0) / m[x] - (u[y] || 0) / m[y])[0]; }
 function hitBuilding3(b, dmg, by) {
-  if (!b || b.burnt) return; bHp(b); dmg = Math.max(1, Math.round(dmg)); b.hp = Math.max(0, b.hp - dmg); b.hitT = 12; b.lastHit = tick; floats.push({ w: { x: b.x + b.w / 2 + (rnd() - .5) * .6, y: b.y + b.h / 2 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); if (tick % 3 === 0) SFX('hit');
+  if (!b || b.burnt) return; bHp(b); dmg = Math.max(1, Math.round(dmg)); if (S.nightLog && isNight()) S.nightLog.dmg += Math.min(dmg, b.hp); b.hp = Math.max(0, b.hp - dmg); b.hitT = 12; b.lastHit = tick; floats.push({ w: { x: b.x + b.w / 2 + (rnd() - .5) * .6, y: b.y + b.h / 2 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); if (tick % 3 === 0) SFX('hit');
   if (occupied(b) && tick - (b.sosT || -9999) > 900) { b.sosT = tick; const q = S.sv.find((x) => insideBuilding(x) === b); note('critical', `🆘 SOS from the ${DEFS[b.type].name}`, { key: 'sos' + b.x + ',' + b.y, icon: '🆘', log: `${q ? q.name : 'Someone'} is trapped in the ${DEFS[b.type].name} while ${by} breaks in. Fighters are answering.`, at: () => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 }), live: () => tick - b.lastHit < 300, threats: true }); }
   if (b.hp < b.max * .3) for (const q of S.sv) if (q.mode === 'hiding' && q.hideAt === b) slipOut(q, b);   /* 3D.48; 3D.64 balance study: a big hit that took a building from above 30% straight to 0 threw the people hiding inside out among the zombies (the commonest way to go down); now they slip out first */
   if (b.hp <= 0) wreck(b, by);
@@ -1125,16 +1136,16 @@ function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: t
   const lines = (Array.isArray(text) ? text : [text]).filter(Boolean); text = lines.join(' ');
   const V = RADIO_V[voice] || RADIO_V.dj; logEvent(`📻 ${V.name}: ${text}`, o.level || 'routine');
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
-  radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null }); if (radioQ.length > 3) radioQ.shift(); radioNext();
+  radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null, urgent: o.urgent || o.level === 'important' || o.level === 'critical' }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
 function radioNext() {
-  if (radioOn || !radioQ.length) return; const w = $('world'); if (!w) return; const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c;
-  let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); }
-  const tap = c.more || c.act;
+  if (radioOn || !radioQ.length) return; const w = nStack('nBot'); if (!w) return; if (cardOpen() || (!radioQ[0].urgent && fightOn())) { clearTimeout(radioNext.wt); radioNext.wt = setTimeout(radioNext, 800); return; }   /* 3D.159 the radio waits while a card is open, and ordinary chatter waits out a fight */ const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c; radioLast = c; radioBtn();
+  let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); } else if (el.parentElement !== w) w.appendChild(el);
+  const tap = true;   /* 3D.159 the card shows 2 lines: a tap always opens the full words (or the action) */
   el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
   el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}`;
   const close = () => { clearTimeout(radioNext.t); clearTimeout(radioNext.ty); el.classList.remove('in', 'talk'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
-  el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else if (c.more) showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more }); };
+  el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text) }); };
   requestAnimationFrame(() => el.classList.add('in')); SFX('radio');
   /* 3D.147 owner: the words come out in order, as if someone is talking, not all at once. Each line types out word by word, a breath between lines */
   const box = el.querySelector('.rcT b'), lines = c.lines && c.lines.length ? c.lines : [c.text], quiet = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1148,11 +1159,42 @@ function radioNext() {
     if (k >= toks.length) { done(); return; } radioNext.ty = setTimeout(step, 45); };
   radioNext.ty = setTimeout(step, 45);   /* a moment of static first */
 }
+/* 3D.159 the UX study: the night ends with ONE morning card (walkers stopped, damage, who is hurt, who was lost or arrived)
+   instead of scattered messages. Facts first, the joke last. */
+function nightStart() { S.nightLog = { day: S.day, kills: S.kills || 0, dmg: 0, ids: S.sv.map((q) => q.id) }; }
+function morningCard() {
+  const L = S.nightLog; S.nightLog = null; if (!L || S.cut || titleOn) return;
+  const k = (S.kills || 0) - L.kills, ids = new Set(S.sv.map((q) => q.id)), lost = L.ids.length - L.ids.filter((i) => ids.has(i)).length;
+  const joined = S.sv.filter((q) => !L.ids.includes(q.id)).map((q) => q.name), hurt = S.sv.filter((q) => q.hp < q.max * .6).map((q) => q.name);
+  const dmgB = world.buildings.filter((b) => b.max && b.hp < b.max).length;
+  const rows = [`🧟 Walkers stopped: ${k}`, `🏚 Buildings damaged: ${dmgB}${L.dmg ? ` (${L.dmg} damage)` : ''}`, `🩹 Hurt: ${hurt.length ? hurt.join(', ') : 'nobody'}`];
+  if (lost) rows.push(`🕯 Lost: ${lost}`); if (joined.length) rows.push(`👋 Joined: ${joined.join(', ')}`);
+  const quip = lost ? 'We light a candle and get back to work.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : dmgB ? 'Grab a hammer, the fence has opinions.' : 'Not a scratch. The coffee is still terrible.';
+  showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
+}
+let radioLast = null;
+const fightOn = () => S.z.some((z) => z.hp > 0 && !z.human && z.target && z.mode !== 'zleave');
+function radioBtn() {   /* 3D.159 a small radio under the ⚠ button: plays the DJ's last message again */
+  if (typeof document === 'undefined') return; const w = $('world'); if (!w || !radioLast) return; let b = $('radioBtn');
+  if (!b) { b = document.createElement('button'); b.id = 'radioBtn'; b.className = 'alertBtn radioBtn'; b.title = 'Play the last radio message again'; b.innerHTML = `<span class="abI">${window.ZHIcons ? ZHIcons.svg('radio', 28) : '📻'}</span>`; w.appendChild(b);
+    b.onclick = (e) => { e.stopPropagation(); if (radioOn || !radioLast) return; radioQ.unshift({ ...radioLast, urgent: true, key: null }); radioNext(); }; }
+  b.style.display = 'flex'; alertHub();
+}
 function radioHour() {   /* the morning show (08:00) and the sign-off at dusk (19:00) */
   if (S.hour === 8 && S.day > 1) { const t = OPTS.advisor && !S.introOff ? advisorTips()[0] : null; radio('dj', rLine('morning', { day: S.day }) + (t ? ` ${rLine('tip')} ${t.text.charAt(0).toLowerCase() + t.text.slice(1)}.` : ''), { key: 'morning', act: t && t.act ? t.act : null }); }
   if (S.hour === 19) radio('dj', rLine('dusk'), { key: 'dusk' });
 }
-function say(t, log = false) { if (log) logEvent(t, 'important'); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
+/* 3D.159 owner (UI check: the radio, the speech line and the top notifications overlapped): two layers that stack their messages instead of
+   each one sitting at its own fixed spot. nTop hangs under the Mission / Day row (the small news, newest on top, two at a time);
+   nBot sits on the tab bar (the radio card, then the speech line and the requests above it), so they push each other up and never overlap. */
+function cardOpen() { try { return modalOpen && !($('eventModal') || {}).classList?.contains('live'); } catch (e) { return false; } }
+function nStack(id) {
+  if (typeof document === 'undefined') return null; let e = $(id); if (e) return e; const w = $('world'), fx = $('fx'); if (!w || !fx) return null;
+  e = document.createElement('div'); e.id = id; e.className = 'nStack';
+  if (id === 'nTop') fx.appendChild(e); else { w.appendChild(e); for (const k of ['requestBox', 'say']) { const c = $(k); if (c) e.appendChild(c); } }
+  return e;
+}
+function say(t, log = false) { nStack('nBot'); if (log) logEvent(t, 'important'); const e = $('say'); e.textContent = t; e.style.opacity = 1; clearTimeout(say.t); say.t = setTimeout(() => (e.style.opacity = 0), 1700); }
 function screenToast(t, log) { note('important', t, log ? { log } : {}); }
 function renownGain(n, why = '') { if (!isFinite(n)) n = 0; if (!isFinite(S.ren)) S.ren = 0; S.ren += n; const el = $('ren'); if (el) { el.parentElement.classList.remove('renFlash'); void el.offsetWidth; el.parentElement.classList.add('renFlash'); } note(n >= 5 ? 'important' : 'routine', `★ RENOWN +${n}${why ? ' · ' + why : ''}`); ui(); }   /* V2.34: small gains only flash the Renown wheel and go to the log */
 /* ---------------- V2.34 notifications: three levels ----------------
@@ -1161,7 +1203,7 @@ function renownGain(n, why = '') { if (!isFinite(n)) n = 0; if (!isFinite(S.ren)
  *             optional "drop to 1x speed" on the first emergency (Event log → settings).
  * important : one banner at a time (queued, never overlapping), and the event log.
  * routine   : event log only (plus floating text in the world when it has a place). */
-const alerts = new Map(); let bannerQ = [], bannerOn = false, lastSlow = -1e9; const lastBanner = new Map();
+const alerts = new Map(); let bannerQ = [], bannerOn = null, lastSlow = -1e9; const lastBanner = new Map();
 const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, advisor: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); if (!OPTS.v313) { OPTS.autoSlow = false; OPTS.v313 = 1; localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } } catch (e) { /* private mode */ }   /* V3D.13: emergencies no longer drop the speed to 1x (owner's request); the Log panel still has the switch */
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
@@ -1171,28 +1213,42 @@ function note(level, text, o = {}) {
   if (level === 'important') { banner(o.banner || text, o.who); return; }
   const key = o.key || text, a = alerts.get(key);
   if (a) { a.text = text; if (o.at) a.at = o.at; renderAlerts(); return; }
-  const first = ![...alerts.values()].some((q) => !q.dismissed);
+  const first = ![...alerts.values()].some((q) => !q.dismissed); critStrip(text, o.icon || '⚠');
   alerts.set(key, { key, text, icon: o.icon || '⚠', at: o.at || null, live: o.live || null, dyn: o.dyn || null, acts: o.acts || [], threats: !!o.threats, t0: tick, ttl: o.ttl || 0, seen: performance.now() });
   { const a2 = alerts.get(key); if (a2.dyn) try { a2.text = a2.dyn(); } catch (e) { /* keep the first text */ } }
   if (first && OPTS.autoSlow && simSpeed > 1 && performance.now() - lastSlow > 60000) { lastSlow = performance.now(); simSpeed = 1; $('btnSpeed').textContent = '1×'; banner('⏸ Back to 1× speed: emergency'); }
   renderAlerts();
 }
+/* 3D.159 owner + the UX study: every message has a priority and a home.
+   critical  -> a red strip under the top bar for 3 s, then it folds into the ⚠ button's count (one strip; more fold in as "+N more")
+   news      -> ONE pill under the Mission / Day row; repeats of the same news merge into "×N" instead of queueing up
+   DJ / tips -> the radio card on the tab bar (2 lines, tap for the full words); ordinary chatter waits while walkers are in town
+   tap feedback (say) -> a short line just above the radio card.  Anything that misses its turn is still in the event log. */
+function critStrip(text, icon) {
+  if (typeof document === 'undefined' || S.cut || titleOn) return; const top = nStack('nTop'); if (!top) return;
+  let el = $('critStrip'); if (!el) { el = document.createElement('div'); el.id = 'critStrip'; el.className = 'critStrip'; top.prepend(el); }
+  if (el.classList.contains('in')) { el.dataset.more = (+el.dataset.more || 0) + 1; el.querySelector('.csM').textContent = `+${el.dataset.more} more`; }
+  else { el.dataset.more = 0; el.innerHTML = `<span class="csI">${esc(icon)}</span><span class="csT">${esc(String(text).replace(/^[^\w]+/u, ''))}</span><span class="csM"></span>`; el.classList.add('in'); }
+  clearTimeout(critStrip.t); critStrip.t = setTimeout(() => el.classList.remove('in'), 3000);
+}
+const newsKey = (t) => (typeof t === 'object' ? t.t : t).replace(/[\d,.]+/g, '#').toLowerCase();
 function banner(t, who) {
   if ((who)) t = { t, who };
-  const now = performance.now(); if (typeof t === 'object') { bannerQ.push(t); if (bannerQ.length > 4) bannerQ.shift(); nextBanner(); return; } if (now - (lastBanner.get(t) || -1e9) < 8000 || bannerQ.includes(t)) return; lastBanner.set(t, now);
-  if (lastBanner.size > 80) lastBanner.clear(); bannerQ.push(t); if (bannerQ.length > 4) bannerQ.shift(); nextBanner();
+  const k = newsKey(t);
+  if (bannerOn && bannerOn.k === k) { bannerOn.n++; bannerOn.show(t); return; }   /* the same news again while it is showing: count it */
+  const q = bannerQ.find((x) => x.k === k); if (q) { q.t = t; q.n++; return; }
+  bannerQ.push({ t, k, n: 1 }); if (bannerQ.length > 4) bannerQ.shift(); nextBanner();
 }
 function nextBanner() {
-  const fx = $('fx'); if (bannerOn || !bannerQ.length || !fx) return; const t = bannerQ.shift(); bannerOn = true;
-  const d = document.createElement('div'); d.className = 'toast';
-  {   /* V3D.12 portrait pop: a round picture (the person, or the message's icon) and a few words */
+  const fx = nStack('nTop'); if (bannerOn || !bannerQ.length || !fx) return; if (cardOpen()) { clearTimeout(nextBanner.wt); nextBanner.wt = setTimeout(nextBanner, 600); return; }   /* news waits while a card is open */
+  const q = bannerQ.shift(), d = document.createElement('div'); d.className = 'toast pop';
+  const show = (t) => {   /* V3D.12 portrait pop: a round picture (the person, or the message's icon) and a few words */
     const who = typeof t === 'object' ? t.who : null, txt = typeof t === 'object' ? t.t : t, m = txt.match(/^\s*(\p{Extended_Pictographic}\uFE0F?|[☠★⚠⚙⏸🕯])\s*/u), icon = m ? m[1] : '📣';
     let body = m ? txt.slice(m[0].length) : txt; if (body === body.toUpperCase() && /[A-Z]{3}/.test(body)) body = body.charAt(0) + body.slice(1).toLowerCase();
-    const pic = who && window.ZH3D && ZH3D.portrait ? ZH3D.portrait(who) : null; d.className = 'toast pop';
-    d.innerHTML = `<div class="pp">${pic ? `<img src="${pic}" alt="">` : icon}</div><div class="pt">${esc(body)}</div>`;
-  }
-  fx.appendChild(d);
-  setTimeout(() => { d.remove(); bannerOn = false; nextBanner(); }, d.classList.contains('pop') ? 2400 : 1700);
+    const pic = who && window.ZH3D && ZH3D.portrait ? ZH3D.portrait(who) : null;
+    d.innerHTML = `<div class="pp">${pic ? `<img src="${pic}" alt="">` : icon}</div><div class="pt">${esc(body)}</div>${on.n > 1 ? `<b class="pn">×${on.n}</b>` : ''}`;
+    clearTimeout(on.t); on.t = setTimeout(() => { d.classList.add('out'); setTimeout(() => { d.remove(); bannerOn = null; nextBanner(); }, 300); }, bannerQ.length ? 1900 : 2600); };
+  const on = bannerOn = { k: q.k, n: q.n, show }; fx.appendChild(d); show(q.t);
 }
 function alertsTick() {   // every half second of game time: drop resolved alerts, refresh live text
   let ch = false;
@@ -1223,7 +1279,7 @@ function alertHub() {
   if (!b) { b = document.createElement('button'); b.id = 'alertBtn'; b.className = 'alertBtn'; b.innerHTML = `<span class="abI">${window.ZHIcons ? ZHIcons.svg('warn', 34) : '⚠'}</span><b class="abN"></b>`; w.appendChild(b); b.onclick = (e) => { e.stopPropagation(); hubOpen = !hubOpen; alertHub(); }; }
   const L = hubItems(), n = L.length, fresh = L.some((q) => !hubSeen.has(q.key)), urgent = L.some((q) => q.urgent);
   b.style.display = n ? 'flex' : 'none'; b.querySelector('.abN').textContent = n; b.classList.toggle('flash', fresh && !hubOpen); b.classList.toggle('urgent', urgent);
-  { const q = $('quest'), wr = w.getBoundingClientRect(); if (q) b.style.top = Math.round(q.getBoundingClientRect().bottom - wr.top + 10) + 'px'; }
+  { const q = $('quest'), wr = w.getBoundingClientRect(); if (q) b.style.top = Math.round((q.getBoundingClientRect().bottom - wr.top + 10) / UI_U) + 'px'; const rb = $('radioBtn'); if (rb) rb.style.top = ((parseInt(b.style.top) || 120) + (n ? 64 : 0)) + 'px'; }
   let pop = $('alertPop'); if (!hubOpen || !n) { if (pop) pop.remove(); if (!n) hubOpen = false; return; }
   for (const q of L) hubSeen.add(q.key);
   if (!pop) { pop = document.createElement('div'); pop.id = 'alertPop'; pop.className = 'alertPop'; w.appendChild(pop); pop.onclick = (e) => e.stopPropagation(); }
@@ -3617,7 +3673,7 @@ function advisorTips() {
 function layoutTop() {   // the left menu and the alerts sit just under the plaque, whatever its height
   const pl = $('plaque'), w = $('world'); if (!pl || !w) return; const y = Math.round(pl.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6);
   for (const id of GLASS ? ['alerts'] : ['lmenu', 'alerts']) { const e = $(id); if (e && e.style.top !== y + 'px') e.style.top = y + 'px'; }   /* 3D.28 Glass: the menu is the bottom tab bar */
-  if (GLASS) { const ck = $('clock'), y2 = ck ? Math.round(ck.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6) : y, g = $('gauge'), h = $('btnHome'), bt = $('bottom'); if (g) g.style.top = y2 + 'px'; if (h) h.style.top = (y2 + 44) + 'px'; if (bt && !HUD_B) bt.style.top = (y2 + 102) + 'px'; }   /* the right column hangs off the clock card, so tips and notifications under the mission card never push it down */
+  if (GLASS) { const ck = $('clock'), y2 = ck ? Math.round(ck.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 6) : y, g = $('gauge'), h = $('btnHome'), bt = $('bottom'); const U = UI_U; if (g) g.style.top = Math.round(y2 / U) + 'px'; if (h) h.style.top = Math.round(y2 / U + 44) + 'px'; if (bt && !HUD_B) bt.style.top = Math.round(y2 / U + 102) + 'px'; { const nt = nStack('nTop'); if (nt && g) nt.style.top = Math.round((g.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 8) / U) + 'px'; }   /* 3D.159 the news hangs just under the Renown chip, however tall the clock is */ if (bt && HUD_B) bt.style.setProperty('top', Math.round(Math.max(y2 / U + 50, w.getBoundingClientRect().height * .44 / U - bt.offsetHeight / 2)) + 'px', 'important'); }   /* 3D.159 the dock stays at mid-height, but never above the bottom of the Renown chip (it covered Renown on a short screen) */   /* 3D.159 these are drawn at --u: their top is in their own pixels */   /* the right column hangs off the clock card, so tips and notifications under the mission card never push it down */
 }
 function advisorUpdate() {
   if (GLASS) { const e0 = $('adv'); if (e0) e0.style.display = 'none'; alertHub(); return; }
@@ -4161,6 +4217,9 @@ function ui() {
   { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) rr.textContent = ['cloth', 'meds', 'fuel'].map((k) => Math.floor(S[k] || 0)).join('·'); ammoChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = 'Lv ' + (S.lvl || 1); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   { const mb = $('mExp'); if (mb) { leadsTidy(); const n = (S.leads || []).length; mb.classList.toggle('dim', !n && !S.trip); mb.dataset.badge = !S.trip && n ? n : ''; } }
   $('clock').textContent = (`${S.weather ? WX_ICON[S.weather.kind] || "🌧" : seasonOf().icon} DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`);
+  {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
+    const ck = $('clock'), h = S.hour, sub = h >= 17 && h < 20 ? `🌙 Night in ${20 - h}h` : isNight() ? `☀ Dawn in ${(30 - h) % 24}h` : '', ph = h === 19 ? 'dusk' : isNight() ? 'night' : '';
+    if (ck.dataset.sub !== sub || ck.dataset.ph !== ph) { const re = !ck.dataset.sub !== !sub; ck.dataset.sub = sub; ck.dataset.ph = ph; if (re) requestAnimationFrame(layoutTop); } }
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 
@@ -6564,7 +6623,7 @@ function simTick() { Wd.touch();
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */
   if (tick % 60 === 40) helpTick();
-  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); radioHour(); foundryHour(); facHour(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); advisorUpdate(); eventSchedule(); radioHour(); foundryHour(); facHour(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour === 20) nightStart(); if (S.hour === 6) morningCard(); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
@@ -6575,7 +6634,9 @@ function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two si
   for (const o of movers()) { const p = o.pv; if (!p || !o.w) continue; const dx = o.w.x - p.x, dy = o.w.y - p.y; if (Math.abs(dx) + Math.abs(dy) > 1.2 || (!dx && !dy)) continue; moved.push([o, o.w]); o.w = { x: p.x + dx * alpha, y: p.y + dy * alpha }; }
   try { draw(); } finally { for (const [o, w] of moved) o.w = w; }
 }
-function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
+/* 3D.159 owner: People, Build, Town and a survivor's details pause the game (a "Paused" chip shows); map pop-ups, news and the radio do not */
+let menuEl = null; const menuPaused = () => { if (!menuEl) menuEl = typeof document !== 'undefined' && document.getElementById('infoPanel'); return !!(menuEl && menuEl.classList.contains('show')); };
+function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; while (acc >= STEP && n < 12) { simTick(); acc -= STEP; n++; } if (n === 12) acc = 0; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */

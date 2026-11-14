@@ -349,3 +349,65 @@ html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { dis
 /* 3D.152 gear test on the map */
 #gearMap .gtabs { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 6px; } #gearMap .gt { flex: none; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); color: #fff; font: 800 12px Manrope, sans-serif; } #gearMap .gt.on { background: #C6FF4D; color: #14200A; border-color: #C6FF4D; }
 #gearMap .zbtns .act { font-size: 12px; padding: 0 6px; min-height: 38px; }
+
+/* ---------------- 3D.159 owner's UI check + the UX study: one size rule, and every message in its own layer ----------------
+   --u (set by uiScale in game.js from the phone-shaped column: 390 px wide = 1, .85 on a small phone, up to 1.2 on a big window)
+   scales everything that sits on the map, so the HUD keeps the same share of the screen on every phone, tablet and computer. */
+:root { --u: 1; }
+html.glass #plaque, html.glass #gauge, html.glass #btnHome, html.glass #bottom, html.glass #lmenu, .alertBtn, .alertPop, #nTop, #nBot, #zoom, #pausedChip { zoom: var(--u); }
+/* the speed / camera dock: layoutTop keeps it at mid-height but never above the bottom of the Renown chip */
+html.glass #bottom { transform: none; }
+
+/* top layer, under the Mission / Day row: the red strip for emergencies, then ONE news pill */
+#nTop { position: absolute; left: 74px; right: 74px; top: calc(env(safe-area-inset-top) + 152px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.critStrip { order: 0; display: none; align-items: center; gap: 8px; width: 100%; max-width: 360px; padding: 9px 12px; border-radius: 14px; background: rgba(150, 28, 24, .92); border: 1px solid rgba(255, 140, 120, .55); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
+.critStrip.in { display: flex; animation: nIn .3s cubic-bezier(.3, 1.4, .5, 1) both; }
+.critStrip .csI { font-size: 18px; } .critStrip .csT { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; } .critStrip .csM { font-size: 12px; opacity: .85; white-space: nowrap; }
+html.cozy #fx #nTop .toast.pop { order: 1; position: relative; left: auto; top: auto; transform: none; max-width: 100%; animation: nIn .3s cubic-bezier(.3, 1.4, .5, 1) both; }
+html.cozy #fx #nTop .toast.pop.out { animation: nOut .3s ease-in forwards; }
+html.cozy #fx #nTop .toast.pop .pt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }   /* up to two lines instead of cutting the news off */
+#nTop .toast .pn { margin-left: 6px; padding: 1px 7px; border-radius: 10px; background: rgba(255, 255, 255, .18); font-size: 12px; }
+@keyframes nIn { from { transform: translateY(-12px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes nOut { to { transform: translateY(-8px); opacity: 0; } }
+
+/* bottom layer, on the tab bar: the radio card, with the tap-feedback line and requests stacked above it */
+#nBot { position: absolute; z-index: 12; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 112px); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+#nBot > * { pointer-events: auto; }
+#nBot #requestBox { order: 1; width: 100%; } #nBot #say { order: 2; } #nBot .radioCard { order: 3; }
+#nBot #requestBox:empty { display: none; }
+#nBot .request { position: relative; left: auto; right: auto; bottom: auto; }
+html.glass #nBot #say { position: relative; left: auto; bottom: auto; transform: none; max-width: 92%; pointer-events: none; }
+#nBot .radioCard { position: relative; left: auto; bottom: auto; width: 100%; max-width: 400px; transform: translateY(18px); }
+#nBot .radioCard.in { transform: none; }
+#nBot .radioCard:not(.in) { position: absolute; bottom: 0; }   /* a closed card takes no room */
+/* two lines; while the DJ talks the newest words stay in view (older ones scroll up), a tap opens the full message */
+#nBot .radioCard .rcT b { display: flex; flex-direction: column; justify-content: flex-end; max-height: calc(2 * 1.25em); overflow: hidden; }
+#nBot .radioCard .rcT b .rcL { display: inline; }
+#nBot .radioCard .rcT b { display: block; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#nBot .radioCard.talk .rcT b { display: flex; -webkit-line-clamp: none; }
+/* the replay radio under the ⚠ button */
+.radioBtn { width: max(46px, calc(44px / var(--u))); height: max(46px, calc(44px / var(--u))); left: 16px; z-index: 25; }
+.radioBtn .abI { display: grid; place-items: center; }
+html.shView .radioBtn, #app.cutMode .radioBtn, #app.titleMode .radioBtn { display: none !important; }
+
+/* a card (tip, newcomer, event) is on top of everything: the radio and the news wait underneath and carry on when it closes */
+#app:has(#eventModal .evBox:not(.liveCard)) #nBot .radioCard, #app:has(#eventModal .evBox:not(.liveCard)) #nTop { opacity: 0 !important; pointer-events: none; }
+
+/* the clock chip: "Night in 3h" from 17:00, amber at dusk, blue at night */
+html.glass #quest b#clock[data-sub]:not([data-sub=""])::after { content: attr(data-sub); display: block; margin-top: 2px; font-size: 11px; font-weight: 800; letter-spacing: .02em; opacity: .9; }
+html.glass #quest b#clock[data-ph="dusk"] { background: rgba(120, 72, 10, .72); border-color: rgba(255, 190, 90, .7); }
+html.glass #quest b#clock[data-ph="dusk"]::after { color: #ffd27a; }
+html.glass #quest b#clock[data-ph="night"] { background: rgba(18, 28, 60, .72); border-color: rgba(140, 170, 255, .45); }
+
+/* menus pause the game */
+#pausedChip { position: absolute; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top) + 60px); translate: -50% 0; display: none; align-items: center; gap: 4px; padding: 5px 10px; white-space: nowrap; border-radius: 14px; background: rgba(16, 22, 28, .82); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: .06em; pointer-events: none; }
+body:has(#infoPanel.show) #pausedChip { display: flex; }
+
+/* a phone on its side (short screen): a slimmer HUD instead of a smaller one; cards scroll and keep their buttons on screen */
+html.shortScr.glass .evBox:not(.liveCard) { top: 8px !important; bottom: auto; max-height: calc(100% - 16px) !important; overflow: auto; }
+html.shortScr #nTop { top: calc(env(safe-area-inset-top) + 112px); }
+html.shortScr #nBot { bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); }
+html.shortScr #nBot .radioCard .rcT small { display: none; }
+/* finger-sized taps at every scale: a button drawn at --u never ends up under 44 px */
+html.glass #bottom .bb, html.glass #bottom button { min-width: calc(44px / var(--u)); min-height: calc(44px / var(--u)); }
+html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }   /* the Renown chip stays slim but its tap area is 44 px tall */
