@@ -1761,6 +1761,11 @@ let INK = (() => { const q = new URLSearchParams(location.search).get('ink'); if
 let inkRT = null, nrmRT = null;
 const inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), inkScene = new THREE.Scene();
 const nrmMat = new THREE.MeshNormalMaterial();
+/* 3D.157 people and walkers (the skinned models) mark themselves in the alpha of the normals pass and get no crease lines, only the outline:
+   gear sits tight on the body and its pieces cut through the skin, and every cut drew a short ink stroke (the speckle "noise" on armour) */
+nrmMat.onBeforeCompile = (sh) => {   /* USE_SKINNING is only defined in the vertex shader, so pass the flag on */
+  sh.vertexShader = 'varying float vSk;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_SKINNING\nvSk = 1.;\n#else\nvSk = 0.;\n#endif\n');
+  sh.fragmentShader = 'varying float vSk;\n' + sh.fragmentShader.replace(/}\s*$/, 'gl_FragColor.a = 1. - .5 * vSk;\n}'); };
 const inkMat = new THREE.ShaderMaterial({
   uniforms: { tCol: { value: null }, tDep: { value: null }, tNrm: { value: null }, px: { value: new THREE.Vector2() }, near: { value: .1 }, far: { value: 400 },
     r: { value: 1.5 }, dJump: { value: .14 }, nBreak: { value: .5 }, strength: { value: .9 }, ink: { value: new THREE.Color(0x22160f) } },
@@ -1769,7 +1774,7 @@ const inkMat = new THREE.ShaderMaterial({
     float D(vec2 u){ return near + texture2D(tDep, u).x * (far - near); }
     vec3 N(vec2 u){ return texture2D(tNrm, u).xyz * 2. - 1.; }
     void main(){
-      float c = D(vUv); vec3 nc = N(vUv); float cs = step(.5, length(nc));
+      float c = D(vUv); vec3 nc = N(vUv); float cs = step(.5, length(nc)) * step(.75, texture2D(tNrm, vUv).a);
       float de = 0., ne = 0.;
       for (int i = 0; i < 8; i++) {
         float a = float(i) * 0.785398;
