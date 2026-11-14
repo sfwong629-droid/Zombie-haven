@@ -24,3 +24,7 @@ tools/balance/density.json
 !tools/design/out/buildstudy.log
 !tools/design/out/lurestudy.log
 !tools/design/out/lurestudy.json
+
+# work folders for the tools (3D.161)
+kits_work/
+tools/**/node_modules
