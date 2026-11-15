@@ -4645,29 +4645,99 @@ function expResolveStage(t, quiet) {
    chance, worked out from stats, gear, profession and personality. If no order comes before the next stage (or the game is closed) the squad decides itself. ---- */
 const STAT_ABBR = { str: 'STR', end: 'END', agi: 'AGI', per: 'PER', int: 'INT', cha: 'CHA' };
 const EXP_ENC = {
-  door: { title: '🚪 A BARRICADED STORE', text: 'Chained shutters on a corner shop. Whatever is inside has not been looted.', opts: [
+  door: { at: ['mall'], title: '🚪 A BARRICADED STORE', text: 'Chained shutters on a corner shop. Whatever is inside has not been looted.', opts: [
     { id: 'force', label: 'Force the shutters', chk: 'str', job: { Engineer: .1, Guard: .05 }, win: { mat: [2, 3] }, fail: 'hurt', winT: '{who} wrenched the shutters open: {got}.', failT: 'The chain snapped back and caught {who}.' },
     { id: 'sneak', label: 'Find a way in at the back', chk: 'agi', job: { Scavenger: .12 }, tr: { scrounger: .1 }, win: { food: [1, 2], water: [1, 2] }, fail: 'none', winT: '{who} squeezed in through a vent: {got}.', failT: '{who} found no way in. Nothing lost.' },
     { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the store alone.' }] },
-  cry: { title: '📢 A CRY FOR HELP', text: 'Someone is shouting from a rooftop, with the dead crowding the stairwell below.', opts: [
+  cry: { at: ['houses', 'mall'], title: '📢 A CRY FOR HELP', text: 'Someone is shouting from a rooftop, with the dead crowding the stairwell below.', opts: [
     { id: 'help', label: 'Clear the stairwell', chk: 'fight', tr: { caring: .15, brave: .08 }, win: { recruit: 1 }, fail: 'hurt2', winT: 'The squad cleared the stairs. {got}', failT: 'Too many of them: {who} got hurt pulling back.' },
     { id: 'talk', label: 'Shout directions to them', chk: 'cha', tr: { caring: .1 }, job: { Civilian: .1, Medic: .05 }, win: { gift: 1 }, fail: 'none', winT: '{who} talked them down a fire escape. {got}', failT: 'They could not make it down. The squad moved on.' },
     { id: 'leave', label: 'Keep moving', safe: true, winT: 'The squad kept moving. The shouting faded behind them.' }] },
-  horde: { title: '🧟 A HORDE ON THE ROAD', text: 'A slow river of the dead fills the street the squad needs.', opts: [
+  horde: { shared: true, title: '🧟 A HORDE ON THE ROAD', text: 'A slow river of the dead fills the street the squad needs.', opts: [
     { id: 'fight', label: 'Fight through', chk: 'fight', tr: { brave: .1 }, win: { mat: [1, 2], xp: 6 }, fail: 'hurt2', winT: 'The squad cut a path through: {got}.', failT: 'The horde pushed back hard: {who} got hurt.' },
     { id: 'sneak', label: 'Sneak around', chk: 'agi', tr: { cautious: .1, owl: .05 }, job: { Scavenger: .1 }, win: {}, fail: 'hurt', winT: '{who} led them round by the back alleys.', failT: 'A crawler gave them away: {who} got hurt getting clear.' },
     { id: 'back', label: 'Turn back now', safe: true, recall: true, winT: 'The squad turned for home with what they had.' }] },
-  cache: { title: '🚗 A WRECKED ARMORED VAN', text: 'A security van on its side, the back door jammed half open.', opts: [
+  cache: { at: ['military'], title: '🚗 A WRECKED ARMORED VAN', text: 'A security van on its side, the back door jammed half open.', opts: [
     { id: 'climb', label: 'Climb inside', chk: 'agi', tr: { scrounger: .15 }, job: { Scavenger: .1 }, win: { item: 1 }, fail: 'hurt', winT: '{who} wriggled in and came out with {got}.', failT: 'The wreck shifted and pinned {who} for a moment.' },
     { id: 'pry', label: 'Pry the door off', chk: 'str', job: { Engineer: .12 }, win: { mat: [2, 4] }, fail: 'none', winT: '{who} pried it open and stripped the van: {got}.', failT: 'The door would not move. Nothing lost.' },
     { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the van alone.' }] },
-  stranger: { title: '🤒 A SICK STRANGER', text: 'A feverish man sits by a burnt-out car, clutching a backpack.', opts: [
+  stranger: { at: ['pharmacy'], title: '🤒 A SICK STRANGER', text: 'A feverish man sits by a burnt-out car, clutching a backpack.', opts: [
     { id: 'treat', label: 'Treat him', chk: 'int', job: { Medic: .2 }, tr: { caring: .1 }, win: { item: 1, ren: 3 }, fail: 'none', winT: '{who} brought the fever down. He gave them {got}.', failT: 'There was nothing {who} could do. Nothing lost.' },
     { id: 'leave', label: 'Move on', safe: true, winT: 'The squad moved on.' }] },
-  raiders: { minRisk: 'medium', title: '🔫 RAIDERS DEMAND A TOLL', text: 'Armed raiders block the bridge and want a share of the haul.', opts: [
+  raiders: { shared: true, minRisk: 'medium', title: '🔫 RAIDERS DEMAND A TOLL', text: 'Armed raiders block the bridge and want a share of the haul.', opts: [
     { id: 'pay', label: 'Pay half the haul', safe: true, toll: .5, winT: 'The squad paid the toll and crossed.' },
     { id: 'talk', label: 'Talk them down', chk: 'cha', job: { Civilian: .1, 'Police Officer': .08 }, win: { mat: [1, 2] }, fail: 'toll', winT: '{who} talked them into a trade: {got}.', failT: '{who} could not sway them: they took the whole haul.' },
     { id: 'fight', label: 'Fight them', chk: 'fight', hard: 1.5, tr: { brave: .08 }, win: { mat: [3, 5], item: 1, xp: 8 }, fail: 'hurt2', winT: 'The raiders scattered and left their stash: {got}.', failT: 'The raiders fought back: {who} got hurt.' }] },
+  /* 3D.169 (owner approved): three cards of its own for each ordinary destination. Facts first, joke last. */
+  cellar: { at: ['houses'], title: '🔒 A LOCKED CELLAR', text: 'A padlocked cellar door behind a house. Canned food inside, probably. Possibly a raccoon.', opts: [
+    { id: 'force', label: 'Break the lock', chk: 'str', job: { Guard: .05, Engineer: .08 }, win: { food: [2, 3] }, fail: 'hurt', winT: '{who} snapped the lock: {got}.', failT: 'The hasp gave way all at once and {who} went down the steps the fast way.' },
+    { id: 'pick', label: 'Pick the lock', chk: 'agi', job: { Scavenger: .12 }, tr: { scrounger: .1 }, win: { food: [1, 2], water: [1, 2] }, fail: 'none', winT: '{who} picked it in a minute: {got}.', failT: '{who} could not get it open. Nothing lost but pride.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the cellar to the raccoon.' }] },
+  treehouse: { at: ['houses'], title: '🌳 A TREEHOUSE LOOKOUT', text: 'A kid\'s treehouse with a view over half the town. The ladder has three rungs left.', opts: [
+    { id: 'climb', label: 'Climb up and look around', chk: 'agi', tr: { owl: .1 }, win: { lead: 1 }, fail: 'hurt', winT: '{who} spotted somewhere new from up there. {got}', failT: 'The fourth rung was imaginary. {who} found out.' },
+    { id: 'leave', label: 'Keep moving', safe: true, winT: 'The squad left the treehouse to the birds.' }] },
+  album: { at: ['houses'], title: '📷 A FAMILY PHOTO ALBUM', text: 'A photo album on a kitchen table: birthdays, beaches, a dog in a hat. No supplies.', opts: [
+    { id: 'look', label: 'Stop and look through it', chk: 'cha', tr: { caring: .15 }, win: { mood: 6 }, fail: 'none', winT: '{who} told stories about every picture. The squad came away lighter. {got}', failT: 'It hit {who} harder than expected. They moved on quietly.' },
+    { id: 'leave', label: 'Move on', safe: true, winT: 'The squad closed the album and moved on.' }] },
+  cabinet: { at: ['pharmacy'], title: '💊 A LOCKED DRUG CABINET', text: 'A steel cabinet behind the counter, still locked. The label says controlled. The lock says cheap.', opts: [
+    { id: 'open', label: 'Work the lock', chk: 'int', job: { Medic: .15, Engineer: .08 }, win: { meds: [1, 2] }, fail: 'hurt', winT: '{who} had it open in a minute: {got}.', failT: 'The cabinet door slammed on {who}\'s hand.' },
+    { id: 'pry', label: 'Pry it off the wall', chk: 'str', win: { meds: [1, 1], mat: [1, 2] }, fail: 'none', winT: '{who} tore it off the wall: {got}.', failT: 'It was bolted to something stronger than {who}.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the cabinet locked.' }] },
+  waiting: { at: ['pharmacy'], title: '🪑 A FULL WAITING ROOM', text: 'The waiting room is full of the dead, still waiting. The supply cupboard is behind them.', opts: [
+    { id: 'fight', label: 'Clear the room', chk: 'fight', tr: { brave: .08 }, win: { meds: [1, 2], cloth: [1, 2], xp: 5 }, fail: 'hurt2', winT: 'The squad cleared the room: {got}.', failT: 'More of them than chairs: {who} got hurt.' },
+    { id: 'sneak', label: 'Slip past to the cupboard', chk: 'agi', job: { Scavenger: .1 }, tr: { cautious: .08 }, win: { cloth: [1, 2] }, fail: 'hurt', winT: '{who} reached the cupboard unseen: {got}.', failT: 'Someone\'s number was called. {who} got hurt getting out.' },
+    { id: 'leave', label: 'Not today', safe: true, winT: 'The squad left them waiting.' }] },
+  sawmill: { at: ['lumberyard'], title: '⚙ THE SAWMILL STILL RUNS', text: 'A diesel saw in the yard still turns over. Cut planks are faster than chopped ones. Louder too.', opts: [
+    { id: 'run', label: 'Fire it up', chk: 'int', job: { Mechanic: .18, Engineer: .1 }, win: { wood: [3, 4] }, fail: 'hurt', winT: '{who} got it running and cut a stack: {got}.', failT: 'It kicked back. {who} kept all their fingers, barely.' },
+    { id: 'leave', label: 'Too loud, leave it', safe: true, winT: 'The squad left the saw alone.' }] },
+  logs: { at: ['lumberyard'], title: '🪵 STACKED LOGS SHIFT', text: 'A log stack groans as the squad passes. The good timber is on the far side of it.', opts: [
+    { id: 'dash', label: 'Run round it for the timber', chk: 'agi', tr: { brave: .05 }, win: { wood: [2, 3] }, fail: 'hurt', winT: '{who} got round before it rolled: {got}.', failT: 'The stack won. {who} got hurt.' },
+    { id: 'brace', label: 'Wedge it first', chk: 'str', job: { Engineer: .1 }, win: { wood: [1, 2] }, fail: 'none', winT: '{who} wedged it and took what was loose: {got}.', failT: '{who} could not hold it. The squad backed off.' },
+    { id: 'leave', label: 'Go round the long way', safe: true, winT: 'The squad went round the long way.' }] },
+  nest: { at: ['lumberyard'], title: '🧟 A NEST IN THE WOODPILE', text: 'Something is moving inside the woodpile. Several somethings.', opts: [
+    { id: 'fight', label: 'Clear them out', chk: 'fight', tr: { brave: .1 }, win: { wood: [2, 3], xp: 6 }, fail: 'hurt2', winT: 'The squad cleared the pile: {got}.', failT: 'They came out all at once: {who} got hurt.' },
+    { id: 'leave', label: 'Leave them', safe: true, winT: 'The squad let the woodpile be.' }] },
+  tankpump: { at: ['gasstation'], title: '⛽ THE TANK PUMP JAMS', text: 'The hand pump on the underground tank is stuck half way. There is fuel down there.', opts: [
+    { id: 'fix', label: 'Fix the pump', chk: 'int', job: { Mechanic: .2 }, tr: { diligent: .08 }, win: { fuel: [1, 2] }, fail: 'hurt', winT: '{who} freed the valve: {got}.', failT: 'The pump freed itself all at once, onto {who}.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the tank alone.' }] },
+  carwash: { at: ['gasstation'], title: '🚿 A CAR WASH FULL OF THE DEAD', text: 'The car wash tunnel is packed with the dead. A tool locker sits at the far end.', opts: [
+    { id: 'fight', label: 'Fight through to the locker', chk: 'fight', hard: 1.2, tr: { brave: .08 }, win: { mat: [2, 3], item: 1, xp: 6 }, fail: 'hurt2', winT: 'The squad cleared the tunnel: {got}.', failT: 'Wet floor, many teeth: {who} got hurt.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad skipped the wash.' }] },
+  hotdog: { at: ['gasstation'], title: '🌭 A HOT-DOG ROLLER, STILL WARM', text: 'The roller grill is on a battery and still turning. Nobody knows how long those hot dogs have been there.', opts: [
+    { id: 'eat', label: 'Somebody eats one', chk: 'end', tr: { eater: .15 }, win: { food: [1, 2], mood: 3 }, fail: 'sick', winT: '{who} ate one and lived. They bagged the rest: {got}.', failT: '{who} ate one. {who} regrets it.' },
+    { id: 'leave', label: 'Absolutely not', safe: true, winT: 'The squad left the hot dogs rolling.' }] },
+  minefield: { at: ['military'], title: '⚠ A MINEFIELD SIGN', text: 'A hand-painted sign: MINES. The short way to the supply tents runs right past it.', opts: [
+    { id: 'path', label: 'Find the safe path', chk: 'per', job: { 'Police Officer': .08 }, tr: { cautious: .1 }, win: { ammo: [4, 8], mat: [1, 2] }, fail: 'hurt2', winT: '{who} read the ground and led them through: {got}.', failT: 'The sign was not a joke. {who} got hurt.' },
+    { id: 'leave', label: 'Take the long way', safe: true, winT: 'The squad took the long way round.' }] },
+  ammocrate: { at: ['military'], title: '📦 A CRATE UNDER A TARP', text: 'A heavy crate under a tarp, half buried in mud. Stencilled letters, mostly numbers.', opts: [
+    { id: 'lift', label: 'Haul it out', chk: 'str', job: { Guard: .08 }, win: { ammo: [6, 10] }, fail: 'hurt', winT: '{who} dragged it free: {got}.', failT: 'The mud kept the crate and {who}\'s back.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left it in the mud.' }] },
+  pit: { at: ['quarrysite'], title: '🌊 THE FLOODED PIT', text: 'Cut blocks sit on a ledge just above the water line. The water is very still.', opts: [
+    { id: 'wade', label: 'Wade out for the blocks', chk: 'str', tr: { brave: .05 }, win: { stone: [3, 4] }, fail: 'hurt', winT: '{who} hauled the blocks up: {got}.', failT: 'The water was not empty. {who} got out soaked and hurt.' },
+    { id: 'rope', label: 'Rig a rope and sled', chk: 'int', job: { Engineer: .12 }, win: { stone: [2, 3] }, fail: 'none', winT: '{who} rigged a sled: {got}.', failT: 'The knot was more of a suggestion. Nothing lost.' },
+    { id: 'leave', label: 'Leave the pit alone', safe: true, winT: 'The squad left the pit alone.' }] },
+  crane: { at: ['quarrysite'], title: '🏗 A CRANE CAB', text: 'An old crane over the cut face. If it still swings, it can lift a whole pallet of stone.', opts: [
+    { id: 'run', label: 'Get it working', chk: 'int', job: { Engineer: .18, Mechanic: .12 }, win: { stone: [4, 5] }, fail: 'hurt', winT: '{who} swung a pallet of stone across: {got}.', failT: 'The crane swung {who} instead.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the crane where it was.' }] },
+  tunnel: { at: ['quarrysite'], title: '🕳 AN ECHOING TUNNEL', text: 'A blasting tunnel goes into the rock. Footsteps echo back that are not the squad\'s.', opts: [
+    { id: 'fight', label: 'Go in and clear it', chk: 'fight', tr: { brave: .1 }, win: { stone: [2, 3], mat: [1, 2], xp: 6 }, fail: 'hurt2', winT: 'The squad cleared the tunnel: {got}.', failT: 'Dark, narrow and busy: {who} got hurt.' },
+    { id: 'leave', label: 'Not in there', safe: true, winT: 'The squad left the tunnel to whoever was in it.' }] },
+  freezer: { at: ['mall'], title: '🧊 THE FOOD COURT FREEZER', text: 'A walk-in freezer at the food court, door shut. It hums. It should not be humming.', opts: [
+    { id: 'open', label: 'Open it carefully', chk: 'per', tr: { cautious: .08 }, win: { food: [2, 4] }, fail: 'hurt2', winT: '{who} checked the seal first: {got}.', failT: 'It was full, but not of food. {who} got hurt.' },
+    { id: 'leave', label: 'Leave it humming', safe: true, winT: 'The squad let it hum.' }] },
+  sports: { at: ['mall'], title: '🏈 A SPORTS SHOP', text: 'A sports shop with the shutter jammed a foot off the floor.', opts: [
+    { id: 'crawl', label: 'Crawl under the shutter', chk: 'agi', job: { Scavenger: .1 }, tr: { scrounger: .1 }, win: { item: 1 }, fail: 'hurt', winT: '{who} came back out with {got}.', failT: 'The shutter dropped an inch with {who} under it.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the shop alone.' }] },
+  forklift: { at: ['warehouse'], title: '🚜 A FORKLIFT PINS A STACK', text: 'A forklift has tipped onto a stack of steel shelving. Good scrap underneath.', opts: [
+    { id: 'lift', label: 'Lever it off', chk: 'str', job: { Engineer: .12 }, win: { mat: [3, 4] }, fail: 'hurt', winT: '{who} levered it clear: {got}.', failT: 'The forklift settled back down, partly on {who}.' },
+    { id: 'drive', label: 'Hot-wire it and back it off', chk: 'int', job: { Mechanic: .2 }, win: { mat: [2, 3], fuel: [1, 1] }, fail: 'none', winT: '{who} backed it off and drained the tank: {got}.', failT: '{who} could not start it. Nothing lost.' },
+    { id: 'leave', label: 'Leave it', safe: true, winT: 'The squad left the stack pinned.' }] },
+  watchman: { at: ['warehouse'], title: '🔦 THE NIGHT WATCHMAN\'S OFFICE', text: 'A locked office with a key board and a logbook. The watchman never clocked out.', opts: [
+    { id: 'read', label: 'Search the office', chk: 'int', tr: { diligent: .08 }, win: { lead: 1, mat: [1, 2] }, fail: 'hurt', winT: '{who} found the logbook and a list of addresses: {got}', failT: 'The watchman was still on shift. {who} got hurt.' },
+    { id: 'leave', label: 'Leave it locked', safe: true, winT: 'The squad let the watchman rest.' }] },
+  rats: { at: ['warehouse'], title: '🐀 RATS IN THE SHELVING', text: 'Rats, and the dead that follow the rats, in the back aisles. The back aisles are where the good stuff is.', opts: [
+    { id: 'fight', label: 'Clear the aisles', chk: 'fight', tr: { brave: .08 }, win: { mat: [2, 3], cloth: [1, 2], xp: 5 }, fail: 'hurt2', winT: 'The squad cleared the aisles: {got}.', failT: 'The rats were the easy part: {who} got hurt.' },
+    { id: 'leave', label: 'Leave the back aisles', safe: true, winT: 'The squad left the rats to it.' }] },
 };
 const EXP_ENC_CHANCE = .55, EXP_DANGER = { low: 5, medium: 8, high: 12 }, EXP_CHK_PEN = { low: 0, medium: .06, high: .12 };
 const encLive = (t) => t.members.filter((m) => m.hp > 0 && !m.collapsed);
@@ -4681,11 +4751,18 @@ function encOdds(t, o) {   /* → { chance, who } */
   let best = null, bv = -1e9; for (const m of ms) { const v = (stat(m, o.chk) - 4) * .06 + ((o.job || {})[m.job] || 0) + trB(m); if (v > bv) { bv = v; best = m; } }
   return { chance: Math.max(.1, Math.min(.95, .35 + bv - EXP_CHK_PEN[t.risk])), who: best.name, whoId: best.id };
 }
-function encPool(dest, risk) { const rkI = ['low', 'medium', 'high'].indexOf(risk); return Object.keys(EXP_ENC).filter((k) => !EXP_ENC[k].minRisk || rkI >= ['low', 'medium', 'high'].indexOf(EXP_ENC[k].minRisk)); }
+function encPool(dest, risk, which) { const rkI = ['low', 'medium', 'high'].indexOf(risk), ok = (k) => !EXP_ENC[k].minRisk || rkI >= ['low', 'medium', 'high'].indexOf(EXP_ENC[k].minRisk);
+  const own = Object.keys(EXP_ENC).filter((k) => ok(k) && (EXP_ENC[k].at || []).includes(dest)), shared = Object.keys(EXP_ENC).filter((k) => ok(k) && EXP_ENC[k].shared);
+  if (!own.length) return Object.keys(EXP_ENC).filter((k) => ok(k) && (EXP_ENC[k].shared || ['door', 'cry', 'cache', 'stranger'].includes(k)));   /* places without cards of their own: the old six */
+  return which === 'own' ? own : which === 'shared' ? shared : own.concat(shared); }
+function encPick(t) {   /* 3D.169: 70% the place's own cards, 30% the shared ones; an own card does not come back until the others have */
+  const own = encPool(t.dest, t.risk, 'own'), shared = encPool(t.dest, t.risk, 'shared').filter((k) => k !== t.lastEnc);
+  if (!shared.length || (own.length && rnd() < .7)) { S.encSeen = S.encSeen || {}; let seen = (S.encSeen[t.dest] || []).filter((k) => own.includes(k)); let c = own.filter((k) => !seen.includes(k) && k !== t.lastEnc); if (!c.length) { seen = []; c = own.filter((k) => k !== t.lastEnc); } if (!c.length) c = own;
+    const k = c[Math.floor(rnd() * c.length)]; S.encSeen[t.dest] = seen.concat(k); return k; }
+  return shared[Math.floor(rnd() * shared.length)]; }
 function expEncounter(t, key) {   /* pick (or force) a situation; stores the odds so the player sees exactly what is rolled */
   if (t.enc) encResolve(t, null);
-  const pool = encPool(t.dest, t.risk).filter((k) => k !== t.lastEnc);
-  const k = key || pool[Math.floor(Math.random() * pool.length)], E = EXP_ENC[k]; if (!E || !encLive(t).length) return null;
+  const k = key || encPick(t), E = EXP_ENC[k]; if (!E || !encLive(t).length) return null;
   t.lastEnc = k; t.enc = { k, stage: t.stage, opts: E.opts.map((o) => ({ id: o.id, ...encOdds(t, o) })) };
   return t.enc;
 }
@@ -4705,7 +4782,9 @@ function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null
   let who = actor ? actor.name : 'The squad';
   if (o.toll) { for (const k in t.loot) t.loot[k] = Math.floor(t.loot[k] * (1 - o.toll)); }
   if (ok && o.win) {
-    for (const k of ['food', 'water', 'mat']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${RES_ICON[k] || k} ${n}`); }
+    for (const k of ['food', 'water', 'mat', 'wood', 'stone', 'fuel', 'meds', 'cloth', 'ammo']) if (o.win[k]) { const n = r(o.win[k]); t.loot[k] = (t.loot[k] || 0) + n; got.push(`${RES_ICON[k] || k} ${n}`); }
+    if (o.win.mood) { encLive(t).forEach((m) => { m.sat = Math.min(100, (m.sat || 50) + o.win.mood); }); got.push(`(♥ +${o.win.mood} for the squad)`); }
+    if (o.win.lead) { const opts = Object.keys(EXP_DEFS).filter((k) => k !== t.dest && !expLocked(k) && !EXP_DEFS[k].raid && !EXP_DEFS[k].stronghold && !(S.leads || []).some((l) => l.dest === k)); if (opts.length && (S.leads || []).length < 3) { const dk = opts[Math.floor(rnd() * opts.length)], D = EXP_DEFS[dk]; (S.leads ||= []).push({ id: 'l' + S.day + '_' + S.hour + '_e', dest: dk, risk: D.risks[0], text: 'Spotted on the last trip', untilH: nowH() + 16 }); got.push(`New lead: ${D.name}.`); } else got.push('Nothing new to see.'); }
     if (o.win.item) { const pool = ['crowbar', 'machete', 'leather', 'hockey', 'goggles', 'charm', 'spear', 'axe', 'riot', 'revolver', 'kevlar', 'shotgun', 'strawhat', 'army', 'football', 'lifejacket', 'hawaii', 'beekeeper', 'footpads', 'cookware', 'bubblewrap', 'cardboard', 'mattress', 'phonebook', 'tyre', 'pillow', 'skisuit', 'ducttape', 'barrel', 'goalie', 'chef', 'medic', 'mechanic', 'garden', 'hivis'], id = pool[Math.floor(Math.random() * Math.min(pool.length, 4 + Math.round(rk.mult * 1.6)))]; t.items = (t.items || []).concat(id); got.push(ITEMS[id].name); }
     if (o.win.recruit) { if (popNow() < popCap()) { t.recruitNow = true; got.push('The survivor will follow the squad home.'); } else { const n = r([1, 2]); t.loot.food += n; t.ren = (t.ren || 0) + 3; got.push(`The Haven has no room, so the survivor gave them ${n} food (+3 Renown)`); } }
     if (o.win.gift) { const n = r([1, 2]); t.loot.food += n; t.loot.water += n; got.push(`They threw down ${n} food and ${n} water in thanks.`); }
@@ -4717,6 +4796,7 @@ function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null
     if (o.fail === 'hurt') who = hurtOne(actor) || who;
     if (o.fail === 'hurt2') { const L = encLive(t).sort(() => Math.random() - .5).slice(0, 2); who = L.map(hurtOne).filter(Boolean).join(' and ') || who; }
     if (o.fail === 'toll') for (const k in t.loot) t.loot[k] = 0;
+    if (o.fail === 'sick' && actor) { actor.hp = Math.max(1, Math.round(actor.hp - actor.max * .15)); if (!t.hurt.includes(actor.name)) t.hurt.push(actor.name); }
   }
   const txt = (ok ? o.winT : o.failT || '').replace('{who}', who).replace('{got}', got.join(', ') || 'nothing much');
   t.log.push(`${E.title.replace(/^\S+\s/, '')}: ${lead ? `no orders came, so ${lead.name}${TRAITS[lead.trait] ? ' (' + TRAITS[lead.trait].name + ')' : ''} chose “${o.label}”. ` : `“${o.label}”: `}${txt}`);
