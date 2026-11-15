@@ -1,0 +1,130 @@
+# New player notes
+- D1 08: start 4 people, food 14 water 14 (3.5 days). Walker tip card. Built farm+barrel; tent+bonfire refused "two builds already running (the limit)" - game never told me the limit beforehand.
+- D1 10: radio walks me through: barrel, garden, 2nd garden. Clear. Radio cost line "⚙ 3 🪵 6 ★ 4" does not match the build list (farm = 4 wood). Confusing.
+- D1 10: "Ben will staff the Rain Barrel" - Ben is my Farmer?? And news "Ben can't reach a storage door with their load. Check ... fence has a gate" D1 14. No idea what to do.
+- D1 11/15: "Claim the reward from the alert or the Goals screen" - I have no way to see Goals (tool).
+- D1 14: Noah wants in, welcomed. Houses trip (Low risk): horde card 64% fight / 63% sneak. For "low risk" that felt scary. Sneak worked. Loot: food, water, cloth, "Lifting Gloves" (what is it?).
+- D1 20: night. Radio: horde comes in 3 waves. D2 06 morning card: 8 walkers stopped, nobody hurt. Felt good.
+- D2 00: day summary "Food +0.0 −5.1 · Water +0.0 −5.1" but state said food +6.2/day. Confusing. "Open staff slot: Garden Plot".
+- D2 02: water warning -7/day 1.7 days left, though I have a barrel. D2 06 second barrel built, still -4.5/day.
+- D2 06: READY for level 2 already (6/6 people, 7/6 buildings). Fast.
+- D2 08: Ben sick, treated (2 scrap 3 water).
+- D2 08: levelup ordered. D2 09 radio: "Trader on the highway, heading your way" - trader never showed in state (trader: null all day). 
+- D2 09 pharmacy trip (Low risk): "Climb inside AGI Lena 78%" FAILED, Lena 53->21 hp of 70. Felt cheated at 78%. Meds +9.
+- D2 10: "✊ MILITIA: SURVIVORS BAND TOGETHER" with no explanation. Eli (Farmer) appeared with no card - from the trip? unclear.
+- D2 11: water 7, "Water runs out in about 29 h" even with 2 barrels. Built 3rd, 4th barrel. D2 21 water -0.9/day with FOUR barrels for 8 people. Never understood why barrels give so little (rain only?).
+- D2 18: LEVEL 2. D2 21 levelup again -> after `away 10` LEVEL 3 at once. Levels 1-3 in two days, felt unearned. SESSION 1 END D2 21 (1h over).
+- D2 21 back: state nextLevel showed 8/8 ✓ 10/10 ✓ but no READY line; levelup worked anyway. "working toward level 4: about 35 min while you play" but minutesLeft said 96, then 88 after 20 game hours. No idea how long this is.
+- D2 23-D3 04: "Amy is trapped in the Camp while a walker breaks in" x3, wall section broke, Camp wrecked. D3 morning card: walkers stopped 1, 1 building damaged (105), hurt Maya.
+- D3 08: radio "rain Barrel has no Farmer: change someone's profession" - first time told farmers work barrels. Greenwater visitors: traded 6 food for 10 water. Nice.
+- D3 08: Maya collapsed in daytime. Amy rescued. "Wounded until treated at a medical building" -> built Medical Tent (D3 16).
+- D3: wood 1. Lumber yard trip (Marcus,Ben,Noah): +11 wood, Ben hurt. Marcus sat at 60% hp a whole day with no healing explained.
+- D3 14: workbench built, +15 research. D3 17 walls 2 + tent ordered -> wood 0.
+- D4 night: TERRIBLE. Morning card: "Walkers stopped: 0 · Buildings damaged: 4 (287 damage) · Hurt: Maya, June". Both collapsed (270 s). Amy trapped in Camp 4 times. I had no order I knew to give. Wood 0 so nothing buildable at all (every canBuild "cannot afford").
+- D4 08: wandering medic, "Ask them to stay · no room (8/8)" so took treatment. research blades refused: "needs 20 research points (have 20) and 5 scrap (have 22)" - BUG/confusing.
+- D4 08: Noah -> Guard. Lumber trip Marcus,Lena,Noah. Maya collapsed AGAIN at 08 (walker wrecked Medical Tent in daylight). SESSION 2 END D4 09. away 14.
+- D4 09 back from away 14: LEVEL 4 ("🔓 Lodge"). Maya "down (bleeds out in 16 game h; NO rescuer)". Ordered rescue Maya; in Medical Tent D4 11.
+- D4 09 radio: "threat ceiling. Zombies grow tougher every day, but only up to a ceiling set by your Haven level" - so levelling makes it harder?! Nobody said before I levelled 3 times.
+- D4 11 lumber trip: +12 wood, gloves, backpack, but Lena collapsed on a LOW risk trip. Research Bladesmithing done.
+- D4 12: raiders card; 4 raiders. D4 14 Noah collapsed (270 s). 
+- D4 10 -> D5 05: "Amy is rescuing Lena." appeared ~25 times in the news; Lena stayed down 19 game hours, "bleeds out in 5 game h; NO rescuer". rescue x2 and bandage x2 did nothing visible. BUG? Used radiohelp in desperation (state lists it): "THE RESCUE TEAM ARRIVED ... cleared 6 zombies ... carried 1 of your people into care. 'Two days from now, we'll come by for that favour.'" Relief, biggest emotion so far.
+- D4 17: crafted Machete (9 scrap) for Marcus, gloves on Marcus. Stash says craft "needs a Workshop" but I have a Workbench and it worked. Nothing tells me what gloves/backpack DO.
+- D4 11 tent site ordered D3 17 only built D5 02 (33 game h) - wood starved; game did not say the site was waiting for wood.
+- D5 morning card: walkers stopped 0, buildings damaged 2, hurt Lena. New zombie cards: dog, runner.
+- D5 07 Rosa (Cook) joined. Lumber trip Marcus,Noah,Ben: +8 wood, Lucky Charm, rescued Theo (Medic). Ben collapsed (third member never shown on the event cards' "Squad:" line).
+- D5 08 lost child card: sent Amy & Eli "about 5 hours" -> D5 16 "Too late. They searched until dark and found nothing." (16:00 is not dark.) Deflating, no choice mattered.
+- D5 09 radio: trader coming AGAIN, trader: null again all day.
+- D5 11 levelup to 5 ordered ("about 50 min while you play"; state minutesLeft 141).
+- D5 17 houses trip: same "CRY FOR HELP" + "HORDE ON THE ROAD" cards again (horde 3rd time, cry 2nd time today). "The Haven has no room, so the survivor gave them 1 food". Came home with "a Pickup Truck! It waits at the gate until there is a free Garage." WOW - but no Garage in my build list.
+- D5 21 SESSION 3 END. food 37 water 25 (-3.8/day) wood 8 scrap 20. 10 people. away 10.
+- D5 21 after away 10: LEVEL 5. "The next level needs a Banner ... clear the Overrun Clinic, or finish a Trading Post or a Radio Tower." Clear goal, liked that.
+- D6 morning card: "Walkers stopped: 13 · Buildings damaged: 3 (76) · Hurt: nobody" - first good night (2 guards, machete).
+- D6 08 radio signal: sent Lena "about 2 days", cost 3 food 3 water. News then said "Lena will staff the Scrapyard" though she was away.
+- D6 lumber x2: +10, +8 wood... wood 0 -> 27 by D6 14. Horde fight "74%" SUCCEEDED yet Marcus went 122 -> 51 hp. 
+- D6 12 radio: "a boss comes with the horde at 21:00. Sharpen something." Good warning, tense.
+- D6 14: crafted nail bat (9 scrap) for Noah. `walls 4`: wood 27 -> 15 AND scrap 12 -> 4. Tool/game said "each tile costs wood" - scrap cost was a surprise; left me unable to afford trading post until evening. "sealed: false", no idea how many tiles are missing.
+- D6 16 Pia (Farmer) joined. D6 19 5 raiders. D6 21 "Gatling Boss has appeared! 6 zombies follow". Pia collapsed 21:00. D7 06 news: "The Mutant Boss slunk back into the wasteland" (name mismatch: Gatling vs Mutant). No info on whether we hurt it.
+- D7 00 favour collected: paid 15 food 10 water -> water 4.6 at D7 09. "Water is going down by 0.9 a day: about 1.1 days left".
+- D7 morning: walkers stopped 1, buildings damaged 3, hurt Pia. Pia down 21:00 D6 -> D8 06 = 33 game hours, "Amy is rescuing Pia." ~60 news lines + "RALLY: FIGHTERS MOVE TO COVER PIA" ~15 lines. I re-bandaged her 6 times by hand to stop her dying. Second radiohelp at D8 05 saved her. This was the low point of the run.
+- D7 09 SESSION 4 END (away 14). Wood 0 scrap 3. D7 08 radio "not enough wood and scrap for tonight's upkeep (6.0)".
+- D7 09 lumber trip Marcus,Noah: Marcus (148 hp, L5 guard) "collapsed and is being carried" at Stage 1 of LOW risk. Card showed "Squad: Noah" only. +14 wood.
+- D7 14 Trading Post built -> "Civic Banner raised: ... traders come to the Haven now". READY for level 6. I chose NOT to level (scared of the threat ceiling line). 
+- D8 00 "HAVEN REVIEW · WEEK 1 · GRADE B ... Defense: 5/20 ... Supplies: 20/20 ... Happiness: 1/20 ... Total 64/120 — title: Steady Settlement". Same hour: "⚠ WATER: under 1 day left" (state said 12.8 water, 7 days). Supplies 20/20 vs water alarm = contradictory. Happiness 1/20: nothing has ever told me about happiness.
+- D8 05 Lena back: bunker; took +10 scrap (beds almost full).
+- D8 08 research Reinforced Walls. Wandering medic Cass stayed; D8 09 Leo (Cook) joined -> made Police Officer (raider card taught me), Theo -> Guard. D8 09 Cass collapsed 1 hour after joining; still down D8 21 (12 h) "Amy is coming".
+- D8 09 radio "Trader on the highway" 3rd time; trader: null all day even with Trading Post.
+- D8 11 lumber +17, HQ -> Lodge ordered (20 wood 5 scrap). D8 14 "Move-in request Marcus wants to make the Haven home ♥35" - Marcus has been here since day 1?? accepted.
+- D8 21 SESSION 5 END. 13 people, food 26, water 19, wood 1, scrap 15.
+- D9 00 "LEGACY: A REAL TOWN ... 1 of 8 legacy goals. Complete 4 and reach ★5 to call for the convoy. +15 Renown +10 scrap" - first I hear of legacy goals/convoy/★. 
+- D9 morning: walkers stopped 6, buildings damaged 5 (140), hurt Maya, Eli, June, Rosa, Cass, Marcus. 4 people down at once at D9 06 (Eli, June, Rosa, Cass). News feed was 20 identical "Pia is rescuing Eli." lines, real events pushed out.
+- D9 09 `militia` -> "healthy civilians band together when no fighter is left" (so not an order). 7-13 walkers inside town all DAY (D9 06: 13, D9 12: 7), everyone "chase"/"hiding" at noon. Day no longer feels safe.
+- D9 12 lumber trip Noah,Theo,Leo LOW risk: Noah collapsed at Stage 1, Leo hurt; +7 wood only.
+- D9 18 Lodge complete (ordered D8 11; 31 game h because wood). New builds incl. Lumber Camp (10 wood 2 mat) - at last a way to make wood, 9 days in. Radio: "get a survivor some armor ... Build an Armory".
+- D9 20 lumber camp ordered. D9 20 Marcus + Leo collapsed BEFORE the boss even arrived. D9 21 "Mutant Zombie ... 6 zombies follow". Whole town "slipped out of the Medical Tent/Tent before it fell" (10 lines each).
+- D10 00 favour: "asks for 15 food and 10 water" - I had 12.4 food. Pressing Pay did NOTHING, same card again, no message. Had to Refuse: "They won't answer the radio for a week. Your people feel bad about it." Felt unfair.
+- D10 03: scrap 1 cloth 0 -> `bandage Cass` "needs 1 cloth (or scrap)" (I had scrap 1 shown). 5 people down, all "NO rescuer", 14 walkers.
+- D10 06 "Farewell · Cass has died. 12 survivors remain" + "🧟 Cass rose again as a zombie". Cass joined D8 08, collapsed D8 09, lay down 45 game hours, died. Morning card: walkers stopped 1, buildings damaged 7 (235), hurt 8 people.
+- D10 09 SESSION 6 END. wood 1 scrap 1 cloth 0; lumber camp site waiting. Feels like a death spiral and I do not know what I did wrong. away 14.
+
+## Days 10–20 (continued)
+- D10 08 takeover. Back from away 14. Card "WHILE YOU WERE AWAY ... Waiting in the trays: 7 · 4 · 2 · 5" - numbers with no names of what they are. Rosa+Lena down, 11 walkers in town, wood 1 scrap 1, food 13 (-0.3/d), water 17.8. READY for level 6 again.
+- D10 08-14: lumber trip +14 wood, Ben collapsed (was 100%). Hana (Farmer) joined. Houses trip: horde 50% fight -> Theo+Eli hurt, Theo down. No scrap anywhere: scrap stuck at 1 all day, no idea how to get it (Scrapyard building exists but gives nothing I can see).
+- D10 16 Lumber Camp built (site had waited since D9 20). Food -2.9/day, built 3rd garden.
+- D10 17 FIRST trader ever actually in state (after 4 radio announcements). Everything costs scrap (6-17) - I have 1. Trade list empty. Useless to me.
+- D10 10-17 "Amy is rescuing Ben." every hour for 7+ hours, Amy at 96% hp "rescueTo". rescue Ben ordered D10 14, nothing changed. Leo rescued Theo in 1 h.
+- D10 18: news "Upkeep at midnight is 7.3 scrap and you have 0: some buildings run at half output". First time I understand scrap is a daily upkeep. Nothing told me how to earn scrap.
+- D10 20: "Move-in request Lena wants to make the Haven home" - Lena has lived here since day 1 (same as Marcus D8). Accepted.
+- D11 00 LEGACY: Far Horizons (12 expeditions) +10 scrap. D11 01 news "Food going down 6.0/day 1.9 days left"; at 02 state said -6; morning -2/day. Numbers jump around.
+- D11 morning: walkers stopped 5, buildings damaged 7 (84), hurt June, Lena, Ben, Hana. 15 walkers still in town at 06.
+- D11 08 radio "the Haven can reach the next level" -> I followed it, levelup to 6 ordered D11 09: minutesLeft 180. At D11 20 (11 game hours later) minutesLeft 171. So levels take real minutes, not game time - nothing says that.
+- D11 08-20: 8 walkers in town ALL DAY, 5 guards on "chase" for 11 hours, everyone else "hiding". Collapses: June 08, Eli 09, Rosa 16. Ben down since D10 10 (34 game h). bandage Ben x4 (each adds ~4 h). D11 20 bandage refused "needs 1 cloth (or scrap)" with scrap shown as 1 (same as D10 03). `defend` returned ok with no visible effect. `rescue June` x2: still "NO rescuer".
+- D11 15 lead: Overrun Clinic High risk - my banner goal from D5 but power 62 vs 175 recommended. Skipped.
+- D11 20 SESSION 7 END. food 14 (-2/d) water 27 wood 9 scrap 1 cloth 0. Ben 1 h from bleeding out. Exhausted, every session is just bandaging. away 10.
+- D11 20 back: LEVEL 6. bandage Ben/June refused "needs 1 cloth (or scrap)" with scrap 3 (D11 20), 2 (D12 00), 1 (D12 03). BUG or hidden rule - I could not bandage at all.
+- D11 22 Ben DIED (down since D10 10, 36 game h). D12 04 June DIED (down since D11 08). Both rose as zombies. D12 03 "survivors hold a vigil. The horde pulls back for a while - rebuild your defences".
+- D12 00 day summary "Food +0.0 -10.3 Water +0.0 -10.3 Upkeep -3.8 scrap. Open staff slot: Rain Barrel, Lumber Camp, Garden Plot". +0.0 production again. Who staffs a Lumber Camp? Never told.
+- D12 morning: walkers stopped 5, damaged 7 (27), hurt Maya Hana Eli, lost 2. Raiders stole 1 water 2 food. A "Firebug" smashing the Garden Plot for 4 hours.
+- D12 08 Toll Kings demand 18 scrap (I have ~4). Refused -> "THEY ATTACK". 6 raiders in town.
+- D12 08 radio: "rain Barrel has no Farmer: change someone's profession" -> Rosa Cook->Farmer.
+- D12 09-18: NOTHING MOVED for 9 game hours. Amy, Rosa, Pia "rescueTo" the whole time; Marcus, Noah, Theo, Lena, Leo "chase" the whole time; 6 walkers + 4-6 raiders never cleared. Downed Maya/Hana/Eli never reached. policy recover: no change. bandage Maya refused D12 18 with scrap shown 1. Firebug smashing Canteen/Garden for hours.
+- D12 18 houses trip only to get cloth for bandages: +3 cloth. D12 21 Maya DIED (down since D12 03). 3rd death in 24 h. Card said "7 survivors remain" but 10 are alive (3 were on the trip?).
+- D13 01 bandage Hana ok (cloth), bandage Eli refused (cloth 0, scrap "1"). D13 03 Eli DIED, D13 06 Hana DIED. Morning: walkers stopped 2, damaged 7, hurt Hana Theo Lena Leo, lost 2. Now 8 alive; Theo, Lena, Leo down with "NO rescuer"; 11 walkers in town at 08.
+- D13 08 radio again "rain Barrel has no Farmer" - I HAVE 2 farmers (Rosa, Pia), they are "hiding" all day.
+- D13 08 lost child card again: declined (need Amy for rescues). bandage Theo refused with scrap shown 2.
+- D13 08 SESSION 8 END. 6 deaths total (Cass, Ben, June, Maya, Eli, Hana). Food 12.5 water 31.6 wood 13 scrap 2. I feel helpless: nothing I order changes anything. away 14.
+- D13 09 Amy,Rosa,Pia cloth run: +5 cloth, Amy+Rosa hurt. Bandaged Theo/Lena/Leo/Noah. News "3 down, too few left to fight. They hide until the zombies move on" - explains the freeze at last, but only now.
+- D13 12 Marcus (L6, my best) collapsed. Sporehead wrecked Medical Tent D13 14, repaired 15. "Bring someone back from being down: done! Claim the reward from the alert or the Goals screen" - still no Goals screen for me.
+- D13 bandage refused D13 08/09 with scrap 2 (both cloth 0). Every successful bandage used cloth. So "(or scrap)" seems not to work.
+- D13 16 Theo rescued 1 h after I ordered `rescue Theo` - first time a rescue order seemed to do something.
+- D13 21 Bloater Queen boss + 7 zombies, NO radio warning this time (D6 had one). 3 guards down/weak.
+- D14 05 Marcus DIED (L6 guard, down since D13 12, 17 h). D14 06 "The Mutant Boss slunk back" - it was a Bloater Queen (name mismatch again). D14 07 Noah DIED. 8 deaths total, 6 alive.
+- D14 08 Amy sick: Treat (2 scrap) -> "NOT ENOUGH SUPPLIES" (scrap 1). Radio: "garden Plot has no Farmer" -> Leo Police->Farmer.
+- D14 09 Gas Station (Medium) Theo,Lena,Pia: +6 scrap +23 fuel + backpack + walkie. Pia came home down. FIRST time I learned where scrap comes from (day 14!). Scrap 15.
+- D14 13 research Field Medicine ("Bandages cost less scrap and last longer"). Re-equipped dead guards' machete/nail bat on Theo/Lena. New tip: Riot zombie, blades half damage.
+- foodPerDay and waterPerDay have been EXACTLY equal in state since D11 (-2/-2, 0.7/0.7, 2.4/2.4, 2.5/2.5). Looks wrong.
+- D14 20 SESSION 9 END. 6 alive. food 11.9 water 40 wood 21 scrap 10 fuel 30. away 10.
+- D15 00 WEEK 2 REVIEW grade C: Defense 0/20, Happiness 0/20, Supplies 20/20 - "Struggling Camp". Day summary again "Food +0.0 -5.5".
+- D15 01 bandage Rosa worked using scrap (after Field Medicine). So the "(or scrap)" in the refusal really meant "after research"? Never explained.
+- D15 06 Pia Farmer->Guard (only 1 guard left). D15 08 supply drop: Lena+Pia fetched +9 water, no trouble. D15 11 Noah Castillo (Farmer, a different Noah!) joined. D15 15 trader: bought Cleaver (5 scrap 3 food) for Pia. D15 19 Maya Ortiz (Cook L2) joined - another name reused from a dead person.
+- Rosa down since D14 21; "Amy is coming" for 22 game h while Amy is 100% hp "rescueTo", only 6 walkers. bandaged Rosa 3x.
+- D16 morning: walkers stopped 0, buildings damaged 9 (99), hurt Leo Rosa Theo Pia Noah. Rosa finally carried in D16 05 by new Maya (Amy never got there, 32 h). Pia down 03, Leo down 06, Lena down 07. bandage Leo refused (scrap 1 again).
+- D16 08 radio AGAIN "rain Barrel has no Farmer" - I have Rosa, Leo, Noah as Farmers. Radio advice now feels like noise.
+- D16 08 SESSION 10 END. 8 alive, 3 down. food 16 water 62 wood 26 scrap 1. Wood piles up with nothing to spend it on (everything needs scrap). away 14.
+- D16 09 rescues worked fast in calm morning (Leo, Lena, Pia carried in 1 h). Theo collapsed 09.
+- D16 09 Gas Station (Medium, Noah+Maya, power 26): +8 scrap +26 fuel, Maya collapsed. Fuel stayed 30 (hidden cap?). NOAH (new Farmer, joined D15 11) VANISHED after this trip: not in people list, no farewell card, beds 7/14. The report in cardsRead was cut off before the "Returned:" line. Don't know if he died, left, or a bug.
+- D16 12 radio: boss with the horde at 21:00. 6 raiders sneaking.
+- D16 14 research Salvage Methods (6 scrap); scrap 18 -> 7 by 17:00, no message for where the rest went (raiders?). No "research complete" line.
+- D16 21 Stalker boss + 9 zombies. Amy collapsed 21:00. By D17 00: 5 of 7 down, Medical Tent wrecked 3x in 2 h (auto-repaired each time). Raiders took 3 food 1 water.
+- D17 00 the game itself OFFERED "CALL FOR HELP?" card (15 food 10 water favour in 2 days). Called. D17 01 "cleared 14 zombies, carried 5 of your people into care". Huge relief again - but this is the 3rd time the radio team saved the run (D5, D8, D17).
+- D17 03 Noah Vasquez (Mechanic) joined - THIRD "Noah". Radio explained Mechanic (Generator, Fuel Still...) - nice, but I have none of those.
+- D17 morning: walkers stopped 0, buildings damaged 8 (234), hurt 7 people. Between 04 and 07 SEVEN of 8 collapsed (rescue team had carried them in only at 01). 11 walkers in daylight. militia refused ("when no fighter is left" - all my fighters ARE down). radiohelp "not ready (favour owed)".
+- D17 08 Foundry order 12 wood + 10 stone (I have 0 stone, never seen stone). Declined.
+- D17 12 Eli Engel (Engineer L2) joined. bandage Pia refused with scrap 2 (after Field Medicine!). Expedition houses Maya,Eli refused "Maya is hurt or busy" (56%, stuck "rescueTo" Pia for 9+ h).
+- D17 20 SESSION 11 END. 7 of 9 down, five of them bleed out within 0-3 h. scrap 0 cloth 0. food 25 water 80 wood 24 (resources fine, people dying). Nothing left I know how to do. away 10.
+- D17 21-D18 04: SEVEN DEATHS in 7 game hours: Pia 21, Theo 22, Leo 22, Noah V. 22, Amy 23, Rosa 23, Lena D18 04. All rose as zombies. bandage refused for all (scrap 0, cloth 0). Morning card "Lost: 7". Only Maya + Eli left, both down. 19 walkers in town at 08.
+- D18 08 "A CONVOY FOUND THE HAVEN": Ozzy (Farmer) + Bryn (Scavenger), 15 food 15 water, +7 scrap. Radio: "The comeback convoy. When the town is down to its last few people". Wandering medic treatment raised Maya/Eli to 40% (still "down"). Made Bryn a Guard with the nail bat, Ozzy machete. Ozzy+Bryn carried Maya and Eli in by 10:00.
+- Feeling: the run is basically lost and the game handed me a pity convoy. 16 deaths total.
+- D19 00 favour 15 food 10 water: Pay worked this time (had 50 food). D19 morning: walkers stopped 3, damaged 8 (3 dmg), hurt nobody. First calm night in ages - with 4 people.
+- D19 08 radio yet again "garden Plot has no Farmer". Made Maya Farmer (Ozzy is the only one). Supply drop: sent Bryn & Maya.
+- D19 08 SESSION 12 END. 4 alive. food 40 water 88 wood 29 scrap 5. away 14.
+- D19 10 supply drop +12 water. D19 12 radio boss warning 21:00. D19 21 The Butcher + 9 zombies; Eli to 39%, Lodge wrecked, nobody down. D20 00 day 20 starts: level 6, 4 alive (Maya, Eli Engel, Ozzy, Bryn), food 48.7 water 95 wood 21 scrap 2. Run log: 15 farewell cards ("has died") + Noah Castillo vanished D16 13 without one. STOP.

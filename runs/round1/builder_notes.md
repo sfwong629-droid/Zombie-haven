@@ -1,0 +1,119 @@
+# BUILDER notes (seed 21)
+Session 1 starts D1 08:00.
+- D1 08: start 4 people, food 14 water 14, wood 12 scrap 16. Ordered farm + barrel; tent refused: "two builds already running (the limit)". Annoying at once: I have 12 wood and 3 idle people and may only queue 2.
+- D1 09 & D1 12: same trip event "A CRY FOR HELP" twice in two consecutive lumberyard trips (35% CHA both succeeded, +1/+2 food+water).
+- D1 11/14/17: lumberyard low trips give ~14-15 wood each, whether 1 person (Lena) or 2 (Lena+Noah): 15, 15, 14. No visible gain from a second person.
+- D1 14: barrel built (6h). Noah joins (5 people). Ben (Farmer) "will staff the Rain Barrel".
+- D1 17: "Marcus can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off..." - I had done nothing to walls. Confusing.
+- D1 18 tent built (4h). beds read 4/8 before the tent and 5/8 after: tent "Two beds" did not change the 8.
+- Farm ordered D1 08, "all materials are in" only D1 23, built D2 00 = 16 h for a 4-wood garden, while wood sat at 36-51. Slowest thing of day 1; no reason given.
+- D2 00 day report: Food +0.0 -5.1, Water +0.0 -5.1 (barrel built at 14:00 showed +0.0?).
+- D2 01: water warning -6.1/day, 1.8 days left. Maya wants in.
+- D2 07: L1 goals met (6 people, 6 buildings) -> levelup. News: "working toward level 2: about 3 min while you play". It finished D2 18 = 11 game hours. "min" vs game hours unclear.
+- D2 10: sent Lena+Noah straight back out after a houses trip that hurt both; game let me send Lena 28/72, Noah 16/60 with no warning. D2 13 Lena collapsed (0%).
+- D2 12 again "Maya can't reach a storage door..." message.
+- D2 13 -> D3 00: "Amy is rescuing Lena." repeated ~20 times over 11 game hours, Amy state "rescueTo" all the time, Lena bleed timer 10h->4h. Only `radiohelp` (D2 23) saved her (cost: "Two days from now, we'll come by for that favour").
+- D2 18 Level 2. Goals for L3 already met at once (7/7 people, 9/8 buildings) -> levelup D2 20, "15 min" -> done D3 18 (22 game h).
+- D2 17 radio: "upgrade the Camp to a Lodge. ⚙4 🪵8 ... Tap your Camp, then Upgrade". canUpgrade is empty; `upgrade hq2` -> "not unlocked yet" (D3 09, level 2 and again level 3). Radio tells me to do a thing I can't do.
+- D3 00 day report: "Food +0.0 −6.9 · Water +0.0 −6.9" with 2 farms + 2 barrels. Production always shows +0.0.
+- D3 06 forecast "dry all day"; D3 08 card "STORM Heavy rain fills every barrel. Lightning struck a building! +8 water". Forecast contradicts.
+- D3 08 renown 65 -> expand (20 wood, 8 scrap) land tier 1. Next: "needs a bigger HQ (land tier 2 needs HQ tier 2)". HQ2 not unlocked -> land is hard-capped.
+- Beds: 4/8 (hq only), 5/8 (1 tent), 7/8 (2 tents), 8/8 (3 tents), 8/10 (4th tent as site), 10/10 with 5 tents. Tents ("Two beds") don't add up; can't plan beds.
+- D3 12 bench built, +15 research gift. Rosa (Engineer) staffs it. Research 15 (D3 12) -> 23 (D4 18): ~8 points in 30 h. Salvage needs 25.
+- D3 18 Level 3. L4 goals met at once (9/8 people, 16/10 buildings). levelup -> "minutesLeft 105". At observed ~0.7 min/game hour that is ~6 game days. The level bar is ONLY a timer for me, goals are trivial.
+- Level 2 and 3 unlocked NOTHING new in canBuild (same 12 buildings as D1). Only clinic stronghold at L3.
+- Scrap is the choke: D3 15 scrap 5, D4 scrap 10; upkeep -3.1/day (D3 report). Wood 9-12 on D4; idle people do not seem to bring wood (wood 10 flat D4 12-18).
+- Water: -5 to -9/day all of D3-D4 with 3-4 barrels. D4 06 forecast "Heavy rain 18:00–21:00": water 23.7 at 18:00 and 23.7 at 22:00. Rain gave nothing visible.
+- D4 06 houses LOW trip, Marcus went at 77/103 and collapsed stage 3. Houses low trips so far: 4 trips, 5 "was hurt", 2 collapses. "Low risk" label feels false.
+- D4 08 Radio signal card (send Amy 2 days) - ignored, only medic.
+- D4 08 -> D4 20: "Amy is rescuing Marcus." for 12 game hours, never arrives (same as Lena). radiohelp not ready. D4 20 I made Noah a Medic + `rescue Marcus`: "Noah got Marcus back on their feet" within the same hour. So Amy herself is stuck (BUG, twice).
+- D4 12 4 raiders; `defend`. Maya (farmer) dropped to 12%. No theft reported.
+- foodDaysLeft shows 611.5 / 689.5 / 799 when foodPerDay is 0 - silly number.
+- D5 00: favour card "asks for 15 food and 10 water" (had food 28, water 15.1, -4.8/day). Refused -> "won't answer the radio for a week. Your people feel bad".
+- D5 00: water jumped 23.7 (D4 22) -> 15.1: the day's eating is taken in one lump at midnight; per-day rate display doesn't prepare you.
+- D5 06: research salvage (25 rp + 6 scrap). Sending 3 on a trip silently took 3 food + 3 water (28.3/15.5 after from 31.3/18.5). Not stated anywhere I saw.
+- People don't heal: Theo 81% from D3 23 to D6 16 (3 days); June 75% D4 12 -> D5 06; Marcus 66% all D6 until evening. Medical tent + Amy "work".
+- D5 lumber trips: 12 wood (09:00), 10 wood (20:00), D6 11: 11 wood. D1 was 15. Each also costs 1 food+1 water per head and usually one injury.
+- D5 14 pharmacy low: 3 meds, 4 scrap, backpack, no injuries. Best trip so far.
+- "A CRY FOR HELP" seen D1 09, D1 12, D5 07, D5 18, D6 09 (5 times); "BARRICADED STORE" D2 11, D3 09, D5 06; "ARMORED VAN" D3 08, D3 16; "SICK STRANGER" D4 07, D5 15. Tiny event pool.
+- Radio every morning D2-D6 08:00: "the Haven can reach the next level" while upgrade already running. Stale.
+- D6 00 Legacy "Far Horizons" 12 expeditions: +15 renown +10 scrap. Nice surprise, scrap saved me.
+- D6 01-07: "Water runs out in about 19 h / 18 h / 23 h / 22 h / 25 h / 24 h / 26 h" one line every hour. Spam, and the number jumps around.
+- D6 07: "Move-in request Ben wants to make the Haven home ♥35" - Ben has lived here since D1. What is a resident vs a person? Unexplained. Beds 10/10 with 6 tents.
+- D6 08 Greenwater: traded 6 food for 10 water. Good, came exactly when needed.
+- D6 heavy rain 08-11 with 5 barrels: water 14.5 -> 17.9 (+3.4). Barrels feel useless; 5 barrels and still -6/day.
+- D6 11 ordered tradepost (14 wood 5 scrap 2 cloth). Wood 19 -> 1. Still a "site" at D7 04 (17 h) because wood ran out mid-delivery - no message says it is stalled for materials.
+- D6 18: "Upkeep at midnight is 7.6 scrap and you have 2" (was 3.5 on D5). D7 00: "Not enough scrap for upkeep: 5 buildings run at half output". More buildings = more scrap tax; my 2 scrapyards don't cover it. Building punished.
+- D6 21 boss night (Gatling Boss + 6). D6 23 June and Theo down, HQ "wrecked" (repair 2 scrap 1 wood, I have 1 scrap 0 wood). Tents fell 3+ times ("slipped out of the Tent before it fell").
+- D7 04 end of session 1 (140 h). wood 0, scrap 2, June + Theo down. `away 22`: "credited 8 hours", +7 water +6 food +4 scrap +2 rp. Level 4 arrived (the 105-min timer). Unlocks Lodge (hq2: 20 wood, 5 scrap).
+- Level 5 goals already met (10/9 people, 22/13 buildings) -> levelup, 150 min timer.
+SESSION 2 starts D7 04.
+- Away note: tool says "nobody heals" while away, but Lena 70%->95%, Maya 72->100, Eli 38->78 across the away (D7 03 -> D7 04).
+- D7 06 news "The Mutant Boss slunk back" - the card at D6 21 said "Gatling Boss".
+- D7 07 5 raiders. I ordered `defend` ("Everyone turns out"): Eli + Rosa (cook, engineer) collapsed D7 08. My mistake but nothing warned that workers would die for 2 stolen items ("A raider escaped with 1 food / 1 water").
+- D7 08 "A lost child" card (Noah & Ben, 5 h) - declined, 2 people down.
+- D7 all day: 3-4 people down, rescuers show "rescueTo" for hours and never arrive: June down D6 23 -> picked up D7 18 (19 h); Eli + Rosa down D7 08 -> Rosa picked up D8 14, Eli D8 17 (30+ h); Ben down D8 07 -> picked up D10 11 (52 h!). I kept them alive only by typing bandage every few hours (cloth 19 -> 0).
+- Pattern: rescues complete at once when the rescuer is someone who just came in through the gate from a trip (Noah D4 20? no; D8 14 after fighters left; D9 09 Noah on return; D10 11 Amy on return) or when all fighters leave town. People already inside just show rescueTo forever. Same smell as "X can't reach a storage door" (D1 17, D2 12) and 4 people "goFire" for 6 h while the Tent burned down (D9 09 -> D9 15). Looks like a pathing block inside my town.
+- D8 00 HAVEN REVIEW WEEK 1 GRADE B: Population 16/20, Defense 4/20, Supplies 19/20, Buildings 18/20, Happiness 2/20, Research 5/20, total 64/120 "Steady Settlement". Liked this card: first time the game told me where I stand.
+- D8 06-14: 7-12 walkers inside town in daylight, Marcus/June/Lena/Theo all "chase" for 8 h with HP unchanged (Marcus 94% D7 12 -> D8 20), workers all "hiding", nothing produced, nothing built. Gridlock. Broke it by sending the 4 fighters to the lumber yard (D8 14) -> militia formed, Rosa rescued within the hour.
+- D8 14 lumber with 4 people: 18 wood, no injuries (3 people gave 10-12).
+- Wood: D7 04 0, D8 17 18, D9 02 14 (auto repairs ate 4), D9 09 24 -> hq2 ordered (20 wood 5 scrap). D9 16 wood 0 again. From D6 11 to D9 09 (70 game hours) I could not place one building: no wood, everyone down or hiding.
+- D8 20 research blades (20 rp). D9 02 crafted Fire Axe 13 scrap for Marcus (crafting works at the Workbench though text says "a Workshop").
+- D9 09 Iris (Engineer) came home with the squad from "CRY FOR HELP" fight 89%. D9 14 Quinn joined. 12 people.
+- D9 07 first new trip event in days: "A HORDE ON THE ROAD".
+- D9 18 "Upkeep at midnight is 7.9 scrap and you have 3"; D10 00 "9 buildings run at half output". Day 9 report: Food −10.0, Water −10.0.
+- D9 21 boss night 2 (Mutant Zombie +6). D10 00 Legacy "A Real Town" 12 people: +15 renown +10 scrap.
+- D10 02 6 raiders at night; left alone (no defend): 2 food stolen, June collapsed D10 04.
+- hq→hq2 ordered D9 09, still "hq→hq2" at D10 11 (26 h), wood shows 0. No progress text.
+
+## Days 10–20 (continued)
+(Takeover by a second tester at D10 16. Session 2 started D7 04 -> ends D13 00, then away 22.)
+- D10 16 state: Level 4 (L5 upgrade 80 min left), hq2 (Lodge) DONE, 13 people, beds 13/14, food 24.1 (-0.1/d), water 17.7 (-9.2/d, 1.9 days), wood 8 scrap 13 cloth 0, research 10. canBuild suddenly 24 types (was 12): kennel, gym, school, library, ammobench etc. Expand land needs 160 renown + 35 wood + 15 mat (I have 240 renown).
+- D10 16 lumber LOW trip with 4: 11 wood + Hockey Pads + shoes, Lena & Amy hurt, Vera collapsed. Lumber trips still cost a body each time.
+- D10 16 ordered barrel->collector (8 wood): "all materials are in" only D11 06 (14 h). D10 20 Lumber Camp ordered, built D11 03.
+- D11 03 water 3.7 (0.4 days). D11 07 `event market` cost 6 scrap: +~3 food +2.5 water. Supply drop card D11 08: +11 food.
+- D11/12 nights: Lodge wrecked twice (D11 02, D11 23, D12 04), Medical Tent and Tents fall every night, 9 buildings damaged 337 dmg by D12 06. Every night is a repair bill.
+- D12 00 day report: "Open staff slot: Medical Tent, Garden Plot, Rain Barrel, Lumber Camp". The Lumber Camp I built sat unstaffed 21 h and nothing told me which job staffs it. Found by trial: Scavenger (Eli -> "will staff the Lumber Camp", D12 07). Amy/Vera/Quinn -> Farmer (D12 02): water -6.3 -> -3.8, food went positive +2.2/day.
+- D11 21 Noah "wants to make the Haven home" again (resident since D1?). Accepted. D12 00 baby Ivy born (Marcus+Lena), joins in 5 days.
+- D12 08 Greenwater 6 food -> 10 water again. Exactly the right moment, second time.
+- D12 12 lumber trip (Theo, Lena, Rosa, June): card showed Theo 35/72, Rosa 33/62 at the first stage although state said 100% at departure. 16 wood, 3 hurt. Horde card "Sneak around 87%" -> "A crawler gave them away: Lena got hurt" (it counted as success?).
+- D12 12-17 move-in requests from Maya, Eli, June (all living here since D1-D3). Each "became a resident!". 4 of these now; I still can't tell what being a resident changes.
+- D12 17-19 second Rain Collector + tent done. D12 18 "Upkeep at midnight is 8.2 scrap and you have 4". Scrap 2 at D13 00.
+- D12 21 boss "Stalker" +7. No deaths; Trading Post and tents fell again.
+- D13 00 day report "Food +0.0 −13.4 · Water +0.0 −13.4 ... ⚠ FOOD: under 1 day left". Food 18.3 -> 9.5, water 13 -> 3.9 at midnight, but state right after says foodPerDay +2.9, waterPerDay -0.1, waterDaysLeft 27.3. The two numbers can't both be right; I can't plan water from either.
+- END SESSION 2 at D13 00. away 22. Level 5 still 33 min away (started D7 04!).
+SESSION 3 starts D13 00 (ends D18 20).
+- Away 22h: credited 8 h: +12 water +5 food +5 scrap +5 rp +6 wood. Level 5 arrived on return. L6 goals already met (14/11 people, 26/16 buildings, banner 1/1) -> levelup: news says "about 1 h 0 min while you play"; at D13 07 minutesLeft 174. Which is it?
+- D13 06 news "The Mutant Boss slunk back" - last night's boss was the Stalker (same wrong-name bug as D7 06).
+- D13 06 Morning: 11 buildings damaged (385 dmg). Lodge wrecked again D13 02. Every night.
+- D13 08 Toll Kings demand 16 scrap (I had 7). Refused -> "THEY ATTACK". D13 10: Maya, Rosa, Quinn, Noah, Ben all collapsed; raiders took 1 water + 1 food + 1 water. The rescue loop again: "Eli is rescuing Maya / June is rescuing Rosa / Marcus is rescuing Quinn" repeated ~15 times per hour, rescuers "rescueTo" doing nothing. radiohelp (D13 11) -> rescue team carried 5 to care within 1 h. Third time radiohelp is the only working rescue.
+- Asking 16 scrap when I had 7 is a demand I could not pay, so "Pay" was never a real choice.
+- D13 12 Vera collapsed; "Eli is rescuing Vera" every hour D13 12 -> D14 04 (16 h). `rescue Vera`, making Iris a Medic + rescue, bandage x2 (bleed timer back to 10h) - nothing worked. Vera finally "reached the Medical Tent" D14 07 (19 h). 
+- D14 08 Quinn & Ben collapsed in town (walker in a Tent). Ben: 5 people "rescuing Ben" for 3 h. D14 11 I sent Marcus/Theo/Lena out on a houses trip -> within the same hour "Iris got Ben back on their feet". Same trick as the earlier tester found: rescues only finish once the fighters leave town. Feels like the fighters block the rescuer.
+- D14 06-14: 9-14 walkers inside town in daylight; nearly everyone "hiding". Production nil. Wood 1-4 all day although the Lumber Camp is staffed (Eli is a scavenger -> he "chases" zombies instead).
+- D14 08 Lost child card: June & Maya 5 h search -> "Too late, found nothing".
+- D14 12 houses trip: rescued a survivor but "The Haven has no room" (beds 14/14, 13 people + baby?). I lost a new person for lack of 3 wood for a tent.
+- D14 14 `post` -> {"ok": false} with no reason. `walls 2` -> placed 2, sealed false, 1 wood each; no idea how many tiles seal the town.
+- D14 17 Research Reinforced Walls (30 rp + 10 scrap): "New and repaired walls get 30% more HP". Scrap 15 -> 4 at 18:00 vs upkeep 8.6.
+- D14 14 Amy, Quinn -> Guard to fight the daytime walkers.
+- D14 22 Amy (new Guard) collapsed first night as guard. D15 00 favour bill: 15 food + 10 water; I had 9.2 food 7.5 water -> could only refuse -> no radio help for a week. Same as D5.
+- D15 00 HAVEN REVIEW WEEK 2 GRADE B 79/120: Population 20/20, Supplies 20/20, Buildings 20/20, Defense 6/20, Happiness 3/20. Supplies 20/20 on the same midnight the day report said "FOOD under 1 day / WATER under 1 day". Defense 6/20 is the honest number.
+- D15 06 lumber LOW (Marcus/June/Lena/Quinn): 13 wood + 1 scrap. D15 10 wood 20 -> collector #3 (8) + tent (3); by D15 16 wood 1. D15 16 tent built but beds stayed 14/14.
+- D15 08 Greenwater "send 2 medicine" for a sick child - meds 0, could only refuse.
+- D15 16 trader: mattress/biker/hockey pads/dog/molotov/15 rp. No wood, no scrap, nothing for a builder.
+- D15 21 boss Bloater Queen +10, D15 22 6 raiders. D16 06: Maya, Ben, Noah, Vera, Theo all down; 4 rescuers "rescueTo" all morning. Sending fighters out did NOT help this time (D16 07 Lena+Quinn, D16 11 Marcus+June). `defend` -> {"ok":false} no reason. `militia` -> "healthy civilians band together when no fighter is left" refused even D17 16 when every Guard was down.
+- D16 06 -> D17 06: 8 walkers sit inside the walls in daylight for 24 h straight; guards "chase", HP never changes.
+- D16 08 stray dog adopted (Pepper, 2 food). Can't give it to anyone here.
+- D17 00 Ivy grown (Legacy "Next Generation" +15 renown +10 scrap, 3/8 legacy).
+- D17 02-06: 8 of 14 down at once, "NO rescuer" on 7. Cloth 0 after ~12 bandages (each bandage seems to add only 1-3 h now).
+- D17 06-18 daytime `rescue NAME` orders DID move people (Vera, Noah, Maya, Ben, Quinn, Theo reached care) but rescuers kept collapsing right after (Ivy, Lena, Iris, Amy, Marcus, Maya, Noah, Eli, Ben). Medical Tent wrecked D17 08, 11, 15, 17 - every time with patients in it.
+- D17 18: 10 of 14 down, 2 standing (Vera 26%, Theo 60%), June "bleeds out in 1 game h; NO rescuer". Food 35.8 water 25 - for once supplies are fine and the people are not.
+- D17 19 June died (first death of the run) and "rose again as a zombie". D17 20 "11 down, too few left to fight. They hide until the zombies move on, then go for the fallen" - nobody went for the fallen.
+- D18 02 Lena died; D18 02 "survivors hold a vigil. The horde pulls back for a while" - but 18 walkers still inside at D18 02, 16 at D18 07.
+- D18 05-15 deaths: Marcus, Quinn, Ivy, Iris, Maya, Eli, Noah (D18 07-08), Ben (D18 09), Amy (D18 10), Theo, Rosa (D18 15). 13 dead in 20 game hours. Each rose as a zombie.
+- `militia` refused at D18 04 (only Vera, a Farmer, standing) and D18 11 (Vera 100%, everyone else down): "healthy civilians band together when no fighter is left". There WAS no fighter left. Broken.
+- D18 06 Morning card "Lost: 3" when 4 had died since D17 19 (June, Lena, Marcus, Quinn); more dying while I read it.
+- D18 08 Toll Kings again want 16 scrap (I had 3) -> refuse -> attack + "The Collector will hear of this!" Raiders then stole ~10 food/water over D18 17-18 from a town with 1 person.
+- D18 17 state: 1 person (Vera), beds 1/14, food 28.5 water 25.3, foodPerDay +13.9 (?!), renown 396, level 5 (L6 upgrade 66 min left). Research 33 unspent, wood 5 scrap 2.
+- D18 18 Vera collapsed in a Tent ("Fighters are answering" - there are none). "Rescue within 270 s." but the timer says 14 game h.
+- D18 20 END SESSION 3. away 22.
