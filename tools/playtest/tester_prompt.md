@@ -20,8 +20,8 @@ Play in steps of a few game hours, read what happened, decide, give orders. Chec
 Rules: use ONLY zh.js on port {{PORT}}. Do NOT read the game's source code or any file in /root/Zombie-haven except the template and your own run log named below (do not open other folders under /root/Zombie-haven/runs or other testers' files). Never use commands starting with an underscore. Never stop or restart the server (no "quit").
 
 ## Notes and sheet
-Keep short notes in /root/Zombie-haven/runs/round1/{{KEY}}_notes.md as you go (day, hour, what happened, numbers, how it felt).
-When day 20 starts (or the town is lost), write /root/Zombie-haven/runs/round1/{{KEY}}_sheet.md using the template /root/Zombie-haven/tools/playtest/sheet.md (build = first line of /root/Zombie-haven/runs/round1/{{KEY}}.jsonl, seed 21). Every claim cites a day and a number from your notes or that run log. Score fun 1-10 as this profile would feel it. Keep "problems with the test tool" in a separate section from "problems with the game". Start the sheet with one line: `SCORE: X/10 · level reached N · people alive N · deaths N`.
+Keep short notes in /root/Zombie-haven/runs/{{RUN}}/{{KEY}}_notes.md as you go (day, hour, what happened, numbers, how it felt).
+When day 20 starts (or the town is lost), write /root/Zombie-haven/runs/{{RUN}}/{{KEY}}_sheet.md using the template /root/Zombie-haven/tools/playtest/sheet.md (build = first line of /root/Zombie-haven/runs/{{RUN}}/{{KEY}}.jsonl, seed 21). Every claim cites a day and a number from your notes or that run log. Score fun 1-10 as this profile would feel it. Keep "problems with the test tool" in a separate section from "problems with the game". Start the sheet with one line: `SCORE: X/10 · level reached N · people alive N · deaths N`.
 If the server stops responding (2-hour limit), stop and write the sheet with what you have.
 
 Final answer: a 5-line summary (fun score, biggest high, biggest low, where stuck, the one change) and the sheet path.

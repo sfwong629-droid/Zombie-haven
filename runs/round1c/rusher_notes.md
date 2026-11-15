@@ -1,0 +1,34 @@
+# Rusher notes (port 8855, seed 21, build 3D.163)
+Session clock: S1 starts D1 08:00 (300 game h then away 8).
+- D1 08: L1. nextLevel = 6 people, 6 buildings. Skipped tips. Built barrel+farm; 2-build limit stops bonfire.
+- D1 12: bonfire site sat unbuilt ~9h (wood ran out to 0 after expedition-less start; "Amy can't reach a storage door" message D1 12). Wood is the first bottleneck (12 start).
+- D1 14-17: lumberyard low trip +16 wood, rescue card gave Maya. Noah joined D1 15.
+- D1 22: L1 reqs met (6 ppl, 6 bldg). levelup D1 23 -> upgrade timer 9-10 "minutes" (=game hours).
+- **L2 reached D2 10:00**. L2 reqs (7 ppl, 8 bldg) already met at once -> levelup D2 11.
+- Goals rewards say "claim from alert/Goals screen": no zh command for it (tool gap?).
+- D2 11: L2->3 upgrade timer 18h. Lumberyard medium trip: +27 wood but Marcus 103->17%, Lena 41%. Wood 65 after.
+- D2 12: radio says "upgrade the Camp to a Lodge" but `upgrade hq2` -> "not unlocked yet" (misleading tip).
+- D3 00: Day summary says "Food +0.0 / Water +0.0" every day even with 2 farms/4 barrels producing (state shows +2..+3/day). Confusing.
+- D3 03: fire at Camp, June collapsed; D3 06 morning card says "Hurt: nobody". Contradiction.
+- D3 08: expand land tier 1 (60 renown). **L3 reached D3 09:00** (card D3 10). reqs 8 ppl/10 bldg already met.
+- D3 10: levelup L3->4 = **105 hours** (vs 10h, 18h before). Huge wall. Expand tier 2 needs HQ tier 2; hq2 not unlocked.
+- D3-D5: waiting on 105h upgrade. Research trickles ~0.5/h (15 bonus from workbench D3 18). Raiders D4 12, Noah+Maya collapsed D4 15 (recovered). Low-risk Houses trip D5 downed Rosa (collapsed, carried home).
+- D4 20 onward: "move-in request" cards from people ALREADY living here (Ben, Lena, Marcus -> "became a resident"). Unclear what it changes.
+- D5 08: renown 131, upgrade 67h left. Research blades done. Nothing on the level path to do: the wait is pure time.
+- D6 07: beds stuck 10/10 with 5 tents (5th tent gave no bed?). D6 21 Mutant boss night: killed by town, found Katana D7 01.
+- D7 06: power 197 (6 named, only 4 went in). Cleared Overrun Clinic stronghold (rec 175): 67s fight, June+Amy downed, sh med x2, sh focus at boss 20%. +25 renown, +9 scrap, +9 meds. Best moment so far: tense, readable.
+- D7 06: renown 205 (useless while upgrading?), upgrade 28h left.
+- D8 00 week review grade B 79/120; Happiness 4/20, Research 5/20.
+- **L4 reached D8 16:00** (upgrade started D3 10 => ~102h wait). Unlocked Lodge (hq2). L4 reqs (9 ppl / 13 bldg) were already met (11/22) -> levelup at once.
+- D8 16: L4->5 timer = **150 hours**. Requirements are never the bottleneck; the timer is. Renown 297 piling up with no use for leveling.
+- D8 note: two survivors both named June (scavenger + guard) - confusing in logs.
+- D8 20 Lodge done; D9 00 two babies, legacy goal 1/8 ("4 legacy + ★5 to call the convoy"). D9 05 expanded land tier 2 -> night D9 04-06 three fighters down (Marcus, both Junes). Expansion punishes immediately.
+- D9 11: `upgrade clinic` returned ok but game said "Clinic is 2x1: place it then Build" and nothing happened (tool gap). Walls 12 -> 28 (+16 tiles, ~16 wood).
+- D9 07 lumberyard med: +43 wood found, paid half toll.
+- D9 05 - D12: daily collapse cascade after land tier 2: "someone is down" stops every 1-3 h (D10 13-D10 21: Ben, June x2, Theo, Eli, Leo, Maya, Rosa). No deaths so far. Raiders D10 10 (7). Med tent wrecked repeatedly; "no medical bed free: slower care".
+- D11 12 & D12 12: "X can't reach a storage door ... walled off / fence has a gate" after my `walls` orders (52 tiles, never sealed). Possibly the wall tool blocked paths.
+- D12 04: Ben "Farmer" sits "free" while farms show "Open staff slot". `job Noah Farmer` -> Noah staffs the Fenced Farm at once; food/day went -1.2 -> +4.3. Ben's job tag seems not to count.
+- D12 13: wood 0 (repairs eat it). Lumberyard low: +~28 wood, Lena downed again on a LOW trip.
+- D12 21: Stalker boss + 9. D12 22-D13 02: Marcus, Lena, June, June, Ben, Eli, Noah, Maya, Rosa, Theo, Leo, then Amy (D13 02) all down. 12/12 down, nobody left to carry anyone.
+- D13 03 -> 15: my `play 12` ran the full 12 h with stopped:"time" while all 12 were down; "X is bleeding out!" lines (D13 12-15) did not stop it. I chained plays too fast here (my fault too) - but by D13 03 there was no healthy person; radiohelp last used D10 01, I did not check if it was ready again.
+- D13 21-22: all 12 rose as zombies. "everyone is gone", lost 12. Town lost D13 22 at L4 (upgrade to L5 still 45 h left). Whole run was one binge session (D1 08 -> D13 22 = 302 game h); the 300 h `away 8` mark (D13 20) fell while all 12 were already down, so the app close never happened.

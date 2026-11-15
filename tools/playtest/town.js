@@ -63,7 +63,7 @@
     for (; hours < h; hours++) {
       let cut = false; for (let k = 0; k < 1000; k += 60) { Z.step(60); Z.tripUpdate(); AP.tick(); const c = popup(); if (c && !infoOnly(c)) { cut = true; break; } }   /* a card that needs a decision stops play at once: trip choices run out */
       if (cut) { why = 'card'; hours++; break; }
-      AP.hour();
+      AP.hour(); if (Z.selX && Z.selX()) Z.endBuildModeX();   /* a build tool left open would hold back every card */
       for (let g = 0; g < 6; g++) { const c = popup(); if (!c || !infoOnly(c)) break; read.push(`D${S.day} ${String(S.hour).padStart(2, '0')}:00 [card] ` + c.text.split('\n').slice(0, 8).join(' / ').slice(0, 400)); document.querySelector('#eventModal button').click(); }   /* plain info cards (only OK-type buttons): read them out, close them */
       if (popup()) { why = 'card'; hours++; break; }
       if (request()) { why = 'request'; hours++; break; }
@@ -92,7 +92,14 @@
       const d = D[a[0]], B = Wd.BUILD, why2 = {}; for (let y = B.y0; y <= B.y1 - d.h + 1; y++) for (let x = B.x0; x <= B.x1 - d.w + 1; x++) { const c = Wd.placementCheck(Wo(), x, y, d, null); if (!c.ok) why2[c.why] = (why2[c.why] || 0) + 1; }
       const top = Object.entries(why2).sort((p, q) => q[1] - p[1]).slice(0, 3).map(([k, v]) => `"${k}" on ${v} spots`).join(', ');
       return { ok: false, why: 'no spot in the build area will take it. The game says: ' + (top || 'nothing') }; },
-    upgrade: (a) => { const d = D[a[0]]; if (!d || !d.up) return { ok: false, why: 'give the type it BECOMES (see canUpgrade), e.g. upgrade hq2' }; const prev = Object.keys(D).find((k) => D[k].next === a[0]); if (!Wo().buildings.some((b) => b.type === prev && !b.upg)) return { ok: false, why: `no ${prev} to upgrade` }; if (!ok(a[0])) return { ok: false, why: 'not unlocked yet' }; if (!Z.canPay(Z.bCost(d))) return { ok: false, why: 'cannot afford: ' + cost(d) }; const b = Wo().buildings.find((q) => q.type === prev && !q.upg), c = Z.upgradeCheck(b); if (!c.ok) return { ok: false, why: c.why || 'the game refuses this upgrade' }; return { ok: !!AP.place(a[0]) }; },
+    upgrade: (a) => { const d = D[a[0]]; if (!d || !d.up) return { ok: false, why: 'give the type it BECOMES (see canUpgrade), e.g. upgrade hq2' }; const prev = Object.keys(D).find((k) => D[k].next === a[0]); if (!Wo().buildings.some((b) => b.type === prev && !b.upg)) return { ok: false, why: `no ${prev} to upgrade` }; if (!ok(a[0])) return { ok: false, why: 'not unlocked yet' }; if (!Z.canPay(Z.bCost(d))) return { ok: false, why: 'cannot afford: ' + cost(d) }; const b = Wo().buildings.find((q) => q.type === prev && !q.upg), c = Z.upgradeCheck(b); if (!c.ok) return { ok: false, why: c.why || 'the game refuses this upgrade' };
+      const r = AP.place(a[0]); const s0 = Z.selX && Z.selX();
+      if (s0 && s0.upgFrom) {   /* a bigger building: the game asks the player to place it; try the spots around the old one, as a player would */
+        const ob = s0.upgFrom; let done = false;
+        for (const rot of [ob.rot | 0, (ob.rot | 0) ^ 1]) { const dd = Wd.rotDef(D[a[0]], rot); for (let dy = -(dd.h - 1); dy <= 0 && !done; dy++) for (let dx = -(dd.w - 1); dx <= 0 && !done; dx++) { const x = ob.x + dx, y = ob.y + dy; if (Wd.placementCheck(Wo(), x, y, dd, ob).ok) { Z.endBuildModeX(); Z.upgradeBuilding(ob, { x, y, rot, w: dd.w, h: dd.h }); done = true; } } if (done) break; }
+        if (!done) { Z.endBuildModeX(); return { ok: false, why: `the ${D[a[0]].name} is bigger: no room around the old one (clear a neighbouring tile)` }; }
+        return { ok: true, note: 'placed the bigger building over the old one' }; }
+      if (s0) Z.endBuildModeX(); return { ok: !!r }; },
     walls: (a) => {   /* fence every free tile of the wall line (north side first), gates where a road crosses; never removes a wall */
       const Zn = Wd.WALLZONE, W = Wo(), T = []; for (let x = Zn.x0; x <= Zn.x1; x++) T.push([x, Zn.y0], [x, Zn.y1]); for (let y = Zn.y0 + 1; y < Zn.y1; y++) T.push([Zn.x0, y], [Zn.x1, y]);
       T.sort((p, q) => p[1] - q[1]); let n = 0; const max = +a[0] || 8;

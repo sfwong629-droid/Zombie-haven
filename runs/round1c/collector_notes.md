@@ -1,0 +1,60 @@
+# Collector notes (round1c, port 8853, build 3D.163, seed 21)
+Session clock: session 1 starts D1 08:00 (play 140h then away 22).
+- D1 8h: Field note #1 CRAWLER (tip card, says Guide -> Field Notes keeps all). Start 4 people, food/water 14 (3.5 days). Built farm+barrel; build limit is 2 at once.
+- D1 9h: Field note #2 WALKER. D1 14h Houses trip: item Scope Goggles (+food/water/cloth). D1 15h Noah joined. D1 17h Pharmacy: item Hiking Backpack, Lena hurt to 11% -- game still let me send her (11%) on the Lumber Yard trip. Turned back from horde.
+- D1 report card text truncated in cardsRead ("Stage 2: L...") - tool/len limit.
+- D1 22h Workbench gives +15 research. D2 1h Eli joined; level 2 at D2 12h. D2 8h Lumber Yard: item Hockey Pads (event card "wrecked armored van"), 15 wood.
+- Goals: "done! Claim the reward from the alert or Goals screen" x3 (7 people D2 2h, produce 20 food D2 11h, research D2 21h) -- no tool command to claim goals: TOOL LIMIT.
+- D2 14h June joined. D2 20h Bladesmithing done -> 9 craftable melee weapons listed (machete..katana) — nice visible collection list.
+- D3 5h Field note #3 RUNNER. D3 8h Adopted stray dog "Bandit" - card says give from Gear tab, but dog not in stash; equip bandit/dog fails: TOOL LIMIT (or bug).
+- D3 8h crafted Machete (9 scrap), Marcus wears goggles+hockey+machete. Water was the main squeeze D1-D3 (2 days left), fixed with 3 barrels.
+- D3 12h level 3. D3 15h Lumber Yard again: duplicate Hiking Backpack + duplicate Machete (van event). Dupes so far, nothing new. Built Gym, Kennel (D3 12h).
+- D3 17h event bonfire "Bonfire Night" - fine. D3 18h Lena learned skill Light Feet; D4 18h Amy learned First Aid (skills = another collectible?).
+- D4 0h Bandit dog "found the Kennel. Tap survivor -> Pet" - still no tool command for pets: TOOL LIMIT.
+- D4 Move-in requests Marcus/Amy/Lena/Maya -> residents.
+- D4 8h Amy sick event, treated. D4 7h Pharmacy (low): Ben collapsed, carried. D4 19h Lumber Yard (low): Lena collapsed stage 1; the decision cards then showed "Squad: Eli" only, with no line saying Lena was down - I thought my order dropped her. Low-risk trips down someone ~every 2nd trip.
+- D4 21h dupe Scope Goggles. Level 4 upgrade said 102 min (real) at D3 17h - long wait.
+- D5 0h & D6 0h "Out of water" though 6 barrels; daily summary always says "Food +0.0 / Water +0.0" (production never shown in summary - confusing). Barrels need staff ("Open staff slot: Rain Barrel").
+- D5 5h build area full ("Tile occupied" 20 spots...), D5 11h expanded land (60 renown, 20 wood, 8 mat).
+- D5 8h second stray dog adopted -> ALSO named "Bandit" (same card). Dull for a collector / possible bug.
+- D5 11h Lumber Yard: dupe Scope Goggles, NEW School Backpack; Noah collapsed. Lifting Gloves appeared in stash with no news line saying where from.
+- D5 19h Rosa joined. D6 5h Field note #4 BLOATED. D6 8h supply cache +2 scrap. D6 13h Field note #5 RAIDERS. D6 13h trader: tyre, goalie, mechanic items, CAT pet, pipebombs, research. Bought cat (6f/6w) - no confirmation news, cat not visible anywhere via tool.
+- D6 21h Boss night: Field notes #6 BOSS: BLOATER QUEEN, #7 INFECTED DOG. Kennel fell. D7 0h baby Ivy born to Marcus+Amy (nice!).
+- D7 1-4h Lena, Marcus, Amy, Noah all down, "NO rescuer". Radio help called D7 4h. Militia triggered twice.
+- Level 4 has been "upgrading" since D3 14h (real-minute timer, 102 -> 46 min left by D6 13h). Still level 3 at end of session 1. Lodge never appears in canUpgrade.
+- SESSION 1 ends D7 04:00 -> away 22.
+## Session 2 (D7 04:00 -> D13 00:00)
+- away 22 -> credited only 8 game h; Level 4 arrived on return (Lodge unlocked). D7 5h boss Bloater Queen defeated. Rescue team carried 5 people (owes favour).
+- D7 6h Eli learned Iron Stomach. D7 8h third stray dog -> named MOOSE (so 2 Bandits + Moose). D7 9h dupe Scope Goggles (4th).
+- D8 0h HAVEN REVIEW WEEK 1 grade B 77/120 "Steady Settlement" (Happiness 6/20).
+- D8 5h Marcus learned Tough. D8 8h Lumber Yard: NEW Lucky Charm. D8 17h dupe Hiking Backpack (3rd). Expedition events repeat a lot: barricaded store x3, armored van x4, horde x3, sick stranger x2 by D8.
+- Wood drain: 18 wood -> 7 in 3h on D8 (fires/repairs). D8 17h HQ->Lodge (20w). Lodge complete D8 19h, gave a lump of wood/scrap (68w/56s). Tier 2: 24 buildable types listed. Missions start appearing ("Into the Wasteland", "Community Spirit", "Clear the Perimeter", "Bandit Hunt").
+- D8 21h Field note #8 SPITTER. D8 22h "upgrade workshop" returns ok but "The Workshop is 2x1: place it (turn it with ↻)" - never gets built (retried D9 8h): TOOL LIMIT/BUG.
+- D9 8h Gas Station (NEW place, medium) with Lena+Marcus: squad came home D9 12h with NO expedition report card; Marcus downed, LENA GONE from people list, no death/missing news at all. Loot appeared in stash: NEW Wristwatch, NEW Back Brace, 2 dupe hikerpacks; fuel 2->23. Biggest low so far - my best scavenger vanished silently.
+- D9 21h boss THE BUTCHER - no "NEW" field note card for it (Bloater Queen had one). D10 6h "The Mutant Boss slunk back" (name changed?). Many buildings "fell" at night (Canteen, Lodge, Armory, Tent).
+- D10 7h Marcus bought NEW Tactical Cap + NEW Riot Vest at the Armory on his own (nice surprise).
+- D9 18h Amy learned Steady Hands. D10 8h Field Medicine researched. Library built D10 3h, Armory D9 21h, Lumber Camp D9 2h (needs staff).
+- D10 14h Noah learned Strong Back; D11 22h June learned Strong Back (dupe skill).
+- D10 15h Old Quarry (NEW place, medium) Ben/June/Noah: again NO expedition report card; June & Noah downed; stone 0->15, NEW Reading Glasses. Can't tell what each trip gave me - for a collector this hurts.
+- D10 20h "upgrade clinic" -> "Clinic is 2x1: place it" - same as Workshop, never built. Farm->Fenced Farm worked (D11 3h), Tent->Cabin worked (D9 6h, D12 22h).
+- D10 22h & D12 6h "A Rotbomb burst" - a zombie type with no Field Note card. Butcher (D9) also no card.
+- Morning report cards stopped after D7 (none D8-D12 in cardsRead).
+- Armory self-shopping: NEW Crowbar, Hawaiian Shirt (D11 13h), Baseball Bat (D11 18h). Fun to see in news.
+- D11 8h jobs: Maya->Police Officer, Rosa->Civilian (D10). D12 0h Ivy (baby) joined as Civilian.
+- D12 21h boss Bloater Queen again (repeat boss).
+- Level 5 still upgrading (43 min left at D12 12h) - level 4 whole session 2.
+- SESSION 2 ends D13 00:00 -> away 22.
+## Session 3 (D13 00:00 -> D18 20:00)
+- D13 0h Level 5 on return. Radio explains banners clearly: next level needs a Banner (clear Overrun Clinic, or Trading Post / Radio Tower). Good signposting.
+- D13 6h STRONGHOLD Overrun Clinic (power 217 vs 175): fight 72s, 24 kills, boss killed, +26 renown, +6 scrap, +9 meds; loot NEW Medic Pouch + NEW Hazmat Suit. Banner "stronghold" raised. No victory/trophy card - just a fightOver line. Felt like the best moment so far though.
+- D13 7h Eli learned Field Rations. D13 10h level 6 started: 180 min real.
+- Lumber Camp unstaffed all game ("Open staff slot: Lumber Camp" every night D9-D16); changing jobs (Rosa Civilian/Scavenger, Ivy Engineer) never filled it. Can't tell which job works it.
+- Since ~D8 NO cards at all in cardsRead: no morning reports, no expedition reports (D9 gas, D10 quarry, D14 lumber, D15 houses), no birth card for Finn (appeared D16 0h as "Finn lends a hand"). For a collector this kills the feedback loop.
+- D14 11h trader: Wristwatch, NEW Football Helmet, NEW Crossbow, dog pet, pipebombs, research. Bought Crossbow+Football Helmet. Built Trading Post D15 0h -> banner "civic".
+- Armory auto-swap: D14 13h Maya "took a Scrap Spear" and dropped my Crossbow (atk 34) back to stash. NPCs override my gear choices.
+- D15 18h Lounge, D15 21h Archery Range built (new types). D15 21h boss STALKER (+11 zombies) - no field note card; worst night: 8 of 10 downed D15 22h-D16 10h, radio help used, nobody died.
+- D16 raid_foundry and raid_green appear UNLOCKED in expedition list, but I never saw a card meeting the Foundry or Greenwater (only a Foundry radio line D18 0h). Silent unlock.
+- D16 22h 2nd Medical Tent. D17 12h trader: NEW Ghillie Suit bought (Rosa took it at the Armory 6 h later). Trader "trade" (sell) list always empty - can't sell 4 dupe Hiking Backpacks.
+- D18 0h Kai and Nora appear as Civilians (more children grown) - never got birth cards for them or Finn.
+- D18 0-4h another bad night: Kai, Nora, Maya, Rosa, Amy, Noah down; radio help #3; nobody died. 12 people. Level 6 still 71 min at D18 20h.
+- SESSION 3 ends D18 20:00 -> away 22.
