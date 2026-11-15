@@ -3053,7 +3053,7 @@ function havenReview() {
     Defense: Math.max(0, Math.min(20, (S.kills - w.kills) / 8 + ((S.bossKills || 0) - w.bosses) * 3 - lost * 5)),
     Supplies: Math.min(20, (S.produced - w.produced) / 10),
     Buildings: Math.min(20, types + world.buildings.length * .3),
-    Happiness: Math.max(0, Math.min(20, (avgSat - (w.sat || 0)) / 8)),
+    Happiness: Math.max(0, Math.min(20, avgSat / 5)),   /* 3D.169 round 2 (two testers): it scored the week's rise, so a town at full mood all week got 3/20. Now the level: ♥100 = 20 */
     Research: Math.min(20, (S.resWeek || 0) * 4 + Object.keys(S.res || {}).length * .5),
   };
   const total = Math.round(Object.values(sc).reduce((a, v) => a + v, 0)), g = total >= 100 ? 'S' : total >= 80 ? 'A' : total >= 60 ? 'B' : total >= 40 ? 'C' : 'D';
