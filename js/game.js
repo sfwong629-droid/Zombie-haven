@@ -4162,9 +4162,10 @@ function stageHtml(st) {
     ${img(fig(st.hero, heroPose), 'r0 ' + (sc === 'arrive' ? 'walkin' : sc === 'danger' ? 'shake' : sc === 'party' ? 'hop' : ''))}${conf}</div>`;
 }
 const others = (s, n = 2) => S.sv.filter((q) => q !== s && q.hp > 0).slice(0, n);
+let curEv = null;
 function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
 function nextEventPopup() {
-  const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); modalOpen = true;
+  const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); if (e.valid && !e.valid()) return nextEventPopup(); curEv = e; modalOpen = true;   /* 3D.169 round 2: a trip card that waited behind another card could already be decided */
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
   if (e.live) {   /* 3D.134 a small card under the real scene: the newcomer is standing there on the map, waving */
     const fg = window.ZH3D && ZH3D.figure ? ZH3D.figure(e.live, 'ready') : null; m.classList.add('live');
@@ -4781,7 +4782,7 @@ function encDefault(t) {   /* the squad's own call: a Brave member takes a good 
 }
 function encResolve(t, i, roll = Math.random()) {   /* i = player's choice (null = no order came) */
   const en = t.enc; if (!en) return null; const E = EXP_ENC[en.k], rk = EXP_RISK[t.risk]; let lead = null;
-  if (i == null) { const d = encDefault(t); i = d.i; lead = d.lead; }
+  if (i == null) { const d = encDefault(t); i = d.i; lead = d.lead; if (curEv && curEv.encRef === en) { const m = $('eventModal'); if (m && m.innerHTML) { m.innerHTML = ''; m.className = m.className.replace(/\blive\b/, ''); modalOpen = false; curEv = null; say('No order came in time: the squad decided for itself.'); setTimeout(nextEventPopup, 0); } } }
   const o = E.opts[i], od = en.opts[i]; t.enc = null; if (!o) return null;
   const actor = (od.whoId && t.members.find((m) => m.id === od.whoId)) || encLive(t)[0], got = [], r = (a) => Math.max(1, Math.round((a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1))) * Math.sqrt(rk.mult)));
   const ok = o.safe || roll < od.chance, hurtOne = (m) => { if (!m) return; const loss = m.max * (.3 + Math.random() * .2) * (1 - dmgReduce(m)); m.hp = Math.max(0, Math.round(m.hp - loss)); if (m.hp <= 0) { m.collapsed = true; t.log.push(`${m.name} collapsed and is being carried.`); } else if (!t.hurt.includes(m.name)) t.hurt.push(m.name); return m.name; };
@@ -4818,7 +4819,7 @@ function encChoose(en, i) {   /* a stale pop-up (the squad already decided) does
 }
 function encPopup(t) {
   const en = t.enc, E = EXP_ENC[en.k];
-  showEventPopup({ title: E.title, text: `${E.text}<br><small>Squad: ${t.members.map((m) => esc(m.name) + ' ' + traitIcon(m) + ' ' + (m.collapsed || m.hp <= 0 ? 'collapsed, being carried' : Math.ceil(m.hp) + '/' + m.max)).concat((t.lost || []).map((n) => esc(n) + ' 💀 lost')).join(' · ')}</small><br><small>No order before the next stage and the squad decides for itself.</small>`, buttons: encButtons(t) });
+  showEventPopup({ encRef: en, valid: () => !!S.trip && S.trip.enc === en, title: E.title, text: `${E.text}<br><small>Squad: ${t.members.map((m) => esc(m.name) + ' ' + traitIcon(m) + ' ' + (m.collapsed || m.hp <= 0 ? 'collapsed, being carried' : Math.ceil(m.hp) + '/' + m.max)).concat((t.lost || []).map((n) => esc(n) + ' 💀 lost')).join(' · ')}</small><br><small>No order before the next stage and the squad decides for itself.</small>`, buttons: encButtons(t) });
 }
 function tripUpdate(now = (expNow())) {
   const t = S.trip; if (!t) return;
