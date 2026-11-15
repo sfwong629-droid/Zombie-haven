@@ -1501,7 +1501,8 @@ const ageBondMul = (a, b) => { const d = Math.abs(ageOf(a) - ageOf(b)); return d
 /* V3D.17 full names: everyone has a family name (the first name is what the town calls them) */
 const FIRST_NAMES = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar', 'Cass', 'Dex', 'Mara', 'Ozzy', 'Lark', 'Vince', 'Hana', 'Rook', 'Sol', 'Quinn', 'Ada', 'Bo', 'Cleo', 'Dante', 'Esme', 'Felix', 'Gwen', 'Hal', 'Ines', 'Jonah', 'Kira', 'Leo', 'Mina', 'Nico', 'Opal', 'Pia', 'Rafe', 'Sana', 'Tomas', 'Uma', 'Vera', 'Wes', 'Yara', 'Zed', 'Abel', 'Bryn', 'Cyrus', 'Della', 'Ezra', 'Faye', 'Gus', 'Hattie'];
 const LAST_NAMES = ['Reyes', 'Novak', 'Okafor', 'Brennan', 'Sato', 'Lindqvist', 'Moreau', 'Kowalski', 'Haddad', 'Fischer', 'Park', 'Ivanova', 'Alvarez', 'Murphy', 'Nakamura', 'Osei', 'Petrov', 'Quinlan', 'Rossi', 'Schmidt', 'Tanaka', 'Underwood', 'Vasquez', 'Whitfield', 'Yilmaz', 'Zhou', 'Abara', 'Becker', 'Castillo', 'Dubois', 'Engel', 'Fontaine', 'Garza', 'Holm', 'Ibarra', 'Jensen', 'Kaur', 'Larsen', 'Mendes', 'Nyberg', 'Ortiz', 'Pruitt', 'Ramos', 'Sorensen', 'Torres', 'Vance', 'Webb', 'Abbott', 'Bishop', 'Crane'];
-const freeFirst = (pool = FIRST_NAMES) => { const used = new Set(S.sv.concat(S.trip ? S.trip.members : [], guest ? [guest] : []).map((q) => String(q.name).split(' ')[0]));   /* 3D.161 play-test: three Noahs in one town. Squads out on a trip and the newcomer at the gate count, and so does a first name with a surname */
+const takenFirst = () => new Set(S.sv.concat(S.trip ? S.trip.members : [], guest ? [guest] : [], S.kids || [], S.fac && S.fac.helix && S.fac.helix.taken ? [S.fac.helix.taken] : []).map((q) => String(q.name).split(' ')[0]));   /* 3D.169: kids and the one Helix took count too */
+const freeFirst = (pool = FIRST_NAMES) => { const used = takenFirst(); if (pool !== FIRST_NAMES && !pool.some((n) => !used.has(n))) pool = FIRST_NAMES;   /* 3D.169 (two Junes, play-test round 1): every way in now asks here */   /* 3D.161 play-test: three Noahs in one town. Squads out on a trip and the newcomer at the gate count, and so does a first name with a surname */
   const f = pool.filter((n) => !used.has(n)); return f.length ? f[Math.floor(rnd() * f.length)] : FIRST_NAMES[Math.floor(rnd() * FIRST_NAMES.length)] + ' ' + String.fromCharCode(65 + Math.floor(rnd() * 26)) + '.'; };
 const pickLast = () => { const f = LAST_NAMES.filter((n) => !S.sv.some((q) => q.last === n)); const L = f.length ? f : LAST_NAMES; return L[Math.floor(rnd() * L.length)]; };
 const fullName = (s) => (s ? s.name + (s.last ? ' ' + s.last : '') : '');
@@ -3544,7 +3545,7 @@ function cancelUpgrade(b) { const u = b.upg; if (!u) return; for (const [k, v] o
 function queueResidentRequest(s) { S.requests.push({ type: 'resident', s }); showNextRequest(); }
 function showNextRequest() {
   const box = $('requestBox'); if (!box || box.innerHTML || !S.requests.length) return; const q = S.requests[0], s = q.s;
-  box.innerHTML = `<div class="request frame"><b class="out">🏠 Move-in request</b><br>${s.name} wants to make the Haven home. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act danger out" id="declineReq">Not yet</button></div>`;
+  box.innerHTML = `<div class="request frame"><b class="out">🏠 Wants to stay for good</b><br>${esc(s.name)} (${s.job}, here ${Math.max(1, Math.round(s.daysHere || 1))} day${Math.round(s.daysHere || 1) > 1 ? 's' : ''}) wants to become a resident. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act danger out" id="declineReq">Not yet</button></div>`;
   $('acceptReq').onclick = () => { s.resident = true; renownGain(4, 'New resident'); say(s.name + ' became a resident!', true); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
@@ -3552,7 +3553,7 @@ const ARRIVE = { low: 8000, high: 14000 };   /* 3D.72: growth is the goal, and t
 function visitorArrival() {
   if (S.finale || guest) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.food < 1 || S.water < 1) return; if (((window.ZH_BAL || {}).gateWait ?? 1) && S.z.some((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) return;   /* spiral fix: newcomers wait outside while zombies are in the town */   /* 3D.71: nobody moves to a starving town */ if (S.arrivalClock < (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ 
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])];
-  const taken = new Set(S.sv.concat(S.trip ? S.trip.members : []).map((q) => String(q.name).split(' ')[0])), name = names.find((n) => !taken.has(n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2)));   /* V2.18: newcomers to a bigger Haven are more experienced */
+  const name = freeFirst(names), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2)));   /* V2.18: newcomers to a bigger Haven are more experienced */
   /* 3D.134 owner: you see them come. They walk in off the highway to the edge of town, stop and wave (the real wave clip, on the real map),
      and only then does the card ask. Until the player decides they are a guest: not in the town list, not saved, and zombies ignore them. */
   const a = hwyEnd(), hq = world.buildings.find((b) => b.type === 'hq'), g = traderSpot(hq ? hq.x + 1 : 7 + OFF, hq ? hq.y - 2 : 6 + OFF), v = mk(name, job, lv, a[0], a[1], S.sv.length);
@@ -3632,8 +3633,17 @@ function suggestSpot(type) {   // the free, valid spot nearest the town centre (
   for (let y = Wd.BUILD.y0; y <= Wd.BUILD.y1; y++) for (let x = Wd.BUILD.x0; x <= Wd.BUILD.x1; x++) { const dd = Math.hypot(x - cx, y - cy); if (dd >= bd || !Wd.placementCheck(world, x, y, d, null).ok) continue; bd = dd; best = { x, y }; }
   return best && { x: best.x, y: best.y, sx: best.x + d.w - 1, sy: best.y + d.h - 1 };
 }
+/* 3D.169 (play-test round 1: "the wall line is full but not sealed", no hint why). findGaps started from the old town centre (before the
+   3D.103 map offset), outside the ring, so it never found a gap. Each gap now says what keeps it open. */
+function gapWhy(x, y) {
+  const wl = Wd.wallAt(world, x, y); if (wl && wl.broken) return 'a broken section: a worker repairs it, or rebuild it';
+  if (Wd.isRoad(world, x, y)) return 'a road: close it with a Gate';
+  const bl = world.buildings.find((b) => { const t = Wd.approachTile(b); return t.x === x && t.y === y; }); if (bl) return `the ${DEFS[bl.type].name}'s doorway: a Gate fits there`;
+  if (postAt(x, y)) return 'a guard post: move it or wall round it';
+  return Wd.inWallZone(x, y) ? 'an open tile' : 'outside the wall area';
+}
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
-  const seed = Wd.nearestWalkable(world, 7, 10, true); if (!seed) return []; const plug = new Set(), gaps = [];
+  const seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return []; const plug = new Set(), gaps = [];
   const open = (x, y) => Wd.inMap(x, y) && !plug.has(x + ',' + y) && Wd.walkable(world, x, y, true);
   const wallN = (x, y) => { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && ((Wd.wallAt(world, x + dx, y + dy) && !Wd.wallAt(world, x + dx, y + dy).broken) || plug.has((x + dx) + ',' + (y + dy)))) n++; return n; };
   for (let it = 0; it < max; it++) {
@@ -3641,9 +3651,12 @@ function findGaps(max = 8) {   // where the zombies' way in is: trace the shorte
     for (let i = 0; i < q.length && !end; i++) { const c = q[i]; if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) { end = c; break; }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = nx + ',' + ny; if (!prev.has(k) && open(nx, ny)) { prev.set(k, c); q.push({ x: nx, y: ny }); } } }
     if (!end) break; const path = []; for (let c = end; c; c = prev.get(c.x + ',' + c.y)) path.push(c);
-    const cand = path.filter((c) => Wd.inWallZone(c.x, c.y) && !Wd.buildingAt(world, c.x, c.y)); if (!cand.length) break;
-    let pick = cand[0], pn = -1; for (const c of cand) { const n = wallN(c.x, c.y); if (n > pn) { pn = n; pick = c; } }
-    plug.add(pick.x + ',' + pick.y); gaps.push({ x: pick.x, y: pick.y, label: Wd.isRoad(world, pick.x, pick.y) ? 'gate' : Wd.wallAt(world, pick.x, pick.y) ? 'rebuild' : 'gap' });
+    const cand = path.filter((c) => Wd.inWallZone(c.x, c.y) && !Wd.buildingAt(world, c.x, c.y) && !(c.x === seed.x && c.y === seed.y)); if (!cand.length) break;   /* 3D.169: never the start tile (it kept picking the town centre) */
+    const Zn = Wd.WALLZONE, ring = (c) => (c.x === Zn.x0 || c.x === Zn.x1 || c.y === Zn.y0 || c.y === Zn.y1 ? .5 : 0);   /* ties go to the outer wall line */
+    const solid = (x, y) => plug.has(x + ',' + y) || !!Wd.buildingAt(world, x, y) || !!(Wd.wallAt(world, x, y) && !Wd.wallAt(world, x, y).broken);
+    const sc = (c) => { const w = Wd.wallAt(world, c.x, c.y); return (w && w.broken ? 4 : 0) + ((solid(c.x - 1, c.y) && solid(c.x + 1, c.y)) || (solid(c.x, c.y - 1) && solid(c.x, c.y + 1)) ? 3 : 0) + wallN(c.x, c.y) * .1 + ring(c); };   /* a hole in a line: a broken section, or a tile with wall on both sides */
+    let pick = cand[0], pn = -1; for (const c of cand) { const n = sc(c); if (n > pn) { pn = n; pick = c; } }   /* path runs edge → town: ties go to the outer line */
+    plug.add(pick.x + ',' + pick.y); gaps.push({ x: pick.x, y: pick.y, label: Wd.isRoad(world, pick.x, pick.y) || /doorway/.test(gapWhy(pick.x, pick.y)) ? 'gate' : Wd.wallAt(world, pick.x, pick.y) ? 'rebuild' : 'gap', why: gapWhy(pick.x, pick.y) });
   }
   return gaps;
 }
@@ -4722,7 +4735,7 @@ function expFinish(recalled) {
   if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${RES_ICON[k] || k} ${v}`).concat((t.items || []).map((id) => ITEMS[id].name));
   if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
-    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.concat(S.trip ? S.trip.members : []).some((s) => String(s.name).split(' ')[0] === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
+    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = freeFirst(names), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
     recruit = mk(nm, jb, 1, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); t.log.push(`${nm}, a ${jb} (${TRAITS[recruit.trait].icon} ${TRAITS[recruit.trait].name}), was found and followed the squad home.`);
   }
   if (t.dest === 'military' && !recalled && t.stage >= EXP_STAGES && exAdd('grenade', 1)) t.log.push('They found a grenade in an ammo crate.');
@@ -5199,7 +5212,7 @@ function shEnd(won, fled) {
       if (H.goal === 'leader' || H.bossDown) { F.goneUntil = S.day + 60; { const fk = Object.keys(S.fac || {}).find((q) => S.fac[q] === F) || 'toll', t0 = facTier(fk); F.beaten = (F.beaten || 0) + 1; facTierUp(fk, t0); }   /* 3D.147 gear tier */ if (H.raid === 'toll') setTimeout(() => earnBanner('faction', 'The Toll Collector fell in his own hall.'), 900); lines0.push(`${H.raid === 'toll' ? '👑' : '🌿'} Their leader is down: they scatter for 60 days.`); } }
     else { if (H.dest.startsWith('sh_')) { S.shSeason = { ...(S.shSeason || {}), [H.dest]: seasonIdx() }; S.trophies = [...(S.trophies || []), { k: H.dest, day: S.day }]; renownGain(15, 'Seasonal trophy'); lines0.push(`🏆 A ${d.name} trophy now hangs in the HQ.`); }
       if (H.dest === 'prison' && !vehOf('van')) setTimeout(() => vehArrive('van', 'In the prison motor pool the squad found'), 2500);
-      if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = names.find((n) => !S.sv.some((q) => q.name === n)) || freeFirst(), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
+      if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = freeFirst(names), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
         recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
       S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
     S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); renownGain(H.raid ? 15 : 25, d.name);
@@ -5246,7 +5259,7 @@ function shPanelTick(inner) { const el = $('shPanel'), top = $('shTop'), H = S.s
     const cr = row.querySelector('.crit'); if (cr) cr.hidden = !((s.crit || 0) >= 100 && s.hp > 0); const md = row.querySelector('.med'); if (md) md.disabled = s.hp >= s.max; });
   const nm = el.querySelector('.shSel .nm em b'), s1 = H.sel.length === 1 && H.units.find((q) => q.id === H.sel[0]); if (nm && s1) nm.style.width = Math.max(0, Math.round(s1.hp / s1.max * 100)) + '%';
   const b = top && top.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.hp > 0 && H.rev.B), left = H.zs.filter((z) => z.hp > 0 && !z.hid).length, hidden = Object.keys(SH_ROOMS).filter((r) => !H.rev[r]).length;
-  if (b && H.camp) { const gl = H.zs.filter((z) => z.hp > 0 && !z.worker).length, dn = H.blds.filter((q) => q.dead).length; const rs = H.alarm && H.reinAt ? Math.max(0, Math.ceil((H.reinAt - H.t) / 60)) : 0; b.innerHTML = `<span class="sm">${H.night ? '🌙 ' : ''}${H.alarm ? '🔔 Alarm!' + (rs ? ` More in ${Math.floor(rs / 60)}:${String(rs % 60).padStart(2, '0')}` : '') : '🤫 Unseen'} · ${gl} guards · ${dn}/${H.blds.length} buildings down · 🎒 ${campBagLoad(H)}/${campBag(H)}${(H.items || []).length ? ' +' + H.items.length + ' gear' : ''}</span>`; }
+  if (b && H.camp) { const gl = H.zs.filter((z) => z.hp > 0 && !z.worker).length, dn = H.blds.filter((q) => q.dead).length; const rs = H.alarm && H.reinAt ? Math.max(0, Math.ceil((H.reinAt - H.t) / 60)) : 0; b.innerHTML = `<span class="sm">${H.night ? '🌙 ' : ''}${H.alarm ? '🔔 Alarm!' + (rs ? ` Patrol ${H.reinN + 1}/${(CAMP_PLAN[H.raid] || {}).reinMax || 3} in ${Math.floor(rs / 60)}:${String(rs % 60).padStart(2, '0')}` : H.reinN ? ' No more patrols' : '') : '🤫 Unseen'} · ${gl} guards · ${dn}/${H.blds.length} buildings down · 🎒 ${campBagLoad(H)}/${campBag(H)}${(H.items || []).length ? ' +' + H.items.length + ' gear' : ''}</span>`; }
   else if (b) b.innerHTML = bz && H.woke.B ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span class="sm">${left} in sight · ${hidden} room${hidden === 1 ? '' : 's'} unexplored</span>`;
   if (!inner && !H.list && s1 && (((s1.crit || 0) >= 100) !== !!el.querySelector('.crit') || (s1.abT && s1.abT - H.t <= 0 && el.querySelector(`[data-c="ab:${s1.id}"][disabled]`)) || (s1.abT - H.t > 0 && H.t % 60 === 0))) shPanel(); }
 /* the tap layer over the 3D view */
@@ -5494,10 +5507,11 @@ function campEnemyAI(z, live) {
     if (z.mode === 'patrol') z.mode = 'idle'; shZombieAI(z, near); return; }
   if (z.mode === 'patrol') z.mode = 'idle'; shZombieAI(z, live); }
 function campReinforce() {   /* 3D.128 once the alarm is up, patrols come back to the gate: don't linger. 3D.130: how soon, how often, how many and how tough come from the camp's plan */
-  const H = S.sh; if (!H || !H.alarm || !H.reinAt || H.t < H.reinAt || H.back) return; const P = CAMP_PLAN[H.raid] || {}, TK = P.tough || 1, n = (P.reinN0 || 2) + H.reinN, zd = zombieTypes.raider || zombieTypes.walker; H.reinN++; H.reinAt = H.reinN < (P.reinMax || 3) ? H.t + 60 * (P.reinEvery || 60) : 0;
+  const H = S.sh; if (H && H.bossDown && H.reinAt) { H.reinAt = 0; H.reinStop = 'boss'; say('With their leader down, no more patrols will come. Grab what you can and walk out.', true); }   /* 3D.169 play-test: "the waves never ended", even after the boss fell */
+  if (!H || !H.alarm || !H.reinAt || H.t < H.reinAt || H.back) return; const P = CAMP_PLAN[H.raid] || {}, TK = P.tough || 1, n = (P.reinN0 || 2) + H.reinN, zd = zombieTypes.raider || zombieTypes.walker; H.reinN++; H.reinAt = H.reinN < (P.reinMax || 3) ? H.t + 60 * (P.reinEvery || 60) : 0;
   for (let i = 0; i < n; i++) { const wpn = i % 3 === 2 ? 'rifle' : ['bat', 'crowbar', 'machete'][i % 3], hp = Math.round(zd.hp * 1.3 * TK), w = shWorld(12 + (i % 4), 26.4 + Math.floor(i / 4) * .6);
     H.zs.push({ type: 'raider', human: true, wpn, ranged: wpn === 'rifle', room: 'y', w, hp, max: hp, atk: zd.atk * 1.2 * TK, spd: (zd.chase || .012) * 1.25, mode: 'idle', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, fk: H.raid, home: { ...w }, rein: true }); }
-  SFX('alarm'); shFx(shWorld(13.5, 25.5), `❗ ${n} more at the gate`, '#ff6e62'); say(`A patrol is back: ${n} more ${H.raid === 'toll' ? 'Toll Kings' : 'of them'} at the gate.`); shPanel(); }
+  SFX('alarm'); shFx(shWorld(13.5, 25.5), `❗ ${n} more at the gate`, '#ff6e62'); say(`A patrol is back: ${n} more ${H.raid === 'toll' ? 'Toll Kings' : 'of them'} at the gate` + (H.reinAt ? ` (patrol ${H.reinN} of ${P.reinMax || 3}).` : '. That was the last patrol.')); shPanel(); }
 /* the practice page (owner: "a test page in the game for that function"): try any stronghold or camp with a ready-made squad;
    nothing is lost or gained, and the town waits. Open it from Town > Defense, or with ?shtest=1. */
 function showShPractice() {
@@ -5842,7 +5856,7 @@ function tryWall(x, y, type) {
   if (!Wd.inWallZone(x, y)) { say('Walls go around the town, inside the glowing area.'); return; }
   if (Wd.buildingAt(world, x, y)) { say('A building is in the way.'); return; }
   if (postAt(x, y)) { say('A guard post is in the way.'); return; }
-  { const bl = world.buildings.find((b) => { const t = Wd.approachTile(b); return t.x === x && t.y === y; }); if (bl && type !== 'gate') { say(`That's the ${DEFS[bl.type].name}'s doorway: keep it clear (a gate is fine).`); return; } }   /* 3D.115 entrances matter */
+  { const bl = world.buildings.find((b) => { const t = Wd.approachTile(b); return t.x === x && t.y === y; }); if (bl && type !== 'gate') { if (!Wd.wallAt(world, x, y) && canPay(bCost(Wd.WALL_DEFS.gate))) { say(`The ${DEFS[bl.type].name}'s doorway: a Gate goes there instead.`); tryWall(x, y, 'gate'); return; } say(`That's the ${DEFS[bl.type].name}'s doorway: keep it clear (a gate is fine).`); return; } }   /* 3D.169: a wall on a doorway left a gap nobody saw */   /* 3D.115 entrances matter */
   const ex = Wd.wallAt(world, x, y), k = Wd.key(x, y);
   if (ex && ex.type === type) { if (!confirmTile('w', x, y, `Tap the ${wd.name} again to remove it.`)) return; world.walls.delete(k); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); saveGame(); ui(); return; }
   if (ex && wd.lvl && (Wd.WALL_DEFS[ex.type].lvl || 0) && wd.lvl > Wd.WALL_DEFS[ex.type].lvl) {   /* 3D.103 wall tiers: building a stronger wall on a weaker one upgrades it in place (half of the old one's cost back) */
@@ -6262,7 +6276,7 @@ function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promo
 }
 function perimText() {
   const p = Wd.perimeter(world); if (!p.walls) return 'No walls yet: zombies walk straight in.';
-  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b> <span class="sm">(close every gap)</span>') + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
+  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b>' + (() => { const g = findGaps(6); return g.length ? `<div class="sm">${g.length}${g.length >= 6 ? '+' : ''} gap${g.length > 1 ? 's' : ''}: ${[...new Set(g.map((q) => q.why))].slice(0, 3).join(' · ')}</div><button class="act" id="perGaps">Show the gaps</button>` : '<span class="sm">(close every gap)</span>'; })()) + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
@@ -6308,7 +6322,7 @@ function showTown(tab) {
   $('ib').querySelectorAll('[data-pol]').forEach((b) => { b.onclick = () => { setPolicy(b.dataset.pol); showTown('overview'); }; });
   const rr = $('retreatR'); if (rr) rr.oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
   const ts = $('tSave'); if (ts) ts.onclick = () => { say(saveGame() ? 'Saved.' : 'Not saved: see the alert.'); };
-  const tl = $('tLog'); if (tl) tl.onclick = showLog;
+  const tl = $('tLog'); if (tl) tl.onclick = showLog; { const pg = $('perGaps'); if (pg) pg.onclick = () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); showObjMarks(findGaps()); }; }
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
   { const ea = $('tExAuto'); if (ea) ea.onclick = () => { S.exAuto = S.exAuto === false; showTown('defense'); }; }

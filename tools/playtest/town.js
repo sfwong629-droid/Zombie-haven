@@ -106,7 +106,7 @@
       T.sort((p, q) => p[1] - q[1]); let n = 0; const max = +a[0] || 8;
       { const cx = Math.round((Zn.x0 + Zn.x1) / 2), cy = Math.round((Zn.y0 + Zn.y1) / 2); for (const [x, y] of [[cx, Zn.y1], [cx, Zn.y0], [Zn.x0, cy], [Zn.x1, cy]]) { const ex = Wd.wallAt(W, x, y); if (!ex || ex.type !== 'gate') { const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, 'gate'); if (S.mat + (S.wood || 0) < m0) n++; } } }   /* a gate in the middle of each side first: a fence with no gate locks your own people out */
       for (const [x, y] of T) { if (n >= max) break; if (Wd.wallAt(W, x, y)) continue; const gate = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => Wd.isRoad(W, x + dx, y + dy)); const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat + (S.wood || 0) < m0) n++; else if (!Z.canPay({ wood: 4 })) break; }
-      const per = Wd.perimeter(W); return { placed: n, sealed: !!per.sealed, wallTiles: W.walls.size }; },
+      const per = Wd.perimeter(W); return { placed: n, sealed: !!per.sealed, wallTiles: W.walls.size, ...(per.sealed ? {} : { gaps: Z.findGaps(6).map((g) => `${g.x},${g.y}: ${g.why}`) }) }; },
     job: (a) => { const q = who(a[0]); return { ok: !!(q && Z.changeProfession(q, a.slice(1).join(' '))) }; },
     promote: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const w = Z.specWhy(q); return w ? { ok: false, why: w } : { ok: !!Z.promoteSpec(q) }; },
     research: (a) => { const r = Z.RESEARCH[a[0]]; if (!r) return { ok: false, why: 'unknown research' }; const ok2 = !!Z.doResearch(a[0]); return { ok: ok2, why: ok2 ? '' : `needs ${r.rp} research points (have ${Math.round(S.rp || 0)}) and ${r.mat} scrap (have ${Math.round(S.mat)})` }; },
