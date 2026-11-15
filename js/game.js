@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.168', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.169', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4316,7 +4316,7 @@ const HUD_B = typeof document !== 'undefined' && document.documentElement.classL
 function showMore() {
   endBuildMode(true); closeP(); const I = (n) => (window.ZHIcons ? ZHIcons.svg(n, 30) : '');
   $('ib').innerHTML = `<button class="moreRow" id="moGuide"><span class="moI">${I('guide')}</span><span class="moT"><b>Guide</b><small>Goals, how things work, the story so far</small></span><span class="moA">›</span></button>`
-    + `<button class="moreRow" id="moJobs"><span class="moI">${I('worker')}</span><span class="moT"><b>Jobs</b><small>Who does what, promotions</small></span><span class="moA">›</span></button>`
+    + `<button class="moreRow" id="moJobs"><span class="moI">${I('worker')}</span><span class="moT"><b>Jobs</b><small>${(() => { const e = slotBs().filter((b) => !b.staff).length; return e ? e + ' empty workplace' + (e > 1 ? 's' : '') + ' · promotions' : 'Who works where, promotions'; })()}</small></span><span class="moA">›</span></button>`
     + `<button class="moreRow" id="moLog"><span class="moI">📜</span><span class="moT"><b>Event log</b><small>Every message, news line and radio call, including the ones you missed</small></span><span class="moA">›</span></button>`
     + `<button class="moreRow" id="moSet"><span class="moI">${I('parts')}</span><span class="moT"><b>Settings</b><small>Save, sound, event log, tips, main menu</small></span><span class="moA">›</span></button>`;
   $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore); $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; };
@@ -6039,7 +6039,7 @@ function buildDetail(k) {
   if (d.fam === 'scrap') mk.push(`⚙ +${d.out}`); if (d.fam === 'lumber') mk.push(`🪵 +${d.out}`); if (d.fam === 'quarry') mk.push(`🪨 +${d.out}`); { const u = UPKEEP[k] ?? .3; if (u > 0) us.push(`⚙ −${u.toFixed(1)}`); }
   const perDay = `<div class="perDay"><div><small>Each day</small></div>${mk.length ? `<div><span>Makes</span><b class="good">${mk.join('  ')}</b></div>` : ''}${us.length ? `<div><span>Uses</span><b class="bad">${us.join('  ')}</b></div>` : ''}</div>`;
   if (d.cap > 1 && d.role === 'inn') fx.push(`🛏 beds for ${d.cap}`); if (d.tier) fx.push(['', '⛺ Camp tier', '🪵 Timber tier', '🪨 Stone tier'][d.tier]); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
-  if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) fx.push('👷 1 worker: ' + (STAFF_JOBS[d.fam] || []).join(' / '));
+  if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) { const js = STAFF_JOBS[d.fam] || [], fr = freeFor(js).length; fx.push('👷 1 worker: ' + js.join(' / ') + (fr ? ` (${fr} free)` : ' (none free)')); }
   $('ib').innerHTML = `<div class="bdetail"><div class="big">${bImg(k, 300, 140)}</div>
     <div class="row" style="justify-content:center;gap:14px;font-size:21px"><span><b>${costShort(bCost(d))}</b></span><span>${size}</span></div>
     <p class="desc">${BDESC[k] || ''}</p>${perDay}<div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
@@ -6219,14 +6219,45 @@ function showSurvivors() {
   showPanel('People'); pfWire($('ib'), showSurvivors);
   $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((q) => q.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
 }
-function showJobs(back) {   /* More > Jobs: who does what, who can be promoted, and what each Specialist and Hybrid gives */
+/* 3D.169 (play-test round 1, Builder): a staffing view. Which job works each building, who is there, and one button to fill the empty slots */
+const slotBs = () => world.buildings.filter((b) => DEFS[b.type] && DEFS[b.type].slot && !b.burnt);
+const freeFor = (jobs) => S.sv.filter((q) => jobs.includes(q.job) && !q.post && q.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(q.mode));
+function fillSlots() {   /* clears "nobody works here" too: the player asked for every slot. Matching job first, then a Civilian (autoStaff's own order) */
+  const empty = slotBs().filter((b) => !b.staff); if (!empty.length) { say('Every workplace is staffed.'); return; }
+  for (const b of empty) b.noStaff = false; autoStaff();
+  const filled = empty.filter((b) => b.staff).length, left = empty.filter((b) => !b.staff), need = [...new Set(left.flatMap((b) => STAFF_JOBS[DEFS[b.type].fam] || []))];
+  say(filled ? `Filled ${filled} workplace${filled > 1 ? 's' : ''}` + (left.length ? ` · ${left.length} still empty: no free ${need.join(' or ')}` : '.') : `Nobody free to fill them: needs a ${need.join(' or ')}`, true);
+  saveGame();
+}
+function workplacesHtml() {
+  const L = slotBs().sort((x, y) => (!!x.staff - !!y.staff) || DEFS[x.type].name.localeCompare(DEFS[y.type].name)), empty = L.filter((b) => !b.staff).length;
+  const fitTxt = (b) => { const f = fitOf(b, b.staff); return f === 'match' ? `<span style="color:var(--good)">+${Math.round(workBoost(b.staff) * 100)}%</span>` : f === 'civ' ? '<span class="sm">Civilian helping +25%</span>' : '<span style="color:var(--bad)">wrong job −25%</span>'; };
+  const row = (b) => { const d = DEFS[b.type], jobs = STAFF_JOBS[d.fam] || [], fr = freeFor(jobs).length;
+    return `<div class="card row" data-wp="${world.buildings.indexOf(b)}" style="cursor:pointer;gap:8px"><div style="width:46px;height:40px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 46, 40)}</div><div class="sp" style="min-width:0"><div><b>${esc(d.name)}</b> <span class="sm">· ${jobs.join(' / ')}</span></div><div class="sm">${b.staff ? `👷 ${esc(b.staff.name)} (${b.staff.job} Lv.${b.staff.l}) · ${fitTxt(b)}` : `<span style="color:var(--bad)">Empty</span> · ${b.noStaff ? 'set to nobody' : fr ? fr + ' ' + jobs.join('/') + ' free' : 'no free ' + jobs.join(' or ')}`}</div></div><span style="color:var(--gold)">›</span></div>`; };
+  const need = {}; for (const b of L) if (!b.staff) for (const j of STAFF_JOBS[DEFS[b.type].fam] || []) need[j] = (need[j] || 0) + 1;
+  const short = Object.entries(need).filter(([j, n]) => freeFor([j]).length < n).map(([j, n]) => `${n - freeFor([j]).length} ${j}${n - freeFor([j]).length > 1 ? 's' : ''}`);
+  return `<div class="card"><div class="row"><b class="sp">Workplaces ${L.length - empty}/${L.length} staffed</b>${empty ? (L.some((b) => !b.staff && (freeFor(STAFF_JOBS[DEFS[b.type].fam] || []).length || (FAMRES(DEFS[b.type].fam) && freeFor(['Civilian']).length))) ? `<button class="act go" id="wpFill">Fill empty slots (${empty})</button>` : '<button class="act" disabled>Nobody free</button>') : ''}</div><div class="sm">Each building takes one worker. The right job adds +50% (more with level); a Civilian adds +25%; anyone else makes it slower than empty.${short.length ? ` <b>Short of:</b> ${short.join(', ')} (change someone's profession in their Job tab).` : ''}</div></div>`
+    + (L.length ? `<div class="lst">${L.map(row).join('')}</div>` : '<div class="sm">No workplaces yet: a Rain Barrel, Garden Plot or Scrapyard each take a worker.</div>')
+    + `<details class="card"><summary><b>Which job works where</b></summary>${Object.entries(Object.entries(STAFF_JOBS).reduce((a, [f, js]) => { for (const j of js) (a[j] = a[j] || new Set()).add(f); return a; }, {})).map(([j, fs]) => `<div class="sm" style="margin-top:4px"><b>${j}</b>: ${[...new Set([...fs].flatMap((f) => Object.values(DEFS).filter((d) => d.fam === f && d.slot).map((d) => d.name)))].join(', ')}</div>`).join('')}</details>`;
+}
+let jTab = 'people';
+function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promoted, and what each Specialist and Hybrid gives */
+  if (tab) jTab = tab;
   endBuildMode(true); closeP(); const L = pfList(S.sv.slice()), bk = back || showMore;
+  if (jTab === 'work') {
+    const emp = slotBs().filter((b) => !b.staff).length;
+    $('ib').innerHTML = tabBar([['people', 'People'], ['work', 'Workplaces' + (emp ? ' (' + emp + ' empty)' : '')]], 'work') + workplacesHtml(); showPanel('Jobs', bk);
+    $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showJobs(back, x.dataset.tab); });
+    { const f = $('wpFill'); if (f) f.onclick = () => { fillSlots(); showJobs(back, 'work'); }; }
+    $('ib').querySelectorAll('[data-wp]').forEach((el) => { el.onclick = () => { const b = world.buildings[+el.dataset.wp]; if (b) { showBuildingInfo(b); panelBack = () => showJobs(back, 'work'); $('pBack').style.display = 'block'; } }; });
+    return;
+  }
   const row = (q) => { const sp = SPECS[q.job], hb = q.hyb && HYBRIDS.find((h) => h.k === q.hyb), ready = sp && !q.spec && !specWhy(q), hr = !q.hyb && hybOptions(q).some((h) => !hybWhy(q, h));
     return `<div class="card" data-sv="${q.id}">${portrait(q)}<div class="sp" style="min-width:0"><div>${esc(q.name)} <span class="sm">${q.job} Lv.${q.l}</span></div><div class="sm">${hb ? hb.icon + ' ' + hb.name : q.spec && SPECS[q.spec] ? SPECS[q.spec].icon + ' ' + SPECS[q.spec].name : sp ? `next: ${sp.icon} ${sp.name}` : ''}</div></div>${ready || hr ? '<span class="jbUp">⬆</span>' : '<span class="sm">›</span>'}</div>`; };
-  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Specialists ${specsUsed()}/${specSlots()} · Hybrids ${hybsUsed()}/${hybSlots()}</div>` + pfBar() + `<div class="lst">${L.map(row).join('')}</div>`
+  { const emp = slotBs().filter((b) => !b.staff).length; $('ib').innerHTML = tabBar([['people', 'People'], ['work', 'Workplaces' + (emp ? ' (' + emp + ' empty)' : '')]], 'people') + `<div class="sm" style="margin-bottom:6px">Specialists ${specsUsed()}/${specSlots()} · Hybrids ${hybsUsed()}/${hybSlots()}</div>` + pfBar() + `<div class="lst">${L.map(row).join('')}</div>`
     + `<details class="card"><summary><b>Specialists</b> <span class="sm">Haven level 4 · job level 5 · ${costShort(SPEC_COST)}</span></summary>${Object.entries(SPECS).map(([j, sp]) => `<div class="sm" style="margin-top:4px">${sp.icon} <b>${sp.name}</b> (${j}): ${sp.desc}</div>`).join('')}</details>`
     + `<details class="card"><summary><b>Hybrids</b> <span class="sm">Haven level 9 · level 10 in two jobs · ${costShort(HYB_COST)}</span></summary>${HYBRIDS.map((h) => `<div class="sm" style="margin-top:4px">${h.icon} <b>${h.name}</b> (${h.a} + ${h.b}): ${h.desc}</div>`).join('')}</details>`;
-  showPanel('Jobs', bk); pfWire($('ib'), () => showJobs(back));
+  } showPanel('Jobs', bk); pfWire($('ib'), () => showJobs(back)); $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showJobs(back, x.dataset.tab); });
   $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const q = S.sv.find((x) => x.id === +el.dataset.sv); if (q) { uTab = 'skills'; unitPanel(q); panelBack = () => showJobs(back); $('pBack').style.display = 'block'; } }; });
 }
 function perimText() {
@@ -6570,7 +6601,7 @@ function showBuildingInfo(b, tab) {
       else if (n) { const c = upgradeCheck(b); status += `<div class="card"><b>⬆ ${n.name}</b> <span class="sm">${costShort(bCost(n))}</span><div class="sm">${esc(BDESC[n.key] || '')}</div><button class="act${c.ok ? ' go' : ''}" id="bUp" ${c.ok ? '' : 'disabled'}>${c.ok ? 'Upgrade' + (canPay(bCost(n)) ? '' : ' (start now, gather the rest)') : '🔒 ' + esc(c.why)}</button></div>`; } }
     const worker = d.slot ? (b.staff ? `<div class="row" id="bWorker" style="gap:6px;cursor:pointer"><span>👷</span><span class="sp"><b>${esc(b.staff.name)}</b> <span class="sm">${b.staff.job} Lv.${b.staff.l} · on the job ${Math.round(workShare(b) * 100)}% of the day</span></span><span style="color:var(--gold)">›</span></div>`
       : `<div>👷 <span style="color:var(--bad)">No ${(STAFF_JOBS[d.fam] || []).join(' or ')} assigned</span><div class="sm">${sn}</div></div>`) : '';
-    const assignBtn = d.slot ? `<button class="act go" id="bAssign" style="margin-top:6px">👷 ${b.staff ? 'Change worker' : 'Assign a worker'}</button>` : '';
+    const assignBtn = d.slot ? `<button class="act go" id="bAssign" style="margin-top:6px">👷 ${b.staff ? 'Change worker' : 'Assign a worker'}</button> <button class="act" id="bWp" style="margin-top:6px">All workplaces</button>` : '';
     const fmt = (l, sign) => l.map(([ic, v, what]) => `<div>${ic} <b style="color:${sign > 0 ? 'var(--good)' : '#ffb36b'}">${sign > 0 ? '+' : '−'}${f1(v)}</b> <span class="sm">${what ? what + ' ' : ''}/ day</span></div>`).join('');
     const nt = nextTier(b), pd = (l, sign) => l.map(([ic, v]) => `${ic} ${sign > 0 ? '+' : '−'}${f1(v)}`).join('  ');   /* 3D.134 the same Makes / Uses table as the Build menu: icons, no words */
     h += `<div class="card row"><div style="width:84px;height:76px;display:flex;align-items:flex-end;justify-content:center">${bImg(b.type, 84, 76)}</div><div class="sp"><div style="color:${st.c}">● ${st.t}</div>${io.out.length || io.use.length ? `<div class="perDay" style="margin:4px 0 0"><div><small>Each day</small></div>${io.out.length ? `<div><span>Makes</span><b class="good">${pd(io.out, 1)}</b></div>` : ''}${io.use.length ? `<div><span>Uses</span><b class="bad">${pd(io.use, -1)}</b></div>` : ''}</div>` : ''}${!io.out.length && out ? `<div>${out}</div>` : ''}${cb.names.length ? `<div class="sm">★ ${cb.names.length} neighbour bonus${cb.names.length > 1 ? 'es' : ''}</div>` : ''}</div></div>`
@@ -6600,7 +6631,7 @@ function showBuildingInfo(b, tab) {
   const rp = $('bRepair'); if (rp) rp.onclick = () => { if (repairBurnt(b)) showBuildingInfo(b); };
   { const fx = $('bFix'); if (fx) fx.onclick = () => { const c = fixCost(b); if (!canPay(c)) return; payCost(c); for (const [k, v] of Object.entries(c)) flow(k, 'Repairs', -v); b.hp = b.max; screenToast('🔨 ' + DEFS[b.type].name.toUpperCase() + ' REPAIRED'); ui(); showBuildingInfo(b); }; }
   $('ib').querySelectorAll('[data-u]').forEach((el) => { const q = S.sv[+el.dataset.u]; if (q) el.onclick = () => unitPanel(q); });
-  const ba = $('bAssign'); if (ba) ba.onclick = () => showAssign(b);
+  const ba = $('bAssign'); if (ba) ba.onclick = () => showAssign(b); { const w = $('bWp'); if (w) w.onclick = () => showJobs(() => showBuildingInfo(b), 'work'); }
   { const hf = $('hFill'); if (hf) hf.onclick = () => { fillBeds(b); saveGame(); showBuildingInfo(b); }; $('ib').querySelectorAll('.resP').forEach((el) => { el.onclick = () => showResidents(b); });
     const ch = $('campHouse'); if (ch) ch.onclick = () => { const h = world.buildings.find((q) => isHousing(q) && !q.burnt && (q.res || []).length < cap(q)); if (h) showResidents(h); else { say('No empty beds: build or upgrade a Tent'); bCat = 'live'; showBuild(); } }; }
   const bw = $('bWorker'); if (bw && b.staff) bw.onclick = () => { const q = b.staff; closeP(); selected = { kind: 'unit', ref: q }; unitPanel(q); };   /* V2.35: tap the worker to open their panel */
