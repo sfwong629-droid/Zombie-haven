@@ -22,7 +22,7 @@
     if (!best) { AP.full = true; return false; }
     Z.newSite(t, best.x, best.y); AP.built.push(t + '@d' + S.day); return true;
   }
-  const PLAN = ['barrel', 'farm', 'tent', 'medic', 'bench', 'hq2', 'scrapyard', 'water', 'tent', 'lumber', 'crates', 'farm', 'quarry', 'armory', 'gym', 'cabin', 'library', 'storage', 'field', 'clinic', 'workshop'];
+  const PLAN = ['barrel', 'farm', 'tent', 'medic', 'bench', 'hq2', 'scrapyard', 'water', 'tent', 'lumber', 'crates', 'farm', 'quarry', 'pallet', 'armory', 'gym', 'cabin', 'library', 'storage', 'field', 'clinic', 'workshop'];
   const LATE = ['garage', 'kennel', 'tradepost', 'school', 'turbine', 'solar', 'hq3', 'well', 'generator', 'stonehouse', 'irrig', 'fuelstill', 'radio', 'greenhouse', 'barracks', 'hospital', 'pump', 'mess', 'warehouse', 'ammofactory', 'coldstore', 'track', 'range', 'sparring', 'lounge', 'tent', 'cabin', 'scrapyard'];   /* 3D.77 power for growth, fuel and ammo */
   const RES = ['blades', 'salvage', 'walls', 'medicine', 'gadgets', 'bodyArmor', 'firearms', 'stockpile'];
   function ring() {   /* wood ring on the WALLZONE border, gates next to roads */

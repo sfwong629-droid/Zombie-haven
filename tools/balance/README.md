@@ -45,3 +45,9 @@ camp, keeps zombies away, auto-staffs, collects the trays every 2 hours (like a 
 income and spending by source. At `TUNE.eat` 1 a person used ~0.6 food and 0.6 water a day, so one staffed Garden Plot
 (about 4-5 food a day) fed 7-8 people and stock piled up. 3D.49 sets `TUNE.eat` 1.5 (~0.95 a day each): a Garden Plot feeds
 about 4-5, a Rain Barrel (about 3 water a day) about 2, and every farm drinks 2 water a day for irrigation.
+
+## 3D.169 check (15 Nov 2026)
+- `ap.js` builds a Pallet Yard after the Quarry. `sh_probe.js` strategy suffix `!` (e.g. `all!`) = a stubborn player who stays until the list is done or everyone is down.
+- Trips, same 4-person squad (level 4), 2000 trips each, squad decides the cards: someone lost on Houses/low 4.5% → 5.4% (noise), Lumber Yard/medium 18% → 10%, Quarry/high 37% → 25%, Warehouse/high 36% → 24%; hurt and loot unchanged.
+- Bot towns, 6 seeds × 15 days: too noisy to compare wood per day (the opening is unseeded and the bot only sends trips with food and water above 12). Bot towns keep only 19–48 scrap, so a Pallet Yard there mostly waits at its floor; tester towns had 72–480.
+- Toll Kings camp: the Collector dies inside 60 s in every probe (before the first patrol at 70 s), so since 3D.169 no patrols come at all. Level 6 × 4 stubborn: 50% wipe from the starting guards alone; retreating at half strength: no wipes. Level 9 × 8: 80 loot, 0–0.3 downs. Patrol counts left as they are.
