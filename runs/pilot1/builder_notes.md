@@ -1,0 +1,91 @@
+# Builder notes (seed 21)
+## Session 1
+- D1 08:00 start: 4 people, wood 12, scrap 16. Built farm+barrel, then tent. Wood 12 -> 5 after 3 builds: wood is the limiter immediately.
+- D1 11:00 `expedition houses low` took BOTH Lena and Ben (my farmer) without me picking - my barrel staffer walked off.
+- D1 13:00 card "A SICK STRANGER": pressed "Treat him INT Lena 35%", server said pressed. D1 14:00 report says "no orders came, so Lena (Scrounger) chose Move on". My answer was ignored -> felt cheated.
+- D1 08:00 farm ordered. D2 15:00 still "farm (site)" (31 h) while tent, bench, canteen, crates all finished after it. Holds one of only 2 build slots. Wood was 9-15 the whole time (farm = 4 wood). No message says why.
+- D2 09:00 `build farm` again -> "could not place" (only 1 build running). No reason given. Land? farm cap? can't tell.
+- D1 15:00 / D2 03:00 "Lena/Noah can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off" - I built no walls; nothing I can do with this.
+- D2 food 8.9, "1.7 days left" at 04:00; no farm => food only from expeditions. Stressful, not cozy.
+- D2 14:00 crates built -> level 2 ready (6/6 people, 6/6 buildings). Levelup ordered 15:00. Fast, felt good.
+- D2 15:00 trader list shows "0: item, 1: item, 2: item, 3: pet, 4: rp" no names/prices (harness). Bought 4 blind.
+- D2 16:00 lumberyard medium: Maya "collapsed and is being carried" at stage 1; raiders toll paid half. Haul 18+15+ wood.
+- D2 19:00 & D3 01:00 `research salvage` -> {"ok":false} with no reason (scrap was 6 then 3; needs 6+25rp). Worked D3 08:00 with scrap 7.
+- D3 01:00 food 3.9 (0.6 d left), -7/day. Houses trips give only 4-7 food each and Lena came back 0% (down). Night expedition = people collapse.
+- D3 02:00 Level 2 (levelup took 11 h). D3 08:00 Level 3 ready immediately (7/7, 8/8) -> D4 06:00 Level 3 (22 h).
+- D3 08:00 scrap 1: could not afford "Treat (2 scrap, 3 water)" for sick Lena. Wood 27-36 and cloth 15-20 piling up unused; scrap 1-6 gates everything (tent 2, research 6, expand 8).
+- Farm finally stood sometime D3 18:00-D4 00:00: ~60 game hours for a 4-wood garden. No news explained it. (news list in state/play has been EMPTY since D2 19:00 - feed went silent.)
+- D4 00:00 food 2.7.
+- D4 08:00 L3: next-level line says "Buildings standing: 12/10" - ready instantly again. Expand available (renown 70) - did it, land 0->1. Then "expand: needs a bigger HQ (land tier 2 needs HQ tier 2; HQ is tier 1)" but canUpgrade is [] - no way shown to upgrade HQ.
+- D4 08:00 levelup to 4: "minutesLeft 100" (L2 was ~9, L3 ~17). 1 min ~ 1 game hour => ~100 game hours. Dropped to 86 by D5 06:00.
+- D4 14:00 `upgrade hq` and `upgrade tent` both returned ok although canUpgrade was []; buildings then showed hq:2, tent count +1. Unclear what happened.
+- D4 12:00-16:00 raiders (3) in daytime; Maya 0% down, June 0% down (June had been "sent" on the radio signal D4 08:00 "Trip: about 2 days" but was in town, down, at 14:00).
+- D5 06:00 morning: "Walkers stopped: 10, Buildings damaged: 2 (117 damage), Hurt: Marcus, Maya, Noah, Lena, June" - 5 of 9 hurt. foodPerDay shows +4.3 but food went 9.1 -> 5.5 in 8 h (D4 22 -> D5 06). The rate number can't be trusted.
+- D5 06:00 lumberyard low: Lena (60%) "collapsed" at stage 1; Noah alone brought 15 wood. D5 08:00 sick stranger treated OK this time (+3 renown, Lucky Charm).
+- D5 10:00-13:00 houses low, June 60/60 + Noah: I missed the horde card for 2 h (my fault), but report shows Noah collapsed stage 1 and June stage 2 on a LOW risk trip, haul 2 food 2 water. The horde card stayed on screen after the squad was already home.
+- D5 14:00 a second "Noah" (Noah Holm) joined: two Noahs in a 10-person town.
+- D5 22:00 everybody healed to 100% in 8 h after medic tent built (D5). Relief. 
+- D5 22:00 buildings: tent 5, beds 10/10. Beds number never matched tents (hq only = 8 beds; 4 tents = 10). Can't tell what a tent adds.
+- D6 06:00 water 3.0 with 4 rain barrels (was 10.4 at D5 22:00; shown rate -5/d then -2/d; real loss 7.4 in 8 h). Wood 0. Tent site waiting.
+- D6 08:00 Toll Kings want 12 scrap; I had 7 -> Refuse was the only real option -> "THEY ATTACK". Raiders in town 09:00 until after 17:00 (raiders 5 -> 2). Lena 0% down, Eli 42%.
+- D6 11:00 `expedition lumberyard low Lena,Noah` refused "Noah is hurt or busy" (which Noah?). D6 17:00 "Lena is hurt or busy". Wood stayed 0 from D6 06:00 to end of session (D7 04:00) = 22 h with every canBuild line "cannot afford". Nothing to build, nothing to upgrade, level 4 timer 67 -> 48.
+- D6 21:00 Boss Mutant Zombie. D7 04:00 Maya 29%, Noah(sc) 1% hospital, Noah(medic) 0% down.
+- End session 1: D7 04:00, L3 (L4 in 48 h), 10 people, 22 buildings, land 1, food 14.3 water 3.8 scrap 10 wood 0 cloth 20.
+- WAITING in session 1: levelup L3->L4 is 100 game hours (D4 08 -> ~D8 12). Canupgrade [] the whole session. Last 22 h: zero possible orders except research (rp 16, cheapest 25).
+## Session 2 (after away 22 at D7 04:00)
+- away 22: game clock stayed D7 04:00, "credited 8 game hours" (+5.5 water, +3.8 food, +3.9 scrap, +1.5 rp), and the L4 level-up (48 left) finished. So the level timer is real-time and the fastest way to level is to close the app.
+- D7 04:00 L4 "Lodge" unlocked. Levelup to 5 ordered at once (10/9 people, 23/13 buildings - requirement already met): 147 min.
+- D7 06:00 morning card: "Lost: 2 / We light a candle" - but people list still 10. Nobody had died. Misleading.
+- D7 04-08 lumberyard medium Lena+June: 42 wood (15+12+15). June collapsed. Best haul so far - scrap 24 wood 42: finally could order HQ2.
+- D7 08:00-22:00 raiders in town 14 hours (4 -> 1). D7 12:00: Marcus 0%, both Noahs 0%, Rosa 6%, June 2%. D7 15:00 "Noah has died" (the medic). D7 22:00 "4 of your people are down and the rest are hiding" -> called radio rescue (favour: 15 food 10 water in 2 days).
+- D7 12:00 move-in "request": {"note":"accept or decline"} - no name shown; I accepted, nobody appeared (people stayed 10 then 9).
+- D7 20:00 Lodge (HQ2) complete (12 h). canBuild jumps from 12 to 24 types, canUpgrade from 0 to 7 lines. Best planning moment so far - but wood 0, everything "cannot afford".
+- D7 22:00 `walls 60` placed 26 tiles and silently ate all 26 wood (wood 26 -> 0). Cost not shown anywhere. Still "sealed": false.
+- D7 22:00 canUpgrade still lists "hq→hq2" after HQ2 is built; buildings show both "hq2":1 and "hq":1.
+- D8 00:00 HAVEN REVIEW WEEK 1 GRADE B: Buildings 20/20, Defense 1/20, Happiness 2/20, total 61/120. Fair and useful: told me I over-built and under-defended.
+- D8 01:00 water 1.2, D8 02:00 water 0 with 5 rain barrels. Expand now "needs 160 renown + 35 wood, 15 mat".
+- D8 08:00 lumber camp ordered (10 wood) -> built by D8 16:00. But wood only 2 -> 9 between D8 16 and D9 11 while spending: camp trickle is tiny next to an expedition (39-42 wood per medium trip).
+- D8 16:00-20:00 lumberyard medium Noah+June+Theo: "Short on supplies: the trip is riskier", Noah and Theo collapsed at stage 1. Haul ~39 wood.
+- D9 00:00 Legacy goal "Far Horizons: 12 expeditions" +15 renown +10 scrap. Nice surprise.
+- D9 01:00 favour card after ~26 h (promised "two days"): "asks for 15 food and 10 water", I had food 9.3 water 0. Pressing "Pay" does nothing and gives no message (my auto-answer script pressed it 1243 times - log is polluted there, my fault). Refused -> "NO MORE FAVOURS... Your people feel bad about it."
+- D9 06:00 morning: "Hurt: Eli, Lena, Noah, June, Theo / Joined: Noah, June, Theo" - they did not join, they came back from a trip. All 4 scavengers 0% down; still 0% down at D9 11:00 (10 h lying down).
+- D9 06:00 barrel->water done (ordered D8 22:00); farm->field done by D9 11:00.
+- D9 11:00 trader: `trade 0` then `buy 0` blind (labels are just "item"): food 10.9 -> 1.9, scrap 34 -> 32. I have no idea what I got. (Harness hides names/prices.)
+- D9 21:00 Gatling Boss + 2 raiders. D10 00:00 "Lena has died" (my L4 scavenger, best wood hauler). D10 06:00 morning: "Buildings damaged: 12 (361 damage), Hurt: 10 names (everyone), Lost: 2". People 12 -> 10: Lena dead, Ada (joined D9 11:00) just gone from the list with no card.
+- D10 00:00 Legacy "A Real Town: 12 people" +15 renown +10 scrap - awarded the same midnight Lena died and the count fell to 10.
+- D10 06:00 6 of 10 at 0% down. food 2.6 water 4.1 wood 1 scrap 32. Scrap now useless: nothing converts scrap to wood/food. library site waits on wood.
+- D10 08:00 Greenwater "Trade 6 food for 10 water / Share a meal (-5 food)": had 2.4 food, could afford neither.
+- D10 13:00 Kira (Medic) joined; by D11 02:00 she is not in the people list. No card, lost=0. Same with Lark (Guard L2, joined D11 08:00, gone by D12 06:00). Three recruits vanished without a word.
+- D10 18:00 after "policy recover" ~10 h: most back to 55-95%. Lumberyard low x3 people: only 15 wood (4+7+4).
+- D11 02:00 food 1.3, water 1.0 while panel says food +5.8/d, water +1.8/d. Second `build farm` -> "could not place" again (land full? not said).
+- D11 08:00 Toll Kings want 14 scrap: paid (scrap 38). "No raids for 4 days." First time scrap felt useful.
+- D11 12-17 lumberyard medium Noah+June: wood 9 -> 45. D11 21:00 expand (35 wood, 15 scrap) -> land 2. Wood back to 2. Beds 9/16.
+- D12 00:00 "A NEW COUPLE: Amy and Noah" - sweet, only cozy beat in days.
+- D12 06:00 "Eli has died. 9 survivors remain." Morning: 12 buildings damaged (321), 8 hurt. 5 of 9 at 0%.
+- Level 5 timer: ordered D7 04:00 at 147 min; D12 06:00 still 49 left. 122 game hours of this session and Haven level did not move.
+- D12 17:00 Theo died (daytime!). D12 21:00 Boss "Butcher, 9 zombies follow". D12 23:00 Noah died. D13 00:00 Maya died. 6 survivors, beds 6/16. In 18 h I gave zero orders: wood 1-2, every build/upgrade "cannot afford", no healthy scavenger.
+- End session 2: D13 00:00, still L4, 6 people (peak 12 at D9), land 2, wood 1, scrap 20. Whole session (D7 04 -> D13 00, 140 h): built lumber, armory, library, 1 farm, 2 barrel->water, 1 farm->field, HQ2, 26 wall tiles, expand x1. 6 deaths (Noah-medic, Lena, Eli, Theo, Noah, Maya) + 3 vanished recruits.
+## Session 3 (after away 22 at D13 00:00)
+- away: +8 game hours credited (water 8.9, food 4.5, scrap 4.5, wood 2.0 from lumber camp = 0.25 wood/h). Level 5 arrived. Next: "People living here: 6/11, Buildings 29/16 ✓, A Banner over the Haven: 0/1". No banner in canBuild/canUpgrade/commands - no idea how to get one.
+- D13 00:00 "expand: needs a bigger HQ (land tier 3 needs HQ tier 3; HQ is tier 2)". canUpgrade never offers an hq2 upgrade (only the stale "hq→hq2"). Land capped at 2 through D17+.
+- D13 10:00 with 6 mouths food 21.3 / water 21.1: supplies only became comfortable after half the town died.
+- D13 10:00 research walls (30 rp). `walls 16` -> placed 16, sealed false (58). D14 20:00 `walls 30` -> 88, sealed false. D15 08:00 `walls 30` -> 118 tiles, still "sealed": false. 76 wood into fence with no idea how many tiles remain.
+- D13 20:00 third "Noah" (Noah Engel, Cook) joins. D14 06:00 morning "Joined: Noah".
+- D13 10:00 -> D13 23:00 Rosa and June at 0% down 13+ h with Amy "rescueTo" the whole time.
+- D14 08:00 buildings standing 29 -> 28 overnight (one destroyed; no card says which). D14 08:00 Feast (6 food 6 water): "+15 for everyone", renown 361 -> 399 by D14 20.
+- D14 08:00 -> D14 20:00 wood 2 -> 59 with NO expedition out (my lumberyard order was refused "June is hurt or busy"). Source never explained. Happy but baffled.
+- D14 20:00 `upgrade workshop` -> ok:true, but bench never upgrades (repeated D15 08:00, D16 05:00: ok:true, building list unchanged, bench:1 at D17 05:00). No reason given.
+- D15 08:00 raiders 7 in town (toll paid D11 08:00 "No raids for 4 days" - exactly expired). June, Maya 0% down.
+- D15 20:00 crates->storage done, cap 110 -> 130. D16 05:00 lumberyard medium x3: wood 8 -> 34; Maya and Noah 0% down on return.
+- D16 05-D17 05: tent->cabin, tradepost, sparring built. D17 05:00 "A Banner over the Haven: 1/1 ✓" appeared by itself (after tradepost? unknown). People 7/11 - a Noah died overnight D16-17 (lost=1, no card shown to me).
+- D17 05:00 scrap 36, stone 10, food 48 - all idle; wood 0.
+- D17 05-09 lumberyard medium Maya alone: wood 0 -> 37.
+- D17 17:00 `walls 20` -> placed 8, "sealed": true at 126 tiles. Took 84 wood over 5 days (D7 22 -> D17 17) with no progress indicator.
+- D17 17:00 `build lounge` / `build range` -> "no free land: expand". canBuild lists all 24 types as affordable with no land warning; expand "needs HQ tier 3; HQ is tier 2"; no HQ tier 3 upgrade exists in canUpgrade (`upgrade hq3` -> ok:false). LAND HARD-STUCK at 2 from D11 21:00 to end.
+- D17 17:00 `upgrade hq2` again upgraded the stray second "hq" -> D18 06:00 buildings show "hq2": 2 (two Lodges). 20 wood wasted, did not unlock anything.
+- D17 05:00 -> D18 02:00 June lay at "0% down" ~20 h, then died (lost=1 at D18 02:00, people 6). No death card reached me after I pressed "No more tips" on D9 11:00 (cardsRead empty from D15 on - morning reports and Farewell cards gone too?).
+- D18 20:00 end session 3: L5, 6 people (need 11), food 80.7, water 37, scrap 30, stone 19, wood 2. Maya (only scavenger) 0% down since D18 06:00. Last 14 h: no order possible.
+## Session 4 (after away 22 at D18 20:00)
+- D18 20:00 research gadgets; Rosa (Cook) re-jobbed Scavenger and sent lumberyard low alone: wood 2 -> 19, Rosa 0% down on return; Maya died (lost=1 at D18 23:00).
+- D19 08:00 ordered tent->cabin and barrel->water (both done by D20 00:00). Then wood 1.
+- D20 00:00 END: L5, 4 people (Marcus, Amy, Ben, Gus), beds 4/16, 31 buildings, land 2, food 100.1, water 49.9, scrap 26, stone 26, wood 1. Rosa died during D19 16-24. Level 6 needs 11 people.
