@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.164', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.165', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4547,7 +4547,7 @@ function expResolveStage(t, quiet) {
   const rm = expRiskMult(t); let trouble = [];
   for (const m of [...ms]) {
     const x = Math.random(), tm = hasT(m, 'cautious') ? .7 : 1, dead = rk.death * rm * tm, collapse = rk.hurt * rm * .35 * tm, hurt = rk.hurt * rm * tm;
-    if (x < dead) { ms.splice(ms.indexOf(m), 1); t.lost.push(m.name); t.log.push(`Stage ${t.stage}: ${m.name} did not make it.`); trouble.push(`${m.name} was lost`); }
+    if (x < dead) { ms.splice(ms.indexOf(m), 1); t.lost.push(m.name); (t.lostSv = t.lostSv || []).push(m); t.log.push(`Stage ${t.stage}: ${m.name} did not make it.`); trouble.push(`${m.name} was lost`); }
     else if (x < dead + collapse) { m.hp = 0; m.collapsed = true; t.log.push(`Stage ${t.stage}: ${m.name} collapsed and is being carried.`); trouble.push(`${m.name} collapsed`); }
     else if (x < dead + collapse + hurt && !m.collapsed) { m.hp = Math.max(1, Math.round(m.hp * (.3 + Math.random() * .3))); t.log.push(`Stage ${t.stage}: ${m.name} was hurt.`); trouble.push(`${m.name} was hurt`); if (!t.hurt.includes(m.name)) t.hurt.push(m.name); }
   }
@@ -4664,7 +4664,11 @@ function expRecall() {
 }
 function expFinish(recalled) {
   const t = S.trip; if (!t) return; if (t.enc) { if (recalled) { t.enc = null; t.log.push('The squad left the situation behind on the way home.'); } else encResolve(t, null); } S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
-  if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); t.log.push(`${m.name} fell on the way home.`); }
+  if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); (t.lostSv = t.lostSv || []).push(m); t.log.push(`${m.name} fell on the way home.`); }
+  /* 3D.165 play-test (Rosa, Lena, June): someone lost on a trip only showed up inside the trip report. Now the town mourns them like any other death,
+     they count on the morning card, and the news keeps a line that says so */
+  for (const m of t.lostSv || []) { bondsOnDeath(m); for (const sl of SLOTS) { const id = m.eq && m.eq[sl]; if (id && id !== 'pipe' && rnd() < .5) stashAdd(id); } S.fallen = S.fallen || []; S.fallen.push({ name: m.name, job: m.job, l: m.l, day: S.day, cause: 'lost on a trip to ' + d.name, trait: m.trait }); note('important', `💀 ${m.name} did not come back from ${d.name}`); }
+  for (const n of t.lost) if (!(t.lostSv || []).some((m) => m.name === n)) note('important', `💀 ${n} did not come back from ${d.name}`);
   (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = keepCap(cap, S.food, t.loot.food); S.water = keepCap(cap, S.water, t.loot.water); S.mat += t.loot.mat; addLoot({ wood: t.loot.wood, stone: t.loot.stone, cloth: t.loot.cloth, meds: t.loot.meds, fuel: t.loot.fuel, ammo: t.loot.ammo }, 'Expedition'); S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
   barkSquad = { ids: t.members.map((m) => m.id), lost: (t.lost || []).length, at: tick + 90 };
@@ -4677,6 +4681,7 @@ function expFinish(recalled) {
   if (t.dest === 'military' && !recalled && t.stage >= EXP_STAGES && exAdd('grenade', 1)) t.log.push('They found a grenade in an ammo crate.');
   if (d.stronghold && !recalled && t.stage >= EXP_STAGES && t.members.some((m) => m.hp > 0)) { t.log.push(`${d.name} is cleared. The squad brings home a Banner.`); setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 400); }
   const body = t.log.map((l) => esc(l)).join('<br>') + `<br><b>Returned:</b> ${t.members.map((m) => esc(m.name)).join(', ') || 'nobody'}.` + (t.lost.length ? `<br><b style="color:#ff8a7a">Lost:</b> ${t.lost.map(esc).join(', ')}.` : '');
+  note('routine', `Squad back from ${d.name}: ${tot.length ? tot.join(', ') : 'nothing found'}` + (t.lost.length ? ` · lost ${t.lost.join(', ')}` : '') + (t.members.some((m) => m.hp <= 0) ? ` · ${t.members.filter((m) => m.hp <= 0).map((m) => m.name).join(', ')} carried home` : '') + '.');
   S.lastTrip = { dest: t.dest, risk: t.risk, loot: t.loot, lost: t.lost.slice(), recalled: !!recalled, recruit: recruit && recruit.name };
   vehReturn(t); S.trip = null; autoStaff(); if ((!window.ZH_NO_REVEAL)) lootReveal({ title: 'EXPEDITION BACK', sub: `${d.icon} ${d.name} · ${rk.label} risk`, entries: lootEntries(t.loot, t.items), note: body }); else showEventPopup({ title: 'EXPEDITION REPORT', text: `<b>${d.name}</b> · ${rk.label} risk<br>${body}`, gains: tot.length ? '+' + tot.join(' · +') : 'Nothing found' }); saveGame(); ui(); expTick();
 }
@@ -5122,7 +5127,7 @@ function shEnd(won, fled) {
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
   const lost = [], hurt = [], loot = { ...H.loot }, lines0 = []; let recruit = null; const items = [];
   for (const [i, s] of H.units.entries()) {
-    const down = s.hp <= 0; if (down && !won && rnd() < .04) { lost.push(s.name); continue; }
+    const down = s.hp <= 0; if (down && !won && rnd() < .04) { lost.push(s.name); bondsOnDeath(s); S.fallen = S.fallen || []; S.fallen.push({ name: s.name, job: s.job, l: s.l, day: S.day, cause: 'fell at ' + d.name, trait: s.trait }); note('important', `💀 ${s.name} did not come back from ${d.name}`); continue; }   /* 3D.165 counted like any other death */
     if (down) { s.hp = Math.max(1, Math.round(s.max * .2)); hurt.push(s.name); }
     s.w = { x: entry.x + (i % 3 - 1) * .3, y: entry.y + Math.floor(i / 3) * .3 }; s.mode = 'free'; s.target = null; s.moving = false; s.reloadT = 0; s.moveTo = null; s.order = null; s.path = null; delete s.shHome; s.stateTicks = 60; S.sv.push(s); if (won) gainXp(s, 10);
   }

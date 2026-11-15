@@ -63,8 +63,8 @@
     for (; hours < h; hours++) {
       let cut = false; for (let k = 0; k < 1000; k += 60) { Z.step(60); Z.tripUpdate(); AP.tick(); const c = popup(); if (c && !infoOnly(c)) { cut = true; break; } }   /* a card that needs a decision stops play at once: trip choices run out */
       if (cut) { why = 'card'; hours++; break; }
-      AP.hour(); if (Z.selX && Z.selX()) Z.endBuildModeX();   /* a build tool left open would hold back every card */
-      for (let g = 0; g < 6; g++) { const c = popup(); if (!c || !infoOnly(c)) break; read.push(`D${S.day} ${String(S.hour).padStart(2, '0')}:00 [card] ` + c.text.split('\n').slice(0, 8).join(' / ').slice(0, 400)); document.querySelector('#eventModal button').click(); }   /* plain info cards (only OK-type buttons): read them out, close them */
+      AP.hour(); if (Z.selX && Z.selX()) Z.endBuildModeX(); if (Z.nextPopupX) Z.nextPopupX();   /* endBuildMode shows held-back cards on a timer, which never runs inside one order */   /* a build tool left open would hold back every card */
+      for (let g = 0; g < 6; g++) { const c = popup(); if (!c || !infoOnly(c)) break; read.push(`D${S.day} ${String(S.hour).padStart(2, '0')}:00 [card] ` + c.text.split('\n').join(' / ').slice(0, 1500)); document.querySelector('#eventModal button').click(); }   /* plain info cards (only OK-type buttons): read them out, close them */
       if (popup()) { why = 'card'; hours++; break; }
       if (request()) { why = 'request'; hours++; break; }
       if (t0.trip && !S.trip) { why = 'squad home'; hours++; break; }
