@@ -1351,7 +1351,7 @@ function noRescueWhy(q) {
   if (crowd && !q.ordered) return `${crowd} ${foe} next to them: nobody walks in on their own · tap Send rescue, or clear them`;
   if (crowd && !able.some((r) => isFighter(r))) return `${crowd} ${foe} next to them and no fighter free · call radio help or the militia`;
   const stuck = able.filter((r) => (r.noRescueT || 0) > tick);
-  if (stuck.length && stuck.length >= able.length - 1) return `${stuck[0].name} couldn't get to them (path blocked) · open a gate or clear the way`;
+  if (stuck.length && stuck.length >= able.length - 1) return `${stuck[0].name} couldn't get to them (path blocked) · put a Gate in the wall (Build → Defend → Gate, tap a wall section) or clear the way`;
   if (able.every((r) => r.rescuing || r.carrying)) return 'everyone fit is already carrying someone';
   const fighting = able.filter((r) => ['chase', 'attack', 'recover'].includes(r.mode) && S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, rangeOf(r) + 1))).length;
   if (fighting && fighting >= able.length - 1) return `the fit ones are fighting · they come when it's clear, or call radio help`;
@@ -5975,6 +5975,8 @@ function tryWall(x, y, type) {
   if (ex && wd.lvl && (Wd.WALL_DEFS[ex.type].lvl || 0) && wd.lvl > Wd.WALL_DEFS[ex.type].lvl) {   /* 3D.103 wall tiers: building a stronger wall on a weaker one upgrades it in place (half of the old one's cost back) */
     if ((wd.tier || 1) > hqTier()) { say(wd.name + ' needs the ' + hqName(wd.tier) + '.'); return; } if (!canPay(bCost(wd))) { say('Not enough: need ' + missText(bCost(wd)) + '.'); return; }
     payCost(bCost(wd)); refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); const old = Wd.WALL_DEFS[ex.type].name; ex.type = type; ex.broken = false; ex.max = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); ex.hp = ex.max; Wd.bump(world); checkPerimeter(); say(old + ' upgraded to ' + wd.name + '.'); saveGame(); ui(); return; }
+  if (ex && type === 'gate' && ex.type !== 'gate') {   /* 3D.169 round 2 (Rusher: 12 died behind a sealed fence with no gate): a Gate swaps into any wall section */
+    if (!canPay(bCost(wd))) { say('Not enough: need ' + missText(bCost(wd)) + '.'); return; } payCost(bCost(wd)); refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); const old = Wd.WALL_DEFS[ex.type].name; ex.type = 'gate'; ex.broken = false; ex.max = Math.round(wd.hp * (researched('walls') ? 1.3 : 1)); ex.hp = ex.max; Wd.bump(world); checkPerimeter(); say(old + ' swapped for a Gate.'); saveGame(); ui(); return; }
   if (ex) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
   if (wd.rank > S.rank) { say(wd.name + ' needs Haven level ' + lvlOfRank(wd.rank) + '.'); return; } if ((wd.tier || 1) > hqTier()) { say(wd.name + ' needs the ' + hqName(wd.tier) + '.'); return; }
   if (Wd.isRoad(world, x, y) && type !== 'gate') { say('Use a Gate to close a road.'); return; }
