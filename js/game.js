@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.171', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.172', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2293,7 +2293,8 @@ function ai(s) {
       if (S.water >= .05) { S.water -= .005; s.thirst = Math.max(0, s.thirst - .7); } if (S.food >= .05) { S.food -= .005; s.hunger = Math.max(0, s.hunger - .6); } s.fatigue = Math.max(0, s.fatigue - 1.5); if (s.hp < s.max) s.hp = Math.min(s.max, s.hp + 1); S.alert = Math.max(S.alert, 200); }   /* V2.37: sheltering also patches you up slowly */
     if (s.stateTicks <= 0) { const dn = isFighter(s) && canFight(s) && S.sv.some((q) => q.mode === 'down' && !q.rescuer);   /* 3D.64 balance study: 'hiding' was the commonest state just before going down: non-fighters came out early to help someone who was down and were caught 3 tiles from the door; now only fit fighters come out early */ if (zombieNear(Wd.doorPoint(b), lastStand() ? 8 : dn ? 3.2 : 6.5) ||   /* 3D.66: in a last stand they stay in until nothing is within 8 tiles (they popped out, saw a zombie further off, and ran back in) */ (dn && S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zrecover'].includes(z.mode) && dist(z.w, Wd.doorPoint(b)) < 7))) s.stateTicks = 120;   /* 3D.48: someone is down: come out as soon as nothing is right outside or hunting */ else { s.hideAt = null; s.wary = tick + 900; enterFree(s, 30); s.why = 'Coming out — area clear'; } } return;
   }   // being attacked beats lunch
-  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0) { const cb = s.careAt; s.wounded = false; s.stable = false; s.hp = Math.round(s.max * (isCamp(cb) || !cb ? .55 : cb.type === 'hospital' ? 1 : cb.type === 'clinic' ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
+  if (s.mode === 'hospital') { s.moving = false; if (s.stateTicks <= 0 && isNight() && S.z.some((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) { s.stateTicks = 120; s.why = 'Well again: staying in bed until the walkers are gone'; return; }   /* 3D.172 round 3: discharged at 02:00 into a town full of walkers, down again within the hour (Lena 10 times) */
+    if (s.stateTicks <= 0) { const cb = s.careAt; s.wounded = false; s.stable = false; s.hp = Math.round(s.max * (isCamp(cb) || !cb ? .55 : cb.type === 'hospital' ? 1 : cb.type === 'clinic' ? .85 : .7)); s.fatigue = Math.max(0, s.fatigue - 35); enterFree(s, 420); s.why = 'Recovered'; note('routine', s.name + ' recovered and returned.'); } return; }
   if (s.mode === 'rescueTo') {
     const q = s.rescuing; if (!q || q.mode !== 'down') { s.rescuing = null; enterPost(s); return; }
     if (tick % 15 === s.i % 15) { const zb = S.z.find((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < 2.2); if (zb && dist(s.w, q.w) < 4 && isFighter(s) && s.hp > s.max * .4) { q.rescuer = null; s.rescuing = null; engage(s, zb); s.why = `Clearing the way to ${q.name}`; return; } }   /* V2.37: clear first, then pick up */
@@ -3657,7 +3658,8 @@ function gapWhy(x, y) {
   return Wd.inWallZone(x, y) ? 'an open tile in an inner fence' : 'outside the wall area';
 }
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
-  const seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return []; const plug = new Set(), gaps = [];
+  let seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return [];
+  { const per = Wd.perimeter(world); if (per.ring && per.outsideB.length) { const b = per.outsideB.find((q) => DEFS[q.type].fam !== 'hq') || per.outsideB[0], t = Wd.approachTile(b); seed = Wd.walkable(world, t.x, t.y, true) ? t : Wd.nearestWalkable(world, t.x, t.y, true) || seed; } }   /* 3D.172: the camp fence is closed but buildings are still outside: look for the gap from one of them */ const plug = new Set(), gaps = [];
   const open = (x, y) => Wd.inMap(x, y) && !plug.has(x + ',' + y) && Wd.walkable(world, x, y, true);
   const wallN = (x, y) => { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && ((Wd.wallAt(world, x + dx, y + dy) && !Wd.wallAt(world, x + dx, y + dy).broken) || plug.has((x + dx) + ',' + (y + dy)))) n++; return n; };
   for (let it = 0; it < max; it++) {
@@ -4166,7 +4168,7 @@ function stageHtml(st) {
 }
 const others = (s, n = 2) => S.sv.filter((q) => q !== s && q.hp > 0).slice(0, n);
 let curEv = null;
-function showEventPopup(o) { eventQueue.push(o); nextEventPopup(); }
+function showEventPopup(o) { if (o.encRef) eventQueue.unshift(o); else eventQueue.push(o); nextEventPopup(); }   /* 3D.172 round 3: a trip card goes to the front, so it is not decided while it waits behind a move-in request */
 function nextEventPopup() {
   const m = $('eventModal'); if (!m || m.innerHTML || !eventQueue.length || sel) return; const e = eventQueue.shift(); if (e.valid && !e.valid()) return nextEventPopup(); curEv = e; modalOpen = true;   /* 3D.169 round 2: a trip card that waited behind another card could already be decided */
   const bt = e.buttons && e.buttons.length ? e.buttons : [{ label: 'OK' }];
@@ -6395,7 +6397,7 @@ function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promo
 }
 function perimText() {
   const p = Wd.perimeter(world); if (!p.walls) return 'No walls yet: zombies walk straight in.';
-  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b>' + (p.ring ? `<div class="sm">The fence closes, but only ${p.inside} of ${p.total} buildings are inside${p.inside >= Math.ceil(p.total * .75) ? ' and the HQ is not' : ''}. Sealed means the HQ and at least 3 in 4 buildings: wall the outer line.</div>` : '') + (p.ring ? '' : (() => { const g = findGaps(6); return g.length ? `<div class="sm">${g.length}${g.length >= 6 ? '+' : ''} gap${g.length > 1 ? 's' : ''}: ${[...new Set(g.map((q) => q.why))].slice(0, 3).join(' · ')}</div><button class="act" id="perGaps">Show the gaps</button>` : '<span class="sm">(close every gap)</span>'; })())) + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
+  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b>' + (p.ring ? `<div class="sm">Only ${p.inside} of ${p.total} buildings are inside a closed wall${p.inside >= Math.ceil(p.total * .75) ? ' and the HQ is not' : ''}. Sealed means the HQ and at least 3 in 4 buildings: wall the outer line.</div>` : '') + ((() => { const g = findGaps(6); return g.length ? `<div class="sm">${g.length}${g.length >= 6 ? '+' : ''} gap${g.length > 1 ? 's' : ''}: ${[...new Set(g.map((q) => q.why))].slice(0, 3).join(' · ')}</div><button class="act" id="perGaps">Show the gaps</button>` : '<span class="sm">(close every gap)</span>'; })())) + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */

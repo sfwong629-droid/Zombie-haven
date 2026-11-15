@@ -234,18 +234,20 @@
   // Perimeter check: flood-fill from the town centre treating walls (gate included) and buildings as solid, the way zombies see them.
   function perimeter(w) {
     let weakest = null, n = 0, gates = 0; for (const wl of w.walls.values()) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
-    const seed = nearestWalkable(w, 7 + OFF, 10 + OFF, true);   /* 3D.103: the town centre moved with the bigger map */ if (!seed) return { sealed: false, walls: n, gates, weakest, area: 0 };
-    const seen = new Set([key(seed.x, seed.y)]), q = [seed]; let open = false;
-    while (q.length) { const c = q.pop(); if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) open = true;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
-    /* 3D.171 owner: sealed means most of the town is inside, not just the little camp fence round the HQ. Most = the HQ and at least
-       3 of every 4 buildings (a building counts when its door, or a tile next to it, is inside the wall) */
-    let inside = 0, total = 0, hqIn = false;
-    if (!open) for (const b of w.buildings) { if (!DEFS[b.type]) continue; total++; const t = approachTile(b); let ok = seen.has(key(t.x, t.y));
-      for (let x = b.x - 1; !ok && x <= b.x + b.w; x++) for (let y = b.y - 1; !ok && y <= b.y + b.h; y++) if (seen.has(key(x, y))) ok = true;
-      if (ok) { inside++; if (DEFS[b.type].fam === 'hq') hqIn = true; } }
-    const most = !open && hqIn && inside >= Math.ceil(total * SEAL_SHARE);
-    return { sealed: most, ring: !open, inside, total, walls: n, gates, weakest, area: seen.size };
+    /* 3D.172: flood from the map edge inward (3D.171 flooded out from the town centre, so a closed little camp fence round the HQ trapped the
+       flood and the outer wall never counted: the Defender's 105-tile wall never sealed). Anything the outside cannot walk to is inside. */
+    const out = new Set(), q = [], push = (x, y) => { const k = key(x, y); if (!out.has(k) && walkable(w, x, y, true)) { out.add(k); q.push({ x, y }); } };
+    for (let x = 0; x < COLS; x++) { push(x, 0); push(x, ROWS - 1); } for (let y = 0; y < ROWS; y++) { push(0, y); push(COLS - 1, y); }
+    while (q.length) { const c = q.pop(); push(c.x + 1, c.y); push(c.x - 1, c.y); push(c.x, c.y + 1); push(c.x, c.y - 1); }
+    const seed = nearestWalkable(w, 7 + OFF, 10 + OFF, true), ring = !!seed && !out.has(key(seed.x, seed.y));
+    /* 3D.171 owner: sealed means most of the town is inside: the HQ and at least 3 in 4 buildings. A building is outside when its door, or a
+       tile next to it, can be reached from the map edge */
+    let inside = 0, total = 0, hqIn = false; const outsideB = [];
+    for (const b of w.buildings) { if (!DEFS[b.type]) continue; total++; const t = approachTile(b); let reach = out.has(key(t.x, t.y));
+      for (let x = b.x - 1; !reach && x <= b.x + b.w; x++) for (let y = b.y - 1; !reach && y <= b.y + b.h; y++) if ((x < b.x || x >= b.x + b.w || y < b.y || y >= b.y + b.h) && out.has(key(x, y))) reach = true;
+      if (!reach) { inside++; if (DEFS[b.type].fam === 'hq') hqIn = true; } else outsideB.push(b); }
+    const sealed = hqIn && inside >= Math.ceil(total * SEAL_SHARE);
+    return { sealed, ring, inside, total, outsideB, walls: n, gates, weakest, area: COLS * ROWS - out.size };
   }
   const SEAL_SHARE = .75;
   const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
