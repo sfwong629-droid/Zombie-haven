@@ -553,7 +553,7 @@ function buildTraps() {
   const W = G.world, list = W.traps ? [...W.traps.values()] : [];
   const key = list.map((t) => `${t.x},${t.y},${t.type},${t.ch > 0 ? 1 : 0}`).join(';');
   if (key === trapKey) return false; trapKey = key;
-  if (trapGroup) scene.remove(trapGroup);
+  if (trapGroup) { scene.remove(trapGroup); freeTree(trapGroup); }
   trapGroup = new THREE.Group(); scene.add(trapGroup);
   const P = new Parts();
   for (const t of list) { const cx = (t.x + .5) * T, cz = (t.y + .5) * T; trapPiece(P, t, cx, cz, groundH(cx, cz)); }
@@ -611,7 +611,7 @@ const POST_COL = { night: '#4f7fd0', day: '#e8b73a', all: '#d0503c' };
 function buildPosts() {
   const list = G.S.posts || [], key = list.map((p) => `${p.x},${p.y},${p.sched}`).join(';');
   if (key === postKey) return false; postKey = key;
-  if (postGroup) scene.remove(postGroup); postGroup = new THREE.Group(); scene.add(postGroup);
+  if (postGroup) { scene.remove(postGroup); freeTree(postGroup); } postGroup = new THREE.Group(); scene.add(postGroup);
   const P = new Parts(), bagG = new THREE.SphereGeometry(.5, 8, 5);
   for (const p of list) { const cx = (p.x + .5) * T, cz = (p.y + .5) * T; postPiece(P, p, cx, cz, groundH(cx, cz), bagG); }
   P.build(postGroup, .02); return true;
@@ -668,7 +668,7 @@ function buildWalls() {
   const W = G.world, list = [...W.walls.values()];
   const key = list.map((w) => `${w.x},${w.y},${w.type},${w.broken ? 1 : 0},${w.hp < w.max * .6 ? 1 : 0}`).join(';');
   if (key === wallKey) return false; wallKey = key;
-  if (wallGroup) scene.remove(wallGroup);
+  if (wallGroup) { scene.remove(wallGroup); freeTree(wallGroup); }
   wallGroup = new THREE.Group(); scene.add(wallGroup);
   const P = new Parts();
   const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
@@ -864,11 +864,11 @@ function syncBuildings() {
   for (const b of G.world.buildings) {
     seen.add(b); const k = buildingKey(b), cur = bGroups.get(b);
     if (cur && cur.key === k) continue;
-    if (cur) { scene.remove(cur.g); if (cur.lit) scene.remove(cur.lit); }
+    if (cur) { scene.remove(cur.g); if (cur.lit) scene.remove(cur.lit); freeTree(cur.g); }
     const g = makeBuilding(b); scene.add(g); let lit = null; try { if (!b.burnt) { lit = doorLight(b); scene.add(lit); } } catch (e) { lit = null; }
     bGroups.set(b, { g, key: k, lit }); changed = true;
   }
-  for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); if (v.lit) scene.remove(v.lit); bGroups.delete(b); changed = true; }
+  for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); if (v.lit) scene.remove(v.lit); freeTree(v.g); bGroups.delete(b); changed = true; }
   for (const [b, v] of bGroups) { const bx = (b.x + b.w / 2) * T, bz = (b.y + b.h / 2) * T; if (b.hitT > 0) { b.hitT--; v.g.position.set(bx + Math.sin(b.hitT * 2.3) * .06 * b.hitT / 12, 0, bz + Math.cos(b.hitT * 1.7) * .04 * b.hitT / 12); } else if (v.g.position.x !== bx) v.g.position.set(bx, 0, bz); }   // V3D.17: a hit building shudders
   return changed;
 }
@@ -1138,7 +1138,7 @@ class Actor {
   }
   isMov() { return !!this.last && (this.movT ?? 9) < .25; }   /* 3D.100: unknown = not moving (paused at the start, they all walked on the spot) */   /* 3D.41: moving right now, measured from the body itself */
   show(v) { if (!v) { this.spd = 0; this.last = null; this.movT = 9; this.hist = null; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
-  dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); }
+  dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); const sk = new Set(); this.o.traverse((n) => { if (n.skeleton) sk.add(n.skeleton); }); for (const k of sk) k.dispose(); }   /* 3D.169: each skinned model owns a bone texture; never freed, it piled up with every zombie killed (play-test crashes) */
 }
 // ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
 // bone, sized from the rig's head (bone at y .73, hair top 1.14, about .47 wide, centred slightly back)
@@ -1863,13 +1863,24 @@ function syncVehicles() {
     m.position.set((b.x + b.w / 2) * T + Math.cos(r) * lx + Math.sin(r) * lz, 0, (b.y + b.h / 2) * T - Math.sin(r) * lx + Math.cos(r) * lz); m.rotation.y = r + (o.cart ? Math.PI / 2 : 0); m.scale.setScalar(o.cart ? 1.05 : .92);
     if (o.tint !== m.userData.tint) { m.userData.tint = o.tint; m.traverse((n) => { if (n.isMesh && !n.userData.hull && n.material.color) { if (!n.userData.c0) n.userData.c0 = n.material.color.clone(); n.material = n.material.clone(); n.material.color.copy(n.userData.c0); if (o.tint) n.material.color.lerp(new THREE.Color('#9a9488'), .6); } }); } }
 }
+/* 3D.169 (play-test crashes, "Target crashed" on day 14-15): fight maps, walls, posts, traps and buildings were taken out of the scene
+   but never freed, so every stronghold left ~70 geometries behind and every camp raid ~200. freeTree frees what the scene no longer
+   uses; three.js re-uploads anything freed if it is ever drawn again, so shared pieces stay safe. */
+function freeTree(root) {
+  if (!root) return; const geos = new Set(), mats = new Set(), texs = new Set(), insts = [];
+  const matOf = (m) => { if (!m) return; for (const x of Array.isArray(m) ? m : [m]) { mats.add(x); for (const k in x) { const v = x[k]; if (v && v.isTexture) texs.add(v); } } };
+  root.traverse((o) => { if (o.geometry) geos.add(o.geometry); matOf(o.material); matOf(o.customDepthMaterial); if (o.isInstancedMesh) insts.push(o); });
+  if (!geos.size && !mats.size) return;
+  scene.traverse((o) => { if (o.geometry) geos.delete(o.geometry); for (const m of [].concat(o.material || [], o.customDepthMaterial || [])) { mats.delete(m); for (const k in m) { const v = m[k]; if (v && v.isTexture) texs.delete(v); } } });
+  for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of texs) t.dispose(); for (const im of insts) if (im.dispose) im.dispose();
+}
 /* 3D.114 the stronghold arena v2: rooms, door gaps with real doors, barricades and snares, built off the town map */
 let arena = null;
 function buildArena() {
   const H = G.S.sh, key = H ? H.akey || H.dest : '';
-  if (arena && arena.key === key && H && H.camp) { let ch = false; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
+  if (arena && arena.key === key && H && H.camp) { let ch = false; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); freeTree(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); freeTree(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
   if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
-  if (arena) { scene.remove(arena.g); arena = null; }
+  if (arena) { scene.remove(arena.g); freeTree(arena.g); arena = null; }
   if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
   if (H.camp) {   /* 3D.116 a faction camp: their own town, built from the same buildings as ours */
     const P = ZH.CAMP_PLAN[H.raid] || ZH.CAMP_PLAN.toll, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), bm = {};
