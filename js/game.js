@@ -5373,7 +5373,7 @@ function shEnd(won, fled) {
 function shPanel() {   /* 3D.115 owner: too crowded. Now a slim pill on top (where, goal, boss) and one bar at the bottom; a survivor's own buttons show only while they are selected */
   let el = $('shPanel'), top = $('shTop'); const H = S.sh;
   document.documentElement.classList.toggle('shView', !!(H && H.view));   /* the town's own menu bar hides while watching the squad */
-  if (!H) { if (el) el.remove(); if (top) top.remove(); shPickClose(); shTapLayer(); return; }
+  if (!H) { if (el) el.remove(); if (top) top.remove(); shPickClose(); shTapLayer(); shCoach(); return; }   /* the coach pill leaves with the panel (it stayed over the town after a practice or stronghold ended) */
   const d = EXP_DEFS[H.dest] || { name: H.dest, icon: '⚔' };
   if (!el) { el = document.createElement('div'); el.id = 'shPanel'; el.className = 'shPanel'; document.body.appendChild(el); el.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) { e.stopPropagation(); shCall(b.dataset.c); } }); }
   if (!top) { top = document.createElement('div'); top.id = 'shTop'; top.className = 'shTop'; document.body.appendChild(top); }
