@@ -1627,7 +1627,7 @@ function gatherTick(s) {
 /* 3D.115 owner: people were dropping supplies through the fence. A load now only counts once the carrier reaches the door;
    if the way is blocked they try another storage door they can walk to, and otherwise keep hold of it and say why. */
 const depots = () => [...bOf('storage'), ...world.buildings.filter((b) => DEFS[b.type].role === 'hq')].filter((b) => !b.burnt);
-function reachDepot(s, not) { for (const b of depots().sort((a, c) => dist(s.w, Wd.approachPoint(a)) - dist(s.w, Wd.approachPoint(c)))) { const pt = Wd.approachPoint(b); if (not && dist(pt, not) < .6) continue; if (Wd.findPath(world, tileOf(s.w), tileOf(pt), false, 0)) return pt; } return null; }
+function reachDepot(s, not) { for (const b of depots().sort((a, c) => dist(s.w, Wd.approachPoint(a)) - dist(s.w, Wd.approachPoint(c)))) { const pt = Wd.approachPoint(b); if (not && dist(pt, not) < .6) continue; const t0 = tileOf(s.w), st = Wd.walkable(world, t0.x, t0.y) ? t0 : (Wd.nearestWalkable(world, t0.x, t0.y) || t0); if (Wd.findPath(world, st, tileOf(pt), false, 0)) return pt; } return null; }   /* 3D.169 round 2: someone standing on a workplace footprint (open-air) had no path at all, so every load 'could not get in' */
 function canDeliver(s) { if (s.dest && dist(s.w, s.dest) < 1.4) return true;
   const alt = reachDepot(s, s.dest);
   if (s.haul) { const h = s.haul, x = jobById(h.id); if (x) x.j.inb[h.r] = Math.max(0, (x.j.inb[h.r] || 0) - h.n); s.carriedLoot = h.r; s.carryAmt = h.n; s.haul = null; }   /* the site can't be reached: it goes back to storage instead */
@@ -1881,7 +1881,7 @@ function militia() {   /* V2.37: no able fighter left and zombies inside the tow
   const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .4 : .6) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)); if (able.length < 3) return false;
   const t = inside.sort((a, b) => a.hp - b.hp)[0];
   able.slice(0, Math.min(able.length, 3 + inside.length)).forEach((q) => { q.fleeT = 0; q.hideAt = null; engage(q, t); q.why = `Militia: banding together against a ${zombieTypes[t.type].name}`; });
-  note('important', '✊ MILITIA: SURVIVORS BAND TOGETHER'); return true;
+  if (!S.milSaid || tick - S.milSaid > 6000) note('important', '✊ MILITIA: SURVIVORS BAND TOGETHER'); S.milSaid = tick; return true;   /* 3D.169 round 2: it said so every 5 minutes (15 times in 3 hours); once per stretch now */
 }
 function rally() {   /* V2.37: someone is down and nobody is fighting → fighters with at least half their health come out together and clear the zombies around the downed */
   const downs = S.sv.filter((q) => q.mode === 'down'); if (!downs.length || S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
@@ -2645,7 +2645,7 @@ function eventSchedule() {   /* called every game hour */
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
   if (S.hour === 6) dawnRetreat();
-  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: 'The Mutant Boss slunk back into the wasteland. It will return.' }); } if (S.bossOn != null || bs.length) { S.bossOn = null; mobScatter(); for (const z of S.z) if (z.hp > 0 && !z.human && z.type !== 'boss' && z.mode !== 'zleave' && !(z.target && S.sv.includes(z.target) && dist(z.w, z.target.w) < 2.5)) { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } } else S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }   /* 3D.68: its followers leave with it */
+  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: `The ${zDef(b).name} slunk back into the wasteland. It will return.` }); } if (S.bossOn != null || bs.length) { S.bossOn = null; mobScatter(); for (const z of S.z) if (z.hp > 0 && !z.human && z.type !== 'boss' && z.mode !== 'zleave' && !(z.target && S.sv.includes(z.target) && dist(z.w, z.target.w) < 2.5)) { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } } else S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }   /* 3D.68: its followers leave with it */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
@@ -3481,6 +3481,9 @@ function goalsHtml() {
   const left = () => { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const h = Math.floor((m - n) / 36e5), mi = Math.floor((m - n) / 6e4) % 60; return h + 'h ' + mi + 'm'; };
   return `<div class="card"><b>📅 Today</b> <span class="sm">new goals in ${left()}</span>${(G.daily || []).map((g) => row(g, GOALS_DAILY)).join('')}</div><div class="card"><b>🗓 This week</b> <span class="sm">resets Monday</span>${(G.weekly || []).map((g) => row(g, GOALS_WEEKLY)).join('')}</div>`;
 }
+/* 3D.169 round 2 (four testers): "FOOD: under 1 day left" fired almost every midnight while food was rising. It compared the stock with a day of
+   rations right after they were eaten. Now it counts what waits in the trays and what the town makes in a day. */
+function shortTomorrow(k, need) { const tray = world.buildings.reduce((a, b) => a + (b.bonusRes === k ? b.bonus || 0 : 0), 0); let prod = 0; try { prod = econ()[k].prod; } catch (e) { prod = 0; } return (S[k] || 0) + tray + prod < need; }
 function endOfDay() {            // rations: every survivor eats half food, half water; a shortfall makes them hungry and thirsty (gentle, no damage yet)
   const up = payUpkeep();
   for (const b of world.buildings) if (b.rushes) b.rushes--; petDaily(); exDaily(); kennelDaily(); vehDaily(); crisisDaily(); cityDaily(); allyDaily(); hybDaily(); bondsDaily(); try { legacyCheck(); } catch (e) { /* never block the day */ }
@@ -3494,8 +3497,8 @@ function endOfDay() {            // rations: every survivor eats half food, half
   const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
   note('routine', `Day ${S.day - 1} · Food +${f1(dayLog.foodIn)} −${f1(ef)} · Water +${f1(dayLog.waterIn)} −${f1(ew)} · Upkeep −${f1(up.paid)} scrap${up.unpaid ? ` (${up.unpaid} unpaid)` : ''}` + (open.length ? ` · Open staff slot: ${[...new Set(open)].join(', ')}` : ''));
   dayLog.foodIn = dayLog.waterIn = 0;
-  if (ff < 1) note('critical', 'Out of food: rations were short today', { key: 'nofood', icon: '🍖', live: () => S.food < rationNeed().f, dyn: () => `Out of food · ${S.food.toFixed(1)} of ${rationNeed().f.toFixed(1)} needed per day`, acts: [{ label: 'Why?', fn: () => showResource('food') }] }); else if (S.food < nf) note('important', '⚠ FOOD: under 1 day left');
-  if (fw < 1) note('critical', 'Out of water: rations were short today', { key: 'nowater', icon: '💧', live: () => S.water < rationNeed().w, dyn: () => `Out of water · ${S.water.toFixed(1)} of ${rationNeed().w.toFixed(1)} needed per day`, acts: [{ label: 'Why?', fn: () => showResource('water') }] }); else if (S.water < nw) note('important', '⚠ WATER: under 1 day left');
+  if (ff < 1) note('critical', 'Out of food: rations were short today', { key: 'nofood', icon: '🍖', live: () => S.food < rationNeed().f, dyn: () => `Out of food · ${S.food.toFixed(1)} of ${rationNeed().f.toFixed(1)} needed per day`, acts: [{ label: 'Why?', fn: () => showResource('food') }] }); else if (shortTomorrow('food', nf)) note('important', '⚠ FOOD: under 1 day left');
+  if (fw < 1) note('critical', 'Out of water: rations were short today', { key: 'nowater', icon: '💧', live: () => S.water < rationNeed().w, dyn: () => `Out of water · ${S.water.toFixed(1)} of ${rationNeed().w.toFixed(1)} needed per day`, acts: [{ label: 'Why?', fn: () => showResource('water') }] }); else if (shortTomorrow('water', nw)) note('important', '⚠ WATER: under 1 day left');
 }
 function releasePost(b) { if (b.staff) { if (b.staff.post === b) b.staff.post = null; b.staff = null; } }
 function showResidents(b) {   /* 3D.30: choose who lives in this housing */
@@ -3620,7 +3623,8 @@ const TUT = {
   'Go Out There': ['There is a whole world of loot out there, and it bites.', 'Tap Expedition, pick a place, a risk and a squad. Trips keep going even with the game closed. Leave a fighter at home.'],
   'More Land': ['Feeling cramped? Tap Town, then Expand territory.', 'More room to build. More directions for trouble to come from, too.'],
 };
-function guideIntro() { const g = GUIDE[S.guide]; if (g) radio('dj', [`${rLine('goal')} ${g.desc.charAt(0).toLowerCase() + g.desc.slice(1)}. ⚙ ${g.parts}  🪵 ${g.parts * 2}  ★ ${g.ren}`, ...(S.introOff ? [] : TUT[g.name] || [])], { key: 'goal', title: 'Next goal · ' + g.name, more: g.hint }); }   /* 3D.135 was a pop-up in the middle of the screen */
+const guideLock = (g) => (g && g.name === 'Grow the Camp' && S.rank < (DEFS.hq2.rank || 1) ? ` It opens at Haven level ${lvlOfRank(DEFS.hq2.rank)}: get there first.` : '');   /* 3D.169 round 2 (four testers): the radio sent them to upgrade before they could */
+function guideIntro() { const g = GUIDE[S.guide]; if (g) radio('dj', [`${rLine('goal')} ${g.desc.charAt(0).toLowerCase() + g.desc.slice(1)}.${guideLock(g)} ⚙ ${g.parts}  🪵 ${g.parts * 2}  ★ ${g.ren}`, ...(S.introOff ? [] : TUT[g.name] || [])], { key: 'goal', title: 'Next goal · ' + g.name, more: g.hint }); }   /* 3D.135 was a pop-up in the middle of the screen */
 function tutTick() { if (S.cut || S.introOff || S.won) return; S.tut = S.tut || {};   /* the first two steps come before the goal list */
   if ((S.stage || 0) === 0 && !S.tut.start && S.day <= 2) { S.tut.start = 1; radio('dj', TUT.start, { key: 'tut', title: 'Getting started', more: 'Build → Rain Barrel, then tap a spot inside the fence. Builders carry the wood and scrap over and put it up.' }); }
   else if (!S.tut.alarm && S.day >= 3 && isNight() && tick % 960 === 120) { const w = nodeList().find((n) => n.k === 'wreck' && nodeState(n.x, n.y) && alarmCands(n.x, n.y).length >= 3); if (w) { S.tut.alarm = 1; radio('dj', ['Got company at the fence? Here is a trick.', 'Tap a wreck near them. Most of those old cars still have a working alarm.', 'Set it off and the dead go and argue with it instead of your walls.'], { key: 'tut', title: 'Car alarms', more: 'Tap a wreck with zombies near it, then Set it off: up to 6 of them (never a boss) walk to the wreck and stay there a while, unless someone comes close. Each wreck works once a day.' }); } }
@@ -3700,7 +3704,7 @@ const OBJ_MISSION = {
 function currentObjective() {
   if (S.stage === 0) return { name: 'Water First', desc: 'Build a Rain Barrel', how: 'Every survivor drinks a daily ration. A Rain Barrel makes water; staffed, it makes more. Upgrade it later to a Rain Collector and a Stone Well.', prog: [0, 1], reward: '', ...buildObj('barrel')() };
   if (S.stage === 1) return { name: 'First Blood', desc: 'Defeat 3 Walkers', how: 'Your fighters attack zombies that come close. Watch them work, or tap a survivor to see what they are doing.', prog: [Math.min(S.kills, 3), 3], reward: '+10 Renown', reqs: [], spots: zSpots((z) => !z.human), act: null };
-  if (guideActive()) { const g = GUIDE[S.guide], f = OBJ_GUIDE[g.name]; return { name: g.name, desc: g.desc, how: g.hint, prog: [0, 1], reward: `+${g.parts} scrap, +${g.parts * 2} wood, +${g.ren} Renown`, reqs: [], spots: [], act: null, ...(f ? f() : {}) }; }
+  if (guideActive()) { const g = GUIDE[S.guide], f = OBJ_GUIDE[g.name]; return { name: g.name, desc: g.desc, how: g.hint + guideLock(g), prog: [0, 1], reward: `+${g.parts} scrap, +${g.parts * 2} wood, +${g.ren} Renown`, reqs: [], spots: [], act: null, ...(f ? f() : {}) }; }
   if (S.mission) { const m = S.mission, f = OBJ_MISSION[m.id], o = f ? f() : {}; return { name: m.name, desc: m.desc, how: o.tip || '', prog: [Math.floor(m.progress), m.goal], reward: `+${m.rewardParts} scrap, +${m.rewardParts} wood, +${m.rewardRen} Renown`, reqs: [], spots: [], act: null, ...o }; }
   return null;
 }
@@ -4814,7 +4818,7 @@ function encChoose(en, i) {   /* a stale pop-up (the squad already decided) does
 }
 function encPopup(t) {
   const en = t.enc, E = EXP_ENC[en.k];
-  showEventPopup({ title: E.title, text: `${E.text}<br><small>Squad: ${encLive(t).map((m) => esc(m.name) + ' ' + traitIcon(m) + ' ' + Math.ceil(m.hp) + '/' + m.max).join(' · ')}</small><br><small>No order before the next stage and the squad decides for itself.</small>`, buttons: encButtons(t) });
+  showEventPopup({ title: E.title, text: `${E.text}<br><small>Squad: ${t.members.map((m) => esc(m.name) + ' ' + traitIcon(m) + ' ' + (m.collapsed || m.hp <= 0 ? 'collapsed, being carried' : Math.ceil(m.hp) + '/' + m.max)).concat((t.lost || []).map((n) => esc(n) + ' 💀 lost')).join(' · ')}</small><br><small>No order before the next stage and the squad decides for itself.</small>`, buttons: encButtons(t) });
 }
 function tripUpdate(now = (expNow())) {
   const t = S.trip; if (!t) return;
@@ -5166,6 +5170,7 @@ function startStronghold(destId, ids, opts = {}) {
   if (!opts.practice && (S.shTryDay || {})[destId] === S.day) return { ok: false, why: 'The squad was beaten back from there today: try again tomorrow' };   /* 3D.125 the loss cooldown was recorded but never read */
   shUseLayout(destId); const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
   if (!ms.length) return { ok: false, why: 'Pick at least one survivor' };
+  { const home = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter((q) => q && !ms.includes(q)); if (home.length && !opts.practice) note('important', `Only ${ms.length} fit through: ${home.map((q) => q.name).join(', ')} stayed home.`); }   /* 3D.169 round 2: the extra person was left out with no word */
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
   if (!opts.practice) S.sv = S.sv.filter((q) => !ms.includes(q));
   const units = opts.practice ? ms.map((q) => ({ ...JSON.parse(JSON.stringify(expPlain(q), (k, v) => (['target', 'post', 'path', 'chatWith', 'aidTo', 'aidBy', 'rescuer', 'facility', 'faceW', 'emo'].includes(k) ? undefined : v))), id: 90000 + q.id, practiceOf: q.id })) : ms;

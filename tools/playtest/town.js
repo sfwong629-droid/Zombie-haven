@@ -21,7 +21,7 @@
       day: S.day, hour: S.hour, night: Z.isNight(), level: S.lvl || 1, renown: Math.round(S.ren || 0),
       nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, gameHoursLeft: Math.ceil(S.lvUp.left), renownToFinishNow: Math.ceil(S.lvUp.left / 12) * 25 } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : c.sub ? ' (' + c.sub + ')' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
       supplies: { food: r1(S.food), water: r1(S.water), cap: Z.supplyCap(), foodPerDay: r1(st.fNet), waterPerDay: r1(st.wNet), foodDaysLeft: r1(st.fDays), waterDaysLeft: r1(st.wDays) },
-      materials: { scrap: Math.round(S.mat), wood: Math.round(S.wood || 0), stone: Math.round(S.stone || 0), cloth: S.cloth || 0, meds: S.meds || 0, fuel: Math.round(S.fuel || 0), ammo: S.ammo || 0, research: Math.round(S.rp || 0) },
+      materials: { scrap: Math.floor(S.mat), wood: Math.floor(S.wood || 0), stone: Math.floor(S.stone || 0), cloth: S.cloth || 0, meds: S.meds || 0, fuel: Math.floor(S.fuel || 0), ammo: S.ammo || 0, research: Math.floor(S.rp || 0) },
       people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ♥${Math.round(q.sat || 0)} · ${q.mode}${q.mode === 'down' ? ` (bleeds out in ${Math.max(0, Math.round((q.bleed || 0) / 1000))} game h; ${q.rescuer ? q.rescuer.name + ' is coming' : 'NO rescuer: ' + (Z.noRescueWhyX ? Z.noRescueWhyX(q) : '?')})` : ''}${q.trait ? ' · ' + q.trait : ''}`),
       emergencyHelp: { radioHelpReady: !!(Z.helpReady && Z.helpReady()), note: 'when people are down: rescue NAME, bandage NAME, radiohelp, militia, defend' },
       beds: `${Z.popNow()}/${Z.popCap()}`,
@@ -79,7 +79,7 @@
 
   const ACT = {
     help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours: the town is frozen, nobody heals and nothing attacks; trays fill and a level upgrade keeps counting)',
-      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'wall X Y [wood|gate]  (one tile, e.g. a gap the walls order reports)', 'workplaces  (every building that takes a worker, who works there)', 'fill  (fill empty workplaces with free people of the right job)', 'assign NAME TYPE  (put someone to work at a building type)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup', 'rushlevel [all]  (spend 25 renown per 12 game hours off the level timer; all = finish now)',
+      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'wall X Y [wood|gate]  (one tile, e.g. a gap the walls order reports)', 'workplaces  (every building that takes a worker, who works there)', 'pets  (dogs waiting for an owner)', 'pet PETNAME PERSON  (give a dog to someone)', 'fill  (fill empty workplaces with free people of the right job)', 'assign NAME TYPE  (put someone to work at a building type)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup', 'rushlevel [all]  (spend 25 renown per 12 game hours off the level timer; all = finish now)',
       'expedition DEST RISK [NAME,NAME..]', 'stronghold DEST [NAME,NAME..]', 'answer N  (button N on the card)', 'accept | decline  (move-in request)', 'buy N | trade N  (trader)',
       'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart',
       'EMERGENCIES: rescue NAME | bandage NAME | radiohelp | militia | defend',
@@ -105,6 +105,8 @@
     fill: () => { const e0 = Z.slotBs().filter((b) => !b.staff).length; Z.fillSlots(); const e1 = Z.slotBs().filter((b) => !b.staff); return { ok: true, filled: e0 - e1.length, stillEmpty: e1.map((b) => D[b.type].name) }; },
     assign: (a) => { const q = who(a[0]), t = a[1]; if (!q) return { ok: false, why: 'no such person' }; const bs = Z.slotBs().filter((b) => b.type === t); if (!bs.length) return { ok: false, why: 'no such workplace (use the type from workplaces)' }; const b = bs.find((x) => !x.staff) || bs[0];
       if (q.post && q.post !== b) Z.releasePost(q.post); Z.releasePost(b); b.staff = q; q.post = b; b.manual = true; b.noStaff = false; Z.autoStaff(); return { ok: b.staff === q, at: D[b.type].name, fit: Z.fitOf(b, q) }; },
+    pets: () => ({ waiting: (S.pets || []).map((p, i) => `${i}: ${p.name} (${(Z.PETS[p.kind] || {}).name || p.kind})`), withPeople: S.sv.filter((q) => q.pet).map((q) => `${q.name}: ${q.pet.name}`) }),
+    pet: (a) => { const q = who(a[1]); if (!q) return { ok: false, why: 'pet PETNAME PERSON' }; const i = (S.pets || []).findIndex((p) => p.name.toLowerCase() === String(a[0]).toLowerCase()); if (i < 0) return { ok: false, why: 'no such pet waiting (see pets)' }; if (q.pet) return { ok: false, why: q.name + ' already has a pet' }; return { ok: !!Z.givePet(q, i) }; },
     wall: (a) => {   /* 3D.169 round 2: one tile, as a player taps it (the gaps the game reports are not always on the outer line) */
       const x = +a[0], y = +a[1], t = a[2] || 'wood', W = Wo(); if (!Number.isFinite(x) || !Number.isFinite(y)) return { ok: false, why: 'wall X Y [wood|gate]' };
       const had = Wd.wallAt(W, x, y), m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, t); const now = Wd.wallAt(W, x, y), per = Wd.perimeter(W);
@@ -117,7 +119,7 @@
       const per = Wd.perimeter(W); return { placed: n, sealed: !!per.sealed, wallTiles: W.walls.size, ...(per.sealed ? {} : { gaps: Z.findGaps(6).map((g) => `${g.x},${g.y}: ${g.why}`) }) }; },
     job: (a) => { const q = who(a[0]); return { ok: !!(q && Z.changeProfession(q, a.slice(1).join(' '))) }; },
     promote: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const w = Z.specWhy(q); return w ? { ok: false, why: w } : { ok: !!Z.promoteSpec(q) }; },
-    research: (a) => { const r = Z.RESEARCH[a[0]]; if (!r) return { ok: false, why: 'unknown research' }; const ok2 = !!Z.doResearch(a[0]); return { ok: ok2, why: ok2 ? '' : `needs ${r.rp} research points (have ${Math.round(S.rp || 0)}) and ${r.mat} scrap (have ${Math.round(S.mat)})` }; },
+    research: (a) => { const r = Z.RESEARCH[a[0]]; if (!r) return { ok: false, why: 'unknown research' }; const ok2 = !!Z.doResearch(a[0]); return { ok: ok2, why: ok2 ? '' : `needs ${r.rp} research points (have ${Math.floor(S.rp || 0)}) and ${r.mat} scrap (have ${Math.floor(S.mat)})` }; },
     event: (a) => ({ ok: !!Z.holdEvent(a[0]) }),
     expand: () => { const ok2 = !!Z.expandTerritory(); return { ok: ok2, why: ok2 ? '' : state(true).expandLand }; },
     levelup: () => ({ ok: Z.upgradeTown() !== false, upgrading: !!S.lvUp }),
