@@ -28,3 +28,4 @@ tools/balance/density.json
 # work folders for the tools (3D.161)
 kits_work/
 tools/**/node_modules
+runs/*/*.jsonl
