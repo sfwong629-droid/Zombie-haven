@@ -1501,7 +1501,7 @@ const ageBondMul = (a, b) => { const d = Math.abs(ageOf(a) - ageOf(b)); return d
 /* V3D.17 full names: everyone has a family name (the first name is what the town calls them) */
 const FIRST_NAMES = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar', 'Cass', 'Dex', 'Mara', 'Ozzy', 'Lark', 'Vince', 'Hana', 'Rook', 'Sol', 'Quinn', 'Ada', 'Bo', 'Cleo', 'Dante', 'Esme', 'Felix', 'Gwen', 'Hal', 'Ines', 'Jonah', 'Kira', 'Leo', 'Mina', 'Nico', 'Opal', 'Pia', 'Rafe', 'Sana', 'Tomas', 'Uma', 'Vera', 'Wes', 'Yara', 'Zed', 'Abel', 'Bryn', 'Cyrus', 'Della', 'Ezra', 'Faye', 'Gus', 'Hattie'];
 const LAST_NAMES = ['Reyes', 'Novak', 'Okafor', 'Brennan', 'Sato', 'Lindqvist', 'Moreau', 'Kowalski', 'Haddad', 'Fischer', 'Park', 'Ivanova', 'Alvarez', 'Murphy', 'Nakamura', 'Osei', 'Petrov', 'Quinlan', 'Rossi', 'Schmidt', 'Tanaka', 'Underwood', 'Vasquez', 'Whitfield', 'Yilmaz', 'Zhou', 'Abara', 'Becker', 'Castillo', 'Dubois', 'Engel', 'Fontaine', 'Garza', 'Holm', 'Ibarra', 'Jensen', 'Kaur', 'Larsen', 'Mendes', 'Nyberg', 'Ortiz', 'Pruitt', 'Ramos', 'Sorensen', 'Torres', 'Vance', 'Webb', 'Abbott', 'Bishop', 'Crane'];
-const takenFirst = () => new Set(S.sv.concat(S.trip ? S.trip.members : [], guest ? [guest] : [], S.kids || [], S.fac && S.fac.helix && S.fac.helix.taken ? [S.fac.helix.taken] : []).map((q) => String(q.name).split(' ')[0]));   /* 3D.169: kids and the one Helix took count too */
+const takenFirst = () => new Set(S.sv.concat(S.trip ? S.trip.members : [], S.sh && S.sh.units ? S.sh.units : [], guest ? [guest] : [], S.kids || [], S.fac && S.fac.helix && S.fac.helix.taken ? [S.fac.helix.taken] : []).map((q) => String(q.name).split(' ')[0]));   /* 3D.169: kids and the one Helix took count too */
 const freeFirst = (pool = FIRST_NAMES) => { const used = takenFirst(); if (pool !== FIRST_NAMES && !pool.some((n) => !used.has(n))) pool = FIRST_NAMES;   /* 3D.169 (two Junes, play-test round 1): every way in now asks here */   /* 3D.161 play-test: three Noahs in one town. Squads out on a trip and the newcomer at the gate count, and so does a first name with a surname */
   const f = pool.filter((n) => !used.has(n)); return f.length ? f[Math.floor(rnd() * f.length)] : FIRST_NAMES[Math.floor(rnd() * FIRST_NAMES.length)] + ' ' + String.fromCharCode(65 + Math.floor(rnd() * 26)) + '.'; };
 const pickLast = () => { const f = LAST_NAMES.filter((n) => !S.sv.some((q) => q.last === n)); const L = f.length ? f : LAST_NAMES; return L[Math.floor(rnd() * L.length)]; };
@@ -3645,7 +3645,8 @@ function gapWhy(x, y) {
   if (Wd.isRoad(world, x, y)) return 'a road: close it with a Gate';
   const bl = world.buildings.find((b) => { const t = Wd.approachTile(b); return t.x === x && t.y === y; }); if (bl) return `the ${DEFS[bl.type].name}'s doorway: a Gate fits there`;
   if (postAt(x, y)) return 'a guard post: move it or wall round it';
-  return Wd.inWallZone(x, y) ? 'an open tile' : 'outside the wall area';
+  const Zn = Wd.WALLZONE; if (x === Zn.x0 || x === Zn.x1 || y === Zn.y0 || y === Zn.y1) return 'an open tile in the outer wall line';
+  return Wd.inWallZone(x, y) ? 'an open tile in an inner fence' : 'outside the wall area';
 }
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
   const seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return []; const plug = new Set(), gaps = [];

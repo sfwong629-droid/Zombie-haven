@@ -79,7 +79,7 @@
 
   const ACT = {
     help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours: the town is frozen, nobody heals and nothing attacks; trays fill and a level upgrade keeps counting)',
-      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup', 'rushlevel [all]  (spend 25 renown per 12 game hours off the level timer; all = finish now)',
+      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'wall X Y [wood|gate]  (one tile, e.g. a gap the walls order reports)', 'workplaces  (every building that takes a worker, who works there)', 'fill  (fill empty workplaces with free people of the right job)', 'assign NAME TYPE  (put someone to work at a building type)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup', 'rushlevel [all]  (spend 25 renown per 12 game hours off the level timer; all = finish now)',
       'expedition DEST RISK [NAME,NAME..]', 'stronghold DEST [NAME,NAME..]', 'answer N  (button N on the card)', 'accept | decline  (move-in request)', 'buy N | trade N  (trader)',
       'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart',
       'EMERGENCIES: rescue NAME | bandage NAME | radiohelp | militia | defend',
@@ -101,6 +101,14 @@
         if (!done) { Z.endBuildModeX(); return { ok: false, why: `the ${D[a[0]].name} is bigger: no room around the old one (clear a neighbouring tile)` }; }
         return { ok: true, note: 'placed the bigger building over the old one' }; }
       if (s0) Z.endBuildModeX(); return { ok: !!r }; },
+    workplaces: () => ({ list: Z.slotBs().map((b) => { const js = Z.STAFF_JOBS[D[b.type].fam] || []; return `${D[b.type].name} (${b.type}) · needs ${js.join('/')} · ` + (b.staff ? `${b.staff.name} (${b.staff.job}, ${Z.fitOf(b, b.staff)})` : `EMPTY (${Z.freeFor(js).length} ${js.join('/')} free)`); }) }),
+    fill: () => { const e0 = Z.slotBs().filter((b) => !b.staff).length; Z.fillSlots(); const e1 = Z.slotBs().filter((b) => !b.staff); return { ok: true, filled: e0 - e1.length, stillEmpty: e1.map((b) => D[b.type].name) }; },
+    assign: (a) => { const q = who(a[0]), t = a[1]; if (!q) return { ok: false, why: 'no such person' }; const bs = Z.slotBs().filter((b) => b.type === t); if (!bs.length) return { ok: false, why: 'no such workplace (use the type from workplaces)' }; const b = bs.find((x) => !x.staff) || bs[0];
+      if (q.post && q.post !== b) Z.releasePost(q.post); Z.releasePost(b); b.staff = q; q.post = b; b.manual = true; b.noStaff = false; Z.autoStaff(); return { ok: b.staff === q, at: D[b.type].name, fit: Z.fitOf(b, q) }; },
+    wall: (a) => {   /* 3D.169 round 2: one tile, as a player taps it (the gaps the game reports are not always on the outer line) */
+      const x = +a[0], y = +a[1], t = a[2] || 'wood', W = Wo(); if (!Number.isFinite(x) || !Number.isFinite(y)) return { ok: false, why: 'wall X Y [wood|gate]' };
+      const had = Wd.wallAt(W, x, y), m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, t); const now = Wd.wallAt(W, x, y), per = Wd.perimeter(W);
+      return { ok: !!now && now !== had || (!!now && S.mat + (S.wood || 0) < m0), placed: now ? now.type : null, sealed: !!per.sealed, ...(per.sealed ? {} : { gaps: Z.findGaps(6).map((g) => `${g.x},${g.y}: ${g.why}`) }) }; },
     walls: (a) => {   /* fence every free tile of the wall line (north side first), gates where a road crosses; never removes a wall */
       const Zn = Wd.WALLZONE, W = Wo(), T = []; for (let x = Zn.x0; x <= Zn.x1; x++) T.push([x, Zn.y0], [x, Zn.y1]); for (let y = Zn.y0 + 1; y < Zn.y1; y++) T.push([Zn.x0, y], [Zn.x1, y]);
       T.sort((p, q) => p[1] - q[1]); let n = 0; const max = +a[0] || 8;
