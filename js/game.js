@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.167', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.168', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1019,7 +1019,7 @@ function helpTick() {
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
     showEventPopup({ title: '📻 THEY CAME FOR THE FAVOUR', text: `The group that saved your people asks for ${o.food} food and ${o.water} water.`, buttons: [
       { label: `Pay (${o.food} 🍖 ${o.water} 💧)`, disabled: !canPay({ food: o.food, water: o.water }), fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They nod. "Call us if you need us."'); } },
-      { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) q.sat = Math.max(0, (q.sat || 0) - 4); result('📻 NO MORE FAVOURS', "They won't answer the radio for a week. Your people feel bad about it."); } }] }); }
+      { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "They won't answer the radio for a week. Your people feel bad about it."); } }] }); }
 }
 function slipOut(q, b) {   /* out the back to the next shelter, away from the zombies; nowhere left = cornered */
   const zs = S.z.filter((z) => z.hp > 0 && !z.zoo); let best = null, bs = -1e9;
@@ -1170,6 +1170,7 @@ function morningCard() {
   const dmgB = world.buildings.filter((b) => b.max && b.hp < b.max).length;
   const rows = [`🧟 Walkers stopped: ${k}`, `🏚 Buildings damaged: ${dmgB}${L.dmg ? ` (${L.dmg} damage)` : ''}`, `🩹 Hurt: ${hurt.length ? hurt.join(', ') : 'nobody'}`];
   if (lost) rows.push(`🕯 Lost: ${lost}`); if (joined.length) rows.push(`👋 Joined: ${joined.join(', ')}`);
+  { const sad = S.sv.filter((q) => q.resident && (q.sat || 0) < 15).sort((a, b) => (a.sat || 0) - (b.sat || 0)); if (sad.length) rows.push(`💔 Unhappy: ${sad.slice(0, 2).map((q) => `${q.name} ${moodLine(q)}`).join('; ')}${sad.length > 2 ? ` and ${sad.length - 2} more` : ''}`); }   /* 3D.168 */
   const quip = lost ? 'We light a candle and get back to work.' : hurt.length ? 'Bandages first, breakfast second.' : dmgB ? 'Grab a hammer, the fence has opinions.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : 'Not a scratch. The coffee is still terrible.';   /* 3D.161 it said "Not a scratch" under a list of hurt people */
   showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
 }
@@ -1326,6 +1327,22 @@ function shortageCheck() {
 function rationNeed() { let f = 0; for (const q of S.sv) f += ration(q) / 2; for (const k of S.kids || []) f += .25; return { f, w: f }; }   // a day of rations: half food, half water
 /* 3D.167 play-test round 1 (New player, Defender, Raider): when someone lies down with nobody coming, say why in one line and what would fix it.
    It mirrors the checks in assignRescue */
+/* 3D.168 play-test round 1 (Caretaker): mood (♥, 0-100) had no number and no reason anywhere. moodAdd keeps what moved it, per day, so the
+   person panel, the People list and the morning card can say "♥22 · grieving for Rosa, saw Ben die" */
+function moodAdd(q, v, why) {
+  if (!q || !v || !why) return; const L = (q.mLog = q.mLog || []), e = L.find((x) => x.why === why && x.d === S.day);
+  if (e) e.v += v; else { L.push({ d: S.day, why, v }); if (L.length > 14) L.shift(); }
+}
+const moodWord = (v) => v >= 60 ? 'happy' : v >= 35 ? 'settled' : v >= 15 ? 'unsettled' : 'unhappy';   /* 35 = wants to move in for good; under 25 The Hollow can lure them away */
+function moodWhy(q, n = 2) {   /* the biggest reasons from the last 3 days, plus what is missing */
+  const L = (q.mLog || []).filter((x) => S.day - x.d <= 2), by = {}; for (const x of L) by[x.why] = (by[x.why] || 0) + x.v;
+  const top = Object.entries(by).filter(([, v]) => Math.abs(v) >= 1).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, n).map(([w, v]) => `${w} (${v > 0 ? '+' : ''}${Math.round(v)})`);
+  const tips = [];
+  if (!world.buildings.some((b) => isT(b, 'house') && b.owner === q.id)) tips.push('no House of their own');
+  if (!Object.entries(q.rel || {}).some(([id, v]) => v >= BOND.friend && S.sv.some((x) => x.id === +id))) tips.push('no friends yet');
+  return { top, tips };
+}
+function moodLine(q) { const v = Math.round(q.sat || 0), w = moodWhy(q); return `♥${v} ${moodWord(v)}` + (w.top.length ? ' · ' + w.top.join(', ') : '') + (w.tips.length && v < 35 ? ' · ' + w.tips.join(', ') : ''); }
 function noRescueWhy(q) {
   if (lastStand()) return 'the last few are hiding until the zombies move on · call radio help';
   const near = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5), crowd = near.length, foe = near.some((z) => z.human) ? (crowd > 1 ? 'raiders' : 'raider') : (crowd > 1 ? 'zombies' : 'zombie');
@@ -2097,7 +2114,7 @@ function chatTick(s) {
   if (--s.chatT > 0) return; const L = s.chatLines; if (s.chatStep >= L.length) { endChat(s); return; }
   if (s.chatTxt) { bark(s, null, { other: q.name, b: chatBuilding() }, { line: L[s.chatStep], style: s.chatTxt, pri: 1, f: 170 }); s.chatStep += 2; s.chatT = 150; }
   else { emote(s, L[s.chatStep], 80, true); s.chatStep += 2; s.chatT = 90; }
-  if (s.chatStep >= L.length && q.chatStep >= L.length) { addBond(s, q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); q.sat = Math.min(100, (q.sat || 0) + 1); }
+  if (s.chatStep >= L.length && q.chatStep >= L.length) { addBond(s, q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); q.sat = Math.min(100, (q.sat || 0) + 1); moodAdd(s, 1, 'chats'); moodAdd(q, 1, 'chats'); }
 }
 function endChat(s) { const q = s.chatWith; s.chatNext = tick + 1500 + rnd() * 1000; if (q) q.chatNext = s.chatNext; s.chatWith = null; s.faceW = null; enterFree(s, 40 + rnd() * 60); if (q && q.chatWith === s) { q.chatWith = null; q.faceW = null; enterFree(q, 40 + rnd() * 60); } }
 /* evenings at the Bonfire: people who aren't tired stand around it, chat and cheer up */
@@ -2114,7 +2131,7 @@ const talkOk = (q) => !!q.talkBy && q.talkBy.talk && q.talkBy.talk.q === q;
 function sitTalk(s, same) {
   const t = s.talk;
   if (t) { if (!S.sv.includes(t.q) || !same(t.q) || threatOf(s)) { s.talk = null; return; } if (--t.T > 0) return;
-    if (t.k >= t.L.length) { s.talk = null; addBond(s, t.q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); t.q.sat = Math.min(100, (t.q.sat || 0) + 1); return; }
+    if (t.k >= t.L.length) { s.talk = null; addBond(s, t.q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); t.q.sat = Math.min(100, (t.q.sat || 0) + 1); moodAdd(s, 1, 'chats'); moodAdd(t.q, 1, 'chats'); return; }
     const sp = t.k % 2 === 0 ? s : t.q; bark(sp, null, { other: (sp === s ? t.q : s).name, b: chatBuilding() }, { line: t.L[t.k], style: t.st, pri: 1, f: 170 }); t.k++; t.T = 160; return; }
   if (talkOk(s) || (s.talkNext || 0) > tick || rnd() > 1 / 300 || urgentNeed(s)) return;
   const q = S.sv.find((o) => o !== s && same(o) && !o.talk && !talkOk(o) && dist(o.w, s.w) < 2.8 && (o.talkNext || 0) <= tick); if (!q) return;
@@ -2124,7 +2141,7 @@ function campfireTick(s) {
   const f = s.fire; if (!f || !world.buildings.includes(f) || s.fatigue > 75 || S.hour >= 24 || (S.hour < 19 && S.hour > 5) || threatOf(s)) { s.fire = null; s.faceW = null; enterFree(s, 20); return; }
   const r = followPath(s, s.dest, WALK); if (r === 'moving') return; s.moving = false; s.faceW = { x: f.x + .5, y: f.y + .5 }; sitTalk(s, (o) => o.mode === 'campfire' && o.fire === f && !o.moving);
   if (tick % 900 === (s.i * 97) % 900 && rnd() < .25) { const o = S.sv.find((q) => q !== s && q.mode === 'campfire'); bark(s, 'bonfire', { other: o ? o.name : 'someone' }); }
-  if (tick % 120 === (s.i * 17) % 120) { s.sat = Math.min(100, (s.sat || 0) + .6); const nb = S.sv.find((q) => q !== s && q.mode === 'campfire' && dist(q.w, s.w) < 2.2); if (nb) addBond(s, nb, 1); if (rnd() < .5) emote(s, ['🎶', '🔥', '😊', '😂', '☕'][Math.floor(rnd() * 5)], 90); }
+  if (tick % 120 === (s.i * 17) % 120) { s.sat = Math.min(100, (s.sat || 0) + .6); moodAdd(s, .6, 'the campfire'); const nb = S.sv.find((q) => q !== s && q.mode === 'campfire' && dist(q.w, s.w) < 2.2); if (nb) addBond(s, nb, 1); if (rnd() < .5) emote(s, ['🎶', '🔥', '😊', '😂', '☕'][Math.floor(rnd() * 5)], 90); }
   if (--s.stateTicks <= 0) { s.fire = null; s.faceW = null; enterFree(s, 20); }
 }
 /* pitching in: when food or water will run out within a day and a half, free hands help at the producer (+35% each, two at most) */
@@ -2205,13 +2222,13 @@ function gearUpgrade(s) { if (s.dummy) return null;   /* best improvement for an
 }
 function finishFacility(s) {
   const b = s.facility; if (!b) { s.activity = null; enterFree(s, 110); return; } const r = facilityRules[b.type]; if (!r) { s.facility = null; enterFree(s, 110); return; }
-  s.sat += (r.sat + combos(b).sat) * Math.max(.6, sMod(s, 'cha', .05)); floats.push({ w: { ...s.w }, t: '♥+' + r.sat, col: '#ff9fbd', a: 70 });
+  { const dv = (r.sat + combos(b).sat) * Math.max(.6, sMod(s, 'cha', .05)); s.sat += dv; moodAdd(s, dv, 'the ' + DEFS[b.type].name); } floats.push({ w: { ...s.w }, t: '♥+' + r.sat, col: '#ff9fbd', a: 70 });
   if (r.need === 'hunger') { if (S.food >= .5) s.hunger = Math.max(0, s.hunger - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1) * (b && isWorking(b) && b.staff.job === 'Cook' ? 1.5 : 1) * (b && isWorking(b) && gearFx(b.staff, 'cook') ? 1.25 : 1) * (b && isWorking(b) && hasSkill(b.staff, 'headChef') ? 1.3 : 1) * (b && isWorking(b) ? Math.max(.8, sMod(b.staff, 'cha', .03)) : 1) * (1 + combos(b).meal) * (b.unpaid ? .5 : 1)); else floats.push({ w: { ...s.w }, t: 'No 🍖', col: '#ff8a7a', a: 70 }); }
   if (r.need === 'thirst') { if (S.water >= .5) s.thirst = Math.max(0, s.thirst - r.benefit * (hasSkill(s, 'fieldRations') ? 1.25 : 1)); else floats.push({ w: { ...s.w }, t: 'No 💧', col: '#ff8a7a', a: 70 }); }
   if (rnd() < .2 && bark(s, { hunger: 'eat', thirst: 'drink', fatigue: 'sleep' }[r.need] || 'happy')) {} else
   if (r.need === 'hunger' && rnd() < .6) emote(s, '😋', 80); if (r.need === 'thirst' && rnd() < .5) emote(s, '😌', 80); if (r.need === 'fatigue' && rnd() < .4) emote(s, '🥱', 70);
   if (r.need === 'fatigue' && !s.sleeping && s.hp > 0 && s.hp < s.max * .75) { const h = Math.max(1, Math.round(s.max * (.05 + r.benefit / 600))); s.hp = Math.min(Math.round(s.max * .75), s.hp + h); floats.push({ w: { ...s.w }, t: '+' + h + ' HP', col: '#7fd35a', a: 60 }); }   /* 3D.47 owner: sleep heals, up to 75% (beds that rest better heal more; a doctor gets you the rest) */
-  if (r.need === 'fatigue') { s.fatigue = Math.max(0, s.fatigue - r.benefit); if (b && isT(b, 'house') && b.owner === s.id) { s.fatigue = Math.max(0, s.fatigue - r.benefit * .5); s.sat = Math.min(100, (s.sat || 0) + 2); } }   /* own home: rests 50% better, +2 ♥ */
+  if (r.need === 'fatigue') { s.fatigue = Math.max(0, s.fatigue - r.benefit); if (b && isT(b, 'house') && b.owner === s.id) { s.fatigue = Math.max(0, s.fatigue - r.benefit * .5); s.sat = Math.min(100, (s.sat || 0) + 2); moodAdd(s, 2, 'own home'); } }   /* own home: rests 50% better, +2 ♥ */
   if (r.need === 'injury' && s.wounded) { s.wounded = false; floats.push({ w: { ...s.w }, t: 'Wound treated', col: '#7fd35a', a: 70 }); }   /* 3D.67: only a medical building treats a field wound */
   if (r.need === 'injury') { const med = (S.meds || 0) >= .25; if (med) { S.meds -= .25; flow('meds', 'Treatment', -.25); } s.hp = Math.min(s.max, s.hp + r.benefit * (med ? 1.6 : 1)); if (med && rnd() < .3) floats.push({ w: { ...s.w }, t: '💊', col: '#ff9fbd', a: 60 }); }   /* V3D.25: medicine in stock heals 60% more */   // no medicine stock: care is limited by the building's tier, beds and the time it takes
   if (isT(b, 'armory')) { for (let n = 0; n < 2; n++) { const g = gearUpgrade(s); if (!g) break; if (g.buy) { S.mat -= Math.max(1, ITEMS[g.id].cost - (combos(b).arsenal ? 1 : 0)); stashAdd(g.id); } equip(s, g.id); s.sat += 2; note('routine', s.name + (g.buy ? ' bought a ' : ' took a ') + ITEMS[g.id].name + ' at the Armory' + (g.buy ? ' (−' + ITEMS[g.id].cost + ' scrap).' : '.'), { at: s.w, float: '🛡 ' + ITEMS[g.id].name.toUpperCase(), col: '#b6f0ff' }); } }
@@ -3140,9 +3157,9 @@ function petTick() {   /* every 30 ticks: dogs bark at sneaking raiders near the
 }
 function petDaily() {
   for (const s of S.sv) { if (!s.pet || s.hp <= 0) continue;
-    if (s.pet.kind === 'dog' && dogRole(s) === 'companion') s.sat = Math.min(100, (s.sat || 0) + 4);   /* 3D.104 companion dog */
+    if (s.pet.kind === 'dog' && dogRole(s) === 'companion') { s.sat = Math.min(100, (s.sat || 0) + 4); moodAdd(s, 4, s.pet.name + ' the dog'); }   /* 3D.104 companion dog */
     if (s.pet.kind === 'dog' && rnd() < (dogRole(s) === 'digger' ? .65 : .35)) { const k = rnd() < .5 ? 'mat' : 'food'; S[k] += 1; floats.push({ w: { ...s.w }, t: `+1 ${SHORT_ICON[k] || '🍖'} (${s.pet.name})`, col: '#9fe58a', a: 80 }); }
-    if (s.pet.kind === 'cat') { s.sat = Math.min(100, (s.sat || 0) + 3); if (rnd() < .3) { S.food += 1; floats.push({ w: { ...s.w }, t: `+1 FOOD (${s.pet.name})`, col: '#9fe58a', a: 80 }); } }
+    if (s.pet.kind === 'cat') { s.sat = Math.min(100, (s.sat || 0) + 3); moodAdd(s, 3, s.pet.name + ' the cat'); if (rnd() < .3) { S.food += 1; floats.push({ w: { ...s.w }, t: `+1 FOOD (${s.pet.name})`, col: '#9fe58a', a: 80 }); } }
   }
 }
 const PET_ART = {   /* true pixel art, facing left, one art px = one map px; 2 frames (stand, step) */
@@ -3316,7 +3333,7 @@ const KID_NAMES = ['Ivy', 'Finn', 'Nora', 'Kai', 'Wren', 'Juno', 'Milo', 'Pip', 
 function bondsDaily() {
   S.kids = S.kids || []; bondDay.clear();
   for (const s of S.sv) if (s.rel) for (const id in s.rel) if (+id !== s.partner && s.rel[id] < 90) s.rel[id] = Math.max(0, s.rel[id] - 1);   /* bonds fade a little unless kept up */
-  for (const s of S.sv) if (s.rel) { const f = Object.entries(s.rel).filter(([id, v]) => v >= BOND.friend && S.sv.some((q) => q.id === +id)).length; if (f) s.sat = Math.min(100, (s.sat || 0) + Math.min(3, f * .6)); }   /* friends keep spirits up */
+  for (const s of S.sv) if (s.rel) { const f = Object.entries(s.rel).filter(([id, v]) => v >= BOND.friend && S.sv.some((q) => q.id === +id)).length; if (f) { s.sat = Math.min(100, (s.sat || 0) + Math.min(3, f * .6)); moodAdd(s, Math.min(3, f * .6), f + ' friend' + (f > 1 ? 's' : '')); } }   /* friends keep spirits up */
   // couples: two single residents who are close friends
   const single = S.sv.filter((q) => q.resident && !q.partner && q.hp > 0 && q.mode !== 'away');
   for (let i = 0; i < single.length; i++) for (let j = i + 1; j < single.length; j++) { const a = single[i], b = single[j]; if (a.partner || b.partner || bondOf(a, b) < BOND.close || rnd() > .2) continue;
@@ -3340,7 +3357,7 @@ function growUp(k) {
   v.src = 'grown'; v.age = 18; S.sv.push(v); SFX('reward'); showEventPopup({ title: '🧑 ' + k.name.toUpperCase() + ' HAS GROWN UP', text: `${k.name} is ready to help the Haven. Give them a profession from the survivor panel (Job tab).`, gains: 'New resident · Civilian Lv.1 · stats from the parents' + traitTag(v) }); ui();
 }
 function bondsOnDeath(s) {   /* grief, and the bonds are cleared */
-  for (const q of S.sv) { const v = bondOf(q, s), gm = hasT(q, 'caring') ? 1.5 : hasT(q, 'loner') ? .3 : 1; if (q.partner === s.id) { q.partner = null; q.sat = Math.max(0, (q.sat || 0) - 30 * gm); q.why = 'Grieving for ' + s.name; } else if (v >= BOND.friend) { q.sat = Math.max(0, (q.sat || 0) - (v >= BOND.close ? 20 : 12) * gm); q.why = 'Grieving for ' + s.name; } if (q.rel) delete q.rel[s.id]; }
+  for (const q of S.sv) { const v = bondOf(q, s), gm = hasT(q, 'caring') ? 1.5 : hasT(q, 'loner') ? .3 : 1; if (q.partner === s.id) { q.partner = null; q.sat = Math.max(0, (q.sat || 0) - 30 * gm); q.why = 'Grieving for ' + s.name; moodAdd(q, -30 * gm, 'grieving for ' + s.name); } else if (v >= BOND.friend) { q.sat = Math.max(0, (q.sat || 0) - (v >= BOND.close ? 20 : 12) * gm); q.why = 'Grieving for ' + s.name; moodAdd(q, -(v >= BOND.close ? 20 : 12) * gm, 'grieving for ' + s.name); } if (q.rel) delete q.rel[s.id]; }
   for (const k of S.kids || []) k.parents = k.parents.filter((id) => id !== s.id);
 }
 function bondsHtml(u) {
@@ -4071,7 +4088,7 @@ const STORY = {
     { label: 'Let them rest', fn: () => { s.hp = Math.max(1, Math.round(s.max * .45)); s.fatigue = 90; result('🤒 A ROUGH FEW DAYS', `${s.name} is weak for a while.`); } }] }); } },
   lostkid: { cond: () => S.day >= 5 && errandTeam('kid', 2).length === 2, w: .8, run: () => { const t = errandTeam('kid', 2); showEventPopup({ title: '🧒 A LOST CHILD', text: 'A child is crying somewhere beyond the walls.', stage: { scene: 'radio', head: 'A lost child', team: t, who: t.map((q) => q.name).join(' & ') + ' can go', quiet: true }, short: 'A child is crying beyond the walls.', chips: ['Search: about 5 hours'], buttons: [
     { label: `Send ${t.map((q) => q.name).join(' & ')}`, fn: () => { startErrand('kid', t); banner({ t: `🧒 ${t[0].name} and ${t[1].name} went searching`, who: t[0] }); } },
-    { label: 'Too dangerous', fn: () => { for (const q of S.sv) q.sat = Math.max(0, (q.sat || 0) - 4); } }] }); } },
+    { label: 'Too dangerous', fn: () => { for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'turned someone away'); } } }] }); } },
   drop: { cond: () => S.day >= 3 && !S.crates?.length && errandTeam('drop', 2).length >= 1, w: 1, run: () => { const c = dropCrate(), t = errandTeam('drop', 2); showEventPopup({ title: '📦 SUPPLY DROP', text: 'A parachute crate is coming down outside the walls.', stage: { scene: 'drop', head: 'Supply drop!', team: t, who: t.map((q) => q.name).join(' & ') + ' can fetch it' }, short: 'The noise will wake the dead.', chips: ['Lands outside the walls'], buttons: [
     { label: `Send ${t.map((q) => q.name).join(' & ')}`, fn: () => { startErrand('drop', t, { crate: c.id }); centerOn(c.w.x, c.w.y); } },
     { label: 'Leave it', fn: () => { c.left = true; } }] }); } },
@@ -4083,7 +4100,7 @@ const STORY = {
     { label: 'Ask for treatment', fn: () => { for (const q of S.sv) q.hp = Math.min(q.max, q.hp + q.max * .4); result('🩺 PATCHED UP', 'Everyone is treated before the medic moves on.'); } }] }) },
   storm: { cond: () => S.day >= 3 && !seasonOf().snow, w: .5, run: () => { S.water = keepCap(supplyCap(), S.water, 8); let t = 'Heavy rain fills every barrel.'; if (rnd() < .35) { const c = world.buildings.filter((b) => !OPEN_AIR.has(b.type) && !b.burnt); if (c.length && startFire(c[Math.floor(rnd() * c.length)], 25, 'Lightning')) t += ' Lightning struck a building!'; } ui(); result('⛈ STORM', t, '+8 water'); } },
   feast: { cond: () => S.sv.length >= 5 && S.food >= 12 && S.water >= 12, w: .9, run: () => showEventPopup({ title: '🎉 A FEAST?', text: 'Spirits are low. Someone suggests a feast to bring everyone together.', buttons: [
-    { label: 'Hold a feast (6 food, 6 water)', fn: () => { if (!pay({ food: 6, water: 6 })) return; for (const a of S.sv) { a.sat = Math.min(100, (a.sat || 0) + 15); for (const b of S.sv) if (a.id < b.id) addBond(a, b, 6); } SFX('reward'); result('🎉 WHAT A NIGHT', 'Everyone feels closer.', '+15 ♥ for everyone · bonds grow'); } },
+    { label: 'Hold a feast (6 food, 6 water)', fn: () => { if (!pay({ food: 6, water: 6 })) return; for (const a of S.sv) { a.sat = Math.min(100, (a.sat || 0) + 15); moodAdd(a, 15, 'the feast'); for (const b of S.sv) if (a.id < b.id) addBond(a, b, 6); } SFX('reward'); result('🎉 WHAT A NIGHT', 'Everyone feels closer.', '+15 ♥ for everyone · bonds grow'); } },
     { label: 'Not now', fn: () => {} }] }) },
   gift: { cond: () => true, w: 1.5, run: () => { const e = TOWN_EVENT_DEFS[Math.floor(rnd() * TOWN_EVENT_DEFS.length)]; if (e.food) S.food += e.food; if (e.water) S.water += e.water; if (e.mat) S.mat += e.mat; if (e.ren) renownGain(e.ren, e.name); const g = []; if (e.food) g.push('+' + e.food + ' food'); if (e.water) g.push('+' + e.water + ' water'); if (e.mat) g.push('+' + e.mat + ' scrap'); if (e.ren) g.push('+' + e.ren + ' renown'); result(e.name.toUpperCase(), e.text, g.join(' · ')); ui(); } },
 };
@@ -4240,7 +4257,7 @@ function holdEvent(k) {
   if (!Object.entries(e.cost).every(([r, v]) => S[r] >= v)) { say('Not enough supplies for ' + e.name + '.'); return false; }
   for (const [r, v] of Object.entries(e.cost)) S[r] -= v;
   S.lastEventDay = S.day; S.eventsHeld = (S.eventsHeld || 0) + 1; S.eventOn = { k, until: nowH() + e.hours };
-  for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
+  for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; moodAdd(q, e.sat, e.name); if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
   if (e.gain) for (const [r, v] of Object.entries(e.gain)) S[r] += v;
   renownGain(e.ren, e.name); SFX('event'); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); checkRank(); return true;
 }
@@ -5644,7 +5661,7 @@ function killSurvivor(s, cause) {
   for (const sl of SLOTS) { const id = s.eq && s.eq[sl]; if (id && id !== 'pipe') stashAdd(id); }   /* their gear goes back to the stash */
   if (s.pet) { (S.pets = S.pets || []).push(s.pet); s.pet = null; }   /* their pet stays with the town */
   let near = 0;
-  for (const q of S.sv) { const close = dist(q.w, s.w) < 6 || (q.job === s.job); const d = close ? 6 : 2; q.sat = Math.max(0, q.sat - d); if (close) near++; }
+  for (const q of S.sv) { const close = dist(q.w, s.w) < 6 || (q.job === s.job); const d = close ? 6 : 2; q.sat = Math.max(0, q.sat - d); moodAdd(q, -d, s.name + ' died'); if (close) near++; }
   S.griefUntil = nowH() + 18; for (const q of S.sv) emote(q, '😢', 160, true); barkSomeone('grief', { other: s.name }, { pri: 2 }, s.w);   /* V3D.14 mourning */
   S.fallen = S.fallen || []; S.fallen.push({ name: s.name, job: s.job, l: s.l, day: S.day, cause, trait: s.trait });
   if (s.w && !insideBuilding(s)) {   /* V3D.21: the dead rise again: a walker in their clothes gets up where they fell */
@@ -6076,6 +6093,7 @@ function nowCard(u) {   /* V2.36: the "Now" card: priority, destination, reason,
   return `<div class="card" id="uNow"><div class="row" style="gap:6px"><span style="background:${pc};color:#241a10;border-radius:4px;padding:0 6px;font-size:16px">${pl}</span>${n.dest ? `<span class="sp"${n.destB ? ' id="uDest" style="cursor:pointer"' : ''}>→ ${esc(n.dest)}${n.destB ? ' <span style="color:var(--gold)">›</span>' : ''}</span>` : '<span class="sp"></span>'}</div>`
     + (why && why !== activityText(u) ? `<div class="sm" style="margin:3px 0">${esc(why)}</div>` : '') + careLine(u)
     + `<div class="row" style="gap:8px;margin:4px 0">${need('hunger', u.hunger)}${need('thirst', u.thirst)}${need('fatigue', u.fatigue)}</div>`
+    + `<div class="sm" style="color:${(u.sat || 0) < 25 ? 'var(--bad)' : '#ff9fbd'}">${esc(moodLine(u))}</div>`   /* 3D.168 mood and why */
     + `<div class="sm" style="margin-top:3px">${post ? `👷 <b id="uPost" style="cursor:pointer;color:var(--gold)">${DEFS[post.type].name} ›</b> · ${sh}${onShift(u) ? ' · <span style="color:var(--good)">on shift</span>' : ''}` : canWork ? `No workplace yet: a ${u.job} can staff ${jobs.map((f) => ({ water: 'water', farm: 'farms', medical: 'medical', kitchen: 'the canteen', scrap: 'the scrapyard', research: 'the workshop' })[f] || f).join(', ')} buildings` : `${u.job}s have no workplace: they ${isFighter(u) ? 'patrol and defend' : 'train and help out'} in their free time`}</div>`
     + `<div class="sm">⚔ ${esc(w.name)}${ar ? ' · 🛡 ' + esc(ar.name) : ''}</div></div>`;
 }
@@ -6128,7 +6146,7 @@ function classHtml(u) {   /* profession level → Specialist → Hybrid, as thre
 function hybDaily() {   /* the town perks of Hybrids */
   if (townHyb('gunsmith')) S.ammo = Math.min(ammoCap(), (S.ammo || 0) + 16); if (townHyb('salvager')) { S.mat += 3; if (rnd() < .3) S.fuel = (S.fuel || 0) + 1; }
   if (townHyb('homesteader')) S.food = keepCap(supplyCap(), S.food, 4); if (townHyb('herbalist')) S.meds = Math.min(rareCap(), (S.meds || 0) + 1);
-  if (townHyb('caretaker') || S.sv.some((q) => q.hp > 0 && hasSpec(q, 'leader'))) for (const q of S.sv) { q.sat = Math.min(100, (q.sat || 0) + 3); if (townHyb('caretaker') && q.hp > 0 && q.mode !== 'down') q.hp = Math.min(q.max, q.hp + Math.round(q.max * .05)); }
+  if (townHyb('caretaker') || S.sv.some((q) => q.hp > 0 && hasSpec(q, 'leader'))) for (const q of S.sv) { q.sat = Math.min(100, (q.sat || 0) + 3); moodAdd(q, 3, 'a good leader'); if (townHyb('caretaker') && q.hp > 0 && q.mode !== 'down') q.hp = Math.min(q.max, q.hp + Math.round(q.max * .05)); }
   if (townHyb('sapper') && S.day % 7 === 0) exAdd('pipebomb', 1);
 }
 function nextSkillText(s, job) {   // e.g. "next: Tough at Lv.5"
@@ -6197,7 +6215,7 @@ function pfList(L) {
 function pfWire(root, again) { root.querySelectorAll('[data-pff]').forEach((b) => { b.onclick = () => { PF.f = b.dataset.pff; again(); }; }); const sb = root.querySelector('[data-pfs]'); if (sb) sb.onclick = () => { PF.s = PF_S[(PF_S.findIndex(([k]) => k === PF.s) + 1) % PF_S.length][0]; again(); }; }
 function showSurvivors() {
   endBuildMode(true); closeP(); const L = pfList(S.sv.slice());
-  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">👥 ${S.sv.length}/${popCap()} · 🛏 ${bedCount()}</div>` + pfBar() + '<div class="lst">' + (L.map((s) => `<div class="card" data-sv="${s.id}">${portrait(s)}<div class="sp" style="min-width:0"><div>${esc(fullName(s))} <span title="${TRAITS[s.trait] ? TRAITS[s.trait].name : ''}">${traitIcon(s)}</span> <span class="sm">${s.job} Lv.${s.l}</span></div>${meter(s.hp / s.max * 100, 'hp')}<div class="sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(activityText(s))}</div></div><span class="sm">›</span></div>`).join('') || '<p class="sm">Nobody fits this filter.</p>') + '</div>';
+  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">👥 ${S.sv.length}/${popCap()} · 🛏 ${bedCount()}</div>` + pfBar() + '<div class="lst">' + (L.map((s) => `<div class="card" data-sv="${s.id}">${portrait(s)}<div class="sp" style="min-width:0"><div>${esc(fullName(s))} <span title="${TRAITS[s.trait] ? TRAITS[s.trait].name : ''}">${traitIcon(s)}</span> <span class="sm">${s.job} Lv.${s.l}</span></div>${meter(s.hp / s.max * 100, 'hp')}<div class="sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${(s.sat || 0) < 25 ? 'var(--bad)' : '#ff9fbd'}">♥${Math.round(s.sat || 0)}</span> · ${esc(activityText(s))}</div></div><span class="sm">›</span></div>`).join('') || '<p class="sm">Nobody fits this filter.</p>') + '</div>';
   showPanel('People'); pfWire($('ib'), showSurvivors);
   $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((q) => q.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
 }
