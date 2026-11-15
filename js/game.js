@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.162', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.163', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1851,12 +1851,19 @@ function rally() {   /* V2.37: someone is down and nobody is fighting → fighte
   able.sort((a, b) => b.hp - a.hp).slice(0, Math.max(2, near.length)).forEach((q, i) => { q.fleeT = 0; q.hideAt = null; engage(q, near[i % near.length]); q.why = `Rallying to cover ${downs[0].name}`; });
   note('important', `⚔ RALLY: FIGHTERS MOVE TO COVER ${downs[0].name.toUpperCase()}`); return true;
 }
+/* 3D.163 someone standing on a tile they cannot walk out of (inside a building whose door faces a fence, or wedged against a wall) is moved
+   to the nearest open tile */
+function unwedge(s) {
+  const tx = Math.floor(s.w.x), ty = Math.floor(s.w.y); let best = null;
+  for (let r = 1; r <= 4 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = tx + dx, y = ty + dy; if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !Wd.walkable(world, x, y)) continue; if (!best || Math.hypot(dx, dy) < best.d) best = { x, y, d: Math.hypot(dx, dy) }; }
+  if (best) { s.w = { x: best.x + .5, y: best.y + .5 }; s.path = null; }
+}
 function assignRescue() {   /* V2.37: anyone not already in an emergency can be called (eating, resting, sleeping, walking, working); a fighter only if no zombie is within reach of them;
    nobody but a fighter walks into a crowd of zombies around the downed survivor */
   const downs = downedUnassigned(); if (!downs.length) return false;
   const OK = ['free', 'postCombat', 'wait', 'work', 'goWork', 'goFacility', 'useFacility', 'walk'];
   const BAL = window.ZH_BAL || {}, quiet = (q) => !S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < (BAL.hideR || 3.5));
-  const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && (((BAL.hiders ?? 1) && r.mode === 'hiding' && r.hideAt && downs.some(quiet) && !zombieNear(Wd.doorPoint(r.hideAt), BAL.hideR || 3.5)) || OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
+  const free = S.sv.filter((r) => r.hp > r.max * .3 && !r.rescuing && !r.carrying && !((r.noRescueT || 0) > tick) && (((BAL.hiders ?? 1) && r.mode === 'hiding' && r.hideAt && downs.some(quiet) && !zombieNear(Wd.doorPoint(r.hideAt), BAL.hideR || 3.5)) || OK.includes(r.mode) && !(r.mode === 'useFacility' && r.facility && facilityRules[r.facility.type] && facilityRules[r.facility.type].need === 'injury')
     || (['chase', 'attack', 'recover'].includes(r.mode) && !S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, rangeOf(r) + 1))))); if (!free.length) return false;   /* 3D.63: a shooter mid-fight isn't 'free' just because no zombie is at arm's length */
   let best = null, bs = -1e9;
   for (const q of downs) { const crowd = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5).length, urgency = 3000 / Math.max(300, q.bleed || 1);
@@ -2249,6 +2256,10 @@ function ai(s) {
     if (tick % 15 === s.i % 15) { const zb = S.z.find((z) => z.hp > 0 && !z.human && dist(z.w, q.w) < 2.2); if (zb && dist(s.w, q.w) < 4 && isFighter(s) && s.hp > s.max * .4) { q.rescuer = null; s.rescuing = null; engage(s, zb); s.why = `Clearing the way to ${q.name}`; return; } }   /* V2.37: clear first, then pick up */
     if (q.ordered && !isFighter(s)) { const crowd = S.z.filter((z) => z.hp > 0 && !z.zoo && z.mode !== 'zleave' && dist(z.w, q.w) < 2.5).length;   /* 3D.75 skill study: a sent rescuer waits a few steps back until the escorts have thinned the crowd (it used to walk straight in: the expert lost 8 a town) */
       if (crowd >= 2 && dist(s.w, q.w) < 6) { s.moving = false; s.path = null; s.why = `Waiting for the way to ${q.name} to clear`; if (tick % 120 === 0) orderEscorts(q); return; } }
+    { /* 3D.163 play-test (three testers, 9-15 deaths each): a rescuer who cannot move (trapped by a doorway onto a fence, or wedged) stood in
+         'rescueTo' for hours while the downed person bled out, and nobody else was sent. No progress for 3 seconds: step out to open ground,
+         hand the rescue to someone else, and keep out of rescues for a while. */
+      const pr = s.rsProg; if (!pr || dist(pr.w, s.w) > .3) s.rsProg = { w: { ...s.w }, t: tick }; else if (tick - pr.t > 180) { s.rsProg = null; unwedge(s); q.rescuer = null; s.rescuing = null; s.noRescueT = tick + 1800; s.why = `Couldn't reach ${q.name}`; enterPost(s); assignRescue(); return; } }
     const r = followPath(s, q.w, .02); if (r === 'arrived' && s.job === 'Medic' && !s.aidTo && !zNear(q.w, 3) && patchSupply(true)) { startAid(s, q, 'revive'); return; } if (r === 'arrived') { s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Carrying ${q.name} to ${s.careTo ? 'the ' + DEFS[s.careTo.type].name : 'safety'}`; note('routine', `${s.name} picked up ${q.name}.`); } else if (r === 'fail') { q.rescuer = null; s.rescuing = null; enterPost(s); } return;
   }
   if (s.mode === 'rescueCarry') {
@@ -5629,7 +5640,7 @@ function starve(s) {
 function useBandage(s) {
   if (s.mode !== 'down') return false;
   BANDAGE_COST = researched('medicine') ? 1 : 2; BANDAGE_TICKS = researched('medicine') ? 5400 : 3600;
-  if ((S.cloth || 0) >= 1) S.cloth -= 1; else if (S.mat >= BANDAGE_COST * 2) S.mat -= BANDAGE_COST * 2; else { say('A bandage needs 1 cloth (or ' + BANDAGE_COST * 2 + ' scrap).'); return false; }   /* V3D.25: bandages are cloth; scrap rags cost double */ if (s.bleed == null) s.bleed = bleedMax(); s.bleed = Math.min(s.bleed + BANDAGE_TICKS, bleedMax() + BANDAGE_TICKS); s.warned = false; say('Bandaged ' + s.name + ' · +60 s'); ui(); return true;
+  if ((S.cloth || 0) >= 1) S.cloth -= 1; else if ((S.meds || 0) >= 1) S.meds -= 1; else if (S.mat >= BANDAGE_COST * 2) S.mat -= BANDAGE_COST * 2; else { say('A bandage needs 1 cloth, 1 meds or ' + BANDAGE_COST * 2 + ' scrap.'); return false; }   /* 3D.163 play-test: a town died with 20 meds in store and no cloth; meds now patch a wound too */   /* V3D.25: bandages are cloth; scrap rags cost double */ if (s.bleed == null) s.bleed = bleedMax(); s.bleed = Math.min(s.bleed + BANDAGE_TICKS, bleedMax() + BANDAGE_TICKS); s.warned = false; say('Bandaged ' + s.name + ' · +60 s'); ui(); return true;
 }
 const routing = () => { const d = S.sv.filter((q) => q.mode === 'down').length; return d >= 3 || (d >= 2 && S.z.some((z) => z.type === 'boss' && z.hp > 0)); };   /* V2.37: the fight is being lost */
 function retreatCheck(s) {

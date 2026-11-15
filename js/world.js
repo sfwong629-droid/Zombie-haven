@@ -169,6 +169,7 @@
     if ((w.sites || []).some(b => Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Under construction' };
     const dt = defApproach(x, y, def);   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
+    { const wl = wallAt(w, dt.x, dt.y); if (wl && wl.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }   /* 3D.163 play-test: a Canteen built with its door onto the fence trapped whoever went in; rescuers stood inside for 12+ hours while people bled out */
     // V2.34: nor may it sit on ANOTHER building's entrance tile (people then walked through that building)
     for (const b of w.buildings) { if (b === ignore) continue; const at = approachTile(b); if (at.x >= x && at.x < x + def.w && at.y >= y && at.y < y + def.h) return { ok: false, why: `Blocks the ${(DEFS[b.type] && DEFS[b.type].name) || b.type} entrance` }; }
     return { ok: true, why: '' };

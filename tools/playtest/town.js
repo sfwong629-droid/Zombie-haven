@@ -59,7 +59,7 @@
     const c = popup(); shLast = { fightOver: true, lasted: Math.round((H.t || 0) / 60) + ' s', squadAfter: H.units.map((u) => `${u.name} ${Math.max(0, Math.round(100 * u.hp / u.max))}%`), kills: H.kills || 0, bossKilled: !!((H.zs || []).find((z) => z.boss && z.hp <= 0)), changes: { renown: Math.round(S.ren - m0.ren), scrap: Math.round(S.mat - m0.mat), meds: (S.meds || 0) - (m0.meds || 0), people: S.sv.length - m0.n }, card: c }; return shLast; }
   function play(h, stopMorning) { if (S.sh) return { played: '0 h', stopped: 'a stronghold fight is running: use `fight SECONDS` (and sh focus | sh med | sh back) until it is over', fight: shView() };
     const t0 = { day: S.day, hour: S.hour, sv: S.sv.length, fallen: (S.fallen || []).length, trip: !!S.trip };
-    let why = 'time', hours = 0; const read = []; const crit0 = new Set([...Z.alerts.values()].filter((a) => a.level === 'critical').map((a) => a.key));
+    let why = 'time', hours = 0; const read = []; const down0 = new Set(S.sv.filter((q) => q.mode === 'down').map((q) => q.id)); const crit0 = new Set([...Z.alerts.values()].filter((a) => a.level === 'critical').map((a) => a.key));
     for (; hours < h; hours++) {
       let cut = false; for (let k = 0; k < 1000; k += 60) { Z.step(60); Z.tripUpdate(); AP.tick(); const c = popup(); if (c && !infoOnly(c)) { cut = true; break; } }   /* a card that needs a decision stops play at once: trip choices run out */
       if (cut) { why = 'card'; hours++; break; }
@@ -68,6 +68,7 @@
       if (popup()) { why = 'card'; hours++; break; }
       if (request()) { why = 'request'; hours++; break; }
       if (t0.trip && !S.trip) { why = 'squad home'; hours++; break; }
+      { const nd = S.sv.filter((q) => q.mode === 'down' && !down0.has(q.id)); if (nd.length) { why = 'someone is down: ' + nd.map((q) => q.name).join(', '); hours++; break; } }   /* testers asked: stop when someone collapses */
       const crit = [...Z.alerts.values()].filter((a) => a.level === 'critical' && !crit0.has(a.key)); if (crit.length) { why = 'emergency: ' + crit.map((a) => a.text).join(' / '); hours++; break; }
       if (stopMorning && S.hour === 7) { why = 'morning'; hours++; break; }
       if (!S.sv.length) { why = 'everyone is gone'; break; }
@@ -114,7 +115,7 @@
     post: () => { const B = Wd.BUILD, cx = Math.round((B.x0 + B.x1) / 2); for (const [x, y] of [[cx, B.y0], [cx - 1, B.y0], [cx + 1, B.y0], [cx, B.y0 + 1]]) { const r = Z.tryPost(x, y); if (r.ok) return { ok: true }; } return { ok: false }; },
     tool: (a) => ({ ok: !!Z.craftTool(a[0]) }), cart: () => ({ ok: !!Z.vehBuildCart() }),
     rescue: (a) => { const q = who(a[0]); if (!q || q.mode !== 'down') return { ok: false, why: 'that person is not down' }; return { ok: !!Z.orderRescueX(q) || true, note: 'rescue ordered: escorts clear the way and a rescuer goes in' }; },
-    bandage: (a) => { const q = who(a[0]); if (!q || q.mode !== 'down') return { ok: false, why: 'that person is not down' }; const ok2 = !!Z.useBandage(q); return { ok: ok2, why: ok2 ? '' : 'needs 1 cloth (or scrap)' }; },
+    bandage: (a) => { const q = who(a[0]); if (!q || q.mode !== 'down') return { ok: false, why: 'that person is not down' }; const ok2 = !!Z.useBandage(q); return { ok: ok2, why: ok2 ? '' : `a bandage needs 1 cloth, 1 meds or ${Z.researched('medicine') ? 2 : 4} scrap (have cloth ${S.cloth || 0}, meds ${S.meds || 0}, scrap ${Math.floor(S.mat)})` }; },
     radiohelp: () => { if (!Z.helpReady()) return { ok: false, why: 'radio help is not ready (already called, a favour is owed, or it is recharging)' }; Z.radioHelp(); return { ok: true }; },
     militia: () => ({ ok: !!Z.militia(), note: 'healthy civilians band together when no fighter is left' }),
     defend: () => { const z = S.z.filter((q) => q.hp > 0 && !q.human)[0]; if (!z) return { ok: false, why: 'no walkers' }; return { ok: !!Z.sendDefender({ x: z.w.x, y: z.w.y }) }; },
