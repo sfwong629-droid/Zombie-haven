@@ -1,0 +1,116 @@
+# New player notes (seed 21)
+- D1 08: start. food 14 water 14 (3.5 days). nextLevel: people 4/6, buildings 1/6. First card = WALKER tip. No "do this first" mission text that I could see; I guessed from nextLevel that I should build.
+- D1 10: build barrel+farm ok; tent, bonfire refused "two builds already running (the limit)" - nobody told me about a limit.
+- D1 10: sent expedition houses low; game picked Amy(Medic)+Lena for me. Van card: 72% climb.
+- D1 12: trip back: +3/+3 food/water, jacket. Amy 47% hurt on a "low risk" trip. News: "Send out an expedition: done! Claim the reward from the alert or the Goals screen" - I have no Goals screen in the tool, don't know if claimed.
+- D1 14: barrel+garden built. Ben (Farmer) "will staff the Rain Barrel" not the garden?? D2 00 day report: "Food +0.0 −4.9 ... Open staff slot: Garden Plot" while state said foodPerDay +1.1. Confusing: which is right?
+- D1 14: Noah wants in -> welcome. D1 21 radio: build 2nd garden. Ordered (wood 4). It sat as "site" until D2 11 (14 h) because wood hit 0; nothing told me it was stalled for wood.
+- D2 03 Maya joins. D2 08 feast card "Spirits are low" - never saw a morale number anywhere; declined, radio said water 2.9 days.
+- D2 08 lumberyard low: game picked Marcus (my only guard), Amy (75%), Maya who showed 12/64 hp at stage 2. Got wood 11+. Cry for help 68% ok.
+- D2 12 "Ready for the next level". D2 13 "Water is going down by 7.1 a day: about 1.8 days left". D2 14 Eli joins (7 ppl), levelup: "about 3 min while you play" -> 6 game hours later state says minutesLeft 4. Unclear what a "min" is.
+- D2 15 "Maya can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off" - I built no walls; no idea what to do.
+- D2 20 end session 1 (36h). food 22.5 water 13.2 (2.6 d) wood 26 scrap 18 research 15. 7 people.
+- D2 20 away 10: credited 8 h, +2.5 water +4 food +3.5 rp. Level 2 card on return. Game clock did not move.
+- D3 00 day report "Food +0.0 −7.0 · Water +0.0 −7.0" again +0.0 though food rose 22.5->26.4 by D3 08. "Amy/Maya/Eli slipped out of the Camp before it fell" - my HQ "fell"? Nothing explains what "fell" means; morning card says only "Buildings damaged: 1 (75 damage)".
+- D3 02 radio: "upgrade the Camp to a Lodge ... Tap your Camp, then Upgrade". Tried D3 08 and D3 18: "not unlocked yet". canUpgrade empty. Radio tells me to do something I can't.
+- D3 08 research blades (20rp+5 scrap): completed instantly same hour. Felt like nothing. Maya -> Farmer to fill "open staff slot: Garden Plot"; worked ("Maya will staff the Garden Plot").
+- D3 09 June (Civilian, Big Eater) joins = 8. D3 11 again "June can't reach a storage door with their load".
+- D3 13-15, D3 21-22: people "trapped in Medical Tent/Tent while a walker breaks in" in DAYTIME too; "slipped out before it fell". Nobody hurt. Lots of alarm text, no consequence I can see.
+- D3 15 lumberyard low (Amy, Eli, Noah - no fighter picked!) +13 wood, goggles, 2 hurt. No decision card this trip.
+- D3 17 LEVEL 3 (started D2 20 "about 6 min"; showed minutesLeft 8 at D3 08, 2 at D3 15). D3 18 level 4 started "about 35 min"; at D4 08 state says minutesLeft 94. The number goes UP. No idea when it finishes.
+- D3 18 walls 6: placed 6, "sealed": false, 18 tiles. Don't know how many needed to seal.
+- D4 00 "⚠ WATER: under 1 day left" + day report "Water +0.0 −7.6", but state D3 15 said waterPerDay -2, 6.9 days left; D4 08 water 5.8, state says -2/day, 2.9 days. Three numbers that disagree. 3 barrels, "Open staff slot: Rain Barrel, Canteen".
+- D4 05 2nd tent built but beds still 8/8 at D4 08.
+- D4 08 Radio signal card: send Lena 2 days, costs 3 food 3 water. Ignored (water 5.8).
+- D4 08 end session 2.
+- D4 10 away 10: Level 4 arrived while away (+Lodge unlocked). credited 8h: water +4 food +7 rp +4.4.
+- D4 12 RAIDERS card, "4 raiders are sneaking toward the Haven" - never told what happened after (no result line). D4 17/18 "✊ MILITIA: SURVIVORS BAND TOGETHER" - no explanation at all.
+- D4 16 lumberyard LOW: by stage 2 Marcus 48/101, Amy 23/76. Horde card; turned back, kept 13 wood. "Low risk" does not feel low.
+- D4 19 upgrade hq2 (20 wood 5 scrap). D4 22 canteen fire, put out. D5 00 again "⚠ WATER: under 1 day left" while state D4 19 said water 11.9, -1.1/day, 10.5 days left.
+- D5 07 Maya->Cook to fill canteen slot; D5 08 radio: "garden Plot has no Farmer: change someone's profession". Whack-a-mole. I can't see who works where.
+- D5 08 Noah sick: treat = 2 scrap 3 water; water was 6.8 so let rest -> "weak for a while" (75% at D5 22).
+- D5 08 houses low: Marcus 99% -> 53/113 after stage 1. Shutters 58% ok +2 scrap. Trip total about 2 food 2 water. Poor.
+- D5 11 Lodge complete (ordered D4 19; 16 game hours). Radio: build an Armory.
+- D5 22 end session 3. L4, renown 106, food 45 water 12.4 wood 9 scrap 19. People 8/9, beds 8/8 - no visitor since D3 09; I think because beds full but game never said so.
+- D5 22 tent ordered with wood ~9; "all materials are in" only D6 11, built D6 12 (14 h). Wood is always 3-9; I can't see where wood comes from except trips.
+- D6 00 day report again "Food +0.0 −6.4 · Water +0.0 −6.4" and "⚠ WATER: under 1 day left" (state D5 22: water 12.4, 33.1 days left!).
+- D6 05 "Move-in request: Ben wants to make the Haven home ♥35" - Ben has been here since D1. What is a resident vs. person living here? Not explained. Same for Marcus D6 19, Amy D6 20.
+- D6 08 radio "rain Barrel has no Farmer: change someone's profession" - so farmers run barrels; I have 3 farmers + cook and still "Open staff slot: Rain Barrel".
+- D6 08 lost child card -> sent Marcus & Amy. D6 15 "Ivy is safe and will grow up in the Haven +8 Renown". Best moment so far. Ivy takes a bed (10/10) but isn't in my people list.
+- D6 08 research salvage (25rp+6 scrap) accepted; no "complete" news this time; rp 26 -> 2.
+- D6 12 boss warning for 21:00, "Sharpen something." Bought crossbow from trader (13 scrap 3 food) - no idea who holds it.
+- D6 15 Rosa (Cook L2, "Night Owl" + "Up before dawn, every day" lol) = 9 people. Levelup to 5 started: "about 50 min".
+- D6 21 Stalker boss + 6 zombies; D6 23 5 raiders too. Lena collapsed "Rescue within 270 s"; "X is rescuing Lena" line repeated ~40 times from D6 23 to D7 08; at D7 08 Lena still "0% · down" (9 game hours later). Amy collapsed D7 02, 8% in hospital D7 08. Tense but the news spam was unreadable.
+- D7 06 "The Mutant Boss slunk back into the wasteland. It will return." (card called it Stalker.)
+- D7 08 state: scrap 5 (17 before crossbow -> 4, raiders?), water 5.1, wood 4, meds 0. Level 5 minutesLeft 136 (was "about 50 min" at D6 15).
+- D7 08 Toll Kings want 14 scrap; I had 5. Pressed Pay anyway -> "You couldn't pay. The Toll Kings ride in!" 5 raiders. Felt unfair: no way to have known to keep 14 scrap.
+- D7 10 end session 4.
+- D7 10 away 10: Level 5 arrived (minutesLeft said 136). nextLevel now: People 10/11, Buildings 14/16, "A Banner over the Haven: 0/1" - no idea what a Banner is or how to get one; no radio/card has mentioned it.
+- D7 13 raiders escaped with 1 water, 1 parts. D7 14: Maya, June, Eli, Lena, Amy all "0% · down" during the Toll Kings attack (8 raiders in town at D7 10). Set policy recover - no visible effect.
+- D7 17 "Lena is bleeding out!" D7 18 "Lena rose again as a zombie", D7 19 Farewell card. She had been down since D6 23 = 19 game hours with rescuers "rescuing" her the whole time. I had no button to press. Meds 0, wood 4.
+- D7 23 walker wrecked Medical Tent; D8 00 HAVEN REVIEW WEEK 1 GRADE C: Population 15, Defense 0/20, Supplies 17, Buildings 13, Happiness 0/20, Research 9, total 54/120 "Struggling Camp". First time I learn Defense and Happiness are 0. 
+- D8 03 6 down -> CALL FOR HELP card (favour in 2 days: 15 food 10 water). Called. D8 04 Maya and Amy died anyway (Farewell cards), rescue team cleared 13 zombies, carried 5 into care. Morning D8: Buildings damaged 6 (307 damage), Lost 2.
+- 3 dead in 24 game hours (Lena, Maya, Amy) from one chain: boss night D6 21 -> raiders D6 23 -> Toll Kings D7 08 (couldn't pay 14 scrap, had 5). Felt like the game piled on with nothing for me to do.
+- D8 06 new Maya Yilmaz (Engineer L2) joins - same first name as the Maya who died 2 hours earlier, confusing. Made her Medic, Eli Guard (because Defense 0/20).
+- D8 08 Greenwater: traded 6 food for 10 water. Good, first real water lever.
+- D8 09-10 all 5 recovered. D8 20: water 18.1, food 52.5, wood 0, scrap 13. 7 people.
+- D8 20 Theo (Civilian) joins; away 14 (went 2h early because of card): credited 8h again (same as away 10).
+- D9 00 "IVY HAS GROWN UP ... 18 yrs" - rescued D6 15, adult D9 00 (2.4 days). + "LEGACY: NEXT GENERATION 1 of 8 legacy goals. Complete 4 and reach ★5 to call for the convoy" +15 renown +10 scrap. Nice surprise but what convoy? what is ★5?
+- D9 08 June sick, treated (2 scrap 3 water) -> "will be fine". Research medicine instant again.
+- D9 08 & D9 11 two lumber trips low: +10 and +12 wood. Sick Stranger card 3rd time (D4, D9 09, D9 12), Cry for Help 2nd, Van 2nd: cards repeat a lot. With non-fighters odds were 41-47%.
+- D9 11 build Lumber Camp (10 wood 2 scrap) built D9 18. D10 00 report: "Open staff slot: Rain Barrel, Lumber Camp" - which profession works a Lumber Camp? Not in the job list, never said.
+- D9 13 Ezra (Mechanic L2) joins = 10.
+- D9 14 water 7.3 "−2/day, 3.7 days left" -> D10 00 water 0.5. Day report "Water +0.0 −8.2". The top number (−2/day) is wrong or means something else; the real drain is ~8/day. This misled me for 9 days.
+- D9 21 Mutant Zombie boss + 6. Card says "Scouts warn you at noon on boss days" - I got no noon warning on D9 (I did on D6). Eli collapsed D9 23, still down D10 08 (9 h).
+- D10 00 favour due: 15 food 10 water; had 0.5 water -> Refuse -> "They won't answer the radio for a week. Your people feel bad about it."
+- D10 01 "A runner wrecked the Lodge. It does nothing until repaired (🪵 5 ⚙ 2)" - wood 0.
+- Marcus stuck at 30% and Maya 48% from D8 20 to D10 08 (36 h) - not healing, meds 0, I don't know how to make meds.
+- D10 08 end session 6. L5, 10 people, food 43.8 water 1.2 wood 1 scrap 10. "Water runs out in about 15 h".
+- D10 08 away 10 credited 8h: +4.5 water +4.5 food +2 wood (first wood from Lumber Camp - 2 wood per 8h is nothing).
+- D10 10 6 raiders. D10 13 "A Firebug is smashing the Garden Plot!" (what is a Firebug? no NEW card). D10 13 June, Marcus, Maya, Eli all down in daytime. Vera (Cook L2) joins.
+- D10 15 Eli died (down since D9 23 = 16 h; "RALLY: FIGHTERS MOVE TO COVER ELI" repeated dozens of times). 4th death.
+- D11 00 "Out of water: rations were short today". Day report "Food +0.0 −8.0 · Water +0.0 −5.6". State shows foodPerDay 0 and later "foodDaysLeft: 1597.2".
+- D11 05 spitter wrecked the Lodge again (repaired D11 18). D11 morning: Hurt 7 of 10.
+- D11 08 Greenwater again: 6 food -> 10 water. Second time this rescued my water.
+- D11 08-20 DAYTIME: collapses keep chaining - rescuer picks someone up then "collapsed!" themselves (Maya 08, Vera 11, Theo 13, Ezra 14, Noah 17). D11 20: 6 of 10 down (June, Maya, Noah, Ezra, Theo, Vera). I gave no orders for 12 game hours because wood 1, scrap 9: nothing affordable, no trip possible (no healthy squad).
+- D11 20 end session 7. food 41.7 water 15.5 wood 1 scrap 9.
+- D11 20 away 14 (credited 8h). D12 00 report Food +0.0 −8.0 Water +0.0 −8.0, open slots Garden, Barrel, Lumber Camp. "Noah reached the Lodge (no medical bed free: slower care)" - first hint that medical beds are a thing.
+- D12 08 all 6 downed people in care; recovered by D12 11. The Foundry visit: "Show them around" -> "likes you more, and learned a thing or two" (what does that mean for me?).
+- D12 12 boss warning for 21:00. D12 14 Eli Garza (Guard) joins - second time a newcomer has the name of someone who just died (Maya D8, Eli D12). 11 people.
+- D12 14 lumber trip (Ben, Ezra, Ivy) +8 wood, Sick Stranger card 4th time. NEW cards THROWER, ROTBOMB.
+- D12 17 nextLevel: People 11/11 ✓, Buildings 16/16 ✓, "A Banner over the Haven: 0/1". levelup refused. `build banner` = unknown type. Nothing in build list, upgrades, research, events mentions a banner. STUCK at level 5 (since D7 10).
+- D12 17 walls 8 (placed 8, 26 tiles, still "sealed: false"). I've put 14 tiles in and it is still not sealed and I can't see how many are left.
+- D12 21 Stalker boss again. D13 morning: Hurt 6. D13 08: June, Marcus, Noah, Eli, Ben down (5 of 11). water 5.1 ("runs out in about 1.5 days"), wood 3.
+- D13 08 Supply drop card -> sent Vera. End session 8.
+- D13 08 away 10. D13 09 supply drop: "+12" scrap, Vera fine. D13 14 Iris (Civilian) joins = 12. Upgraded barrel->water (8 wood 1 scrap), built 2nd Medical Tent (built D13 19). Research walls (30rp+10 scrap) instant.
+- D13 21 Eli (the 2nd one) died, D13 23 Noah died (both down since ~D13 06; "bleeding out" D13 13/19/20). Deaths: 6 total (Lena D7, Maya D8, Amy D8, Eli D10, Eli D13, Noah D13). Vigil: "The horde pulls back for a while".
+- D14 00 rotbomb wrecked the Lodge (3rd wreck). Morning D14: Buildings damaged 8 (280 damage).
+- D14 08 Toll Kings want 16 scrap. State showed "scrap": 16. Pressed Pay -> "You couldn't pay. The Toll Kings ride in!" Afterwards scrap still showed (20 by D14 20). Looks like a rounding bug (I had 15.x shown as 16) - felt cheated.
+- D14 13-19 Toll Kings raid in daytime: "8 down, too few left to fight". D14 20: 9 of 10 at 0% down, Ivy 2% in hospital. No CALL FOR HELP card this time (they "won't answer the radio for a week" since D10).
+- D14 20 end session 9. food 31 water 10 wood 4 scrap 20. Still level 5, Banner 0/1.
+- D14 20 away 14. D15 00 "HAVEN REVIEW · WEEK 2 · GRADE B ... Defense 0/20 ... Happiness 0/20 ... Total 60/120 — title: Steady Settlement" shown while 9 of 10 people were lying at 0% and dying. Grade went UP from C. Absurd.
+- D15 02 Theo died, D15 03 Iris died, D15 09 June, Rosa, D15 10 Ben, D15 11 Maya(2), D15 12 Vera died. 7 deaths in 10 game hours, 13 total. I had zero inputs available: only Ivy standing; she saved Ezra (D15 08) and Ezra then saved Marcus (D15 15).
+- D15 08 in the middle of this: "AN ORDER FROM THE FOUNDRY ... 10 wood and 8 stone" card. Tone-deaf. Declined.
+- D15 20: 3 people (Marcus, Ezra, Ivy). food 31.9 water 13.4 scrap 26.
+- D16 08 radio: "A convoy rolled into the Haven with people and supplies. Be nice. They have a truck." -> Felix (Farmer) and Cass (Scavenger) appeared, food 31.9->47.9, water 13.4->30.8, scrap 37. No card explained it; relief though. Stray dog card -> adopt (2 food).
+- D16 08 end session 10. 5 people. Level 5 still. First morning with "Hurt: nobody" since D5.
+- D16 08 away 10. Convoy card (seen after): "Felix (Farmer) and Cass (Scavenger) climb down to stay, and they unload 15 food, 15 water and some scrap." Radio D16 08: "The comeback convoy. When the town is down to its last few people, a convoy sometimes finds it".
+- D16 08 lumber trip (Marcus, Cass, Felix): fought horde 68% ok, +16 wood. D16 10 "Cass will staff the Lumber Camp" - so it's Scavengers who run it. Found out by luck on D16; camp stood unstaffed since D9 18.
+- D16 09 Noah Castillo joins ("Writes everything down" - same name AND same quirk as dead Noah Holm). D16 15 Maya Schmidt (3rd Maya). D17 12 Eli Quinlan (3rd Eli).
+- D16 11 armory (10 wood 4 scrap) built D16 17; "Maya bought a Riot Vest at the Armory (−7 scrap)" - people gear themselves, nice. walls 10 more: 36 tiles, still "sealed": false.
+- D17 morning: Walkers stopped 16, hurt 2. Water 41.5 (storm +8). First calm stretch since D5.
+- D17 09 research bodyArmor refused: "needs 35 research points (have 35)". Same rounding problem as the toll (shows 35, isn't 35).
+- D17 12 boss warning for 21:00. nextLevel People 7/11, Buildings 18/16 ✓, Banner 0/1.
+- D17 21 Gatling Boss + 10 zombies, 6 raiders at D17 17. Survived: morning D18 hurt only Cass. away 14 at D17 21.
+- D17 18 "Mission: Full Pantry — Hold 46 food and 46 water at once" (first time I see a "Mission" line, day 17). D17 22 complete.
+- D18 08 wood 69, scrap 63 (was wood ~6, scrap 41 at D17 12). No message says where +60 wood came from (mission reward? boss?). Pleasant but unexplained.
+- D18 08 lost child card again -> sent Marcus & Ivy. Never got a result card/news for this one by D19 02.
+- D18 08 walls 20 (56 tiles), D18 14 walls 20 (76 tiles): still "sealed": false. Spent ~50 wood on fence with no idea how much is left. 
+- D18 08 upgrade workshop: "The Workshop is 2×1: place it (turn it with ↻), then Build." - tool can't place, never built (tool problem).
+- D18 15 Fenced Farm done, D18 22 Cabin done. D18 20 quarry ordered.
+- D18 20 Cass died: down since D17 23 (21 game hours) on a quiet day with 6 others walking around at 59-100%. "bleeding out" at D18 13 and D18 18. Nobody carried her in 21 h. 14th death.
+- D19 02: L5, 7 people listed (nextLevel says 8/11), food 50 water 44 scrap 67 wood 5.
+- D19 09 away 10 (credited 8h, +stone 1 from quarry). D19 09 radio "Trader on the highway" but trader null until ~D19 15. D19 09-15: 6 game hours with zero news lines except a lead - nothing to do (wood 3 after lounge order).
+- D19 15 pharmacy low (game picked Marcus, Ivy, Felix): no report card came back in cardsRead; meds 0.25 -> 3; Ivy came home carried ("Felix picked up Ivy").
+- D19 18 bought 15 rp (8 scrap) and a cat (6 food 6 water). Lounge built D19 21.
+- D20 00 END. Level 5 (since D7 10), renown 419, 7 people listed (nextLevel says 8/11), 14 deaths, food 52 water 38 scrap 69 wood 6 research 36. Banner 0/1 never solved. Walls 76 tiles, never sealed. Day report D20: open staff slot Garden Plot, Rain Barrel, Scrapyard, Medical Tent, Lumber Camp, Quarry.
