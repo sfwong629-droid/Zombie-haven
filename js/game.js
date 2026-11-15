@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.160', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.161', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1161,15 +1161,16 @@ function radioNext() {
 }
 /* 3D.159 the UX study: the night ends with ONE morning card (walkers stopped, damage, who is hurt, who was lost or arrived)
    instead of scattered messages. Facts first, the joke last. */
-function nightStart() { S.nightLog = { day: S.day, kills: S.kills || 0, dmg: 0, ids: S.sv.map((q) => q.id) }; }
+const allIds = () => S.sv.map((q) => q.id).concat(S.trip ? S.trip.members.map((m) => m.id) : [], S.sh && S.sh.units ? S.sh.units.map((m) => m.id) : []);   /* 3D.161 a squad out on a trip still lives here */
+function nightStart() { S.nightLog = { day: S.day, kills: S.kills || 0, dmg: 0, ids: allIds(), fallen: (S.fallen || []).length }; }
 function morningCard() {
   const L = S.nightLog; S.nightLog = null; if (!L || S.cut || titleOn) return;
-  const k = (S.kills || 0) - L.kills, ids = new Set(S.sv.map((q) => q.id)), lost = L.ids.length - L.ids.filter((i) => ids.has(i)).length;
+  const k = (S.kills || 0) - L.kills, lost = Math.max(0, (S.fallen || []).length - (L.fallen || 0));   /* 3D.161 play-test: squads coming home were counted as "Joined" and squads out as "Lost" */
   const joined = S.sv.filter((q) => !L.ids.includes(q.id)).map((q) => q.name), hurt = S.sv.filter((q) => q.hp < q.max * .6).map((q) => q.name);
   const dmgB = world.buildings.filter((b) => b.max && b.hp < b.max).length;
   const rows = [`🧟 Walkers stopped: ${k}`, `🏚 Buildings damaged: ${dmgB}${L.dmg ? ` (${L.dmg} damage)` : ''}`, `🩹 Hurt: ${hurt.length ? hurt.join(', ') : 'nobody'}`];
   if (lost) rows.push(`🕯 Lost: ${lost}`); if (joined.length) rows.push(`👋 Joined: ${joined.join(', ')}`);
-  const quip = lost ? 'We light a candle and get back to work.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : dmgB ? 'Grab a hammer, the fence has opinions.' : 'Not a scratch. The coffee is still terrible.';
+  const quip = lost ? 'We light a candle and get back to work.' : hurt.length ? 'Bandages first, breakfast second.' : dmgB ? 'Grab a hammer, the fence has opinions.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : 'Not a scratch. The coffee is still terrible.';   /* 3D.161 it said "Not a scratch" under a list of hurt people */
   showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
 }
 let radioLast = null;
@@ -1461,7 +1462,8 @@ const ageBondMul = (a, b) => { const d = Math.abs(ageOf(a) - ageOf(b)); return d
 /* V3D.17 full names: everyone has a family name (the first name is what the town calls them) */
 const FIRST_NAMES = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar', 'Cass', 'Dex', 'Mara', 'Ozzy', 'Lark', 'Vince', 'Hana', 'Rook', 'Sol', 'Quinn', 'Ada', 'Bo', 'Cleo', 'Dante', 'Esme', 'Felix', 'Gwen', 'Hal', 'Ines', 'Jonah', 'Kira', 'Leo', 'Mina', 'Nico', 'Opal', 'Pia', 'Rafe', 'Sana', 'Tomas', 'Uma', 'Vera', 'Wes', 'Yara', 'Zed', 'Abel', 'Bryn', 'Cyrus', 'Della', 'Ezra', 'Faye', 'Gus', 'Hattie'];
 const LAST_NAMES = ['Reyes', 'Novak', 'Okafor', 'Brennan', 'Sato', 'Lindqvist', 'Moreau', 'Kowalski', 'Haddad', 'Fischer', 'Park', 'Ivanova', 'Alvarez', 'Murphy', 'Nakamura', 'Osei', 'Petrov', 'Quinlan', 'Rossi', 'Schmidt', 'Tanaka', 'Underwood', 'Vasquez', 'Whitfield', 'Yilmaz', 'Zhou', 'Abara', 'Becker', 'Castillo', 'Dubois', 'Engel', 'Fontaine', 'Garza', 'Holm', 'Ibarra', 'Jensen', 'Kaur', 'Larsen', 'Mendes', 'Nyberg', 'Ortiz', 'Pruitt', 'Ramos', 'Sorensen', 'Torres', 'Vance', 'Webb', 'Abbott', 'Bishop', 'Crane'];
-const freeFirst = (pool = FIRST_NAMES) => { const f = pool.filter((n) => !S.sv.some((q) => q.name === n)); return f.length ? f[Math.floor(rnd() * f.length)] : FIRST_NAMES[Math.floor(rnd() * FIRST_NAMES.length)] + ' ' + String.fromCharCode(65 + Math.floor(rnd() * 26)) + '.'; };
+const freeFirst = (pool = FIRST_NAMES) => { const used = new Set(S.sv.concat(S.trip ? S.trip.members : [], guest ? [guest] : []).map((q) => String(q.name).split(' ')[0]));   /* 3D.161 play-test: three Noahs in one town. Squads out on a trip and the newcomer at the gate count, and so does a first name with a surname */
+  const f = pool.filter((n) => !used.has(n)); return f.length ? f[Math.floor(rnd() * f.length)] : FIRST_NAMES[Math.floor(rnd() * FIRST_NAMES.length)] + ' ' + String.fromCharCode(65 + Math.floor(rnd() * 26)) + '.'; };
 const pickLast = () => { const f = LAST_NAMES.filter((n) => !S.sv.some((q) => q.last === n)); const L = f.length ? f : LAST_NAMES; return L[Math.floor(rnd() * L.length)]; };
 const fullName = (s) => (s ? s.name + (s.last ? ' ' + s.last : '') : '');
 function mk0(name, job, l, x, y, i) {
@@ -3497,7 +3499,7 @@ const ARRIVE = { low: 8000, high: 14000 };   /* 3D.72: growth is the goal, and t
 function visitorArrival() {
   if (S.finale || guest) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.food < 1 || S.water < 1) return; if (((window.ZH_BAL || {}).gateWait ?? 1) && S.z.some((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) return;   /* spiral fix: newcomers wait outside while zombies are in the town */   /* 3D.71: nobody moves to a starving town */ if (S.arrivalClock < (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ 
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])];
-  const name = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2)));   /* V2.18: newcomers to a bigger Haven are more experienced */
+  const taken = new Set(S.sv.concat(S.trip ? S.trip.members : []).map((q) => String(q.name).split(' ')[0])), name = names.find((n) => !taken.has(n)) || freeFirst(), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2)));   /* V2.18: newcomers to a bigger Haven are more experienced */
   /* 3D.134 owner: you see them come. They walk in off the highway to the edge of town, stop and wave (the real wave clip, on the real map),
      and only then does the card ask. Until the player decides they are a guest: not in the town list, not saved, and zombies ignore them. */
   const a = hwyEnd(), hq = world.buildings.find((b) => b.type === 'hq'), g = traderSpot(hq ? hq.x + 1 : 7 + OFF, hq ? hq.y - 2 : 6 + OFF), v = mk(name, job, lv, a[0], a[1], S.sv.length);
@@ -4654,7 +4656,7 @@ function expFinish(recalled) {
   if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${RES_ICON[k] || k} ${v}`).concat((t.items || []).map((id) => ITEMS[id].name));
   if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
-    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.some((s) => s.name === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
+    const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = names.find((n) => !S.sv.concat(S.trip ? S.trip.members : []).some((s) => String(s.name).split(' ')[0] === n)) || freeFirst(), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
     recruit = mk(nm, jb, 1, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); t.log.push(`${nm}, a ${jb} (${TRAITS[recruit.trait].icon} ${TRAITS[recruit.trait].name}), was found and followed the squad home.`);
   }
   if (t.dest === 'military' && !recalled && t.stage >= EXP_STAGES && exAdd('grenade', 1)) t.log.push('They found a grenade in an ammo crate.');

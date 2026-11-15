@@ -179,7 +179,11 @@
     w.buildings.push(tmp);
     let ok = !!findPath(w, { x: 7, y: 10 }, dt);
     // V2.34: every other entrance must stay reachable too (a new building must not wall another one in)
-    if (ok) for (const b of w.buildings) { if (b === tmp) continue; const at = approachTile(b); if (inMap(at.x, at.y) && !buildingAt(w, at.x, at.y) && !findPath(w, { x: 7, y: 10 }, at)) { ok = false; break; } }
+    if (ok) for (const b of w.buildings) { if (b === tmp) continue; const at = approachTile(b); if (inMap(at.x, at.y) && !buildingAt(w, at.x, at.y) && !findPath(w, { x: 7, y: 10 }, at)) {
+      /* 3D.161 play-test find: an entrance that was ALREADY cut off (a mended fence closed the pocket in front of a Rain Barrel) made every
+         later placement fail with "Entrance unreachable", so nothing could be built for the rest of the game. Only count an entrance
+         that this new building is the one to cut off. */
+      w.buildings.pop(); const before = !!findPath(w, { x: 7, y: 10 }, at); w.buildings.push(tmp); if (before) { ok = false; break; } } }
     w.buildings.pop();
     return ok;
   }
