@@ -4532,7 +4532,7 @@ const EXP_DEFS = {
 };
 const seasonIdx = () => Math.floor((S.day - 1) / SEASON_DAYS);
 function seasonLock(id) { if ((S.lvl || 1) < 15 && !QS.get('season')) return 'Needs Haven level 15'; if (seasonOf().id !== id) return `Only in ${SEASONS.find((x) => x.id === id).name}`; if ((S.shSeason || {})['sh_' + id] === seasonIdx()) return 'Cleared this season'; return ''; }
-const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: .005, hurt: .10 }, medium: { label: 'Medium', min: 15, mult: 2.5, death: .017, hurt: .22 }, high: { label: 'High', min: 30, mult: 5, death: .04, hurt: .38 } };
+const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: .005, hurt: .10 }, medium: { label: 'Medium', min: 15, mult: 2.5, death: .01, hurt: .22 }, high: { label: 'High', min: 30, mult: 5, death: .025, hurt: .38 } };   /* 3D.169 owner: losses lowered once the trip check showed whole-trip odds (medium .017 → .01, high .04 → .025) */
 /* V3D.18 DV2-style exploration: trips run on game time (pause and speed apply) and are short: 2 / 3 / 5 game hours.
    They are only possible when a lead comes in (mornings and afternoons, each lasts ~10 hours); the squad walks a bar at the bottom of the screen. */
 const EXP_HMS = 1000 * 1000 / 60, expNow = () => S.expClock || 0, EXP_HOURS = { low: 2, medium: 3, high: 5 };
@@ -4559,6 +4559,23 @@ const expPlain = (s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k
 function expSafety(ms) { return ms.reduce((a, s) => a + 1 + .08 * (s.l || 1) + .05 * (professions[s.job]?.combat || 0) + .03 * weaponOf(s).atk / 10 + .02 * (((itemOf(s, 'armor') || {}).def) || 0) + (s.pet && s.pet.kind === 'dog' ? .06 : 0) + (hasSpec(s, 'ranger') ? .1 : 0), 0) / (ms.length || 1) + (townHyb('pathfinder') ? .08 : 0) + (townHyb('tracker') ? .08 : 0); }   /* 3D.104 a dog scouts ahead */
 const expTraitLoot = (ms) => (1 + .15 * ms.filter((m) => hasT(m, 'scrounger')).length) * (ms.length <= 2 ? 1 + .25 * ms.filter((m) => hasT(m, 'loner')).length : 1);   /* V2.43 */
 const expRiskMult = (t) => Math.min(1.6, Math.max(.5, 1.3 / expSafety(t.members))) * (t.short ? 1.5 : 1) * vehSafe(t);   /* 3D.109 the Armored Van */
+/* 3D.169 play-test (Explorer: "show trip cost and real odds before sending"). The same numbers the trip rolls, for the whole trip */
+function tripCheck(dest, risk, members, pv) {
+  if (!members.length) return '';
+  const v = expSel.veh && VEH[expSel.veh] && vehReady(expSel.veh) ? VEH[expSel.veh] : null, vs = v ? v.safe : 1, rolls = members.length * EXP_STAGES;
+  const pD = pv.deathPerStage * vs, pH = Math.min(1, pD + pv.hurtPerStage * vs * 1.35), all = (p) => 1 - Math.pow(1 - p, rolls);
+  const lost = all(pD), hurt = all(pH), pc = (x) => (x < .01 ? '<1' : Math.round(x * 100)) + '%';
+  const t = { members, risk }, rkI = ['low', 'medium', 'high'].indexOf(risk), pool = encPool(dest, risk), best = {};
+  for (const k of pool) for (const o of EXP_ENC[k].opts) { if (o.safe) continue; const od = encOdds(t, o), key = o.chk === 'fight' ? 'Fights' : STAT_ABBR[o.chk] || o.chk; if (!best[key] || od.chance > best[key].chance) best[key] = od; }
+  const odds = Object.entries(best).sort((x, y) => (x[0] === 'Fights' ? -1 : y[0] === 'Fights' ? 1 : y[1].chance - x[1].chance)).slice(0, 3).map(([k, o]) => `${k} ${o.who && o.who !== 'the squad' ? esc(o.who) + ' ' : ''}${Math.round(o.chance * 100)}%`).join(' · ');
+  const tips = []; if (!members.some(isFighter) && rkI > 0) tips.push('add a fighter'); if (pv.short) tips.push('pack more food and water');
+  if (!v) { const vk = Object.keys(VEH).filter((k) => vehReady(k) && VEH[k].safe < 1).sort((a, b) => VEH[a].safe - VEH[b].safe)[0]; if (vk) tips.push('take the ' + VEH[vk].name); }
+  const lvl = lost < .04 ? ['Safe', 'var(--good)'] : lost < .15 ? ['Risky', '#c98a1e'] : ['Dangerous', 'var(--bad)'];
+  return `<div class="card tripChk" style="margin-top:6px;padding:8px 10px"><div class="row"><b class="sp">Trip check</b><b style="color:${lvl[1]}">${lvl[0]}</b></div>`
+    + `<div class="sm">Whole trip, ${members.length} ${members.length > 1 ? 'people' : 'person'}: someone hurt ${pc(hurt)} · someone lost for good <b style="color:${lvl[1]}">${pc(lost)}</b>${v ? ` (with the ${v.name})` : ''}</div>`
+    + `<div class="sm">Home after packing: 🍖 ${Math.max(0, Math.floor(S.food - pv.need))} · 💧 ${Math.max(0, Math.floor(S.water - pv.need))}</div>`
+    + (odds ? `<div class="sm">If something turns up: ${odds}</div>` : '') + (tips.length ? `<div class="sm">Safer: ${tips.join(', ')}</div>` : '') + '</div>';
+}
 function expPreview(destId, riskId, members) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId], n = members.length, need = EXP_COST[riskId] * n, short = S.food < need || S.water < need;
   const kinds = new Set(members.map(expKind).filter((k) => k !== 'other')).size, avgL = n ? members.reduce((a, s) => a + (s.l || 1), 0) / n : 1;
@@ -4659,9 +4676,10 @@ function encOdds(t, o) {   /* → { chance, who } */
   let best = null, bv = -1e9; for (const m of ms) { const v = (stat(m, o.chk) - 4) * .06 + ((o.job || {})[m.job] || 0) + trB(m); if (v > bv) { bv = v; best = m; } }
   return { chance: Math.max(.1, Math.min(.95, .35 + bv - EXP_CHK_PEN[t.risk])), who: best.name, whoId: best.id };
 }
+function encPool(dest, risk) { const rkI = ['low', 'medium', 'high'].indexOf(risk); return Object.keys(EXP_ENC).filter((k) => !EXP_ENC[k].minRisk || rkI >= ['low', 'medium', 'high'].indexOf(EXP_ENC[k].minRisk)); }
 function expEncounter(t, key) {   /* pick (or force) a situation; stores the odds so the player sees exactly what is rolled */
   if (t.enc) encResolve(t, null);
-  const rkI = ['low', 'medium', 'high'].indexOf(t.risk), pool = Object.keys(EXP_ENC).filter((k) => !EXP_ENC[k].minRisk || rkI >= ['low', 'medium', 'high'].indexOf(EXP_ENC[k].minRisk)).filter((k) => k !== t.lastEnc);
+  const pool = encPool(t.dest, t.risk).filter((k) => k !== t.lastEnc);
   const k = key || pool[Math.floor(Math.random() * pool.length)], E = EXP_ENC[k]; if (!E || !encLive(t).length) return null;
   t.lastEnc = k; t.enc = { k, stage: t.stage, opts: E.opts.map((o) => ({ id: o.id, ...encOdds(t, o) })) };
   return t.enc;
@@ -5596,7 +5614,7 @@ function showExpedition() {
     const ready = S.sv.filter(expEligible);
     const where = (`<div class="sm">Leads</div><div class="lst">${(S.leads || []).map((l) => { const v = EXP_DEFS[l.dest], on = l.id === expSel.lead; return `<div class="card" data-lead="${l.id}" style="${on ? 'border-color:var(--gold)' : ''}"><span style="font-size:28px">${v.icon}</span><div class="sp"><b>${v.name}</b> <span class="sm">${EXP_RISK[l.risk].label} risk · ${EXP_HOURS[l.risk]} h trip</span><div class="sm">${esc(l.text)} · gone in ${Math.max(1, Math.round(l.untilH - nowH()))} h</div></div>${on ? '<b>✔</b>' : ''}</div>`; }).join('')}</div>`);
     const lootTxt = Object.entries(d.loot || {}).map(([r, [a0, a1]]) => `${(RES_ICON[r] || RES_NAME[r] || r)} ${Math.round(a0 * EXP_STAGES * pv.mult)}–${Math.round(a1 * EXP_STAGES * pv.mult)}`).join('  ');   /* 3D.41: a rough total for the whole trip */
-    $('ib').innerHTML = (`<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${expMax()}</b><small>squad</small></span><button class="act go" id="expGo">${(SH_DEFS[expSel.dest]) ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${vehCard()}${EXP_DEFS[expSel.dest].raid ? `<div class="etLine sm">Their camp: pick which buildings to bring down and what to loot. Gear, ammo and the leader are in the middle. Get out through the gate with what you took.</div>` : ''}${(SH_DEFS[expSel.dest]) ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div><div class="sm">Each stage, per person: ${(pv.hurtPerStage * 100).toFixed(0)}% hurt · ${(pv.deathPerStage * 100).toFixed(1)}% lost forever</div>${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
+    $('ib').innerHTML = (`<div class="card expTop"><div class="etRow"><span class="etN"><b>${ids.length}/${expMax()}</b><small>squad</small></span><button class="act go" id="expGo">${(SH_DEFS[expSel.dest]) ? 'Enter the stronghold' : `Send squad · ${EXP_HOURS[expSel.risk]} h`}</button></div>${vehCard()}${EXP_DEFS[expSel.dest].raid ? `<div class="etLine sm">Their camp: pick which buildings to bring down and what to loot. Gear, ammo and the leader are in the middle. Get out through the gate with what you took.</div>` : ''}${(SH_DEFS[expSel.dest]) ? (() => { const pw = shPower(members), rc = SH_DEFS[expSel.dest].rec; return `<div class="etLine"><span class="etK">Power</span> <b style="color:${pw >= rc ? 'var(--good)' : pw >= rc * .85 ? '#c98a1e' : 'var(--bad)'}">${pw}</b> / ${rc} recommended · you watch the fight and give the calls</div>`; })() : ''}<div class="etLine"><span class="etK">Cost</span> 🍖${pv.need} 💧${pv.need}${pv.short ? ' <span style="color:var(--bad)">(short: riskier)</span>' : ''}</div><div class="etLine"><span class="etK">Loot</span> ${lootTxt || '×' + pv.mult.toFixed(1)}</div>${(SH_DEFS[expSel.dest]) ? '' : tripCheck(expSel.dest, expSel.risk, members, pv)}${ready.length ? '' : '<div class="sm">Nobody is healthy and free right now.</div>'}<div id="expWhy" class="expWhy">${expPreWhy(ids)}</div></div>`
       + where + `<div class="sm">Squad (1–${expMax()}, ${EXP_HOME_MIN} stay home)</div>${pfBar()}<div class="lst">${pfList(S.sv.slice()).map((q) => { const on = ids.includes(q.id), ok = expEligible(q); return `<div class="card" data-s="${q.id}" style="${on ? 'border-color:var(--good)' : ''}${ok || on ? '' : ';opacity:.45'}">${portrait(q)}<div class="sp">${esc(q.name)} ${traitIcon(q)} <span class="sm">${q.job} Lv.${q.l}</span><div class="sm">${ok ? 'Ready' : expBlock(q) || 'Busy'}</div></div>${on ? '<b style="color:var(--good)">✔</b>' : ''}</div>`; }).join('')}</div>`);
     $('ib').querySelectorAll('[data-lead]').forEach((b) => { b.onclick = () => { expSel.lead = b.dataset.lead; showExpedition(); }; }); pfWire($('ib'), showExpedition);
     $('ib').querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { if (expLocked(b.dataset.d)) { say(expLocked(b.dataset.d)); return; } expSel.dest = b.dataset.d; showExpedition(); }; });
