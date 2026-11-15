@@ -157,7 +157,7 @@ function facing(o) {   // screen-space facing from movement (or from the target 
   if (Math.abs(sy) > 0.004) st.up = sy < 0;
   st.lx = o.w.x; st.ly = o.w.y; return st;
 }
-const OPEN_AIR = new Set(['water', 'well', 'farm', 'field', 'track', 'range', 'barrel', 'irrig', 'crates', 'bench', 'scrapyard', 'lumber', 'quarry', 'bonfire', 'sparring', 'radio']);   /* 3D.64 balance study: people 'hid' in a Rain Barrel or a Workbench; open structures are no shelter */   // outdoor structures: survivors stay visible while using them
+const OPEN_AIR = new Set(['water', 'well', 'farm', 'field', 'track', 'range', 'barrel', 'irrig', 'crates', 'bench', 'scrapyard', 'lumber', 'pallet', 'quarry', 'bonfire', 'sparring', 'radio']);   /* 3D.64 balance study: people 'hid' in a Rain Barrel or a Workbench; open structures are no shelter */   // outdoor structures: survivors stay visible while using them
 function insideBuilding(s) {   // working, using a facility or in care, standing at an enclosed building's door point = inside
   if (!['work', 'useFacility', 'hospital', 'hiding'].includes(s.mode)) return null;
   const b = s.mode === 'work' ? s.post : s.mode === 'useFacility' ? s.facility : s.mode === 'hiding' ? s.hideAt : world.buildings.find((q) => Iso.footprintContains(q, s.w.x, s.w.y));
@@ -2855,7 +2855,7 @@ const earlyFood = (b) => (DEFS[b.type] && DEFS[b.type].fam === 'farm' && S.day <
 const prodMult = (b, working = isWorking(b)) => (working && b.staff && b.staff.spec && b.staff.spec === b.staff.job ? 1.25 : 1) * earlyFood(b) * (working && b.staff && DEFS[b.type] && DEFS[b.type].fam === 'farm' && gearFx(b.staff, 'farm') ? 1.25 : 1) * powerBoost(b) * (b.fire || b.burnt ? 0 : 1) * (b.unpaid ? .5 : 1) * (working && b.staff ? hungryPen(b.staff) : 1) * (working && b.staff ? TUNE.work : 1) * (1 + combos(b).prod) * (1 + (working && b.staff ? fitBoost(b, b.staff) + traitWork(b.staff) + (BUILDING_STAT[b.type] ? (stat(b.staff, BUILDING_STAT[b.type]) - 5) * .03 : 0) + (hasSkill(b.staff, 'efficient') ? .15 : 0) + (hasSkill(b.staff, 'greenThumb') ? .2 : 0) + (hasSkill(b.staff, 'harvestMaster') && FAM(b.type) === 'food' ? .3 : 0) + (hasSkill(b.staff, 'masterBuilder') && isT(b, 'workshop') ? .2 : 0) : 0));
 const dayLog = { foodIn: 0, waterIn: 0 };
 /* ---------------- V2.15 upkeep: every building costs scrap each day; unpaid buildings run at half output ---------------- */
-const UPKEEP = aliasT({ pump: .5, greenhouse: .5, coldstore: .4, fuelstill: .3, ammobench: .3, ammofactory: .8, bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 });
+const UPKEEP = aliasT({ pallet: .2, pump: .5, greenhouse: .5, coldstore: .4, fuelstill: .3, ammobench: .3, ammofactory: .8, bonfire: .1, inn: .4, house: .2, water: .3, well: .5, farm: .3, field: .5, medic: .4, clinic: .7, hospital: 1.1, canteen: .4, armory: .4, workshop: .6, storage: .3, barracks: .6, scrapyard: .2, gym: .3, library: .3, lounge: .3, range: .4, track: .3, sparring: .3 });
 const upkeepOf = (b) => (UPKEEP[b.type] ?? .3) * (b.staff && hasSkill(b.staff, 'masterBuilder') ? .5 : 1) * DF().upkeep;
 const upkeepTotal = () => world.buildings.reduce((a, b) => a + upkeepOf(b), 0);
 function payUpkeep() {   /* at day end: pay in order of importance (water, food, medical first); what can't be paid runs at half output tomorrow */
@@ -2943,6 +2943,9 @@ function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus =
 /* 3D.30 real Fallout Shelter collecting (glass/cozy UI): what a building makes waits in its tray until you tap the bubble.
    The tray holds TRAY_H hours of output; past that the building stops filling (shown as FULL, and listed in the alert hub). */
 const TAP_COLLECT = true, TRAY_H = 8;
+/* 3D.169 Pallet Yard: wood out of scrap at 1.5 scrap per wood. Staffed 4 wood a day, nobody on it 1.5. It waits while scrap is under the floor (default 15) */
+const PALLET_RATE = 1.5, palletFloor = () => S.palletFloor ?? 15, palletK = (b) => (b.staff ? 1 : .375);
+function palletRun(b, a) { const use = a * PALLET_RATE; if ((S.mat || 0) - use < palletFloor()) { b.palletWait = true; return 0; } b.palletWait = false; S.mat -= use; flow('mat', 'Pallet Yard', -use); return a; }
 function trayAdd(b, res, a, nm) { if (!(a > 0)) return; b.bonusRes = res; const cap = Math.max(2, a * TRAY_H), had = b.bonus || 0, put = Math.max(0, Math.min(a, cap - had)); b.bonus = had + put; b.trayCap = cap; b.trayFull = b.bonus >= cap - 1e-6; if (a > put && res !== 'rp') flow(res, 'Wasted: not collected', 0); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; note('important', 'Tap the bubbles over buildings to collect what they made', { banner: '👆 Tap the bubbles to collect!' }); } }
 function collectBonus(b) { statAdd('trays');
   const r = b.bonusRes, n = TAP_COLLECT ? Math.round((b.bonus || 0) * 10) / 10 : Math.floor(b.bonus || 0); if (!r || n < 1) return false;
@@ -2984,6 +2987,7 @@ function hourlyProduction() {   // runs every game hour
     if (d.fam === 'water') { const a = d.out / 24 * prodMult(b) * helpMult(b) * (isT(b, 'water') ? rainMult() : 1), room = Math.max(0, cap - S.water), got = Math.min(a, room); S.water = keepCap(cap, S.water, a); wi += got; flow('water', nm, got); addBonus(b, 'water', a); outPop(b, got, '💧', '#8fd8ff'); if (a > got) flow('water', 'Wasted: storage full', -(a - got)); }
     if (d.fam === 'scrap' && TAP_COLLECT) { trayAdd(b, 'mat', d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1)); continue; }
     if (d.fam === 'scrap') { const a = d.out / 24 * prodMult(b) * (researched('salvage') ? 1.25 : 1); S.mat += a; flow('mat', nm, a); addBonus(b, 'mat', a); outPop(b, a, '⚙', '#9fe0ff'); }
+    if (d.fam === 'pallet') { const a = palletRun(b, d.out / 24 * prodMult(b) * palletK(b)); if (a > 0) trayAdd(b, 'wood', a); continue; }
     if ((d.fam === 'lumber' || d.fam === 'quarry') && TAP_COLLECT) { trayAdd(b, d.fam === 'lumber' ? 'wood' : 'stone', d.out / 24 * prodMult(b)); continue; }
     if (d.fam === 'lumber' || d.fam === 'quarry') { const r = d.fam === 'lumber' ? 'wood' : 'stone', a = Math.max(0, Math.min(d.out / 24 * prodMult(b), matCap() - (S[r] || 0))); S[r] = (S[r] || 0) + a; flow(r, nm, a); addBonus(b, r, d.out / 24 * prodMult(b)); outPop(b, a, RES_ICON[r], '#e8b878'); }   /* V3D.23 */
     if (d.fam === 'research' && TAP_COLLECT) { trayAdd(b, 'rp', (isWorking(b) ? d.out : 6) / 24 * prodMult(b)); continue; }
@@ -3011,7 +3015,7 @@ function econ() {   // expected per-day flows for food, water and scrap, with th
     const d = DEFS[b.type]; if (!d) continue; const m = expectedMult(b), who = { b, name: d.name };
     if (d.fam === 'water') R.water.prod.push({ ...who, v: d.out * m });
     if (d.fam === 'scrap') R.mat.prod.push({ ...who, v: d.out * m * (researched('salvage') ? 1.25 : 1) });
-    if (d.fam === 'lumber') R.wood.prod.push({ ...who, v: d.out * m }); if (d.fam === 'quarry') R.stone.prod.push({ ...who, v: d.out * m });
+    if (d.fam === 'lumber') R.wood.prod.push({ ...who, v: d.out * m }); if (d.fam === 'pallet') { const v = d.out * m * palletK(b); R.wood.prod.push({ ...who, v }); R.mat.use.push({ ...who, name: d.name + ' (scrap into wood)', v: v * PALLET_RATE }); } if (d.fam === 'quarry') R.stone.prod.push({ ...who, v: d.out * m });
     if (d.fam === 'farm' || d.fam === 'greenhouse') { const frac = S.water > 1 || wAvail > d.waterUse ? 1 : Math.min(1, S.water / (d.waterUse || 1)); R.food.prod.push({ ...who, v: d.out * m * frac * (d.fam === 'greenhouse' && powered(b) ? 1.4 : 1) }); R.water.use.push({ ...who, name: d.name + ' irrigation', v: d.waterUse * frac }); }
     if (d.fam === 'pump') R.water.prod.push({ ...who, v: d.out * m * (b.staff ? 1 : .25) * (powered(b) ? 1 : PUMP_HAND) });   /* 3D.77 */
     const u = upkeepOf(b); if (u > 0) R.mat.use.push({ ...who, name: d.name + ' upkeep', v: u, group: 'Upkeep' });
@@ -3033,7 +3037,7 @@ function econ() {   // expected per-day flows for food, water and scrap, with th
   return out;
 }
 const keepCap = (cap, cur, add) => Math.max(cur, Math.min(cap, cur + add));   /* audit: a cap that shrinks (Cold Store loses power) never deletes what is stored */
-const FAMRES = (fam) => fam === 'water' || fam === 'pump' ? 'water' : fam === 'farm' || fam === 'greenhouse' ? 'food' : fam === 'fuel' ? 'fuel' : fam === 'ammo' || fam === 'ammo2' ? 'ammo' : fam === 'scrap' ? 'mat' : fam === 'lumber' ? 'wood' : fam === 'quarry' ? 'stone' : null;
+const FAMRES = (fam) => fam === 'pallet' ? 'wood' : fam === 'water' || fam === 'pump' ? 'water' : fam === 'farm' || fam === 'greenhouse' ? 'food' : fam === 'fuel' ? 'fuel' : fam === 'ammo' || fam === 'ammo2' ? 'ammo' : fam === 'scrap' ? 'mat' : fam === 'lumber' ? 'wood' : fam === 'quarry' ? 'stone' : null;
 function supplyStats() {         // per-day picture for the Town panel and the rank conditions (V2.35: from econ(), so every screen shows the same numbers)
   const e = econ(), need = rationNeed().f * 2, wUse = e.water.consumers.filter((q) => q.b).reduce((a, q) => a + q.v, 0);
   return { need, fIn: e.food.prod, wIn: e.water.prod, wUse, fNet: e.food.net, wNet: e.water.net, fDays: e.food.days, wDays: e.water.days };
@@ -3426,6 +3430,7 @@ function awayCredit(ms) {
     if (d.fam === 'water') { res = 'water'; a = d.out / 24 * pm * helpMult(b); }
     else if (d.fam === 'scrap') { res = 'mat'; a = d.out / 24 * pm * (researched('salvage') ? 1.25 : 1); }
     else if (d.fam === 'lumber' || d.fam === 'quarry') { res = d.fam === 'lumber' ? 'wood' : 'stone'; a = d.out / 24 * pm; }
+    else if (d.fam === 'pallet') { res = 'wood'; a = palletRun(b, d.out / 24 * pm * palletK(b)); }
     else if (d.fam === 'research') { res = 'rp'; a = (b.staff ? d.out : 6) / 24 * pm; }
     else if (d.fam === 'farm') { res = 'food'; a = d.out / 24 * pm * helpMult(b) * seasonFarm(); }
     else if (d.fam === 'greenhouse') { const need = d.waterUse / 24; if ((S.water || 0) >= need) { S.water -= need; res = 'food'; a = d.out / 24 * pm * (b.staff ? 1 : .25) * (powered(b) ? 1.4 : 1); } }
@@ -6015,7 +6020,7 @@ const BDESC = {   /* 3D.134 owner: funny first, facts second, and short. The fir
   crates: 'Boxes. Glorious boxes. Holds more food, water, wood and stone.', storage: 'A shed full of things you might need one day.', warehouse: 'So big you could lose a zombie in it. Holds the most.',
   bench: 'Where good ideas and thumbs get hammered. Research and craft gear.', workshop: 'More tools, fewer bruises. Engineers work fastest.',
   armory: 'Pointy things, priced to move. Survivors buy basic gear with spare scrap.',
-  scrapyard: 'One person\'s junk is still junk, but useful. A Scavenger gets more out of it.', lumber: 'Trees go in, planks come out. A Scavenger chops faster.', quarry: 'Hitting rocks, professionally. An Engineer digs faster.',
+  scrapyard: 'One person\'s junk is still junk, but useful. A Scavenger gets more out of it.', lumber: 'Trees go in, planks come out. A Scavenger chops faster.', pallet: 'Old crates, pallets and someone\'s dining table: now planks. A Scavenger turns 6 scrap into 4 wood a day; it waits when scrap runs low.', quarry: 'Hitting rocks, professionally. An Engineer digs faster.',
   gym: 'Lift the heavy thing. Put it down. Repeat. Trains Strength.', library: 'Quiet, please. Trains Intelligence; every visit adds research.', lounge: 'A couch that survived everything. Trains Charisma and lifts the mood.',
   range: 'Tin cans never shoot back. Trains Perception.', track: 'Run now, so you can run later. Trains Agility.', sparring: 'Friendly punches only. Trains Endurance.',
   barracks: 'Bunks, boots and snoring. Next to an Armory, gear gets cheaper.',
@@ -6030,7 +6035,7 @@ const BDESC = {   /* 3D.134 owner: funny first, facts second, and short. The fir
   floodlight: 'Zombies hate paparazzi. With power, zombies within 5 tiles are slowed at night.', turbine: 'Free power, slightly squeaky. +2 power, day and night.', solar: 'Sunshine, finally useful. +3 power in daylight.', pole: 'A stick with a job. Carries the Generator\'s boost 5 tiles further.',
   ammofactory: 'For when one bench is not enough. With power, a Mechanic makes 64 rounds a day.',
 };
-const BCAT = [['live', 'Living', ['tent', 'bonfire', 'barrel', 'farm', 'canteen', 'crates', 'bench', 'scrapyard', 'tradepost', 'kennel', 'garage', 'townhall', 'market', 'watertower', 'lumber', 'quarry', 'generator', 'turbine', 'solar', 'pole', 'fuelstill', 'radio', 'pump', 'greenhouse', 'coldstore']], ['care', 'Care', ['medic']],
+const BCAT = [['live', 'Living', ['tent', 'bonfire', 'barrel', 'farm', 'canteen', 'crates', 'bench', 'scrapyard', 'tradepost', 'kennel', 'garage', 'townhall', 'market', 'watertower', 'lumber', 'pallet', 'quarry', 'generator', 'turbine', 'solar', 'pole', 'fuelstill', 'radio', 'pump', 'greenhouse', 'coldstore']], ['care', 'Care', ['medic']],
   ['train', 'Train', ['gym', 'library', 'school', 'lounge', 'range', 'track', 'sparring']], ['defend', 'Defend', ['road', 'wall:wood', 'wall:palisade', 'wall:metal', 'wall:efence', 'wall:gate', 'post', 'floodlight', 'trap:spikes', 'trap:wire', 'trap:lure', 'trap:trench', 'trap:mine', 'armory', 'ammobench', 'ammofactory', 'barracks']]];
 let bCat = 'live';
 function bImg(k, bw, bh) {   /* a picture of the 3D building, fitted to a box (empty until the 3D view is ready) */
@@ -6068,7 +6073,7 @@ function buildDetail(k) {
   /* 3D.133 owner: "+4 food / day · -2" read as one muddle, and nobody knew what upkeep was. One small table: what it makes a day, what it uses a day
      (running cost = the scrap every building needs each midnight; unpaid buildings work at half speed). Icons, not words. */
   const mk = [], us = []; if (d.out && d.fam === 'water') mk.push(`💧 +${d.out}`); if (d.out && d.fam === 'farm') { mk.push(`🍖 +${d.out}`); if (d.waterUse) us.push(`💧 −${d.waterUse}`); }
-  if (d.fam === 'scrap') mk.push(`⚙ +${d.out}`); if (d.fam === 'lumber') mk.push(`🪵 +${d.out}`); if (d.fam === 'quarry') mk.push(`🪨 +${d.out}`); { const u = UPKEEP[k] ?? .3; if (u > 0) us.push(`⚙ −${u.toFixed(1)}`); }
+  if (d.fam === 'scrap') mk.push(`⚙ +${d.out}`); if (d.fam === 'lumber') mk.push(`🪵 +${d.out}`); if (d.fam === 'pallet') { mk.push(`🪵 +${d.out}`); us.push(`⚙ −${d.out * PALLET_RATE}`); } if (d.fam === 'quarry') mk.push(`🪨 +${d.out}`); { const u = UPKEEP[k] ?? .3; if (u > 0) us.push(`⚙ −${u.toFixed(1)}`); }
   const perDay = `<div class="perDay"><div><small>Each day</small></div>${mk.length ? `<div><span>Makes</span><b class="good">${mk.join('  ')}</b></div>` : ''}${us.length ? `<div><span>Uses</span><b class="bad">${us.join('  ')}</b></div>` : ''}</div>`;
   if (d.cap > 1 && d.role === 'inn') fx.push(`🛏 beds for ${d.cap}`); if (d.tier) fx.push(['', '⛺ Camp tier', '🪵 Timber tier', '🪨 Stone tier'][d.tier]); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
   if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) { const js = STAFF_JOBS[d.fam] || [], fr = freeFor(js).length; fx.push('👷 1 worker: ' + js.join(' / ') + (fr ? ` (${fr} free)` : ' (none free)')); }
@@ -6514,7 +6519,7 @@ function cutEnd(skip) {
   spawn(5 + OFF, 3 + OFF, 'walker'); spawn(9 + OFF, 3 + OFF, 'crawler'); spawn(12 + OFF, 4 + OFF, 'walker');
   if (!S.mission) beginMission(); say('Day 1. Build up the camp before night falls.'); saveGame(); ui();
 }
-const INTRO_B = ['generator', 'fuelstill', 'ammobench', 'ammofactory', 'pump', 'greenhouse', 'coldstore', 'radio', 'armory', 'workshop', 'barracks', 'hospital', 'quarry', 'lumber'];
+const INTRO_B = ['generator', 'fuelstill', 'ammobench', 'ammofactory', 'pump', 'greenhouse', 'coldstore', 'radio', 'armory', 'workshop', 'barracks', 'hospital', 'quarry', 'lumber', 'pallet'];
 function introTick() {   /* every few seconds: what is new on screen? */
   if (tick % 60) return; S.intro = S.intro || {}; if (tick % 240 === 120) tutTick();
   if (S.day <= 1 && S.hour < 9) for (const q of S.sv) S.intro['job:' + q.job] = S.intro['job:' + q.job] || 1;   /* the starting crew needs no introduction */
@@ -6590,6 +6595,7 @@ function staffNote(b) {   // explicit staffing wording, from the real rule: only
 function bOutput(b) {   // expected per-day output and inputs (same formulas as the simulation, with the worker's measured share of the day)
   const d = DEFS[b.type], m = expectedMult(b), o = { out: [], use: [] };
   if (d.fam === 'water') o.out.push(['💧', d.out * m, '']); if (d.fam === 'farm') { o.out.push(['🍖', d.out * m, '']); o.use.push(['💧', d.waterUse, '🌱']); }
+  if (d.fam === 'pallet') { const v = d.out * m * palletK(b); o.out.push(['🪵', v, '']); o.use.push(['⚙', v * PALLET_RATE, '']); }
   if (d.fam === 'scrap') o.out.push(['⚙', d.out * m * (researched('salvage') ? 1.25 : 1), '']); if (d.fam === 'research') o.out.push(['🔬', (d.out * workShare(b) + 4 * (1 - workShare(b))) * prodMult(b, false), 'research points']);
   const u = upkeepOf(b); if (u > 0) o.use.push(['⚙', u, '🔧']); return o;
 }
@@ -6598,6 +6604,7 @@ function bStatus(b) {
   if (b.fire) return { c: '#ff9a3a', t: `On fire (${Math.round(b.fire)}%): no output until it is out` };
   if (b.burnt) return { c: 'var(--bad)', t: 'Burnt down: no output until repaired' };
   if (b.unpaid) return { c: 'var(--bad)', t: 'Half output: yesterday\'s upkeep was not paid' };
+  if (d.fam === 'pallet' && b.palletWait) return { c: '#c98a1e', t: `Waiting: scrap is under ${palletFloor()} (it keeps that much for repairs)` };
   if (d.fam === 'farm' && b.dry) return { c: '#ffb36b', t: 'Short of water: the plants are not fully irrigated' };
   if (d.slot && !FAM_ICON[d.fam]) return b.staff ? (isWorking(b) ? { c: 'var(--good)', t: `${esc(b.staff.name)} on duty: ${d.fam === 'medical' ? 'faster, better care' : 'better meals'}` } : { c: 'var(--muted)', t: `Open, no one on duty: ${esc(b.staff.name)} is away (${esc(b.staff.why || b.staff.mode)})` }) : { c: '#ffb36b', t: 'Open, but no one is assigned to work here' };
   if (d.slot && !b.staff) return { c: '#ffb36b', t: 'Base output: no worker assigned' };
@@ -6626,6 +6633,7 @@ function showBuildingInfo(b, tab) {
       status += `<div class="card"><div class="row"><b class="sp">Residents ${rs.length}/${c}</b>${rs.length < c && unhoused().length ? '<button class="act" id="hFill">Fill beds</button>' : ''}</div><div class="resRow">${rs.map((q) => `<div class="resP" data-rid="${q.id}">${portrait(q)}<span>${esc(q.name)}</span></div>`).join('')}${Array.from({ length: c - rs.length }, () => '<div class="resP empty" data-add="1"><div class="portrait">+</div><span>Empty bed</span></div>').join('')}</div></div>`; }
     if (DEFS[b.type].role === 'hq' && !b.burnt) { const n = unhoused().length, c = campCap(), over = n > c;   /* 3D.30 camp beds */
       status += `<div class="card campBeds${over ? ' over' : ''}"><div class="row"><b class="sp">Sleeping at the ${d.name}</b><b class="cbN">${n}/${c}</b></div><div class="sm">${over ? `${n - c} survivor${n - c > 1 ? 's' : ''} sleep rough (tired and unhappy). Build or upgrade housing and assign residents.` : 'Everyone without housing sleeps here.'}</div>${n ? '<button class="act" id="campHouse">Assign housing</button>' : ''}</div>`; }
+    if (d.fam === 'pallet' && !b.burnt) status += `<div class="card"><div class="row" style="gap:8px;align-items:center"><span class="sp"><b>Keep at least ⚙ ${palletFloor()} scrap</b><div class="sm">Below that it stops, so repairs and upkeep come first.</div></span><button class="act" id="pfDn" style="min-width:44px">−</button><button class="act" id="pfUp" style="min-width:44px">+</button></div></div>`;
     if (b.type === 'generator') status += `<div class="card"><b>⚡ ${S.power ? 'Running' : 'Off: no fuel'}</b><div class="sm">${gens().length} generator${gens().length > 1 ? 's' : ''} burn ${(gens().length * 3).toFixed(0)} fuel a day · you have ⛽ ${Math.floor(S.fuel || 0)}${S.power ? ` (about ${Math.floor((S.fuel || 0) / (gens().length * 3))} days)` : ''}.</div></div>`;
     if (b.type === 'radio') status += `<div class="card"><b>📻 ${S.won ? 'The convoy came' : S.finale ? 'Signal on air: hold out!' : radioOk() ? 'Ready to transmit' : 'No power'}</b><div class="sm">${S.won ? '' : S.finale ? `Night ${S.finale.night} of ${FINALE_NIGHTS}.` : `To call the convoy: ★5 (you: ★${S.rank}), ${LEGACY_NEED} legacy goals (${legacyDone()} done) and a running Generator${radioOk() ? ' ✓' : ''}.`}</div>${signalReady() ? '<button class="act go" id="bSignal" style="width:100%">📻 Call for the convoy</button>' : ''}</div>`;
     { const d0 = DEFS[b.type], n = d0.next && DEFS[d0.next];   /* V3D.23 upgrades */
@@ -6663,7 +6671,7 @@ function showBuildingInfo(b, tab) {
   const rp = $('bRepair'); if (rp) rp.onclick = () => { if (repairBurnt(b)) showBuildingInfo(b); };
   { const fx = $('bFix'); if (fx) fx.onclick = () => { const c = fixCost(b); if (!canPay(c)) return; payCost(c); for (const [k, v] of Object.entries(c)) flow(k, 'Repairs', -v); b.hp = b.max; screenToast('🔨 ' + DEFS[b.type].name.toUpperCase() + ' REPAIRED'); ui(); showBuildingInfo(b); }; }
   $('ib').querySelectorAll('[data-u]').forEach((el) => { const q = S.sv[+el.dataset.u]; if (q) el.onclick = () => unitPanel(q); });
-  const ba = $('bAssign'); if (ba) ba.onclick = () => showAssign(b); { const w = $('bWp'); if (w) w.onclick = () => showJobs(() => showBuildingInfo(b), 'work'); }
+  const ba = $('bAssign'); if (ba) ba.onclick = () => showAssign(b); { const dn = $('pfDn'), up = $('pfUp'); if (dn) dn.onclick = () => { S.palletFloor = Math.max(0, palletFloor() - 5); showBuildingInfo(b); }; if (up) up.onclick = () => { S.palletFloor = Math.min(200, palletFloor() + 5); showBuildingInfo(b); }; } { const w = $('bWp'); if (w) w.onclick = () => showJobs(() => showBuildingInfo(b), 'work'); }
   { const hf = $('hFill'); if (hf) hf.onclick = () => { fillBeds(b); saveGame(); showBuildingInfo(b); }; $('ib').querySelectorAll('.resP').forEach((el) => { el.onclick = () => showResidents(b); });
     const ch = $('campHouse'); if (ch) ch.onclick = () => { const h = world.buildings.find((q) => isHousing(q) && !q.burnt && (q.res || []).length < cap(q)); if (h) showResidents(h); else { say('No empty beds: build or upgrade a Tent'); bCat = 'live'; showBuild(); } }; }
   const bw = $('bWorker'); if (bw && b.staff) bw.onclick = () => { const q = b.staff; closeP(); selected = { kind: 'unit', ref: q }; unitPanel(q); };   /* V2.35: tap the worker to open their panel */

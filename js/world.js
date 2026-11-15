@@ -60,6 +60,7 @@
     workshop: D({ name: 'Workshop',  role: 'engineering', fam: 'research', tier: 2, w: 2, slot: true, out: 12, q: 12, wood: 12, mat: 8, up: true }),   // V2.16: staffed → research points; crafting
     scrapyard: D({ name: 'Scrapyard',   role: 'parts', fam: 'scrap', tier: 1, slot: true, out: 3, a: 4, q: 8, wood: 6, mat: 4 }),   // V2.15: staffed salvage → scrap
     lumber:   D({ name: 'Lumber Camp', role: 'parts', fam: 'lumber', tier: 2, w: 2, slot: true, out: 8, a: 4, q: 8, wood: 10, mat: 4, icon: 'scrapyard' }),   // V3D.23: staffed → wood
+    pallet:   D({ name: 'Pallet Yard', role: 'parts', fam: 'pallet', tier: 2, slot: true, out: 4, a: 3, q: 8, wood: 6, mat: 6, icon: 'scrapyard' }),   // 3D.169 owner: scrap → wood (6 scrap → 4 wood a day staffed)
     quarry:   D({ name: 'Quarry',      role: 'parts', fam: 'quarry', tier: 2, w: 2, slot: true, out: 5, a: 3, q: 8, wood: 12, mat: 6, icon: 'scrapyard' }),   // V3D.23: staffed → stone
     bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
     armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
@@ -101,7 +102,7 @@
   for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
   const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
   // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
-  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], quarry: ['Engineer'], power: ['Mechanic'], fuel: ['Mechanic'], ammo: ['Mechanic'], ammo2: ['Mechanic'], pump: ['Mechanic'], greenhouse: ['Farmer'] };   /* 3D.77: the Mechanic runs power, fuel and ammo */   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
+  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], pallet: ['Scavenger'], quarry: ['Engineer'], power: ['Mechanic'], fuel: ['Mechanic'], ammo: ['Mechanic'], ammo2: ['Mechanic'], pump: ['Mechanic'], greenhouse: ['Farmer'] };   /* 3D.77: the Mechanic runs power, fuel and ammo */   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
   const ROAD_COST = 1;  // scrap per road tile
   // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
   const WALL_DEFS = {

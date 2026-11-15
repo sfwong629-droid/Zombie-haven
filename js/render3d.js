@@ -795,6 +795,12 @@ const BUILD = {
   crates: (P, w, d) => { crates(P, -w * .15, -d * .1, 3); crates(P, w * .12, d * .12, 2); P.put(box(.7, .04, .6), '#5d7a5a', M4(-w * .05, .63, -d * .05, .2, .1)); },
   warehouse: (P, w, d) => { stoneHall(P, w * .82, d * .76, '#4e555c', { h: 1.5, windows: [] }); crates(P, w * .25, d * .45, 3); },
   bench: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.04, .05, 1.3, 6), '#6f4a2c', M4(x * w * .36, .65, z * d * .3)); P.put(box(w * .82, .06, d * .72), '#7a6a4e', M4(0, 1.32, 0, 0, .12)); P.put(box(w * .5, .08, .4), '#8a6038', M4(0, .5, 0)); for (const k of [-1, 1]) P.put(box(.06, .5, .34), '#6f4a2c', M4(k * w * .22, .25, 0)); P.put(cyl(.12, .12, .05, 10), '#8f9aa6', M4(w * .12, .58, 0, 0, Math.PI / 2)); crates(P, -w * .3, d * .32, 1); },
+  pallet: (P, w, d) => {   /* 3D.169 Pallet Yard: pallet stacks, a plank pile and a saw bench */
+    const pal = (x, z, n) => { for (let i = 0; i < n; i++) { const y = i * .13; P.put(box(.62, .035, .46), i % 2 ? '#a8834f' : '#b08a55', M4(x, y + .1, z, i * .08)); for (const o of [-.2, 0, .2]) P.put(box(.62, .07, .07), '#7a5a3a', M4(x, y + .04, z + o, i * .08)); } };
+    pal(-w * .24, d * .18, 4); pal(w * .02, -d * .24, 2);
+    for (let i = 0; i < 4; i++) P.put(box(.8, .05, .12), i % 2 ? '#c49a62' : '#b8905a', M4(w * .26, .03 + i * .055, d * .2 + (i % 2) * .04, 0, .05 * i));
+    P.put(box(.6, .06, .32), '#8a6a44', M4(w * .27, .48, -d * .2)); for (const [x, z] of [[-.25, -.12], [.25, -.12], [-.25, .12], [.25, .12]]) P.put(box(.05, .45, .05), '#5a3b23', M4(w * .27 + x, .23, -d * .2 + z));
+    P.put(cyl(.13, .13, .02, 14), '#c8ccd0', M4(w * .27, .6, -d * .2, 0, 0, Math.PI / 2)); crates(P, -w * .3, -d * .3, 2); },
   lumber: (P, w, d) => { logPile(P, -w * .18, d * .1, 3); logPile(P, w * .22, -d * .15, 2); P.put(cyl(.2, .22, .3, 10), '#8a6038', M4(w * .3, .15, d * .3)); P.put(cyl(.02, .02, .5, 4), '#5a3b23', M4(w * .3, .45, d * .3, 0, 0, .4)); for (const [x, z] of [[-1, -1], [1, -1]]) P.put(cyl(.04, .05, 1.1, 6), '#6f4a2c', M4(x * w * .4, .55, z * d * .32)); P.put(box(w * .9, .05, .6), '#7a5a3a', M4(0, 1.1, -d * .28, 0, -.2)); },
   quarry: (P, w, d) => { rockPile(P, -w * .15, -d * .05, 6, 1.4); rockPile(P, w * .25, d * .2, 3, 1); P.put(box(.5, .22, .34), '#6f4a2c', M4(w * .3, .2, -d * .25)); for (const k of [-1, 1]) P.put(cyl(.1, .1, .04, 10), '#3a3a3a', M4(w * .3 + k * .18, .1, -d * .25 + .2, 0, Math.PI / 2)); P.put(new THREE.DodecahedronGeometry(.4, 0).scale(1.6, .4, 1.2), '#6a6358', M4(0, .02, 0)); },
   house: (P, w, d) => cabin(P, w * .82, d * .78, '#b5532e', { chimney: true }),
@@ -1418,7 +1424,7 @@ const people = new Map(), zeds = new Map(), dead = new Map();
 const ATTACK = new Set(['punch', 'blunt', 'shoot']), STRIKE_RE = /punch|swing|fire|attack|blunt|shoot/;
 const TOOL_OF = { work_barricade: 'hammer', work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
 const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker',   /* 3D.100 owner: punching at work: every outdoor post has a work clip now (the 2D hoe swing came through as a punch) */
-  irrig: 'work_dig', barrel: 'work_tinker', crates: 'carry_idle', bench: 'work_hammer', scrapyard: 'work_tinker', lumber: 'work_chop', quarry: 'work_dig', bonfire: 'work_tinker', radio: 'work_tinker', track: 'idle', range: 'idle', sparring: 'punch' };
+  irrig: 'work_dig', barrel: 'work_tinker', crates: 'carry_idle', bench: 'work_hammer', scrapyard: 'work_tinker', lumber: 'work_chop', pallet: 'work_hammer', quarry: 'work_dig', bonfire: 'work_tinker', radio: 'work_tinker', track: 'idle', range: 'idle', sparring: 'punch' };
 const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
 function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
   const has = (c) => !!a.acts[c], still = !a.isMov() && !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
