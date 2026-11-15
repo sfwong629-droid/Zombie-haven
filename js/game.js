@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.172', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.173', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2655,6 +2655,7 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
 }
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24; finaleHour(); crisisHour(); comebackConvoy();
+  if (!fac('toll').met && facOk('toll') && S.hour === 10 && !guest && !S.finale && (S.day >= 7 || (S.day >= 5 && rnd() < .5))) { S.lastStory = 'toll1'; STORY.toll1.run(); }   /* 3D.173 owner: the Toll Kings find the town by day 5-7 (round 3: first met on day 12-18, nothing to raid) */
   if (S.day >= 4 && now >= S.nextRaid) {   /* 3D.64 balance: raiders from day 4 (was 2) */
   if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
@@ -4074,7 +4075,7 @@ const STORY = {
      comes to the Haven through visits. The Toll Kings demand tolls on the highway; defy them twice and the Toll Collector rides in himself:
      beat him for a Victory Banner (they regroup after ~60 days). Greenwater trades and asks for help; at attitude 50 they offer an alliance
      (an Alliance Banner, and gifts every few days). */
-  toll1: { cond: () => S.day >= 6 && facOk('toll') && (S.fac.toll.next || 0) <= S.day, w: 1.6, run: () => { const F = fac('toll'), toll = 6 + 2 * (S.lvl || 1); F.met = true; F.next = S.day + 5; showEventPopup({ title: '👑 THE TOLL KINGS', text: `Riders in road-sign armour block the highway ramp. "This road belongs to the Toll Kings. ${toll} scrap, and your people come and go in peace. Or don't pay, and see what happens."`, stage: { scene: 'danger', head: 'The Toll Kings', icon: '👑', badge: 'Toll', hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Toll Kings want ${toll} scrap.`, buttons: [
+  toll1: { cond: () => S.day >= 5 && facOk('toll') && (S.fac.toll.next || 0) <= S.day, w: 1.6, run: () => { const F = fac('toll'), toll = 6 + 2 * (S.lvl || 1); F.met = true; F.next = S.day + 5; showEventPopup({ title: '👑 THE TOLL KINGS', text: `Riders in road-sign armour block the highway ramp. "This road belongs to the Toll Kings. ${toll} scrap, and your people come and go in peace. Or don't pay, and see what happens."`, stage: { scene: 'danger', head: 'The Toll Kings', icon: '👑', badge: 'Toll', hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Toll Kings want ${toll} scrap.`, buttons: [
     { label: `Pay ${toll} scrap`, fn: () => { if (!pay({ mat: toll })) { F.att -= 10; F.defied = (F.defied || 0) + 1; spawnRaid('toll'); return result('👑 THEY ATTACK', 'You couldn\'t pay. The Toll Kings ride in!'); } F.att = Math.min(100, F.att + 6); S.nextRaid = Math.max(S.nextRaid, S.day + S.hour / 24 + 4); result('👑 TOLL PAID', 'They take the scrap and leave. No raids for 4 days.'); } },
     { label: 'Refuse', fn: () => { F.att = Math.max(-100, F.att - 15); F.defied = (F.defied || 0) + 1; spawnRaid('toll'); if (F.defied >= 2 && !F.leaderDue) { F.leaderDue = true; storyLater('toll3', 2); } result('👑 THEY ATTACK', F.defied >= 2 ? 'The riders charge. One of them shouts back: "The Collector will hear of this!"' : 'The riders charge the Haven!'); } }] }); } },
   toll3: { chain: true, run: () => { const F = fac('toll'); spawnRaid('toll', true); showEventPopup({ title: '👑 THE TOLL COLLECTOR', text: 'The leader of the Toll Kings rides in himself, a road sign for a shield, with his best riders. Beat him and the Toll Kings are finished on this road.', stage: { scene: 'danger', head: 'The Toll Collector', icon: '👑', badge: 'Leader', hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: 'The Toll Collector attacks!' }); F.leaderDue = false; } },
@@ -4225,8 +4226,9 @@ const LV_RUSH = 25;   /* renown for 12 game hours off the timer */   /* 3D.129 o
 const lvHours = (to) => LV_HOURS[to] ?? 144;
 const needsBanner = (l = S.lvl || 1) => l === 5 || l === 10 || l === 15;   /* 3D.113 a Banner also opens the City era */
 const bannersFree = () => (S.banners || []).filter((b) => !b.used).length;
-const BANNER_ROUTES = { stronghold: { icon: '🏚', name: 'Stronghold Banner', how: 'Clear a stronghold (the Overrun Clinic on the Explore map)' }, faction: { icon: '⚔', name: 'Victory Banner', how: 'Defeat a faction (coming)' },
-  ally: { icon: '🤝', name: 'Alliance Banner', how: 'Make an ally of a faction (coming)' }, civic: { icon: '🏛', name: 'Civic Banner', how: 'Finish a civic project: a Trading Post, or the Radio Tower' } };
+const BANNER_ROUTES = { stronghold: { icon: '🏚', name: 'Stronghold Banner', how: 'Clear a stronghold (the Overrun Clinic on the Explore map)' }, faction: { icon: '⚔', name: 'Victory Banner', how: 'Beat a faction leader in a raid' },
+  ally: { icon: '🤝', name: 'Alliance Banner', how: 'Make an ally of a faction (Greenwater, the Foundry, Quarantine Command or Helix)' }, civic: { icon: '🏛', name: 'Civic Banner', how: 'Finish a civic project: a Trading Post, or the Radio Tower' },
+  community: { icon: '🎪', name: 'Community Banner', how: "Hold the Founders' Festival (Town events: Haven level 8, 12 people, mood ♥60)" } };   /* 3D.173: 'coming' was out of date; the festival is the second non-combat route */
 function earnBanner(route, why) {   /* a Banner raised over the Haven; one is spent on each era gate */
   S.banners = S.banners || []; if (S.banners.some((b) => b.route === route && !b.used && route !== 'stronghold')) return false; const R = BANNER_ROUTES[route];
   S.banners.push({ route, day: S.day, used: false }); SFX('rankup'); renownGain(8, R.name);
@@ -4296,18 +4298,21 @@ const TOWN_EVENTS = {
   market: { name: 'Swap Market', icon: '🧺', cost: { mat: 6 }, ren: 8, sat: 4, hours: 4, desc: 'A little food and water comes in. One person\'s junk is another person\'s dinner.', gain: { food: 3, water: 3 } },
   sports: { name: 'Sports Day', icon: '🏃', cost: { food: 3, water: 4 }, ren: 7, sat: 5, hours: 3, desc: 'Everyone gets some training in. The three-legged race is now a two-legged race.', train: 30 },
   feast: { name: 'Harvest Feast', icon: '🍲', cost: { food: 8, water: 4 }, ren: 12, sat: 12, hours: 4, rank: 2, desc: 'Hunger and mood restored. Seconds for everyone.' },
+  festival: { name: "Founders' Festival", icon: '🎪', cost: { food: 20, water: 15, mat: 10 }, ren: 15, sat: 10, hours: 6, lvl: 8, people: 12, mood: 60, banner: true, desc: 'Raises a Community Banner (opens the next era). Needs Haven level 8, 12 people and average mood ♥60. Bunting made of old maps.' },   /* 3D.173 owner: a second Banner route that is not a fight */
   caravan: { name: 'Trade Caravan', icon: '🐫', cost: { food: 12, water: 10 }, ren: 6, sat: 3, hours: 4, rank: 3, desc: 'Takes surplus food and water and pays in scrap. Camels. Don\'t ask.', gain: { mat: 10 } },   /* V2.38: a use for a full pantry */
 };
 function holdEvent(k) {
-  const e = TOWN_EVENTS[k]; if (!e || (e.rank || 1) > S.rank) return false;
+  const e = TOWN_EVENTS[k]; if (!e || (e.rank || 1) > S.rank) return false; { const why = evLock(e); if (why) { say(why); return false; } }
   if ((S.lastEventDay ?? -1) >= S.day) { say('Only one event a day.'); return false; }
   if (!Object.entries(e.cost).every(([r, v]) => S[r] >= v)) { say('Not enough supplies for ' + e.name + '.'); return false; }
   for (const [r, v] of Object.entries(e.cost)) S[r] -= v;
   S.lastEventDay = S.day; S.eventsHeld = (S.eventsHeld || 0) + 1; S.eventOn = { k, until: nowH() + e.hours };
   for (const q of S.sv) { if (q.hp <= 0) continue; q.sat += e.sat; moodAdd(q, e.sat, e.name); if (k === 'feast') q.hunger = Math.max(0, q.hunger - 40); if (e.train) { q.tp = q.tp || {}; const st = (JOB_STATS[q.job] || ['str'])[0]; q.tp[st] = (q.tp[st] || 0) + e.train; } }
   if (e.gain) for (const [r, v] of Object.entries(e.gain)) S[r] += v;
-  renownGain(e.ren, e.name); SFX('event'); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); checkRank(); return true;
+  renownGain(e.ren, e.name); SFX('event'); banner(e.icon + ' ' + e.name.toUpperCase()); say(e.name + ' is on! ' + e.desc, true); if (e.banner) setTimeout(() => earnBanner('community', `${S.sv.length} people turned out for the ${e.name}. The Haven is a town now.`), 900); checkRank(); return true;
 }
+const evMood = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.sat || 0), 0) / S.sv.length : 0);
+function evLock(e) { if (e.lvl && (S.lvl || 1) < e.lvl) return `Opens at Haven level ${e.lvl}`; if (e.people && S.sv.length < e.people) return `Needs ${e.people} people (you have ${S.sv.length})`; if (e.mood && evMood() < e.mood) return `Needs average mood ♥${e.mood} (now ♥${Math.round(evMood())})`; if (e.banner && (S.banners || []).some((b) => b.route === 'community' && !b.used)) return 'A Community Banner is already flying'; return ''; }
 function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   closeP(); endBuildMode(true); upTab = tab || upTab; const c = rankConds();
   let h = tabBar([['rank', 'Upgrade', 'rating'], ['events', 'Events', 'events']], upTab);
@@ -4324,8 +4329,8 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   } else {
     const done = (S.lastEventDay ?? -1) >= S.day;
     h += `<div class="sm" style="margin-bottom:6px">Hold one event a day. Events give Renown and cheer everyone up${S.eventOn && nowH() < S.eventOn.until ? ` · <b>${TOWN_EVENTS[S.eventOn.k].name}</b> is on now` : ''}. Held so far: <b>${S.eventsHeld || 0}</b>.</div>`;
-    h += Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, can = !lk && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
-      return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small>${e.gain ? `<br><small style="color:var(--good)">You get: ${costText(e.gain)}</small>` : ''}</span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
+    h += Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, why = lk ? '' : evLock(e), can = !lk && !why && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
+      return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small>${e.gain ? `<br><small style="color:var(--good)">You get: ${costText(e.gain)}</small>` : ''}${why ? `<br><small style="color:var(--bad)">${why}</small>` : ''}</span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
   }
   $('ib').innerHTML = h; showPanel('Upgrade Town');
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showUpgrade(b.dataset.tab); });
@@ -4768,6 +4773,8 @@ const EXP_ENC = {
     { id: 'fight', label: 'Clear the aisles', chk: 'fight', tr: { brave: .08 }, win: { mat: [2, 3], cloth: [1, 2], xp: 5 }, fail: 'hurt2', winT: 'The squad cleared the aisles: {got}.', failT: 'The rats were the easy part: {who} got hurt.' },
     { id: 'leave', label: 'Leave the back aisles', safe: true, winT: 'The squad left the rats to it.' }] },
 };
+/* 3D.173 owner: every trip card offers turn back (ends the trip safely, with what they have so far; on medium/high the walk home keeps its small risk) */
+for (const E of Object.values(EXP_ENC)) if (!E.opts.some((o) => o.recall)) E.opts.push({ id: 'back', label: 'Turn back now', safe: true, recall: true, winT: 'The squad turned for home with what they had.' });
 const EXP_ENC_CHANCE = .55, EXP_DANGER = { low: 5, medium: 8, high: 12 }, EXP_CHK_PEN = { low: 0, medium: .06, high: .12 };
 const encLive = (t) => t.members.filter((m) => m.hp > 0 && !m.collapsed);
 function encOdds(t, o) {   /* → { chance, who } */
