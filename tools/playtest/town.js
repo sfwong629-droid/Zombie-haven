@@ -19,7 +19,7 @@
     const st = Z.supplyStats ? Z.supplyStats() : {}, conds = Z.rankConds ? Z.rankConds() : null;
     const out = {
       day: S.day, hour: S.hour, night: Z.isNight(), level: S.lvl || 1, renown: Math.round(S.ren || 0),
-      nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, minutesLeft: Math.round(S.lvUp.left / 60000) } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : c.sub ? ' (' + c.sub + ')' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
+      nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, gameHoursLeft: Math.ceil(S.lvUp.left), renownToFinishNow: Math.ceil(S.lvUp.left / 12) * 25 } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : c.sub ? ' (' + c.sub + ')' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
       supplies: { food: r1(S.food), water: r1(S.water), cap: Z.supplyCap(), foodPerDay: r1(st.fNet), waterPerDay: r1(st.wNet), foodDaysLeft: r1(st.fDays), waterDaysLeft: r1(st.wDays) },
       materials: { scrap: Math.round(S.mat), wood: Math.round(S.wood || 0), stone: Math.round(S.stone || 0), cloth: S.cloth || 0, meds: S.meds || 0, fuel: Math.round(S.fuel || 0), ammo: S.ammo || 0, research: Math.round(S.rp || 0) },
       people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ${q.mode}${q.mode === 'down' ? ` (bleeds out in ${Math.max(0, Math.round((q.bleed || 0) / 1000))} game h; ${q.rescuer ? q.rescuer.name + ' is coming' : 'NO rescuer'})` : ''}${q.trait ? ' · ' + q.trait : ''}`),
@@ -78,7 +78,7 @@
 
   const ACT = {
     help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours: the town is frozen, nobody heals and nothing attacks; trays fill and a level upgrade keeps counting)',
-      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup',
+      'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup', 'rushlevel [all]  (spend 25 renown per 12 game hours off the level timer; all = finish now)',
       'expedition DEST RISK [NAME,NAME..]', 'stronghold DEST [NAME,NAME..]', 'answer N  (button N on the card)', 'accept | decline  (move-in request)', 'buy N | trade N  (trader)',
       'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart',
       'EMERGENCIES: rescue NAME | bandage NAME | radiohelp | militia | defend',
@@ -112,6 +112,7 @@
     event: (a) => ({ ok: !!Z.holdEvent(a[0]) }),
     expand: () => { const ok2 = !!Z.expandTerritory(); return { ok: ok2, why: ok2 ? '' : state(true).expandLand }; },
     levelup: () => ({ ok: Z.upgradeTown() !== false, upgrading: !!S.lvUp }),
+    rushlevel: (a) => ({ ok: !!(Z.lvRushX && Z.lvRushX(a[0] === 'all')), level: S.lvl, left: S.lvUp ? Math.ceil(S.lvUp.left) + ' game h' : 'done', renown: Math.round(S.ren) }),   /* 3D.166 spend renown: 12 game hours off, or `rushlevel all` to finish now */
     expedition: (a) => { const ids = a[2] ? a[2].split(',').map((n) => who(n)).filter(Boolean).map((q) => q.id) : Z.expAutoSquad(3).map((q) => q.id); return Z.startExpedition(a[0], a[1] || 'low', ids); },
     stronghold: (a) => { const ids = a[1] ? a[1].split(',').map((n) => who(n)).filter(Boolean).map((q) => q.id) : Z.expAutoSquad(4).map((q) => q.id); return Z.startStronghold(a[0], ids); },
     answer: (a) => { const bs = [...document.querySelectorAll('#eventModal button')]; const b = bs[+a[0]]; if (!b) return { ok: false, why: 'no such button' }; const t = b.innerText.trim(); b.click(); return { ok: true, pressed: t, next: popup() }; },

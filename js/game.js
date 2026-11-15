@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.165', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.166', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3378,7 +3378,7 @@ let hiddenAt = 0;
 const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 8;
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
-  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms);   /* 3D.104 a level upgrade keeps going while away (at 1x) */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();
+  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms / 60000 / AWAY_MIN_PER_H);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();
   if (hours < 1) return null; const got = {};
   for (let h = 0; h < hours; h++) for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
@@ -4134,8 +4134,9 @@ const rankOfLvl = (l) => Math.min(5, 1 + Math.floor((l - 1) / 3));
 const terrOfLvl = (l) => (l >= 16 ? 4 : l >= 11 ? 3 : l >= 7 ? 2 : l >= 4 ? 1 : 0);   /* 12x12 (L1-3), 16x18 (L4-6), 20x23 (L7-10), 24x26 (L11-15) */
 /* 3D.128 pacing (owner: the start should feel quick, later levels take effort and a check-in a day). Real hours per level; 3x faster while playing:
    level 2 in 3 minutes of play, 3 in 6, 4 in 35, 5 in 50, 6 in 60; from 7 on it is a wait you come back to (3.5 h, 4 h, 6 h, 8 h, then 12 h, then 16 h in the City). */
-const LV_HOURS = [0, 0, .15, .3, 1.75, 2.5, 3, 3.5, 4, 6, 8, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16];   /* 3D.129 owner: levels 4 and 5 slowed (35 and 50 minutes of play, were 10 and 20) so rank 2 and its bigger hordes arrive around day 10-12, not day 6 */
-const lvHours = (to) => LV_HOURS[to] ?? 12;
+const LV_HOURS = [0, 0, 6, 12, 48, 60, 72, 84, 96, 108, 120, 144, 144, 144, 144, 144, 168, 168, 168, 168, 168];   /* 3D.166 owner (play-test round 1): the level timer counts GAME hours (1 game hour = 1000 ticks), the middle levels are shorter (L4 was ~126 game h, L5 ~180, L10 ~576), and renown can speed it up (LV_RUSH). Away time still counts: every AWAY_MIN_PER_H real minutes away = 1 game hour, with no cap */
+const LV_RUSH = 25;   /* renown for 12 game hours off the timer */   /* 3D.129 owner: levels 4 and 5 slowed (35 and 50 minutes of play, were 10 and 20) so rank 2 and its bigger hordes arrive around day 10-12, not day 6 */
+const lvHours = (to) => LV_HOURS[to] ?? 144;
 const needsBanner = (l = S.lvl || 1) => l === 5 || l === 10 || l === 15;   /* 3D.113 a Banner also opens the City era */
 const bannersFree = () => (S.banners || []).filter((b) => !b.used).length;
 const BANNER_ROUTES = { stronghold: { icon: '🏚', name: 'Stronghold Banner', how: 'Clear a stronghold (the Overrun Clinic on the Explore map)' }, faction: { icon: '⚔', name: 'Victory Banner', how: 'Defeat a faction (coming)' },
@@ -4163,10 +4164,17 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' });
   if (needsBanner() && !bannersFree()) { const how = 'The next level needs a Banner over the Haven. Two ways to raise one: clear the Overrun Clinic on the Explore map, or finish a Trading Post or a Radio Tower.'; radio('dj', how, { key: 'banner', level: 'important' }); logEvent('🚩 ' + how, 'important'); }   /* 3D.162 play-test: two testers sat at level 5 for 13 days without learning what a Banner is (it was only in the Upgrade screen) */ saveGame(); ui();
 }
-function lvTick(ms) {   /* ms of real time; while playing the timer runs 3x faster */
-  if (!S.lvUp) return; S.lvUp.left -= ms; if (S.lvUp.left <= 0) levelUpDone();
+function lvFix() { const u = S.lvUp; if (u && !u.gh) { const f = u.total > 0 ? Math.max(0, u.left) / u.total : 0; u.total = lvHours(u.to); u.left = u.total * f; u.gh = true; } }   /* a save from before 3D.166 kept real milliseconds */
+function lvTick(h) {   /* h game hours */
+  if (!S.lvUp) return; lvFix(); S.lvUp.left -= h; if (S.lvUp.left <= 0) levelUpDone();
 }
-const lvLeftText = () => { if (!S.lvUp) return ''; const m = Math.max(0, Math.ceil(S.lvUp.left / 60000 / 3)); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+const ghText = (h) => { h = Math.max(0, Math.ceil(h)); const d = Math.floor(h / 24), r = h % 24; return d ? `${d} day${d > 1 ? 's' : ''}${r ? ' ' + r + ' h' : ''}` : `${r} h`; };
+const lvLeftText = () => { if (!S.lvUp) return ''; lvFix(); return ghText(S.lvUp.left); };
+const lvRushCost = (h) => Math.ceil(Math.max(0, h) / 12) * LV_RUSH;
+function lvRush(all) {   /* spend renown: 12 game hours off, or finish now */
+  const u = S.lvUp; if (!u) return false; lvFix(); const h = all ? u.left : Math.min(12, u.left), c = lvRushCost(h); if ((S.ren || 0) < c) { say(`Not enough renown: ${c} needed.`, true); return false; }
+  S.ren -= c; u.left -= h; say(`🏗 ${c} renown spent: the builders work through the night (${ghText(h)} sooner).`, true); if (u.left <= .01) levelUpDone(); saveGame(); ui(); return true;
+}
 const scrapCap = () => 100 + 25 * (S.lvl || 1) + 40 * storeTiers();   /* 3D.104 owner: stockpiles are limited by level */
 function rankUnlocks(r) {   /* V2.39: what reaching star r opens up (buildings, walls, events) and what it costs (threat) */
   const b = Object.entries(DEFS).filter(([, d]) => (d.rank || 1) === r).map(([k, d]) => d.name + (d.res && !researched(d.res) ? ` (after ${RESEARCH[d.res].name})` : ''));
@@ -4193,8 +4201,8 @@ function checkRank() {
 }
 function upgradeTown() {   /* 3D.104 starts the level-up timer; the level arrives when it runs out */
   const c = rankConds(); if (!c || !c.every((r) => r.ok) || S.lvUp) return false; const to = (S.lvl || 1) + 1;
-  S.lvUp = { to, left: lvHours(to) * 3600000, total: lvHours(to) * 3600000, banner: needsBanner() }; S.rankReady = false; S.lvStep = 3;
-  SFX('build'); banner('🏗 UPGRADING TO LEVEL ' + to); say(`The Haven is working toward level ${to}: about ${lvLeftText()} while you play (3x slower while away).`, true); saveGame(); ui(); return true;
+  S.lvUp = { to, left: lvHours(to), total: lvHours(to), gh: true, banner: needsBanner() }; S.rankReady = false; S.lvStep = 3;
+  SFX('build'); banner('🏗 UPGRADING TO LEVEL ' + to); say(`The Haven is working toward level ${to}: ${lvLeftText()} of game time (it keeps going while the app is closed, and renown can speed it up).`, true); saveGame(); ui(); return true;
 }
 /* V2.33 town events (like DV2's): cost supplies, run for a few hours, give Renown and mood, and count toward the next star */
 const TOWN_EVENTS = {
@@ -4220,11 +4228,11 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   if (upTab === 'rank') {
     h += `<div class="ribbon"><div class="rname">${esc(S.townName || 'Zombie Haven')}</div><div class="rstars" style="font-size:22px;letter-spacing:0">Level ${S.lvl || 1} <span style="font-size:15px;opacity:.85">· Era ${eraOf().n}: ${eraOf().name}</span></div></div>`
       + `<div class="card"><div class="row" style="gap:3px">${Array.from({ length: LV_MAX }, (_, i) => `<span style="flex:1;height:9px;border-radius:3px;background:${i < (S.lvl || 1) ? 'var(--gold)' : 'rgba(255,255,255,.15)'};${[4, 9].includes(i) ? 'margin-right:5px' : ''}"></span>`).join('')}</div><div class="sm">Banners: ${(S.banners || []).length ? S.banners.map((b) => BANNER_ROUTES[b.route].icon + (b.used ? ' (raised)' : ' (ready)')).join(' ') : 'none yet'}</div></div>`;
-    if (S.lvUp) { const f = 1 - S.lvUp.left / S.lvUp.total; h += `<div class="card"><b>🏗 Upgrading to level ${S.lvUp.to}</b>${progRow('Done', Math.round(f * 100), 100)}<div class="sm">About ${lvLeftText()} left while you play (it keeps going, slower, while you are away).</div></div>`; }
+    if (S.lvUp) { const f = 1 - S.lvUp.left / S.lvUp.total; h += `<div class="card"><b>🏗 Upgrading to level ${S.lvUp.to}</b>${progRow('Done', Math.round(f * 100), 100)}<div class="sm">${lvLeftText()} of game time left (it keeps going while the app is closed).</div><div style="display:flex;gap:6px;margin-top:6px"><button class="act" id="uRush" ${(S.ren || 0) >= lvRushCost(Math.min(12, S.lvUp.left)) ? '' : 'disabled'}>⏩ 12 h sooner · ${lvRushCost(Math.min(12, S.lvUp.left))} renown</button><button class="act go" id="uRushAll" ${(S.ren || 0) >= lvRushCost(S.lvUp.left) ? '' : 'disabled'}>Finish now · ${lvRushCost(S.lvUp.left)} renown</button></div></div>`; }
     if (!c) h += '<div class="card" style="text-align:center">The Haven is at the highest level.</div>';
     else {
       if (!S.lvUp) h += `<div class="conds"><div class="ctitle">Level ${(S.lvl || 1) + 1} · step ${Math.min(3, S.lvStep || 0)} of 3</div>` + c.map((r) => `<div class="crow"><span class="cic">${uiIcon(r.ic)}</span><span class="cname">${r.name}${r.sub ? `<small>${r.sub}</small>` : ''}</span>${r.wide ? '' : `<span class="cneed">${r.need}</span>`}<span class="chave${r.wide ? ' wide' : ''}">${r.have}</span><span class="cok ${r.ok ? 'y' : 'n'}">${r.ok ? '✔' : '✘'}</span></div>`).join('') + '</div>';
-      { const nl = (S.lvl || 1) + 1, nr = rankOfLvl(nl), un = nr > (S.rank || 1) ? rankUnlocks(nr) : [`+2 scrap, +2 food, +2 water`]; if (terrOfLvl(nl) > terrOfLvl(S.lvl || 1)) un.unshift('More land for the Haven'); un.push(`Upgrade time ${lvHours(nl).toFixed(1)} h (3x faster while you play)`); h += `<div class="card"><b>Level ${nl} brings</b>${un.map((x) => `<div class="sm">• ${esc(x)}</div>`).join('')}</div>`; }
+      { const nl = (S.lvl || 1) + 1, nr = rankOfLvl(nl), un = nr > (S.rank || 1) ? rankUnlocks(nr) : [`+2 scrap, +2 food, +2 water`]; if (terrOfLvl(nl) > terrOfLvl(S.lvl || 1)) un.unshift('More land for the Haven'); un.push(`Upgrade time ${ghText(lvHours(nl))} of game time (renown can speed it up)`); h += `<div class="card"><b>Level ${nl} brings</b>${un.map((x) => `<div class="sm">• ${esc(x)}</div>`).join('')}</div>`; }
       if (!S.lvUp) h += `<div style="text-align:center"><button class="act go" id="uDo" ${c.every((r) => r.ok) ? '' : 'disabled'}>Start upgrading to level ${(S.lvl || 1) + 1}</button></div>`;
     }
   } else {
@@ -4235,7 +4243,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   }
   $('ib').innerHTML = h; showPanel('Upgrade Town');
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showUpgrade(b.dataset.tab); });
-  const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); };
+  const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); }; for (const [id, all] of [['uRush', false], ['uRushAll', true]]) { const b = $(id); if (b) b.onclick = () => { lvRush(all); showUpgrade('rank'); }; }
   $('ib').querySelectorAll('[data-ev]').forEach((b) => { b.onclick = () => { if (holdEvent(b.dataset.ev)) showUpgrade('events'); }; });
 }
 let upTab = 'rank';
@@ -6649,7 +6657,7 @@ function simTick() { Wd.touch();
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
   if (S.sh) { S.shAcc = (S.shAcc || 0) + (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) / simSpeed; while (S.sh && S.shAcc >= 1) { S.shAcc--; shTick(); } if (S.sh && S.sh.practice) return; S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* 3D.115 the squad's own pace, not the town speed */   /* practice: the town waits */   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(STEP * 3); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(.001); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
