@@ -1,0 +1,183 @@
+# New player notes · build 3D.169 · seed 21
+Session clock: S1 = D1 08:00 -> D2 20:00 (36h), then away 10.
+
+- D1 08: start food 14 water 14 (3.5 days), wood 12 scrap 16. 4 people, mood all "unhappy" (♥8-17) "no House of their own". Tip cards for Walker/Crawler. No mission panel visible in state, only Dusk Radio in news.
+- D1 08: built farm + barrel (radio said barrel first). Wood -> 5.
+- D1 10: Lena to Abandoned Houses low. Cellar card: picked lock 75% -> ok. Back D1 12: +6 food +7 water +4 cloth + Hiking Backpack. Nice first trip, felt good.
+- D1 12: radio: kill three walkers; someone walking up the road.
+- D1 14: Maya (Medic, Big Eater) wants in -> welcomed. D1 19: "Amy can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off..." -- confusing, I never built walls.
+- D2 00: day report "Open staff slot: Rain Barrel" -- don't know how to staff it, no Water job in job list.
+- D2 01: Rosa (Guard, Big Eater) joined. D2 04: level-up ready; started levelup D2 06 (6h).
+- D2 06: Lena+Rosa -> Lumber Yard LOW risk. D2 08: horde card only listed "Squad: Rosa"; picked Turn back (30/35% odds). Report: "Stage 1: Lena did not make it." Lena (my only scavenger, the one who made D1 fun) DEAD on a LOW risk trip in stage 1, no card, no choice. +14 wood. Rosa collapsed, carried home. This felt awful and unfair; "Low risk" means nothing to me now.
+- D2 07: goal "Produce 20 food and water: done! Claim the reward" -- no claim command I can see.
+- D2 09: Rosa down "bleeds out in 0 game h" -> bandage -> 20h. Maya got her up D2 11.
+- D2 12: Noah (Cook) joined. Level 2 at D2 12. Built scrapyard+canteen, bench+tent. Bought a cat (6 food 6 water) from trader.
+- D2 16: food +-0 /day, water -2.1/day (10 days). Wood 10 -> 3 after builds. Scrap 10.
+- D2 18: workbench gave +15 research.
+- D2 20: END SESSION 1. away 10.
+## Session 2 (D2 20 -> D4 08)
+- away 10h: "kept their shifts for 8 game hours", trays: food 3 water 2 scrap 1 research 2.
+- D2 23: Eli (Guard, scrounger) joined. D3 00 day report "Open staff slot: Rain Barrel, Scrapyard, Workbench" -- still don't know how to fill them.
+- D3 06: levelup to 3 started (12h). Wood 1! Everything "cannot afford". Water 4.5 days.
+- D3 06: "MILITIA: SURVIVORS BAND TOGETHER" news line, twice, no explanation. ???
+- D3 06: Marcus+Eli+Rosa lumberyard low: +17 wood, Marcus hurt (to 39%). Left the 35% sawmill alone.
+- D3 08: Amy sick card, treated 2 scrap 3 water.
+- D3 10: "Water... about 1.8 days left". Built 1 barrel; 2nd barrel refused: "no spot in the build area will take it ... Tile occupied 14, wall in the way 12, Entrance blocked 10". But at D3 15 a Garden Plot DID fit. Confusing. Expand needs 60 renown.
+- D3 10: research blades (19+? -> done D3 11).
+- D3 10: Eli+Rosa houses low: +3 food +5 water +4 cloth.
+- D3 12: June (Engineer) joined -> staffs Workbench automatically.
+- D3 15: radio request: 2nd garden plot -> built.
+- D3 15: Eli+Rosa pharmacy low; pried cabinet 47% ok. +6 scrap +5 meds + Scope Goggles. Rosa hurt.
+- tool: cardsRead strips some emoji -> "Found /  1 and /  2" (D3 13 report) unreadable; the same report shown as card had icons.
+- D3 18: Level 3. Renown 67. Radio: "upgrade the Camp to a Lodge ... Tap your Camp, then Upgrade" -> `upgrade hq2` says "not unlocked yet", canUpgrade empty. Radio told me to do something I can't. Confusing.
+- D3 22: levelup to 4 started: 2 DAYS of game time (was 6h, 12h). Expanded land (20 wood 8 scrap; renown not spent, 70 after). 1 barrel fit, 2nd again "no spot".
+- D3 22 / D4 02 / D4 03: "X is trapped in the Camp/Tent while a runner breaks in" - nobody hurt.
+- D4 00: "WATER: under 1 day left" then 1.3 days. Panic. Guessed that Farmers staff barrels: job Maya Farmer D4 02 -> "Maya will staff the Rain Barrel". Then Eli Farmer. Water -5.2 -> -1.5/day by D4 08 (5.3 days). Nobody told me barrels need Farmers; the report just said "Open staff slot".
+- D4 06 morning: 9 walkers stopped, 2 buildings damaged (92). Marcus+Rosa friends, Ben+Maya friends.
+- D4 08: Radio signal card (send Rosa, 2 days, 3 food 3 water) -> ignored, water too tight.
+- D4 08: END SESSION 2. away 14.
+## Session 3 (D4 08 -> D5 20)
+- away 14h -> level 4 done on return (Lodge unlocked). Trays food 6 water 6 research 4.
+- D4 08: wood 1 again. Marcus+Rosa lumberyard: +13 wood (wedged logs 53% ok). Rosa+June lumberyard: left nest, turned back from horde -> +9 wood.
+- D4 08: radio "threat ceiling" + traps tips; still "MILITIA: SURVIVORS BAND TOGETHER" spam (4 times today).
+- D4 12: 4 raiders. "Everyone turns out". Amy and Noah collapsed (0%, 2%), Ben to 50%. Bandaged Noah, both carried to Medical Tent by D4 15. Nobody died. Tense but okay.
+- D4 13: upgrade hq2 (Lodge) 20 wood 5 scrap.
+- D4 17: Lodge done. Tier 2 list is long (25 buildings). Ben, Marcus asked to become residents -> accepted (don't know what it changes).
+- D4 19: built Lumber Camp (10 wood). But day reports keep saying "Open staff slot: ... Lumber Camp" - no idea which job staffs it.
+- D5 06 morning: 11 walkers stopped, nobody hurt. Lots of friendships overnight - nice cozy touch.
+- D5 08: radio finally hints "scrapyard has no Scavenger: change someone's profession". Useful! Should have come on D2.
+- D5 08 BUG: answered "Wedge it first" (Marcus 59%), tool said pressed. Report D5 09: "STACKED LOGS SHIFT: no orders came, so Rosa (Big Eater) chose 'Go round the long way'". My order was ignored. +13 wood anyway.
+- D5 09: tent + tent->cabin upgrade.
+- D5 12: Amy resident. D5 17: Theo (Engineer L2) joined -> 9/9 people, level 5 ready. Renown 147 (never spent any, don't know what for besides rushing).
+- D5 18: "Theo can't reach a storage door with their load" again - I have walls 12 by default; never touched them.
+- D5 20: levelup to 5. Food +-0, water -2.9 (7.9 days). Wood 11 scrap 22 research 18.
+- D5 20: END SESSION 3. away 10.
+## Session 4 (D5 20 -> D7 08)
+- D5 20: level 5. Next needs a Banner: clinic stronghold (power 175 vs my ~43) or Trading Post. Trading Post = clear path, good signposting.
+- D5 20: job Theo Scavenger -> staffs Scrapyard. D6 05 Omar (Scavenger) joined -> "will staff the Lumber Camp". So Scavengers staff Lumber Camp. Learned by accident.
+- D6 06 morning: 14 walkers stopped, nobody hurt, wall section broke at D6 00 (auto repair).
+- D6 08: Toll Kings want 16 scrap -> paid (28->12). "No raids for 4 days." Felt like the safe choice, no idea what refusing does.
+- D6 08: radio "rain Barrel has no Farmer: change someone's profession" -- helpful hint.
+- D6 12: radio: boss comes with the horde at 21:00.
+- D6 12: built Trading Post (14w 5s 2c) -> D6 16 built, Banner raised. D6 18 Sana (Civilian) joined -> 11/11, job Farmer. Level 6 started D6 18. Policy defend for boss night. Research medicine.
+- Residents: Rosa D6 09, Maya D6 14.
+- D6 21: BOSS night: "Gatling Boss" + 6 zombies + new Bloated. Theo down D7 00 (rescued), Marcus down D7 05 (bandaged), Rosa 33%, Marcus 30%. Tent fell. Morning D7 06: 4 walkers stopped, 3 buildings damaged (144), hurt Rosa/Marcus/Theo. Nobody died. Felt like a real fight, but I just watched news lines, had no decisions.
+- D7 06 TEXT BUG: boss announced as "Gatling Boss" at D6 21 but dawn says "The Mutant Boss slunk back into the wasteland".
+- D7 06: storm +8 water. Water now fine (40 days), food +1.4.
+- D7 08: level 6 timer said 58 game hours left (!). I had 221 renown with nothing else to spend it on -> rushlevel all for 125 -> Level 6 instantly. Renown 106.
+- June ♥4 "unhappy · no House of their own, no friends yet" since D3 - she's the only one who never makes friends; what is a "House of their own"? Never offered as a building.
+- D7 08: wood 2 scrap 5. Broke again after Trading Post.
+- D7 08: END SESSION 4. away 14.
+## Session 5 (D7 08 -> D8 20)
+- D7 08: wood 2 again. Omar+Eli lumberyard low -> +15 wood. Built tent + tent->cabin. Beds 14.
+- D7 20 Eli resident. D8 00: Amy+Ben couple: "They may start a family when the Haven has room (more Houses = more room)" -- there is NO House in my build list. Same "no House of their own" in every mood line since D1.
+- D8 00 WEEK 1 REVIEW grade B 70/120: Population 20, Defense 2/20, Supplies 17, Buildings 17, Happiness 4/20, Research 9. +12 renown +8 scrap. Defense 2 and Happiness 4 surprised me - nothing told me how to raise them.
+- D8 01: tent fire, put out by Amy/Maya/June.
+- D8 06: Della (Farmer) joined -> 12/12 people, 18/18 buildings -> levelup 7. Crafted machete (9 scrap) -> Marcus.
+- D8 06: level 7 timer: 84 game hours, 175 renown to rush (had ~118). Long wait.
+- D8 06: Theo+Della lumber: +11 wood, Della collapsed carried home (bandaged). D8 08 supply drop: Rosa+Marcus fetched +11 water.
+- D8 09: `upgrade workshop` -> "the Workshop is bigger: no room around the old one (clear a neighbouring tile)". There is no demolish/move. STUCK on Workshop. Built 2nd bench + 2nd medic tent instead.
+- D8 08 radio "the Haven can reach the next level" while it is already upgrading - misleading.
+- D8 13: Theo+Eli pharmacy: treated sick stranger (41%) -> success, Lucky Charm +3 renown. Nice moment. +4 scrap +3 meds + Running Shoes.
+- D8 17: Omar collapsed (dog), bandaged, up D8 18.
+- D8 20: Nico (Farmer L2, "Owes Ben a sandwich") joined. END SESSION 5. away 10.
+## Session 6 (D8 20 -> D10 08)
+- After away 10h, level 7 timer went from ~70h to 10h left. Away time seems to count a lot more than played time? Fine by me but odd.
+- D9 00: LEGACY "A real town" 1 of 8. "Complete 4 and reach ★5 to call for the convoy." -- what is ★5? Never seen a star rating anywhere.
+- D9 00: Cabin fell in the night (Sana, Nico slipped out). D9 06: level 7 (Fort unlocked). 16 walkers stopped.
+- D9 08: radio "10 empty beds: choose who moves in" -- state says beds 13/14. Wrong number.
+- D9 08: Feast (6 food 6 water) -> +15 ♥ everyone. Lovely.
+- D9 08: research salvage. Theo+Omar lumber: sneaked round horde 57% ok, +17 wood.
+- D9 11: level 8 timer 96 game h / 200 renown. Had 248 -> rushed. Level 8 instantly. Renown 60. Building quarry + farm->field. Fort needs 30 stone + 2 fuel.
+- Scrap went from always-broke to 36 by D9 08 (scrapyard staffed + legacy +10).
+- D9 12: boss warning 21:00. Crafted nail bat -> Rosa. `post` ok (guard post) - no visible feedback afterwards.
+- D9 21: BOSS Stalker + 8 zombies. Marcus & Omar collapsed D9 22, boss defeated D9 22 "the rest of the night is quiet". Both bandaged, recovered by D10 08. Good fight, no deaths.
+- D10 00: BABY Ivy born to Amy+Ben, "will grow up in the Houses and join in 5 days". Sweet. (Still no Houses building I can see.)
+- D10 00: LEGACY 2/8 Far Horizons (+15 renown +10 scrap).
+- D10 07: job Sana Engineer hoping she'd staff the new Quarry -> she staffed the Workbench instead. Quarry still unstaffed (stone 2).
+- D10 08: 7 raiders sneaking in -- exactly when the 4-day toll protection ended (paid D6 08).
+- D10 08: food +4.4/day, water 27 days, scrap 42, wood 7. END SESSION 6. away 14.
+## Session 7 (D10 08 -> D11 20)
+- D10 08-12: 7 raiders (6 in town at D10 11). Della + Rosa collapsed, rescued. Crafted spear (Theo) + machete (Omar). Raiders gone by D10 15.
+- D10 15: job Nico Engineer -> "Nico will staff the Quarry" (worked this time). 
+- D10 15: Marcus+Omar+Theo Old Quarry MEDIUM (power 135). Cards showed "Squad: Marcus · Theo" - Omar silently missing from the card and from the state people list. Report: "Stage 1: Omar collapsed and is being carried." Same thing that happened with Lena on D2, but this time he lived. +43 stone. The hidden collapse is scary - I thought he was dead.
+- D10 20: Cleo (Scavenger L3) joined. D10 22 Cleo+Omar collapsed at night, both bandaged, OK.
+- D10 23: levelup to 9 started: "4 days 12 h of game time". 225 renown to rush, have 170.
+- D11 00: duplicate news "Noah and Eli are now close friends" (D10 23 and D11 00).
+- D11 08: research walls. Supply drop: +9 scrap.
+- D11 14: Rafe (Guard L3) joined. Theo+Cleo lumber +10 wood + Lucky Charm; Theo collapsed (carried).
+- D11 16: food -5.8/day, water -6.4/day (6 days). Made June + Sana Farmers (staff barrels). Started Lodge->Fort (20w 30 stone 12 scrap 2 fuel).
+- D11 18: still food -5.4, water -5.5. 17 people eat a lot. Worried.
+- D11 20: END SESSION 7. away 10.
+## Session 8 (D11 20 -> D13 08)
+- D12 00: two more couples (Maya+Marcus, Noah+Eli). Riot zombie tip.
+- D11 23 - D12 07 BAD NIGHT: Cleo, Omar, Rafe, June, Sana down; Cabin fell, Canteen fell. "NO rescuer: 2 zombies next to them: nobody walks in on their own · tap Send rescue". Used rescue Rafe, rescue Sana, bandages, defend. `militia` refused ("healthy civilians band together when no fighter is left"). Morning D12 06: 15 walkers stopped, Hurt: 7 people. Nobody died.
+- D12 10: noticed policy was still "defend" since D6 18 - wondered if that's why food was -5. Set produce: food went -5.2 -> -1.2 by D12 15, but water went -5.1 -> -7.5. No idea why. Numbers jump around.
+- D12 16-17: Rafe and Theo collapsed in DAYTIME.
+- D12 19: Fort upgrade (ordered D11 16) still "builders are bringing the materials" after 27 game h: stone 63 sits there, wood 15 < 20 (I'd spent 4 on a farm). Nothing told me the Fort was stuck waiting for wood.
+- D12 21: BOSS Bloater Queen + 9. D12 22 Level 9 arrived mid-fight.
+- D13 00: food day +7.6 -14.3. 4 empty staff slots incl. Garden Plot. Made Nico + Theo Farmers.
+- D13 00-03 another bad night: Cleo, Rosa, Sana, Della, Ben down (4 down at once at D13 03, 14 walkers). Used radiohelp: "They cleared 11 zombies ... carried 4 of your people into care. 'Two days from now, we'll come by for that favour.'" Felt like a lifesaver. Morning D13 06: Hurt 9 people, 3 buildings 150 dmg. Trading Post fell. Nobody died.
+- D13 06: "Omar reached the Lodge (no medical bed free: slower care)" - meds 0.15 the whole time.
+- D13 07: scrap 3 (from 29 at D12 10): repairs ate it. Fort needs 12 scrap. Stuck again.
+- Nights from D11 on: every night several people down. Defense still feels like something I can't influence beyond weapons.
+- D13 08: END SESSION 8. away 14.
+## Session 9 (D13 08 -> D14 20)
+- D13 08: adopted stray dog Moose (2 food). "Give the dog to a survivor from their Gear tab" - didn't find how.
+- D13 10: 7 more raiders. D13 12: 26/26 buildings -> levelup to 10 = 5 days / 250 renown. Had 256 -> rushed. Level 10 D13 14. Renown 20.
+- D13 14: Level 11 needs a Banner again. Trading Post banner "used". Squad Marcus,Rosa,Rafe,Cleo,Omar power 228 vs clinic 175 -> STRONGHOLD Overrun Clinic. Only 4 showed in the fight (Omar left out silently). Cleo down in first 20 s. Fight 70 s: 24 kills, boss "Butcher of Ward 3" killed. +25 renown +9 scrap +6 meds, "people: 4" (??? no new people showed up). Stronghold banner raised. BEST MOMENT of the run - I finally had a lever to pull (fight / focus) and won.
+- D13 15-16: right after, raiders still in town: Eli, Maya, Nico collapsed.
+- D13 19: Fort (ordered D11 16) still not started though wood 20, stone 67, scrap 24, fuel 4 all there. By D14 08 wood 21->8, stone ->60, then ->44 by D14 20: it slowly eats materials but still says building. 2.5 days and no Fort.
+- D13 23-D14 06: night: Cleo, Marcus, Amy, Rosa, Rafe down. Medical Tent fell, Trading Post fell. "Omar is rescuing Marcus" printed 6 times in one hour (D14 05). Morning: 16 walkers stopped, 6 hurt.
+- D14 08: wandering medic -> "Ask for treatment": "Everyone is treated" - but Marcus/Rosa/Rafe stayed in hospital at 41% until D14 10.
+- D14 09: 12 walkers in town at 9 in the morning. Riot zombie broke Medical Tent in daytime. Made June a Guard + Road Sign.
+- D14 09: `walls 2` -> "sealed: false ... gaps: 15,15: an open tile". So my fence has had a hole the whole game and nothing told me. `walls 8` at D14 12 placed 2, gap still at 15,15.
+- D14 18: "Upkeep at midnight is 8.7 scrap and you have 0: some buildings will run at half output tomorrow". Scrap 1. Repairs + crafting + upkeep drained 29 scrap in a day.
+- D14 20: END SESSION 9. away 10. Mood: tired. Every night is the same list of collapses.
+## Session 10 (D14 20 -> D16 08)
+- D15 00: Ivy grew up (Civilian). LEGACY 3/8. WEEK 2 REVIEW grade A 99/120: Defense 20/20 (!) Happiness 4/20 (!). Defense 20/20 while 5-6 people collapse every night; Happiness 4/20 while almost everyone shows ♥100. The review doesn't match what I see.
+- D15 00: Ivy -> Medic (staffs Medical Tent). Rescue team favour: 15 food 10 water -> paid. "Call us if you need us."
+- D15 00-05: night: Eli, Cleo, June, Ivy down. NEWS SPAM D15 05: "Rosa is rescuing Ivy" / "Rafe is rescuing Cleo" alternating ~18 lines in the same hour.
+- D15 10: Fort hogs one of the 2 build slots -> "two builds already running (the limit)" for days.
+- D15 14: Omar+Cleo pharmacy (I picked medium by mistake; low existed). Omar dropped to 11/86, I picked safe options; +15 scrap +15 meds + Reading Glasses. Meds finally > 0.
+- D15 18: policy defend text finally read: "Production dips". I had it on Defend from D6 18 to D12 10 - so that's probably why food/water were negative. Should have been told on the day report.
+- D15 19: FORT COMPLETE (ordered D11 16 = ~4 game days). Tier 3.
+- D15 21: Gatling Boss + 15. D16 00: Della+Rosa couple; 2nd baby Finn (Amy+Ben).
+- D16 00: "FOOD: under 1 day left" while state said food 10.3 at +0.9/day. Contradiction. (I had paid 15 food for the favour.)
+- D16 01-06: Omar, Marcus, Cleo down. D16 06: ~30 lines of "Rafe is rescuing Cleo"/"Rosa is rescuing Marcus" in ONE hour. Unreadable.
+- D16 08: Greenwater traded 6 food -> 10 water. Food 6.4 (+0.8), water 28 (-5.6). Ben listed "free" while day report says "Open staff slot: Rain Barrel" and radio "rain Barrel has no Farmer". He IS a farmer.
+- D16 08: policy produce. Renown 217, scrap 35, meds 10.7. 17/17 people, 28/29 buildings. END SESSION 10. away 14.
+## Session 11 (D16 08 -> D17 20)
+- D16 08: research firearms (40 rp +12 scrap). Fort tier 3 list: Electric Pump, Water Tower, Cold Store, Solar, Power Pole etc. Radio Tower 10w 20 stone 16 scrap 6 fuel.
+- D16 14: levelup to 11 = 144 game h / 300 renown. Too long.
+- D16 12-17: 7 raiders: Maya, Cleo, Omar, Ben, Ivy down in daytime. Rescue Maya ("2 raiders next to them").
+- D16 17: Electric Pump built -> D16 19 "Theo slipped out of the Electric Pump before it fell". Fell 2 hours after it was built, never pumped.
+- D17 00: 3rd baby Nora (Noah+Eli). LEGACY 4/8 Know-how: "The radio tower can call for the convoy (Goals)".
+- D17 00: AGAIN "FOOD: under 1 day left" while day was Food +25.4 -15.4 and state food 12.8 at +3.4/day.
+- D17 00-05: Rosa, Cleo, June, Omar down; Rotbomb hurt 1. Morning 18 walkers stopped, 6 hurt. Meds 10.75 (D16 08) -> 0.1 (D17 08): bandages ate them all.
+- D17 08: Renown 286 >= 275 -> rushed level 11. Built Water Tower (14 stone 14 scrap). Water -7.6/day, 3.5 days.
+- D17 10: Water Tower built. D17 12 tent + rebuilt pump (D17 15). Water -5.8 (5.6 days) at D17 12.
+- D17 12: Cleo+Rafe pharmacy low: sneaked 85%, +7 scrap +5 meds, goggles, School Backpack. Found stash had Medic Pouch + Dog Tags (from week review?) sitting unused - nothing told me. Equipped everyone.
+- D17 16: June, Della, Cleo down in DAYTIME (10 walkers in town at 16:00). "Nobody is reaching Della: 1 zombie next to them".
+- D17 20: END SESSION 11. away 10.
+## Session 12 (D17 20 -> D19 08)
+- D17 22 - D18 06: worst night. Amy, June, Eli, Rafe, Omar, Maya, Della, Cleo down; 23 walkers in town at D18 01; Medical Tent + Canteen wrecked by bloated (auto-repaired D18 02). Used radiohelp 2nd time: "cleared 15 zombies ... carried 6 of your people into care". Morning: 14 walkers stopped, 8 buildings damaged (306 dmg), 10 people hurt, rotbomb hurt 3. Still nobody died.
+- D18 00: 2 more babies (Kai, Wren) + new couple Nico+Theo who had a baby the same hour. LEGACY 5/8 "Expand the territory 3 times: done" - I only ever pressed expand once (D3 22). Land shows 3.
+- D18 01: levelup to 12 = 138 h / 300 renown. Won't happen before D20.
+- D18 08: Greenwater trade again 6 food -> 10 water. Food +4.4, water -2.7 (11 days) - first time in days both look OK.
+- D18 08: "fuelstill cannot afford: 10 wood" at wood 10 (?), worked at D18 12 with 13.
+- D18 14: Fuel Still built. Boss warning for 21:00.
+- D18 21: BOSS Mutant Zombie + 18. Tip says "Focus the boss all help" but I have no focus order in town. D18 22-23: Marcus, Rosa, Cleo, Rafe (ALL fighters) down within an hour. radiohelp not ready (used D18 01). `militia` refused again ("when no fighter is left") though June was the only one standing.
+- D19 00-05 COLLAPSE: Amy, Eli, Ivy, Maya, Sana, June, Ben, Theo, Omar, Nico down. D19 02 militia triggered by itself. D19 04: "14 down, too few left to fight. They hide until the zombies move on". Fort wrecked by a walker. Only Della + Noah standing. Morning D19 06: 14 hurt. Boss "slunk back" (again called "Mutant Boss").
+- D19 08 radio: "the Haven can reach the next level" with 14 people bleeding on the ground. Tone-deaf.
+- D19 08: END SESSION 12. away 14 (town frozen, all those bleed timers frozen too).
+- D19 08 (before leaving): bandage everyone -> only Amy worked; then "a bandage needs 1 cloth, 1 meds or 2 scrap (have cloth 0, meds 0.05, scrap 0)". Bandages had silently eaten all scrap overnight. No way left to buy time.
+## Session 13 (D19 08 -> D20 00)
+- away 14 still credited 8 h of production (+5 wood +3 scrap) but scrap back to 1 by D19 11.
+- D19 09-15: Della and Noah drag people in one by one; Amy, Omar, Cleo, Theo, June, Ivy get up. "rescue NAME" orders say ok but nothing visible changes.
+- D19 15: Della and Amy collapse again (10 walkers in town in daylight). D19 16: 7 raiders arrive on top.
+- D19 18: "Marcus is bleeding out!", "Rosa ...", "Rafe ...". radiohelp: "not ready (already called, a favour is owed, or it is recharging)". Bandage impossible (scrap 1).
+- D19 20: MARCUS DIED and "rose again as a zombie". RAFE died + rose. "After so many losses the survivors hold a vigil. The horde pulls back for a while" - but people kept collapsing.
+- D19 22-23: MAYA died + rose; SANA died + rose (D20 00 card).
+- D20 00: Day 20 starts. Level 11 (level 12 13h away). 12 alive, 10 of them down (Ben 0 h, Rosa 1 h left on bleed timer), only June + Ivy standing. Deaths: Lena (D2 expedition), Marcus, Rafe, Maya, Sana (D19). Scrap 0, wood 0, meds 0.05. Food 45 +7/day, water 38 - supplies fine, the town just can't stand up.
+- 4 babies born (Ivy grew up D15; Finn, Nora, Kai, Wren never appear in the people list).

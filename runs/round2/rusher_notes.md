@@ -1,0 +1,56 @@
+# Rusher notes (round2, seed 21, build 3D.169)
+Session clock: binge 300 game h then away 8h.
+- D1 08h: start. 4 people, food14 water14, wood12 scrap16. Built farm, barrel, tent, bonfire (all wood).
+- D1 11-13: Houses trip w/ Lena (sneak) +3f +4w +5 cloth, Lena hurt. Noah (engineer) joined D1 18.
+- D2 04: Workbench built (6 buildings). Lumberyard low w/ Marcus +11 wood. Water the main pinch: -7.6/day at D2 15 (1.7 days). Amy medic->farmer for barrel (loses medic L2).
+- D2 13 June joined -> 6/6, levelup. L2 at D2 23:00 (fast, felt good).
+- D3 00 levelup straight away (12h timer). Maya joined. D3 08 rushlevel all (25 renown) -> L3.
+- Radio tells me "upgrade the Camp to a Lodge" but canUpgrade is empty and `upgrade hq2` says "not unlocked yet". Confusing.
+- D3 09 lumberyard medium Marcus+Ben, paid toll, +27 wood. 3rd barrel; still water -1.4/day with 3 barrels staffed (dry autumn).
+- D3 13 Eli joined -> 8/8, levelup to L4 at D3 14.
+- D3 14: L4 timer 48h; rushlevel x1 (25 renown, -12h). Not enough renown for all (100).
+- D4 08 Greenwater trade 6 food->10 water. D4 09 houses trip: rescued survivor but "Haven has no room" (beds 8/8) -> lost a recruit.
+- D4 12-19: first raiders (3). Amy, Eli, Maya downed. Rescue slow: Amy down 14:00, reached med tent 19:00 (5 game h). No deaths.
+- Beds 8/8 with hq + 4 tents (started 4/8 with hq only?) - bed count confusing. Later 9/12.
+- D5 02 L4 -> Lodge unlocked (radio pushed Lodge since D2 21:00: too early).
+- D5 04 levelup to L5 (60h), rushlevel x2 -> 36h. Research salvage done.
+- D5 07 lumberyard medium Marcus+Lena: BOTH collapsed but +47 wood + Lucky Charm. hq2 started D5 12. Water still -3.4/day with 4 barrels.
+- D5 17-D6: Theo joined. Lodge done D5 18. "MILITIA: SURVIVORS BAND TOGETHER" news repeated ~10x D5 08-16 (spam).
+- D6 07 rushlevel all -> L5. Next needs a Banner (stronghold / Trading Post / Radio Tower). `tool bar` -> {"ok":false} no reason. `cart` silently cost ~9 wood.
+- D6 18: upkeep 6.3 scrap vs 2 in stock -> 5 buildings half output D7. Wood repeatedly vanishes into auto-repairs (D7 12 wood 30 -> D7 16 wood 7 after one 6-wood scrapyard).
+- D6 21 Boss Stalker night, policy defend, boss dead D7 03. Lena downed 3 times D6-D8 ("down twice today: needs a medical bed").
+- D7 lumberyard +30 wood + Scope Goggles. Scrap jumped 3->19 (D7 12). Week 1 review grade B 71/120, happiness 3/20.
+- D8 08 lumberyard medium Marcus,Sana,Ben: Sana DIED at Stage 1 before any decision card appeared (first card already showed only Marcus+Ben). +33 wood. Felt unfair: no warning, no choice.
+- D8 12 renown 151 sitting unused (nothing to spend on except rush). Building Trading Post for Banner.
+- D9 02 Trading Post built -> Banner (D9 07). levelup + rushlevel all (150 renown) -> L6 at D9 07. Lumber Camp built D8 19, Theo on it.
+- D9 08 Toll Kings demand 18 scrap; refused -> 5 raiders attack while Marcus out. Amy, Eli, Lena, Noah, Theo, Ben all downed D9 09-13; radiohelp carried 4. No deaths.
+- D9 11 report says "no orders came, so Marcus chose Too loud, leave it" but I DID press that button at D9 09 (answer ok). Wrong text.
+- D9 14 Iris (cook) joined -> canteen staffed. D9 19 levelup to L7: 84h timer, rush x2 -> 60h. Research medicine.
+- D9 21 Butcher boss night: 6 buildings damaged, Marcus downed; boss "slunk back" at dawn.
+- D10 07 walls: `wall 12 14 gate` -> ok:false, no reason. `wall 15 15` sealed the fence.
+- D10 07 lumberyard low Lena+Ben: Ben (100% HP) collapsed at Stage 1 again; decision cards only list the standing member. +16 wood.
+- D11 00 Legacy "A real town" (1/8): "Complete 4 and reach ★5 to call for the convoy" - first time I learn what the end goal looks like.
+- D11 00 Rescue team favour: paid 15 food + 10 water -> food 2.9 at D11 08 (near starvation).
+- D11 08 rushlevel all -> L7 (Fort unlocked). levelup to L8: 96h timer. Renown is the true pacing gate.
+- D11 11 lumberyard medium Marcus+Lena +41 wood. Quarry + 2nd Fenced Farm built. Fort (hq3) needs 30 stone.
+- D11 21-D12 06: 7 raiders + night. 10 of 12 people hurt at D12 06 morning card. Radiohelp again (owes another favour). No deaths.
+- D12 06 Zed joined (engineer) -> quarry. Trader D12 13: no food for scrap trade; bought sledge + pipebombs (scrap 54 piling up, useless).
+- D12 21 Bloater Queen boss; Kira downed; boss "slunk back" again.
+- D13 08 rushlevel all -> L8. Food 8.8, water 9.7, wood 1. Next: 15 people (beds 14).
+- D13 19: 300 game h binge done. away 8h: trays +7 food +9 water +5 scrap +4 wood +2 stone. Session 2 starts. Upgrade tent->cabin from D12 06 still pending (waited on wood); repeat 'upgrade cabin' -> ok:false with no reason.
+- D14 00 Legacy 3/8 (child grew up). Favour asked again (15f 10w) with food 9.5 -> refused, "won't answer radio for a week".
+- D14 00 levelup to L9: 108h; rush x3 (75 renown) -> 72h. Research walls done.
+- D14 08 morning: Amy, Eli, Kira, Theo down; Wandering medic "Everyone is treated" but Amy still 1%, Kira 40% still listed "down". Omar (eng L3) joined D14 13.
+- D15 00 Week 2 review grade A 80/120 (Supplies 20/20 while food sat at 2-12 all week; Happiness 2/20, Defense 8/20).
+- D15 08: 5 people down at 8 AM (Marcus, Lena, Noah, Theo, Kira), food 2.3 after Greenwater trade, water 6.3 -> 16.3. Rush x2 -> 17h left.
+- Day loop now: every night 4-6 people downed, mornings spent rescuing; idle folk 'hiding'. Second `upgrade cabin` and `buy 5` twice -> ok:false no reason.
+- D15 21 Mutant Zombie boss + 14 zombies. Policy defend. By D16 00 L9 reached (levelup to L10: 116h, 250 renown to finish).
+- D16 06 morning card: 13 of 15 hurt. D16 08: 12 people down, every one "NO rescuer: Amy couldn't get to them (path blocked) · open a gate or clear the way". Tool has no way to open a gate in a sealed wall: `wall 15 15 gate` -> ok:false "placed: wood"; `wall 12 14 gate` -> ok:false. `walls 0` PLACED 3 walls (expected none).
+- D16 08 Amy (only healthy one) got sick on top. Radio help locked (I refused favour D14). militia -> "healthy civilians band together when no fighter is left" but never triggered.
+- D16 13: "13 down, too few left to fight. They hide until the zombies move on". Rescue orders loop ("Noah is rescuing June" x19 lines at D16 08).
+- DEATHS: Omar D16 16; Eli D16 20; Iris, Maya D16 22; Ivy, Zed D17 01; Lena, Marcus, Rosa, Kira D17 02; June, Ben D17 03. 12 dead in 11 game hours. All rose as zombies. Survivors: Amy, Noah, Theo, all ♥0.
+- D17 08 comeback convoy: Ines + "Sana" (a second Sana, same name as the dead one) + 15f 15w. Feels like a pity gift after the wipe.
+- D18 06: 5 people, food 57.5 / water 37.2 (+16/day food) - supplies finally abundant only after 12 deaths. Rush x2 -> L10 in 45h.
+- D18 21 Stalker boss + 13 zombies; by D19 05 5 of 6 down again. D19 08: Greenwater trade card while 5 people bleeding.
+- D19 14 Sana (convoy) died. D19 night: 5 of 6 down again, Nora grew up D20 00.
+- D20 00 END: L9 (L10 4h away), 6 alive (5 of them down, Finn bleeds out in 2h), 14 deaths total. Food 85, water 46.7, scrap 45, stone 43, research 57 unused.
