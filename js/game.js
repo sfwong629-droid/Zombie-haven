@@ -5296,7 +5296,9 @@ function shEnd(won, fled) {
     if (down) { s.hp = Math.max(1, Math.round(s.max * .2)); hurt.push(s.name); }
     s.w = { x: entry.x + (i % 3 - 1) * .3, y: entry.y + Math.floor(i / 3) * .3 }; s.mode = 'free'; s.target = null; s.moving = false; s.reloadT = 0; s.moveTo = null; s.order = null; s.path = null; delete s.shHome; s.stateTicks = 60; S.sv.push(s); if (won) gainXp(s, 10);
   }
-  if (H.camp) { const F = fac(H.raid), down = H.blds.filter((b) => b.dead).length; F.att = Math.max(-100, (F.att || 0) - (H.raid === 'green' ? 120 : 15 + 4 * down)); F.raided = (F.raided || 0) + 1;
+  const unseen = H.camp && fled && !H.alarm && !H.kills && !H.blds.some((b) => b.dead || b.looted || (b.hp != null && b.max && b.hp < b.max));   /* 3D.169 round 2: walking away unseen without touching anything is not a raid (it cost the Raider the Greenwater alliance) */
+  if (unseen) lines0.push(`🤫 The squad slipped away unseen. ${(FACTIONS[H.raid] || {}).name || 'They'} never knew they were there.`);
+  if (H.camp && !unseen) { const F = fac(H.raid), down = H.blds.filter((b) => b.dead).length; F.att = Math.max(-100, (F.att || 0) - (H.raid === 'green' ? 120 : 15 + 4 * down)); F.raided = (F.raided || 0) + 1;
     if (H.raid === 'green') { F.ally = false; F.revenge = S.day + 3; lines0.push('🌿 Greenwater will never forgive this. The alliance is over, and they will hit back.'); }
     if (H.raid === 'toll') { F.next = Math.min(F.next || 1e9, S.day + 2); F.revenge = S.day + 2; lines0.push('👑 The Toll Kings will come for revenge.'); }
     if (FAC_RAID[H.raid]) { F.revenge = S.day + 2; F.ally = false; lines0.push(`${FACTIONS[H.raid].icon} ${FACTIONS[H.raid].name} will hit back.`); }
@@ -5321,7 +5323,7 @@ function shEnd(won, fled) {
         recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
       S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
     S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); renownGain(H.raid ? 15 : 25, d.name);
-  } else { if (H.raid) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - 15); } if (H.loot.mat) S.mat += H.loot.mat; if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day }; }
+  } else { if (H.raid && !unseen) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - 15); } if (H.loot.mat) S.mat += H.loot.mat; if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day }; }
   S.sh = null; shPanel(); autoStaff(); statAdd('exp');
   const bossName = (D.areas[2].boss || {}).name || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is cleared.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
   lines.push(...lines0); if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
