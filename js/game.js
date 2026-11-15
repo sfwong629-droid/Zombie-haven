@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.161', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.162', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2971,6 +2971,9 @@ function econ() {   // expected per-day flows for food, water and scrap, with th
   }
   R.food.use.push({ name: `Rations (${S.sv.length} survivors${(S.kids || []).length ? ', ' + S.kids.length + ' children' : ''})`, v: need.f });
   R.water.use.push({ name: `Rations (${S.sv.length} survivors${(S.kids || []).length ? ', ' + S.kids.length + ' children' : ''})`, v: need.w });
+  /* 3D.162 play-test (two testers): the forecast showed about -2 a day while the stores really fell by 7 to 9. It left out what squads pack
+     for their trips (a ledger over 8 days: 28 food and 28 water). Now it counts the average of the last 3 days as "Squad supplies". */
+  for (const k of ['food', 'water']) { const v = (S.tripUse || []).filter((q) => q.k === k && q.d > S.day - 3).reduce((a, q) => a + q.v, 0) / 3; if (v > .05) R[k].use.push({ name: 'Squad supplies (trips, last 3 days)', v }); }
   const cap = supplyCap(), out = {};
   for (const k of ['food', 'water', 'mat', 'wood', 'stone']) {
     const P = R[k].prod.reduce((a, q) => a + q.v, 0), U = R[k].use.reduce((a, q) => a + q.v, 0), net = P - U, stock = S[k] || 0, c = k === 'mat' ? null : k === 'wood' || k === 'stone' ? matCap() : cap;
@@ -4146,7 +4149,8 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   else { S.food = keepCap(supplyCap(), S.food, 2); S.water = keepCap(supplyCap(), S.water, 2); S.mat += 2; }
   SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl);
   showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
-  say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' }); saveGame(); ui();
+  say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' });
+  if (needsBanner() && !bannersFree()) { const how = 'The next level needs a Banner over the Haven. Two ways to raise one: clear the Overrun Clinic on the Explore map, or finish a Trading Post or a Radio Tower.'; radio('dj', how, { key: 'banner', level: 'important' }); logEvent('🚩 ' + how, 'important'); }   /* 3D.162 play-test: two testers sat at level 5 for 13 days without learning what a Banner is (it was only in the Upgrade screen) */ saveGame(); ui();
 }
 function lvTick(ms) {   /* ms of real time; while playing the timer runs 3x faster */
   if (!S.lvUp) return; S.lvUp.left -= ms; if (S.lvUp.left <= 0) levelUpDone();
@@ -4513,7 +4517,7 @@ function startExpedition0(destId, riskId, ids) {
   if (!ms.length) return { ok: false, why: 'Pick at least one survivor' }; if (ms.length > expMax()) return { ok: false, why: 'A squad is at most ' + expMax() };
   if (S.sv.length - ms.length < EXP_HOME_MIN) return { ok: false, why: `Keep at least ${EXP_HOME_MIN} survivors at home` };
   if (ms.some((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode))) return { ok: false, why: (ms.find((q) => q.hp <= 0 || ['down', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)) || {}).name + ' is hurt or busy' };
-  const pv = expPreview(destId, riskId, ms), take = (k, n) => { const g = Math.min(S[k], n); S[k] -= g; return g; };
+  const pv = expPreview(destId, riskId, ms), take = (k, n) => { const g = Math.min(S[k], n); S[k] -= g; (S.tripUse = (S.tripUse || []).filter((q) => q.d > S.day - 3)).push({ d: S.day, k, v: g }); return g; };   /* 3D.162 remembered for the forecast */
   if ((d.stronghold) && SH_DEFS[destId]) { if (S.sh) return { ok: false, why: 'A squad is already inside a stronghold' }; take('food', pv.need); take('water', pv.need); return startStronghold(destId, ids, { goal: expSel.goal }); }   /* 3D.108 */
   take('food', pv.need); take('water', pv.need);
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }

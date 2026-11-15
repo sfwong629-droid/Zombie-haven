@@ -19,10 +19,11 @@
     const st = Z.supplyStats ? Z.supplyStats() : {}, conds = Z.rankConds ? Z.rankConds() : null;
     const out = {
       day: S.day, hour: S.hour, night: Z.isNight(), level: S.lvl || 1, renown: Math.round(S.ren || 0),
-      nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, minutesLeft: Math.round(S.lvUp.left / 60000) } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
+      nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, minutesLeft: Math.round(S.lvUp.left / 60000) } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : c.sub ? ' (' + c.sub + ')' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
       supplies: { food: r1(S.food), water: r1(S.water), cap: Z.supplyCap(), foodPerDay: r1(st.fNet), waterPerDay: r1(st.wNet), foodDaysLeft: r1(st.fDays), waterDaysLeft: r1(st.wDays) },
       materials: { scrap: Math.round(S.mat), wood: Math.round(S.wood || 0), stone: Math.round(S.stone || 0), cloth: S.cloth || 0, meds: S.meds || 0, fuel: Math.round(S.fuel || 0), ammo: S.ammo || 0, research: Math.round(S.rp || 0) },
-      people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ${q.mode}${q.trait ? ' · ' + q.trait : ''}`),
+      people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ${q.mode}${q.mode === 'down' ? ` (bleeds out in ${Math.max(0, Math.round((q.bleed || 0) / 1000))} game h; ${q.rescuer ? q.rescuer.name + ' is coming' : 'NO rescuer'})` : ''}${q.trait ? ' · ' + q.trait : ''}`),
+      emergencyHelp: { radioHelpReady: !!(Z.helpReady && Z.helpReady()), note: 'when people are down: rescue NAME, bandage NAME, radiohelp, militia, defend' },
       beds: `${Z.popNow()}/${Z.popCap()}`,
       buildings: cnt, building: (S.sites || []).map((q) => q.type + ' (site)').concat(W.buildings.filter((b) => b.upg).map((b) => b.type + '→' + b.upg.to)),
       walls: W.walls.size, brokenWalls: [...W.walls.values()].filter((w) => w.broken).length, land: S.terr || 0,
@@ -48,7 +49,15 @@
   }
 
   // run the game for up to h hours; stop early when a card or a request needs an answer, a squad is home, or an emergency starts
-  function play(h, stopMorning) {
+  /* a stronghold is a real-time fight: the tester watches it in slices and gives calls */
+  const shView = () => { const H = S.sh; if (!H) return { fightOver: true }; const boss = (H.zs || []).find((z) => z.boss);
+    return { fight: (Z.EXP_DEFS[H.dest] || {}).name || H.dest, seconds: Math.round((H.t || 0) / 60), squad: H.units.map((u) => `${u.name} ${Math.max(0, Math.round(100 * u.hp / u.max))}%${u.hp <= 0 ? ' DOWN' : ''}`), enemiesLeft: (H.zs || []).filter((z) => z.hp > 0).length, kills: H.kills || 0, boss: boss ? (boss.hp > 0 ? `${Math.round(100 * boss.hp / boss.max)}%` + (H.woke && H.woke.B ? ' (awake)' : '') : 'dead') : 'none seen', focusOnBoss: !!H.focus, retreating: !!H.back, meds: S.meds || 0, calls: 'sh focus | sh med | sh back' }; };
+  let shLast = null;
+  function fight(sec) { if (!S.sh) return { ok: false, why: 'no stronghold fight is running' }; const H = S.sh, m0 = { ren: S.ren, mat: S.mat, meds: S.meds, food: S.food, n: S.sv.length };
+    for (let t = 0; t < sec * 60 && S.sh === H; t += 20) Z.step(20);
+    if (S.sh === H) return shView();
+    const c = popup(); shLast = { fightOver: true, lasted: Math.round((H.t || 0) / 60) + ' s', squadAfter: H.units.map((u) => `${u.name} ${Math.max(0, Math.round(100 * u.hp / u.max))}%`), kills: H.kills || 0, bossKilled: !!((H.zs || []).find((z) => z.boss && z.hp <= 0)), changes: { renown: Math.round(S.ren - m0.ren), scrap: Math.round(S.mat - m0.mat), meds: (S.meds || 0) - (m0.meds || 0), people: S.sv.length - m0.n }, card: c }; return shLast; }
+  function play(h, stopMorning) { if (S.sh) return { played: '0 h', stopped: 'a stronghold fight is running: use `fight SECONDS` (and sh focus | sh med | sh back) until it is over', fight: shView() };
     const t0 = { day: S.day, hour: S.hour, sv: S.sv.length, fallen: (S.fallen || []).length, trip: !!S.trip };
     let why = 'time', hours = 0; const read = []; const crit0 = new Set([...Z.alerts.values()].filter((a) => a.level === 'critical').map((a) => a.key));
     for (; hours < h; hours++) {
@@ -70,7 +79,10 @@
     help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours)',
       'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup',
       'expedition DEST RISK [NAME,NAME..]', 'stronghold DEST [NAME,NAME..]', 'answer N  (button N on the card)', 'accept | decline  (move-in request)', 'buy N | trade N  (trader)',
-      'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart'] }),
+      'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart',
+      'EMERGENCIES: rescue NAME | bandage NAME | radiohelp | militia | defend',
+      'GEAR: stash (what is in the stash, who wears what, what can be crafted) | equip NAME ITEM | craft ITEM | power NAME,NAME,.. (power of a squad you pick)',
+      'STRONGHOLD FIGHT: after `stronghold DEST NAMES` use `fight SECONDS` to watch it in slices; calls: sh focus | sh med | sh back'] }),
     state: (a) => state(a[0] === 'full'),
     play: (a) => play(Math.min(48, +a[0] || 1), a[1] === 'morning'),
     away: (a) => { const ms = (+a[0] || 1) * 3600e3; window.__away += ms; const got = Z.awayCredit(ms); return { away: a[0] + ' h', credited: got || 'nothing' }; },
@@ -83,6 +95,7 @@
     walls: (a) => {   /* fence every free tile of the wall line (north side first), gates where a road crosses; never removes a wall */
       const Zn = Wd.WALLZONE, W = Wo(), T = []; for (let x = Zn.x0; x <= Zn.x1; x++) T.push([x, Zn.y0], [x, Zn.y1]); for (let y = Zn.y0 + 1; y < Zn.y1; y++) T.push([Zn.x0, y], [Zn.x1, y]);
       T.sort((p, q) => p[1] - q[1]); let n = 0; const max = +a[0] || 8;
+      { const cx = Math.round((Zn.x0 + Zn.x1) / 2), cy = Math.round((Zn.y0 + Zn.y1) / 2); for (const [x, y] of [[cx, Zn.y1], [cx, Zn.y0], [Zn.x0, cy], [Zn.x1, cy]]) { const ex = Wd.wallAt(W, x, y); if (!ex || ex.type !== 'gate') { const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, 'gate'); if (S.mat + (S.wood || 0) < m0) n++; } } }   /* a gate in the middle of each side first: a fence with no gate locks your own people out */
       for (const [x, y] of T) { if (n >= max) break; if (Wd.wallAt(W, x, y)) continue; const gate = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => Wd.isRoad(W, x + dx, y + dy)); const m0 = S.mat + (S.wood || 0); Z.tryWall(x, y, gate ? 'gate' : 'wood'); if (S.mat + (S.wood || 0) < m0) n++; else if (!Z.canPay({ wood: 4 })) break; }
       const per = Wd.perimeter(W); return { placed: n, sealed: !!per.sealed, wallTiles: W.walls.size }; },
     job: (a) => { const q = who(a[0]); return { ok: !!(q && Z.changeProfession(q, a.slice(1).join(' '))) }; },
@@ -100,6 +113,17 @@
     policy: (a) => { Z.setPolicy(a[0]); return { ok: Z.policy() === a[0] }; },
     post: () => { const B = Wd.BUILD, cx = Math.round((B.x0 + B.x1) / 2); for (const [x, y] of [[cx, B.y0], [cx - 1, B.y0], [cx + 1, B.y0], [cx, B.y0 + 1]]) { const r = Z.tryPost(x, y); if (r.ok) return { ok: true }; } return { ok: false }; },
     tool: (a) => ({ ok: !!Z.craftTool(a[0]) }), cart: () => ({ ok: !!Z.vehBuildCart() }),
+    rescue: (a) => { const q = who(a[0]); if (!q || q.mode !== 'down') return { ok: false, why: 'that person is not down' }; return { ok: !!Z.orderRescueX(q) || true, note: 'rescue ordered: escorts clear the way and a rescuer goes in' }; },
+    bandage: (a) => { const q = who(a[0]); if (!q || q.mode !== 'down') return { ok: false, why: 'that person is not down' }; const ok2 = !!Z.useBandage(q); return { ok: ok2, why: ok2 ? '' : 'needs 1 cloth (or scrap)' }; },
+    radiohelp: () => { if (!Z.helpReady()) return { ok: false, why: 'radio help is not ready (already called, a favour is owed, or it is recharging)' }; Z.radioHelp(); return { ok: true }; },
+    militia: () => ({ ok: !!Z.militia(), note: 'healthy civilians band together when no fighter is left' }),
+    defend: () => { const z = S.z.filter((q) => q.hp > 0 && !q.human)[0]; if (!z) return { ok: false, why: 'no walkers' }; return { ok: !!Z.sendDefender({ x: z.w.x, y: z.w.y }) }; },
+    stash: () => ({ stash: Object.entries(S.inv || {}).filter(([, n]) => n > 0).map(([id, n]) => `${id} (${(Z.ITEMS[id] || {}).name || id}, ${(Z.ITEMS[id] || {}).slot || '?'}${(Z.ITEMS[id] || {}).atk ? ', atk ' + Z.ITEMS[id].atk : ''}${(Z.ITEMS[id] || {}).def ? ', def ' + Z.ITEMS[id].def : ''}) ×${n}`), wearing: S.sv.map((q) => `${q.name}: ` + Object.entries(q.eq || {}).filter(([, v]) => v).map(([sl, v]) => `${sl}=${v}`).join(', ')), craftable: Object.entries(Z.RECIPESX || {}).filter(([k]) => Z.researched(k)).flatMap(([, l]) => l).map((id) => `${id} (${(Z.ITEMS[id] || {}).name || id}): ${Z.craftCostX(id)} scrap`), craftNeeds: 'a Workshop and the research (blades / firearms / bodyArmor / gadgets)' }),
+    equip: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const ok2 = !!Z.equip(q, a[1]); return { ok: ok2, why: ok2 ? '' : 'not in the stash (see stash)' }; },
+    craft: (a) => { const ok2 = !!Z.craft(a[0]); return { ok: ok2, why: ok2 ? '' : 'needs a Workshop, the research, and ' + Z.craftCostX(a[0]) + ' scrap' }; },
+    power: (a) => { const ids = (a[0] || '').split(',').map((n) => who(n)).filter(Boolean); return { squad: ids.map((q) => q.name), power: Z.shPower(ids), note: 'compare with the recommended power in state full → strongholds' }; },
+    fight: (a) => fight(Math.min(120, +a[0] || 10)),
+    sh: (a) => { if (!S.sh) return { ok: false, why: 'no stronghold fight is running' }; if (!['focus', 'med', 'back'].includes(a[0])) return { ok: false, why: 'sh focus (everyone on the boss, toggles) | sh med (medkit on the worst hurt, costs 1 meds) | sh back (retreat)' }; Z.shCall(a[0]); return { ok: true, ...shView() }; },
     _give: (a) => { if (!window.PT_DEBUG) return { error: 'debug only' }; S[a[0]] = (S[a[0]] || 0) + (+a[1] || 0); return { [a[0]]: S[a[0]] }; },
     _eval: (a) => { if (!window.PT_DEBUG) return { error: 'debug only' }; return { result: JSON.stringify(eval(a.join(' '))) }; },
   };
