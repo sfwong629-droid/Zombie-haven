@@ -1,0 +1,95 @@
+# Raider notes (seed 21)
+- D1 08: start 4 people, squadPower 34, clinic rec 175 locked (needs Haven L3). L2 needs 6 people, 6 buildings. wood 12.
+- D1 12: houses low, Lena+Marcus. 2 decision cards (van 78% AGI -> Lucky Charm; store 75% -> 1 food 2 water). Good: named skill + % shown.
+- D1 15: squad home. Lena shown 52/68 on cards, but at home she is "0% down" and Amy rescuing her. No text said why she went down. Confusing.
+- D1 15: wood 3 after barrel+gym+farm; wood is the brake.
+- D1 19: BUG news "Saving failed: the town could not be packed (Converting circular structure to JSON ... property staff -> post closes the circle)". 
+- D1 18: lumberyard low Marcus+Noah: 19 wood, 1 card (treat stranger 47% failed, nothing lost). 
+- D1 12/21: Noah, Maya joined (6 people).
+- D2 10: pharmacy low Marcus+Noah: 4 meds, Scope Goggles; Noah went from 69% to 7/64 hp ("Noah was hurt" x2) on LOW risk. No decision involved in that damage.
+- D2 13: houses low Marcus+Eli: ~6 food; Marcus 52% force shutters failed -> Marcus 58%, Eli 42% after a low risk trip. Fire at Camp out in <1h.
+- D2 13: trader: bought pistol (9 scrap+3 food). squadPower 44 before and 44 after. No command/text on who carries it. 
+- D2 18: Garden Plot ordered D1 08 still "(site)" 34 game hours later; tent ordered D2 10 built D2 18. Food 1.7 days left.
+- D2 18: ready for level 2.
+- D2 18-22: houses low Lena+Marcus, no decision card: "Stage 1: Marcus collapsed and is being carried" (L3 Guard left at 93%). ~7 food. Low risk downs my best fighter without any choice of mine. June joined (8).
+- D3 06: Haven L2. farm (Garden Plot) still a site since D1 08 (46h). Second farm: "no spot in the build area will take it... Tile occupied on 10 spots, Entrance is blocked on 8, Entrance unreachable on 3". Food +0.0/day, -8.3/day, 0.8 days left.
+- D3 08-11: houses LOW, Eli (Guard L1 100%) + Ben (Farmer 100%), no decision card at all: "Stage 1: Eli did not make it. Stage 1: Ben collapsed and is being carried." Loot ~3 food. First death; on the lowest-risk trip in the game, with zero input from me. Felt arbitrary.
+- D3 12: Garden Plot finally built (ordered D1 08 = 52h). D3 17-18: 2nd farm + barrel each built in 1h. Why the first one waited is never said.
+- D3 13: new arrival also called "Eli" 2h after Eli died. Lumberyard low Marcus+Lena: 19 wood, Running Shoes, no cards, no injuries.
+- D3 22: expanded land tier 1 (60 renown, 20 wood, 8 scrap). D4 06: after 1 barrel, next barrel "no spot in the build area" again (15 occupied, 11 entrance blocked). 
+- D4 00: Day 3 report "Food +0.0 -8.0, Water +0.0 -8.0" with a farm + 2 barrels standing. Water 0.7 days left D4 06.
+- D4 06: level 3 upgrade started D3 13 "about 6 min"; D4 06 still 4 min left (real-time timer, 17 game hours passed).
+- D4 06-10: houses low Marcus+Noah: card HORDE ON THE ROAD fight 64% -> won, 1 scrap. ~7 food 7 water. Stray dog adopted (2 food): "Give the dog to a survivor from their Gear tab" - tool has no gear command.
+- squadPower: 34 (D1), 44 (D2), 59 (D3 11), 44 (D4 06). Not told what moves it.
+- D4 10: Haven L3, clinic unlocked (rec 175). D4 13 lumberyard low Marcus+Eli: cards horde fight 64% won (2 scrap) [same 64% as Marcus+Noah], van pry 53% fail. ~11 wood, School Backpack. Eli back at 53%.
+- CLINIC #1 D4 13:00-15:00: Marcus(G L5 93%), Eli(G L1 53%), Lena(Sc L2 100%), Noah(Sc L2 76%). squadPower shown 84 vs rec 175. Decisions asked: NONE. Result card: "BACK HOME / The squad was overrun and dragged itself home. / Wounded: Marcus, Eli, Lena, Noah." Loot 0. Deaths 0. After: Marcus 49%, Lena 20%, Eli 89%, Noah 95%. No warning given at launch that 84 < 175.
+- D4 13: second "Noah" joined (Engineer) while Noah the scavenger lives: two Noahs in list. Beds "9/8".
+- D4 13: level 4 upgrade: minutesLeft 104.
+- D5 00: "Noah couldn't take another day without water and left to find somewhere better." But Noah (Scavenger) still in my list at D5 04 - it was the new Engineer Noah, I think; the text does not say which. Water read 8.3 at D4 14 (+1.7/day shown) and 3.3 at D5 04 - I never saw it at 0. Day report: "Day 4 Food +0.0 -9.2 Water +0.0 -9.2" while state said foodPerDay +7.8.
+- D5 04: water 3.3, "-3.8/day"; D5 08: water 0.6. 2.7 lost in 4h, rate shown does not match.
+- D5 06-09 houses low Rosa+Noah: "Stage 1: Noah collapsed and is being carried" (left at 95%). Cards: store back way 59% ok (1 food 2 water); horde - solo fight 40% (was 64% with two), sneak 57% failed, Rosa hurt. ~6 food 6 water.
+- D5 11-13 houses low Eli+Rosa: "Stage 1: Rosa collapsed and is being carried" (left 100%). Store card: Eli 40%/23% -> left it. 
+- Stage-1 collapses on LOW risk so far: Marcus D2, Eli (dead)+Ben D3, Noah D5, Rosa D5. None came from a choice.
+- D5 08: lost child card: sent Marcus+Lena (5h). D5 13 "Marcus collapsed! Rescue within 270 s."
+- D5 09 "A WANDERING TRADER ARRIVES" but state trader:null at 09 and 11.
+- Level 4 timer: 104 min at D4 14, 93 at D5 04.
+- D5 20: away 20 (late; first session ran D1 08-D5 20 by my mistake). Credited 8 game hours (water 3.4, food 5.7, 2.9 rp, 1.3 scrap); clock stayed D5 20; level 4 finished during away (80 min left before). Most wounded healed to 100% (Marcus 0%->26%).
+- D5 20: L4, Lodge upgrade ordered (20 wood 5 scrap). promote Marcus ok (no text on what changed). L5 timer 150 min. No armory in build list at L4.
+- D6 00: "Day 5 Food +0.0 -9.6 Water +0.0 -9.6". Heavy rain 02-06 forecast; water 14.4 (D5 20) -> 12.5 (D6 06) with 3 barrels.
+- D6 06: squadPower 43 with 9 adults (Marcus 63%). "research salvage": "needs 25 research points (have 25)" - rounding.
+- D6 06-09 lumberyard low Eli+Rosa+Lena: "Stage 1: Rosa collapsed and is being carried. Stage 1: Lena was hurt" (87% -> 21/76). Horde card: fight 52%, sneak Lena 69% -> ok. 8+ wood, Reading Glasses, Hiking Backpack.
+- D6 08: Toll Kings want 14 scrap -> refused -> "THEY ATTACK", 5 raiders.
+- D6 13: Lodge done; armory (10 wood 4 scrap) + sparring ordered. Armory built D6 21. Wood 0 at D6 19.
+- D6 14-18 (daytime): runner wrecked Medical Tent; Lena, Rosa, Eli each "collapsed! Rescue within 270 s". 
+- D6 21 BOSS NIGHT The Butcher + 6. Going in: Eli 0%, Lena 0%, Rosa 2%, squadPower 18. By D7 06: Marcus, Noah, Rosa down 0%, Maya 2%, squadPower 0, nobody dead; "The Mutant Boss slunk back into the wasteland. It will return." No decision asked of me all night. "Amy is rescuing Marcus" printed ~25 times D7 00-06; Marcus down from D6 23 to past D7 06 though text says "Rescue within 270 s".
+- D7 06: water 2.4 (0.5 days), wood 0, scrap 28. Raiders escaped with 2 parts 1 food.
+- D7 08-11 houses low Lena+Eli: report began "Short on supplies: the trip is riskier." (water was 1.9; first time I saw this line). Lena 100%->36/76, Eli 70%->27/91 in stage 1. Cry for help card: fight 54% / CHA 29% -> kept moving. Brought home a Pickup Truck ("waits at the gate until there is a free Garage"). +~7 food, 9 water.
+- D7 12: Armory works by itself: "Eli bought a Crowbar at the Armory (-5 scrap)", "Eli took a Lucky Charm", D7 14 Bandana (-1). squadPower 17 (D7 08) -> 84 (D7 14) as people healed + Eli armed.
+- MARCUS: collapsed D6 23 ("Rescue within 270 s"). "Amy is rescuing Marcus" printed every hour D7 00 -> D7 15 (dozens of lines). D7 14 "Marcus is bleeding out!". D7 16 "Marcus has died. 5 survivors remain" + "Marcus rose again as a zombie". 17 game hours down, medic "rescuing" the whole time, never arrived. Others (Rosa, Maya, Noah, Eli, Lena) were picked up in 1-3h in the same period. No button for me to press. Lost my only L5 fighter this way. ("5 survivors remain" while 8 people alive.)
+- D7 14-17 lumberyard low Lena+Noah+Rosa (food 25 so not short): no stage-1 collapse. Van: Lena AGI 90% -> Lucky Charm. Horde: fight 74% (3 people) -> lost: "The horde pushed back hard: Noah and Lena got hurt". ~20 wood.
+- D8 00: "June couldn't take another day without water and left" (second leaver). "Out of water: rations were short today". Week 1 review GRADE B 72/120 (Defense 5/20, Happiness 3/20) - a B while 2 dead, 2 walked out.
+- D8 00: Ivy grew up (rescued D5) -> made Farmer (needed water staff, not what a raider wants).
+- D8 02: Rain Collector upgrade done. D8 06 water 2.4 after "Heavy snow 04-06". D8 08 "Amy is dying of thirst" with water 2.4 in stock.
+- D8 08: wandering medic Ada (Medic L2) stays.
+- D8 06-09 houses Lena+Eli+Ivy "Short on supplies: the trip is riskier" (2nd time), Ivy hurt. D8 09-12 houses Lena+Eli: van AGI 90% -> Machete.
+- ROSA: collapsed D7 18, "Amy is rescuing Rosa" every hour, "bleeding out" D8 08 and D8 12, died D8 14 ("rose again as a zombie"). 20h down. Same as Marcus. Then "vigil. The horde pulls back for a while".
+- D8 18: squadPower 34; Eli 44%, Noah 55%, Lena 85%. Level 5 timer 92 min (was 150 at D5 20).
+- D8 20: away 20 (session 2 = D5 20-D8 20). Credited 8h (water 5.7, food 4.7, wood 3.4). Level 5 completed in away (92 min left). This time nobody healed (Noah 55->55, Eli 44->44); first away healed everyone to 100%.
+- D9 06: squadPower 76; D9 08 after policy recover + 2h: 92 with the same health numbers (Lena 71%, Eli 57%, Noah 60%). After the squad left squadPower read 26 => it is the best-four-at-home number.
+- D9 08 feast (6 food 6 water) "+15 hearts for everyone".
+- CLINIC #2 D9 08:00-09:00: Lena (Sc L5 71%, Machete?), Eli (G L3 57%, crowbar/bandana/charm), Noah (Sc L3 60%), Amy (Medic L3 100%). squadPower 92 vs rec 175. Decisions asked: NONE. Result: "BACK HOME / The squad was overrun and dragged itself home. / Wounded: Noah, Amy. / Didn't make it: Lena, Eli." Loot 0. 2 dead in about 1 game hour. #1 at power 84 had 0 deaths; so +8 power = worse result. No retreat option, no warning.
+- D9 10: third "Eli" at the gate (Eli Webb, Farmer L2).
+- D9 12-20: Armory auto-equips new guards: Eli Webb Machete + Riot Vest (-7) + Tactical Cap (-4); June Machete + Riot Vest. squadPower 35 (D9 10) -> 73 (D9 13) -> 86 (D9 20). This is the first time preparation visibly moved the number.
+- D9 13 trader (shows in state at 13, not at "ARRIVES" 09): bought machete (7 scrap+3 food), 2 pipebombs (9 scrap). No way in the tool to see who holds them.
+- D9 20: wood 5 -> 66 between D9 10 and D9 20 (lumber camp + goal rewards?). "upgrade workshop" returned ok but news said "The Workshop is 2x1: place it (turn it with ↻), then Build." and nothing was built.
+- D10 03: Ivy collapsed, picked up D10 06 (3h) - rescue works when Ada does it.
+- D10 06: walls 12 -> 34 tiles (22 tiles), still "sealed": false. Garage built; cart ready.
+- D10 13-16 pharmacy low Eli+June (100%, armed, food 26): no cards, no injuries, +5 meds, came back with a new survivor "Rosa" (Medic L2) - no report card was shown for this trip, and the name Rosa is re-used 2 days after Rosa died.
+- D10 12: boss night announced for 21:00 (second one; first was D6).
+- D10 21 boss night #2 (Mutant + 6): Eli, June down by D11 04, both picked up by Amy D11 06-08 (2-4h). No deaths. Lodge + Medical Tent wrecked and auto-repaired. Again nothing for me to decide.
+- D11 14: away 20 (my slip: fired at D11 14 not D11 20 because play stopped on a request). Credited 8h. No healing (Ada 88->88, Eli 70->70).
+- Every night D11-D12 a guard goes down (June D12 03); Ada sits at 88% from D10 16 to D12 08. Lodge wrecked again D12 05. Wood 0 at D12 06.
+- CLINIC #3 (small squad) D12 08:00-~09:00: Eli Webb (G L1 76%, Machete, Riot Vest, Tactical Cap, Lucky Charm) + Ada (G L1 88%). Best-four squadPower at launch 87; no number shown for the 2 I actually sent. Rec 175. Decisions asked: NONE. Result: NO CARD AT ALL - news only "Eli, Ada went into The Overrun Clinic", squad:null one hour later, renown 427 before and after, scrap 26->25. Eli 20%, Ada 90% afterwards. Loot 0, deaths 0.
+- D12 12-15 lumberyard low Noah+June+Ada (food 23): no cards, no report card; Ada came home 0% down, June 29%. +21 wood. Ada down D12 15 -> picked up D13 02 (11h).
+- Since D10 13 no expedition report card and no trip decision card has appeared (3 trips + 1 stronghold).
+- D12 15: "upgrade clinic" -> ok:true but "The Clinic is 2x1: place it (turn it with ↻), then Build." Not built (same as workshop D9 20).
+- D13 01: walls 40 tiles, still sealed:false. Mission "Close the Gaps".
+- D13 07: research Firearms done (40 rp + 12 scrap) "Craft Pistol and Hunting Rifle" - no craft command in tool.
+- D13 10-13: Ada took Machete + Scope Goggles; Ben (Farmer) took the Pistol I bought on D2 + Scope Goggles. The gun went to the farmer after 11 days in the stash.
+- D13 21 boss night #3: Noah down D14 02, picked up D14 06. Wall section broke. No deaths. ammo 50 -> 32. squadPower 85 at D14 07.
+- D14 00: Pickup Truck restored.
+- D14 14: away 20 (session 4 = D11 14-D14 14). Credited 8h. No "while you were away" card this time. squadPower read 26 right after (D14 07 was 85) with guards at 85/75/100% but in "chase"/"postCombat".
+- D14 14-17 lumberyard low Eli+Ada+June (all armed): back unhurt, +15 wood, no cards. Meanwhile at home with no guards: Noah collapsed D14 16, Ivy 4%, Rosa 30%.
+- D15 07 "Noah is bleeding out!" (down since D14 16, Amy "rescueTo"). Ada down too, Eli 12% after the night.
+- CLINIC #4 (weakest) D15 08:00-~10:00: Maya (Engineer L1 100%, Running Shoes), Ben (Farmer L2 100%, Pistol+Scope Goggles), Ivy (Farmer L2 80%, Crowbar, Lucky Charm). Best-four squadPower at launch 89 (not these three); after they left it read 30. Rec 175. Decisions asked: NONE. Result card: NONE. Back by D15 10: Maya 100%, Ben 91%, Ivy 91% (Ivy is healthier than when she left). ammo 26 -> 14. Loot 0, renown unchanged. Deaths 0.
+  Oddity: Maya came back listed as "Civilian L1 · diligent" - she left as "Engineer L1 · cautious".
+- So far: 4 strong (84) = 4 wounded; 4 strongest (92) = 2 dead; 2 guards = 1 badly hurt; 3 weakest = scratches. Never a decision, never loot.
+- D15 12: "Noah rose again as a zombie" - Noah (Sc L5) down D14 16, "bleeding out" D15 07, dead D15 12 (20h, Amy "rescueTo" throughout). Third death of this kind (Marcus D7, Rosa D8, Noah D15). No Farewell card was shown this time, only "lost":1.
+- D15 12: "Maya took a Running Shoes at the Armory" again -> Maya came back from clinic #4 as a reset person (Civilian, trait diligent instead of cautious, gear gone). Re-set to Engineer by hand.
+- D16 00: "Finn lends a hand" - Finn (Civilian L1, "owl") is in the list with no arrival card. Made Guard.
+- D16 09: Eli stuck at 12% from D15 08 to D16 21 (37h); Ada 73%, June 75% flat for 2 days. meds 1.5. "build ammobench" refused "cannot afford: 8 wood, 5 mat" with wood shown 8, scrap 23.
+- D15 24-D17: "Low ammo: 2 rounds for 1 gunner" every 3h. ammo 50 (D13) -> 2 (D16).
+- D16 21 boss night #4 Bloater Queen + 10: "Ada threw a Pipe Bomb: 5 hit" (the bombs I bought D9 - nice). Finn down 01:00, picked up 02:00. No deaths. Lodge + Medical Tent wrecked, repaired.
+- CLINIC #5 (biggest squad) D17 10:00-~12:00: Eli (G L3 92%), Ada (G L2 73%), June (G L2 75%), Finn (G L1 70%), Ben (Farmer L2, pistol, 2 rounds), Rosa (Medic L2 100%) - tool accepted 6 names. Best-four squadPower before launch 77 (D17 10), no number for the six. Rec 175. Decisions asked: NONE. Result card: NONE, no news line. But log: D17 10 renown 529, scrap 16, meds 1 -> D17 12 renown 555, scrap 25, meds 10. So +26 renown, +9 scrap, +9 meds = looks like a WIN, told to me by nothing. After: Eli 80%, Ada 42%, June 13%, Finn 42%, Ben 100%, Rosa 100%. Deaths 0. squadPower at D17 12 reads 138 (highest of the run, with three guards under 45% - makes no sense to me).
+- D17 13: "Finn took a Hazmat Suit at the Armory" - I never bought/found one before; probably clinic #5 loot, again unannounced.
+- D18 00: day 18 starts. Stop. 9 people, level 5.
