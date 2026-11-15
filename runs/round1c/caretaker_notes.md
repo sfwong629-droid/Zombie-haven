@@ -1,0 +1,130 @@
+# Caretaker notes (round1c, port 8854, seed 21, build 3D.163)
+Session clock: S1 = D1 08:00 -> D2 08:00, then away 23.
+- D1 08 start: 4 people (Marcus guard brave, Amy medic caring, Lena scav scrounger, Ben farmer diligent). food 14 water 14, -4/day each. No mood shown in state; people line = job, HP%, activity, trait.
+- D1 08 built farm+barrel (2 build limit), bonfire after.
+- D1 13 rooftop cry-for-help card on Lena's solo trip: options 35% fight / 23% shout / safe. Picked shout -> failed, "They could not make it down. The squad moved on." One line, no consequence shown. Felt flat/sad for a caretaker.
+- D1 15 Noah Jensen (Engineer, Night Owl, knows Amy) asked in -> welcomed. Nice: the "knows Amy" tie. Lena back at 60% HP from a LOW risk trip.
+- D1 15 food +4.8/day, water still -4.3/day after barrel? wood 3 left.
+- D2 02 Maya Pruitt (Cook, "writes everything down") asked in at night -> welcomed. 6/6 people.
+- D2 06 morning card: walkers stopped 5, hurt nobody. "The coffee is still terrible." cute.
+- D2 08 SESSION 1 END. away 23 -> credited only 8 game h (+3.3 food +1.5 water). Queued barrel didn't start (frozen).
+- D2 08 S2 start. Lumberyard low w/ Lena+Marcus. Horde card: sneak (63% Lena) -> crawler, Lena hurt -> later "Lena collapsed and is being carried". Sick stranger: Marcus treat (23%) succeeded! "Marcus brought the fever down. He gave them Crowbar" +3 renown. Felt great.
+- D2 11 Lena DOWN 0% on a LOW risk trip (bleeds out in 16h). Used `bandage Lena` -> Amy got her up, "Wounded until treated at medical building". By 13:00 Lena 100%. Emergency order worked and was clear.
+- D2 13 water -5.5/day, 2.5 days left, even with barrel staffed. Second barrel: "no spot in build area" (walls 12 spots, occupied 8, entrance 7) at only 6 buildings! Tent placed OK.
+- D2 13 trader offers a CAT pet (6 food + 6 water). Want it but water is critical.
+- D2 14 Eli Park (Medic, Loner, "up before dawn") welcomed. D2 18 levelup started (9 real minutes). Built canteen (Maya staffs) + 2nd farm.
+- D3 00 day summary says "Food +0.0 -5.3 · Water +0.0" while state says food +6.7/day: confusing (trays?). "Open staff slot: Rain Barrel, Garden Plot" while Ben/Noah show "free"/"chat" - no way I found to put them on it.
+- D3 04 June Moreau (Medic, Loner, "writes everything down" - same line as Maya) welcomed. 8 people. Three medics now.
+- D3 05 LEVEL 2. D3 06 morning: 6 walkers stopped, nobody hurt.
+- D3 07 "Amy and Lena are now friends." First bond - a single news line, nice (Amy bandaged Lena on D2).
+- D3 08 Greenwater visitors: traded 6 food -> 10 water (water had 2.3 days). Water is the chronic worry.
+- D3 08 SESSION 2 END. Still no way to see mood/happiness anywhere in state.
+- D3 08 S3 start. away credited 8 h again (+5.8 food +2.2 water). LEVEL 3 on return. D3 12 levelup->4 started, 105 real minutes.
+- D3 12 3rd barrel + tent built: water now -1.7/day (15 days). Relief. Kennel built (8 wood) for pets.
+- D3 13 Pharmacy low trip: sick stranger again (same card as D2), Lena 35% treat -> success, Lucky Charm. +6 meds. Repeated card text noticed.
+- D3 15 `event bonfire`: "Bonfire Night is on! Everyone feels better." No number shown for how much better.
+- D3 15 equipped crowbar->Marcus, charm+hikerpack->Lena, gloves->Noah.
+- D3 17-19 Move-in requests: Lena ♥39, Marcus ♥35, Amy ♥35 -> all accepted, now residents. FIRST time I see a heart number - only in this card.
+- D3 22 "Amy and Maya are now friends" (printed twice, 22:00 and D4 00:00).
+- D4 00 stray dog Rusty found the Kennel: "Tap a survivor -> Pet to give it an owner". TOOL: no pet command in zh.js -> can't give Rusty an owner. Big miss for caretaker.
+- D4 00 day summary still "Food +0.0 ... Open staff slot: Garden Plot, Rain Barrel" while Ben/June (farmers) show "free".
+- D4 08 SESSION 3 END/away; returned LEVEL 4 (Lodge unlocked). S4 start D4 08.
+- D4 08 MY MISTAKE + design issue: sent Lena 44/78 + Marcus 61/118 to lumberyard - away froze healing, didn't notice. Both hurt again on stage 1 (low risk). Lena 81% back-door check failed "Nothing lost".
+- D4 08 Lena got sick card: Treat (2 scrap 3 water) -> "Lena will be fine." Clear, cheap, caring choice felt good.
+- D4 04 Lena learned Light Feet; D4 13 Amy learned First Aid.
+- D4 10 Rosa Novak (Farmer, scrounger, "up before dawn" - same line as Eli) welcomed. 9 people. Workbench (+15 research) + Scrapyard built.
+- D4 12-15 RAID: 4 raiders. "Everyone turns out". Amy collapsed (rescue within 270 s), Lena carried her to Medical Tent. "Eli is trapped in the Camp while a runner breaks in" -> "Eli slipped out of the Camp before it fell." Amy now 8% in hospital. Amy & Marcus became friends during it.
+- TOOL: `play 5` did NOT stop for "Amy collapsed! Rescue within 270 s" - I only read it afterwards. Lena saved her automatically, but I never got to use an emergency order.
+- D4 16 HQ -> Lodge (20 wood). June -> Police Officer (after raid). D4 19 Amy recovered.
+- D4 20 Theo Nakamura (Engineer, Caring, collects bottle caps) welcomed -> 10 people. Lounge + Lumber Camp built.
+- D4 22 / D5 04: "Ben trapped in the Lodge while a runner breaks in", "June trapped in Medical Tent" - runners get inside every night.
+- D5 01 Tent fire, put out by Noah, Maya, Rosa (named - nice).
+- D5 01-05 friendship burst: Amy&Noah, Lena&Marcus, Maya&Lena, Amy&Maya CLOSE friends, Amy&Rosa. Amy is the social hub (caring trait fits). Lovely to read but I can't DO anything with bonds.
+- D5 06 morning: 10 walkers, 2 buildings damaged (68), Lena hurt (41%). Maya move-in ♥35 accepted.
+- D5 06 water 4.2 days again (-3.7/day) with 10 people; wood 2. Ben -> Civilian.
+- D5 08 SESSION 4 END.
+- D5 09 SESSION 5 start (away credited 8h, +rp/wood). LEVEL 5. Next level needs a BANNER (clear Overrun Clinic stronghold or Trading Post/Radio Tower).
+- D5 09 Lumber low: rooftop survivor again, Fight 75% -> cleared stairs but "The Haven has no room, so the survivor gave them 1 food". Ouch - I wanted them! Beds were 10/10. Horde fight 77% -> both hurt. Marcus learned Tough. +10 wood.
+- D5 12 researched Field Medicine (bandages cheaper, last longer). Barrel->Rain Collector, 4th tent.
+- D5 20 Bo Rossi (Civilian, Big Eater, sleeps with boots on) welcomed. 11 people.
+- D5 23 Theo (caring engineer, new D4) collapsed at night. play stopped this time ("someone is down: Theo"). I ordered `bandage Theo` (ok, no visible effect), then `rescue Theo` ("escorts clear the way"). Amy "picked up Theo" D6 01 but carried him until D6 04 (3 game h of rescueCarry) - status showed "bleeds out in 20 h; Amy is coming" the whole time. My orders felt like they did nothing. Theo 2% in hospital D6 06.
+- D6 06 morning: 16 walkers stopped, 2 buildings damaged, hurt Theo+Lena. Nights getting heavier.
+- D6 08 Radio finally told me "Rain Barrel has no Farmer: change someone's profession" - barrels need FARMERS. Nothing said that on D1-D5 when water was the constant worry. Ben+Noah -> Farmer: water -1.3/day (22 days). Greenwater trade again +10 water.
+- D6 08 Theo recovered. Abel Alvarez (Mechanic L2, Caring, knows Eli) welcomed -> 12 people.
+- D6 09 SESSION 5 END.
+- D6 09 S6 start. D6 11 Noah&Maya friends. Lumber low w/ Lena,Marcus,Abel +14 wood, Abel hurt.
+- D6 12 radio warns boss at 21:00. Built Trading Post (banner). policy defend at 19:00.
+- D6 19 Noah ♥35 move-in accepted. Rook Ivanova (Mechanic, scrounger, terrible jokes) welcomed.
+- D6 21 BOSS Bloater Queen + 6. D7 00 legacy "A real town: 12 people on day 7" +15 renown. Second stray dog Rex at kennel - again no way to adopt (tool has no pet command).
+- D7 00 Lena DOWN, then June DOWN (police, was 9%). Orders: bandage Lena, defend, radiohelp, bandage June. Amy got Lena up at 01:00 -> "Amy and Lena are now close friends" (best moment so far: bond came out of the rescue). Radio rescue team D7 03: "cleared 1 zombie, carried 0 of your people into care" and wants a favour in 2 days. Felt useless.
+- D7 04 BOSS DEFEATED, horde scatters. Found Dog Tags. Nobody died.
+- D7 00 Civic Banner raised (Trading Post). levelup->6 started, "about 1 h while you play (3x slower while away)".
+- D7 06 Della Lindqvist (Civilian, Night Owl, "writes everything down" - 3rd person with this line) welcomed. 14 people, beds 14/14.
+- D7 08 supply drop card -> sent Lena & June.
+- D7 09 SESSION 6 END. 14 people, 0 deaths. Still no mood readout; only ♥ on move-in cards.
+- D7 09 S7 start. LEVEL 6. levelup->7 started D7 11. 2nd Rain Collector, 6th tent.
+- D7 12 supply drop: June & Lena brought crate home, +10 food.
+- D7 14 June ♥36 resident; D7 19 Rosa ♥36 resident. D7 16 Amy&Marcus close friends; D7 17 Amy&June friends; D7 19 Amy&Noah close friends. Amy friends with almost everyone.
+- D7 18 `event feast`: "Harvest Feast is on! Hunger and mood restored." (no cost shown, food went UP to 57)
+- D8 00 HAVEN REVIEW WEEK 1 GRADE B: Pop 20/20, Def 12/20, Supplies 17/20, Buildings 20/20, HAPPINESS 4/20, Research 5/20 = 78/120 "Steady Settlement".
+  !! As a caretaker who did bonfire night (D3), lounge (D5), feast (D7, 6 h before the review), welcomed everyone, nobody died: happiness 4/20. And I never had ANY mood number before this. Gut punch, and I have no idea what to fix.
+- D8 01-06 night: June down (01), Medical Tent FELL (02, Theo slipped out), Lena down (02). Ordered rescue June, militia (refused: "civilians band together when no fighter is left"), rescue Lena, defend. Rescuers only moved at 03:00, 2 h after June fell. Both saved. Morning: 16 walkers, 3 buildings damaged (92).
+- D8 06-11 move-ins accepted: Ben ♥44 (highest yet), Bo ♥35, Eli ♥35.
+- D8 08 Greenwater: "A CHILD IS SICK" -> sent 2 medicine. "Greenwater will not forget." Exactly the caretaker moment I want - but it's a child somewhere else; my own Haven has no children.
+- D8 08 June collapsed AGAIN in daylight (was 52% walking), "down twice today: needs a medical bed". June (Police, loner) has been down D7 00, D8 01, D8 08 - she is the one who suffers most. As a caretaker I can't tell her to stay inside / rest.
+- D8 10 Maya learned Iron Stomach. levelup still running (started D7 11).
+- D8 11 SESSION 7 END (ran 2 h over to handle June).
+- D8 11 S8 start. LEVEL 7 (Fort unlocked). levelup->8 started D8 12. Researched Salvage. Wood-starved (10) while scrap 101 piles up; cloth 0.
+- D8 12 lumber low (Marcus,Rook,Della): sick stranger Della 47% failed "nothing she could do"; Marcus forced shutters +3 scrap. +~18 wood.
+- D8 15 houses low trip; D8 16 Lena collapsed AT HOME in daytime -> I turned the squad back (caretaker). Lena "down twice today: needs a medical bed".
+- D8 18 Armory built: Bo, Maya, Abel bought Crowbar + Riot Vest on their own (nice, visible).
+- D8 19 Dante Osei (Guard L2, Night Owl, "cannot cook, will not stop trying") welcomed -> 15 people. Policy defend for night.
+- D8 21 - D9 09 WORST NIGHT: June down (21), Dante down (22), Theo down (00), Lena down (04), June down AGAIN (05), Dante down AGAIN (08). Lodge wrecked (02, repaired 03), Canteen, Trading Post, Kennel, Armory, Tent all "fell" with people slipping out. Morning D9: 15 walkers, 5 buildings damaged (315 dmg), hurt Eli, June, Theo, Lena, Marcus, Dante.
+  Rescue orders: "Theo ... NO rescuer" right after I ordered rescue Theo (D9 00). Carry times 1-3 h. "Lena reached the Lodge (no medical bed free: slower care)".
+  Pattern: people "recovered and returned" while state shows 2% HP (June D9 04 -> down D9 05; Dante D9 06 -> down D9 08). They go straight back to fighting. As a caretaker I can't keep them in bed.
+- D9 00 *** "A NEW COUPLE: Amy and Lena have grown close and are now a couple. They may start a family when the Haven has room (more Houses)." *** Best moment of the run. Story: Amy bandaged Lena D2, friends D3, close friends D7 when Amy got her up, couple D9.
+- D9 00 Radio rescue team's favour: paid 15 food + 10 water for "cleared 1 zombie, carried 0".
+- D9 04 walls: placed 12+16+16 tiles (wallTiles 56), still "sealed: false". Guard post placed (Marcus).
+- D9 08 card "A FEAST? Spirits are low" -> held (6 food 6 water): "+15 ♥ for everyone · bonds grow". 9 new friendships within the hour. Finally a number for mood - but only as a delta.
+- D9 08 militia formed by itself 3x in daytime (8 walkers inside the walls in daylight).
+- D9 10 Abel ♥44 resident. `upgrade clinic` said ok but "The Clinic is 2x1: place it (turn it with ↻), then Build" and nothing got built -> TOOL can't place it. Built a 2nd Medical Tent instead.
+- D9 12 boss warned for 21:00. SESSION 8 END (D9 12).
+- D9 12 S9 start. LEVEL 8. food now -1.7/day, water -2.6. Built 3rd Garden Plot. Lumber low (Rook, Della, Abel, Bo, power 98) - came home with no report card (squad home 16:00, nothing in cardsRead).
+- D9 16 levelup->9 started (344 real min left at D10 11!). 6 raiders at 16:00.
+- D9 13-D10 10 armory shopping spree: Marcus, Dante, Bo, Della, Rosa, Rook bought crowbars/vests/caps (Rook a Hawaiian Shirt - cute). Scrap 78 -> 28 in a day. I can't stop them.
+- D9 19-D10 09 move-ins: Della ♥39, Rook ♥35, Theo ♥35, Dante ♥38 -> all residents.
+- D9 21 boss Stalker + 8. Night: Della, Eli, Theo, Rook slipped out of Armory/Medical Tent/Kennel "before it fell". Dante down D10 01 (3rd time), June down D10 02 (6th time). BOSS DEFEATED 02:00. Kevlar Vest found -> gave to June. Marcus carried Dante -> "Marcus and Dante are now friends" (rescue -> bond again).
+- D10 06 no MORNING card this day (cardsRead empty).
+- D10 11 food -3.5, water -4.6 (4.7 days), wood 1. Rook, Della -> Farmer. Still -3.2 / -4.1. 16 people outgrowing the 3 farms/4 water.
+- D10 12 SESSION 9 END.
+- D10 12 S10 start. LEVEL 9. Trader has a DOG pet (6 food 6 water) - skipped, water 5.9 days, and the two stray dogs already can't be assigned.
+- D10 13 Abel at 8% HP "free" - stayed 8% from D10 13 to D10 22 without being treated (2 medical tents). `bandage Abel` refused "not down". Then he collapsed D11 00. Hurt-but-standing people don't seem to go get care.
+- D10 13 lumber low Marcus,Dante,Theo -> +17 wood (no report card again). Upgraded barrel->collector, farm->field.
+- D10 22 IRIS (Guard L1, Caring) appeared in the people list rescuing Maya - no join card/news, I never welcomed her. Confusing.
+- D10 22-D11 03 night: Maya down, June down (7th), Abel down, Eli down WHILE rescuing Abel, Dante down. radiohelp D11 02 ("coming in about an hour") - no arrival card this time. All recovered by D11 09. No deaths.
+- D11 no morning card again (D10 and D11).
+- D11 08 radio: "Garden Plot has no Farmer" - while I have 6 farmers (Ben, Noah, Rosa, Rook, Della, +). Staffing is opaque.
+- D11 13 food -2.1/day, water +0.3. wood 2. SESSION 10 END (D11 13).
+- D11 13 S11 start. Food +0.9, water ok (fenced farm). Researched Reinforced Walls. Lumber low June,Iris,Lena +~20 wood (no report card).
+- D11 17 `upgrade cabin` -> ok:false with NO reason (wanted cabins/houses so Amy & Lena can start a family).
+- D11 19 campfire + tent -> buildings 26 -> levelup->10 started D11 21 (466 real min left at D12 13).
+- D11 23 June down 8th time -> I changed June from Police Officer to Farmer to keep her out of fights. She staffs the Garden Plot now. D12 00 Lena down; Theo carried her -> "Theo and Lena are now friends".
+- D12 overnight: 12 friendships in a few hours. Amy close friends with Maya, Marcus, Noah, Della, Rosa, Theo, June + partner Lena.
+- D12 no morning card for 3rd day in a row (last seen D9).
+- D12 13 queued field upgrade + School (for future kids). Boss warned 21:00. SESSION 11 END.
+- D12 13 S12 start. LEVEL 10. Next level needs a Banner again (Trading Post already used; Radio Tower not in my build list; Overrun Clinic stronghold power 175 vs my squad 151).
+- D12 15 tent fire out thanks to Eli, Lena. 7 raiders D12 16.
+- D12 18 tried policy defend -> "workers leave their posts to fight": Noah (farmer) collapsed at 20:00. Back to balanced. Defend policy hurts the people I'm protecting.
+- D12 21 boss Mutant Zombie + 9. School built D13 00. Lena down (00), Iris down (01), Eli down (02). Boss defeated 02:00.
+- D13 01 goal "Have 18 people living in the Haven: done" + beds 18/18, but state lists only 16 names. Who are the other 2? No join news.
+- D13 02-07 rescue churn: news shows "Abel is rescuing Iris" x5, "Dante/Marcus/Ben/Della is rescuing Iris" - rescuers keep switching; Iris and Lena reached care only at 07:00 (6 h). Feels chaotic; my `rescue` orders seem to add noise not help.
+- D13 07 Eli, Iris, Lena 1% in hospital. Dog Tags found -> Iris. Wood 4 again.
+- D13 07 lumber trip (Marcus,Dante,Bo,Rook) left town thin: militia formed, Maya (cook) collapsed 08:00 in daylight, "reached the Lodge (no medical bed free: slower care)". Dante down after coming home (10:00). Every time I send fighters out, someone at home falls.
+- D13 08 radio again "Fenced Farm has no Farmer" - I have 7 farmers.
+- D13 11 Trading Post fire, put out by Eli, Bo.
+- D13 14 trader: bought the DOG pet (6 food 6 water) - "ok" but no news, no name, nothing in state. Did I get a dog? No idea. Bought Field Medic Vest -> Amy.
+- D13 15 SESSION 12 END (ran over to D13 15).
+- D13 15 S13 start. Stuck at L10 waiting for a Banner. Second lounge built. Night: Lena down (D14 00), Iris down (02), Amy/Noah/June slipped out of School and Canteen. Rescue churn again (Theo/Dante/Marcus/Abel/Rosa "rescuing Lena" in turn). radiohelp at 03 - no arrival card.
+- D14 08 radio: "14 empty beds: choose who moves in" while beds show 18/18. Contradiction.
+- D14 08 STRONGHOLD Overrun Clinic (rec. 175) with Marcus,Dante,Bo,Abel,Theo (power 217) - only 4 went in (Theo stayed, no message). sh med at 20 s (Abel 54->100), sh focus at 65 s, boss killed at 68 s. +26 renown, +9 scrap, +9 meds, "people: 4" (who?). Nobody lost. Militia formed at home while they were away. Banner 1/1.
+- D14 10 GAME PAGE CRASHED: every command returns "Error: page.evaluate: Target crashed". Retried ~1 min. Run ends here at D14 10, level 10, 16 named people (18 counted), 0 deaths.

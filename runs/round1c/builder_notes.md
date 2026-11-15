@@ -1,0 +1,65 @@
+# Builder notes (round1c, port 8851, seed 21)
+- D1 08: start 4 ppl, food14 water14, wood12 scrap16. Built farm+barrel. Food -4/d.
+- D1 11-13: Lena solo to Abandoned Houses (low): found few things, then "collapsed" on low-risk trip at 72/72 HP start -> downed, Ben rescued. Surprising for low risk.
+- D1 13: built medic + campfire. Wood 0 by D1 19. No way to get wood shown in canBuild; `tool axe`, `cart` both fail with NO reason (ok:false, no why).
+- D1 16 Noah (cook) joins; D2 03 Maya (engineer); D2 14 Eli (medic). 7 ppl.
+- D2 07: news "Lena can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off" — I built nothing near walls; confusing.
+- D2 09: Lumberyard low w/ Lena+Noah -> wood 6+7+7 = 20. Wood 28 at D2 14. Cry-for-help card: failed CHA 35%.
+- D2 09: build limit = 2 at once ("two builds already running (the limit)") - builder waits.
+- D2 13: water -5.7/d, 1.9 days left. Rain barrel "open staff slot" - no command to staff it.
+- D2 17: levelup to 2 started, 'minutesLeft 9' (real-time timer?).
+- D2 20: Lena downed AGAIN after Abandoned Houses trip (came home 53/72 at nightfall, walkers 8). 2 of 2 trips ended with her down. Workbench built, +15 research.
+- D3 04: Haven L2. Immediately ready for L3, levelup -> 18 min timer. Expanded land (land 1) at D3 07; renown not spent (67->70). Next land needs HQ tier2.
+- D3 07: 3 medics of 8 people; switched June->Farmer, Eli->Scavenger. Ben (Farmer) and others often "free" while barrel has open staff slot.
+- D3: Same expedition events repeat: Armored van card 3 times in 3 trips (D2 18, D3 09, D3 11), sick stranger 3 times.
+- D3 11 lumberyard Lena+June: wood 6+5+... -> wood 30 at D3 14. Lena 31/72 after "wreck pinned" event.
+- D3 12: radio says "upgrade the Camp to a Lodge" but `upgrade hq2` -> "not unlocked yet"; canUpgrade empty. Radio tip leads nowhere.
+- D3 12: radio: "Idle people chop trees and strip wrecks on their own" - first time I learn where wood comes from.
+- D4 05: Haven L3 (~22 game h after starting). levelup to L4 at D4 07: minutesLeft 105 (L2->L3 was 18). At D4 16 still 97 => ~1 min per game hour => L4 lands ~D8. Big wait.
+- D4: canUpgrade still empty at L3; HQ2 'not unlocked yet'. Land tier 2 needs HQ2. So land is stuck at 1.
+- D4 10: research Field Medicine done instantly (25 rp). Research income slow: ~24 rp in 2 days from one bench.
+- D4 08: Greenwater traders: 6 food -> 10 water. Nice.
+- D4 12: 4 raiders, Amy downed, Marcus rescued. Theo (farmer) joined. 10 ppl, beds 10/10.
+- D4 16: wood 3 again. Everything "cannot afford". Wood is the only real limiter.
+- Daily summaries always say "Food +0.0" even with 3 farms (D2, D3) - confusing.
+- Radio says "Haven can reach the next level" at D3 08 and D4 08 while upgrade already in progress.
+- D5 07: medical tent "fell" overnight (154 dmg to 3 buildings). Beds stuck at "10/10" even with 5 tents (D5) - 4th and 5th tent gave no visible bed gain. Confusing.
+- D5 08: stray dog Pepper adopted: "Give the dog to a survivor from their Gear tab" - `equip Marcus pepper` -> "not in the stash". (tool gap?)
+- D5 13: trader sells only for scrap; `trade` list empty, can't sell my 20 idle cloth.
+- D5: scrap 5-9, upkeep -4.4/day by D6 00. Built 2nd scrapyard D5 13. Scrap is now the 2nd limiter.
+- D5 13 pharmacy low Lena+Theo: FIGHT 43% failed, both hurt. Meds now 7.
+- D5-6: move-in requests Marcus, Ben, Lena -> accepted (residents). Beds still 10/10.
+- D6 04 END SESSION 1 (140h): L3, L4 upgrading 67 min left, 10 ppl, 0 deaths, renown 152, wood 0, scrap 8, food +4.6/d water +0.7/d. Maya (engineer) "free" most of session. Going away 22.
+## Session 2 (D6 04 -> D12 00)
+- away 22 real h: "people kept their shifts for 8 game hours" (trays food6 water7 rp5 scrap4). L4 completed during away -> level timer is REAL minutes. L5 timer then 150 min.
+- D6 04: beds jumped 10/10 -> 10/14 at L4: bed cap was level-gated, not tent-gated. My 4th/5th tent were wasted wood (D4-D5).
+- D6 11: hq2 (Lodge) 20 wood 5 mat, built in 1h. Unlocks Lumber Camp, quarry, armory, school, library etc. (24 build options!). Land 2 needs 160 renown + 35 wood + 15 scrap.
+- D6 16 built Lumber Camp (10w). D6 21 boss Mutant Zombie, killed in 1h. Maya downed with NO rescuer until I ordered `rescue Maya`.
+- D7 09: Lena collapsed in town; down ~5h (D7 09-14) while 4 different people "rescuing". Slow.
+- D7 14: `upgrade workshop` -> ok:true, but news: "The Workshop is 2x1: place it (turn it with ↻), then Build." Nothing started. `build workshop` also ok:true, nothing. TOOL: 2x1 upgrades impossible via zh.js.
+- D7 14 wood 22 scrap 33 (lumber camp + 2 scrapyards working).
+- D8 10: found by trial: Scavenger staffs Lumber Camp (Civilian went to rain barrel). Lumber camp was unstaffed D7 00-D8 10 (34h). After: wood 13->25 in 5h. D8 07 walls 4 -> 'sealed: false', 16 tiles; zombies broke into tents every night D4-D8 because ring is open; nothing told me. D8 13 bought 15rp + kevlar w/ spare scrap (53). research shows 'needs 25 (have 25)' at D7 21 (rounding).
+- D9-10 Butcher boss night: 5 down at once (Ben, Rosa, Lark, Della, Lena). radiohelp ok:true but no visible effect. Lena/Della had NO rescuer until I ordered rescue. 0 deaths.
+- D10 Eli: 'recovered and returned' D10 16 then collapsed again D10 18 (and D10 10 after D9 hospital). Seems people leave hospital near 1% and go back to work.
+- D9-10 winter: barrels dry; '⚠ WATER: under 1 day left' at D9 00 and D10 00 while state said water 14.5 / 11 and waterPerDay -0.6 / +1.4. Contradictory numbers.
+- D10 09 research Reinforced Walls; 2nd lumber camp (built D10 17 - 8h waiting for materials). Theo, Maya -> Scavenger.
+- Wood hovering 18-26 from D8 to D10 (repairs eat it each night). Land 2 needs 35: still out of reach for 2 days.
+- D10 22 - D11 05 night: Ben, Rosa, Theo, Maya, Lark, Eli down; Rotbomb hurt 2; Canteen fell. News spammed 'Lark is rescuing Theo' x6 in one hour (D11 02). Theo taken to Lodge 'no medical bed free'.
+- D11 05: walls 10 -> sealed false, 26 tiles; walls 13 -> sealed false, 39 tiles. 1 wood per tile. Nothing tells me how many tiles are left to seal. Wood 23 -> 0.
+- D11 11: Lumber Yard low with Rosa, Amy, Theo. No expedition report in cardsRead (also missing for D8 07 trip). Amy carried home D11 14. ROSA NEVER CAME BACK and no news line about her at all. At D12 00 people list has 12, Rosa absent, `power Rosa` -> empty. beds still says 14/14. Silent loss of a resident (L2 guard, close friends with Eli/Marcus/Theo).
+- D12 00 END SESSION 2: L4 (L5 34 min left), renown 485, land 1, 12 ppl (Rosa missing), food 11.7 (FOOD under 1 day warning), water 12, scrap 72 (idle surplus), wood 19, walls 39 tiles not sealed. Nights: 2-6 people downed every night since D9.
+- D12: pattern: 'X recovered and returned' then X collapses again within 1-2 h (Della D12 08->09, Eli D10 16->18). Radio D12 08 finally says 'Garden Plot has no Farmer'. L5 reached during away (no level card). L6 needs a Banner: Trading Post civic project -> started D12 00.
+- D12 16 Trading Post built -> banner 'civic' -> L6 levelup D12 21 (180 min). D13 10 expand -> land 2 (wood 35 -> 0). Next land 'needs the Fort (HQ tier 3); unlocks at town rank 3 (rank now 2)' - 'town rank' never explained elsewhere. Scrap 104 idle at D13 07 with nothing to spend it on (trader absent).
+- D15 04: rescue thrash: 'Marcus is rescuing Lena' ~18 times and 'Maya is rescuing Theo' ~14 times in ONE hour of news; Lena down since D15 02. Daily nights: 3-4 down (D14 13-14 Della, Eli, June in daytime w/ 4 raiders + 9 walkers; D15 00-04 Eli, Lena, Theo, Amy). 'D13 24:00' timestamp in news. Armory built D14 22 (10w), no visible effect by D15 02. militia -> 'healthy civilians band together when no fighter is left' (ok:false).
+- D15 13: walls 15 -> placed 11, wallTiles 50, sealed false; walls 5 -> placed 0 (no free tiles left), STILL sealed:false. Wood 20 -> 1. The wall line is full but the game says not sealed; no hint why (gates? land 2 line?). Zombies keep breaking into tents/armory.
+- D15 14+: Armory works: fighters buy crowbars/riot vests themselves (Ben, Marcus, Noah, Lark, June, Nora) - good scrap sink.
+- D15 17 policy defend for the night; D16 06 back to balanced. D15 21 Stalker boss w/ 14 zombies; D16 06 "Mutant Boss slunk back". Finn (D16 00) and Nora (D17 00) appeared as helpers with no join card.
+- D16 12: built Medical Tent #4 + Gym. D17 01 Maya back to Engineer -> staffs Workbench (unstaffed for days).
+- D17 06: wood suddenly 62 (from 14 at D16 12). Built Quarry (D17 14), farm->field. Research Bigger Stockpiles (cap 90->120). Remaining research all need a Workshop I can't place.
+- D17 09: MILITIA auto-triggered (no healthy fighter). Made Nora, Finn guards; `post` placed guard post. Bought machete + chef knife + 15 rp from trader.
+- Radio "trader coming" D8 09, D11 09, D14 09, D16 09: trader not visible in state at D11 11, D14 11, D16 11. D17 09 it did show (D17 12).
+- D17 20 END SESSION 3: L5 (L6 81 min left; started D12 21), renown 822, land 2, 14 ppl, 0 confirmed deaths (Rosa missing), walls 50 not sealed, walkers 19 at nightfall, 2 down.
+- D17 20 (session 4): L6 done during away (no card). levelup -> L7 210 min (won't land by D20). Library ordered D17 20, built D18 12 (16 h waiting for materials). Sparring ring D18 16.
+- D17 21-D18 07: 5-6 down; Finn down D17 20 -> rescued D18 07 with 6 h left before bleeding out (11 h on the ground, 'Nora/Amy/Marcus is rescuing Finn' repeatedly). 'no medical bed free' with 4 Medical Tents (open staff slot: Medical Tent every day - only 1 medic, Amy).
+- D18 21 Bloater Queen + 14. D19 02: 6 down incl. only medic Amy; radiohelp -> 'A rescue team is coming (about an hour)' and by D19 05 all 6 were in hospital. Radiohelp actually helped this time.
+- D20 00 END: L6 (L7 167 min left), renown 892, land 2, 16 people listed, 0 death messages, Rosa missing since D11 11. 74 unique collapses D4-D19 (D17: 11). Wood 6, scrap 28, stone 21.

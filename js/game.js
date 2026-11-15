@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.163', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.164', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2353,8 +2353,8 @@ function lootFind(s) {
   const r = s.forage ? (s.forage === 'food' ? .45 + rnd() * .26 : .72 + rnd() * .28) : rnd(); s.forage = null; const _r = r;
   const r2 = _r, bonus = (professions[s.job]?.scav > 2 ? 1 : 0) + (hasSkill(s, 'lootSense') ? 1 : 0), f = (t, col) => floats.push({ w: { ...s.w }, t, col, a: 70 });
   if (r2 < .42) { const n = 1 + bonus; S.mat += n; f('+' + n + ' ⚙', '#9fe0ff'); }
-  else if (r2 < .71) { const n = 1 + bonus; S.food += n; S.produced += n; f('+' + n + ' 🍖', '#ffe06b'); }
-  else { const n = 1 + bonus; S.water += n; S.produced += n; f('+' + n + ' 💧', '#8fd8ff'); }
+  else if (r2 < .71) { const n = 1 + bonus; S.food += n; S.produced += n; dayLog.foodIn += n; f('+' + n + ' 🍖', '#ffe06b'); }
+  else { const n = 1 + bonus; S.water += n; S.produced += n; dayLog.waterIn += n; f('+' + n + ' 💧', '#8fd8ff'); }
 }
 function scavWait(s) { if (s.purpose === 'scav-search' && s.mode === 'free') { s.mode = 'walk'; s.purpose = 'scav-back'; s.dest = tc(7 + OFF, 9 + OFF); s.why = 'Returning with supplies'; s.stateTicks = 900; } }
 
@@ -2909,7 +2909,7 @@ function collectBonus(b) { statAdd('trays');
   const room = r === 'rp' ? 1e9 : r === 'water' || r === 'food' ? supplyCap() - (S[r] || 0) : r === 'mat' ? 1e9 : resCap(r) - (S[r] || 0), got = Math.max(0, Math.min(n, TAP_COLLECT ? room : Math.floor(room)));
   if (!got) { say(`${RES_TITLE[r] || 'Storage'} is full: build more storage to collect.`); return true; }
   if (got < .05) { say(`${RES_TITLE[r] || 'Storage'} is full: build more storage to collect.`); return true; }
-  S[r] = (S[r] || 0) + got; b.bonus = Math.max(0, b.bonus - got); b.trayFull = false; if (r !== 'rp') flow(r, TAP_COLLECT ? DEFS[b.type].name : 'Collected bonus', got); if (r === 'water' || r === 'food') S.produced += got;
+  S[r] = (S[r] || 0) + got; b.bonus = Math.max(0, b.bonus - got); b.trayFull = false; if (r !== 'rp') flow(r, TAP_COLLECT ? DEFS[b.type].name : 'Collected bonus', got); if (r === 'water' || r === 'food') { S.produced += got; dayLog[r === 'food' ? 'foodIn' : 'waterIn'] += got; }   /* 3D.164 play-test (4 testers): the day summary always read 'Food +0.0': produce collected from the trays was never counted */
   floats.push({ w: { x: b.x + b.w / 2, y: b.y + b.h / 2 - .3 }, t: `+${Math.round(got)} ${BONUS_RES[r]}`, col: '#C6FF4D', a: 90, big: true }); SFX('reward'); S.collected = (S.collected || 0) + 1; ui(); return true;
 }
 function hitBonus(px, py) { for (const b of world.buildings) { const c = b._cb; if (c && tick - c.t < 8 && Math.hypot(px - c.x, py - c.y) < c.r * 1.5) return b; } return null; }
@@ -2928,8 +2928,8 @@ function drawBonus(b, cx, cy, z) {   /* white glass bubble with the resource ico
 function newProduce(b, d, cap) {   /* 3D.77: the power, fuel and ammo buildings */
     if (b.burnt || b.fire) return d.fam === 'pump' || d.fam === 'greenhouse' || d.fam === 'fuel' || d.fam === 'ammo' || d.fam === 'ammo2';
     const tk = b.staff && hasSkill(b.staff, 'tinkerer') ? 1.25 : 1, base = b.staff ? 1 : .25;   /* no Mechanic on the job: a quarter */
-    if (d.fam === 'pump') { const a = d.out / 24 * prodMult(b) * base * (powered(b) ? 1 : PUMP_HAND), got = Math.min(a, Math.max(0, cap - S.water)); S.water += got; flow('water', d.name, got); outPop(b, got, '💧', '#8fd8ff'); return true; }
-    if (d.fam === 'greenhouse') { const full = S.food >= supplyCap() - .5, need = full ? 0 : d.waterUse / 24, frac = full ? 0 : Math.min(1, (S.water || 0) / need); S.water -= need * frac; flow('water', 'Irrigation', -need * frac); const a = d.out / 24 * frac * prodMult(b) * base * (powered(b) ? 1.4 : 1), got = Math.min(a, Math.max(0, cap - S.food)); S.food += got; flow('food', d.name, got); outPop(b, got, '🍖', '#9fe58a'); return true; }   /* lamps with power: +40% */
+    if (d.fam === 'pump') { const a = d.out / 24 * prodMult(b) * base * (powered(b) ? 1 : PUMP_HAND), got = Math.min(a, Math.max(0, cap - S.water)); S.water += got; dayLog.waterIn += got; flow('water', d.name, got); outPop(b, got, '💧', '#8fd8ff'); return true; }
+    if (d.fam === 'greenhouse') { const full = S.food >= supplyCap() - .5, need = full ? 0 : d.waterUse / 24, frac = full ? 0 : Math.min(1, (S.water || 0) / need); S.water -= need * frac; flow('water', 'Irrigation', -need * frac); const a = d.out / 24 * frac * prodMult(b) * base * (powered(b) ? 1.4 : 1), got = Math.min(a, Math.max(0, cap - S.food)); S.food += got; dayLog.foodIn += got; flow('food', d.name, got); outPop(b, got, '🍖', '#9fe58a'); return true; }   /* lamps with power: +40% */
     if (d.fam === 'fuel') { const a = Math.min(d.out / 24 * prodMult(b) * base * tk, rareCap() - (S.fuel || 0)), wood = a * 2; if (a <= 0 || (S.wood || 0) < wood) return true; S.wood -= wood; S.fuel = Math.min(rareCap(), (S.fuel || 0) + a); flow('fuel', d.name, a); outPop(b, a, '⛽', '#ffb36b'); return true; }   /* 2 wood -> 1 fuel */
     if (d.fam === 'ammo' || d.fam === 'ammo2') { if (d.fam === 'ammo2' && !powered(b)) return true; const a = Math.min(d.out / 24 * prodMult(b) * base * tk, ammoCap() - (S.ammo || 0)), scrap = a / 4; if (a <= 0 || S.mat < scrap) return true; S.mat -= scrap; S.ammo = (S.ammo || 0) + a; flow('mat', d.name, -scrap); flow('ammo', d.name, a); outPop(b, a, '🔸', '#ffd27a'); return true; }   /* 1 scrap -> 4 rounds */
     return false;
