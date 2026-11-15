@@ -76,12 +76,12 @@
   }
 
   const ACT = {
-    help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours)',
+    help: () => ({ commands: ['state [full]', 'play H [morning]  (run the game H hours; stops early for cards, requests, squads home, emergencies)', 'away H  (the app is closed for H real hours: the town is frozen, nobody heals and nothing attacks; trays fill and a level upgrade keeps counting)',
       'build TYPE', 'upgrade TYPE (the type it becomes)', 'walls [N]  (fence up to N free tiles of the wall line, default 8, north first; gates at roads; each tile costs wood)', 'job NAME JOB', 'promote NAME', 'research KEY', 'event KEY', 'expand', 'levelup',
       'expedition DEST RISK [NAME,NAME..]', 'stronghold DEST [NAME,NAME..]', 'answer N  (button N on the card)', 'accept | decline  (move-in request)', 'buy N | trade N  (trader)',
       'policy produce|defend|recover', 'post  (a guard post by the north gate)', 'tool axe|bar|pick', 'cart',
       'EMERGENCIES: rescue NAME | bandage NAME | radiohelp | militia | defend',
-      'GEAR: stash (what is in the stash, who wears what, what can be crafted) | equip NAME ITEM | craft ITEM | power NAME,NAME,.. (power of a squad you pick)',
+      'GEAR: stash (what is in the stash, who wears what, what can be crafted) | equip NAME ITEM | unequip NAME SLOT | craft ITEM | power NAME,NAME,.. (power of a squad you pick)',
       'STRONGHOLD FIGHT: after `stronghold DEST NAMES` use `fight SECONDS` to watch it in slices; calls: sh focus | sh med | sh back'] }),
     state: (a) => state(a[0] === 'full'),
     play: (a) => play(Math.min(48, +a[0] || 1), a[1] === 'morning'),
@@ -120,6 +120,7 @@
     defend: () => { const z = S.z.filter((q) => q.hp > 0 && !q.human)[0]; if (!z) return { ok: false, why: 'no walkers' }; return { ok: !!Z.sendDefender({ x: z.w.x, y: z.w.y }) }; },
     stash: () => ({ stash: Object.entries(S.inv || {}).filter(([, n]) => n > 0).map(([id, n]) => `${id} (${(Z.ITEMS[id] || {}).name || id}, ${(Z.ITEMS[id] || {}).slot || '?'}${(Z.ITEMS[id] || {}).atk ? ', atk ' + Z.ITEMS[id].atk : ''}${(Z.ITEMS[id] || {}).def ? ', def ' + Z.ITEMS[id].def : ''}) ×${n}`), wearing: S.sv.map((q) => `${q.name}: ` + Object.entries(q.eq || {}).filter(([, v]) => v).map(([sl, v]) => `${sl}=${v}`).join(', ')), craftable: Object.entries(Z.RECIPESX || {}).filter(([k]) => Z.researched(k)).flatMap(([, l]) => l).map((id) => `${id} (${(Z.ITEMS[id] || {}).name || id}): ${Z.craftCostX(id)} scrap`), craftNeeds: 'a Workshop and the research (blades / firearms / bodyArmor / gadgets)' }),
     equip: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const ok2 = !!Z.equip(q, a[1]); return { ok: ok2, why: ok2 ? '' : 'not in the stash (see stash)' }; },
+    unequip: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const ok2 = !!Z.unequipX(q, a[1]); return { ok: ok2, why: ok2 ? '' : 'slot is one of: weapon, armor, head, tool (see stash → wearing)' }; },
     craft: (a) => { const ok2 = !!Z.craft(a[0]); return { ok: ok2, why: ok2 ? '' : 'needs a Workshop, the research, and ' + Z.craftCostX(a[0]) + ' scrap' }; },
     power: (a) => { const ids = (a[0] || '').split(',').map((n) => who(n)).filter(Boolean); return { squad: ids.map((q) => q.name), power: Z.shPower(ids), note: 'compare with the recommended power in state full → strongholds' }; },
     fight: (a) => fight(Math.min(120, +a[0] || 10)),
