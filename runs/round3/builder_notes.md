@@ -1,0 +1,66 @@
+# Builder notes — build 3D.171, seed 21, port 8902
+Session 1 (start D1 08:00)
+- D1 08: 4 people, food 14 water 14 (3.5 days), wood 12 scrap 16. Built barrel+farm (limit 2 builds at once).
+- D1 11-12: barrel and garden built quickly. Radio says Garden Plot costs ⚙3 🪵6, build list said 4 wood -> mismatch.
+- D1 12: news "Ben can't reach a storage door with their load" — nothing walled, confusing.
+- D1 15: Lena solo to Houses: +4 food +6 water +4 cloth. Report: "Lena collapsed and is being carried" while she was alone -> odd text.
+- D1 15: Maya (Engineer) wants in -> welcomed. Built bench, Lena out again.
+- D1 18: Lena 10% HP after solo low-risk trip. D2 8 lumber trip: Lena "16/70" while state said 76% -> numbers disagree.
+- D2 lumber low: +15 wood. Sneak 51% failed twice (D2 08, D3 17) with identical text "A crawler gave them away".
+- D2 13 Level 2. D2 20 expanded land (60 renown+20 wood). D3 02 Level 3. 
+- D3 11: "no spot in the build area will take it" for a 2nd barrel right after expanding land. walls 1 placed 3 tiles, then wall 15 15 says sealed:false, gaps:[] (contradiction).
+- Wood loop: wood only from lumber trips (~16 each, D2/D3/D3/D4) or idle people chopping; with everyone employed, wood stalls (D4 09-17 wood stuck at 18).
+- D3: canteen built D4 04 but no Cook -> empty. 2 barrels empty (no farmers). Water 4.4 on D4 09 (2.2 days).
+- D4 06: rushed level 4 for 75 renown (would have been 25h wait). Lodge unlocked. HQ2 = 20 wood 5 mat.
+- D4 12: 4 raiders, everyone turned out, no loss. Supply drop +12 water.
+- D4 13: "Marcus (Guard, here 2 days) wants to become a resident" - he's a founder; odd.
+- D4 14: Theo guard joined (9 people).
+- D5 06: Camp fire, put out. D5 11: HQ->Lodge ordered (20w 5m), done D5 15. Unlocks Lumber Camp (10w), Pallet, Quarry, etc. Expand now 160 renown+35w+15m.
+- D5 14: June (Medic) joined -> made Cook for idle canteen.
+- D5 23-D6 06: June down; rescue took ~7 game h. News log spammed ~20 lines "Marcus is rescuing June / Theo is rescuing June" at D6 05:00 - rescuers thrashing.
+- D6 03: Lumber Camp built, Noah (made Scavenger) works it. Rate ~1 wood per game hour (D6 10 wood 1 -> D6 18 wood 5). Lumber trip = 16-18 wood in 3 h. Camp feels weak.
+- D6 07: rushed level 5 (renown 81->40). Level 6 needs a Banner: clear Overrun Clinic OR civic project (Trading Post 14w 5m 2c). Good builder goal.
+- D6 21: Boss Stalker + 6, and 5 raiders at 23:00. Ben down, Eli down D7 03; nobody died. Boss defeated D7 01.
+- D7 07: end of session 1 (~143 game h). Level 5, 11 people, 0 deaths, wood 5 scrap 35 renown 91. Wood is THE bottleneck all session.
+Session 2 (start D7 07 after away 22 h; away credited only 8 game h: +5 wood, +7 food, +6 water)
+- D7 10: Trading Post ordered (14w 5m 2c), built D7 22 -> Civic Banner, level 6 unlocked. Felt like a real builder goal. 
+- D8 00: Week review grade A 81/120 ("Population 20/20" while I had 12). Legacy goal "A real town" 12 people. Banner card shown 3 times D8 05-06.
+- D8 05: level 6 timer 3 days (63 h left at D8 14, rush = 150 renown). Mina's join card lost emoji: "Give food (3\n)". Morning card came at 07:00 with no emojis.
+- D8 08: 2nd Lumber Camp. D8 14 water -4.9/day (2.6 days) while barrel was being upgraded.
+- D9 00: baby Ivy born to Amy+Rosa - nice cozy moment.
+- D9 08: Radio signal card "Send Lena (trip about 2 days)" -> pressed Send; Lena never left (staffed Scrapyard 08:00). Bug.
+- D9 16: Tent built but beds stayed 14/14 (D9 18).
+- D9 21: Boss Mutant Zombie + 6, then 6 raiders D10 01. Spiral: by D10 04 Amy, Eli, June, Mina, Hattie, Theo, Marcus, Lena, Noah down/hospital. Radiohelp used D9 23 (cleared 3, carried 4). Medical Tent single bed: "no medical bed free: slower care". Med tent wrecked twice D10 22-23.
+- D10 05 & D6 05: news spam: ~25 lines of "Theo is rescuing Eli / Marcus is rescuing Maya" in the same hour.
+- D10 daytime: 7-11 walkers stayed in town all day; Marcus 71% and Theo 75% stuck in "postCombat" from D10 10 to D11 10 (HP unchanged) -> guards looked frozen.
+- D10 18: `walls 0` placed 8 tiles (0 treated as default) and ate wood. Tool problem.
+- D10 18: Lena/Hana down "path blocked, put a Gate in the wall" — no gaps reported, walls report sealed:false gaps:[].
+- D11 00 Clinic done. D11 05 LEVEL 6 (no deaths). Level 7 timer 84 h (rush 175 renown, have 257).
+- D11 10 sneak failed again (4/4 sneaks failed, same "A crawler gave them away").
+- D11 23-D12 00: "They came for the favour" card asks 15 food 10 water; I had 5.7 water. Pressing Pay did nothing, card came back 3 times with no "cannot afford" text; had to Refuse ("people feel bad").
+- D12 02-03: Bloated wrecked the Clinic, 2 wall sections broke. Morning D12: 8 buildings damaged (196 damage).
+- D12 08: rushed level 7 (125 renown, renown 294->180). Level 8 immediately "ready" -> 4 days timer. HQ3 needs 20w 30 stone 12m 2 fuel; I have 0 stone; Quarry 12w 4m not affordable.
+- Wood still the wall: D12 11 wood 9 after a +13 trip; D12 11->19 wood 9 -> 6 with 2 Lumber Camps staffed (Noah, Mina); repairs eat it. Mina (lumber) downed D12 11 in daylight.
+- D12 21: Gatling Boss + 9, Maya, Amy, Theo, Marcus, Mina, June, Hana, Eli down over the night. Radio help not ready (owed favour refused). Boss "slunk back... will return" at dawn.
+- D13 08: Toll Kings want 20 scrap -> paid (no raids 4 days).
+- D13 12: end session 2. Level 7 (8 timer 73 h), 13 adults + baby, 0 deaths, renown 199, wood 10, stone 0, cloth 0.
+Session 3 (start D13 12; away credited 8 game h: +8 wood, +9 water; level 8 finished during the away - real hours counted)
+- D13 14 Pia engineer joined. D13 16 level 9 ready, started (108 h). D14 00: two couples, 2 babies born, Ivy grown up (legacy "Next generation"). Couple + baby on the same tick (Maya+June).
+- D14 07 Quarry built (Pia). Rate ~2 stone / 11 h. D14 08 rushed level 9 (renown 274 -> 62).
+- D14 08 lost child errand (Lena+Noah) -> Kai saved D14 15 (+8 renown). Nice.
+- D14 22: realised the Medical Tent site ordered D10 15 had been stuck since then for lack of cloth (cloth 0), holding one of the 2 build slots for 5 days. Nothing told me it was stuck.
+- D15 00 week 2 review grade A 94/120.
+- D15 08 Old Quarry (medium): Lena+Mina collapsed in stage 1, turned back, still +17 stone.
+- D15 21 Mutant boss + 14; D16 morning 4 down; boss "slunk back... will return". D16 08 food -2.6/day (3.3 days D16 15, babies + 15 people).
+- D16 crafted machete + nail bat (18 scrap). D16 15 farm->field. 
+- D17 00 Kai grew up -> Guard. D17 morning 6 buildings damaged 355 dmg. D17 18 "Upkeep at midnight is 10.4 scrap and you have 8". D18 08: scrap 1, wood 0 (economy busted by repairs).
+- D18 08 rushed level 10 (renown 213 -> 127). Level 11 needs a NEW banner (Trading Post banner "used").
+- D18 14 Overrun Clinic stronghold, power 246 vs 175: only 4 of the 6 named went in; Noah 8% at start, downed; sh focus -> boss killed in 69 s; +25 renown, +9 scrap, +9 meds, Dr. Ines rescued. Stronghold banner. BEST MOMENT. Level 11 started (144 h).
+- D18 21 Gatling Boss + 14 again; Marcus, Mina, Noah down. D19 00 Finn, Nora grew up (Guard, Farmer).
+- D19 08 Toll Kings want 26 scrap, have 24 -> refuse -> "THEY ATTACK". End session 3 (D19 08). Level 10, 19 people, 0 deaths. Stone 44, wood 9: HQ3 still not affordable (scrap 12 + 20 wood).
+Session 4 (D19 08 after away 22 h; level 11 finished during the away; away tray "11 wood" never showed up in materials: wood 9 at D19 08 and D19 09)
+- D19 08 Toll Kings attacked after refusal; raiders 7 -> 1 by D19 18, no losses.
+- D19 20 HQ2->HQ3 (Fort) finally ordered: 20w 30 stone 12m 2 fuel. Unlocked D12 08 -> 7.5 game days of chasing wood.
+- D20 00 legacy "Room to breathe: Expand the territory 3 times: done" - I ordered expand only once (D2 20); state shows land 3. Confusing.
+- D20 00 END: level 11, 19 people (+ baby Wren), 0 deaths, 29 buildings, renown 235, food 39.6 water 34.4, wood 18 stone 51 scrap 34. Noah down again at 00:00.
+- Mood lines repeat categories: "Maya: 13 friends (+6), 14 friends (+3)".

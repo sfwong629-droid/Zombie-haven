@@ -1,0 +1,47 @@
+# Rusher notes (seed 21, build 3D.172)
+- D1 08: start 4 people, food/water 14 (3.5 days), wood 12. Tips off. Build farm+barrel; limit 2 builds at once.
+- D1 08-10: Lena lumberyard low; horde card, sneak 51% failed, Lena hurt to 10%. +14 wood.
+- D1 14 Noah cook joins. D2 01 Eli joins; barrels+farms need Farmers -> made Noah/Eli/Amy farmers. Water -6.1/day D1 20 (2 days left) until barrels staffed.
+- D2 01 levelup L2, rushlevel all 25 renown (6h timer skipped). D2 13 L3 already (renown 41->16). Rushing levels is trivial early.
+- D3 03 levelup L4 timer 48h; rushlevel 25 -> 36h. D3 08 supply drop +12 scrap. 'MILITIA: SURVIVORS BAND TOGETHER' news D3 08 and 19 with no explanation.
+- D3 14 Marcus solo lumberyard low +15 wood; D3 16 medium +27 wood + backpack but 'Marcus collapsed and is being carried' (solo squad - who carries?). Back at night hurt.
+- D4 08 water 0.6 (!) after a radio-signal trip took 3/3; Maya 'dying of thirst' D4 09. Built 5th barrel, moved Noah. Water +4.9 by D4 15.
+- D4 08 Lena sent on radio signal trip (2 days). D4 12 3 raiders, everyone turns out, Eli collapsed; rescue ok.
+- D4 15 L4 (Lodge unlocked); upgrade hq->hq2 (20w 5mat). June Cook L2 joins -> Medic. D4 17 levelup L5 timer 60h, rushed 25 -> 48h.
+- D5 00 walls 8 (32 wood) + wall 15 15 + gate 10 18: 'buildingsInside 1/18' never sealed. Night D4-5: 15 walkers, 5 buildings damaged 195, Lena down.
+- D5 07 L5 timer rushed again (renown 39->14), 22h left. Lena+Rosa lumberyard medium: Lena collapsed at stage 1 though state showed her 100% (was 'Wounded until treated' - not visible in state). +39 wood.
+- D6 05 L5. Next level needs Banner: Overrun Clinic stronghold, or Trading Post/Radio Tower. Cloth 0 -> houses low Marcus+Theo +4 cloth +pickup truck. D6 08 wandering medic Ozzy stays; Wes cook joins. D6 10 Trading Post started.
+- research blades said ok D4 08 (19->2 research) but D6 'research blades' says 'needs 20 research' instead of 'already done' (blades gone from list).
+- D6 21 Butcher boss + 6. D7 00 Legacy 'A real town' (12 people) +15 renown; 'Complete 4 legacy + reach ★5 to call the convoy'. Levelup L6 timer 72h, rushed 2x -> 48h (renown 76->26).
+- D7 00-05 night collapse: Rosa, Marcus (only guard), then rescuers Hana, Eli, Noah down one after another ('Nobody is reaching X: zombies next to them'). 'militia' refused ('healthy civilians band together when no fighter is left'). radiohelp D7 05 -> D7 06 cleared 8 zombies, carried 4. 8 buildings damaged 204. 7 hurt.
+- D7 08 Toll Kings toll 16 scrap paid -> no raids 4 days. Tomas mechanic -> Guard. Theo -> Guard.
+- D7 16 Lena accepted as resident; same hour sent Lena(60%)+Tomas lumberyard medium. D7 16-17: 'Stage 1: Lena did not make it.' No card, no warning; first I saw was 'Lena 💀 lost' inside a raider-toll card at D7 18. Death 1. +24 wood (paid half to raiders). Feels bad: 60% HP and a Medium trip killed her outright at stage 1.
+- D7 night-D8 noon: 10 buildings damaged 440. Walkers stay in town after dawn (7 walkers at D8 11 and D8 15); rescues took hours ('Eli is rescuing Rosa' x6 lines), June went down rescuing. Week 1 review B: Defense 2/20, Happiness 4/20.
+- D8 15 'walls 12': placed 0, gaps [], sealed false, 'buildingsInside 2/25'. No hint what to do to seal. Wood 0, water dipped to 2.4 at D8 05 (fires use water).
+- D8 18 rushlevel all -> L6 (renown 74->63?). levelup to L7 immediately: 84h timer; rushed 2x -> 60h. Upgrading barrel->water tower.
+- D9 00 'They came for the favour' 15 food 10 water; water 3.9 so refused -> radio help gone for a week. D9 07 research walls (instant). D9 08 lost child card: sent Tomas+Rosa; both collapsed in town D9 10-11, then 'Too late: They searched until dark and found nothing' at 11:00.
+- D9 11 equipped charm/belt/backpack. D9 17 guard post + policy defend for boss (Mutant Zombie D9 21). D10 00: Hana LEFT ('couldn't take another day without water') though day line says Water +22.3 -11.3. All 3 guards + Rosa + June down D10 00-01; civilians rescued all by D10 04. 7 hurt.
+- Daily pattern since D7: walkers inside the wall every night and still 7 inside after dawn; guards collapse nightly. Feels like a treadmill.
+- D10 07 pharmacy low Ben+Ozzy; horde card -> turned back, +1 meds +1 scrap. Foundry visit: showed them around. D10 09 rushlevel all (50) -> L7. levelup L8: 96h timer. HQ3 needs 30 stone. Water 4.7 (D10 00) -> 2.8 (D10 09) despite +4.7/day shown: unexplained drain.
+- D10 13-19 residents: Ben, Wes, Marcus, Ozzy. D10 15 quarrysite medium Marcus(50/155 - I didn't notice he was hurt)+Theo -> +33 stone, Running Shoes; both hurt each stage. HQ3 needs 20w 30st 12 mat 2 fuel; have 12 wood.
+- D11 00 couple Amy+Marcus AND baby Ivy born in the same tick. D11 08 food 9.6 (-1.9/day). Rushed L8 2x (78->28 renown), 49h left. THEN build farm: 'no spot in the build area' - needed renown for expand (60). Rusher mistake, but the game never warned the build area was full.
+- D11 08 houses low Amy+Ozzy: Amy 100->32/74 at stage 1 of a LOW trip. +4 food +4 water +4 cloth. Rosa working at 9% HP.
+- D11 11-16 daytime raider attack (toll from D7 had expired): 4 raiders + 8 walkers, 7 people down incl. all 3 guards. militia refused (Marcus still standing, hiding). radiohelp unavailable (favour refused). 'rescue' orders did nothing while raiders stood next to the downed; at D11 20 a second round of rescue orders worked: all picked up within 1h. No deaths.
+- D12 08 food 5.8. Toll Kings again: paid 20 scrap. Renown 76 -> rushlevel all (75) -> L8 on D12 08. levelup L9 timer 108h. Renown income ~48/day (D11 08 28 -> D12 08 76). Upgrading a farm->field.
+- D12 13 HQ->Fort started (20w 30st 12mat 2fuel); policy defend overnight. Gatling Boss + 9 D12 21. Morning D13: only 36 building damage (vs 246-440 on balanced nights). Fort complete D13 04. Cass Farmer joined. Resident requests stop 'play' each hour (Rosa, Eli...).
+- D13 11 research medicine. Trader announced D9 09, D11 09, D13 09 by radio but 'trader': null every time I looked.
+- D13 19 = ~300 game h played: session break, away 8 (profile).
+- away 8 real h moved the L9 timer from ~50 game h to 1 (away is far more than 8 game h for the level timer; trays only got 8 game h). L9 reached D13 ~20 (no level card seen). D14 01 levelup L10: 120h timer, rushed 1x (49->24).
+- D14 08 expandLand now 'needs 320 renown + 50 wood, 25 mat' (was 60). Fort gave room: built Quarry + Garden Plot. Town Hall (20w 30st 20mat 4 cloth) appears in build list.
+- D14 14 quarrysite medium Marcus+Ozzy: 'Stage 1: Marcus collapsed and is being carried. Ozzy collapsed and is being carried.' (both down, who carries?) +36 stone. Quarry built; 6 workplaces empty (beds 16/16 cap people). Della->Engineer->Quarry. Tent->Cabin.
+- Night D14-15 (defend): 18 walkers inside at D15 03; 13 hurt, 371 building dmg, 5 down at dawn and still 11 walkers in town at 08.
+- D15 08 news spam: 'Ozzy is rescuing Ben' / 'Opal is rescuing Wes' x13 each in one hour. D15 13 Wes+Ben 6h from bleeding out: 'Eli couldn't get to them (path blocked) · put a Gate in the wall (Build → Defend → Gate, tap a wall section)'. walls/wall commands gave no coordinates; 'wall 15 15 gate' failed. Re-ordered rescue -> Theo got both at D15 15. Close call.
+- D15 16 rushed L10 3x (79->4 renown) -> 34h. Lumberyard low Ozzy+Rosa: Rosa was 6/82 when the card showed (I sent her hurt; game gave no warning at send). +12 wood.
+- Night D15-16 (balanced): 11 people went down one by one, 16 hurt incl. baby Ivy (joined D16). All rescued. D16 10 rushed again -> L10 in ~3h.
+- D16 13 L10! Next needs a 2nd Banner (trading post banner 'used'): Clinic stronghold (power 175, my guards 99) or Radio Tower (6 fuel). D16 14 gasstation medium Marcus/Theo/Tomas +27 fuel +9 scrap, pump gamble 35% won. D16 18 Radio Tower started.
+- D17 Quarantine Command cordon (only in a cardsRead line/radio): 'nobody leaves until day 19'. Wood 15 -> 1 overnight D16 (repairs). Radio Tower blocked on 10 wood; can't expedition.
+- D17-18: wood stuck at 0-2 for 20 game h; lumber camp output eaten by repairs (night D17-18: 325 building damage). Trader D17 18 had no wood, raw JSON in buy list. Foundry asks for 14 wood D18 08 - declined (have 0).
+- D18 09-19 'play 10' ran the full 10 h: Tomas went 'bleeding out' D18 16, 'Nobody is reaching Tomas' D18 18, died + rose as a zombie D18 18. play did NOT stop for 'bleeding out' (he was already down before the play call, so no new 'someone is down' stop). Death 2. Rosa also bleeding out, Theo picked her up D18 19.
+- D19 06 night D18-19: 12 of 15 down at dawn ('no fighter free · call radio help or the militia'); militia refused again (Marcus/Theo at 8-11% count as fighters). radiohelp -> D19 07 cleared 6, carried 11 into care. 14 hurt.
+- D19 08 lumberyard low Maya(68%)+Noah(49%) +12 wood. D19 10 7 raiders arrive. D19 12 Radio Tower ordered (10w 20st 16mat 6fuel).
+- D20 01 day 20 started. L10, Radio Tower still a site (since D19 12; wood 14->4), banner 0/1. 7 down at D20 01. Baby Nora born D20 00. Renown 99 with nothing to spend it on (expand needs 320).

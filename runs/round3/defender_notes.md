@@ -1,0 +1,102 @@
+# Defender notes (build 3D.171, seed 21, port 8903)
+Session clock: play 72 game h, then away 20 h.
+Session 1 starts D1 08:00.
+
+- D1 08: 4 people (Marcus guard L3, Amy medic, Lena scav, Ben farmer). food 14 water 14, wood 12, scrap 16. walls 12, 2 broken. squadPower 42.
+- D1 08: built farm + barrel. D1 12 news: "Amy can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off" -- confusing, I built nothing near walls.
+- D1 14: food +5.9/d, water -3/d. 2nd barrel. Expedition houses low Lena+Marcus.
+- D1 14: Noah engineer joins (welcome). Houses trip: food5 water7 cloth7 + Back Brace, no wood.
+- D1 17-20: Lumber yard LOW: horde card, sneak 63% succeeded, yet "Marcus was hurt... collapsed and is being carried" -> Marcus 10% at nightfall. +15 wood. Low risk trip downing my only guard felt harsh.
+- D1 20: medic tent (3w), walls 4 then 6 tiles (~1 wood each), wall tiles 22, not sealed; gap "15,15 inner fence". `wall 15 15` -> ok:false with no reason (wood 0). Tool should say why.
+- D2 01: June farmer joins. D2 06 morning: walkers stopped 3, hurt nobody. Night 1 quiet.
+- D2 08: water -6.1/d (2 days left). Barrel+medic were "site" for 16 h because I spent the wood on walls before delivery (no warning).
+- D2 08-10: Lumber yard low again, Lena 28/68 Marcus 32/106 after 1 h; turned back, +11 wood. Low-risk trips hurt a lot.
+- D2 13: Theo cook joins. Noah->farmer for 2nd barrel. Medic tent built. D2 15 barrel 3. Level 2 started D2 18 (6 h).
+- D2 18: wall 15 15 placed -> "sealed": false, "gaps": [] ; walls 1 -> 24 tiles, sealed false, gaps []. Can't tell what's open. Confusing.
+- D3 06 morning: walkers stopped 3, hurt nobody. Level 2 reached D3 00. Rosa scav joins D3 09 -> scrapyard.
+- D3 09-11: lumber yard low: +15 wood + Back Brace (Lena hurt again). Equipped Marcus goggles, Lena belt.
+- D3 11: `post` -> ok, but no building shows and scrap went 3->0. Unclear if a post exists.
+- D3 11: walls 8 + walls 12 -> 42 wall tiles, still "sealed": false, "gaps": []. No idea how far from closed. wood 18->0 (farm site again may wait for wood).
+- D3 18-21: lumber low Lena+Noah: "Stage 1: Lena collapsed" from 100%. +13 wood, Lifting Gloves. Third low trip in a row with someone down.
+- D4 06 morning: walkers stopped 4, hurt nobody (D4 04 a zombie broke into camp, handled). Level 3 started D4 07 (12 h).
+- Learned: build orders don't take wood until delivery; walls take it at once -> my sites starved twice. Game never warned.
+- D4 07-10: pharmacy low Lena+Marcus: Lena collapsed stage 1, Marcus 31/110. +5 scrap +5 meds + Reading Glasses. Report says "A SICK STRANGER: no orders came, so Marcus chose Move on" - play never stopped to show me that card.
+- D4 10: water 8.6, -4.9/d (1.8 d). 2nd garden has no farmer (8/8 beds, no free people).
+- D4 12: 3 raiders sneaked in; no report of outcome, nothing lost I can see.
+- D4 15: idle people gathered: wood 25 scrap 17. Bench + canteen, walls 8 -> 50 tiles, still sealed:false gaps [].
+- D4 19: Level 3. Next (L4) takes 48 h. 10 workplaces, 8 people: 2 empty. Theo->Cook canteen.
+- D5 06 morning: walkers stopped 8, hurt Lena. Lena resident. Noah->Engineer at bench (research 17).
+- D5 12: 2nd Tent built, beds still "8/8" (was 8/8 before both tents). Tents don't seem to add beds? Text says "Two beds".
+- D5 08: radio signal card (send Lena 2 days, maybe trap) - ignored, defender won't risk her.
+- D6 06: went away 20 h (late: I overshot first 72 h session by ~22 h). Credited 8 h of shifts. Level 4 done (Lodge unlocked). wood 2.
+- D6 06-09: lumber low Marcus+Lena+Rosa: Rosa 6/64 by first card, hurt twice, Lena hurt. +13 wood, Lucky Charm, Lifting Gloves.
+- D6 08: Toll Kings want 14 scrap -> paid (no raids 4 days). Felt like a tax, no choice for a weak town.
+- D6 11-15: Marcus, Ben residents. Radio: boss night at 21:00. Rosa -> Guard, policy defend. Research sat at 29 for 4+ h (Noah on bench) then hit 30 at ~D6 19: research walls ok.
+- D6 21: BOSS night: Gatling Boss + 6 zombies. D7 03 Lena collapsed (0%), Amy then Marcus carried her to medic tent by D7 05. Rosa 19%, Marcus 47%. Morning D7: walkers stopped 4, damage 0, hurt Marcus Lena Rosa. Nobody died. Boss "slunk back... It will return" - never fought it properly, tense but good.
+- D7 08: Ben sick, treated (2 scrap 3 water).
+- D7 11: `tool axe` + `cart` both returned just ok:true; wood 17->5 and scrap 6->0. No cost shown before or after. Lodge (20 wood 5 mat) now further away. Annoying.
+- Wood does not grow on its own over D6 15-D7 11 (15->19->17) despite "idle people chop trees".
+- D7 19-D8 08 (policy defend, then recover from 23): Rosa (guard, was 19%) collapsed 19:00; Lena collapsed 21:00; "Nobody is reaching Rosa: 2 zombies next to them"; used radiohelp D7 22 (team took 1 h, "we'll come by for that favour" in 2 days). Theo collapsed D8 04, Lena again D8 06. Morning D8: walkers stopped 10, 1 building damaged (52), hurt Theo Noah Lena. Walkers inside town 12-13 at night despite 56 wall tiles. Nobody died but 4 collapses in one night.
+- D8 00 Week review: grade B, Defense 4/20 (!), Research 5/20. As Defender this stings: the walls I paid for count for nothing.
+- `walls 0` D8 08: 56 tiles, sealed false, gaps []. No way to find what is open. Gates? coordinates unknown.
+- D8 10-12: lumber low Marcus Ben June: horde card, turned back, +4 wood. Wood 4 at D8 12 and still 4 at D8 18: no idle gathering at all. Research 11->12 in 6 h.
+- D9 00: rescue group "favour": paid 15 food 10 water. Water down to 4.3 by D9 09.
+- D8 18-D9 08 (policy recover): runners broke into Camp, Medical Tent, Tent ("slipped out before it fell"). Lena collapsed D9 04 (3rd night in a row). Morning D9: walkers stopped 11, 3 buildings damaged (176), hurt Lena Rosa. Walkers in town at 05:00: 15.
+- D9 09: wood 0 (repairs eat it?), scrap 12, research 16. Stuck on L4->L5: needs 9 people but beds 8/8; Lodge needs 20 wood. 2 tents gave no beds.
+- D9 09: end of session 2 (D6 06 + 72 h ~ D9 06). away 20.
+- Session 3 starts D9 09 (until ~D12 09).
+- D9 09-11 lumber low Marcus Rosa Noah: fought horde (68%) -> success, +13 wood +1 scrap, nobody hurt. D9 11-13 again: Marcus 152->46 in 1 h, turned back, +4.
+- D9 13: Tent fire, put out by Lena Ben Rosa. Water 3.6 (only 1 of 4 barrels staffed) -> Rosa Guard->Farmer.
+- D9 21 BOSS 2: Mutant Zombie + 6. D10 00 Marcus collapsed, D10 01 Lena collapsed, both "NO rescuer: 5 zombies next to them". militia -> "healthy civilians band together when no fighter is left" (refused). rescue Marcus/Lena/Ben ok. Ben collapsed D10 03. Took until D10 06-07 to get them into care (Ben: "no medical bed free: slower care"). Morning D10: walkers stopped 9, hurt Lena Ben Marcus Noah. Boss "slunk back" again. Nobody dead, but 3 down at once and a 5-hour carry.
+- D10 00: "Out of water: rations were short today".
+- D10 07: Field Medicine researched. D10 07-10 houses low Theo+June: June collapsed stage 1, Theo 19/86; turned back, +3 food +2 water. Even house runs down people.
+- D10 08: adopted dog Bandit -> Marcus. D10 11 "Bandit is barking - raiders spotted near Marcus!" 6 raiders, beaten off, no loss reported. Nice moment.
+- D10 13: trader: bought Riot Helmet (def 6) for 8 scrap 3 food -> Marcus. Finally gear.
+- D10 18-D11 06 policy recover: walkers stopped 10, damage 0, hurt Lena Noah, NO collapses. Recover at night works better than defend for me.
+- D11 06: Camp fire, out. Water 3.3 (winter, "dry all day"). Greenwater trade 6 food -> 10 water.
+- D11 07-10: lumber low Marcus Lena Amy: STR 77% failed, Amy collapsed, turned back; +18 wood. Lodge upgrade ordered D11 10 (20 wood 5 mat).
+- D11 13: LODGE complete. Unlocks Lumber Camp (10 wood 2 mat) - the wood building I needed since D1. Felt like the game hid the fix behind a wall I could barely climb. Built it D11 17, needs Scavenger -> Noah (engineer->scavenger, research stops).
+- D11 14: again "Ben can't reach a storage door with their load. Check... the fence has a gate." Maybe my walls DO block storage; tool gives no map/gate info.
+- D11 23 Lena collapsed (4th time), Noah carried her. D12 05 Lodge on fire; D12 06 Rotbomb hurt 1. Morning D12: walkers stopped 8, 1 building 60 dmg, hurt nobody.
+- D12 07: food 8.4 (-0.8/d), water 12.1, wood 3, scrap 17, renown 276. Beds still 8/8 at Lodge: L5 needs 9 people. Session 3 over -> away 20.
+- Session 4 starts D12 07 (to ~D15 07). Away credit gave 2.9 wood (lumber camp works, slow).
+- D12 08: "6 buildings are full: tap their bubbles" + "Rosa can't reach a storage door". Suspect my walls block deliveries; no way to check.
+- D12 10-11: 3rd Tent built -> beds 8/8 -> 8/10. So the first two tents never added beds?? Confusing.
+- D12 05-11: Lodge fire burned 6 h then "The Lodge burned down", auto-repaired D12 12 (wood -> 0).
+- D12 21 BOSS 3: Stalker + 8. Policy recover. D13 00 "BOSS DEFEATED. horde scatters". D13 01 "Found: Kevlar Vest" (def 8) -> Marcus. Nobody down! Best moment so far.
+- D13 00: 2 babies born (Ivy, Finn) -> level 5 ready, levelup D13 02.
+- D13 08: rushlevel all: L5 done for 65 renown (280->215). Banner needed for L6.
+- D13 13-16: lumber low Lena Rosa Ben: horde card AGAIN (it shows on almost every lumber trip), sneak 81% ok, log stack 71% failed; +16 wood. Armory built D13 15; Theo bought Crowbar+Hawaiian shirt, Lena shirt (scrap).
+- D13 16: Trading Post + tent ordered. D13 19: 6 raiders; D13 21 June collapsed; food 10.9 -> 3.9 by D14 01 (raiders?).
+- D14 02-09: Lena collapsed D14 02 ("Nobody is reaching Lena: 1 zombie next to them"), Rosa D14 04. Sporehead broke Armory ("slipped out before it fell"). Lena lay down 6 h (02->08), Rosa 5 h. Morning D14: walkers stopped 16, 3 buildings 72 dmg, hurt Lena Rosa Ben. 6th night with collapses.
+- D14 04: Banner raised (Trading Post civic). D14 10: food 6.2, -0.8/d. farm->field ordered.
+- D14 13: Ben collapsed in DAYTIME (8 walkers in town by day).
+- D14 23: Fenced Farm done. D15 00 Week 2 review GRADE A: Defense 14/20 (was 4), Happiness 20/20, Research 5/20; +20 renown +14 scrap + Running Shoes.
+- D15 06 morning: walkers stopped 8, 3 buildings damaged, hurt Lena Ben; no collapses (recover policy). 15 walkers in town at 07:00.
+- D15 07: food 4.7 (+2.2/d), water 18.5, scrap 36, wood 3, research 32, renown 293. L6 needs 11 people (10). Session 4 ends -> away 20.
+- Session 5 starts D15 07 (to ~D18 07).
+- D15 07-10: lumber low Marcus Lena June: +27 wood (best trip), Lena hurt, no collapse.
+- D15 10: bench->Workshop (text: "The Workshop is 2x1: place it (turn it with ↻), then Build." - app UI text, no rotate in tool; it built anyway), barrel->Rain Collector. D15 14 Body Armor researched -> 17 armor pieces craftable. Crafted Kevlar (14 scrap) for Lena. This is the defender toy box I wanted - arrived on day 15.
+- D15 14: Sparring Ring ordered. "two builds already running (the limit)" message clear.
+- D15 21 BOSS 4: Bloater Queen + 11 (policy recover). D15 23 Rotbomb hurt 3; Noah + Lena collapsed 23:00, Marcus 01:00. Eli (Guard L2) joined 23:00 mid-fight. Rescuers kept swapping ("X is rescuing" x6) - Noah, Lena, Marcus only reached the medic tent at D16 05 (6 h down). Text says "Rescue within 270 s" but state says "bleeds out in 16 game h" - which one? Boss "slunk back". Morning D16: walkers stopped 12, 3 buildings dmg.
+- D16 01: 11 people -> levelup (66 h). D16 07: rushlevel all 150 renown -> L6. Wood 65 (lumber camp trays piled up).
+- D16 07: 2nd medic tent + 2nd scrapyard ordered; crafted Riot Vest -> Eli.
+- D16 12-18: 6 raiders by day. Eli collapsed 13:00, Lena 14:00 ("3 raiders next to them"). `defend` -> ok:false, no reason given. "Nobody is reaching Eli: the fit ones are fighting". Firebug smashed Workshop. Lena in care 16:00, Eli 18:00 (5 h). 2nd medic tent + scrapyard built (no staff for them: 6 empty slots).
+- D17 01: wood 65 -> walls 20 + walls 30: 105 tiles, still sealed:false, gaps []. Spent 60 wood into a wall that never closes.
+- D17 06 morning (recover): walkers stopped 16, 3 bldg dmg, hurt June, no collapses. Trading Post fire 03:00.
+- D17 07: crafted Gas Mask (Lena) + Football Helmet (Eli). Feast card "Spirits are low" while all 11 people are at ♥100+. Contradiction.
+- D17 14: Tent fire. D17 20 Lodge fire -> "The Lodge burned down" D18 02 (2nd time), spread to Sparring Ring. Fires are constant: Tent D9, Camp D11, Lodge D12, Trading Post D17, Tent D17, Lodge D17.
+- D18 00: Ivy + Finn grown up (Civilian). Ivy -> Guard, Finn -> Scavenger (scrapyard 2). Legacy 2/8.
+- D18 06 morning (recover): walkers stopped 10, 3 bldg dmg, hurt Noah Rosa Lena June, no collapses. People 11/12 for L7.
+- D18 07: end of session 5 -> away 20. Last session D18 07 -> D20 00.
+- Session 6 starts D18 07.
+- D18 07: Overrun Clinic stronghold, power 224 vs recommended 175, ordered Marcus Eli Lena Amy Theo. Fight shows only 4 (Theo missing, no message why). After 20 s: Amy 8%, 29 enemies left, 9 kills, boss 100%, meds 0. `sh back` -> retreat, over at 38 s: Lena 20% Amy 20%, nothing gained. At 128% of the recommended power it was hopeless. Retreat worked cleanly though.
+- D18 08: Foundry order wants 12 wood 10 stone - I have 0 stone. declined.
+- D18 09: Maya (Cook, brave) joined -> 12 people; she collapsed within 2 h (D18 11), rescue ordered. levelup (84 h) -> rushlevel all 175 renown -> L7 at D18 11.
+- D18 11: L7 build list has NO guard tower, trap, stone wall or gate entry. Radio told me about Spike Strips/Barbed Wire (D6) - never found a way to place them. Next HQ needs 30 stone; I have 0 and no quarry.
+- D18 11: crafted Riot Vest -> Ivy (guard), Biker Leathers -> Amy.
+- D18 19: Noah collapsed before dark. D18 21 BOSS 5: Stalker + 14. Eli collapsed 22:00, Lena 22:00. radiohelp D18 22: "cleared 15 zombies, carried 3 into care" - great save.
+- D19 00: 2 more babies (Nora, Kai); Legacy 3/8 (12 people). levelup to L8 started (4 days).
+- D19 02-05: "Noah recovered and returned" D19 02 -> collapsed D19 04. "Eli recovered and returned" D19 04 at 5% HP -> collapsed D19 05. Hospital discharges people at ~1-5% HP, so the same people (Lena 8x, Noah, Eli) collapse again and again. Big find. Also a wall section broke D19 03.
+- Morning D19: walkers stopped 10, 4 bldg 66 dmg, hurt 5 (Noah Finn Eli Lena Maya); 15 walkers still in town at 06:00.
+- D19 12-18: 7 raiders; June and Noah collapsed 15:00. D19 19 Eli resident. D20 00 paid favour 15 food 10 water. Day 20 started: L7 (L8 in progress), 12 people + 2 babies, 0 deaths, 28 town collapses in log. Sheet written.

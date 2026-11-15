@@ -1,0 +1,78 @@
+# Collector notes (port 8906, seed 21, build 3D.171)
+Session clock: play 140 game h then away 22 h.
+- D1 08: start 4 people, food 14 water 14, wood 12 scrap 16. Walker tip card (kept tips on for field notes). Built farm+barrel.
+- D1 12: houses expedition Lena+Marcus; horde card shows "Lena 24/70" though she was 100% -> confusing. Fight 64% won. Loot food5 water7 cloth5 scrap1, no wood.
+- D1 14 Noah (medic) joined; D2 01 Eli (farmer) joined. Barrel built D1 16. Farm site still not built at D2 08 (wood went 5->11).
+- D2 08: food 12.2, -6.2/day = 2.0 days. renown 31. Night 1: 6 walkers stopped, Lena hurt (60%).
+- D2 11: crates built in ~3h. D2 18: `build farm` again -> "no spot in the build area will take it" (12 wall, 6 occupied, 5 door-faces-fence). Build area full at 3 buildings + 1 site.
+- FARM SITE STUCK: placed D1 08, still "farm (site)" at D4 18 (~58 game h) with wood 37. Tent (placed D4 11) built in 1 h. Barrel/crates built fine. Bug?
+- D3 08 food 8.7, 1.0 day left; D4 01 food 0.4, -10/day. Rescued by D4 09 "comeback convoy" +15 food +15 water and supply drop +12 water.
+- Trips: houses x5 so far, ~4-9 food each. D3 lumberyard low: +18 wood + Back Brace (nice, clean).
+- Items collected: Hiking Backpack (D2), Back Brace (D3), Lucky Charm (D3), Back Brace #2 (D3), Running Shoes (D4), School Backpack (D4). All acc slot except shoes? Shoes replaced backpack on Lena (same acc slot?).
+- D4 12: first raiders (3); Maya downed D4 13, rescued by Amy.
+- D4 16: Marcus (Guard L4, 81/118 at start) collapsed on a LOW-risk houses trip; turned back. Low-risk feels not low.
+- Cards: walker, crawler, raiders, runner field notes seen (4 notes by D4).
+- Goals "done! Claim the reward from the alert or the Goals screen" x3 (D2 12, D2 13, D4 05) -- tool has no claim command; unclear if auto-claimed.
+- D5 04: FARM finally built (~68 h after placing). Food went from -10/day to -1/day (D5 06). Leveling then rolled: L2 D5 12, L3 D6 02 (L3->L4 timer 48 h, renownToFinishNow 100).
+- D5 06: expand (60 renown). D5 08 Greenwater visitors: shared meal (-5 food) "likes you a lot more". Raid Greenwater listed (power 200) by D6.
+- D5 09: Lena (78/78 at start) collapsed on low-risk Lumber Yard. Second collapse on a low trip. Squad card HP (Theo 25/64) disagrees with state % (Theo 90%).
+- Maya "59%" from D4 14 to D6 15 (2 days), still Wounded; medic tent built D4 19. Never healed?
+- Beds stay "8/8" after 2 tents built (D4 12, D6 09). Tents give no beds?? 
+- D6 07 research blades done -> 9 craftable melee weapons (machete 9 scrap ... katana 21). Crafted machete (Marcus), nail bat (Lena). Collector joy.
+- D6 09 pharmacy low: +7 scrap +5 meds + Scope Goggles. Kennel built D6 10 but `pets` empty.
+- D6 15 walls: 20->25 tiles, "sealed": false with "gaps": [] -- confusing; wood 21->0.
+- Field notes seen: walker, crawler, raiders, runner, bloated, spitter (6 by D6 17).
+- D6 20: session 1 ends (140 h). Boss night announced for 21:00. Going away 22 h.
+- AWAY 22h (D6 20): credited only 8 h of shifts; L4 finished during away (48 h timer). Renown 155 on return.
+- D6 21 Boss Stalker + 6; defeated D7 01, "Found: Dog Tags". D7 00 stray dog Rusty at kennel -> gave to Marcus. Felt great.
+- D7 06: lumber low w/ Lena,Theo,Marcus (all 100%): Lena AND Marcus collapsed in stages 1-2. 4th collapse on low trips. Frustrating.
+- D7 08 Greenwater sick child: sent 2 meds -> D9 08 +12 food +2 cloth thank-you. Nice payoff.
+- D7 11 5 raiders: Theo & Eli downed, rescued.
+- D8 00 Week 1 review grade B 69/120 "Steady Settlement" +12 renown.
+- D8 08 Toll Kings toll 14 scrap paid (no raids 4 days).
+- D8 14 Lodge done. "Amy can't reach a storage door with their load" message at D8 14 (walls?).
+- D8 18 nextLevel lists "People living here" line twice (dup). Beds 8/10 after 3rd tent.
+- D9 00 LEGACY: Far Horizons (12 expeditions) 1/8 legacy goals, +15 renown.
+- D9 night: 15 walkers, 3 buildings damaged (118 dmg); lasher in gym.
+- D9 07: renown 313 (nothing to spend on except rushlevel/expand). scrap 96.
+- D9 07 STRONGHOLD clinic (rec 175), power 238 w/5 named but fight showed only 4 (Theo dropped silently). 76 s, sh med x2, sh focus at boss 10%. Cleared, boss Butcher killed, +25 renown +6 meds, Callum (Medic) rescued. Highlight.
+- D9 08 Banner "Stronghold Banner raised". D9 09 Rosa (Civilian, "Collects bottle caps") joined.
+- D9 09 rushlevel all -> L5 (renown 340->231). D10 08 rushlevel L6 (300->160). D11 10 rush L7 (198->84). Renown piles up otherwise; rushing feels like the only real use.
+- D9 21 Boss Butcher + 8 defeated D10 03. D10 00: stray dog Scout -> Lena. D12 09 "Scout is barking - raiders spotted near Lena!" -- pet has a visible effect, nice.
+- D10 00: couple Eli+Marcus announced and baby Ivy born at the same tick; also baby Finn (Amy+Theo). D11 00 baby Nora (Ben+Noah). Babies join in 5 days.
+- D10 08 same "A CHILD IS SICK" Greenwater event repeats (D7 08, D10 08). Thank-you again D12 08 +12 food.
+- D10 10 lumber low: Noah (82/82) collapsed. 5th collapse on low trips.
+- Loot repeats: Scope Goggles x3 (D6, D10, D11), Back Brace x2, School Backpack x2. Not much variety for a collector.
+- D11 08 "A lost child" card sent Theo & Lena -> D11 17 "Too late... found nothing". Same hour both were given staff jobs.
+- Storage unreachable msg: D8 14 Amy, D9 21 Callum, D10 07 June, D12 08 June. Walls "sealed:false, gaps:[]". Can't diagnose with the tool.
+- `upgrade cabin` at D11 10 returned ok:false with no reason (probably 2-build limit); worked D11 16.
+- Nights scale: D9 15 walkers, D11 18, D12 20 walkers 334 dmg; rotbombs; gym/kennel/tent nearly fell.
+- D12 water 6.7 (1.6 days). Built barrel, upgraded to collector.
+- D12 15 Dante (Mechanic) joined. 16 people + 3 babies.
+- D12 16: session 2 ends (140 h). away 22.
+- D12 16 away 22h -> L8 on return. Stash had new Gas Mask + Medic Pouch (unclear source). Crafted Katana (Dante), Sledgehammer (Theo).
+- D12 21 Boss Mutant Zombie + 9: Marcus, Lena, Theo down; "Nobody is reaching Marcus: 3 zombies next to them". radiohelp D13 00: rescue team cleared 3, carried 3 (favour owed).
+- D13 00 LEGACY 2/8 "A Real Town". D13 08 Greenwater alliance -> Alliance Banner (2nd banner).
+- D13 11 Clinic upgrade. D14 07 research Gadgets -> 14 accessory recipes. Crafted gloves, glasses, toolbelt, watch, kneepads, walkie (36 scrap) on D14 11. Collector heaven.
+- D14 07 Old Quarry medium: +43 stone +5 scrap + Scrap Spear; raider toll fight 73% won.
+- D14 14 upgrade hq3 accepted (wood 30, stone 47) though expandLand says Fort "unlocks at town rank 3 (rank now 2)". D15 06 still "hq2->hq3" in building list.
+- D15 00: Ivy & Finn grew up; LEGACY 3/8 Next Generation; WEEK 2 GRADE S 100/120 "Beacon of Hope" +30 renown +Tool Belt.
+- D15 00 favour: 15 food 10 water asked; water was 2 -> refused, "won't answer for a week".
+- D15 00 daily line "Water +21.3 -13.2" yet "Out of water: rations were short today" and water 2.0 at D15 00. Contradiction.
+- D15 night: 9 buildings damaged (263 dmg), brute; 5 hurt. Day 15 09-10 Theo+Dante down in daytime (8 walkers in town). Dante "down twice today".
+- D15 06 rushlevel all L9 (225 renown). D15 08 Radio signal: sent Lena (2 days) but news says "Lena will staff the Scrapyard"; state shows Lena "away" so OK.
+- D15 21 Boss Stalker + 14; no "BOSS DEFEATED" line seen this time (D12 Mutant also none). 
+- D16 00 Dante "couldn't take another day without water and left" (took no gear? Katana gone from stash list). D18 00 June left same way.
+- WATER MYSTERY: D16 00 "Water +20.7 -15.0", D17 00 "Water +22.6 -10.4", D18 00 "Water +25.6 -12.7" all say surplus, yet each day "Out of water: rations were short today", "dying of thirst", stores 4-7. Storage-door-unreachable messages keep coming (D15 19 Ben, D17 09 Rosa). Suspect delivery blocked. Biggest frustration.
+- D16 13 trader: bought Tactical Vest (14 scrap), Gas Mask (5), 15 rp (8). Equipped everyone.
+- D16 07 Quarantine Command observers -> D18 00 "Clean bill of health... crate at the gate".
+- D17 00 baby Kai (Maya+Callum). D17 06 research Reinforced Walls.
+- D17 08 lost child #2 (Marcus & Lena) -> D17 19 "Too late". Lena collapsed in town D17 15 during the "search". 0/2.
+- D17 08 radio: "11 empty beds: choose who moves in" while state beds 14/15.
+- Fort (hq3) site: stone 49->19 by D18 07 but wood always 0; site soaks all wood. Not finished by D18.
+- D18 08 Pia (Medic L2) joined via Wandering Medic card. D18 10 a horde card on the trip resolved itself ("no orders came") without `play` stopping.
+- D18 12: session 3 ends. away 22.
+- D18 13 back from away: raid in progress, Maya/Eli/Finn down; rescued.
+- D18 night: Gatling Boss + 14; D19 morning 9 buildings damaged 378 dmg; boss "slunk back... will return" (no field note card for Gatling).
+- D19 07 FORT COMPLETE (site placed D14 14, ~4.7 days, gated by wood). D19 12 trader: bought Goalie pads, Ski suit, dog Biscuit -> Amy. 3 dogs total.
+- D20 00 day 20 starts. Level 9, renown 293, 14 people (Dante & June left over water), 0 deaths. Field notes: 16 (13 zombie/raider + 3 boss). Legacy 3/8. Banners 2. Weekly grades B then S.
