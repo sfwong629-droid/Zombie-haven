@@ -238,8 +238,16 @@
     const seen = new Set([key(seed.x, seed.y)]), q = [seed]; let open = false;
     while (q.length) { const c = q.pop(); if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) open = true;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny); if (!seen.has(k) && walkable(w, nx, ny, true)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
-    return { sealed: !open, walls: n, gates, weakest, area: seen.size };
+    /* 3D.171 owner: sealed means most of the town is inside, not just the little camp fence round the HQ. Most = the HQ and at least
+       3 of every 4 buildings (a building counts when its door, or a tile next to it, is inside the wall) */
+    let inside = 0, total = 0, hqIn = false;
+    if (!open) for (const b of w.buildings) { if (!DEFS[b.type]) continue; total++; const t = approachTile(b); let ok = seen.has(key(t.x, t.y));
+      for (let x = b.x - 1; !ok && x <= b.x + b.w; x++) for (let y = b.y - 1; !ok && y <= b.y + b.h; y++) if (seen.has(key(x, y))) ok = true;
+      if (ok) { inside++; if (DEFS[b.type].fam === 'hq') hqIn = true; } }
+    const most = !open && hqIn && inside >= Math.ceil(total * SEAL_SHARE);
+    return { sealed: most, ring: !open, inside, total, walls: n, gates, weakest, area: seen.size };
   }
+  const SEAL_SHARE = .75;
   const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
   return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, touch, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });

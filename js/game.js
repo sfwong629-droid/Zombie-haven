@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.170', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.171', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1876,9 +1876,11 @@ function repelRaid() {   /* V3D.13: raiders in town → everyone healthy helps: 
 }
 function militia() {   /* V2.37: no able fighter left and zombies inside the town → healthy civilians band together (3+) on the weakest zombie */
   if (S.sv.some((q) => isFighter(q) && q.hp >= q.max * .5 && !['down', 'away', 'errand', 'hospital'].includes(q.mode))) return false;
-  if (S.sv.some((q) => ['chase', 'attack', 'recover'].includes(q.mode))) return false;
+  /* 3D.171 owner: "civilians form a militia when every fighter is down". It needed 3 civilians at 60% and anyone already fighting blocked it,
+     so it almost never came (two towns lost every fighter and then everyone). Now 40% health is enough (Brave 30%), and it holds back only once 3 fight */
+  if (S.sv.filter((q) => ['chase', 'attack'].includes(q.mode)).length >= 3) return false;
   const inside = S.z.filter((z) => z.hp > 0 && z.type !== 'boss' && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))); if (!inside.length) return false;
-  const able = S.sv.filter((q) => q.hp >= q.max * (hasT(q, 'brave') ? .4 : .6) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)); if (able.length < 3) return false;
+  const able = S.sv.filter((q) => !['chase', 'attack'].includes(q.mode) && q.hp >= q.max * (hasT(q, 'brave') ? .3 : .4) && !q.rescuing && !q.carrying && !(q.carriedLoot && q.carryAmt) && !(q.haul && q.purpose === 'haul-put') && !['down', 'away', 'errand', 'hospital', 'rescueTo', 'rescueCarry'].includes(q.mode)); if (able.length < 3) return false;   /* 3 or more: with only 1-2 up, the last-stand rule (3D.48) has them hide */
   const t = inside.sort((a, b) => a.hp - b.hp)[0];
   able.slice(0, Math.min(able.length, 3 + inside.length)).forEach((q) => { q.fleeT = 0; q.hideAt = null; engage(q, t); q.why = `Militia: banding together against a ${zombieTypes[t.type].name}`; });
   if (!S.milSaid || tick - S.milSaid > 6000) note('important', '✊ MILITIA: SURVIVORS BAND TOGETHER'); S.milSaid = tick; return true;   /* 3D.169 round 2: it said so every 5 minutes (15 times in 3 hours); once per stretch now */
@@ -2504,7 +2506,8 @@ let dangerT = -1, dangerV = 1;
    A town that hasn't upgraded stops getting harder; pressing Upgrade Town raises the ceiling. At the top rank it keeps creeping up slowly for veterans. */
 const HORDE_DAY_CAP = [0, 9, 14, 20, 28, 38];
 const hordeCap = (r = S.rank || 1) => HORDE_DAY_CAP[Math.min(r, HORDE_DAY_CAP.length - 1)] + (r >= HORDE_DAY_CAP.length - 1 ? Math.max(0, S.day - 60) * .25 : 0);
-const hDay = () => Math.min(S.day, ((window.ZH_BAL || {}).noCeil ? 1e9 : hordeCap()));
+const HORDE_SLOW = { after: 10, rate: .6 };   /* 3D.171 owner: walkers grow more slowly after day 10 ("but not too slow"): day 20 hits like day 16 did */
+const hDay = () => { const d = S.day <= HORDE_SLOW.after ? S.day : HORDE_SLOW.after + (S.day - HORDE_SLOW.after) * HORDE_SLOW.rate; return Math.min(d, ((window.ZH_BAL || {}).noCeil ? 1e9 : hordeCap())); };
 function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
   if (tick - dangerT < 300 && dangerT >= 0) return dangerV; dangerT = tick;
   let st = 0; for (const q of S.sv) if (q.hp > 0 && q.mode !== 'away') st += isFighter(q) ? 8 * (q.l || 1) + weaponOf(q).atk : 1.2 * (q.l || 1);
@@ -2542,7 +2545,7 @@ function monsterGeneration() {
   if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* study: a fixed pool per night */
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 3 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -4544,7 +4547,7 @@ const EXP_DEFS = {
 };
 const seasonIdx = () => Math.floor((S.day - 1) / SEASON_DAYS);
 function seasonLock(id) { if ((S.lvl || 1) < 15 && !QS.get('season')) return 'Needs Haven level 15'; if (seasonOf().id !== id) return `Only in ${SEASONS.find((x) => x.id === id).name}`; if ((S.shSeason || {})['sh_' + id] === seasonIdx()) return 'Cleared this season'; return ''; }
-const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: .005, hurt: .10 }, medium: { label: 'Medium', min: 15, mult: 2.5, death: .01, hurt: .22 }, high: { label: 'High', min: 30, mult: 5, death: .025, hurt: .38 } };   /* 3D.169 owner: losses lowered once the trip check showed whole-trip odds (medium .017 → .01, high .04 → .025) */
+const EXP_RISK = { low: { label: 'Low', min: 5, mult: 1, death: 0, hurt: .10 }, medium: { label: 'Medium', min: 15, mult: 2.5, death: .01, hurt: .22 }, high: { label: 'High', min: 30, mult: 5, death: .025, hurt: .38 } };   /* 3D.169 owner: losses lowered once the trip check showed whole-trip odds (medium .017 → .01, high .04 → .025); 3D.171 owner: low risk never kills */
 /* V3D.18 DV2-style exploration: trips run on game time (pause and speed apply) and are short: 2 / 3 / 5 game hours.
    They are only possible when a lead comes in (mornings and afternoons, each lasts ~10 hours); the squad walks a bar at the bottom of the screen. */
 const EXP_HMS = 1000 * 1000 / 60, expNow = () => S.expClock || 0, EXP_HOURS = { low: 2, medium: 3, high: 5 };
@@ -4834,7 +4837,7 @@ function expRecall() {
 }
 function expFinish(recalled) {
   const t = S.trip; if (!t) return; if (t.enc) { if (recalled) { t.enc = null; t.log.push('The squad left the situation behind on the way home.'); } else encResolve(t, null); } S.expCount = (S.expCount || 0) + 1; const d = EXP_DEFS[t.dest], rk = EXP_RISK[t.risk], lines = [];
-  if (recalled) for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t)) { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); (t.lostSv = t.lostSv || []).push(m); t.log.push(`${m.name} fell on the way home.`); }
+  if (recalled && t.risk !== 'low') for (const m of [...t.members]) if (Math.random() < EXP_BACK_DEATH * expRiskMult(t))   /* 3D.171 owner: low risk never kills (stage death 0 too) */ { t.members.splice(t.members.indexOf(m), 1); t.lost.push(m.name); (t.lostSv = t.lostSv || []).push(m); t.log.push(`${m.name} fell on the way home.`); }
   /* 3D.165 play-test (Rosa, Lena, June): someone lost on a trip only showed up inside the trip report. Now the town mourns them like any other death,
      they count on the morning card, and the news keeps a line that says so */
   for (const m of t.lostSv || []) { bondsOnDeath(m); for (const sl of SLOTS) { const id = m.eq && m.eq[sl]; if (id && id !== 'pipe' && rnd() < .5) stashAdd(id); } S.fallen = S.fallen || []; S.fallen.push({ name: m.name, job: m.job, l: m.l, day: S.day, cause: 'lost on a trip to ' + d.name, trait: m.trait }); note('important', `💀 ${m.name} did not come back from ${d.name}`); }
@@ -4842,7 +4845,8 @@ function expFinish(recalled) {
   (t.items || []).forEach((id) => stashAdd(id)); const cap = supplyCap(); S.food = keepCap(cap, S.food, t.loot.food); S.water = keepCap(cap, S.water, t.loot.water); S.mat += t.loot.mat; addLoot({ wood: t.loot.wood, stone: t.loot.stone, cloth: t.loot.cloth, meds: t.loot.meds, fuel: t.loot.fuel, ammo: t.loot.ammo }, 'Expedition'); S.produced += t.loot.food + t.loot.water;
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
   barkSquad = { ids: t.members.map((m) => m.id), lost: (t.lost || []).length, at: tick + 90 };
-  if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
+  if (t.ren) renownGain(t.ren, 'Expedition'); t.members.forEach((m, i) => { if (m.hp > 0) gainXp(m, 3 * Math.max(1, t.stage) + (m.xpB || 0)); delete m.xpB; m.w = { x: entry.x + (i - 1) * .3, y: entry.y + (i % 2) * .3 }; delete m.collapsed; if (m.hp <= 0 && t.risk === 'low') m.hp = Math.max(1, Math.round(m.max * .1));   /* 3D.171 low risk never kills: the carried come home weak, not bleeding */
+    if (m.hp > 0) m.mode = 'free'; else { m.mode = 'down'; } m.cool = 20; m.stateTicks = 60; const o = { ...m }; relinkSurvivor(o); o.why = m.hp <= 0 ? 'Collapsed — needs rescue' : 'Back from the expedition'; S.sv.push(o); });
   let recruit = null; const tot = Object.entries(t.loot).filter(([, v]) => v).map(([k, v]) => `${RES_ICON[k] || k} ${v}`).concat((t.items || []).map((id) => ITEMS[id].name));
   if (t.members.length && S.sv.length + (S.kids || []).length < popCap() && (t.recruitNow || (d.recruit && t.stage >= EXP_STAGES && S.sv.length < 10 && Math.random() < d.recruit[t.risk]))) {
     const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo', 'Iris', 'Omar'], nm = freeFirst(names), jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])], jb = jobs[Math.floor(Math.random() * jobs.length)];
@@ -5986,7 +5990,7 @@ function tryWall(x, y, type) {
 }
 function checkPerimeter() {
   const p = Wd.perimeter(world); if (p.sealed && !S.sealed) { note('important', '🛡 PERIMETER SEALED', { log: 'The perimeter is sealed. Zombies must break through.' }); }
-  if (!p.sealed && S.sealed) { note('important', '⚠ PERIMETER OPEN', { log: 'The perimeter is open: zombies can walk in through a gap.' }); }
+  if (!p.sealed && S.sealed) { note('important', '⚠ PERIMETER OPEN', { log: p.ring ? `The wall closes, but only ${p.inside} of ${p.total} buildings are inside it.` : 'The perimeter is open: zombies can walk in through a gap.' }); }
   S.sealed = p.sealed; return p;
 }
 /* ---------------- 3D.76 traps (3D.100: anywhere open, not only outside the wall ring), they wear out and are re-armed with scrap (a choice made before the night) ---------------- */
@@ -6391,7 +6395,7 @@ function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promo
 }
 function perimText() {
   const p = Wd.perimeter(world); if (!p.walls) return 'No walls yet: zombies walk straight in.';
-  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b>' + (() => { const g = findGaps(6); return g.length ? `<div class="sm">${g.length}${g.length >= 6 ? '+' : ''} gap${g.length > 1 ? 's' : ''}: ${[...new Set(g.map((q) => q.why))].slice(0, 3).join(' · ')}</div><button class="act" id="perGaps">Show the gaps</button>` : '<span class="sm">(close every gap)</span>'; })()) + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
+  return `${p.walls} wall tiles, ${p.gates} gate${p.gates === 1 ? '' : 's'}: ` + (p.sealed ? '<b style="color:var(--good)">SEALED</b>' : '<b style="color:var(--bad)">OPEN</b>' + (p.ring ? `<div class="sm">The fence closes, but only ${p.inside} of ${p.total} buildings are inside${p.inside >= Math.ceil(p.total * .75) ? ' and the HQ is not' : ''}. Sealed means the HQ and at least 3 in 4 buildings: wall the outer line.</div>` : '') + (p.ring ? '' : (() => { const g = findGaps(6); return g.length ? `<div class="sm">${g.length}${g.length >= 6 ? '+' : ''} gap${g.length > 1 ? 's' : ''}: ${[...new Set(g.map((q) => q.why))].slice(0, 3).join(' · ')}</div><button class="act" id="perGaps">Show the gaps</button>` : '<span class="sm">(close every gap)</span>'; })())) + (p.weakest ? `<div class="sm">Weakest: ${Math.ceil(p.weakest.hp)}/${p.weakest.max} HP</div>` : '');
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
