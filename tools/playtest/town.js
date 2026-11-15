@@ -22,7 +22,7 @@
       nextLevel: S.lvUp ? { upgrading: true, to: S.lvUp.to, gameHoursLeft: Math.ceil(S.lvUp.left), renownToFinishNow: Math.ceil(S.lvUp.left / 12) * 25 } : conds ? conds.map((c) => `${c.name}: ${c.have}/${c.need}${c.ok ? ' ✓' : c.sub ? ' (' + c.sub + ')' : ''}`).concat(S.rankReady ? ['READY: order levelup'] : []) : 'max',
       supplies: { food: r1(S.food), water: r1(S.water), cap: Z.supplyCap(), foodPerDay: r1(st.fNet), waterPerDay: r1(st.wNet), foodDaysLeft: r1(st.fDays), waterDaysLeft: r1(st.wDays) },
       materials: { scrap: Math.round(S.mat), wood: Math.round(S.wood || 0), stone: Math.round(S.stone || 0), cloth: S.cloth || 0, meds: S.meds || 0, fuel: Math.round(S.fuel || 0), ammo: S.ammo || 0, research: Math.round(S.rp || 0) },
-      people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ${q.mode}${q.mode === 'down' ? ` (bleeds out in ${Math.max(0, Math.round((q.bleed || 0) / 1000))} game h; ${q.rescuer ? q.rescuer.name + ' is coming' : 'NO rescuer'})` : ''}${q.trait ? ' · ' + q.trait : ''}`),
+      people: S.sv.map((q) => `${q.name} · ${q.job} L${q.l} · ${Math.round(100 * q.hp / q.max)}% · ${q.mode}${q.mode === 'down' ? ` (bleeds out in ${Math.max(0, Math.round((q.bleed || 0) / 1000))} game h; ${q.rescuer ? q.rescuer.name + ' is coming' : 'NO rescuer: ' + (Z.noRescueWhyX ? Z.noRescueWhyX(q) : '?')})` : ''}${q.trait ? ' · ' + q.trait : ''}`),
       emergencyHelp: { radioHelpReady: !!(Z.helpReady && Z.helpReady()), note: 'when people are down: rescue NAME, bandage NAME, radiohelp, militia, defend' },
       beds: `${Z.popNow()}/${Z.popCap()}`,
       buildings: cnt, building: (S.sites || []).map((q) => q.type + ' (site)').concat(W.buildings.filter((b) => b.upg).map((b) => b.type + '→' + b.upg.to)),

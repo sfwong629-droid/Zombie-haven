@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.166', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.167', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1324,9 +1324,31 @@ function shortageCheck() {
   const up = upkeepTotal(); if (S.hour === 18 && S.mat + (S.wood || 0) < up && (S.warnDay || {}).up !== day) { S.warnDay = { ...(S.warnDay || {}), up: day }; note('important', `⚙ UPKEEP TONIGHT: ${f1(up)} WOOD + SCRAP, YOU HAVE ${Math.floor(S.mat + (S.wood || 0))}`, { log: `Upkeep at midnight is ${f1(up)} scrap and you have ${Math.floor(S.mat)}: some buildings will run at half output tomorrow (water, food and medical are paid first).` }); }
 }
 function rationNeed() { let f = 0; for (const q of S.sv) f += ration(q) / 2; for (const k of S.kids || []) f += .25; return { f, w: f }; }   // a day of rations: half food, half water
+/* 3D.167 play-test round 1 (New player, Defender, Raider): when someone lies down with nobody coming, say why in one line and what would fix it.
+   It mirrors the checks in assignRescue */
+function noRescueWhy(q) {
+  if (lastStand()) return 'the last few are hiding until the zombies move on · call radio help';
+  const near = S.z.filter((z) => z.hp > 0 && dist(z.w, q.w) < 2.5), crowd = near.length, foe = near.some((z) => z.human) ? (crowd > 1 ? 'raiders' : 'raider') : (crowd > 1 ? 'zombies' : 'zombie');
+  const able = S.sv.filter((r) => r !== q && r.mode !== 'down' && r.mode !== 'hospital' && r.hp > r.max * .3);
+  if (!able.length) return 'nobody is fit to go (down, hurt or in care) · call radio help or bandage them';
+  if (crowd && !q.ordered) return `${crowd} ${foe} next to them: nobody walks in on their own · tap Send rescue, or clear them`;
+  if (crowd && !able.some((r) => isFighter(r))) return `${crowd} ${foe} next to them and no fighter free · call radio help or the militia`;
+  const stuck = able.filter((r) => (r.noRescueT || 0) > tick);
+  if (stuck.length && stuck.length >= able.length - 1) return `${stuck[0].name} couldn't get to them (path blocked) · open a gate or clear the way`;
+  if (able.every((r) => r.rescuing || r.carrying)) return 'everyone fit is already carrying someone';
+  const fighting = able.filter((r) => ['chase', 'attack', 'recover'].includes(r.mode) && S.z.some((z) => z.hp > 0 && dist(z.w, r.w) < Math.max(2.2, rangeOf(r) + 1))).length;
+  if (fighting && fighting >= able.length - 1) return `the fit ones are fighting · they come when it's clear, or call radio help`;
+  const hid = able.filter((r) => r.mode === 'hiding').length;
+  if (hid && hid >= able.length - 1) return 'the others are hiding: they come out once the zombies leave';
+  return 'the nearest free survivor will come';
+}
+function downWhyTick() {   /* down for a game hour with nobody coming: one news line saying why */
+  for (const q of S.sv) if (q.mode === 'down' && !q.rescuer && !q.whyLogged && tick - (q.downAt ?? (q.downAt = tick)) > 1000) { q.whyLogged = true; logEvent(`🩸 Nobody is reaching ${q.name}: ${noRescueWhy(q)}`, 'important'); }
+}
 function downAlert(s) {
+  s.downAt = tick; s.whyLogged = false;
   note('critical', s.name + ' is down', { key: 'down' + (s.id || s.name), icon: '🩸', log: s.name + ' collapsed! Rescue within ' + Math.round(s.bleed / 60) + ' s.', at: () => s.w, live: () => s.mode === 'down' && S.sv.includes(s),
-    dyn: () => `${s.name} is down · ${Math.max(0, Math.ceil((s.bleed || 0) / 60))} s left · ` + (s.rescuer ? (s.rescuer.carrying === s ? `${s.rescuer.name} is bringing them in` : `${s.rescuer.name} is on the way`) : 'no rescuer yet'),
+    dyn: () => `${s.name} is down · ${Math.max(0, Math.ceil((s.bleed || 0) / 60))} s left · ` + (s.rescuer ? (s.rescuer.carrying === s ? `${s.rescuer.name} is bringing them in` : `${s.rescuer.name} is on the way`) : 'no rescuer: ' + noRescueWhy(s)),
     acts: [{ label: () => (s.ordered ? 'Rescue sent 🛡' : 'Send rescue 🛡'), ok: () => !s.ordered, fn: () => orderRescue(s) }, { label: () => (S.cloth || 0) >= 1 ? 'Bandage 🧵1' : 'Bandage ⚙' + BANDAGE_COST * 2, ok: () => (S.cloth || 0) >= 1 || S.mat >= BANDAGE_COST * 2, fn: () => useBandage(s) }] });
 }
 function raidAlert(n) {
@@ -6037,7 +6059,7 @@ function activityText(u) { return u.mode === 'down' ? 'Bleeding out!' : u.mode =
 const bar = (f, col) => `<div style="height:7px;background:#1d242b;border-radius:4px;margin:3px 0;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(100 * Math.max(0, Math.min(1, f)))}%;background:${col};border-radius:4px"></i></div>`;
 function careLine(u) {   /* V2.36: rescue and treatment progress, from the real timers */
   if (u.wounded && !['down', 'hospital'].includes(u.mode)) return `<div style="color:var(--warn,#f0b44c)">🩹 Wounded: patched up in the field. Heals no further than ${Math.round(FIELD_CAP * 100)}% until treated at a medical building.</div>`;
-  if (u.mode === 'down') { const left = Math.max(0, Math.ceil((u.bleed || 0) / 60)), r = u.rescuer; return `<div style="color:var(--bad)">Bleeding out: ${left} s left</div>${bar((u.bleed || 0) / bleedMax(), '#d84d48')}<div class="sm">${r ? (r.carrying === u ? `${esc(r.name)} is wheeling them to ${medSite() ? 'the ' + DEFS[medSite().type].name : 'safety'}` : `${esc(r.name)} is on the way`) : 'No rescuer yet: the nearest free survivor will come'}</div>`; }
+  if (u.mode === 'down') { const left = Math.max(0, Math.ceil((u.bleed || 0) / 60)), r = u.rescuer; return `<div style="color:var(--bad)">Bleeding out: ${left} s left</div>${bar((u.bleed || 0) / bleedMax(), '#d84d48')}<div class="sm">${r ? (r.carrying === u ? `${esc(r.name)} is wheeling them to ${medSite() ? 'the ' + DEFS[medSite().type].name : 'safety'}` : `${esc(r.name)} is on the way`) : 'No rescuer: ' + esc(noRescueWhy(u))}</div>`; }
   if (u.mode === 'hospital') { const tot = u.careTotal || careTicks(), f = 1 - (u.stateTicks || 0) / tot, m = u.careAt || medSite(); return `<div>Recovering${m ? ' at the ' + DEFS[m.type].name : ''}: ${Math.round(f * 100)}% · about ${Math.ceil((u.stateTicks || 0) / 1000 * 10) / 10} h left</div>${bar(f, '#7fd35a')}<div class="sm">${m && isWorking(m) ? `${esc(m.staff.name)} is treating patients (faster)` : m && DEFS[m.type].slot ? 'No medic on duty: slower recovery' : ''}</div>`; }
   if (u.mode === 'useFacility' && u.facility && facilityRules[u.facility.type] && facilityRules[u.facility.type].need === 'injury') return `<div class="sm">Being patched up at the ${DEFS[u.facility.type].name}</div>`;
   return '';
@@ -6657,7 +6679,7 @@ function simTick() { Wd.touch();
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
   if (S.sh) { S.shAcc = (S.shAcc || 0) + (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) / simSpeed; while (S.sh && S.shAcc >= 1) { S.shAcc--; shTick(); } if (S.sh && S.sh.practice) return; S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* 3D.115 the squad's own pace, not the town speed */   /* practice: the town waits */   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(.001); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { downWhyTick(); incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(.001); S.sv.forEach(ai); spreadOut(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
