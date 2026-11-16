@@ -15,7 +15,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `05-NOW.md` | The next three jobs, and what is frozen | live |
 | `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | **to write** |
 | `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | live |
-| `08-BALANCE.md` | Balance targets (pace, danger, hordes, routes, economy), not numbers | **to write, first job after the freeze** (Planning chat) |
+| `08-BALANCE.md` | Balance targets (pace, danger, hordes, routes, economy), not numbers | **to write, next job in the Planning chat** |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
@@ -34,7 +34,7 @@ The older docs under `claude/` are an archive in the **Game Development** projec
 - Tripo sheets: separate square files per view, never one sheet.
 
 ## How we work (from 16 Nov 2026)
-1. **Frozen:** no new features or balance changes until `05-NOW.md` says so.
+1. **Frozen:** only what `05-NOW.md` lists. From the afternoon of 16 Nov that is full tester rounds only; new features, balance changes and new art are allowed again.
 2. **The owner's bugs come first.** Tester and ChatGPT findings wait in `03-BUGS.md`.
 3. **One change per build**, each with a scripted check. No patch on a patch: if a fix needs a second fix, stop and rework.
 4. **Check every change against `01-VISION.md` and `04-UI.md`.** If it isn't covered, ask the owner before building.

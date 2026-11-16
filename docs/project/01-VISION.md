@@ -2,7 +2,7 @@
 
 The owner went through the draft line by line on 16 Nov 2026 and approved everything here. Change it only on the owner's say, and log the change in `02-DECISIONS.md`.
 
-The game is frozen. Lines marked **not in the game yet** describe where the game should go; they are designed and built only after the freeze ends.
+Lines marked **not in the game yet** describe where the game should go; they are not built yet.
 
 ## The game in one line
 A cozy zombie-survival town builder for the phone: you grow a small camp of named survivors into a decent-sized town, keep them alive and happy, check in on them every day, and watch them fight off hordes of zombies.

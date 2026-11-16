@@ -10,16 +10,17 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 11 Nov: Endgame order: weekly crises, seasonal strongholds, legacy start, the City (levels 16–20).
 - 14 Nov: Being away is never punished: away time only credits production (no hunger, no raids).
 - 15 Nov: Level timers count game hours (L2 6, L3 12, L4 48, L5 60, L6 72, L7 84, L8 96, L9 108, L10 120, L11–15 144, L16–20 168). Away time counts (10 real minutes = 1 game hour). Renown speeds them up: 25 renown per 12 game hours.
-- 16 Nov: **Freeze.** No new features or balance changes until the reset (docs, the owner's bugs, code clean-up) is done. Use ChatGPT as much as possible. Full tester rounds only at milestones.
+- ~~16 Nov: **Freeze.** No new features or balance changes until the reset (docs, the owner's bugs, code clean-up) is done.~~ Use ChatGPT as much as possible. Full tester rounds only at milestones.
+- 16 Nov (afternoon): **Unfreeze everything except full tester rounds.** New features, balance changes and new art are allowed again. No full testing for now.
 - 16 Nov (vision review): The feeling to aim for: small town → build → gear up → a horde attacks → you win and it feels good; lots of small features; the town visibly grows, with more buildings and gear unlocking.
 - 16 Nov: The town starts small but grows to a decent size; the owner wants to see survivors fighting a horde.
-- 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet; built after the freeze.)
+- 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet.)
 - 16 Nov: The daytime threat: small roaming groups outside the walls by day, plus a daytime horde every few days that the radio warns about hours ahead. Nights stay the biggest fights; no constant daytime attacks on the town.
 - 16 Nov: Building still comes first, but some things can only be done or won by raiding or doing strongholds.
 - 16 Nov: Banner routes must be balanced so the player doesn't always take the easy one.
 - 16 Nov: A little gore is fine; still not a horror game, no despair spirals.
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
-- 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the first job after the freeze.
+- 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the next job in the Planning chat.
 - 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
 
 ## Hard rules
@@ -83,7 +84,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 11 Nov: Squad caps: strongholds 6, raids 8 (+ vehicle seats).
 - 11–12 Nov: Raids are camp maps that look like towns. Raid carry cap: 10 per squad member.
 - 12 Nov: Faction camps look like tidy communities: more buildings, straight rows, no scattered barrels and boxes.
-- 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. (Not in the game yet; built after the freeze.)
+- 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. (Not in the game yet.)
 - 16 Nov: How: a **Take command** button when the town is attacked; fighters only, same controls as raids. Optional: left alone they fight on their own, civilians stay automatic, and the town must still win a fair fight without the player.
 
 ## Factions

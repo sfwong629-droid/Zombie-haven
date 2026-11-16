@@ -1,7 +1,9 @@
 # Zombie Haven: now (16 Nov 2026)
 
 ## Frozen
-New features, balance changes, new art in the game, full tester rounds.
+**Full tester rounds only** (owner, 16 Nov, afternoon). No full testing for now.
+
+New features, balance changes and new art in the game are allowed again. The working rules in `00-START-HERE.md` still apply: the owner's bugs first, one change per build with a scripted check, every change checked against the vision.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
@@ -12,8 +14,8 @@ New features, balance changes, new art in the game, full tester rounds.
 - Split `js/game.js` by area, one area per session.
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
-- After the freeze, first: write `08-BALANCE.md`, the balance targets page (owner, 16 Nov; in the Planning chat, the owner answers the target questions).
-- After the freeze: build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`).
+- Write `08-BALANCE.md`, the balance targets page: the next job in the Planning chat (owner, 16 Nov; the owner answers the target questions, W38).
+- Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`). Unfrozen 16 Nov; when to start is W37.
 
 ## Waiting on the owner
 Every chat brings its open items back in every reply until they are done (rule in `00-START-HERE.md`). Tick items off here.
@@ -29,7 +31,9 @@ Planning chat:
 - ~~W16. The Gatling Boss's gun arm.~~ Decided 16 Nov: no change to him; he is the one exception.
 - ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
 - ~~W29. Hide "12 h sooner" when it would finish the upgrade anyway?~~ Decided 16 Nov: yes (UI problem U17; built in the UI chat).
-- Nothing is waiting on the owner in the Planning chat.
+- ~~W11. When to end the freeze.~~ Decided 16 Nov: everything is unfrozen except full tester rounds.
+- W37. Order of work now that features are unfrozen: build the new features (daytime threat, Take command) only after the test suite is green and `game.js` is split, as UI building already does (Claude's recommendation), or start them now?
+- W38. The balance targets page (`08-BALANCE.md`) is now the next job in the Planning chat: say go, and Claude asks the target questions (pace, danger, hordes, routes, economy).
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
@@ -55,15 +59,15 @@ UI chat:
 - ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it.
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
 - ~~W30. Bug A5: is the new Raiders picture right?~~ Done 16 Nov: the picture is OK.
-- W33. Town raiders' weapons (owner, 16 Nov: the weapon should change with the raider). Decided: in the town each kind of raider carries its own weapon, and the Raiders note shows the kind that came. Today each raider gets a random one (bat, knife, crowbar, pistol or machete). Proposal sent in the UI chat: Thief knife, Brute sledgehammer, Firebug crowbar, nail bat or hatchet (a torch would be new art, which is frozen). Waiting: yes or no to Thief and Brute, and which weapon for the Firebug.
+- W33. Town raiders' weapons (owner, 16 Nov: the weapon should change with the raider). Decided: in the town each kind of raider carries its own weapon, and the Raiders note shows the kind that came. Today each raider gets a random one (bat, knife, crowbar, pistol or machete). Proposal sent in the UI chat: Thief knife, Brute sledgehammer, Firebug crowbar, nail bat or hatchet (a torch would be new art, which is frozen). Waiting: yes or no to Thief and Brute, and which weapon for the Firebug. (Planning chat, 16 Nov: new art is no longer frozen, so a torch is possible.)
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
-- W10. Batch 5 armour (Tripo models): after art unfreezes.
-- W11. When to end the freeze.
+- W10. Batch 5 armour (Tripo models): art is unfrozen (16 Nov), so this can go ahead in an Art chat.
+- (W11 is closed: see the Planning chat list.)
 
 ## Parked
 - Round 4 play-test: stopped half way. 4 of 8 sheets are in the repo under `runs/round4/` (commit 2df273c); no comparison was written.
