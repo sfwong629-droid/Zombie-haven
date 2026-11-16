@@ -44,13 +44,14 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 | B14 | A 12% health Police Officer keeps attacking under Recover & Heal | ChatGPT tester | open |
 | B15 | A couple's baby is announced while one parent lies downed | round 4 | open |
 | B16 | Squad power ignores current health (240 shown, squad hurt) | round 4 Raider | open |
+| B17 | **A Medic freezes all day next to a fence.** The Medic goes to patch someone up who stands just across a fence or wall, stops on the wrong side about 1.5 tiles away, and stands there as "Patching up X" without moving or healing: 9 game hours in the check, and it did not end. | test suite (`profession`), Code clean-up chat, 16 Nov | **reproduced**: `python3 tests/run_tests.py profession` fails at "a Medic off shift patches someone up". Likely cause, from a trace: in `fieldAidAI` (`js/game.js`) the Medic must get within 0.95 tiles, but walks to a point 0.6 tiles from the patient on its own side; when that point is across the fence, `followPath` reports "arrived" at arm's length and the two rules never meet. May be related to A6 ("Couldn't reach it"); not checked. |
 
 UI problems are listed in `04-UI.md`, not here.
 
 ## C. Code and tools
 | # | What | Status |
 |---|---|---|
-| C1 | Test suite: 35 standing failures; `newz` flaky | **part fixed** (16 Nov): 35 → 18 failures of 38 tests. Notes below. |
+| C1 | Test suite: 35 standing failures; `newz` flaky | **nearly done** (16 Nov): 35 → 1 failure of 38 tests. The one left, `profession`, fails because of a real bug (B17). Two tests failed once each in full runs and pass alone: `combat`, `expchoices` (flaky, not yet looked at). Notes below. |
 | C2 | A late test crashes the browser in a full suite run (`sim`, `sound`); passes alone | **fixed** (16 Nov, commit cb01571). A failing test left its page open; 35 open pages used about 6 GB and the late tests could not load. Check: a full run now takes about 2 minutes (was 14) with no load timeouts. |
 | C3 | Almost all game code in one file, `js/game.js` | open (clean-up plan) |
 | C4 | Play-test tool has no map; several orders fail with no reason | open |
@@ -59,15 +60,18 @@ UI problems are listed in `04-UI.md`, not here.
 ### C1 notes (Code clean-up chat, 16 Nov)
 - **Cause of 15 of the 35:** `tools/dce/prune.js` removed every test hook (`ZH.name`) that no other game file reads, and the test suite was not counted as a reader. 85 of the 89 missing hooks were still in the game; they are back on one line at the end of `js/game.js`. No behaviour change, no build number. When pruning again, pass `tests/run_tests.py` as a user file.
 - **Old 2D drawing checks removed (W31, owner said yes):** `geometry` passes with its other 11 checks; `hd` is gone whole, because every check in it was the 2D HD art preview; `rotate` and `tabs` now tap the building's footprint and fail further on, so they moved to the last group below.
-- **The 18 still failing** (first sort, each still to be checked one at a time):
-  - Crash on the same line of test set-up ("set hp of null": the test looks for something that is not there): `alerts`, `save_load`, `walls`.
-  - The game answers differently from what the test expects; each is either an old test or a real bug, not yet known which: `newz`, `economy`, `profession`, `polish`, `input`, `title`, `menu`, `saves`, `traits`, `expchoices`, `posts`, `replay`, `guide`, `rotate` (the turn button gives direction 3 where the test expects 1), `tabs` (the survivor panel has no Bonds tab).
-- `newz` failed on every run here (the Stalker combo check), so it is counted as failing, not flaky.
+- **17 of the last 18 were out-of-date tests, not game bugs** (16 Nov, one commit per group). The game had changed on purpose and the tests had not followed:
+  - The map moved: the tests built walls, guard posts and a road at old spots outside today's town (`alerts`, `save_load`, `walls`, `polish`, `posts`, `input`).
+  - The opening cutscene (3D.102) blocks saving; tests that opened the page by hand did not skip it (`saves`, `title`, `replay`).
+  - UI moved: Main menu is in More → Settings (`menu`); the Bonds tab became About (`tabs`, `traits`); alerts and advisor tips are in the Needs you list behind the alert button (`alerts`, `economy`, `input`).
+  - Rules changed: "Turn back now" is a fourth trip option and the Explore panel shows real odds (`expchoices`); a second-garden goal (`guide`); four-way turning and building sites (`rotate`); the Stalker's slower combo (`newz`); repairs done by a person walking over (`walls`).
+- **Two old checks were removed with the old alert panel:** "alerts shrink to one row while placing a building" and "hiding an advisor tip mutes it for the day" (the new list has no hide button: W40).
+- **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
 - 3D.180: A2 the angry face no longer flashes on a fighter who can't get to a zombie that is bashing a building. Check: `tools/qa/sos_skip_check.js`.
 - 3D.179: A7 the Stalker wears its own skin (it wore the stand-in Runner's). Check: `tools/qa/stalker_look_check.js`.
-- 16 Nov (tools only): C2 the test runner closes every page after each test; C1 part 1, 85 test hooks put back; C1 part 2, old 2D checks removed.
+- 16 Nov (tools only): C2 the test runner closes every page after each test; C1: 85 test hooks put back, old 2D checks removed, 17 out-of-date tests brought up to date (35 → 1 failure).
 - 3D.178: A5 the "New: Raiders" note shows a raider (Toll Kings' kit), not a walker. Check: `tools/qa/raider_note_check.js`.
 - 3D.177: A4 a closed radio card no longer takes taps (it re-opened its old message when you tapped the People list). Check: `tools/qa/radio_tap_check.js`.
 - 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.

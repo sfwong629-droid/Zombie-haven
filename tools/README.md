@@ -18,7 +18,7 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 
 | Command | What it does |
 |---|---|
-| `python3 tests/run_tests.py` | The game's test suite (~2 min in the cloud). 18 failures are old and known (bug C1, list in `docs/project/03-BUGS.md`); compare the list with the previous commit, never expect zero until C1 is closed. |
+| `python3 tests/run_tests.py` | The game's test suite (~2 min in the cloud). 1 failure is known (`profession`, bug B17; see `docs/project/03-BUGS.md`); compare the list with the previous commit, never expect zero until C1 is closed. |
 | `node tools/qa/ui_check.js` | 3D.159 layout check: six screen sizes, every message type at once. Fails on overlaps, anything off screen, buttons under 44 px. Screenshots `ui_<size>.png`. |
 | `node tools/qa/anim_soak.js 240000` | Plays a new game for 4 min and lists every animation mismatch (sliding, walking in place, feet too fast), grouped. |
 | `node tools/qa/frozen_check.js 240000 2` | Bug A1 check (3D.175/176): freezes one survivor on purpose to prove the tracker notices; then a survivor with a backpack and every figure rebuilt off screen must animate; then plays for 4 min at 3× and fails if anyone's bones stop moving (FROZEN). Exit 0 ok, 1 frozen, 2 self-test failed. |

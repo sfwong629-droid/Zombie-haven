@@ -8,7 +8,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
 2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov). Owner bugs fixed the same day: A4 (3D.177), A5 (3D.178, UI chat), A7 Stalker skin (3D.179), A2 angry face flashing (3D.180); A3 closed. Still open: A6 (Ben can't reach the Garden Plot), waiting for the owner's backup.
-3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely. Started 16 Nov in the Code clean-up chat: C2 fixed, C1 down from 35 failures to 18 and a full run from 14 minutes to 2. Next: go through the 18 one at a time (list in `03-BUGS.md`). The `game.js` split does not start until the suite is green.
+3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely. 16 Nov, Code clean-up chat: C2 fixed; C1 down from 35 failures to 1, and a full run from 14 minutes to 2. The one left (`profession`) is a real bug, B17 (a Medic freezes next to a fence): fix it in the Bugs chat. Also left: two tests that each failed once in a full run (`combat`, `expchoices`). The `game.js` split does not start until the suite is green.
 
 ## After that (not started, in this order)
 - Split `js/game.js` by area, one area per session.
@@ -63,6 +63,8 @@ UI chat:
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
+- ~~W39. Mark tests that found a real bug as "known bug" so the suite can go green early?~~ Decided 16 Nov: no, fix the bugs first.
+- W40. Advisor tips in the Needs you list (behind the alert button) can no longer be hidden for the day; the old tip line had a ✕ for that. Add a hide button to the list, yes or no? (If yes, it is a job for the UI chat.)
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
