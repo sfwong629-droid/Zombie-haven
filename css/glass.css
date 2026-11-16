@@ -379,7 +379,7 @@ html.cozy #fx #nTop .toast.pop .pt { white-space: normal; display: -webkit-box; 
 html.glass #nBot #say { position: relative; left: auto; bottom: auto; transform: none; max-width: 92%; pointer-events: none; }
 #nBot .radioCard { position: relative; left: auto; bottom: auto; width: 100%; max-width: 400px; transform: translateY(18px); }
 #nBot .radioCard.in { transform: none; }
-#nBot .radioCard:not(.in) { position: absolute; bottom: 0; }   /* a closed card takes no room */
+#nBot .radioCard:not(.in) { position: absolute; bottom: 0; pointer-events: none; }   /* a closed card takes no room, and no taps (3D.177 bug A4: '#nBot > *' above switched taps back on for the invisible closed card, so a tap on whatever was under it, such as a row of the People list, re-opened its old message) */
 /* two lines; while the DJ talks the newest words stay in view (older ones scroll up), a tap opens the full message */
 #nBot .radioCard .rcT b { display: flex; flex-direction: column; justify-content: flex-end; max-height: calc(2 * 1.25em); overflow: hidden; }
 #nBot .radioCard .rcT b .rcL { display: inline; }

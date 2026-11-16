@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. Next owner bugs: A2 (emoji flashing), A3 (the game froze).
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze).
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 
 ## After that (not started, in this order)
@@ -37,6 +37,7 @@ Bugs chat:
 - W20. Bug A1: play 3D.176 and say whether anyone still freezes in one pose.
 - W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
 - W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
+- W21. Bug A4 (tapping a person opened the radio): play 3D.177 and say whether tapping people works now, in the People list and on the map.
 - W7. Any other bugs they have seen.
 
 Later:
