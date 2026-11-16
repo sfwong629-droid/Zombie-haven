@@ -1728,6 +1728,9 @@ function newJob(o, cost) { const sum = Object.values(cost).reduce((a, v) => a + 
    nothing delivered for 6 game hours says why, once a day: a material you have none of, or nobody is carrying to it */
 /* 3D.172: a storage building whose door is walled off from the rest of the town. 3D.174 (round 4: "the Lodge's door is walled in" every night,
    with no way to find the tile): the game opens it itself, turning the fewest wall sections between the door and the town into Gates */
+/* 3D.174 round 4 (Builder, Defender: "the outer wall line kept growing"): when the land grows, say what that means for the wall */
+function landGrewNote() { const Zn = Wd.WALLZONE, n = 2 * (Zn.x1 - Zn.x0 + 1) + 2 * (Zn.y1 - Zn.y0 - 1), p = Wd.perimeter(world);
+  note('important', `🗺 The land grew. The new outer wall line is ${n} tiles long; your old wall still protects the ${p.inside} building${p.inside === 1 ? '' : 's'} inside it.`, { log: `The land grew: new outer wall line ${n} tiles. Buildings inside a closed wall: ${p.inside} of ${p.total}. Sealed needs the HQ and 3 in 4.` }); }
 function storeReach(st, others) { const t0 = Wd.approachTile(st), seen = new Set([t0.x + ',' + t0.y]), q = [t0];
   while (q.length && seen.size < 4000) { const c = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = nx + ',' + ny; if (!seen.has(k) && Wd.walkable(world, nx, ny, false)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
   return { seen, reach: others.filter((t) => seen.has(t.x + ',' + t.y)).length }; }
@@ -4254,7 +4257,7 @@ function lvStepCheck(c) {   /* 3 small celebrated steps inside each level: a thi
 function levelUpDone() {   /* the timer ran out: the Haven reaches the next level */
   const u = S.lvUp; if (!u) return; S.lvUp = null; const from = S.lvl || 1; S.lvl = Math.min(LV_MAX, u.to); S.lvStep = 0; const oldRank = S.rank || 1; S.rank = Math.max(oldRank, rankOfLvl(S.lvl));
   if (u.banner) { const b = (S.banners || []).find((q) => !q.used); if (b) b.used = true; }
-  const t = Math.max(S.terr || 0, terrOfLvl(S.lvl)); if (t !== (S.terr || 0)) { S.terr = t; Wd.setTerritory(t); Wd.bump(world); }
+  const t = Math.max(S.terr || 0, terrOfLvl(S.lvl)); if (t !== (S.terr || 0)) { S.terr = t; Wd.setTerritory(t); Wd.bump(world); landGrewNote(); }
   const lines = [`Room to store more: food/water ${supplyCap()}, wood/stone ${matCap()}, scrap ${scrapCap()}`]; if (terrOfLvl(S.lvl) > terrOfLvl(from)) lines.unshift('🗺 The Haven claims more land (more zombies, from more directions)');
   if (eraOf(S.lvl) !== eraOf(from)) lines.unshift(`A new era begins: Era ${eraOf(S.lvl).n} · ${eraOf(S.lvl).name}`);
   if (S.rank > oldRank) { S.threat = Math.floor(S.day / 4); rankReward(); S.mat += 4 + S.rank; for (const x of rankUnlocks(S.rank).filter((x) => !x.startsWith('+'))) lines.push(x); }
@@ -6437,7 +6440,7 @@ function perimText() {
 }
 function expandInfo() { const t = (S.terr || 0) + 1, n = Wd.TERRITORY[t]; return n ? { n, hqOk: t <= hqTier(), ok: t <= hqTier() && S.ren >= n.ren && canPay(bCost(n)) } : null; }
 function expandTerritory() {   /* V2.13: more land to build on, more zombies to hold off */
-  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world);   /* 3D.100: traps inside the new walls stay (they go anywhere now) */
+  const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); landGrewNote();   /* 3D.100: traps inside the new walls stay (they go anywhere now) */
   banner('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`, true); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
 let tTab = 'overview';
