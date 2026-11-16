@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.179', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.180', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1050,7 +1050,7 @@ function answerSOS() {
   const hits = S.z.filter((z) => z.hp > 0 && (z.mode === 'zbash' || z.mode === 'rsmash')); if (!hits.length) return;
   for (const z of hits) {
     const on = S.sv.filter((q) => q.target === z && ['chase', 'attack', 'recover'].includes(q.mode)).length; if (on >= 3) continue;   /* 3D.41: up to three fighters per attacker */
-    const c = S.sv.filter((q) => isFighter(q) && !q.errand && canFight(q) && !q.carrying && !q.rescuing && (['free', 'wait', 'walk', 'postCombat', 'pitch', 'chat', 'campfire', 'goFacility'].includes(q.mode) || ['useFacility', 'hiding'].includes(q.mode) || q.sleeping || (q.mode === 'work' && isNight())) && dist(q.w, z.w) < 20)   /* 3D.41 owner: a building under attack wakes the fighters, however tired */
+    const c = S.sv.filter((q) => isFighter(q) && !q.errand && canFight(q) && !q.carrying && !q.rescuing && (['free', 'wait', 'walk', 'postCombat', 'pitch', 'chat', 'campfire', 'goFacility'].includes(q.mode) || ['useFacility', 'hiding'].includes(q.mode) || q.sleeping || (q.mode === 'work' && isNight())) && dist(q.w, z.w) < 20 && !(q.skipZ && q.skipZ.z === z && q.skipZ.t > tick))   /* 3D.180 bug A2: a fighter who has just found there is no way to this one is not sent straight back at it (the angry face flashed above them again and again) */   /* 3D.41 owner: a building under attack wakes the fighters, however tired */
       .sort((a, b) => dist(a.w, z.w) - dist(b.w, z.w)).slice(0, 3 - on);
     for (const q of c) { if (insideBuilding(q)) { const bb = insideBuilding(q); q.facility = null; q.hideAt = null; q.w = { ...Wd.approachPoint(bb) }; } if (q.mode === 'chat') endChat(q); if (q.mode === 'pitch') endPitch(q); if (q.sleeping) { q.sleeping = false; bark(q, 'wake', {}, { pri: 2 }); } q.fleeT = 0; engage(q, z); q.why = `Answering the SOS at the ${DEFS[(z.bldT || z.goalB || {}).type]?.name || 'building'}`; emote(q, '😤', 60); }
   }
