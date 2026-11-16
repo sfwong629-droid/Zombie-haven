@@ -12,6 +12,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 15 Nov: Level timers count game hours (L2 6, L3 12, L4 48, L5 60, L6 72, L7 84, L8 96, L9 108, L10 120, L11–15 144, L16–20 168). Away time counts (10 real minutes = 1 game hour). Renown speeds them up: 25 renown per 12 game hours.
 - ~~16 Nov: **Freeze.** No new features or balance changes until the reset (docs, the owner's bugs, code clean-up) is done.~~ Use ChatGPT as much as possible. Full tester rounds only at milestones.
 - 16 Nov (afternoon): **Unfreeze everything except full tester rounds.** New features, balance changes and new art are allowed again. No full testing for now.
+- 16 Nov: New features (the daytime threat, Take command) are built only after the `game.js` split, which itself waits for a green test suite. The balance page and art do not wait.
 - 16 Nov (vision review): The feeling to aim for: small town → build → gear up → a horde attacks → you win and it feels good; lots of small features; the town visibly grows, with more buildings and gear unlocking.
 - 16 Nov: The town starts small but grows to a decent size; the owner wants to see survivors fighting a horde.
 - 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet.)

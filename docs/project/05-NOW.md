@@ -15,7 +15,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
 - Write `08-BALANCE.md`, the balance targets page: the next job in the Planning chat (owner, 16 Nov; the owner answers the target questions, W38).
-- Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`). Unfrozen 16 Nov; when to start is W37.
+- Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. Starts only after the `game.js` split (owner, 16 Nov).
 
 ## Waiting on the owner
 Every chat brings its open items back in every reply until they are done (rule in `00-START-HERE.md`). Tick items off here.
@@ -32,7 +32,7 @@ Planning chat:
 - ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
 - ~~W29. Hide "12 h sooner" when it would finish the upgrade anyway?~~ Decided 16 Nov: yes (UI problem U17; built in the UI chat).
 - ~~W11. When to end the freeze.~~ Decided 16 Nov: everything is unfrozen except full tester rounds.
-- W37. Order of work now that features are unfrozen: build the new features (daytime threat, Take command) only after the test suite is green and `game.js` is split, as UI building already does (Claude's recommendation), or start them now?
+- ~~W37. When to build the new features.~~ Decided 16 Nov: after the `game.js` split (so after the test suite is green too).
 - W38. The balance targets page (`08-BALANCE.md`) is now the next job in the Planning chat: say go, and Claude asks the target questions (pace, danger, hordes, routes, economy).
 
 Bugs chat:
