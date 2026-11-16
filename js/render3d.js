@@ -1059,7 +1059,7 @@ function zWaiting(z) { let w = false; for (const k of zKeys(z)) if (!ZSRC[k] && 
 function zombieOwn(type, fem) {   /* 3D.126 every zombie wears the owner's model for its type, in its own colours; fem picks the female / male variant */
   const keys = (ZVAR[type] || [type]).filter((k) => ZSRC[k]); for (const k of ZVAR[type] || [type]) if (!ZSRC[k]) zLoad(k);
   let k = keys.length ? keys[(Math.random() * keys.length) | 0] : null; if (keys.length > 1 && fem !== undefined) k = keys.find((q) => /_f$/.test(q) === !!fem) || k;
-  const src = k ? ZSRC[k] : ZSRC[ZALIAS[type]]; if (!src) return null; const key = 'own|' + (k || type);
+  const src = k ? ZSRC[k] : ZSRC[ZALIAS[type]]; if (!src) return null; const key = 'own|' + (k || 'alias|' + type);   /* 3D.179 bug A7: the stand-in model (a Runner for the Stalker, while its own file loads) saved its skin under the Stalker's name, so the real Stalker then wore the Runner's skin for the rest of the session */
   const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad }), .2);
   return new Actor(src, m, true);
 }
@@ -2087,6 +2087,7 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
   const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
   const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]), lk = s.id ? look2(s) : { sk: 0, hr: 0, hs: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, lk.hs, s.id && isFemale(s) ? 'f' : 'm'].join('|');
   if (portraits.has(key)) return portraits.get(key);
+  const zStandIn = !!o.zt && !(ZVAR[o.zt] || [o.zt]).some((k) => ZSRC[k]);   /* 3D.179 bug A7: a picture taken with the stand-in model is not kept, so the real one replaces it once its file has loaded */
   const W = o.W || 256, H = o.H || 256;
   if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
     pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
@@ -2105,7 +2106,7 @@ function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a tran
   renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
   const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
   if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96)));   // the hull is off on the #v2 models: draw a clean outline around the figure
-  g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); portraits.set(key, url); return url;
+  g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); if (!zStandIn) portraits.set(key, url); return url;
 }
 function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the survivor once and renders a list of poses o.frames = [[clip, t], ...] -> data URLs
   if (!ready || !MALE) return [];
