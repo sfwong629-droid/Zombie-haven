@@ -415,8 +415,8 @@ async def t_traits(br, port, t):   # V2.43: survivor personalities change existi
       for(const q of S.sv)if(q!==v){q.mode=['Guard','Scavenger','Police Officer'].includes(q.job)?'hiding':'free';q.rescuing=null;q.carrying=null;q.hp=q.max;q.trait='scrounger'}
       const m=S.sv.find(q=>q.job==='Medic');v.rescuer=null;ZH.assignRescue();const plain=v.rescuer===m;if(v.rescuer){v.rescuer.rescuing=null;v.rescuer.mode='free'}v.rescuer=null;m.trait='caring';ZH.assignRescue();return {plain,caring:v.rescuer===m,why:m.why}}""")
     t.ok(not r['plain'] and r['caring'] and 'Caring' in r['why'], f'only a Caring non-fighter runs to the downed past a zombie, and says why {r}')
-    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard'),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
-    t.ok(r['card'] and r['name'], 'the survivor panel explains the personality (upside and cost)')
+    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);document.querySelector('#unitExtra [data-tab=about]').click();const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard'),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
+    t.ok(r['card'] and r['name'], 'the survivor panel explains the personality (upside and cost) on its About tab')
     r = await pg.evaluate("""()=>{const S=ZH.S;S.sv.forEach(q=>q.trait='loner');const q=S.sv[0];q.trait='eater';ZH.saveGame();const d=JSON.parse(ZH.serialize());return d.sv.map(x=>x.trait)}""")
     t.ok(r[0] == 'eater' and all(x == 'loner' for x in r[1:]), 'personalities are saved')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
@@ -656,7 +656,7 @@ async def t_tabs(br, port, t):
     for k in tabs:
         await pg.click(f'#ib [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#ib .tabs button.on').dataset.tab"); t.ok(on == k, f'building tab {k} opens')
     await pg.evaluate("()=>ZH.unitPanel(ZH.S.sv[0])")
-    for k in ['stats', 'gear', 'bonds', 'skills']:
+    for k in ['stats', 'gear', 'skills', 'about']:   # the Bonds tab became About (personality and bonds)
         await pg.click(f'#unitExtra [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#unitExtra .tabs button.on').dataset.tab"); t.ok(on == k, f'survivor tab {k} opens')
     t.ok(not errs, 'no page errors'); await ctx.close()
 
