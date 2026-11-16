@@ -12,6 +12,7 @@ New features, balance changes, new art in the game, full tester rounds.
 - Split `js/game.js` by area, one area per session.
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
+- After the freeze, first: write `08-BALANCE.md`, the balance targets page (owner, 16 Nov; in the Planning chat, the owner answers the target questions).
 - After the freeze: build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`).
 
 ## Waiting on the owner
@@ -26,6 +27,7 @@ Planning chat:
 - ~~W14. Steering in town.~~ Decided 16 Nov: a Take command button for fighters during an attack, optional.
 - ~~W15. Which zombies are allowed a weapon?~~ Decided 16 Nov: none.
 - ~~W16. The Gatling Boss's gun arm.~~ Decided 16 Nov: no change to him; he is the one exception.
+- ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
 - Nothing is waiting on the owner in the Planning chat.
 
 Bugs chat:

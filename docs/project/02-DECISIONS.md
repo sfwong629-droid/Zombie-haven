@@ -19,6 +19,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov: Banner routes must be balanced so the player doesn't always take the easy one.
 - 16 Nov: A little gore is fine; still not a horror game, no despair spirals.
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
+- 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the first job after the freeze.
+- 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
 
 ## Hard rules
 - Must work fully offline.

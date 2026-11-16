@@ -15,6 +15,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `05-NOW.md` | The next three jobs, and what is frozen | live |
 | `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | **to write** |
 | `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | live |
+| `08-BALANCE.md` | Balance targets (pace, danger, hordes, routes, economy), not numbers | **to write, first job after the freeze** (Planning chat) |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
@@ -47,7 +48,9 @@ Keep chats short and single-purpose, so nothing floats:
 - **UI**: all UI work, from `04-UI.md` (owner, 16 Nov: UI gets its own chat).
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
-- **Planning**: vision, decisions, what's next.
+- **Planning**: vision, decisions, what's next. Also the general chat: ideas, questions and anything that has no chat of its own start here.
+
+Chats can't see each other. They share only this folder, so each chat re-reads `05-NOW.md` (latest repo copy) before listing what is waiting, and takes the next free W number from it.
 
 ## Two rules for every chat (owner, 16 Nov)
 - **Stay on topic.** If the owner asks for something that belongs in a different chat (for example a bug in the vision chat), Claude says so and names the chat it belongs in.
