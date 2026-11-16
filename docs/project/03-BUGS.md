@@ -8,6 +8,7 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 | # | What is seen | Status |
 |---|---|---|
 | A1 | **Sliding survivors.** The whole character freezes in one pose and then moves around, attacks or does anything else with no animation at all. Seen many times, over many builds. Owner, 16 Nov: the stuck pose is standing, arms down, legs straight; they don't seem to recover. | open: not yet reproduced. A check that can see it exists since 3D.175 (notes below). |
+| A2 | **Emoji keep flashing.** The emoji keep flashing or appearing again and again (owner, 16 Nov). | open: not yet looked at. Still unknown: which emoji (above a survivor's head, in the news pill, on a card or button) and what is happening at the time. |
 
 *(The owner adds more here. One line each is enough; a recording helps but isn't needed.)*
 
@@ -18,7 +19,7 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 - **Ruled out by reading or test:** the clip cross-fade logic; bad numbers in the animation clock (the time step is always 0 to 0.1 s and the game speed is always a real number); the off-screen slow update (4 updates a second, choppy but not frozen); an error inside the draw loop (it would stop the whole picture, not one person).
 - **Still a lead for a different symptom (unconfirmed):** a survivor's strike clip is only restarted on a frame where the sim says "not attacking" and the clip has finished; with fast weapons or 3x speed a survivor may hold the end-of-strike pose across attacks. This is not the standing pose the owner sees.
 - **Not yet tried:** long sessions (hours), saves loaded from older builds, the stronghold and trips, the Gear screen (it sets game speed to 0), night skip (30x), job changes, 3D armour swaps, a phone's real graphics chip.
-- **Next step:** publish 3D.175 so the owner can capture it: when someone freezes, Settings > Animation tracker > wait 5 seconds > Copy log, and paste it in the Bugs chat.
+- **Published 16 Nov** (artifact version 217, cache tag v=3d.214). Next step: the owner captures it: when someone freezes, Settings > Animation tracker > wait 5 seconds > Copy log, and paste it in the Bugs chat.
 
 ## B. Found by testers or ChatGPT, confirmed in the logs
 | # | What | Source | Status |
