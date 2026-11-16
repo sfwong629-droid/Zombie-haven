@@ -48,3 +48,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
 - **Planning**: vision, decisions, what's next.
+
+## Two rules for every chat (owner, 16 Nov)
+- **Stay on topic.** If the owner asks for something that belongs in a different chat (for example a bug in the vision chat), Claude says so and names the chat it belongs in.
+- **Nothing gets dropped.** If the owner hasn't given a direction or decision, or hasn't done something that is waiting on them, Claude keeps it in "Waiting on the owner" in `05-NOW.md` and brings the open items back in every reply until they are done.
