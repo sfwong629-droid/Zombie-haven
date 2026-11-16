@@ -48,13 +48,22 @@ UI problems are listed in `04-UI.md`, not here.
 ## C. Code and tools
 | # | What | Status |
 |---|---|---|
-| C1 | Test suite: 35 standing failures; `newz` flaky | open |
-| C2 | A late test crashes the browser in a full suite run (`sim`, `sound`); passes alone | open |
+| C1 | Test suite: 35 standing failures; `newz` flaky | **part fixed** (16 Nov, commit 556bf70): 35 → 20 failures, the same 20 on three runs in a row. Notes below. |
+| C2 | A late test crashes the browser in a full suite run (`sim`, `sound`); passes alone | **fixed** (16 Nov, commit cb01571). A failing test left its page open; 35 open pages used about 6 GB and the late tests could not load. Check: a full run now takes about 2 minutes (was 14) with no load timeouts. |
 | C3 | Almost all game code in one file, `js/game.js` | open (clean-up plan) |
 | C4 | Play-test tool has no map; several orders fail with no reason | open |
 | C5 | `runs/*/*.jsonl` is gitignored, so run logs don't reach the repo | open |
 
+### C1 notes (Code clean-up chat, 16 Nov)
+- **Cause of 15 of the 35:** `tools/dce/prune.js` removed every test hook (`ZH.name`) that no other game file reads, and the test suite was not counted as a reader. 85 of the 89 missing hooks were still in the game; they are back on one line at the end of `js/game.js`. No behaviour change, no build number. When pruning again, pass `tests/run_tests.py` as a user file.
+- **The 20 still failing** (first sort, each still to be checked one at a time):
+  - Test the old 2D drawing, which is gone from the game (`spriteRect`, HD ground): `geometry`, `rotate`, `tabs`, `hd`.
+  - Crash on the same line of test set-up ("set hp of null": the test looks for something that is not there): `alerts`, `save_load`, `walls`.
+  - The game answers differently from what the test expects; each is either an old test or a real bug, not yet known which: `newz`, `economy`, `profession`, `polish`, `input`, `title`, `menu`, `saves`, `traits`, `expchoices`, `posts`, `replay`, `guide`.
+- `newz` failed on every run here (the Stalker combo check), so it is counted as failing, not flaky.
+
 ## Fixed (last 10)
+- 16 Nov (tools only): C2 the test runner closes every page after each test; C1 part 1, 85 test hooks put back.
 - 3D.178: A5 the "New: Raiders" note shows a raider (Toll Kings' kit), not a walker. Check: `tools/qa/raider_note_check.js`.
 - 3D.177: A4 a closed radio card no longer takes taps (it re-opened its old message when you tapped the People list). Check: `tools/qa/radio_tap_check.js`.
 - 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.
