@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze). A5 (the Raiders note showed a zombie) fixed in 3D.178.
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A5 (Ben can't reach the Garden Plot), A2 (emoji flashing), A3 (the game froze). A5 (the Raiders note showed a zombie) fixed in 3D.178.
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely. Started 16 Nov in the Code clean-up chat: C2 fixed, C1 down from 35 failures to 18 and a full run from 14 minutes to 2. Next: go through the 18 one at a time (list in `03-BUGS.md`). The `game.js` split does not start until the suite is green.
 
 ## After that (not started, in this order)
@@ -39,6 +39,7 @@ Bugs chat:
 - W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
 - W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
 - W21. Bug A4 (tapping a person opened the radio): play 3D.177 and say whether tapping people works now, in the People list and on the map.
+- W30. Bug A5 (Ben can't reach it): yes or no to a "Copy save" button in Settings (a test tool, like the Animation tracker), so the owner can send the town when something like this happens. Also: is the Garden Plot inside a fence or wall, and does it have a gate?
 - W7. Any other bugs they have seen.
 
 UI chat:
