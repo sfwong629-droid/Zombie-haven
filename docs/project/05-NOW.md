@@ -34,7 +34,7 @@ Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
 - ~~W6. Bug A1: what the survivor was doing just before it froze.~~ Closed 16 Nov: the tracker logs answered it.
 - ~~W12. Bug A1: the tracker log.~~ Done 16 Nov (two logs; they showed the cause).
-- W18. Bug A1: play 3D.176 and say whether anyone still freezes in one pose.
+- W20. Bug A1: play 3D.176 and say whether anyone still freezes in one pose.
 - W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
 - W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
 - W7. Any other bugs they have seen.
