@@ -913,6 +913,9 @@ async def main():
                 await asyncio.wait_for(fn(br, port, t), timeout=300); print(f'PASS  {name:10} ({len(t.notes)} checks, {time.time() - s:.1f}s)')
             except Exception as e:
                 failed += 1; print(f'FAIL  {name:10} {e if isinstance(e, AssertionError) else traceback.format_exc(limit=2)}')
+            for c in list(br.contexts):
+                try: await c.close()
+                except Exception: pass
         await br.close()
     srv.shutdown(); print(f'\n{"ALL PASSED" if not failed else str(failed) + " FAILED"} in {time.time() - t0:.0f}s'); sys.exit(1 if failed else 0)
 
