@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` is a draft waiting for the owner's corrections. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. **Bug A1, the sliding survivors.** Find it, reproduce it with a scripted check, fix it.
+2. **Bug A1, the sliding survivors.** Find it, reproduce it with a scripted check, fix it. *(16 Nov: the check exists, 3D.175 in the repo, not published; not reproduced in the cloud yet. See the A1 notes in `03-BUGS.md`.)*
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 
 ## After that (not started, in this order)
@@ -23,8 +23,9 @@ Planning chat:
 - W4. Decide: when the land grows, do existing walls move out to the new line for free?
 
 Bugs chat:
-- W5. Start the Bugs chat.
-- W6. Bug A1: what the survivor was doing just before it froze, and whether it ever recovers.
+- ~~W5. Start the Bugs chat.~~ Done 16 Nov.
+- W6. Bug A1: what the survivor was doing just before it froze. (Answered 16 Nov: the pose is standing, arms down, legs straight; they don't seem to recover.)
+- W12. Bug A1: say yes to publishing 3D.175 (the frozen-pose check; nothing in the game changes), then when someone freezes: Settings > Animation tracker, wait 5 seconds, Copy log, paste it in the Bugs chat.
 - W7. Any other bugs they have seen.
 
 Later:
