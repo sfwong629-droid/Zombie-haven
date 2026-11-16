@@ -8,7 +8,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | File | What it is | Status |
 |---|---|---|
 | `00-START-HERE.md` | This page: where things are, the rules, how we work | live |
-| `01-VISION.md` | What the game is, how it should feel, what it is not | **draft, waiting for the owner's corrections** |
+| `01-VISION.md` | What the game is, how it should feel, what it is not | live (owner-reviewed 16 Nov; three open points) |
 | `02-DECISIONS.md` | Every owner decision, by topic | live |
 | `03-BUGS.md` | The one bug list. Owner-seen bugs first | live |
 | `04-UI.md` | UI direction, rules and the UI problem list | live (first version) |
@@ -27,7 +27,7 @@ The older docs under `claude/` are an archive in the **Game Development** projec
 ## Standing rules
 - Report the repo link and commit links after every push.
 - Never paste API keys in chat. Don't delete scheduled tasks without permission.
-- Must work offline. No Claude for character AI. No chibi. No weapons on zombies.
+- Must work offline. No Claude for character AI. No chibi. No weapons on ordinary zombies (special ones such as the Gatling Boss can have one).
 - Keep the phone shape. Menus pause the game. One news pill at a time. Emergency slow-down stays off.
 - Funny text: facts first, joke last (building notes keep the joke first).
 - Tripo sheets: separate square files per view, never one sheet.
