@@ -28,7 +28,7 @@ Planning chat:
 - ~~W15. Which zombies are allowed a weapon?~~ Decided 16 Nov: none.
 - ~~W16. The Gatling Boss's gun arm.~~ Decided 16 Nov: no change to him; he is the one exception.
 - ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
-- Nothing is waiting on the owner in the Planning chat.
+- W22. UI problem U13 (two speed-up buttons with the same cost): yes or no to hiding "12 h sooner" when 12 hours or less are left. The fix itself is for the UI chat.
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
