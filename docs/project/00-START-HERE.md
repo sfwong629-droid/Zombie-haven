@@ -20,8 +20,8 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
 ## Where things are
-- Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.180**.
-- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 221 = 3D.180, page cache tag v=3d.218). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
+- Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.181**.
+- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 222 = 3D.181, page cache tag v=3d.219). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
 - Publishing: full slug `b7f9181b-346a-4ccb-85be-5f1f659593f9`; take the *published* index.html, bump v=3d.N, publish only changed js/css. Never use the repo's index.html. Another chat may have published since: always read the live version first.
 - ChatGPT: project "Zombie Haven testing" in the owner's ChatGPT; details in `claude/zombie-haven-chatgpt-testing.md`.
 

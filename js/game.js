@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.180', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.181', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5800,8 +5800,12 @@ function fieldAidAI(s) {
   if (kind === 'patch' && (zNear(q.w, 5) || threatOf(s))) { endAid(s); enterFree(s, 60); return; }
   if (kind === 'revive' && zNear(q.w, 2.5)) { endAid(s); q.stable = false; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `No time: carrying ${q.name} to safety`; return; }   /* zombies close in: grab them and go */
   const d = dist(s.w, q.w);
-  if (d > .95) { s.aidT = 0; s.activity = null; const k = .6 / Math.max(.6, d), goal = { x: q.w.x + (s.w.x - q.w.x) * k, y: q.w.y + (s.w.y - q.w.y) * k };
-    const r = followPath(s, goal, .02); if (r === 'fail' && (s.aidFail = (s.aidFail || 0) + 1) > 4) { s.aidFail = 0; if (kind === 'revive') { q.rescuer = null; q.stable = false; s.rescuing = null; } endAid(s); enterFree(s, 60); } return; }
+  if (d > .95) { s.aidT = 0; s.activity = null;
+    /* 3D.181 bug B17: the Medic used to aim for a spot 0.6 tiles from the patient on the Medic's own side. With a fence between them that spot moved
+       as the Medic moved (it was measured from where the Medic stood), so the route kept changing and the Medic drifted about or stood at arm's length
+       all day, never within reach (0.95). They now walk the real route to the patient and stop as soon as they are within reach. */
+    s.arrG = null; let r = followPath(s, q.w, .02); if (r === 'arrived') r = 'fail';
+    if (r === 'fail' && (s.aidFail = (s.aidFail || 0) + 1) > 4) { s.aidFail = 0; if (kind === 'revive') { q.rescuer = null; q.stable = false; s.rescuing = null; } endAid(s); enterFree(s, 60); } return; }
   s.moving = false; s.path = null; s.aidFail = 0; s.activity = 'Treating'; if (s.aidT === 0) { s.facing = q.w.x < s.w.x ? -1 : 1; emote(s, '🩹', PATCH_TICKS, true); }
   if (++s.aidT < PATCH_TICKS) return;
   if (!patchSupply(false)) { floats.push({ w: { ...s.w }, t: 'Needs 🧵 or 💊', col: '#ff8a4b', a: 70 });

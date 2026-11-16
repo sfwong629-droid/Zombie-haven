@@ -44,14 +44,14 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 | B14 | A 12% health Police Officer keeps attacking under Recover & Heal | ChatGPT tester | open |
 | B15 | A couple's baby is announced while one parent lies downed | round 4 | open |
 | B16 | Squad power ignores current health (240 shown, squad hurt) | round 4 Raider | open |
-| B17 | **A Medic freezes all day next to a fence.** The Medic goes to patch someone up who stands just across a fence or wall, stops on the wrong side about 1.5 tiles away, and stands there as "Patching up X" without moving or healing: 9 game hours in the check, and it did not end. | test suite (`profession`), Code clean-up chat, 16 Nov | **reproduced**: `python3 tests/run_tests.py profession` fails at "a Medic off shift patches someone up". Likely cause, from a trace: in `fieldAidAI` (`js/game.js`) the Medic must get within 0.95 tiles, but walks to a point 0.6 tiles from the patient on its own side; when that point is across the fence, `followPath` reports "arrived" at arm's length and the two rules never meet. May be related to A6 ("Couldn't reach it"); not checked. |
+| B17 | **A Medic freezes all day next to a fence.** The Medic goes to patch someone up who stands just across a fence or wall, stops on the wrong side about 1.5 tiles away, and stands there as "Patching up X" without moving or healing: 9 game hours in the check, and it did not end. | test suite (`profession`), Code clean-up chat, 16 Nov | **fixed in 3D.181** (Bugs chat, 16 Nov). In `fieldAidAI` the Medic aimed for a spot 0.6 tiles from the patient on the Medic's own side; with a fence between them that spot moved whenever the Medic moved, so the route kept changing and they never got within reach (0.95). They now walk the real route to the patient and stop when within reach; if there is no route they give up after 5 tries. Check: `python3 tests/run_tests.py profession` (failed on 3D.180, passes on 3D.181; full suite 38 of 38). Not related to A6 as far as the code shows: A6 is a different routine (`goFacility`). |
 
 UI problems are listed in `04-UI.md`, not here.
 
 ## C. Code and tools
 | # | What | Status |
 |---|---|---|
-| C1 | Test suite: 35 standing failures; `newz` flaky | **nearly done** (16 Nov): 35 → 1 failure of 38 tests. The one left, `profession`, fails because of a real bug (B17). Two tests failed once each in full runs and pass alone: `combat`, `expchoices` (flaky, not yet looked at). Notes below. |
+| C1 | Test suite: 35 standing failures; `newz` flaky | **done** (16 Nov): 35 → 0 failures of 38 tests (the last one, `profession`, needed the B17 fix in 3D.181). Two tests failed once each in full runs and pass alone: `combat`, `expchoices` (flaky, not yet looked at). Notes below. |
 | C2 | A late test crashes the browser in a full suite run (`sim`, `sound`); passes alone | **fixed** (16 Nov, commit cb01571). A failing test left its page open; 35 open pages used about 6 GB and the late tests could not load. Check: a full run now takes about 2 minutes (was 14) with no load timeouts. |
 | C3 | Almost all game code in one file, `js/game.js` | open (clean-up plan) |
 | C4 | Play-test tool has no map; several orders fail with no reason | open |
@@ -69,6 +69,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.181: B17 a Medic no longer stands all day beside a fence instead of patching someone up. Check: `tests/run_tests.py profession`.
 - 3D.180: A2 the angry face no longer flashes on a fighter who can't get to a zombie that is bashing a building. Check: `tools/qa/sos_skip_check.js`.
 - 3D.179: A7 the Stalker wears its own skin (it wore the stand-in Runner's). Check: `tools/qa/stalker_look_check.js`.
 - 16 Nov (tools only): C2 the test runner closes every page after each test; C1: 85 test hooks put back, old 2D checks removed, 17 out-of-date tests brought up to date (35 → 1 failure).
@@ -78,4 +79,3 @@ UI problems are listed in `04-UI.md`, not here.
 - 3D.175: frozen-pose check in the Animation tracker (tool only).
 - 3D.174: a storage door walled off from the town is opened by the game (Gates).
 - 3D.173 + f88fa57: stuck stronghold coach hint removed.
-- 3D.172: sealed check; gap hints; patients stay in bed at night; stuck sites say why.
