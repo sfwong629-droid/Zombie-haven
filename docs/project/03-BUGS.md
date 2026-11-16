@@ -53,7 +53,7 @@ UI problems are listed in `04-UI.md`, not here.
 |---|---|---|
 | C1 | Test suite: 35 standing failures; `newz` flaky | **done** (16 Nov): 35 → 0 failures of 38 tests (the last one, `profession`, needed the B17 fix in 3D.181). Two tests failed once each in full runs and pass alone: `combat`, `expchoices` (flaky, not yet looked at). Notes below. |
 | C2 | A late test crashes the browser in a full suite run (`sim`, `sound`); passes alone | **fixed** (16 Nov, commit cb01571). A failing test left its page open; 35 open pages used about 6 GB and the late tests could not load. Check: a full run now takes about 2 minutes (was 14) with no load timeouts. |
-| C3 | Almost all game code in one file, `js/game.js` | open (clean-up plan) |
+| C3 | Almost all game code in one file, `js/game.js` | **step 1 done** (16 Nov, commit 31b2017): the code is kept as 27 area files in `src/game/`, joined into `js/game.js` by `python3 tools/build/game.py`. The joined file is byte-for-byte the old one. Guide: `src/game/README.md`. Check: the `parts` test. **Step 2 open:** the areas still share one scope; separating them for real, one area per session. |
 | C4 | Play-test tool has no map; several orders fail with no reason | open |
 | C5 | `runs/*/*.jsonl` is gitignored, so run logs don't reach the repo | open |
 

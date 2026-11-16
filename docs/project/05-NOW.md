@@ -8,10 +8,10 @@ New features, balance changes and new art in the game are allowed again. The wor
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
 2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov). Owner bugs fixed the same day: A4 (3D.177), A5 (3D.178, UI chat), A7 Stalker skin (3D.179), A2 angry face flashing (3D.180); A3 closed. Still open: A6 (Ben can't reach the Garden Plot), waiting for the owner's backup.
-3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely. 16 Nov, Code clean-up chat: C2 fixed; C1 down from 35 failures to 1, and a full run from 14 minutes to 2. The one left (`profession`) is a real bug, B17 (a Medic freezes next to a fence): fix it in the Bugs chat. Also left: two tests that each failed once in a full run (`combat`, `expchoices`). The `game.js` split does not start until the suite is green. *(Bugs chat, 16 Nov: B17 fixed in 3D.181; a full run is now 38 of 38.)*
+3. ~~**Make the test suite trustworthy** (bugs C1, C2).~~ Done 16 Nov: the suite is green (39 of 39, about 2 minutes). Two tests each failed once in a full run and pass alone (`combat`, `expchoices`): watch them.
 
 ## After that (not started, in this order)
-- Split `js/game.js` by area, one area per session.
+- Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session. The owner's order (16 Nov) puts the UI overlap fixes and the new features after the split: say in the Code clean-up chat whether step 1 is enough for those to start, or they wait for step 2 (W42).
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
 - Write `08-BALANCE.md`, the balance targets page: the next job in the Planning chat (owner, 16 Nov; the owner answers the target questions, W38).
@@ -66,6 +66,7 @@ Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
 - ~~W39. Mark tests that found a real bug as "known bug" so the suite can go green early?~~ Decided 16 Nov: no, fix the bugs first.
 - ~~W40. Advisor tips in the Needs you list can no longer be hidden for the day: add a hide button?~~ Decided 16 Nov: yes. Passed to the UI chat (see W41).
+- W42. The split, step 1, is done (area files; the game is unchanged). Step 2 (making each area stand alone) takes one session per area, 27 areas. Do the UI overlap fixes and the new features wait for all of step 2, or can they start now that the files are split? Claude's advice: start now; step 2 can run alongside, since each area is small.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
