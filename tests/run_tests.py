@@ -574,7 +574,8 @@ async def t_old_save(br, port, t):
 async def t_guide(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'guide')
     await pg.evaluate("()=>{ZH.S.mat=300;ZH.S.wood=300;ZH.S.stone=300;ZH.S.stage=1;ZH.S.kills=3;ZH.missionProgress()}"); await close_popups(pg)
-    steps = [('farm', PLACE), ('tent', PLACE), ('scrapyard', PLACE), ('lodge', "()=>{const h=ZH.world.buildings.find(b=>b.type==='hq');h.type='hq2';ZH.Wd.bump(ZH.world)}"), ('armor', "()=>{ZH.S.sv[0].eq.armor='jacket'}"),
+    steps = [('farm', PLACE), ('farm', PLACE), ('inn', PLACE), ('scrapyard', PLACE),   # the game added the second-garden goal; a Tent is building type 'inn'
+             ('lodge', "()=>{const h=ZH.world.buildings.find(b=>b.type==='hq');h.type='hq2';ZH.Wd.bump(ZH.world)}"), ('armor', "()=>{ZH.S.sv[0].eq.armor='jacket'}"),
              ('gym', PLACE), ('research', "()=>{ZH.S.res.blades=true}"), ('walls', "()=>{for(let x=8;x<=17;x++)ZH.tryWall(x,11,'wood')}"), ('exp', "()=>{ZH.S.expCount=1}"), ('expand', "()=>{ZH.S.ren=999;ZH.expandTerritory()}")]
     for i, (k, js) in enumerate(steps):
         g0 = await pg.evaluate("()=>ZH.S.guide")
