@@ -1,0 +1,50 @@
+# Zombie Haven: start here
+
+Every new chat about the game starts with: **"Read zombie-haven/00-START-HERE.md."** This folder is the single source of truth. If something isn't written here, it isn't decided.
+
+The same pages are kept in the repo under `docs/project/`, so they can be copied into any Claude project. The older files in the repo's `docs/` folder (DESIGN_V3, BACKLOG, PHASES…) are from before this reset: treat them as archive until checked.
+
+## The folder
+| File | What it is | Status |
+|---|---|---|
+| `00-START-HERE.md` | This page: where things are, the rules, how we work | live |
+| `01-VISION.md` | What the game is, how it should feel, what it is not | **draft, waiting for the owner's corrections** |
+| `02-DECISIONS.md` | One dated log of every owner decision | **to write** (merge of the old decisions docs) |
+| `03-BUGS.md` | The one bug list. Owner-seen bugs first | live |
+| `04-UI.md` | UI direction, rules and the UI problem list | live (first version) |
+| `05-NOW.md` | The next three jobs, and what is frozen | live |
+| `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | **to write** |
+| `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | **to write** (from the reset plan) |
+
+The older project docs under `claude/` stay as an archive until their content has been moved here. The plan behind this folder: `claude/zombie-haven-reset-plan.md`.
+
+## Where things are
+- Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.174**.
+- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 216 = 3D.174, page cache tag v=3d.213). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
+- Publishing: full slug `b7f9181b-346a-4ccb-85be-5f1f659593f9`; take the *published* index.html, bump v=3d.N, publish only changed js/css. Never use the repo's index.html. Another chat may have published since: always read the live version first.
+- ChatGPT: project "Zombie Haven testing" in the owner's ChatGPT; details in `claude/zombie-haven-chatgpt-testing.md`.
+
+## Standing rules
+- Report the repo link and commit links after every push.
+- Never paste API keys in chat. Don't delete scheduled tasks without permission.
+- Must work offline. No Claude for character AI. No chibi. No weapons on zombies.
+- Keep the phone shape. Menus pause the game. One news pill at a time. Emergency slow-down stays off.
+- Funny text: facts first, joke last (building notes keep the joke first).
+- Tripo sheets: separate square files per view, never one sheet.
+
+## How we work (from 16 Nov 2026)
+1. **Frozen:** no new features or balance changes until `05-NOW.md` says so.
+2. **The owner's bugs come first.** Tester and ChatGPT findings wait in `03-BUGS.md`.
+3. **One change per build**, each with a scripted check. No patch on a patch: if a fix needs a second fix, stop and rework.
+4. **Check every change against `01-VISION.md` and `04-UI.md`.** If it isn't covered, ask the owner before building.
+5. **Testing, cheapest first:** scripted checks → balance bot → ChatGPT screenshot review → one Claude tester on one question → a full 8-tester round only at milestones, on the owner's say.
+6. **Every chat ends by updating this folder** (project and repo): bugs, decisions, NOW. Nothing important lives only in a chat.
+
+## One chat per job
+Keep chats short and single-purpose, so nothing floats:
+- **Bugs**: fix items from `03-BUGS.md`.
+- **Code clean-up**: the test suite and splitting `game.js`.
+- **UI**: all UI work, from `04-UI.md` (owner, 16 Nov: UI gets its own chat).
+- **Art**: Tripo sheets, armour, icons.
+- **ChatGPT**: reviews and second opinions.
+- **Planning**: vision, decisions, what's next.
