@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A6 (Ben can't reach the Garden Plot), A2 (emoji flashing), A3 (the game froze). A5 (the Raiders note showed a zombie) fixed in 3D.178.
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov). Owner bugs fixed the same day: A4 (3D.177), A5 (3D.178, UI chat), A7 Stalker skin (3D.179), A2 angry face flashing (3D.180); A3 closed. Still open: A6 (Ben can't reach the Garden Plot), waiting for the owner's backup.
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely. Started 16 Nov in the Code clean-up chat: C2 fixed, C1 down from 35 failures to 18 and a full run from 14 minutes to 2. Next: go through the 18 one at a time (list in `03-BUGS.md`). The `game.js` split does not start until the suite is green.
 
 ## After that (not started, in this order)
@@ -35,11 +35,14 @@ Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
 - ~~W6. Bug A1: what the survivor was doing just before it froze.~~ Closed 16 Nov: the tracker logs answered it.
 - ~~W12. Bug A1: the tracker log.~~ Done 16 Nov (two logs; they showed the cause).
-- W20. Bug A1: play 3D.176 and say whether anyone still freezes in one pose.
-- W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
-- W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
-- W21. Bug A4 (tapping a person opened the radio): play 3D.177 and say whether tapping people works now, in the People list and on the map.
-- W32. Bug A6 (Ben can't reach it): yes or no to a "Copy save" button in Settings (a test tool, like the Animation tracker), so the owner can send the town when something like this happens. Also: is the Garden Plot inside a fence or wall, and does it have a gate?
+- ~~W20. Bug A1: does anyone still freeze?~~ Owner, 16 Nov: not seen so far in 3D.176+.
+- ~~W17. Bug A2: which emoji?~~ Answered 16 Nov: the angry one.
+- ~~W19. Bug A3 (the game froze).~~ Closed 16 Nov: it doesn't happen now.
+- ~~W21. Bug A4: does tapping people work?~~ Confirmed 16 Nov.
+- ~~W32. Bug A6: a "Copy save" button?~~ Owner said yes, 16 Nov; not needed, the game already has one (More → event log → Backup this town → Copy text).
+- W33. Bug A6 (Ben can't reach it): next time someone is stuck on "Couldn't reach it", open More → event log → Backup this town → Copy text, and paste it in the Bugs chat.
+- W34. Bug A2 (angry face flashing): play 3D.180 and say whether it still flashes. If it does: who, and what their status line says.
+- W35. Bug A7 (Stalker): say whether the Stalker looks right now, in the note and in play.
 - W7. Any other bugs they have seen.
 
 UI chat:

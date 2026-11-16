@@ -22,6 +22,8 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 | `node tools/qa/ui_check.js` | 3D.159 layout check: six screen sizes, every message type at once. Fails on overlaps, anything off screen, buttons under 44 px. Screenshots `ui_<size>.png`. |
 | `node tools/qa/anim_soak.js 240000` | Plays a new game for 4 min and lists every animation mismatch (sliding, walking in place, feet too fast), grouped. |
 | `node tools/qa/frozen_check.js 240000 2` | Bug A1 check (3D.175/176): freezes one survivor on purpose to prove the tracker notices; then a survivor with a backpack and every figure rebuilt off screen must animate; then plays for 4 min at 3× and fails if anyone's bones stop moving (FROZEN). Exit 0 ok, 1 frozen, 2 self-test failed. |
+| `node tools/qa/stalker_look_check.js` | 3D.179 bug A7 check: the Stalker's note picture must not be the stand-in Runner or wear its skin once the Stalker's own file has loaded. |
+| `node tools/qa/sos_skip_check.js` | 3D.180 bug A2 check: a fighter who cannot get to a zombie that is bashing a building is not sent straight back at it. |
 | `node tools/qa/radio_tap_check.js` | 3D.177 bug A4 check: a radio card that has closed must not take taps (it used to re-open its old message when you tapped the People list). |
 | `node tools/qa/raider_note_check.js [card.png]` | 3D.178 bug A5 check: the "New: Raiders" field note must show a raider (in the Toll Kings' kit), not the zombie picture. |
 | `node tools/qa/ink_check.js mattress,hawaii` | Armour close-ups with the ink outline on and off (the 3D.157 speckle check). |
