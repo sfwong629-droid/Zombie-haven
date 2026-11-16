@@ -7,9 +7,18 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 ## A. Seen by the owner (first priority)
 | # | What is seen | Status |
 |---|---|---|
-| A1 | **Sliding survivors.** The whole character freezes in one pose and then moves around, attacks or does anything else with no animation at all. Seen many times, over many builds. | open: not yet reproduced. Still unknown: what the person was doing just before, and whether they ever recover. |
+| A1 | **Sliding survivors.** The whole character freezes in one pose and then moves around, attacks or does anything else with no animation at all. Seen many times, over many builds. Owner, 16 Nov: the stuck pose is standing, arms down, legs straight; they don't seem to recover. | open: not yet reproduced. A check that can see it exists since 3D.175 (notes below). |
 
 *(The owner adds more here. One line each is enough; a recording helps but isn't needed.)*
+
+### A1 notes (Bugs chat, 16 Nov)
+- **Why earlier fixes missed it:** the Animation tracker (3D.58) compared the body's speed with the clip the game *asked for*. It never looked at whether the bones move, so a survivor whose clip is chosen correctly but isn't playing showed as healthy. None of the 3D.39 to 3D.100 fixes had a check that could see this bug.
+- **3D.175, the frozen-pose check (test tool only, no game change):** the tracker now watches the bones. A survivor on their feet whose bones haven't changed for 1 s while moving or fighting (3 s otherwise) is flagged `FROZEN (bones not moving)`, and the log line records what the clip was really doing (clip time, weight, enabled, paused, running, the mixer clock, which clips are live). It works when the tracker is switched on *after* the freeze. Scripted: `node tools/qa/frozen_check.js 240000 2` freezes one survivor on purpose to prove the flag fires, then soaks at 3x and fails on any FROZEN.
+- **Result so far:** self-test passes. Two soaks (5 and 6 minutes, new game, 3x speed, fights included) found nobody frozen. A 200,000-step random test of clip switching on a real survivor never left the bones without a live clip. So the freeze is not in the clip-switching code itself; it needs something the short soaks don't do.
+- **Ruled out by reading or test:** the clip cross-fade logic; bad numbers in the animation clock (the time step is always 0 to 0.1 s and the game speed is always a real number); the off-screen slow update (4 updates a second, choppy but not frozen); an error inside the draw loop (it would stop the whole picture, not one person).
+- **Still a lead for a different symptom (unconfirmed):** a survivor's strike clip is only restarted on a frame where the sim says "not attacking" and the clip has finished; with fast weapons or 3x speed a survivor may hold the end-of-strike pose across attacks. This is not the standing pose the owner sees.
+- **Not yet tried:** long sessions (hours), saves loaded from older builds, the stronghold and trips, the Gear screen (it sets game speed to 0), night skip (30x), job changes, 3D armour swaps, a phone's real graphics chip.
+- **Next step:** publish 3D.175 so the owner can capture it: when someone freezes, Settings > Animation tracker > wait 5 seconds > Copy log, and paste it in the Bugs chat.
 
 ## B. Found by testers or ChatGPT, confirmed in the logs
 | # | What | Source | Status |

@@ -1736,8 +1736,16 @@ function trackActor(a, s, dt) {
   else if (loco && st && v > .12 && (foot / v < .6 || foot / v > 1.7)) flag = foot < v ? 'SKATE (feet too slow)' : 'FEET TOO FAST';
   else if (loco && v < .03 && h.length > 3 && !/crawl/.test(n)) flag = 'WALK IN PLACE';
   else if (side > 70) flag = side > 120 ? 'MOONWALK (backwards)' : 'SIDEWAYS';
+  /* 3D.175 frozen-pose check (bug A1): the flags above compare the body's speed with the clip the game ASKED for; this one looks at the
+     bones themselves. A survivor on their feet whose bones have not changed for over 1 s of game time while they move or fight (3 s
+     otherwise: even the idle clip breathes) is FROZEN, and the log says what the clip was really doing. */
+  let fz = null; { const sk = a.skin[0] && a.skin[0].skeleton; if (sk) { let sig = 0; for (let i = 0; i < sk.bones.length; i++) { const q = sk.bones[i].quaternion; sig += (q.x * 1.31 + q.y * 2.17 + q.z * 3.53 + q.w * 5.11) * (1 + (i % 7)); }
+    if (a.fzSig === undefined || Math.abs(sig - a.fzSig) > 1e-6) { a.fzSig = sig; a.fzT = a.trkT; }
+    const still = a.trkT - a.fzT, busy = v > .12 || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'chase', down = s.mode === 'down' || /collapse|crawl_die/.test(n);
+    if (!down && a.o.visible && still > (busy ? 1 : 3)) { const c = a.cur; flag = 'FROZEN (bones not moving)';
+      fz = { still: +still.toFixed(1), ctime: c ? +c.time.toFixed(2) : null, cw: c ? +c.getEffectiveWeight().toFixed(2) : null, cen: c ? c.enabled : null, cpaused: c ? c.paused : null, crun: c ? c.isRunning() : null, acc: +(+a.acc).toFixed(3), mt: Math.round(a.mixer.time || 0), live: Object.keys(a.acts).filter((k) => a.acts[k].isRunning()).join(',') }; } } }
   let sim = ''; try { const r = G.humanAnim(s, G.facing(s)); sim = Array.isArray(r) ? r[0] : r; } catch (e) { /* */ }
-  const row = { name: s.name, job: s.job, mode: s.mode, why: (s.why || '').slice(0, 40), clip: n, sim, v: +v.toFixed(2), foot: +foot.toFixed(2), ts: +ts.toFixed(2), moving: s.moving, flag, fps: Math.round(window.ZH3D.fps || 0), speed: sp, wpn: a.weapon || '' };
+  const row = { name: s.name, job: s.job, mode: s.mode, why: (s.why || '').slice(0, 40), clip: n, sim, v: +v.toFixed(2), foot: +foot.toFixed(2), ts: +ts.toFixed(2), moving: s.moving, flag, fps: Math.round(window.ZH3D.fps || 0), speed: sp, wpn: a.weapon || '', ...(fz || {}) };
   TRACK.rows.set(s, row);
   if (flag) { const last = a.trkLast; if (!last || last.flag !== flag || now - last.t > 1500) { a.trkLast = { flag, t: now }; TRACK.log.push({ t: +((now - TRACK.t0) / 1000).toFixed(1), ...row }); if (TRACK.log.length > 400) TRACK.log.shift(); } }
 }
