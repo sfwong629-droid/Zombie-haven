@@ -4,7 +4,7 @@
 New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
-1. **Finish this folder.** `01-VISION.md` is a draft waiting for the owner's corrections. Still to write: `02-DECISIONS.md` (merge the old decisions docs), `06-ASSETS.md`, `07-TESTING.md`.
+1. **Finish this folder.** `01-VISION.md` is a draft waiting for the owner's corrections. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
 2. **Bug A1, the sliding survivors.** Find it, reproduce it with a scripted check, fix it.
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 

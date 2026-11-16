@@ -9,14 +9,14 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 |---|---|---|
 | `00-START-HERE.md` | This page: where things are, the rules, how we work | live |
 | `01-VISION.md` | What the game is, how it should feel, what it is not | **draft, waiting for the owner's corrections** |
-| `02-DECISIONS.md` | One dated log of every owner decision | **to write** (merge of the old decisions docs) |
+| `02-DECISIONS.md` | Every owner decision, by topic | live |
 | `03-BUGS.md` | The one bug list. Owner-seen bugs first | live |
 | `04-UI.md` | UI direction, rules and the UI problem list | live (first version) |
 | `05-NOW.md` | The next three jobs, and what is frozen | live |
 | `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | **to write** |
-| `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | **to write** (from the reset plan) |
+| `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | live |
 
-The older project docs under `claude/` stay as an archive until their content has been moved here. The plan behind this folder: `claude/zombie-haven-reset-plan.md`.
+The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
 ## Where things are
 - Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.174**.
