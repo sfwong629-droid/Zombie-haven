@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. **Bug A1, the sliding survivors.** Find it, reproduce it with a scripted check, fix it. *(16 Nov: the check exists, 3D.175 published; not reproduced in the cloud yet. See the A1 notes in `03-BUGS.md`.)*
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. Next owner bugs: A2 (emoji flashing), A3 (the game froze).
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 
 ## After that (not started, in this order)
@@ -32,9 +32,11 @@ Planning chat:
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
-- W6. Bug A1: what the survivor was doing just before it froze. (16 Nov: the owner is not sure; the tracker log will answer it. The pose is standing, arms down, legs straight; they don't seem to recover.)
-- W12. Bug A1: 3D.175 is published (16 Nov). When someone freezes: Settings > Animation tracker, wait 5 seconds, Copy log, paste it in the Bugs chat.
+- ~~W6. Bug A1: what the survivor was doing just before it froze.~~ Closed 16 Nov: the tracker logs answered it.
+- ~~W12. Bug A1: the tracker log.~~ Done 16 Nov (two logs; they showed the cause).
+- W18. Bug A1: play 3D.176 and say whether anyone still freezes in one pose.
 - W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
+- W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
 - W7. Any other bugs they have seen.
 
 Later:

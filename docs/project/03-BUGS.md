@@ -7,19 +7,19 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 ## A. Seen by the owner (first priority)
 | # | What is seen | Status |
 |---|---|---|
-| A1 | **Sliding survivors.** The whole character freezes in one pose and then moves around, attacks or does anything else with no animation at all. Seen many times, over many builds. Owner, 16 Nov: the stuck pose is standing, arms down, legs straight; they don't seem to recover. | open: not yet reproduced. A check that can see it exists since 3D.175 (notes below). |
+| A1 | **Sliding survivors.** The whole character freezes in one pose (standing, arms down, legs straight) and then moves around, attacks or does anything else with no animation at all, and never recovers. Seen many times, over many builds. | **fixed in 3D.176** (16 Nov), waiting for the owner to confirm in play. Cause and check in the notes below. |
 | A2 | **Emoji keep flashing.** The emoji keep flashing or appearing again and again (owner, 16 Nov). | open: not yet looked at. Still unknown: which emoji (above a survivor's head, in the news pill, on a card or button) and what is happening at the time. |
+| A3 | **The game suddenly froze** (owner, 16 Nov, build 3D.175, about 30 seconds into a session with the Animation tracker on). | open: not reproduced; no error in 15 minutes of cloud soaks with the tracker on. Still unknown: whether the picture stopped or the whole page, whether it also happens with the tracker off, and whether it still happens in 3D.176. |
 
 *(The owner adds more here. One line each is enough; a recording helps but isn't needed.)*
 
 ### A1 notes (Bugs chat, 16 Nov)
-- **Why earlier fixes missed it:** the Animation tracker (3D.58) compared the body's speed with the clip the game *asked for*. It never looked at whether the bones move, so a survivor whose clip is chosen correctly but isn't playing showed as healthy. None of the 3D.39 to 3D.100 fixes had a check that could see this bug.
-- **3D.175, the frozen-pose check (test tool only, no game change):** the tracker now watches the bones. A survivor on their feet whose bones haven't changed for 1 s while moving or fighting (3 s otherwise) is flagged `FROZEN (bones not moving)`, and the log line records what the clip was really doing (clip time, weight, enabled, paused, running, the mixer clock, which clips are live). It works when the tracker is switched on *after* the freeze. Scripted: `node tools/qa/frozen_check.js 240000 2` freezes one survivor on purpose to prove the flag fires, then soaks at 3x and fails on any FROZEN.
-- **Result so far:** self-test passes. Two soaks (5 and 6 minutes, new game, 3x speed, fights included) found nobody frozen. A 200,000-step random test of clip switching on a real survivor never left the bones without a live clip. So the freeze is not in the clip-switching code itself; it needs something the short soaks don't do.
-- **Ruled out by reading or test:** the clip cross-fade logic; bad numbers in the animation clock (the time step is always 0 to 0.1 s and the game speed is always a real number); the off-screen slow update (4 updates a second, choppy but not frozen); an error inside the draw loop (it would stop the whole picture, not one person).
-- **Still a lead for a different symptom (unconfirmed):** a survivor's strike clip is only restarted on a frame where the sim says "not attacking" and the clip has finished; with fast weapons or 3x speed a survivor may hold the end-of-strike pose across attacks. This is not the standing pose the owner sees.
-- **Not yet tried:** long sessions (hours), saves loaded from older builds, the stronghold and trips, the Gear screen (it sets game speed to 0), night skip (30x), job changes, 3D armour swaps, a phone's real graphics chip.
-- **Published 16 Nov** (artifact version 217, cache tag v=3d.214). Next step: the owner captures it: when someone freezes, Settings > Animation tracker > wait 5 seconds > Copy log, and paste it in the Bugs chat.
+- **Cause:** in `js/render3d.js` each survivor's 3D figure kept its animation clock in `a.acc`, and the accessory code (3D.28) kept its list of accessory pieces under the same name. Setting the accessory replaced the clock with a list; adding time to a list makes text, not a number. With no accessory and the figure on screen it happened to repair itself on the same frame. It never repaired itself for (i) anyone wearing an accessory (School Backpack, Tool Belt, Wristwatch...) and (ii) anyone whose figure was made while they were off screen. Their animation never advanced again, so they stayed in the model's rest pose while the game moved them about.
+- **How it was found:** the owner's two tracker logs from 3D.175 showed `acc: null` (not a number) and `mt: 0` (animation clock never ran) on every FROZEN line.
+- **Fix (3D.176):** the accessory list is now `a.accParts`. One rename, nothing else.
+- **Check:** `node tools/qa/frozen_check.js 240000 2`: self-test (freeze one survivor on purpose, the tracker must flag FROZEN), then a survivor with a backpack must animate, then every figure rebuilt off screen must animate, then a soak at 3x. On 3D.175 it fails at the backpack step; on 3D.176 it passes.
+- **Why earlier fixes missed it:** the Animation tracker (3D.58) compared the body's speed with the clip the game asked for and never looked at the bones. Since 3D.175 it does (`FROZEN (bones not moving)`).
+- **Left over, not this bug (unconfirmed):** a survivor's strike clip is only restarted on a frame where the sim says "not attacking" and the clip has finished; with fast weapons or 3x speed they may hold the end-of-strike pose across attacks. The logs also show many small WALK IN PLACE / SKATE / FEET TOO FAST flags; nobody has complained about those.
 
 ## B. Found by testers or ChatGPT, confirmed in the logs
 | # | What | Source | Status |
@@ -53,6 +53,8 @@ UI problems are listed in `04-UI.md`, not here.
 | C5 | `runs/*/*.jsonl` is gitignored, so run logs don't reach the repo | open |
 
 ## Fixed (last 10)
+- 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.
+- 3D.175: frozen-pose check in the Animation tracker (tool only).
 - 3D.174: a storage door walled off from the town is opened by the game (Gates).
 - 3D.173 + f88fa57: stuck stronghold coach hint removed.
 - 3D.172: sealed check; gap hints; patients stay in bed at night; stuck sites say why.

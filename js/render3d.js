@@ -1258,9 +1258,9 @@ function accFor(a, id) {   // -> [[bone, group], ...]
   return out;
 }
 function setAccessory(a, id) {   // add / swap the accessory pieces
-  if (a.accId === (id || null)) return; for (const g of a.acc || []) g.parent && g.parent.remove(g); a.acc = []; a.accId = id || null; if (!id || !MALE || !MALE.v2) return;
+  if (a.accId === (id || null)) return; for (const g of a.accParts || []) g.parent && g.parent.remove(g); a.accParts = []; a.accId = id || null;   /* 3D.176 bug A1: this list was called a.acc, the same name as the animation clock in tickMixer; it turned the clock into text, and anyone off screen at that moment (or wearing an accessory) never animated again */ if (!id || !MALE || !MALE.v2) return;
   const keep = [a.o.position.clone(), a.o.rotation.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0);
-  for (const [bn, g] of accFor(a, id)) { const b = boneOf(a, bn); if (b) a.acc.push(attachTo(a, b, g)); }
+  for (const [bn, g] of accFor(a, id)) { const b = boneOf(a, bn); if (b) a.accParts.push(attachTo(a, b, g)); }
   a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
 }
 /* 3D.94 clothing shapes, two ways to compare (owner: "show me both"):
