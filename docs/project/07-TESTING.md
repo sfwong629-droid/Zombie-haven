@@ -13,7 +13,7 @@ Owner, 16 Nov 2026: the tester rounds found bugs but used far too many resources
 
 ## Rules
 - A bug counts as fixed only when a level-1 check would catch it coming back.
-- The suite must be green before a build is published. (Today it has 20 standing failures, down from 35 on 16 Nov: bug C1. Until that is fixed, compare the list of failing tests before and after.)
+- The suite must be green before a build is published. (Today it has 18 standing failures, down from 35 on 16 Nov: bug C1. Until that is fixed, compare the list of failing tests before and after.)
 - Don't run the test suite and play-test servers at the same time (out of memory).
 - Before any level-5 round: give the play-test tool a map and reasons for refused orders (bug C4). In rounds 2–4 many "bugs" were gaps in the tool.
 - Tester scores are badly calibrated: use them as a trend, never to rank priorities.
