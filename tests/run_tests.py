@@ -428,8 +428,8 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
     await pg.evaluate("()=>{ZH.tryWall(8,11,'wood')}")
     t.ok(await pg.evaluate(SETUP, 'low'), 'a squad can leave')
     r = await pg.evaluate("""()=>{const t=ZH.S.trip,e=ZH.expEncounter(t,'door'),names=t.members.map(m=>m.name);const best=t.members.reduce((a,m)=>(m.st.str+(m.job==='Engineer'?2:0))>(a.st.str+(a.job==='Engineer'?2:0))?m:a);
-      const o={n:e.opts.length,c:e.opts.map(x=>x.chance),who:e.opts[0].who,inSquad:names.includes(e.opts[0].who)};const m0=t.loot.mat;const res=ZH.encResolve(t,0,0);o.ok=res.ok;o.gain=t.loot.mat-m0;o.cleared=!t.enc;return o}""")
-    t.ok(r['n'] == 3 and all(0 < c <= 1 for c in r['c']) and r['inSquad'], f"a situation offers 3 options with odds and names who would do it {r}")
+      const o={n:e.opts.length,last:e.opts[e.opts.length-1].id,c:e.opts.map(x=>x.chance),who:e.opts[0].who,inSquad:names.includes(e.opts[0].who)};const m0=t.loot.mat;const res=ZH.encResolve(t,0,0);o.ok=res.ok;o.gain=t.loot.mat-m0;o.cleared=!t.enc;return o}""")
+    t.ok(r['n'] == 4 and r['last'] == 'back' and all(0 < c <= 1 for c in r['c']) and r['inSquad'], f"a situation offers 3 options plus 'Turn back now', with odds, and names who would do it {r}")
     t.ok(r['ok'] and r['gain'] >= 2 and r['cleared'], f"a successful choice adds its reward {r}")
     r = await pg.evaluate("""()=>{const t=ZH.S.trip;ZH.expEncounter(t,'horde');const id=t.enc.opts[1].whoId,m=t.members.find(x=>x.id===id),hp=m.hp;const res=ZH.encResolve(t,1,.999);return {ok:res.ok,hp,after:m.hp,col:!!m.collapsed}}""")
     t.ok(not r['ok'] and (r['after'] < r['hp'] or r['col']), f"a failed risky choice hurts the person who tried {r}")
@@ -450,15 +450,15 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
     t.ok(r['done'] and 'no orders came' in r['log'], f"if no order comes before the next stage, the squad decides and it is logged")
     await pg.evaluate("()=>{const t=ZH.S.trip;t.enc=null;ZH.expEncounter(t,'cry');ZH.eventQueue.length=0;document.getElementById('eventModal').innerHTML='';ZH.encPopup(t)}")
     r = await pg.evaluate("()=>({btn:document.querySelectorAll('#eventModal button').length,html:document.getElementById('eventModal').innerHTML})")
-    t.ok(r['btn'] == 3, f"the situation pop-up shows one button per option ({r['btn']})")
+    t.ok(r['btn'] == 4, f"the situation pop-up shows one button per option ({r['btn']})")
     await pg.click('#eventModal button >> nth=2'); await pg.wait_for_timeout(100)
     r = await pg.evaluate("()=>({left:!ZH.S.trip.enc,log:ZH.S.trip.log[ZH.S.trip.log.length-1]})")
     t.ok(r['left'] and 'Keep moving' in r['log'], f"tapping an option resolves it {r}")
     r = await pg.evaluate("""()=>{const S=ZH.S,t=S.trip;ZH.expEncounter(t,'cry');const en=t.enc;ZH.encResolve(t,0,0);let err=null;try{ZH.encChoose(en,0)}catch(e){err=String(e)}
       const n=S.sv.length+t.members.length,rec=t.recruitNow;t.phase='back';t.backAt=0;ZH.tripUpdate(Date.now()+1);return {rec,err,grew:S.sv.length-n,trip:!!S.trip,last:(S.lastTrip||{}).recruit}}""")
     t.ok(r['rec'] and r['grew'] == 1 and not r['err'] and not r['trip'], f"rescuing the survivor brings them home with the squad; a stale tap does nothing {r}")
-    r = await pg.evaluate("""()=>{const S=ZH.S;ZH.showExpedition();const h1=document.getElementById('ib').innerHTML;ZH.closeP();return {hint:h1.includes('personalities set the odds')}}""")
-    t.ok(r['hint'], 'the Explore panel says that stats, gear and personalities set the odds')
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.leads=[{id:'t1',dest:'houses',risk:'low',text:'test lead',untilH:S.day*24+S.hour+10}];ZH.showExpedition();const h1=document.getElementById('ib').innerHTML;ZH.closeP();return {hint:h1.includes('If something turns up:')&&h1.includes('Trip check')}}""")
+    t.ok(r['hint'], 'the Explore panel shows the trip check with the real odds before sending')   # 3D.169 replaced the general hint with the trip's own odds
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_posts(br, port, t):   # V2.45: guard posts, watches, patrols, zombie lure
