@@ -49,7 +49,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **UI**: all UI work, from `04-UI.md` (owner, 16 Nov: UI gets its own chat).
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
-- **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Not started: it waits for the `game.js` split (owner, 16 Nov).
+- **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Can start: step 1 of the `game.js` split is done and the owner said that is enough (16 Nov, W42).
 - **Planning**: vision, decisions, what's next. Also the general chat: ideas, questions and anything that has no chat of its own start here.
 
 Chats can't see each other. They share only this folder, so each chat re-reads `05-NOW.md` (latest repo copy) before listing what is waiting, and takes the next free W number from it.

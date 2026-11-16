@@ -13,6 +13,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - ~~16 Nov: **Freeze.** No new features or balance changes until the reset (docs, the owner's bugs, code clean-up) is done.~~ Use ChatGPT as much as possible. Full tester rounds only at milestones.
 - 16 Nov (afternoon): **Unfreeze everything except full tester rounds.** New features, balance changes and new art are allowed again. No full testing for now.
 - 16 Nov: New features (the daytime threat, Take command) are built only after the `game.js` split, which itself waits for a green test suite. The balance page and art do not wait.
+- 16 Nov (later, W42): step 1 of the split is done (area files in `src/game/`). New features and UI building can start now; step 2 of the split (making each area stand alone) runs alongside and nothing waits for it.
 - 16 Nov (vision review): The feeling to aim for: small town → build → gear up → a horde attacks → you win and it feels good; lots of small features; the town visibly grows, with more buildings and gear unlocking.
 - 16 Nov: The town starts small but grows to a decent size; the owner wants to see survivors fighting a horde.
 - 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet.)
@@ -56,7 +57,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (UI chat): A share of a whole is written as a percentage ("95%"), never "95/100"; real counts stay as counts. (Not built yet.)
 - 16 Nov (UI chat): The "New: Raiders" note shows a raider in the Toll Kings' kit (red bandana, black vest, bat), not a plain drifter. Built in 3D.178.
 - 16 Nov (Planning chat): Upgrade Town: when 12 game hours or less are left, "12 h sooner" is hidden and only "Finish now" shows (the two cost the same there). (Not built yet.)
-- 16 Nov (UI chat): UI building (U13, U14, U18) waits until the `game.js` split is done. Owner-seen bugs are still fixed straight away.
+- 16 Nov (UI chat): UI building (U13, U14, U18) waits until the `game.js` split is done. Owner-seen bugs are still fixed straight away. *(Lifted the same day, W42: step 1 of the split is done and is enough.)*
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.

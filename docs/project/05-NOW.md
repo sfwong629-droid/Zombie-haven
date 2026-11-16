@@ -11,11 +11,11 @@ New features, balance changes and new art in the game are allowed again. The wor
 3. ~~**Make the test suite trustworthy** (bugs C1, C2).~~ Done 16 Nov: the suite is green (39 of 39, about 2 minutes). Two tests each failed once in a full run and pass alone (`combat`, `expchoices`): watch them.
 
 ## After that (not started, in this order)
-- Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session. The owner's order (16 Nov) puts the UI overlap fixes and the new features after the split: say in the Code clean-up chat whether step 1 is enough for those to start, or they wait for step 2 (W42).
+- Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session, in the Code clean-up chat. Nothing waits for step 2 (owner, 16 Nov, W42).
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
 - Write `08-BALANCE.md`, the balance targets page: the next job in the Planning chat (owner, 16 Nov; the owner answers the target questions, W38).
-- Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. Starts only after the `game.js` split (owner, 16 Nov).
+- Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
 
 ## Waiting on the owner
 Every chat brings its open items back in every reply until they are done (rule in `00-START-HERE.md`). Tick items off here.
@@ -32,7 +32,7 @@ Planning chat:
 - ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
 - ~~W29. Hide "12 h sooner" when it would finish the upgrade anyway?~~ Decided 16 Nov: yes (UI problem U17; built in the UI chat).
 - ~~W11. When to end the freeze.~~ Decided 16 Nov: everything is unfrozen except full tester rounds.
-- ~~W37. When to build the new features.~~ Decided 16 Nov: after the `game.js` split (so after the test suite is green too).
+- ~~W37. When to build the new features.~~ Decided 16 Nov: after the `game.js` split (so after the test suite is green too). *(W42, 16 Nov: step 1 of the split is done and is enough: they can start now.)*
 - W38. The balance targets page (`08-BALANCE.md`) is now the next job in the Planning chat: say go, and Claude asks the target questions (pace, danger, hordes, routes, economy).
 
 Bugs chat:
@@ -56,7 +56,7 @@ UI chat:
 - ~~W22. The alert button and the menu's top edge.~~ Decided 16 Nov: the menu covers the button completely.
 - ~~W23. The "Paused" pill covers the mission card.~~ Decided 16 Nov: centred on the menu's top edge.
 - W24. People & survivor details and the Town panel: besides overlapping buttons, what bothers you there? A screenshot with a circle is enough.
-- ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it.
+- ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it. *(W42, 16 Nov: step 1 of the split is done and is enough: they can be built now.)*
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
 - ~~W30. Bug A5: is the new Raiders picture right?~~ Done 16 Nov: the picture is OK.
 - W33. Town raiders' weapons (owner, 16 Nov: the weapon should change with the raider). Decided: in the town each kind of raider carries its own weapon, and the Raiders note shows the kind that came. Today each raider gets a random one (bat, knife, crowbar, pistol or machete). Proposal sent in the UI chat: Thief knife, Brute sledgehammer, Firebug crowbar, nail bat or hatchet (a torch would be new art, which is frozen). Waiting: yes or no to Thief and Brute, and which weapon for the Firebug. (Planning chat, 16 Nov: new art is no longer frozen, so a torch is possible.)
@@ -66,7 +66,7 @@ Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
 - ~~W39. Mark tests that found a real bug as "known bug" so the suite can go green early?~~ Decided 16 Nov: no, fix the bugs first.
 - ~~W40. Advisor tips in the Needs you list can no longer be hidden for the day: add a hide button?~~ Decided 16 Nov: yes. Passed to the UI chat (see W41).
-- W42. The split, step 1, is done (area files; the game is unchanged). Step 2 (making each area stand alone) takes one session per area, 27 areas. Do the UI overlap fixes and the new features wait for all of step 2, or can they start now that the files are split? Claude's advice: start now; step 2 can run alongside, since each area is small.
+- ~~W42. Do the UI overlap fixes and the new features wait for step 2 of the split?~~ Decided 16 Nov: no, they start now. Step 2 runs alongside in the Code clean-up chat.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
