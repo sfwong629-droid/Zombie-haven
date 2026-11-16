@@ -27,7 +27,7 @@ The older docs under `claude/` are an archive in the **Game Development** projec
 ## Standing rules
 - Report the repo link and commit links after every push.
 - Never paste API keys in chat. Don't delete scheduled tasks without permission.
-- Must work offline. No Claude for character AI. No chibi. No weapons on ordinary zombies (special ones such as the Gatling Boss can have one).
+- Must work offline. No Claude for character AI. No chibi. No weapons on zombies.
 - Keep the phone shape. Menus pause the game. One news pill at a time. Emergency slow-down stays off.
 - Funny text: facts first, joke last (building notes keep the joke first).
 - Tripo sheets: separate square files per view, never one sheet.

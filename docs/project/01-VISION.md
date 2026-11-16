@@ -24,14 +24,14 @@ Small town → build → gear up → a horde attacks → you win, and it feels g
 ## Pillars
 1. **A town that looks alive**: people walk, carry, build, talk; faction camps look like tidy little towns, not scattered props.
 2. **Clear choices with visible odds**: costs, risks and reasons are shown before you commit.
-3. **More control than Fallout Shelter when it matters**: in strongholds and raids you steer the squad; in town people look after themselves. **OPEN**: the owner is unsure whether it feels odd to steer people outside the town but not inside it.
+3. **More control than Fallout Shelter when it matters**: in strongholds and raids you steer the squad; in town people look after themselves, but the player should be able to steer the fighters there too (owner, 16 Nov; **not in the game yet**). **OPEN**: how it works (Claude's recommendation is waiting for the owner's yes, see `05-NOW.md` W14).
 4. **Factions react to how you treat them**, not to how well you are doing ("more renown should not make you more hated").
 5. **A long road**: eras gated by Banners, with more than one way to earn each (fight, ally, build, celebrate); then weekly crises, seasonal strongholds, legacy starts, the City. The routes must be balanced so the player doesn't always take the easy one to get it over with (owner, 16 Nov).
 
 ## The look
 - Phone shape, always. 3D low-poly town, chunky and readable. No chibi.
 - UI: frosted glass panels with full-colour sticker icons (see `04-UI.md`).
-- Ordinary zombies never carry weapons. Some special zombies do: the Gatling Boss has a gun on its hand (owner, 16 Nov). **OPEN**: which zombies are allowed one.
+- Zombies never carry weapons (owner, confirmed 16 Nov). **OPEN**: the Gatling Boss is a zombie and his model has a gun on its arm; the owner decides whether he is the one exception or gets changed.
 - Leaders are not drawn bigger than their people; they have bodyguards.
 - Armour and gear: low-to-medium detail, clean shapes, flat colours.
 - A little gore is fine (owner, 16 Nov).

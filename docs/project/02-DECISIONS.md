@@ -22,7 +22,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 ## Hard rules
 - Must work fully offline.
 - No Claude (or any AI service) for character AI.
-- No chibi. No weapons on ordinary zombies. 16 Nov: some special zombies do have one (the Gatling Boss has a gun on its hand).
+- No chibi. No weapons on zombies (confirmed 16 Nov; what happens to the Gatling Boss's gun arm is an open question).
 - Never push to main. Never republish the direction-A artifact.
 - Never paste API keys in chat. Don't delete scheduled tasks without permission.
 - Report the repo link and commit links after every push.
@@ -56,6 +56,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 15 Nov: Scrap → wood through the **Pallet Yard** building.
 - 15 Nov: "Sealed" means the HQ and at least 3 in 4 buildings are inside the wall.
 - 15 Nov: Add a Banner route that isn't a fight (built as the Founders' Festival).
+- 16 Nov: When the land grows, existing walls do **not** move out for free: the player rebuilds or moves them.
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.
@@ -73,6 +74,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 11 Nov: Squad caps: strongholds 6, raids 8 (+ vehicle seats).
 - 11–12 Nov: Raids are camp maps that look like towns. Raid carry cap: 10 per squad member.
 - 12 Nov: Faction camps look like tidy communities: more buildings, straight rows, no scattered barrels and boxes.
+- 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. How is open. (Not in the game yet; built after the freeze.)
 
 ## Factions
 - 12 Nov: More renown must not make you more hated: factions turn hostile only over how they are treated.
@@ -92,8 +94,6 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 13 Nov: Hold on stronghold and raid maps; enough town maps for now.
 
 ## Open questions (not decided)
-- When the land grows, should existing walls move out to the new line for free?
-- What else in the game falls short of the vision (see `01-VISION.md`, last section; the daytime threat is the first entry).
-- What the daytime zombie threat should look like.
-- Should the player be able to steer survivors inside the town, as in raids and strongholds?
-- Which zombies are allowed a weapon, besides the Gatling Boss?
+- What the daytime zombie threat should look like (Claude's recommendation given 16 Nov, waiting for the owner).
+- How steering fighters inside the town works (Claude's recommendation given 16 Nov, waiting for the owner).
+- The Gatling Boss is a zombie with a gun on its arm: the one exception to "no weapons on zombies", or change him?
