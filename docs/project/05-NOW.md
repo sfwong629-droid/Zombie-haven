@@ -60,11 +60,12 @@ UI chat:
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
 - ~~W30. Bug A5: is the new Raiders picture right?~~ Done 16 Nov: the picture is OK.
 - W33. Town raiders' weapons (owner, 16 Nov: the weapon should change with the raider). Decided: in the town each kind of raider carries its own weapon, and the Raiders note shows the kind that came. Today each raider gets a random one (bat, knife, crowbar, pistol or machete). Proposal sent in the UI chat: Thief knife, Brute sledgehammer, Firebug crowbar, nail bat or hatchet (a torch would be new art, which is frozen). Waiting: yes or no to Thief and Brute, and which weapon for the Firebug. (Planning chat, 16 Nov: new art is no longer frozen, so a torch is possible.)
+- W41. Hide button on tips in the Needs you list (decided in W40). A before / after picture was sent in the UI chat: a "Hide" button beside "Go" on each tip, which hides that tip until the next day; emergencies get no Hide. Waiting: is the look right (the word "Hide", or a small ✕ that takes less room), and build it now as its own build or after the `game.js` split?
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
 - ~~W39. Mark tests that found a real bug as "known bug" so the suite can go green early?~~ Decided 16 Nov: no, fix the bugs first.
-- W40. Advisor tips in the Needs you list (behind the alert button) can no longer be hidden for the day; the old tip line had a ✕ for that. Add a hide button to the list, yes or no? (If yes, it is a job for the UI chat.)
+- ~~W40. Advisor tips in the Needs you list can no longer be hidden for the day: add a hide button?~~ Decided 16 Nov: yes. Passed to the UI chat (see W41).
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
