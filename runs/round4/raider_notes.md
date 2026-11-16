@@ -1,0 +1,87 @@
+# Raider notes (port 8904, seed 21, build 3D.173)
+Session plan: 72 game h play, then away 20 h.
+Session 1 starts D1 08:00.
+- D1 08: start food 14 water 14, scrap 16 wood 12, 4 people, squad power 42. Strongholds all locked (clinic needs L3, power 175). Raids locked until meeting factions.
+- D1 11: news "Ben can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off" - only HQ + farm existed; confusing.
+- D1 12-15: houses low w/ Lena+Marcus. Took "Fight through" horde (64%) -> both hurt (53%/62%). Loot +5 food +5 water +5 cloth. Thin for a raider.
+- D1 15: June (Guard L1) joined. D2 02 Theo (Scav) joined.
+- D2 02: Rain Barrels need a *Farmer* to staff - surprising. Made Theo Farmer.
+- D2 08: adopted dog Scout (2 food) -> Marcus. Lumberyard medium with Marcus, June, Lena.
+- D2 11: lumberyard medium: +47 wood + School Backpack; June downed (carried home), Lena 19%. Amy rescued June.
+- D2 12: trader: crowbar 6 mat+3 food bought -> Marcus. Squad power Marcus/June/Lena 70.
+- D2 18: L2 started (6h). D3 00 L2. Rosa, Noah joined (8 people).
+- D3 08: Marcus sick event; let rest (water was 7.7). Houses low w/ June+Lena: +7 food +8 water +9 cloth; sneak failed, Lena hurt.
+- D3 11: rushlevel 25 renown -> L3 instantly. Clinic stronghold unlocked: rec power 175. My best 3-squad = 70, whole town of 7 = 114. Big gap.
+- D3 16: L4 started: 48 h or 100 renown. Noah -> Engineer at Workbench.
+- D4 00: Bladesmithing done. D4 08 crafted Machete (9 scrap) -> June. Feast +15 heart all.
+- D4 10: pharmacy low: +7 scrap +5 meds + Back Brace.
+- D4 12-D5 06: residency requests come ONE per stop (Marcus, Lena, Amy, June, Ben, Rosa, Theo) - ~7 interruptions.
+- D5 06: rushlevel -> L4 (renown 86->69?). Lodge unlocked.
+- D5 08: Toll Kings demand 14 scrap; REFUSED -> "riders charge", 5 raiders; no clear result shown to me. Raid: Toll Kings fort now unlocked, rec power 300.
+- D5 09: lumberyard low +17 wood + 2x Scope Goggles. D5 12 Lodge built. L5 started 60h/125 renown.
+- D5 16: built Sparring Ring + Armory. Squad power (state) 119; clinic needs 175, toll fort 300, greenwater 200 (locked).
+- D5 18 + D6 03: "The Lodge's door is walled in: only 0 of 17 buildings can reach it. Put a Gate in the fence" - tool gives no map/door coordinates; `walls 1` only lists outer-line gaps. Can't fix blind.
+- D6 08: water 0.5 (0.2 days) though 07:00 news said 1.7 days. Wood 0. Radio signal: sent Lena (2-day trip).
+- D6 08-10: houses low w/ Marcus+June "Short on supplies: the trip is riskier"; June collapsed, Marcus 52%; +2 food +2 water. Bad.
+- D6 09: "Ben is dying of thirst".
+- D6 21-23: Gatling Boss + 6 zombies; BOSS DEFEATED D6 23, horde scattered. D7 00 "Found: Military Armor". High point.
+- D7 07: Armory auto-gave Military Armor to Amy (medic) + she bought crowbar. D7 12 June/Eli auto-bought Riot Vests/Cap/Crowbar: -23 scrap without asking. Moved armor to Marcus by hand.
+- D7 08: lost child card: sent Marcus+Amy (5h). D7 16 "Too late... found nothing". Both downed out there.
+- D7 13-18: cascade: Amy, Marcus, Lena, Rosa down (4 of 9). "NO rescuer: 3 zombies next to them". `militia` refused ("when no fighter is left"). D7 18 radiohelp -> D7 19 team carried 4 into care; owes a favour in 2 days.
+- D7 09: "Noah is dying of thirst" with water 10 in stock - suspect related to Lodge-door-walled-in message (repeats D7 03).
+- D7 13: placed 2 gates blind (15,9 and 12,9) at 0 wood - accepted.
+- D8 00: Week 1 review grade B 78/120. Noah LEFT: "couldn't take another day without water" though stock was 7.5 at D7 16 and day line said Water +14.5 -7.4; "Out of water: rations were short today". Wood jumped 0->49 after my blind gates (D7 13) so delivery was blocked before.
+- D8 02-05: night 2 cascade: Theo, Eli, Amy down; radio help on cooldown; "the last few are hiding"; "path blocked · put a Gate in the wall". Lodge-door message still D8 03. Nobody died.
+- D8 04: L5. Next level needs a Banner: clear Overrun Clinic OR finish Trading Post/Radio Tower.
+- D8 02/08: `upgrade water` second time returns ok:false with empty reason (2-build limit, I guess).
+- D8 08: I overshot my play habit (should have gone away at D4 08). Built Trading Post. away 20 -> credited 8 game h of trays.
+Session 2 starts D8 08.
+- D8 16: crafted Katana (21) + Fire Axe (13) -> Marcus, Lena. Power Marcus/June/Lena/Amy 167 -> 210.
+- D8 17-23: Noah downed; rescue took 6 game h.
+- D9 00: rescue team's favour 15 food + 10 water; had 8 water, refused -> "won't answer radio for a week".
+- D9 01: Trading Post built -> Civic Banner (D9 07). Renown 274. L6 still needs 11 people (have 9, beds 10).
+- D9 night: 4 buildings damaged (296 dmg); people constantly "trapped... slipped out before it fell".
+- D9 09-10: STRONGHOLD Overrun Clinic with Marcus, Lena, Amy, Theo (power 208 vs rec 175). Theo started at 17% (I didn't check). sh med -> Theo 67%. 24 enemies; boss woke at 50s; sh focus -> boss killed at 64 s. 22 kills. Loot: +25 renown, +6 scrap, +9 meds, Dr. Ines (Medic) rescued. Squad left at 57/17/20/20%. FUN: the fight-in-slices + focus call felt like a real decision. Loot small for a raider though (6 scrap).
+- D9 06-15: June down 9 game h; news log is a loop of "X is rescuing June" (Amy, Marcus, Rosa, Lena, Noah, Eli...) without reaching her.
+- D9 21-D10 00: Mutant Zombie boss night, BOSS DEFEATED. Clinic loot (Kevlar Vest, Medic Pouch) auto-taken by Theo at Armory. D10 00 baby Ivy (Amy+Lena).
+- D10 00: "Not enough scrap for upkeep: 6 buildings run at half output". L6 rushed for 150 renown (349 -> 209 incl.). Found Crossbow -> Rosa took it.
+- D10 08: Toll Kings toll 18 scrap; refused again -> 6 raiders, "The Collector will hear of this!".
+- D10 11 -> D11 01: June down 14 game h (said "bleeds out in 11 game h" at D10 16) - ~20 lines of "is rescuing June". Survived. Rescue pathing looks broken (Lodge-door/gate warnings still every 03:00).
+- D10 16: wood 0 again, every build "cannot afford". Trader: bought Cleaver 5 mat + 2 Molotovs 6 mat. Power Marcus/Lena/Amy/Theo/Rosa/Eli = 326 vs Toll fort 300.
+- D11 08: feast (6f/6w). RAID Toll Kings fort: picked 7 (power 337 vs 300) but only 4 went (Marcus, Lena, Theo, Rosa) - power shown for 7 was misleading. Camp list of 29 buildings shown. sh hit armory -> alarm. Boss dead by 45 s (didn't even focus). Lena+Theo DOWN at 45 s, Rosa down at 70 s; sh med x4 revived each. Enemies 0 at 140 s, then free looting: armory, warehouse, storage -> bag 10/23/39/40; bag stuck at 40 (workshop/ammobench loot did nothing - no "bag full" text). sh back -> over at 247 s.
+- Raid result D11 11: +25 renown, +9 scrap, +19 wood, +9 stone, +4 ammo, Road Sign (atk 32), Bike Helmet. Victory Banner. "Leader down: scatter for 60 days", "will come for revenge". The raid itself = best part of the run so far. Result card's "changes" omitted wood/stone/items ("people: 4" looks odd).
+- D11 11: away 20 h (session 2 = D8 08 -> D11 11). Session 3 starts D11 11, ends ~D14 11.
+- D11 14: 'June took a Machete at the Armory' -> she dropped my Road Sign (atk 32) for Machete (atk 14). Armory auto-gear overrides manual equip with a WORSE item. Re-equipped D11 19.
+- D12 15: June AGAIN 'took a Machete at the Armory' replacing Road Sign. Repeats. D12 13 bought SWAT armor 18 mat -> Lena. D12 08 Toll Collector revenge attack (10 raiders); Marcus Molotov hit 10; no outcome card.
+- D12 20: June took Machete a THIRD time. Gave Road Sign to Lena instead.
+- D12 21-22: Bloater Queen boss + 8; Molotov hit 6; BOSS DEFEATED in 1 h, found Riot Vest. D13 00 baby Finn. Food now +7.8 -10.5/day.
+- D13 04: `fill` says 4 empty slots, filled 0, while Ben (Farmer) is "free"; `assign Ben farm` worked.
+- D13 04: rush L7 for 175 renown (376 -> 212). D13 08 Foundry visitors: "Show them around" -> "likes you more" (raid_foundry needs 500 power).
+- D13 08-13: MILITARY CHECKPOINT high w/ Marcus, June, Lena, Dr. Ines (power 254). June collapsed in stage 1 (again). Ines 84/84 at the 09:00 card, "💀 lost" at the 11:00 card - no warning/choice between. Turned back. Loot +66 scrap +24 meds +32 fuel +122 ammo +16 cloth, Wristwatch, Crowbar, Lifting Gloves. FIRST DEATH: Dr. Ines (the doctor I rescued from the Clinic). Big loot, felt bad - and the death came from a stage roll, not a decision I made.
+- D13 13: after the military loot: ammo 60 (was 60, +122 promised), fuel 20 (11+32), meds 20 (10+24): silently capped at 20/60; the report said +122 ammo. Lost loot with no message.
+- D13 14: lumber low w/ Theo+Rosa: Rosa collapsed in first hour of a LOW trip; turned back: +4 wood. Food 1.2 -> 0 (D13 15) - "Food runs out in about 8 h". Day lines kept saying food positive (D13: +9.3 -8.8) while stock fell; babies? no explanation.
+- D13 16-18: houses low: "Short on supplies: the trip is riskier"; cleared stairwell (89%) -> Iris (Farmer) joined. +7 food.
+- D13 18: Noah -> Cook at Canteen: foodPerDay -4.5 -> -4.3 only.
+- D14 06-10: houses low +8 food +Scope Goggles. D14 08 met Greenwater (sent away) -> raid_green opened (rec 200).
+- D14 10: RAID Greenwater with Marcus(44%), Lena, Theo, Eli: power 240 vs 200. hit storage; at 30 s Lena/Theo/Eli all DOWN, Marcus 7%. sh med, sh back -> out at 50 s. +5 renown, 0 loot. "Greenwater will never forgive this... they will hit back." Power number clearly ignores current HP (Marcus 44%) - I trusted it and got wrecked. Felt unfair-ish but my fault too.
+- D14 11: away 20 h (session 3 D11 11 -> D14 11). Session 4 starts D14 11.
+- D15 20: 'Theo took a Crowbar at the Armory' replacing Sledgehammer (atk 36) I crafted D14 17. 4th armory downgrade.
+- D14 17: Gadgets research done; crafted Katana + Sledge (-37 scrap). D15 00 week 2 review GRADE S 104/120 "Beacon of Hope" (+30 renown, Gas Mask) - while food was at 0 two days earlier. Ivy grew up -> Engineer.
+- D15 08: lost child again -> declined. Lumberyard medium (Marcus, June, Theo) +33 wood, clean. Food "-6.4 a day". Upgraded 2 farms -> Fenced Farm + built farm: D16 08 food/day +10.4.
+- D15 21-D16 05: Gatling Boss +14; defeated at 05:00; Dog Tags found (Iris took it).
+- D16 08-12: quarry medium (June, Theo, Eli): fought bridge raiders (68%) -> both hurt; +24 stone + Hiking Backpack.
+- D16 09/14/15/16 09: Dusk Radio "trader on the highway/coming" but state trader = null each time I check (D14 10, D15 12, D16 12).
+- D16 12-15: lumber medium (Lena, Rosa, Ben): Ben collapsed, turned back; +32 wood + Running Shoes. D16 13 Theo took Crowbar again over Sledge.
+- D16 15: Lodge -> Fort started (20 wood 30 stone 12 mat 2 fuel).
+Session 4 ends ~D17 11.
+- D16 15 -> D17 11: Fort upgrade materials delivered very slowly (wood 35->11 by D17 08, stone 33->22 by D17 11) - 20 game h and still not built. D17 00 legacy goals Giant Slayers (4 bosses) + Far Horizons (12 expeditions). Greenwater revenge radio + 7 raiders D17 00. Renown 480.
+- D17 11: away 20 h. Session 5 starts D17 11.
+- D17 17-21: warehouse medium (Marcus, June, Lena): +54 scrap, Back Brace, clean. Crafted SWAT armor, 3 SWAT helmets, Military armor (-81 scrap). 4-squad power 284 -> 308. Foundry raid needs 500: out of reach; nothing else to raid (Toll scattered to D72, Greenwater locked after failed raid).
+- D17 21: Fort complete (tier 3). D18 00 Finn grew up; legacy 4/8 "A Real Town". L8 still blocked: 12/13 people.
+- D18 08-12: supply drop (June+Amy) +9 scrap. Lumber medium (Theo, Eli, Marcus): Theo collapsed stage 1 (in Military armor, ~93%); paid half toll; +33 wood. Water "-8.5 a day". Upgraded barrel->collector, tent->cabin.
+- D18 19: Theo took Crowbar again (5th time).
+- D18 21 -> D19 05: Bloater Queen + 14: NOT killed this time; 9 of 12 hurt; Marcus, Theo, Noah down with "6 zombies next to them". radiohelp D19 04 -> team cleared 8, carried 6 into care. Nobody died.
+- D19 07-11: MALL medium (June, Lena, Rosa): Lena collapsed stage 1, Rosa 25%; took Cry for Help fight (82%) -> Maya (Engineer) joined. +31 food +31 scrap +35 cloth + Back Brace. 13/13 people.
+- D19 11-14: lumber low (Marcus, Theo): "Fight through" at 91% -> "horde pushed back hard: both hurt". +16 wood. D19 15 food storage full (80), waste.
+- D19 14 -> 21: Archery Range site took 7 h to get materials (wood sat at 12). D19 21 "Ready for the next level" (L8). D19 19 Theo BOUGHT a crowbar (-5 scrap) over his Sledge (6th).
+- D20 00: day 20 starts. Stop. Level 7 (L8 ready), 13 people, 1 death (Dr. Ines D13).

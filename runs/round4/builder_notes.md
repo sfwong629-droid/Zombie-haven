@@ -1,0 +1,54 @@
+# Builder notes (round 4, build 3D.173, seed 21, port 8902)
+Habit interpretation: long sessions (~140 game h) then `away 22`.
+- D1 08h: start 4 people (Marcus guard, Amy medic, Lena scav, Ben farmer). food/water 14, -4/day. wood 12, scrap 16. Walls 12, 2 broken. 3 walkers. Ordered farm + barrel; bonfire refused: "two builds already running (the limit)". Wood still shows 12 after ordering (paid later?).
+- D1 11-20h: Houses trip (Lena) +5 food +3 water +4 cloth. Lumber trip +16 wood. Rosa (cook) joined. 2nd lumber trip recalled when Lena at 35/72 HP: +8 wood. Built farm, barrel x2, campfire, canteen. walls 4 placed (outer line 48 tiles left! long).
+- D2: Water was the crunch: -4.3/day with 2 barrels; staffing a barrel with a farmer changed it by only 0.1 (barrels seem rain-only). 1.5 days water left at D2 11h. Lena sick card (treat 2 scrap 3 water). Eli (medic) joined. Level 2 at D2 15h (level up took 6h). Scrap was the bottleneck (4-8). Houses trip +6 water. Noah joined. Greenwater traders D3 08h: 6 food -> 10 water, saved me.
+- Daily summary D2: Food +9.5 -5.5, Water +6.2 -5.5 (rain night).
+- D3 08h: lvl2->3 started (12h). 7 people, renown 59. wood 19 scrap 10.
+- D3 10h: Workbench built (+15 research gift). Amy -> Engineer. Theo (cook->scavenger) joined. 2nd scrapyard. Level 3 at D3 20h. Level 3->4 timer = 48 game h (!), or 100 renown to rush.
+- beds shows "8/8" after 3 tents: the number is a level population cap, not beds. Confusing for a builder: 3rd tent gave nothing visible.
+- Research is slow: 17 -> 20 in 13 h with an engineer at the workbench. Bladesmithing done D4 09h.
+- D4: low-risk Pharmacy trip: Marcus (87%) "collapsed and is being carried" in stage 1; turned back +4 scrap +2 meds. Raiders (3) D4 12h, Theo downed 15h, Eli rescued him. Lumber trip D4 18h: Marcus collapsed again; +11 wood. Low-risk trips hurt my guard nearly every time.
+- Walls cost 1 wood/tile; outer line needs 34 more tiles after 30 placed. Wood is always <20.
+- D5 08h: Toll Kings demand 12 scrap, I refused -> "they attack" card, but nothing visible happened by 19h. 4 residents accepted (Ben, Lena, Marcus, Rosa). Bought Nail Bat from trader (7 scrap + 3 food).
+- D5 20h: Level 4 (Lodge unlocked). D6 06h: wood 3 (repairs/upkeep eat it). Stray dog Pepper adopted; `pet Pepper Marcus` failed with only the usage text while Marcus was on a trip (no real reason given), worked after he returned.
+- D6 11h: HQ -> Lodge (20 wood 5 scrap), took 2 h. Tier-2 build list opened (Lumber Camp 10 wood, Quarry, Armory, School...). levelup at 11h failed with no reason (people 8/9); worked at 14h after June joined. Level 4->5 timer 60 h.
+- D6 18h onward: "The Lodge's door is walled in: only 0 of 15 buildings can reach it." Repeats D7 03h, D8 03h. The tool gives no map/coords of the door; walls report says buildingsInside 0/18. Placed gate at 21,9: no fix. "Ben can't reach a storage door with their load."
+- D6 21h: Boss night, The Butcher + 6. Beaten by D7 03h without me doing anything; found Crossbow. Night D6: 11 walkers stopped, 1 building damaged.
+- D7 07h: lumber trip, Maya (64 HP, full) collapsed in stage 2; +14 wood. Lumber Camp #1 built D6 21h, #2 D7 18h.
+- Week 1 review D8 00h: grade B 74/120 (Defense 9, Happiness 8, Research 5).
+- D8 05h: session 1 over (~165 game h). away 22 -> credited only 8 h: +9.5 wood +3 scrap +2.7 research. Level 5 finished while away. Renown 240, wood 15, scrap 57.
+- D8 05h away card: "Waiting in the trays: 5 · 5 · 3 · 3 · 9" - item icons missing, no labels.
+- D8 08h: Radio signal card, sent Lena (2 days)... but news says "Lena will staff the Scrapyard" right after, and she collapsed in town D8 22h. Unclear whether she ever left.
+- D8 14h: Trading Post built -> Civic Banner (D8 20h). Easy banner for 14 wood 5 scrap 2 cloth.
+- D9: Noah Farmer->Guard (only 1 fighter before). D9 16h Sol joined -> 11 people; levelup to 6 = 72 h timer (150 renown to rush). I rushed with 150 renown (renown 310->160). Builder me hated the 72 h wait.
+- D9 21h Mutant Zombie boss: 5 people downed through the night (Sol, Lena, Theo, Maya + earlier). Used radiohelp D10 03h: team carried 3 into care, wants a favour in 2 days.
+- D10 00h: Ben+Eli become a couple and baby Ivy is born the SAME hour.
+- D9 08h ordered barrel->Rain Collector, finished D10 04h (20 h). Pallet Yard ordered D9 20h, built D10 03h. `upgrade workshop` D9 20h failed with no reason (ok:false, empty) - probably the 2-build limit; worked D10 10h.
+- Lodge door "walled in" message every night at 03h through D11 (0 of 20 buildings reach it). Placed 3 blind gates (14,9 12,9 10,9) D10 00h: no change. Builds still finish though, so maybe harmless? Can't tell.
+- D10 Pharmacy low: Marcus+Noah fine this time, +6 scrap +5 meds. Crafted Fire Axe (Noah) + Machete (Theo) D10 20h.
+- D10 summary Food +10.1 -10.1 (flat). Legacy goal 1/8 D11 (12 expeditions).
+- D11: Garden->Fenced Farm (10 wood, 1 h). Houses trip towed a Pickup Truck (needs Garage). Radio "can reach the next level" lines keep playing while a level-up is already running (D10 08h, D11 08h).
+- D12 00h: paid the rescue favour (15 food 10 water). Garage built D12 05h. Workshop, Tent, Garage, Medical Tent "fell" in night/day raids; repairs eat wood: wood 11 at D12 06h -> 2 by 16h after one 3-wood tent.
+- D12 06h: rushed L6->7 for 75 renown. Foundry visit -> "show them around". Stalker boss D12 21h beaten by 23h, got Kevlar Vest. 2 babies born D13 00h (Finn, Nora) on top of Ivy.
+- D13 01h: L7->8 timer 96 h; rushed for 188 renown (241 -> 53). Level 8 at D13 01h. Now every useful build/upgrade "cannot afford": wood 4. Fort needs 20 wood 30 stone 12 scrap 2 fuel.
+- D13 08h: 3-person lumber trip (Marcus, Noah, Lena): +22 wood + Back Brace. After every trip the returning scavenger is put back on the Scrapyard, undoing my Pallet Yard assignment (D13 10h, also D6 10h).
+- D13 11h: 2nd Fenced Farm + Quarry ordered. 14 people. Session 2 ended D13 21h (~136 game h).
+- D13 away 22 -> credited 8 h: +11 wood +5 rp. Quarry site sat from D13 11h to D14 06h with 29 wood in stock; "Cabin: nothing delivered for 6 h: everyone is busy, or the way to it is blocked" D14 04h.
+- D14 08h: Sol Farmer->Engineer for Quarry. Wandering medic healed everyone. D14 09h accident fire: Trading Post burned, spread to Scrapyard; both auto-repaired by 22h.
+- D14 14h wood 39, then D15 16h wood 71 (!) - wood finally piling up after Quarry/Cabin finished. Built Armory (D14 21h): fighters bought Riot Vests/Caps themselves (Marcus, Noah, Lena) D15 09-12h - nice.
+- D15 00h: Week 2 review GRADE S 103/120 "Beacon of Hope" (Defense 18, Research 10). Ivy grew up (born D10, +5 days as promised). Legacy goals 3/8.
+- D15 08h: L8->9 timer 108 h; rushed at 16h for ~212 renown (259 -> 47). Level 9. Library + 3rd Garden built. Firearms researched; crafted Hunting Rifle + Pistol.
+- D15 21h Butcher boss + 13. Pipe bombs used by AI (5 hit, 11 hit). 3 downed (Theo, Lena, Eli) - Theo down 4 h with 3 people "rescuing" but never reaching him. radiohelp D16 03h (2nd use).
+- D16 06h: ammo 46 -> 5 in one night with 2 gunners ("Low ammo" warning). Toll Kings now want 24 scrap; refused again; "The Collector will hear of this".
+- D16 08h: Cabin + Field upgrades ordered D15 16h still not done after 16 h; wood 62 sitting unused because 2-build limit is full.
+- D16 20h-D17: gate broke; rescue log spam: "Lena is rescuing Amy / Maya is rescuing Theo" printed ~16 times in the same hour (D16 22h). Theo down 19h->23h.
+- D17 02h: placed 40 wall tiles (59 wood -> ~19). outerLineLeft went 69 -> 47 only (line seems to grow), buildingsInside 1/28. Never got close to sealing.
+- D17 06h: night did 202 building damage; morning: scrap 4, wood 1, "not enough wood and scrap for tonight's upkeep (9.9)". Both Scrapyards had been left EMPTY (trip returns shuffle people). Ben -> Mechanic (Ammo Bench), Ivy -> Scavenger.
+- D17 lumber low trip: +23 wood, nobody hurt (gear helps: Marcus 172 HP now). Pharmacy +6 scrap +5 meds.
+- D18 00h: Finn + Nora grown up, baby Wren. Favour due again (15 food 10 water) but water 6.6: pressing Pay just re-showed the same card, no "not enough water" message. Had to refuse -> radio help gone for a week, mood hit.
+- D18 00h water -6.1/day, 6.6 left; staffing both Rain Collectors did not change the forecast at all (-5.8). Houses trip D18 07h +14 food +9 water +8 cloth; heavy rain D18 20h; D18 summary water +26.6.
+- D18 08h: Toll Collector (leader) attacked with 10 raiders while Marcus+Lena were out; Ivy, Maya, Lena downed; but at D18 15h "Victory Banner raised: The Toll Collector fell at your gate." Big high: refusing the toll twice paid off.
+- D18 14h: 2nd `upgrade water` failed with ok:false and no reason (twice); worked after first finished.
+- D18 21h Mutant Zombie + 13: worst night. 7 people down at once by D19 03h (Eli the medic too; "6 zombies next to them: nobody walks in"). Guard Noah "hiding" at 67% HP while people bled. radiohelp refused (favour). Used defend + rescue Eli/Rosa. Boss "slunk back" at dawn. Morning: 10 hurt, 3 buildings 215 damage, nobody died.
+- D19 07h: L10 timer 90 h left (200 renown); renown 163, scrap 7, wood 19, stone 29.

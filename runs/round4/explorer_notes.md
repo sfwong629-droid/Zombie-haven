@@ -1,0 +1,78 @@
+# Explorer notes, round 4, build 3D.174, seed 21, port 8905
+Session plan: play 72 game h, away 20 h, repeat.
+## Session 1 (D1 08:00 -)
+- D1 08: start 4 people, food 14 water 14, scrap 16 wood 12. Built farm+barrel, Lena to Abandoned Houses (low).
+- D1 09: trip cards: "Shout directions" CHA 35% WON (+1 food +1 water); "Sneak around" AGI 57% won. Back D1 11: +5 food +7 water +5 cloth + School Backpack. Fun, quick 2h trip.
+- D1 09 news: "Marcus can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off and that the fence has a gate." (start layout? I built nothing walls yet)
+- D1 12: Lumber Yard low: Lena 53->18/68 in one stage (no card chosen, just "Lena was hurt"). Turned back, +8 wood.
+- D1 19: I sent Lena at 26% HP; game gave no warning. First card she was 10/68. Turned back. +Scope Goggles.
+- D1 23-D2 03: walkers wrecked the Camp at night, auto-repaired. Morning D2: 4 walkers stopped, 1 building damaged (183).
+- D2 08: Lumber Yard again with Lena+Maya: "Run round it" AGI 47% failed, Lena 68->17. Lena hurt every lumber stage; Maya never. +9 wood + Lifting Gloves. Lumber yard "low" feels punishing.
+- D2 08 levelup started (6h), D2 14 LEVEL 2. renown 51.
+- D2 10: pharmacy low with Eli+Maya: +6 scrap +5 meds + Scope Goggles, both hurt stage 3.
+- D2: Rain Barrels need a Farmer; 2 barrels + 2 farms but only Ben farmer -> made Maya Farmer. Water -6.1/day, 2.3 days left at D2 17.
+- D2 13: trader: bought bow (8 scrap 3 food) for Marcus.
+- D2 17 houses: album CHA 35% "hit Lena harder" (no penalty seen), lock pick 69% failed. +4f +4w +5 cloth. Lena learned Light Feet.
+- Joiners: Maya D1 14, Eli D2 08, Noah (Cook) D2 18. 7 people. D2 20 levelup to 3 started.
+- "Claim the reward from the alert or the Goals screen" appears but no claim command in tool.
+- D3 08 supply drop: Marcus+Lena fetched +10 scrap. Rosa (Cook) joined -> Farmer.
+- D3 08 houses solo Eli: "Eli collapsed and is being carried" (solo squad - carried by whom?) Found Pickup Truck (towed home) + Back Brace. D3 10 Hand Cart ready (cart cmd).
+- D3 09 LEVEL 3. Clinic stronghold unlocked, rec power 175; whole town (8 people) power = 129. Level 4 upgrade = 48h!
+- D3 11 pharmacy low Lena+Maya: lock INT 47% won (+1 meds). +3 scrap +5 meds.
+- D3 14 Lumber Yard MEDIUM Marcus+Eli: stage 1 Marcus 106->57, Eli 60->23 in ONE stage. +12 wood. Turned back.
+- D3 18 Lodge opens at Haven level 4 (Gas Station, Old Quarry need Lodge).
+- D4 00 summary "Water +8.7 -6.3" but D4 01 "Water is going down by 5.6 a day: about 1.5 days left" - contradicts.
+- D4 08: 2 tents built but beds 8/8; Wandering Medic "no room (8/8)". Tents don't seem to add beds?? Took treatment.
+- D4 08 research blades. Water 10.1, -5.6/day. Made Eli Farmer (water slots unstaffed: 4 barrels, only 2 farmers on them). Built gym+barrel.
+- End session 1 (D4 08). Level 3, renown 82, 8 people, 0 deaths. away 20.
+## Session 2 (D4 08 -)
+- away 20h: "Your people kept their shifts for 8 game hours" -> trays +7f +4w +2rp +1 scrap. Level 4 finished while away (Lodge unlocked).
+- D4 08 Lodge upgrade costs 20 wood 5 mat (radio D3 18 said "⚙ 4 🪵 8"). 
+- D4 08 lumber low Lena+Marcus: Marcus 106->34 in stage 2. +13 wood. Turned back.
+- D4 10 `upgrade hq2` with exactly 20 wood -> {"ok":false} with NO reason (2 builds running?). Later same cmd gave "cannot afford". Wood then fell 20->19->16 (repairs?) so I couldn't afford for a day.
+- D4 12 first raiders (4). No losses.
+- D4 16 houses low Lena+Marcus no cards: Marcus hurt x2, Lena collapsed stage 3. +3f +7w +3 cloth.
+- D4 21 Lena asked to become resident, accepted.
+- D5 07 tool axe. D5 08 storm +8 water, lightning set Tent on fire, Maya put it out.
+- D5 08 lumber low: sawmill "Fire it up" INT 35% WON +3 wood. Total +21 wood, nobody hurt. Best trip so far.
+- D5 10 Toll Kings toll 14 scrap: paid, "no raids for 4 days". raid_toll now unlocked (power 300).
+- D5 11 Lodge started; done D5 16. Unlocks Lumber Camp, Quarry, Armory, Garage, School etc. Gas Station + Old Quarry trips unlocked.
+- D5 15 lead: The Overrun Clinic (High, 5h). D5 16 crafted machete (blades research). Sent Marcus,Lena,Maya,Eli power 114 vs recommended 175.
+  Fight: 39 enemies. 0-15s 8 kills, Maya 19% Eli 8%. sh med heals ~50% per med. By 50s 20 kills, used 5 meds. Boss woke at 55s; 60-70s boss downed Lena, Maya, Eli (all 0%) in 10s, boss to 68%. sh back -> retreat took ~20s more. Result: 20 kills, nothing gained ("renown 0 scrap 0"), no deaths. Marcus stayed 100% the whole fight (bow?). Tense and readable; I knew I was underpowered.
+- D5 17 water 1.7 days, -7.3/day (was -0.6 at D5 07). Upgrading barrel->water.
+- D5 21 Rain Collector. D6 00 LEGACY "Far Horizons" (12 expeditions) +15 renown +10 scrap; "Complete 4 and reach ★5 to call for the convoy" - a goal for me.
+- Daily summaries show water positive (D5: +13.3 -6.1; D6: +18.5 -6.2) while the top bar says water down 4-7/day and "2 days left". The warning seems wrong or counts something unseen; it made me panic-build barrels.
+- D6 06 Gas Station medium Marcus,Maya,Eli: +13 scrap +26 fuel + Lucky Charm + Wristwatch. All 3 hurt stage 2 and 3; Marcus 18%, Eli 23%. Stray dog Rex adopted (2 food) -> Marcus.
+- D6 11 houses: treehouse AGI 59% won -> new lead Lumber Yard. +7f +7w + Lucky Charm.
+- D6 13 lumber low Lena+Ben: +16 wood, Ben collapsed stage 3.
+- D6 17: "The Lodge's door was walled in: 3 wall sections turned into Gates" -> this is probably why since D1 "can't reach a storage door" kept appearing. Took 6 days to be fixed, by the game itself.
+- D6 21 BOSS The Butcher + 6 zombies; defeated D6 23 by town (Marcus learned Tough). Lena downed, rescued. 0 deaths.
+- D7 05 Theo (Guard L2) joined. Cabin 9/9 beds. D7 07 level 5 upgrade 60h(!) -> rushlevel all 125 renown -> LEVEL 5 at once. 
+- D7 07: level 6 needs a Banner: clear Overrun Clinic OR finish Trading Post / Radio Tower.
+- End session 2 D7 08: level 5, 9 people, 0 deaths, renown 78. Away 20.
+## Session 3 (D7 08 -)
+- away 20 again credited 8 game hours (+8f +8w +2rp +1 scrap +3 wood).
+- D7 08 workbench had NO engineer since D2 -> research crawled (22 rp by D7). Made Theo Engineer. No hint earlier except daily "Open staff slot: Workbench".
+- D7 08 lumber low Marcus+Ben: Fight through 71% won but "Ben and Marcus got hurt" anyway. +10 wood + Hiking Backpack.
+- D7 11 Trading Post built D7 18 -> Banner 1/1 (civic). 
+- D7 11 Old Quarry medium Lena+Eli: skipped tunnel; +33 stone + Reading Glasses, Running Shoes, School Backpack. Nobody hurt. Lena learned Loot Sense. (33 stone, nothing to spend it on yet.)
+- D8 00 Week 1 review GRADE A 85/120 (Happiness 8/20, Defense 10/20, Research 9/20). Marcus+Lena couple.
+- D8 04 June (Engineer) joined -> made Scavenger to staff empty Lumber Camp.
+- D8 07 lumber: "Wedge it first" STR 71% WON -> only "+1 wood". Success reward feels like a joke.
+- D8 08 second dog Pepper -> Lena. `pets` shows withPeople: only "Lena: Pepper" - Rex (given to Marcus D6 11, ok:true) is gone from the list. Bug?
+- D8 10 treehouse 65% failed: "The fourth rung was imaginary. Lena found out." (good line)
+- D8 15 power Marcus,Lena,Maya,Rosa,Eli,Ben = 241 but `stronghold clinic` with 6 names only took 4 (Marcus, Lena, Maya, Rosa); no message that Eli/Ben were dropped.
+- D8 15 CLINIC 2nd try: 33 enemies; Rosa down at 10s; used 6 meds; sh focus at 35s; boss woke 51s; boss 100->8% while Lena/Maya/Rosa all went DOWN 66-69s; Marcus (98% all fight) finished it at 71s. STRONGHOLD CLEARED: +27 renown +9 scrap +9 meds, Nurse Pat (Medic) rescued and joined. Biggest high of the run.
+- D8 16 level 6 upgrade = 72h; rushlevel all 150 renown -> LEVEL 6 (Mall unlocked).
+- D8 16 Mall medium Ben,Eli,Theo: +21 food +21 scrap +23 cloth + Lucky Charm + Hiking Backpack; Theo collapsed stage 2. Great haul. Esme (Scavenger) joined D8 18.
+- D8 21 levelup to 7 = 84h. D9 00 Legacy "A Real Town" (2 of 8). New zombie types each night D9 01-03 (Spitter, Lasher, Rotbomb).
+- D9 08 found Hazmat Suit (armor) in stash - never saw where it came from (probably Week 1 review / mall?). Machete atk 14 < Nail Bat atk 20 though machete is "blades" research; stash only shows atk after you own one.
+- D9 08 "A lost child" card said "Search: about 5 hours"; Marcus+Lena gone until D9 19 (11h) -> "Too late. They searched until dark and found nothing." Lost my 2 best fighters for the day for nothing.
+- D9 08 Mall medium Esme,Eli,Rosa: Rosa 74/74 -> collapsed in stage 2. Turned back. +21f +15 scrap +15 cloth + Back Brace + Wristwatch.
+- D9 11 5 raiders (exactly when Toll Kings' 4 days ran out). Noah and Maya downed; "Nobody is reaching Noah: 3 raiders next to them"; rescue NAME worked. 0 deaths.
+- D9 15 `upgrade water` -> {"ok":false} with no reason again (one build + one upgrade running).
+- D9 20 `upgrade clinic`: "no room around the old one (clear a neighbouring tile)" / "place it (turn it with ↻)" - no tool command for that.
+- D9 21 boss Bloater Queen + 6; it left at dawn, "It will return". D10 00 baby Ivy born to Marcus+Lena (joins in 5 days).
+- D10 08 The Foundry visit: "Show them around" -> Foundry likes you more. raid_foundry should unlock.
+- Wood 57-67 by D9-D10 once the Lumber Camp was staffed (June) - wood finally not a blocker.
+- End session 3 D10 08: level 6 (7 in progress, 50h left), 12 people + baby, 0 deaths, renown 150. Away 20.

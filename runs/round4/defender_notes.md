@@ -1,0 +1,83 @@
+# Defender notes (session 1 starts D1 08:00; habit 72 game h then away 20 h)
+- D1 08: start food 14 water 14 (-4/d), wood 12 scrap 16. Built farm+barrel sites, `walls 2` placed 4 tiles -> wood 0. Mistake/tool: walls ate all wood before barrel site; barrel then "waiting for wood (you have none)" D1 15.
+- D1 12: Lena solo to Houses low. Both choices failed (35% CHA, 57% AGI); Lena back at 15% health. Loot food4 water5 cloth5 + Hiking Backpack.
+- D1 12: news "Ben can't reach a storage door with their load... fence has a gate" - after my walls.
+- D1 15: `tool axe` -> ok:false no reason; `tool` alone -> JS error "Cannot read properties of undefined (reading 'tiers')" (tool bug).
+- D1 15: wood 0, no way to make wood visible. Sent Marcus+Ben (power 34) Lumber Yard low.
+- D1 16: Lumber low, Fight 53% failed, Marcus 64% Ben 56%. +10 wood. 3 of first 3 rolls failed.
+- D2: Theo, Noah, Eli joined. Water was the squeeze (2.5 days left D2 08). 2nd barrel. Lumber run with safe options: +14 wood.
+- D2 19: `walls` says buildingsInside 0/5 and outerLineLeft 48 -> sealing needs ~48 more wood. Felt far away.
+- D3 06: L1->2 (6h). Safe lumber run +13 wood. June (Guard) joined D3 11. Level 2 D3 12, L3 D4 03. Idle people chop wood: wood 5->25 by D3 20. Walls 15 -> 31 tiles, 33 left.
+- D4 04: Camp wrecked by walker, auto-repaired; but morning card D4 06 says "Buildings damaged: 0 (24 damage)". Walkers stopped 8, hurt nobody.
+- D4 06: L3->4 takes 48 h (vs 6h, 12h). Blades research completed instantly on order (no worker needed?) Bench still has no Engineer.
+- D4 06-10: "Low risk" lumber w/ Marcus+June: Marcus hurt in stages 1,2,3; came back 11% health; June 43%. +11 wood + Back Brace. Logs card auto-resolved "no orders came" - play did not stop for it (after I answered an Eli-sick card).
+- D4 12: 3 raiders, "Everyone turns out" - no loss visible. D5 08 Toll Kings demand 12 scrap (had 8), refused -> 4 raiders; nothing lost I could see (ammo 40->52?).
+- D5 07: 3 tents built but beds 8/8 (tent says "Two beds"). D6 06 beds 8/10 after level 4 - beds seem capped by level, not tents? confusing.
+- D5 23: June collapsed "Rescue within 270 s"; Amy/Noah/Marcus "rescuing June" repeated 8 times until D6 04 reached Medical Tent. She survived. `defend` ok. Tense but rescue loop looked broken (restarts).
+- D6 06: Level 4 + Lodge unlocked. Radio D3 17 said Lodge = 4 scrap 8 wood; real cost hq2 20 wood 5 mat.
+- D6 06-10: lumber low Lena+Ben: Sneak 69% failed, Lena 22%, Ben "collapsed and is being carried" -> 10%. +13 wood, gloves, goggles. Supply drop Marcus+Amy +11 scrap fine. Maya (Medic L2) joined -> Engineer for Workbench.
+- Roll tally so far: 35F 57F 53F 64S 64S 69F (2/6).
+- D6 10: walls 13 placed -> outerLineLeft went UP from 13 to 47 (line grew with level?). 63 wall tiles, still "buildingsInside 0/13", never sealed. Big low for Defender: 45 wood spent and the goalposts moved.
+- L4->5 takes 60 h.
+- SESSION: I overran first session (D1 08 -> D6 10 = 98 h instead of 72). Away 20 now.
+## Session 2 (D6 10 -> D9 10)
+- Away 20h credited only 8 game h of trays (food 7 water 4 rp 5 scrap 2) but finished the 60h level timer -> L5 at D6 10. L5 needs a Banner.
+- D6 16: Noah (assigned barrel but "free") collapsed in daytime; rescue loop 5h (Amy/Marcus/June/Theo "rescuing Noah"), only radiohelp D6 20 got him to care.
+- D6 21: BOSS Stalker + 6. policy defend. "BOSS DEFEATED" by D7 00, nobody down. Felt good but I saw nothing of the fight.
+- D7 06-10: lumber Lena+Ben +16 wood. June collapsed D7 09 (raiders in town, 5 raiders D7 05).
+- D7 15: Trading Post built (14 wood) -> Banner 1/1. Easy route.
+- D8 00: Week 1 review grade B 73/120, Defense 9/20 (my profile's weak stat!). Baby Ivy born to Theo+Noah.
+- D8 00: Rescue team favour: paid 15 food 10 water -> water to 1.9 by D8 08 (mistake, no warning about water).
+- D8 03: Lena collapsed at night; down ~8 h (D8 03 -> D8 11), "Nobody is reaching Lena", wandering medic treatment set her to 40% but still "down". 
+- D8 08: Pharmacy low Marcus(143/143)+Eli: "Short on supplies: the trip is riskier"; Marcus collapsed. +8 scrap 5 meds. Fight 70% succeeded.
+- D8 14: Lumber low June+Maya: BOTH collapsed in stage 2, no card. +11 wood. "Low risk" is not low.
+- D8 17: 2nd barrel "no spot in the build area: wall in the way on 38 spots" -> my walls ate the build area. Need expand (60 renown + 20 wood 8 mat).
+- D9 00: "Out of water: rations were short today". Water 0.9.
+- D9 03: Lena collapsed again at night (scrapyard?), rally, carried in 2h.
+- D9 10: L5, renown 275, 16/16 bldg, banner ok, people 10/11, beds 10/10 full; wood 0, scrap 28, rp 10. Nobody dead. Collapses so far: Lena x3, June x2, Noah, Ben, Marcus, Maya x2.
+## Session 3 (D9 10 -> D12 10)
+- D9 10-16: two lumber runs Marcus+Eli +11, +10 wood (Eli collapsed on 2nd). `expand` refused: needs HQ tier 2.
+- D9 21: Boss Mutant Zombie + 6, policy defend. Gate broke D10 00. Eli, Lena, June, Theo down. radiohelp D10 03: cleared 6 zombies, carried 3 into care.
+- D10 07-09: 6 raiders (D10 04): Marcus, Noah, Ben, Amy all down at once; "4 down, too few left to fight. They hide"; `militia` refused ("when no fighter is left") even though the only fighters were down?! radio help on cooldown. Survived because raiders left and hospital people recovered (1% -> 69% in 1 h). Nobody died. Most tense moment, felt helpless (no command did anything).
+- D10 08: adopted dog Biscuit (2 food), gave to Eli; "Biscuit is barking - raiders spotted".
+- D10 14: Lodge (hq2) 20 wood 5 mat, done D10 17. Unlocks Lumber Camp, Armory, Kennel, etc. Expand now 160 renown + 35 wood 15 mat.
+- D10 18 -> D11 03: Theo down 9 h; "X is rescuing Theo" ~12 times, nobody picks him up until Amy "stabilised" at D11 02. 
+- D11 07: Lumber low Eli+Maya: Maya collapsed in stage 1 -> turned back, +3 wood.
+- D11 09: Lumber Camp built (Scavenger). Wood 0 -> 14 by D11 20. This is what the Defender needed from day 1.
+- D11 13: trader: rp 15 for 8 scrap, Firefighter Coat 7 scrap (craft cost 9). Body Armor researched. Crafted Biker Leathers for June.
+- D12 00: Rescue team favour again 15 food 10 water; water 4 -> refused -> "won't answer radio for a week, people feel bad".
+- D12 00-05: Amy, Lena, Noah down; "Nobody is reaching ...: Ben couldn't get to them (path blocked) · put a Gate in the wall" - no map in the tool so I can't find where. Got carried by 05:00. "no medical bed free: slower care".
+- Week of nights: Walkers stopped 15 (D11), 16 (D12). Hurt list every morning 5 names.
+- D12 10: L5, renown 404, people 10/11 beds 10/10, wood 7 scrap 10, 0 deaths. Hospital: Amy 20%, Lena 1%, June 1%.
+## Session 4 (D12 10 -> D15 10)
+- D12 12: tent->cabin (10 wood) -> beds 11. Bought 2 molotovs (6 scrap).
+- D12 21: Boss Bloater Queen + 8. "June threw a Molotov: 3 hit", "4 hit". BOSS DEFEATED D13 02; morning D13: only Marcus hurt. Best night of the run.
+- D13 00: Ivy (baby from D8) grew up -> Scavenger at Scrapyard. Baby Finn born. Level 6 started: 72 h.
+- D13 14: `research walls` -> ok:false "needs 30 research points (have 37) and 10 scrap (have 21)" - both met; walls no longer in the research list (BUG / misleading text). Researched Gadgets instead: "Craft stat accessories" - not traps. Never found a way to build traps (radio D6 06 mentions Spike Strips, Barbed Wire).
+- D14 17: medic->clinic "no room around the old one". Built a 2nd Medical Tent instead (D15 04).
+- D15 00: Week 2 review grade A 98/120, Defense 17/20 (was 9).
+- D14 24 & D15 03: "The Lodge's door is walled in: only 0 of 16 buildings can reach it. Put a Gate in the fence". The tool has no map; I placed gates by guessing coordinates (12,12; 14,11; 13,11; 7,14; 8,14; 11,11; 12,11) and some `wall X Y gate` calls placed WOOD fence instead ("placed": "wood") when out of wood?? Warning repeated D15 03. This explains the D1/D2/D7/D10 "can't reach a storage door" and D12 "path blocked" rescues.
+- Nights D13-D15: walkers stopped 16, 15; hurt 2 then 5. Collapses continue nightly (Ivy, Eli, Ben).
+- D15 08: Greenwater visitors (trade 6 food for 10 water) - sent away, food 8.9.
+- D15 10: L5 (L6 in 17 h), renown 556, 0 deaths, people 11 (10 adults + Ivy), food 8.9, wood 2.
+## Session 5 (D15 10 -> D18 12)
+- D15 10: L6 reached during away. Lumber Marcus+Lena +23 wood (best run). cabin #2 + Garden->Fenced Farm (10 wood each).
+- D15 21: Boss Mutant Zombie + 11 (it "will return"). Worst night: June, Ivy, Marcus, Lena, Eli, Ben down; Medical Tent and Canteen fell; morning D16: walkers stopped 2, 4 buildings damaged (268 damage), Hurt: 9 names. Boss "slunk back" at dawn, not killed. Nobody died.
+- D16 00: level 7 started: 3 days 12 h (84 h).
+- D16 11: Ivy -> Guard + Nail Bat. Lumber Theo+Lena +15. D16 18 Armory built (10 wood 4 mat) - I never saw anyone buy gear from it.
+- D16 22 -> D17 03: Ivy down 5h, ~14 "X is rescuing Ivy" lines before pickup.
+- D17 06: Salvage researched. D17 14 scrap 2 (Scrapyard had been empty since Ivy went Guard; `fill` never moves Lena back). Maya -> Scavenger.
+- D17 08: Foundry visitors, "Show them around" -> likes you more.
+- D17 14: bought dog Scout (6 food 6 water) -> June. D18 01 "Scout is barking - raiders spotted near June!"
+- D18 00: Finn grew up -> Police Officer. Night D17-18: Amy, Noah, Theo, Maya down; walkers stopped 16.
+- D18 02 -> D18 12: Theo down 10 h, rescue loop again (Marcus/Finn/Noah/Ivy "rescuing Theo" ~15 times), bandage raised bleed timer 9 -> 11 h. Lodge door still "walled in" (D16 03, D17 03, D18 03).
+- D18 08: lost child card (Marcus & June, 5 h) - declined ("Too dangerous").
+- D18 12: L6 (L7 in ~27 h), renown 651, people 12 (Finn), 0 deaths. Boss due 21:00. Going away 2 h late because Theo was down.
+## Session 6 (D18 12 away -> D20 00)
+- Away 20 h at D18 12: on return everyone ~100% (Amy, June, Ivy, Marcus, Maya 100%) though tool says "nobody heals" while away. L7 reached during away. Wood 28 scrap 18.
+- D18 14: Theo finally picked up after 13 h down (D18 02 -> D18 15 in tent).
+- D18 17 -> 23: Finn down 6 h, rescue loop. `upgrade workshop` -> ok:false with NO reason. `levelup` ok:false no reason (needs 13 people/21 bldg).
+- D18 21: Boss Butcher + 14. Riot Vest for Ivy. Night: Lena, Maya, Theo, Finn down; wall section broke; Med Tent wrecked; Butcher "slunk back... will return" at dawn. Morning D19: walkers stopped 3, 144 damage, 4 hurt.
+- D19 00: L8 started (4 days). Babies Kai, Wren born (Nora D16).
+- D19 19: "Finn took a Scope Goggles at the Armory" - first sign the Armory did anything (built D16 18).
+- D20 00: L7 (L8 in 72 h), renown 686, 11 adults alive + 3 babies, 0 deaths, beds 14/14, food 19 water 24, scrap 2, meds 0, wood 26, walls 65 tiles, outer line never sealed, Lodge door still "walled in".

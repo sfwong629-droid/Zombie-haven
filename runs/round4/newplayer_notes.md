@@ -1,0 +1,156 @@
+# New player notes · build 3D.173 · seed 21
+Session plan: 36 game h on, away 10 h, 36 on, away 14 h.
+## Session 1 (D1 08:00)
+- D1 08: start. food 14 / water 14 (3.5 days left each, -4/day), wood 12, scrap 16. 4 people (Marcus guard, Amy medic, Lena scav, Ben farmer). Walker tip card. Level 1 goal: 6 people, 6 buildings. Everyone "unhappy: no House of their own". 12 walls, 2 broken.
+- D1 08: built farm + rain barrel (2-build limit), tent queued after. Radio walks me through: barrel first. Nice.
+- D1 12-15: Lena solo to Abandoned Houses (low): +5 food +5 water +3 cloth + 2 Back Brace + Lucky Charm. Pharmacy (low): picked "slip past" 63% -> worked, +5 scrap +2 cloth +3 meds. Expedition cards are the fun bit so far.
+- D1 16: Theo (engineer) joined. D2 03 Eli (guard) joined, sick at D2 08 -> treated (2 scrap, 3 water).
+- D1 23 radio: "build a Garden Plot ⚙3 🪵6 ★4" but build list said farm = 4 wood. Which is it? Confused.
+- D2 06 morning card: 6 walkers stopped, no damage. Fine.
+- D2 10: Lena back from LOW risk houses at 10% health ("Lena collapsed and is being carried" - she was alone, who carried her?). Low risk felt like a lie.
+- D2 11 / 14: "Produce 20 food and water: done! Claim the reward from the alert or the Goals screen." No way to claim in my interface (tool).
+- D2 08: `tool axe` -> {"ok":false} with no reason (tool).
+- D2 13: Rosa (farmer) joined. 7 people.
+- D2 17: FARM STILL "site" since D1 08 (33 game h). Wood went 12->2->9->1->5->13, so wood comes and goes but the farm never gets built. Tried build farm again: "no spot in the build area will take it" (12 wall, 6 occupied, 5 door-facing-fence). Map already full with HQ+barrel+tent+farm site?! Food 14.8, -8.1/day, 1.8 days left. Scared.
+- D2 20: session 1 end (36 h). Level 1 goal: 7/6 people ok, buildings 3/6. Renown 29.
+## Session 2 (D2 20 -> D4 08), after away 10 h (credited 8 game h, +1.4 water)
+- D3 01: Maya (cook) joined. Food 7.7, 0.9 days left. "Food runs out in about 23 h" spam every hour.
+- D3 07: built Campfire fine in 3 h. Farm STILL a site. Shooed a stray dog (D3 08) - no food to spare.
+- D3 07-17: three Abandoned Houses runs = +7, +5, +5 food. Marcus collapsed on stage 1 of a LOW risk trip (went 80% -> 10%).
+- D3 15: treehouse "The fourth rung was imaginary. Lena found out." - made me laugh. Lena learned Light Feet.
+- D3 17: Lumber Yard low: +14 wood, sneak-around 69% worked.
+- D3 19: Canteen built (ordered D3 14). D3 23 Crates built.
+- D4 03: FIRST Garden Plot finally built — ordered D1 08, 67 game hours. Second Garden Plot ordered D4 04 was built D4 07 (3 h). No idea why the first one hung. Before that `build farm` said no room anywhere, at D4 04 it was fine.
+- D4 04: levelup started (6 h), renown 70. Food now +2.3/day, water -10.2/day (1.6 days).
+- D4 04: "Theo is trapped in the Tent while a crawler breaks in." Survived.
+- D4 08: Radio signal card -> sent Lena (2 day trip, 3 food 3 water). 2nd farm empty: `fill` found no farmer, assigned Amy (medic) to it.
+## Session 3 (D4 08 -> D5 20), after away 14 h (credited 8 game h, +3.6 food +1.2 water)
+- D4 08: LEVEL 2 card. Expanded land (60 renown, 20 wood, 8 scrap). Amy's farm job didn't stick ("free" again, "Nobody free to fill them: needs a Farmer").
+- D4 12: levelup to 3 started (12 h). Raiders tip + 4 raiders came D4 12-13, "Everyone turns out", no loss.
+- D4 12: wood 1 -> Rain Barrel site waiting. NOW I get it maybe: sites just sit silently when wood runs short. No message says "waiting for wood".
+- D4 14: Lumber Yard medium with Rosa+Marcus: Rosa hurt in stage 1 AND 2 (68 -> 23 -> 9 HP). Turned back. +30 wood.
+- D4 14: Theo collapsed in town, Maya carried him; Theo at 1% until D5 02.
+- D4 17: `build barrel` -> "no spot in the build area will take it" right after claiming more land. Tent (D5 05) fit fine. Confusing.
+- D4 20 -> D5 20: Rain Barrel site ordered D4 04 STILL not built at D5 20 (40 game h) with 20-31 wood in stock. Same hang as the first farm.
+- D5 00: LEVEL 3. D5 02 Canteen fire (put out, used water). "WATER: under 1 day left".
+- D5 02-15: four Abandoned Houses runs for water: +4, +1 (turned back, Eli 6/79 HP), +4, +3 (Rosa collapsed stage 2 from 100%, turned back). Water use -11 to -14/day, one barrel makes ~5/day. Water hovers 3-6 and "runs out in about N h" flips 4h->8h->10h.
+- D5 08: Theo sick, chose rest. D5 11: Maya's trip card ("FAMILY PHOTO ALBUM") was auto-decided while I was answering Theo's card: "no orders came, so Maya (Caring) chose..." (tool: play didn't stop for it).
+- D5 11: level 4 started (39 h!). Trader D5 13: no water for sale, `trade` list empty.
+- D5 17/19: "Marcus (Guard, here 4 days) wants to become a resident" - he was here from minute one? Accepted Marcus and Ben.
+- D5 20: session end. food 20 (13 days), water 5.3 (0.4 days). Renown 120. 8 people, 0 dead.
+## Session 4 (D5 20 -> D7 10), after away 10 h (+4.9 food +2.4 water); LEVEL 4 card on return ("Lodge" unlocked)
+- D5 20: upgrade hq2 (Lodge) 20 wood. `build barrel` still "no spot".
+- D6 00 daily line "Water +6.5 −6.9" but state says waterPerDay -13.8. Which one is true? The 1-hour "runs out in" numbers jump 4h/8h/10h/12h/17h/6h.
+- D6 00: LEGACY FAR HORIZONS (12 expeditions) +15 renown +10 scrap.
+- D6 06: Rain Barrel #2 FINALLY building (ordered D4 04, 50 game h). Lena back from radio signal: bunker of survivors, "Invite them in · no room (8/8)" although I had built a 2nd tent at D5 10 (beds still 8/8). Took +10 scrap.
+- D6 06-09: Houses again: +5 water, found a Pickup Truck, Lena collapsed stage 3 (from 65/76).
+- D6 11: first helpful wait message: "⏳ Lodge: waiting for 🪵 wood (you have none)". Lumber yard +12.
+- D6 15: Lodge done. Tier-2 list is big (25 entries). Upgraded barrel->Rain Collector, built Lumber Camp (both done by D6 22).
+- D6 16: "Lena can't reach a storage door with their load. Check that storage and HQ entrances aren't walled off and that the fence has a gate."
+- D6 21 + D7 03: "🚪 The Lodge's door is walled in: only 0 of 10 buildings can reach it. Put a Gate in the fence (Build → Defend → Gate, tap a wall section)." I have no map; `walls 0` only lists 6 open gap tiles. I don't know where to put a gate. Probably why builds hang?
+- D6 21 BOSS night (Mutant Zombie + 6, warned at noon). D7 01 Eli + Lena down, D7 02 Marcus down. Used rescue x3 + radiohelp. Canteen + Medical Tent "fell". Rescue team: "They cleared 6 zombies... carried 3 of your people into care. Two days from now, we'll come by for that favour." Nobody died. Tense, actually exciting.
+- D7 08: supply drop: Marcus+Amy +12 food. D7 10: Toll Kings toll 14 scrap -> paid.
+## Session 5 (D7 10 -> D8 22), after away 14 h (+6 food +5 water +6 wood). Renown 201 on return.
+- D7 10: `walls 2` placed 2 tiles; outer line is 72 tiles, "buildingsInside 0/12". Way out of reach for wood ~5.
+- D7 17: Lumber Yard +14 wood (Theo's "fire it up" 51% failed: "kept all their fingers, barely" lol). D7 18 Canteen fire again.
+- D7 20: built tent + workbench (done D8 02-03; workbench gave +15 research).
+- D8 00: Amy+Marcus became a couple. WEEK 1 REVIEW grade B 64/120 (Defense 7/20, Research 0/20, Happiness 9/20).
+- D8 01: Eli down again at night, Amy rescued him on her own.
+- D8 03: Lodge door walled in message AGAIN (0 of 11). D8 06 I guessed `wall 15 9 gate` (a gap tile in the north line). No idea if it helped; message did not come back during this session.
+- D8 07: Lodge caught fire, burned down D8 13, auto "LODGE REPAIRED" same hour.
+- D8 08: lost child card -> sent Amy & Maya; D8 15 "Ivy is safe" +8 renown. D8 14 Noah (civilian) joined -> job Farmer.
+- D8 14: levelup to 5 = 60 game h; renown 251 so `rushlevel all` (125) -> LEVEL 5 instantly. Felt good.
+- D8 14: level 6 needs a Banner: clinic stronghold / faction / Trading Post / Radio Tower / festival. Trading Post (14 wood) is the only one I understand. Lumber yard +11 -> D8 18 ordered Trading Post.
+- Water stays the worry: 5-9 with -2 to -3/day; daily summary D7 "Water +17.6 −7.1" yet water fell from 12.4 (D7 17) to 5.9 (D8 06). Fires eat water?
+- D8 22: 10 people incl. child Ivy, 0 deaths, level 5.
+## Session 6 (D8 22 -> D10 09), after away 10 h (+5 water +4 food +5 wood +3 rp)
+- D9 00: rescue team came for "the favour": 15 food + 10 water. Had water 2.9 -> refused -> "They won't answer the radio for a week. Your people feel bad about it." Felt a bit unfair: they asked for water I never had.
+- D9 03: "Lodge's door is walled in: 0 of 12" AGAIN, so my D8 06 gate guess did nothing. Still there D10 03 (0 of 15). I give up on it; nobody explains where the wall is.
+- D9 04: Rotbomb burst hurt 2. D9 05 Lena down; rescue ordered; "Amy picked up Lena" D9 07 but Lena only reached Medical Tent D9 10 (5 game h down).
+- D9 07: Trading Post built -> D9 08 "Civic Banner raised" = level-6 requirement done. Clear and satisfying.
+- D9 08: Bunker gift: Hunting Rifle +15 renown -> Marcus.
+- D9 08-11 houses: +5 water. Zombies "break into" tents in DAYLIGHT almost every hour (Theo/Maya/Rosa "slipped out of the Tent before it fell").
+- D9 16: June (engineer) joined. Level 6 ready D9 16, started D9 21 (3 days).
+- D9 21 BOSS #2 Stalker + 6, set policy Defend before. D9 23 "BOSS DEFEATED... rest of the night is quiet." Zero downs. Best night so far.
+- D10 00: BABY Finn born to Marcus+Amy. D10 01 found a Shotgun -> Eli.
+- D10 02: `rushlevel all` (~95 renown) -> LEVEL 6. Renown 105 left.
+- D10 03-09: "Low ammo: 9 / 6 rounds for 2 gunners". Ammo 40 -> 6 in two nights once guns were equipped. No ammo source I know of.
+- D10 08: Foundry visitors -> "Show them around" (likes you more).
+- D10 08: Lumber yard with June+Rosa: both hurt in stage 1 (June 21/64, Rosa 32/80) - I only see HP once the trip has started. Turned back, +5 wood.
+- Wood is ALWAYS the wall: every upgrade 8-12 wood, I have 3-10.
+## Session 7 (D10 09 -> D11 21), after away 14 h (+4 each of water/food/wood/rp)
+- D10 09: upgraded 2nd barrel -> Rain Collector (done D10 16). Water stable after that (D11 08 waterPerDay 0 to -2.5; 18-20 in stock). Water crisis D2-D10 finally over.
+- D10 09 lumber w/ Lena+Eli (both healthy): "Clear them out" 71% won, +19 wood, nobody hurt. Healthy squads = fine trips.
+- D10 13: built Ammo Bench (done D10 20). `upgrade cabin` at D10 13 -> {"ok":false} with NO reason (2-build limit, I guess) (tool). Worked at D10 18. Cabin done D11 01.
+- D10 15 -> D11 21: "Out of ammo: gunners are clubbing with empty guns" every few hours. Ammo Bench needs a Mechanic, nobody has that job. D11 02 made grown-up Ivy a Mechanic + assigned. Ammo still 0.3-2 at D11 19. Not seeing it work.
+- D11 00: Ben+Maya couple; Ivy grew up; LEGACY NEXT GENERATION +15 renown +10 scrap.
+- D11 02: "Lodge's door is walled in: 0 of 16" still.
+- D11 08: Greenwater trade 6 food -> 10 water. Exactly what I needed.
+- D11 11: 6 raiders sneaking — nothing happened that I could see.
+- D11 14: bought 15 rp (8 scrap) + cleaver; researched Reinforced Walls (instant).
+- D11 14: Maya collapsed in stage 1 of a LOW lumber trip (I didn't check her HP first; she was in town getting hurt). Turned back +4 wood.
+- D11 19: `rushlevel all` 150 renown -> LEVEL 7 ("Fort" unlocked). 12 people + baby Finn, 0 deaths.
+## Session 8 (D11 21 -> D13 09), after away 10 h (+6 water +3 food +6 wood +5 rp)
+- D11 21: level 8 needs 21 buildings + 13 people. Expand now says "needs a bigger HQ (land tier 3 needs HQ tier 3)", HQ3 needs 30 stone + 2 fuel. Built Quarry + tent.
+- D11 21 -> D12 06: both sites sat all night (wood 35 -> 25 taken but not built). Tent done D12 07, Quarry D12 10. So builders don't work at night? Never told.
+- D12 00: baby Nora (Ben+Maya). D12 08 radio: "11 empty beds: choose who moves in" while beds were 12/15. Nonsense number.
+- D12 08: lost child #2 -> sent Marcus & Lena, but "Lena will staff the Lumber Camp" same hour; D12 14 "Too late. They searched until dark and found nothing." (at 14:00, not dark). Did they even go?
+- D12 11: Rafe (guard L3) joined; bought sledge for him. Quarry needs an Engineer, `fill` found none, moved Theo from Workbench.
+- D12 12/14: Lena then Marcus collapsed in DAYLIGHT in town.
+- D12 14: Gym built -> level 8 started (4 days, 200 renown to rush; I have 78).
+- D12 21 BOSS #3 Gatling Boss + 10. Set policy Defend again (it worked on D9). Ammo 0, "gunners are clubbing with empty guns".
+- D13 01-04: Rafe, Eli, Lena, Amy, then Ben, Theo, June, Noah all down = 9 of 12 down at D13 04. "Nobody is reaching X: 9 zombies next to them". militia: "healthy civilians band together when no fighter is left" (refused). radiohelp: not ready (I refused the favour D9). Switched to Recover + defend.
+- D13 06: dawn, "The Gatling Boss slunk back into the wasteland. It will return." Rescues crawl: "picked up" then 1-2 h to reach the tent; "Theo reached the Lodge (no medical bed free: slower care)".
+- D13 06: bandaged Eli/June/Lena/Theo (bleed timers went back up to 15-16 h). D13 08 Wandering medic -> "Ask for treatment": "Everyone is treated".
+- D13 09: session end with ~6 people still down. Nobody dead yet. This night was the low point: I did what the game said worked last time and got flattened.
+## Session 9 (D13 09 -> D14 21), after away 14 h: LEVEL 8 card on return (+6 water +3 food +5 wood +2 stone)
+- D13 09-14: everyone recovered by D13 14. Nobody died from the D13 night.
+- D13 12: built 2nd Medical Tent + tent (both done D13 15). D13 16 Lounge + Scrapyard (done D13 23 / D14 01). "Nobody free to fill them: needs a Engineer or Medic" (grammar).
+- D13 15: "7 raiders sneaking". D13 17-D14 05: Marcus, Lena, Ben, Amy, Ivy, Rafe, Theo, Rosa collapsed one after another. "Nobody is reaching Ben: 1 raider next to them". Lodge "wrecked" by a runner 3 times in one night, auto-repaired each time. Morning D14: 11 hurt, 3 buildings 434 damage.
+- D14 06: researched Field Medicine. Armory ordered (site). D14 08 Greenwater sick child: had 0 meds, said no.
+- D14 08: Pharmacy (low) with Marcus+Lena (healthy, 144/157 & 72/92): pry 77% ok, sneak 81% ok, +9 meds +10 scrap, no injuries.
+- D14 11: Cyrus (mechanic L2) joined -> Ammo Bench; Ivy -> Medic for tent #2. Level 9 started (4 days 12 h).
+- D14 11: tried `wall 12 9 gate`: "Not enough: need 🪵 1." while I had 2 wood. (Armory site holding it?)
+- D14 05 -> D14 21: THEO DOWN 16+ HOURS. News spams "X is rescuing Theo" 10-15 times every hour, all 13 people take turns, nobody reaches him. D14 11 state: "Amy couldn't get to them (path blocked) · put a Gate in the wall". Guessed `wall 7 12 gate` (placed) - no change. Bandaged him 3 times (bleed timer 9->16, 10->15) to keep him alive. This is the most frustrating thing in the run.
+- D14 17: `upgrade clinic`: "the Clinic is bigger: no room around the old one (clear a neighbouring tile)" - how?
+- Ammo still 0 at D14 21 with a Mechanic on the bench since D11 02 (Ivy) / D14 11 (Cyrus).
+## Session 10 (D14 21 -> D16 09), after away 10 h
+- D15 00: Finn (baby from D10) grew up -> Scavenger at Scrapyard. WEEK 2 REVIEW: GRADE S, 103/120 "Beacon of Hope", Defense 17/20 (!). Same hour Theo had been lying down 19 h and the town was being flattened nightly. The grade means nothing to me.
+- D15 04: Finn + Marcus down (Rotbomb).
+- D15 08: Toll Kings again, 22 scrap -> paid. `rushlevel all` 75 renown -> LEVEL 9.
+- D15 08: STRONGHOLD Overrun Clinic (rec. power 175; my 5 picked = 233, "Only 4 fit through: Cyrus stayed home"). fight 30/20/20/15 s, used sh med x2, sh focus. Maya went down at 30 s, med brought her to 50%. 80 s total: "The Butcher of Ward 3 is dead", +26 renown +9 scrap +9 meds, Ada (Medic L3) rescued, Stronghold Banner. BEST MOMENT OF THE RUN. Short, readable, my calls mattered.
+- D15 09: houses w/ Cyrus+Ada: horde card had NO safe "keep going" (36%/35%/turn back) - sneak worked. +4 food +5 water.
+- D15 10: Armory finally built (ordered D14 06, 28 h). D15 11 level 10 started: 120 h / 250 renown.
+- D15 11: food -7/day (4 days), water -6.4. More mouths (babies + newcomers) than farms. Garden Plot + Fenced Farm built D15 20 / D16 05.
+- D15 21 BOSS #4 Stalker + 14. Kept policy Balanced this time. D15 23-D16 05: Lena, Rafe, Eli, Finn, Lena, Rosa, Amy down. D16 04 "Theo is bleeding out!" -> bandaged. Medical Tent wrecked + repaired same hour. Morning card D16 06: "Walkers stopped: 0" (?!) · 6 buildings 282 damage · 9 hurt. "The Stalker slunk back... It will return."
+- D16 00: "A BABY IS BORN: Theo and Eli welcome little Kai." Theo has been DOWN at 0% since D14 05 (43 h). Ridiculous.
+- D16 08: declined Foundry order (14 wood 12 stone). Bandaged Theo + Rafe before leaving.
+- D16 09: 15 people, 3 babies, 0 deaths, level 9. Nights are now a guaranteed mass-down event; days are spent carrying people.
+## Session 11 (D16 09 -> D17 21), after away 14 h (+8 food +5 water +5 wood +2 stone +2 scrap). Wood 60 on return.
+- D16 09: `rushlevel all` 50 renown -> LEVEL 10. 2nd barrel: "no spot" (34 occupied, 27 entrance blocked). Upgraded tent->cabin.
+- D16 10: Marcus bought Riot Vest + Tactical Cap at the Armory himself. Nice touch.
+- D16 12: in desperation placed 6 gates on the listed gap tiles. "outerLineLeft" went 72 -> 82, nothing changed for Theo. D16 13 "The gate broke!".
+- D16 16: crafted Machete + Nail Bat (no Workshop needed after all, despite "craftNeeds: a Workshop"), gave them to Marcus/Eli instead of empty guns. D16 21-D17 06 night: only Finn down, morning "Hurt: Theo, Finn, Eli". Best non-boss night since D12. Could be the melee weapons, could be luck.
+- D17 00: Rosa+Lena couple, Nora grew up (-> Farmer), baby Wren. 18 people.
+- D17 06: HQ -> Fort ordered (20 wood, 30 stone, 12 scrap, 2 fuel). D17 21 still "builders bringing materials" and stone still 34.
+- D17 08: adopted stray dog Pepper, gave to Marcus.
+- D17 11: buildings 29/29 -> level 11 started: 144 h / 300 renown (I have ~270).
+- D17 09-21: ammo finally climbing 5 -> 19 with Cyrus on the Ammo Bench.
+- Theo still DOWN (since D14 05 = 88 game hours). Bandaging him every few hours is now a chore I do on autopilot.
+## Session 12 (D17 21 -> D19 09), after away 10 h
+- D17 23 / D18 01 / D19 01: "⏳ Fort: nothing delivered for 6/8 h: everyone is busy, or the way to it is blocked". The HQ upgrade ordered D17 06 never got materials (stone stayed 34-38). I think the walled-in Lodge door is the cause and I can't fix it. It also holds one of my 2 build slots.
+- D18 00-06 night: Rafe, Lena, Finn, Eli, Ivy down; morning 9 buildings 223 damage. D18 08 Rafe sick -> treated.
+- D18 08: `rushlevel all` 150 renown -> LEVEL 11. Level 12 needs 32 buildings; I'm at 29 and `build` mostly says "no spot".
+- D18 11: "Lena can't reach a storage door with their load..." again.
+- D18 13-15: Library built. D18 14 Rotbomb hurt 4 in daylight.
+- D18 15: `equip Marcus rifle` -> {"ok":false} no reason. The Hunting Rifle is just gone from the stash (Marcus wears machete/riot vest/cap). Gave him the Shotgun instead (tool + game?).
+- D18 21 BOSS #5 Gatling Boss + 17. D18 22-D19 05: Finn, Eli, Lena, Rafe down; Lodge wrecked by a sporehead + repaired; 4-6 people "slipped out of X before it fell" for 8+ buildings in a row. Morning D19 06: 13 buildings damaged, 660 damage, 8 hurt. No deaths.
+- D19 00: LEGACY ROOM TO BREATHE 4/8, Ivy+Noah couple.
+- D19 08: supply drop -> sent Ben & Ada. D19 09 session end: raiders 7 at the gate, Theo still down (since D14 05, ~100 game h).
+## Session 13 (D19 09 -> D20 00), after away 14 h
+- D19 10: supply drop +12 food. D19 09 "June can't reach a storage door with their load".
+- D19 13-16: DAYTIME raid (7 raiders at D19 09, 4 at D19 16): Ben, Rosa, Cyrus, Maya, Marcus, Lena, Noah, Amy, Nora down in 3 hours (11 of 16 adults down at D19 16). "Nobody is reaching Cyrus: 3 raiders next to them". `defend` did nothing visible, militia refused again ("when no fighter is left"). radiohelp was ready again -> D19 18 "carried 8 of your people into care", favour due in 2 days.
+- D19 16: "Rafe picked up Theo. Theo reached the Medical Tent." Theo was down from D14 05 to D19 16 = 107 game hours. I bandaged him ~15 times.
+- D19 18: "Pepper is barking — raiders spotted near Marcus!" (the dog does something!)
+- D19 21: "Fort: all materials are in, building now" - 63 game h after I ordered it.
+- D20 00: day 20 starts. Level 11, renown 207, 18 people (16 adults + babies), 0 deaths ever. Right now 5 down + 8 in hospital; only Finn (81%) and Amy (38%) and Ben (30%) on their feet. Water 7.5 (1 day). wood 4, scrap 5.
