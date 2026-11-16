@@ -14,6 +14,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (vision review): The feeling to aim for: small town → build → gear up → a horde attacks → you win and it feels good; lots of small features; the town visibly grows, with more buildings and gear unlocking.
 - 16 Nov: The town starts small but grows to a decent size; the owner wants to see survivors fighting a horde.
 - 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet; built after the freeze.)
+- 16 Nov: The daytime threat: small roaming groups outside the walls by day, plus a daytime horde every few days that the radio warns about hours ahead. Nights stay the biggest fights; no constant daytime attacks on the town.
 - 16 Nov: Building still comes first, but some things can only be done or won by raiding or doing strongholds.
 - 16 Nov: Banner routes must be balanced so the player doesn't always take the easy one.
 - 16 Nov: A little gore is fine; still not a horror game, no despair spirals.
@@ -22,7 +23,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 ## Hard rules
 - Must work fully offline.
 - No Claude (or any AI service) for character AI.
-- No chibi. No weapons on zombies (confirmed 16 Nov; what happens to the Gatling Boss's gun arm is an open question).
+- No chibi. No weapons on zombies (confirmed 16 Nov). The one exception: the Gatling Boss keeps the gun on his arm, no change to him (16 Nov).
 - Never push to main. Never republish the direction-A artifact.
 - Never paste API keys in chat. Don't delete scheduled tasks without permission.
 - Report the repo link and commit links after every push.
@@ -74,7 +75,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 11 Nov: Squad caps: strongholds 6, raids 8 (+ vehicle seats).
 - 11–12 Nov: Raids are camp maps that look like towns. Raid carry cap: 10 per squad member.
 - 12 Nov: Faction camps look like tidy communities: more buildings, straight rows, no scattered barrels and boxes.
-- 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. How is open. (Not in the game yet; built after the freeze.)
+- 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. (Not in the game yet; built after the freeze.)
+- 16 Nov: How: a **Take command** button when the town is attacked; fighters only, same controls as raids. Optional: left alone they fight on their own, civilians stay automatic, and the town must still win a fair fight without the player.
 
 ## Factions
 - 12 Nov: More renown must not make you more hated: factions turn hostile only over how they are treated.
@@ -94,6 +96,4 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 13 Nov: Hold on stronghold and raid maps; enough town maps for now.
 
 ## Open questions (not decided)
-- What the daytime zombie threat should look like (Claude's recommendation given 16 Nov, waiting for the owner).
-- How steering fighters inside the town works (Claude's recommendation given 16 Nov, waiting for the owner).
-- The Gatling Boss is a zombie with a gun on its arm: the one exception to "no weapons on zombies", or change him?
+- None on 16 Nov.
