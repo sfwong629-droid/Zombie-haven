@@ -1,0 +1,110 @@
+[
+ {
+  "file": "01-core.js",
+  "starts": "/* Zombie Haven V2.6 — game (single IIFE; built from tools/parts/p1..p3 by tools/build_game.sh). */"
+ },
+ {
+  "file": "02-draw.js",
+  "starts": "/* ---------------- sprites ---------------- */"
+ },
+ {
+  "file": "03-stats-gear.js",
+  "starts": "/* ---------------- simulation: tuning (tile units; 60 ticks/s fixed step) ---------------- */"
+ },
+ {
+  "file": "04-helpers.js",
+  "starts": "/* ---------------- helpers ---------------- */"
+ },
+ {
+  "file": "05-alerts.js",
+  "starts": "/* ---------------- V2.34 notifications: three levels ----------------"
+ },
+ {
+  "file": "06-movement-survivors.js",
+  "starts": "/* ---------------- movement & path following (A* on the tile grid; recompute only when needed) ---------------- */"
+ },
+ {
+  "file": "07-gathering-tools-power.js",
+  "starts": "/* ---------------- V3D.22/23 gathering: trees (wood), rock outcrops (stone) and wrecks (scrap) are resource nodes ----------------"
+ },
+ {
+  "file": "08-construction.js",
+  "starts": "/* ---------------- V3D.23 construction jobs: new sites (S.sites) and upgrades (b.upg) need their materials delivered ----------------"
+ },
+ {
+  "file": "09-posts-survivor-ai.js",
+  "starts": "/* ---------------- V2.45 guard posts: sandbagged spots the player places. The holder stands watch there (engages from 25% farther, spots raiders"
+ },
+ {
+  "file": "10-enemies-walls.js",
+  "starts": "/* ---------------- zombies ---------------- */"
+ },
+ {
+  "file": "11-town.js",
+  "starts": "/* ---------------- town systems ---------------- */"
+ },
+ {
+  "file": "12-people.js",
+  "starts": "/* ---------------- V2.22 bonds: friendships, couples and children (Fallout Shelter style) ---------------- */"
+ },
+ {
+  "file": "13-goals-advisor.js",
+  "starts": "/* ---------------- V2.19 guided goals (one system at a time, then random missions) + event log ---------------- */"
+ },
+ {
+  "file": "14-missions-events.js",
+  "starts": "/* ---------------- V2.23 missions (10 kinds, scaled by rank) and story events with choices ---------------- */"
+ },
+ {
+  "file": "15-save.js",
+  "starts": "/* ---------------- save / load / migration ---------------- */"
+ },
+ {
+  "file": "16-loot-expeditions.js",
+  "starts": "/* ---------------- V3D.25 loot rarity, the crate-style loot reveal, and the Stash ---------------- */"
+ },
+ {
+  "file": "17-endgame-trophies-crises.js",
+  "starts": "/* ---- 3D.113 Endgame A: the City stage. Levels 16-20 (Era IV), a Banner to enter it, City Limits territory at 16, +3 people a level,"
+ },
+ {
+  "file": "18-vehicles.js",
+  "starts": "/* ---- 3D.109 Vehicles (owner 11 Nov: \"Do all three\"). From the Explosives and Vehicles study: the Hand Cart is built from the"
+ },
+ {
+  "file": "19-strongholds.js",
+  "starts": "/* ---- 3D.108 Strongholds as their own map (owner 11 Nov: \"Yes build them\"). The squad of up to 4 leaves the town and fights"
+ },
+ {
+  "file": "20-raid-camps.js",
+  "starts": "/* ---- 3D.116 owner: a raid is a camp map like the town. Their buildings, their guards and workers. Send the squad at a building,"
+ },
+ {
+  "file": "21-expedition-ui.js",
+  "starts": "/* ---- UI ---- */"
+ },
+ {
+  "file": "22-field-aid.js",
+  "starts": "/* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:"
+ },
+ {
+  "file": "23-build-traps.js",
+  "starts": "/* ---------------- build / move / demolish ---------------- */"
+ },
+ {
+  "file": "24-panels.js",
+  "starts": "/* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */"
+ },
+ {
+  "file": "25-field-notes.js",
+  "starts": "/* ---------------- 3D.79 Field Notes (owner, Nov 8): the first time a feature, a zombie type or a profession shows up, a short card"
+ },
+ {
+  "file": "26-input-loop-init.js",
+  "starts": "/* ---------------- input ---------------- */"
+ },
+ {
+  "file": "27-test-pages-title-backups.js",
+  "starts": "/* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list."
+ }
+]

@@ -46,6 +46,11 @@ async def close_popups(pg):
         await b.click()
 
 # ---------------------------------------------------------------- tests
+async def t_parts(br, port, t):   # bug C3: js/game.js is kept as area files in src/game/; the two must always match
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build', 'game.py'), '--check'], capture_output=True, text=True)
+    t.ok(r.returncode == 0, 'js/game.js matches the area files in src/game/. ' + r.stdout.strip())
+
 async def t_boot(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'boot')
     v = await pg.evaluate("()=>({title:document.title,sv:ZH.S.sv.length,b:ZH.world.buildings.length,types:ZH.world.buildings.map(b=>b.type),menu:['mBuild','mExp','mSurv','mTown','mGuide','btnSave','btnSpeed','btnSound','btnLog','btnCenter','food','water','mat','ren','rank','threat','clock','qt','renBar'].filter(id=>!document.getElementById(id))})")
@@ -870,7 +875,7 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
     t.ok(r['smash'] and r['smashCd'] and all(h > 0 for h in r['smashHit']), f"the Stalker's hulk smash hurts every survivor close by {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():

@@ -1,0 +1,200 @@
+/* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
+   Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
+const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
+function zooLine() {
+  S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
+    const S0 = 11 + r * 2.1, D = -3 + (i - (row.length - 1) / 2) * 2.2, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* a compact grid that runs across the screen (iso), north of the camp */
+    if (t === 'raider') { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, w: tc(x, y), home: tc(x, y), pw: 1, hp: d.hp, max: d.hp, cool: 40, phase: rnd() * 100, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
+    if (t === 'stalker') { S.z.push({ type: 'boss', bk: 'stalker', boss: true, pw: 1, w: tc(x, y), hp: 182, max: 182, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }   /* 3D.80 */
+    if (t === 'boss') { S.z.push({ type: 'boss', boss: true, pw: 1, w: tc(x, y), hp: 260, max: 260, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
+    spawn(x, y, t); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max;
+  }));
+}
+/* ---------------- 3D.151 Gear test page (?gear): every weapon, armour, helmet and accessory in ITEMS, worn by a survivor.
+   It reads ITEMS, so a new item shows up here by itself. Never saves. */
+function gearGallery() {
+  if ($('gearPanel')) return; const sp0 = simSpeed; simSpeed = 0; const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id));
+  const TABS = [['armor', 'Armour'], ['head', 'Helmets'], ['weapon', 'Weapons'], ['acc', 'Accessories']], by = (sl) => Object.keys(ITEMS).filter((k) => ITEMS[k].slot === sl).sort((a, b) => (a3(b) ? 1 : 0) - (a3(a) ? 1 : 0) || (ITEMS[a].cost || 0) - (ITEMS[b].cost || 0));
+  const fem = (q) => { try { return !!(window.ZHChars && ZHChars.look(q).sex === 'f'); } catch (e) { return false; } }, M = S.sv.find((q) => !fem(q)) || S.sv[0], F = S.sv.find((q) => fem(q)) || S.sv[1] || M;
+  const fig = (s, id, pose) => { const it = ITEMS[id], old = s.eq; s.eq = { weapon: null, armor: null, head: null, acc: null, [it.slot]: id }; let u = null; try { u = ZH3D.figure(s, pose); } catch (e) { /* a broken item must not break the page */ } s.eq = old; return u; };
+  const d = document.createElement('div'); d.id = 'gearPanel'; d.className = 'gearPanel'; let tab = 'armor', job = 0;
+  d.innerHTML = `<div class="gh"><b>Gear test</b><span class="sm" id="gearN"></span><button class="act" id="gearExit">Exit</button></div><div class="gtabs">${TABS.map(([k, n]) => `<button class="gt" data-k="${k}">${n} <small>${by(k).length}</small></button>`).join('')}</div><div class="gbig" id="gearBig"></div><div class="ggrid" id="gearGrid"></div>`;
+  document.body.appendChild(d);
+  const big = (id) => { const it = ITEMS[id], poses = it.slot === 'weapon' ? [[M, 'ready'], [F, 'ready']] : [[M, 'ready'], [M, 'wave'], [M, 'cheer'], [F, 'ready'], [F, 'cheer']];
+    $('gearBig').innerHTML = `<div class="gbf">${poses.map(([s, p]) => { const u = fig(s, id, p); return u ? `<img src="${u}" alt="">` : ''; }).join('')}</div><div class="gbt"><b>${esc(it.name)}</b> ${it.slot === 'armor' ? (a3(id) ? '<i class="g3">3D model</i>' : '<i class="g0">recolour only</i>') : ''}<br>${esc(itemText(it))} · ${it.cost} scrap${iQuip(id)}<br><span class="sm">id: ${id}${it.slot === 'weapon' ? ' · model: ' + (ZH3D.wModel(id) || 'bat') : it.shape ? ' · shape: ' + it.shape : ''}</span></div>`; $('gearBig').scrollIntoView({ block: 'nearest' }); };
+  const show = (k) => { tab = k; const my = ++job, ids = by(k); d.querySelectorAll('.gt').forEach((b) => b.classList.toggle('on', b.dataset.k === k)); $('gearN').textContent = `${Object.keys(ITEMS).length} items · tap one to see it in every pose`; $('gearBig').innerHTML = '';
+    $('gearGrid').innerHTML = ids.map((id) => `<button class="gc" data-id="${id}"><div class="gi" id="gi_${id}"></div><b>${esc(ITEMS[id].name)}</b>${ITEMS[id].slot === 'armor' && a3(id) ? '<i class="g3">3D</i>' : ''}<small>${esc(itemText(ITEMS[id]))}</small></button>`).join('');
+    d.querySelectorAll('.gc').forEach((b) => { b.onclick = () => big(b.dataset.id); });
+    let i = 0; const step = () => { if (my !== job) return; for (let n = 0; n < 2 && i < ids.length; n++, i++) { const u = fig(M, ids[i], 'ready'), el = $('gi_' + ids[i]); if (u && el) el.innerHTML = `<img src="${u}" alt="">`; } if (i < ids.length) setTimeout(step, 30); }; step(); };   /* two pictures per frame, so the page stays smooth */
+  d.querySelectorAll('.gt').forEach((b) => { b.onclick = () => show(b.dataset.k); });
+  $('gearExit').textContent = 'Back to the map'; $('gearExit').onclick = () => { job++; clearInterval(wait); d.remove(); simSpeed = sp0 || 1; };
+  $('gearGrid').innerHTML = '<div class="sm" style="padding:20px">Loading the models…</div>';
+  const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady() && ZH3D.figure(M, 'ready')) { clearInterval(wait); d.querySelectorAll('.gt small').forEach((e, i) => { e.textContent = by(TABS[i][0]).length; }); show('armor'); } }, 300);
+}
+/* 3D.152 the gear test on the map: one dummy survivor per item, lined up north of the camp, with a few Walkers to fight.
+   Tabs pick the slot; the line-up reads ITEMS, so new gear appears by itself. Never saves. */
+const GEAR_TABS = [['armor', 'Armour'], ['head', 'Helmets'], ['weapon', 'Weapons'], ['acc', 'Accessories']];
+let gearTab = 'armor';
+function gearLine() {
+  const a3 = (id) => !!(window.ZH3D && ZH3D.armor3d && ZH3D.armor3d(id)), ids = Object.keys(ITEMS).filter((k) => ITEMS[k].slot === gearTab).sort((a, b) => (a3(b) ? 1 : 0) - (a3(a) ? 1 : 0) || (ITEMS[a].cost || 0) - (ITEMS[b].cost || 0));
+  const per = 5, rows = Math.ceil(ids.length / per), S00 = 17.5 - rows * 2.5, spot = (r, i, n) => { const S0 = S00 + r * 2.5, D = -3 + (i - (n - 1) / 2) * 2; return [(S0 + D) / 2 + OFF, (S0 - D) / 2 + OFF]; };   /* four across so the name tags don't overlap; the last row sits just north of the camp */
+  S.sv = []; S.z = []; S.inv = {}; S.mat = 0;
+  { const pts = []; for (let r = 0; r <= rows + 1; r++) for (let i = 0; i < per; i++) pts.push(spot(r, i, per)); for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (pts.some(([x, y]) => Math.abs(tx - x) < 1.6 && Math.abs(ty - y) < 1.6)) { const n = treeNode(tx, ty); n.left = 0; n.regrow = 1e9; } if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); }   /* 3D.152 clear the trees and rocks off the line-up so nobody stands inside one */
+  ids.forEach((id, k) => { const r = Math.floor(k / per), n = Math.min(per, ids.length - r * per), [x, y] = spot(r, k % per, n), q = mk(FIRST_NAMES[(k * 7 + 3) % FIRST_NAMES.length], 'Guard', 3, x, y, k);
+    q.eq = { weapon: null, armor: null, head: null, acc: null, [gearTab]: id }; q.dummy = true; q.tag = ITEMS[id].name; q.gid = id; q.resident = true; q.max = 400; q.hp = 400; S.sv.push(q); });
+  for (let i = 0; i < 4; i++) { const [x, y] = spot(rows + .6, i, 4); spawn(x, y, 'walker'); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; }   /* four Walkers in front of the line-up */
+  if (typeof autoStaff === 'function') try { autoStaff(); } catch (e) { /* no posts for dummies */ }
+  { const Sm = S00 + Math.max(0, rows - 1.6) * 2.5, D = -3; centerOn((Sm + D) / 2 + OFF, (Sm - D) / 2 + OFF, Math.max(.85, Math.min(1.2, VW / 360))); }   /* open on the front rows and the Walkers; drag up for the rest */
+  const row = $('gearRow'); if (row) { row.innerHTML = ids.map((id) => `<button class="zc" data-id="${id}"><b>${esc(ITEMS[id].name)}</b>${gearTab === 'armor' && a3(id) ? '<i>3D</i>' : ''}<small>${esc(itemText(ITEMS[id])) || '—'}</small></button>`).join('');
+    row.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { const id = b.dataset.id, q = S.sv.find((v) => v.gid === id), it = ITEMS[id]; if (q) centerOn(q.w.x, q.w.y, 2.4); $('gearInfo').innerHTML = `<b>${esc(it.name)}</b> · ${esc(itemText(it))} · ${it.cost} scrap${iQuip(id)}`; }; }); }
+  document.querySelectorAll('#gearMap .gt').forEach((b) => b.classList.toggle('on', b.dataset.k === gearTab));
+  if ($('gearInfo')) $('gearInfo').innerHTML = 'Each dummy wears one item, with its name under the feet. Tap a card to fly to it. Four Walkers stand in front.';
+}
+function gearStart() {
+  S.mission = null; simSpeed = 1;
+  const d = document.createElement('div'); d.id = 'gearMap'; d.className = 'zooPanel';
+  d.innerHTML = `<div class="zh"><b>Gear test</b><span class="sm">${Object.keys(ITEMS).length} items</span><button class="act" id="gmHide" style="margin-left:auto;min-height:30px;padding:0 12px;font-size:12px">Hide</button></div><div id="gmBody"><div class="gtabs">${GEAR_TABS.map(([k, n]) => `<button class="gt" data-k="${k}">${n}</button>`).join('')}</div><div class="zrow" id="gearRow"></div><div class="zinfo" id="gearInfo"></div><div class="zbtns"><button class="act" id="gmExit">Exit</button><button class="act" id="gmLine">Line up</button><button class="act" id="gmWalk">Walk about</button><button class="act go" id="gmGo">Walkers attack</button></div><div class="zbtns" style="margin-top:6px"><button class="act" id="gmGal">Open the picture gallery</button></div></div>`;
+  $('world').appendChild(d);
+  d.querySelectorAll('.gt').forEach((b) => { b.onclick = () => { gearTab = b.dataset.k; gearLine(); }; });
+  $('gmExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('gear'); location.search = q.toString(); };
+  $('gmLine').onclick = gearLine; $('gmGal').onclick = gearGallery; $('gmHide').onclick = () => { const b = $('gmBody'), h = !b.hidden; b.hidden = h; $('gmHide').textContent = h ? 'Show' : 'Hide'; };   /* fold the panel away to see the whole line-up */
+  $('gmWalk').onclick = () => { for (const q of S.sv) if (q.dummy) { q.go = true; q.mode = 'free'; q.stateTicks = 0; } $('gearInfo').innerHTML = 'The dummies are living in the town now: walking, working and resting. "Line up" brings them back.'; };
+  $('gmGo').onclick = () => { for (const q of S.sv) if (q.dummy) { q.go = true; q.mode = 'free'; q.stateTicks = 0; } const n = S.z.filter((z) => z.zoo).length; for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } if (!n) for (let i = 0; i < 4; i++) { const q = S.sv[Math.floor(rnd() * S.sv.length)]; if (q) spawn(q.w.x + 3 + i * .6, q.w.y + 3, 'walker'); } $('gearInfo').innerHTML = 'The Walkers are loose and the dummies fight back. Tap again for four more Walkers.'; };
+  gearLine(); const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady && ZH3D.armorsReady()) { clearInterval(wait); gearLine(); } }, 400);   /* line up again once every model is in, so the 3D tags and order are right */
+}
+function zooStart() {
+  S.mission = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;
+  const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
+  const card = (t) => { const z = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, isNew: 1 } : { name: 'Mutant Boss' }); return `<button class="zc" data-t="${t}"><b>${esc(z.name || t)}</b>${z.isNew ? '<i>NEW</i>' : ''}<small>HP ${z.hp || 260} · ATK ${z.atk || 14}</small></button>`; };
+  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to look closer</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zinfo" id="zooInfo">Top two rows: the new zombies from the story plan (NEW). Bottom rows: the ones in the game today.</div><div class="zbtns"><button class="act" id="zooExit">Exit</button><button class="act" id="zooReset">Line up again</button><button class="act go" id="zooGo">Let them attack</button></div>`;
+  $('world').appendChild(d);
+  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { const t = b.dataset.t, z = S.z.find((q) => (q.type === t || q.bk === t) && q.hp > 0), def = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, desc: BOSS_KINDS.stalker.line } : null); if (z) centerOn(z.w.x, z.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc((def && def.name) || 'Mutant Boss')}</b> · HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`; }; });
+  $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('zoo'); location.search = q.toString(); };
+  $('zooReset').onclick = () => { zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); };
+  $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } };
+}
+/* ---------------- V2.40 title screen and save slots (the DV2-style start flow, original look) ---------------- */
+function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }
+function slotInfo(i) {   /* V2.42: a damaged slot shows its day backup if there is one */
+  const k = SLOT_KEYS[i], main = readKey(k), bak = readKey(BAK(k)), raw = main || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || bak; if (!raw) return null;
+  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '', diff: st.diff || 'normal', start: st.start || 'camp', won: !!st.won, finale: !!st.finale }; } catch (e) { return null; } };
+  const x = info(raw); if (x) return main || raw !== bak ? x : { ...x, fromBak: true };
+  const y = bak && raw !== bak && info(bak); return y ? { ...y, fromBak: true } : { broken: true };
+}
+function clearSlot(i) { try { const k = SLOT_KEYS[i]; [k, BAK(k), BAD(k)].forEach((q) => localStorage.removeItem(q)); if (i === 0) { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } } catch (e) { /* ignore */ } }
+const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+function playSlot(i, newName, opts) {
+  try { localStorage.setItem('zhSlot', String(i + 1)); if (newName != null) { clearSlot(i); localStorage.setItem('zhNewName', newName || 'Zombie Haven'); localStorage.setItem('zhNewOpts', JSON.stringify(opts || {})); } } catch (e) { /* storage blocked: play without saving */ }
+  location.href = location.pathname + '?play=1' + location.hash;   // V3D.19: keep #v2 (test character) when the game starts
+}
+function backToTitle() { saveGame(); location.href = location.pathname + location.hash; }
+function showTitle() {
+  $('title').style.display = 'flex'; $('slots').style.display = 'none';
+  const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
+  $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
+  if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
+  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; } { const gb = $('tGear'); if (gb) gb.onclick = () => { const q = new URLSearchParams(location.search); q.set('gear', '1'); location.search = q.toString(); }; }   /* 3D.151 */   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
+}
+let slotDel = null;
+function showSlots() {
+  $('title').style.display = 'none'; const box = $('slots'); box.style.display = 'flex'; box.querySelector('.sHead').textContent = 'Save Slots';
+  const rows = [0, 1, 2].map((i) => { const x = slotInfo(i);
+    if (!x) return `<div class="slot empty" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Empty</b><small>Tap to start a new game</small></span></div>`;
+    if (x.broken) return `<div class="slot" data-i="${i}"><span class="snum">${i + 1}</span><span class="sinfo"><b>Damaged save</b><small>Tap to start over in this slot</small></span></div>`;
+    return `<div class="slot" data-i="${i}" data-full="1"><span class="snum">${i + 1}</span><span class="sinfo"><b>${esc(x.name)}</b><small>${x.won ? '🏆 ' : x.finale ? '📻 ' : ''}Day ${x.day} · ${'★'.repeat(x.rank)} · 👥 ${x.pop} · ${(STARTS[x.start] || STARTS.camp).icon}${(DIFFS[x.diff] || DIFFS.normal).icon}</small><small class="sago">${x.fromBak ? '⚠ Damaged: day backup' : 'Saved ' + ago(x.time)}${x.ver ? ' · V' + esc(x.ver) : ''}</small></span><button class="sdel${slotDel === i ? ' arm' : ''}" data-del="${i}" title="Delete">${slotDel === i ? 'Delete?' : '🗑'}</button></div>`; }).join('');
+  box.querySelector('.slist').innerHTML = rows;
+  box.querySelectorAll('.slot').forEach((el) => { el.onclick = (e) => { if (e.target.closest('.sdel')) return; const i = +el.dataset.i; if (el.dataset.full) playSlot(i); else newSlot(i); }; });
+  box.querySelectorAll('.sdel').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); const i = +b.dataset.del; if (slotDel === i) { clearSlot(i); slotDel = null; } else slotDel = i; showSlots(); }; });
+  $('sBack').onclick = () => { slotDel = null; showTitle(); }; $('sBak').style.display = ''; $('sBak').onclick = () => { slotDel = null; showBackups(); };
+}
+let newOpt = { start: 'camp', diff: 'normal', map: 'road' };
+function newSlot(i, keepName) {   /* V2.46: name, starting condition and difficulty */
+  const box = $('slots'), nm = keepName ?? 'Zombie Haven', R = records(), rec = R[recKey(newOpt.start, newOpt.diff, newOpt.mods)], mods = modList(newOpt.mods), ms = modScore(mods) * DIFFS[newOpt.diff].score;
+  box.querySelector('.slist').innerHTML = `<div class="card newGame" style="color:#2a2a5a;background:#f3f6f9"><b style="font-size:22px">Slot ${i + 1} · New haven</b>
+    <div class="sm" style="margin:6px 0 2px;color:#5b6b7a">Name your town</div><input id="sName" maxlength="22" value="${esc(nm)}" style="width:100%;box-sizing:border-box;font:inherit;font-size:22px;padding:6px;border-radius:6px;border:2px solid #7f93a6;background:#f7fafc;color:#1f2a33;text-align:center">
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Land</div><div class="row" style="gap:4px;flex-wrap:wrap">${Object.entries(MAPS).map(([k, v]) => `<button class="act${(newOpt.map || 'road') === k ? ' go' : ''}" data-mp="${k}" style="flex:1 1 40%;margin:0;padding:6px 2px;font-size:16px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#5b6b7a">${MAPS[newOpt.map || 'road'].desc}</div>
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Difficulty</div><div class="row" style="gap:4px">${Object.entries(DIFFS).map(([k, v]) => `<button class="act${newOpt.diff === k ? ' go' : ''}" data-df="${k}" style="flex:1 1 0;margin:0;padding:6px 2px;font-size:17px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#5b6b7a">${DIFFS[newOpt.diff].desc}</div>
+    <div class="sm" style="margin:8px 0 2px;color:#5b6b7a">Twists <span style="opacity:.8">(optional, any mix)</span></div><div class="row" style="gap:4px;flex-wrap:wrap">${Object.entries(MODS).map(([k, v]) => `<button class="act${mods.includes(k) ? ' go' : ''}" data-md="${k}" style="flex:1 1 30%;margin:0;padding:5px 2px;font-size:14px">${v.icon} ${v.name}</button>`).join('')}</div>
+    <div class="sm" style="margin-top:4px;color:#5b6b7a">${mods.length ? mods.map((k) => MODS[k].desc).join(' ') + ` Score ×${ms.toFixed(2)}.` : 'None picked: the game as designed.'}</div>
+    <div class="sm" style="margin-top:4px;color:#2a5ac8">${rec ? `🏆 Best here: ${rec.score} (${esc(rec.name)}, day ${rec.day})` : 'No win yet with this set-up.'}</div>
+    ${legacySaved() ? `<button class="act${newOpt.legacy ? ' go' : ''}" id="sLeg" style="margin-top:8px;width:100%">🌳 Legacy start: ${newOpt.legacy ? 'on' : 'off'}<small style="display:block;font-size:13px">${esc(legacySaved().from)} · ${(legacySaved().vets || []).map((v) => esc(v.name)).join(', ')}</small></button>` : ''}
+    <div class="row" style="gap:8px;margin-top:10px;justify-content:center"><button class="act" id="sCancel">Cancel</button><button class="act go" id="sGo">Start</button></div></div>`;
+  { const lb = $('sLeg'); if (lb) lb.onclick = () => { newOpt.legacy = !newOpt.legacy; newSlot(i, ($('sName').value || '').trim() || 'Zombie Haven'); }; }
+  const nmNow = () => ($('sName').value || '').trim() || 'Zombie Haven';
+  box.querySelectorAll('[data-st]').forEach((e) => { e.onclick = () => { newOpt.start = e.dataset.st; newSlot(i, nmNow()); }; });
+  box.querySelectorAll('[data-df]').forEach((e) => { e.onclick = () => { newOpt.diff = e.dataset.df; newSlot(i, nmNow()); }; });
+  box.querySelectorAll('[data-md]').forEach((e) => { e.onclick = () => { const k = e.dataset.md, cur = modList(newOpt.mods), clash = { quiet: 'bandit', bandit: 'quiet', plenty: 'lean', lean: 'plenty' }[k]; newOpt.mods = cur.includes(k) ? cur.filter((q) => q !== k) : cur.filter((q) => q !== clash).concat(k); newSlot(i, nmNow()); }; });   /* opposite twists replace each other */
+  box.querySelectorAll('[data-mp]').forEach((e) => { e.onclick = () => { newOpt.map = e.dataset.mp; newSlot(i, nmNow()); }; });
+  $('sCancel').onclick = showSlots; $('sGo').onclick = () => playSlot(i, nmNow(), { ...newOpt });
+}
+/* ---------------- V2.42 backups: export a slot to a file (or the clipboard / share sheet), import one into any slot ---------------- */
+const BAK_T = 'zhBackupAt';
+function backupText(i) {
+  const raw = slotRaw(i); if (!raw) return null; let save = null; try { save = JSON.parse(raw); } catch (e) { /* damaged: keep the text */ }
+  const st = (save && save.S) || {}, o = { zhBackup: 1, game: 'Zombie Haven', slot: i + 1, exported: new Date().toISOString(), version: VERSION, name: st.townName || 'Zombie Haven', day: st.day || 1 };
+  return JSON.stringify(save ? { ...o, save } : { ...o, rawText: raw });
+}
+const backupName = (i) => { const x = slotInfo(i) || {}; return `zombie-haven-${String(x.name || 'town').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'town'}-day${x.day || 1}.json`; };
+function markExported(i) { try { const m = JSON.parse(localStorage.getItem(BAK_T) || '{}'); m[i] = Date.now(); localStorage.setItem(BAK_T, JSON.stringify(m)); } catch (e) { /* ignore */ } }
+function exportedAt(i) { try { return (JSON.parse(localStorage.getItem(BAK_T) || '{}'))[i] || 0; } catch (e) { return 0; } }
+async function exportBackup(i, how) {   /* how: 'share' (iPhone share sheet: Files, AirDrop, Notes…), 'file' (download) or 'copy' (clipboard) */
+  const text = backupText(i); if (!text) return 'Nothing saved in this slot yet.'; const name = backupName(i);
+  try {
+    if (how === 'share') { const f = new File([text], name, { type: 'application/json' }); if (!(navigator.canShare && navigator.canShare({ files: [f] }))) return exportBackup(i, 'file'); await navigator.share({ files: [f], title: name }); markExported(i); return 'Backup shared.'; }
+    if (how === 'copy') { if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text); else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); } markExported(i); return 'Backup copied: paste it into Notes or a message to keep it.'; }
+    const u = URL.createObjectURL(new Blob([text], { type: 'application/json' })), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); markExported(i); return 'Backup saved as ' + name;
+  } catch (e) { return e && e.name === 'AbortError' ? 'Cancelled.' : 'Could not export (' + ((e && e.message) || e) + '). Try Copy.'; }
+}
+const verNum = (v) => String(v || '0').split('.').map((n) => +n || 0).reduce((a, n) => a * 1000 + n, 0);
+function parseBackup(text) {
+  let o; try { o = JSON.parse(String(text || '').trim()); } catch (e) { return { ok: false, why: 'That is not a Zombie Haven backup (it could not be read).' }; }
+  const save = o && o.zhBackup ? o.save : o;
+  if (!save || !validSave(save, false)) return { ok: false, why: o && o.rawText ? 'That backup holds a damaged save: it cannot be imported.' : 'That file is not a Zombie Haven save.' };
+  const newer = verNum(save.version) > verNum(VERSION);
+  return { ok: true, save, name: save.S.townName || 'Zombie Haven', day: save.S.day || 1, ver: save.version || '', newer };
+}
+function importBackup(i, text) {
+  const r = parseBackup(text); if (!r.ok) return r; if (r.newer) return { ok: false, why: `That backup is from V${r.ver}, newer than this game (V${VERSION}). Reload the page to update first.` };
+  const k = SLOT_KEYS[i], old = readKey(k), data = JSON.stringify({ sid: 'import', ...r.save, sid: 'import', time: Date.now() });   /* sid first: an open tab on this slot sees the change and stops saving */
+  if (old) writeKey(BAK(k), old);   /* the town being replaced stays as this slot's day backup until it is played */
+  const w = writeKey(k, data); if (w !== true) return { ok: false, why: 'The browser storage is full or blocked.' };
+  if (i === 0) { try { localStorage.removeItem(PREV_KEY); localStorage.removeItem(OLD_KEY); } catch (e) { /* ignore */ } }
+  return { ok: true, why: `Imported ${r.name} (Day ${r.day}) into slot ${i + 1}.` };
+}
+const BAK_HINT = 'Safari can clear website data when the game is not opened for 7 days. Add Zombie Haven to your Home Screen, or export a backup now and then.';
+function exportRowHtml(i) { return `<button class="act go" data-ex="share" data-i="${i}" style="width:100%;margin:6px 0 0">Export backup</button><div class="row" style="gap:6px;margin-top:6px"><button class="act" data-ex="file" data-i="${i}" style="flex:1 1 0;margin:0;white-space:nowrap">Download</button><button class="act" data-ex="copy" data-i="${i}" style="flex:1 1 0;margin:0;white-space:nowrap">Copy text</button></div>`; }
+function wireExport(root, done) { root.querySelectorAll('[data-ex]').forEach((b) => { b.onclick = async () => { const m = await exportBackup(+b.dataset.i, b.dataset.ex); done(m); }; }); }
+let bakView = null, bakArm = null;
+function showBackups(msg) {   /* title screen → Start → Backups */
+  $('sBak').style.display = 'none'; const box = $('slots'), list = box.querySelector('.slist'); box.querySelector('.sHead').textContent = 'Backups';
+  if (bakView != null) { importView(bakView, msg); return; }
+  list.innerHTML = (msg ? `<div class="card sm" id="bakMsg">${esc(msg)}</div>` : '') + [0, 1, 2].map((i) => { const x = slotInfo(i), t = exportedAt(i);
+    return `<div class="card" style="color:#2a2a5a;background:#f3f6f9"><b>Slot ${i + 1} · ${x ? (x.broken ? 'Damaged save' : esc(x.name) + ' · Day ' + x.day) : 'Empty'}</b><div class="sm" style="color:#5b6b7a">${x ? 'Last export: ' + (t ? ago(t) : 'never') : 'Nothing to export'}</div>${x ? exportRowHtml(i) : ''}<button class="act" data-imp="${i}" style="width:100%;margin-top:6px">Import a backup into slot ${i + 1}</button></div>`; }).join('') + `<div class="sm" style="color:#e8e0c8">${BAK_HINT}</div>`;
+  wireExport(list, (m) => showBackups(m)); list.querySelectorAll('[data-imp]').forEach((b) => { b.onclick = () => { bakView = +b.dataset.imp; bakArm = null; showBackups(); }; });
+  $('sBack').onclick = () => { bakView = null; showSlots(); };
+}
+function importView(i, msg) {
+  const list = $('slots').querySelector('.slist'), x = slotInfo(i);
+  list.innerHTML = `<div class="card" style="color:#2a2a5a;background:#f3f6f9"><b>Import into slot ${i + 1}</b>${x && !x.broken ? `<div class="sm" style="color:#b0402a">This replaces ${esc(x.name)} (Day ${x.day}). It is kept as the slot's day backup until you play.</div>` : ''}
+    <label class="act" style="display:block;text-align:center;margin:8px 0">Choose a backup file<input type="file" id="impFile" accept=".json,application/json,text/plain" style="display:none"></label>
+    <div class="sm" style="color:#5b6b7a">…or paste the backup text:</div><textarea id="impText" rows="4" style="width:100%;box-sizing:border-box;font:14px monospace;border:2px solid #7f93a6;border-radius:6px;background:#f7fafc;color:#1f2a33"></textarea>
+    ${msg ? `<div class="sm" id="bakMsg" style="color:#b0402a">${esc(msg)}</div>` : ''}<button class="act go" id="impGo" style="width:100%;margin-top:6px">${bakArm === i ? 'Tap again to replace the town' : 'Import'}</button></div>`;
+  const go = (text) => { const r = parseBackup(text); if (!r.ok) { importView(i, r.why); return; } if (x && !x.broken && bakArm !== i) { bakArm = i; $('impText').value = text; importView(i, `Ready: ${r.name}, Day ${r.day}${r.ver ? ' (V' + r.ver + ')' : ''}.`); $('impText').value = text; return; } const w = importBackup(i, text); bakArm = null; if (w.ok) { bakView = null; showBackups(w.why); } else importView(i, w.why); };
+  $('impFile').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; if (f.size > 4e6) { importView(i, 'That file is too big to be a save.'); return; } const rd = new FileReader(); rd.onload = () => go(String(rd.result)); rd.onerror = () => importView(i, 'Could not read that file.'); rd.readAsText(f); };
+  $('impGo').onclick = () => go($('impText').value);
+  $('sBack').onclick = () => { bakView = null; bakArm = null; showBackups(); };
+}
+function showBackup(msg) {   /* in game (event log → Backup): export this town */
+  endBuildMode(true); closeP(); saveGame(); $('it').textContent = 'BACKUP'; const i = SLOT - 1, t = exportedAt(i);
+  $('ib').innerHTML = `<div class="card"><b>${esc(S.townName || 'Zombie Haven')} · slot ${SLOT}</b><div class="sm">${saveErr ? '⚠ Saving is failing: ' + esc(saveErr) : saveBlocked ? '⚠ This tab is not saving' : 'Saved automatically'} · last export: ${t ? ago(t) : 'never'}</div></div>${exportRowHtml(i)}${msg ? `<div class="card sm">${esc(msg)}</div>` : ''}<div class="sm" style="margin-top:6px">To bring a backup back: main screen (🏠) → Start → Backups → Import.</div><div class="sm" style="margin-top:6px">${BAK_HINT}</div>`;
+  wireExport($('ib'), (m) => showBackup(m)); showPanel();
+}
+// test / debug hook (no effect on gameplay)
+window.ZH = { BUILD_TAG, carAlarm: (x, y) => carAlarm(x, y), alarmCands: (x, y) => alarmCands(x, y), facTier: (k) => facTier(k), facGear: (k) => facGear(k),  showGoals: () => showGoals(), showTrophies: () => showTrophies(), DF: () => DF(),  ARRIVE, TUNE,   /* balance knobs (tools/balance/README.md) */ shBot: { act: (c) => shAct(c), move: (at) => shMoveTo(at), call: (k) => shCall(k) },   /* 3D.130 orders without the screen, for the balance bot (tools/balance/sh_probe.py) */ CAMP_PLAN, get SH_ROOMS() { return SH_ROOMS; }, get SH_DOORS() { return SH_DOORS; }, SH_AX, SH_AY, shGridOf: () => shGrid(), shWorldOf: (x, y) => shWorld(x, y), showShPractice, shTap, showLegacy, legSel, crisisDaily, promoteSpec, promoteHyb, hybOptions, specWhy, needsBanner, setExpVeh: (k) => { expSel.veh = k || null; }, vehReady, VEH, vehArrive, vehBuildCart, vehRepair, vehDrive, unitPanel, raiderDown, spawn, spawnRaid, startStronghold, shCall, shEnd, shTick, SH_DEFS, shPower, STORY, fac, boom, upgradeTown, levelUpDone, earnBanner, rankConds, showUpgrade, showTown, supplyCap, matCap, scrapCap, zombieTypes, intro, INTRO, danger, powerTick, powered, gunners, tryTrap, trapAt, trapMap, trapMax, rearmAll, trapsSpent, helpReady, facilityRules, newJob, collectBonus, autoStaff, ECO, supplyCap, rationNeed, radioHelp, ageOf, newcomer, mk, impactFx, note, downAlert, alertHub, bark, barkSomeone, craftTool, TOOLS, radioOk, lootReveal, lootEntries, showStash, dropBag, openBag, hqTier, canPay, bCost, upgradeBuilding, upgradeCheck, jobList: () => jobList(), newSite: (t, x, y) => { const d = DEFS[t], nb = { type: t, x, y, rot: 0, w: d.w, h: d.h, q: d.q, a: d.a, staff: null }; (S.sites ||= []).push(newJob(nb, bCost(d))); world.sites = S.sites; Wd.bump(world); pushUnitsOut(nb); return nb; }, upgradeTown, holdEvent, showUpgrade, rankConds, TOWN_EVENTS, RANK_REQ, ui, showBuildingInfo, showBuild, showTown, showSurvivors, STORY, bondOf, popCap, popNow, BANDAGE: () => BANDAGE_COST, repairBurnt, traderArrive, traderBuy, traderTrade, givePet, S, world, Wd, cam, project, unproject, insideBuilding, tapAt, unitPanel, doResearch, craft, RESEARCH, researched, upkeepTotal, equip, stat, ITEMS, stashAdd, expandTerritory, spawnRaid, spawnBoss, changeProfession, gainXp, SKILLS, isNight, startTool, updatePreview, centerOn, draw, simTick, step(n) { for (let i = 0; i < n; i++) simTick(); }, spawn, mk, get sel() { return sel; }, get preview() { return preview; }, get selected() { return selected; }, get tick() { return tick; }, serialize, saveGame, closeP, expAutoSquad, startExpedition, tripUpdate, showExpedition, expLocked, EXP_DEFS, showEventPopup, autoStaff, tryWall, killSurvivor, useBandage, upgradeBuilding, upgradeCheck, hourlyProduction, supplyStats, isWorking, supplyCap, DEFS, setDebug(v) { debug = v; }, finaleTest: () => finaleHour(), legacyDone, signalReady, startFinale, scoreOf, tryPost, postMax, encOdds, get saveBlocked() { return saveBlocked; }, get saveErr() { return saveErr; }, get loadedFrom() { return loadedFrom; }, get advShown() { return advShown; }, militia, setPolicy, policy, onShift, wreckSpots, pixelCacheSize: () => pixelCache.size, pixelCacheMB: () => Math.round([...pixelCache.values()].reduce((t, c) => t + c.width * c.height * 4, 0) / 1e5) / 10, econ, showResource, ECO, get objMarks() { return objMarks; }, alerts, note, sendDefender, get simSpeed() { return simSpeed; }, get repairFirst() { return repairFirst; }, demolish, BASE_TW, get groundChunks() { return groundChunks; } };
+Object.assign(window.ZH, { rankRoom, bedCount, orderRescue, focusBoss, ai, });   /* 3D.67 test hooks */
+Object.assign(window.ZH, { forecastFor, STORY, BOSS_KINDS, quarDaily, quarClean, helixDaily, helixFree, helixStalkerDown, hollowDaily, facHour, foundryDaily });   /* V3D.17 test hooks */
+Object.assign(window.ZH, { CLASS_LIST, EXP_ENC, FIELD_CAP, GOALS_DAILY, Iso, MISSION_DEFS, OPTS, SLOT, TILE_PX, TRAITS, TWs, advisorTips, advisorUpdate, alertsTick, assignRescue, atPost, autoRepair, awayCredit, backupText, beginMission, bestDefender, bleedMax, bondsDaily, burnDown, careTicks, claimGoal, comebackConvoy, confirmPreview, currentObjective, dayKey, ecoLast24, encChoose, encDefault, encPopup, encResolve, endBuildMode, engaged, eventQueue, eventSchedule, expEncounter, expTraitLoot, fieldNotesHtml, findGaps, fitBoost, genFuel, goalsHtml, goalsTick, hDay, hardshipCheck, hitBuilding, hungryPen, importBackup, legacyCheck, lureFire, medicFindPatient, missionProgress, moveBuilding, newPet, newProduce, parseBackup, patrolDest, postsAssign, prodMult, pushUnitsOut, rally, rangeOf, ration, reloadGun, removePost, retreatCheck, retreatPct, rollTrait, rush, rushCheck, showPost, slotInfo, startAid, startFire, townAppeal, traderLeave, traitRange, trapOkTile, tryRoad, wallBroken, weaponOf });   /* test hooks read only by tests/run_tests.py (they had been pruned from the list above; when running tools/dce/prune.js, pass tests/run_tests.py as a user file) */
+init();
+})();
