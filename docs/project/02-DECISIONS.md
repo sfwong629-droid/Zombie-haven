@@ -49,6 +49,11 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 12 Nov: Popup buttons are green only when recommended. Resource icons instead of words.
 - 11 Nov: No rings: a spinning arrow overhead (yellow selected, red target, orange alert).
 - 16 Nov: The UI still needs a lot of work; all UI work happens in its own chat.
+- 16 Nov (UI chat): The screens that bother the owner most are People & survivor details and the Town panel (crowded, hard to read, confusing or too many taps); first, UI buttons overlaying each other.
+- 16 Nov (UI chat): Nothing floats over an open menu, for every menu. The radio button is hidden. The alert button sits under the menu, which covers it completely; it is never part of the menu. The "Paused" pill sits centred on the menu's top edge. (Not built yet.)
+- 16 Nov (UI chat): A share of a whole is written as a percentage ("95%"), never "95/100"; real counts stay as counts. (Not built yet.)
+- 16 Nov (UI chat): The "New: Raiders" note shows a raider in the Toll Kings' kit (red bandana, black vest, bat), not a plain drifter. Built in 3D.178.
+- 16 Nov (UI chat): UI building (U13, U14, U18) waits until the `game.js` split is done. Owner-seen bugs are still fixed straight away.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.

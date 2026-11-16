@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze), A5 (the Raiders note shows a zombie; cause found).
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze). A5 (the Raiders note showed a zombie) fixed in 3D.178.
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 
 ## After that (not started, in this order)
@@ -44,11 +44,12 @@ UI chat:
 - ~~W8. Their own UI complaints (for `04-UI.md` section C).~~ Started 16 Nov: People & survivor details and the Town panel (crowded, hard to read, confusing or too many taps); first, buttons overlaying each other. The owner can add more any time.
 - ~~W25. Radio while a menu is open.~~ Decided 16 Nov: hidden, for every menu.
 - ~~W26. Alert button while a menu is open.~~ Decided 16 Nov: it sits under the menu, never part of the menu.
-- W22. The alert button sits where the menu's top edge is, so the menu would cut it in half. Let the menu cover it fully, or move the button up so it stays whole above the menu?
-- W23. The "Paused" pill covers the mission card. Move it into the menu's top edge, or somewhere else?
+- ~~W22. The alert button and the menu's top edge.~~ Decided 16 Nov: the menu covers the button completely.
+- ~~W23. The "Paused" pill covers the mission card.~~ Decided 16 Nov: centred on the menu's top edge.
 - W24. People & survivor details and the Town panel: besides overlapping buttons, what bothers you there? A screenshot with a circle is enough.
-- W27. Build the overlap fix now, or wait until the `game.js` split (the order in "After that" puts the split first)?
-- W28. Bug A5, the "New: Raiders" note shows a zombie: should the card show a raider (a person in raider kit), or no picture? And fix it in this chat or the Bugs chat?
+- ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it.
+- ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
+- W30. Bug A5: say whether the new Raiders picture is right (screenshot sent in the UI chat). The note shows once per game, the first time raiders come, so seeing it in play needs a new game.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).

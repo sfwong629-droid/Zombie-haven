@@ -11,6 +11,7 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 | A2 | **Emoji keep flashing.** The emoji keep flashing or appearing again and again (owner, 16 Nov). | open: not yet looked at. Still unknown: which emoji (above a survivor's head, in the news pill, on a card or button) and what is happening at the time. |
 | A3 | **The game suddenly froze** (owner, 16 Nov, build 3D.175, about 30 seconds into a session with the Animation tracker on). | open: not reproduced; no error in 15 minutes of cloud soaks with the tracker on. Still unknown: whether the picture stopped or the whole page, whether it also happens with the tracker off, and whether it still happens in 3D.176. |
 | A4 | **Tapping a person brings up the radio.** With the People list open, tapping a row (Marcus) opened an old radio card ("The Trader") instead of the person; after OK, tapping again opened it again (owner's video, 16 Nov). | **fixed in 3D.177** (16 Nov), waiting for the owner to confirm. A radio card that had closed was invisible but still caught taps in the strip above the bottom bar, and re-opened its old message. Check: `node tools/qa/radio_tap_check.js` (fails on 3D.176, passes on 3D.177). |
+| A5 | **The "New: Raiders" note shows a zombie.** The first-time Raiders card had a walker picture in the middle (owner's screenshot, UI chat, 16 Nov). | **fixed in 3D.178** (16 Nov), waiting for the owner to confirm. The Raiders note is stored with the zombie notes (key `z:raider`), and the card drew a zombie picture for every note in that group; "raider" is not a zombie model, so the picture fell back to the plain walker. The card now shows a raider in the Toll Kings' kit with a bat (owner's pick). Check: `node tools/qa/raider_note_check.js` (fails on 3D.177, passes on 3D.178). |
 
 *(The owner adds more here. One line each is enough; a recording helps but isn't needed.)*
 
@@ -54,6 +55,7 @@ UI problems are listed in `04-UI.md`, not here.
 | C5 | `runs/*/*.jsonl` is gitignored, so run logs don't reach the repo | open |
 
 ## Fixed (last 10)
+- 3D.178: A5 the "New: Raiders" note shows a raider (Toll Kings' kit), not a walker. Check: `tools/qa/raider_note_check.js`.
 - 3D.177: A4 a closed radio card no longer takes taps (it re-opened its old message when you tapped the People list). Check: `tools/qa/radio_tap_check.js`.
 - 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.
 - 3D.175: frozen-pose check in the Animation tracker (tool only).
