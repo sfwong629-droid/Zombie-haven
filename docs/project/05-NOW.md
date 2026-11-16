@@ -5,7 +5,7 @@ New features, balance changes, new art in the game, full tester rounds.
 
 ## The next three jobs
 1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
-2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze).
+2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov) with a scripted check; waiting for the owner to confirm in play. A4 (taps opening the radio) fixed in 3D.177. Next owner bugs: A2 (emoji flashing), A3 (the game froze), A5 (the Raiders note shows a zombie; cause found).
 3. **Make the test suite trustworthy** (bugs C1, C2), so the code clean-up can start safely.
 
 ## After that (not started, in this order)
@@ -28,7 +28,7 @@ Planning chat:
 - ~~W15. Which zombies are allowed a weapon?~~ Decided 16 Nov: none.
 - ~~W16. The Gatling Boss's gun arm.~~ Decided 16 Nov: no change to him; he is the one exception.
 - ~~W18. Add a balance targets page?~~ Decided 16 Nov: yes, `08-BALANCE.md`, first job after the freeze.
-- W22. UI problem U13 (two speed-up buttons with the same cost): yes or no to hiding "12 h sooner" when 12 hours or less are left. The fix itself is for the UI chat.
+- W29. UI problem U17 (the two speed-up buttons cost the same when 12 hours or less are left): yes or no to hiding "12 h sooner" when it would finish the upgrade anyway. The fix itself is for the UI chat.
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
@@ -40,8 +40,17 @@ Bugs chat:
 - W21. Bug A4 (tapping a person opened the radio): play 3D.177 and say whether tapping people works now, in the People list and on the map.
 - W7. Any other bugs they have seen.
 
+UI chat:
+- ~~W8. Their own UI complaints (for `04-UI.md` section C).~~ Started 16 Nov: People & survivor details and the Town panel (crowded, hard to read, confusing or too many taps); first, buttons overlaying each other. The owner can add more any time.
+- ~~W25. Radio while a menu is open.~~ Decided 16 Nov: hidden, for every menu.
+- ~~W26. Alert button while a menu is open.~~ Decided 16 Nov: it sits under the menu, never part of the menu.
+- W22. The alert button sits where the menu's top edge is, so the menu would cut it in half. Let the menu cover it fully, or move the button up so it stays whole above the menu?
+- W23. The "Paused" pill covers the mission card. Move it into the menu's top edge, or somewhere else?
+- W24. People & survivor details and the Town panel: besides overlapping buttons, what bothers you there? A screenshot with a circle is enough.
+- W27. Build the overlap fix now, or wait until the `game.js` split (the order in "After that" puts the split first)?
+- W28. Bug A5, the "New: Raiders" note shows a zombie: should the card show a raider (a person in raider kit), or no picture? And fix it in this chat or the Bugs chat?
+
 Later:
-- W8. Their own UI complaints (for `04-UI.md` section C; the UI chat will ask).
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
 - W10. Batch 5 armour (Tripo models): after art unfreezes.
 - W11. When to end the freeze.
