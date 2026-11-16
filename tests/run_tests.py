@@ -463,7 +463,7 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
 
 async def t_posts(br, port, t):   # V2.45: guard posts, watches, patrols, zombie lure
     ctx, pg, errs = await open_game(br, port, 'posts')
-    r = await pg.evaluate("""()=>{const S=ZH.S,o={};S.mat=40;S.rank=1;const m0=S.mat;const a=ZH.tryPost(7,8);o.ok=a.ok;o.cost=m0-S.mat;o.close=ZH.tryPost(8,8).why;const b=ZH.tryPost(4,11);o.max=ZH.tryPost(11,8).why;
+    r = await pg.evaluate("""()=>{const S=ZH.S,o={};S.mat=40;S.rank=1;const m0=S.mat;const a=ZH.tryPost(12,13);o.ok=a.ok;o.cost=m0-S.mat;o.close=ZH.tryPost(13,13).why;const b=ZH.tryPost(9,16);o.max=ZH.tryPost(16,13).why;
       const bb=ZH.world.buildings[0];o.bld=ZH.tryPost(bb.x,bb.y).why;o.n=S.posts.length;o.cur=S.posts.map(p=>{const q=S.sv.find(x=>x.id===p.cur);return q&&q.job});return o}""")
     t.ok(r['ok'] and r['cost'] == 3 and r['n'] == 2, f"a guard post costs 3 parts {r}")
     t.ok(r['close'] == 'close' and r['max'] == 'max' and r['bld'] == 'building', f"posts must be spread out, are capped by rank and can't go on a building {r}")
