@@ -121,7 +121,7 @@
     job: (a) => { const q = who(a[0]); return { ok: !!(q && Z.changeProfession(q, a.slice(1).join(' '))) }; },
     promote: (a) => { const q = who(a[0]); if (!q) return { ok: false, why: 'no such person' }; const w = Z.specWhy(q); return w ? { ok: false, why: w } : { ok: !!Z.promoteSpec(q) }; },
     research: (a) => { const r = Z.RESEARCH[a[0]]; if (!r) return { ok: false, why: 'unknown research' }; const ok2 = !!Z.doResearch(a[0]); return { ok: ok2, why: ok2 ? '' : r.need && !Z.researched(r.need) ? `first research ${(Z.RESEARCH[r.need] || {}).name || r.need}` : `needs ${r.rp} research points (have ${Math.floor(S.rp || 0)}) and ${r.mat} scrap (have ${Math.floor(S.mat)})` }; },
-    event: (a) => ({ ok: !!Z.holdEvent(a[0]) }),
+    event: (a) => { const e = (Z.TOWN_EVENTS || {})[a[0]]; if (!e) return { ok: false, why: 'events: ' + Object.keys(Z.TOWN_EVENTS || {}).join(', ') }; const lock = Z.evLock ? Z.evLock(e) : ''; const ok = !lock && !!Z.holdEvent(a[0]); return { ok, ...(ok ? {} : { why: lock || ((S.lastEventDay ?? -1) >= S.day ? 'only one event a day' : 'not enough supplies: ' + Object.entries(e.cost).map(([k, v]) => v + ' ' + k).join(', ')) }), ...(e.banner && ok ? { banner: 'a Banner is raised' } : {}) }; },
     expand: () => { const ok2 = !!Z.expandTerritory(); return { ok: ok2, why: ok2 ? '' : state(true).expandLand }; },
     levelup: () => ({ ok: Z.upgradeTown() !== false, upgrading: !!S.lvUp }),
     rushlevel: (a) => ({ ok: !!(Z.lvRushX && Z.lvRushX(a[0] === 'all')), level: S.lvl, left: S.lvUp ? Math.ceil(S.lvUp.left) + ' game h' : 'done', renown: Math.round(S.ren) }),   /* 3D.166 spend renown: 12 game hours off, or `rushlevel all` to finish now */
