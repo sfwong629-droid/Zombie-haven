@@ -30,9 +30,9 @@ Planning chat:
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
-- W6. Bug A1: what the survivor was doing just before it froze. (Answered 16 Nov: the pose is standing, arms down, legs straight; they don't seem to recover.)
+- W6. Bug A1: what the survivor was doing just before it froze. (16 Nov: the owner is not sure; the tracker log will answer it. The pose is standing, arms down, legs straight; they don't seem to recover.)
 - W12. Bug A1: 3D.175 is published (16 Nov). When someone freezes: Settings > Animation tracker, wait 5 seconds, Copy log, paste it in the Bugs chat.
-- W13. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
+- W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
 - W7. Any other bugs they have seen.
 
 Later:
