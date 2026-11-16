@@ -39,7 +39,7 @@ Bugs chat:
 - W17. Bug A2 (emoji flashing): which emoji, and where on the screen? A screenshot or a few words is enough.
 - W19. Bug A3 (the game froze): did the picture stop or the whole page, and does it happen again in 3D.176?
 - W21. Bug A4 (tapping a person opened the radio): play 3D.177 and say whether tapping people works now, in the People list and on the map.
-- W30. Bug A5 (Ben can't reach it): yes or no to a "Copy save" button in Settings (a test tool, like the Animation tracker), so the owner can send the town when something like this happens. Also: is the Garden Plot inside a fence or wall, and does it have a gate?
+- W32. Bug A5 (Ben can't reach it): yes or no to a "Copy save" button in Settings (a test tool, like the Animation tracker), so the owner can send the town when something like this happens. Also: is the Garden Plot inside a fence or wall, and does it have a gate?
 - W7. Any other bugs they have seen.
 
 UI chat:
@@ -51,7 +51,7 @@ UI chat:
 - W24. People & survivor details and the Town panel: besides overlapping buttons, what bothers you there? A screenshot with a circle is enough.
 - ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it.
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
-- W30. Bug A5: say whether the new Raiders picture is right (screenshot sent in the UI chat). The note shows once per game, the first time raiders come, so seeing it in play needs a new game.
+- W32. Bug A5: say whether the new Raiders picture is right (screenshot sent in the UI chat). The note shows once per game, the first time raiders come, so seeing it in play needs a new game.
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
