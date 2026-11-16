@@ -57,22 +57,19 @@ async def t_boot(br, port, t):
 
 async def t_geometry(br, port, t):   # V2.34: isometric geometry, sprite anchors, hit tests, placement ghost, entrances, depth order
     ctx, pg, errs = await open_game(br, port, 'geom')
-    r = await pg.evaluate("""()=>{const I=ZH.Iso,out={};out.ratio=I.RATIO;out.angle=I.ANGLE_DEG;out.th=ZH.BASE_TH/ZH.BASE_TW;
+    r = await pg.evaluate("""()=>{const I=ZH.Iso,out={};out.ratio=I.RATIO;out.angle=I.ANGLE_DEG;
       let rt=0;for(const z of [.5,.85,1.6,2.4]){ZH.cam.z=z;for(const [x,y] of [[0,0],[3.25,7.5],[11.9,2.1],[15,19]]){const p=ZH.project(x,y),q=ZH.unproject(p.x,p.y);rt=Math.max(rt,Math.abs(q.x-x),Math.abs(q.y-y))}}out.rt=rt;ZH.cam.z=1;
-      const W=ZH.world,keep=W.buildings.slice(),bad=[],hit=[];
+      const W=ZH.world,keep=W.buildings.slice(),hit=[];
       for(const type of Object.keys(ZH.DEFS)){const D=ZH.DEFS[type];if(!D||!D.w)continue;const b={type,x:6,y:8,w:D.w,h:D.h,q:D.q,a:D.a,staff:null};W.buildings.length=0;W.buildings.push(b);ZH.Wd.bump(W);
-        const r=ZH.spriteRect(b);if(!r)continue;const a=ZH.project(b.x+b.w,b.y+b.h);
-        if(Math.abs(r.anchor.x-a.x)>.01||Math.abs(r.anchor.y-a.y)>.01)bad.push(type+' anchor');
         const c=ZH.project(b.x+b.w/2,b.y+b.h/2);if(ZH.hitBuilding(c.x,c.y)!==b)hit.push(type)}
-      W.buildings.length=0;keep.forEach(b=>W.buildings.push(b));ZH.Wd.bump(W);out.bad=bad;out.hit=hit;
+      W.buildings.length=0;keep.forEach(b=>W.buildings.push(b));ZH.Wd.bump(W);out.hit=hit;
       ZH.startTool({kind:'building',type:'workshop'});const tp=ZH.project(9.5,9.5);ZH.tapAt(tp.x,tp.y);const pv=ZH.preview;out.ghost=pv&&[pv.x,pv.y,pv.w,pv.h];ZH.endBuildMode(true);
       const box=(x,y,r)=>({x1:x-r,y1:y-r,x2:x+r,y2:y+r});const bb={x1:6,y1:8,x2:8,y2:9,id:'b'};
       const s1=I.sortDrawables([{...box(7,9.3,.12),id:'front'},bb,{...box(7,7.7,.12),id:'back'}]).map(o=>o.id).join(',');out.depth=s1;
       return out}""")
-    t.ok(r['ratio'] == .5 and abs(r['th'] - .5) < 1e-9, f"one 2:1 projection everywhere (TH/TW = {r['th']})")
+    t.ok(r['ratio'] == .5, f"one 2:1 projection everywhere (ratio {r['ratio']})")   # W31: the 2D tile-size and sprite-anchor checks went with the 2D drawing
     t.ok(abs(r['angle'] - 26.565) < .01, f"edge angle is atan(1/2) = {r['angle']:.3f} deg")
     t.ok(r['rt'] < 1e-9, f"project/unproject round trip at 4 zoom levels (max error {r['rt']:.2e})")
-    t.ok(not r['bad'], f"every building sprite is anchored at its south corner {r['bad']}")   # 3D.58: the 2D sprite width check went with the 2D art (the game draws 3D models)
     t.ok(not r['hit'], f"tapping the middle of every building's footprint selects it {r['hit']}")
     t.ok(r['ghost'] == [8, 9, 2, 1], f"placement ghost: tapped tile is the footprint's south tile {r['ghost']}")
     t.ok(r['depth'] == 'back,b,front', f"depth: a person behind a building is drawn before it, in front after it ({r['depth']})")
@@ -534,11 +531,11 @@ async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entra
       for(let y=Wd.BUILD.y0;y<=Wd.BUILD.y1&&!sp;y++)for(let x=Wd.BUILD.x0;x<=Wd.BUILD.x1&&!sp;x++){ZH.updatePreview(x,y);const ok1=ZH.preview.ok;rb.click();const ok2=ZH.preview.ok;rb.click();if(ok1&&ok2)sp=[x,y]}
       ZH.updatePreview(sp[0],sp[1]);const p0={...ZH.preview};rb.click();const p1={...ZH.preview};ZH.confirmPreview();const b=ZH.world.buildings[ZH.world.buildings.length-1];
       const d=Wd.doorPoint(b),a=Wd.approachTile(b);const path=!!Wd.findPath(ZH.world,{x:7,y:10},a);
-      const rect=ZH.spriteRect(b),hit=ZH.hitBuilding(rect.anchor.x,rect.anchor.y-rect.h*.3);
+      const c=ZH.project(b.x+b.w/2,b.y+b.h/2),hit=ZH.hitBuilding(c.x,c.y);
       return {vis:getComputedStyle(rb).display,p0:[p0.w,p0.h],p1:[p1.w,p1.h,p1.rot],b:[b.rot,b.w,b.h],door:[d.x-b.x,d.y-b.y],app:[a.x-b.x,a.y-b.y],path,hit:hit===b}}""")
     t.ok(r['vis'] != 'none' and r['p0'] == [2, 1] and r['p1'] == [1, 2, 1], f"the ↻ button turns the building while placing it (footprint 2×1 → 1×2) {r}")
     t.ok(r['b'] == [1, 1, 2] and abs(r['door'][0] - .65) < 1e-6 and r['door'][1] == 1 and r['app'] == [1, 1], f"a turned building has its entrance on the other wall {r}")
-    t.ok(r['path'] and r['hit'], f"the new entrance is reachable and the mirrored sprite can be tapped {r}")
+    t.ok(r['path'] and r['hit'], f"the new entrance is reachable and the turned building can be tapped {r}")
     r = await pg.evaluate("""()=>{const d=JSON.parse(ZH.serialize());return d.buildings.filter(b=>b.rot).length}""")
     save = await pg.evaluate("()=>{ZH.saveGame();return localStorage.getItem('zombieHavenR1')}"); await ctx.close()
     ctx, pg, errs2 = await open_game(br, port, 'rotate2', init=f"if(!sessionStorage.getItem('x')){{sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenR1',{json.dumps(save)})}}")
@@ -652,7 +649,7 @@ async def t_story(br, port, t):
 async def t_tabs(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'tabs')
     await pg.evaluate(PLACE, 'workshop')
-    await pg.evaluate("()=>{const b=ZH.world.buildings.find(q=>q.type==='workshop');ZH.centerOn(b.x+1,b.y+1,1.2);ZH.draw();const r=ZH.spriteRect(b);ZH.tapAt(r.x+r.w/2,r.y+r.h*.6)}")
+    await pg.evaluate("()=>{const b=ZH.world.buildings.find(q=>q.type==='workshop');ZH.centerOn(b.x+1,b.y+1,1.2);ZH.draw();const c=ZH.project(b.x+b.w/2,b.y+b.h/2);ZH.tapAt(c.x,c.y)}")
     tabs = await pg.evaluate("()=>[...document.querySelectorAll('#ib .tabs button')].map(b=>b.dataset.tab)")
     t.ok(tabs == ['overview', 'details', 'research', 'craft'], f'workshop tabs {tabs}')
     for k in tabs:
@@ -675,32 +672,6 @@ async def t_sim(br, port, t):
     r = await pg.evaluate("()=>{for(let d=0;d<12;d++)for(let h=0;h<24;h++){for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick()}AP.hour()}return AP.snap()}")
     t.ok(r['sv'] >= 4, f"12-day auto-played town survives ({r['sv']} survivors, {r['fallen']} fallen, rank {r['rank']})"); print('      sim:', {k: r[k] for k in ('sv', 'fallen', 'rank', 'nb') if k in r})
     t.ok(r['nb'] >= 10, f"it grows ({r['nb']} buildings)")   # 3D.58: 10 (was 12): the game starts with 1 building instead of 3; t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
-
-async def t_hd(br, port, t):   # V2.50: HD (V8) art preview behind ?hd=1 — PixelLab farmer, HD medical tent
-    ctx, pg, errs = await open_game(br, port, 'hd', init="localStorage.setItem('zhHD','1')")
-    await pg.wait_for_function('window.ZHChars && ZHChars.ready && ZHChars.hdSheets.length > 0', timeout=15000)
-    r = await pg.evaluate("""()=>{const S=ZH.S,a=S.sv[0];a.job='Farmer';a.look={sex:'m',skin:0,hair:0};const sh=ZHChars.sheetFor(a),D=ZHChars.dims(sh);
-      const out={hd:ZHChars.hdSheets,tag:sh.zhTag,res:D.res,walk:ZHChars.count('walk',sh),idle:ZHChars.count('idle',sh),w:sh.naturalWidth,frames:Object.values(D.frames).reduce((t,f)=>t+f[1],0),wp:D.wpose.length,hands:D.hands[0].length+D.hands[1].length};
-      out.portrait=(ZHChars.portrait(a)||'').slice(0,22);
-      const modes=[['walk',{moving:true}],['wait',{}],['attack',{stateTicks:2}],['recover',{stateTicks:30,recDur:40}],['down',{}],['work',{}]];
-      for(const [m,o] of modes){a.mode=m;Object.assign(a,o);a.eq={weapon:'pipe'};for(let k=0;k<8;k++){ZH.step(1);ZH.draw();}}
-      a.mode='wait';a.moving=false;a.carriedLoot=true;ZH.draw();a.carriedLoot=false;
-      const b=ZH.world.buildings.find(q=>q.type==='medic'),r=b&&ZH.spriteRect(b);out.tent=b?[r.w/r.s,Math.round(r.w/(ZH.TWs()/96))]:null;return out}""")
-    t.ok(r['hd'] == ['farm_m'] and r['tag'] == 'farm_m' and r['res'] == 2, f"?hd=1 loads the HD farmer sheet {r}")
-    t.ok(r['walk'] == 6 and r['idle'] == 2 and r['frames'] == 27 and r['w'] == 27 * 128 and r['wp'] == 27 and r['hands'] == 54, f"the HD sheet has its own frame table (walk 6, 27 frames) with hand points and weapon poses {r}")
-    t.ok(r['portrait'].startswith('data:image/png'), f"the HD farmer has a portrait {r['portrait']}")
-    r = await pg.evaluate("()=>{const c=ZH.groundChunks;ZH.world.roads.add('6,6');const n=ZH.buildGround();ZH.world.roads.delete('6,6');ZH.buildGround();return {gr:ZH.GR,n:c.length,max:Math.max(...c.map(q=>q.width*q.height)),w:c.reduce((t,q,i)=>t+(i<4?q.width:0),0),part:n}}")
-    t.ok(r['gr'] == 2 and r['n'] == 16 and r['max'] < 16.7e6 and r['w'] == 2 * 58 * 48 and 1 <= r['part'] <= 4, f"HD ground: 2 px per V7 px in 16 chunks (each under Safari's canvas limit); a new road only redraws the chunks around it {r}")
-    t.ok(not errs, f'no page errors while the HD farmer walks, idles, fights, falls and works {errs[:1]}'); await ctx.close()
-    ctx, pg, errs = await open_game(br, port, 'hd0')
-    r = await pg.evaluate("()=>[ZHChars.hdSheets.length, window.ZH_HD, ZH.GR, ZH.groundChunks.length]")
-    t.ok(r == [0, False, 1, 1], f"without ?hd=1 the game uses the current art and ground only {r}"); await ctx.close()
-    ctx, pg, errs = await open_game(br, port, 'c64', init="localStorage.setItem('zhC64','1');localStorage.setItem('zhHD','1')")
-    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);ZH.closeP();ZH.S.mat=99;for(let x=3;x<=6;x++)ZH.tryWall(x,5,'wood');for(let k=0;k<5;k++){ZH.step(2);ZH.draw();}return [window.ZH_C64, window.ZH_HD, ZH.GR, ZH.TILE_PX, ZH.groundChunks[0].width]}")
-    t.ok(r[3] == 106 and r[4] == 58 * 53, f"the C64 preview uses the 10% bigger grid (106 x 53 tiles), ground and walls included {r}")
-    t.ok(r[:3] == [True, False, 1], f"?c64=1 (58-px characters) replaces the HD preview, keeps the normal ground and falls back to current art for anyone not redrawn yet {r}")
-    # 3D.58: the 2D Medical Tent sprite checks were dropped: the tent is 1x1 now and drawn as a 3D model
-    t.ok(not errs, f'no page errors in the C64 preview {errs[:1]}'); await ctx.close()
 
 async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wrong-job penalty, Police range, care without a Medic
     ctx, pg, errs = await open_game(br, port, 'profession')
@@ -899,7 +870,7 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
     t.ok(r['smash'] and r['smashCd'] and all(h > 0 for h in r['smashHit']), f"the Stalker's hulk smash hurts every survivor close by {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('hd', t_hd), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
+TESTS = [('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
          ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
 
 async def main():
