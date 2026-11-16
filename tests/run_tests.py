@@ -290,7 +290,7 @@ async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker a
 async def t_title(br, port, t):   # V2.40: title screen and save slots
     ctx = await br.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
     pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(f'http://127.0.0.1:{port}/index.html?test=prep'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.goto(f'http://127.0.0.1:{port}/index.html?test=prep&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     await pg.evaluate("()=>{localStorage.clear();ZH.S.townName='Old Town';ZH.S.day=9;ZH.saveGame()}")
     base = f'http://127.0.0.1:{port}/index.html'
     await pg.goto(base); await pg.wait_for_selector('#title', state='visible')
@@ -302,6 +302,7 @@ async def t_title(br, port, t):   # V2.40: title screen and save slots
     t.ok('Old Town' in r[0] and 'Empty' in r[1] and 'Empty' in r[2], 'an existing save shows up in slot 1, the others are empty')
     await pg.click('.slot[data-i="2"]'); await pg.fill('#sName', 'Ember Hold'); await pg.click('#sGo')
     await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
+    await pg.wait_for_selector('#cutSkip', state='attached', timeout=10000); await pg.evaluate("()=>document.getElementById('cutSkip').click()"); await pg.wait_for_function('!ZH.S.cut && !ZH.S.cutPending')   # 3D.102: a new game opens with the cutscene, and nothing is saved until it ends
     r = await pg.evaluate("()=>{ZH.S.day=3;ZH.saveGame();return {slot:ZH.SLOT,name:ZH.S.townName,old:JSON.parse(localStorage.getItem('zombieHavenR1')).S.townName,s3:!!localStorage.getItem('zombieHavenR1_s3')}}")
     t.ok(r['slot'] == 3 and r['name'] == 'Ember Hold' and r['s3'], f"a new game starts in the chosen slot with its name {r}")
     t.ok(r['old'] == 'Old Town', 'starting a new slot and leaving the title never overwrites the other saves')
@@ -317,13 +318,12 @@ async def t_menu(br, port, t):   # V2.41: Demolish inside Build, home button
     ctx, pg, errs = await open_game(br, port, 'menu')
     r = await pg.evaluate("()=>({mdemo:!!document.getElementById('mDemo'),home:getComputedStyle(document.getElementById('btnHome')).display})")
     t.ok(not r['mdemo'], 'the separate Demolish button is gone from the side menu')
-    t.ok(r['home'] != 'none', 'the main-screen button shows in game')
+    t.ok(r['home'] == 'none', 'the old corner main-screen button is hidden (Main menu lives in More → Settings)')
     await pg.evaluate("()=>ZH.showBuild()"); await pg.click('#bDemo')
     t.ok(await pg.evaluate("()=>ZH.sel&&ZH.sel.kind==='demolish'"), 'Demolish inside the Build menu starts the demolish tool')
     await pg.evaluate("()=>{ZH.endBuildMode(true);ZH.S.townName='Home Test';ZH.saveGame()}")
-    await pg.click('#btnHome'); await pg.wait_for_selector('#title', state='visible')
+    await pg.evaluate("()=>{document.getElementById('mGuide').click();document.getElementById('moSet').click();document.getElementById('stMenu').click()}"); await pg.wait_for_selector('#title', state='visible')   # More → Settings → Main menu
     r = await pg.evaluate("()=>({home:getComputedStyle(document.getElementById('btnHome')).display,cont:document.getElementById('tCont').textContent})")
-    t.ok(r['home'] == 'none', 'the main-screen button is hidden on the title screen')
     t.ok('Home Test' in r['cont'], f"going back to the main screen keeps the save ({r['cont']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
@@ -335,12 +335,12 @@ async def t_saves(br, port, t):   # V2.42: slot isolation, day backup, damaged s
     # 1. slot isolation: playing slot 2 writes only slot 2 keys
     ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zhSlot','2');localStorage.setItem('zombieHavenR1','SLOT1');localStorage.setItem('zombieHavenR1_s3','SLOT3')}")
     pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(base + '?test=iso'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.goto(base + '?test=iso&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     r = await pg.evaluate("()=>{const ok=ZH.saveGame();return {ok,slot:ZH.SLOT,keys:Object.keys(localStorage).filter(k=>k.startsWith('zombieHaven')).sort(),s1:localStorage.getItem('zombieHavenR1'),s3:localStorage.getItem('zombieHavenR1_s3')}}")
     t.ok(r['ok'] and r['slot'] == 2 and r['s1'] == 'SLOT1' and r['s3'] == 'SLOT3', f'playing slot 2 never touches slots 1 and 3 {r}')
     t.ok(set(r['keys']) - {'zombieHavenOpts'} == {'zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s2_bak', 'zombieHavenR1_s3'}, f"slot 2 keeps its own day backup {r['keys']}")
     # 5. a second tab on the same slot stops this one from saving
-    pg2 = await ctx.new_page(); await pg2.goto(base + '?test=iso2'); await pg2.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    pg2 = await ctx.new_page(); await pg2.goto(base + '?test=iso2&nocut=1'); await pg2.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     await pg2.evaluate("()=>ZH.saveGame()"); await pg.wait_for_timeout(200)
     r = await pg.evaluate("()=>({blocked:ZH.saveBlocked,saved:ZH.saveGame(),alert:ZH.alerts.has('savetab')})")
     t.ok(r['blocked'] == 'tab' and not r['saved'] and r['alert'], f'a second tab on the same slot makes the first stop saving, with an alert {r}')
@@ -352,7 +352,7 @@ async def t_saves(br, port, t):   # V2.42: slot isolation, day backup, damaged s
     # 2. damaged save + day backup: the backup loads, the damaged copy is kept
     ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenR1','{\"broken');localStorage.setItem('zombieHavenR1_bak'," + json.dumps(good) + ")}")
     pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(base + '?test=bak'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.goto(base + '?test=bak&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     r = await pg.evaluate("()=>({from:ZH.loadedFrom,name:ZH.S.townName,day:ZH.S.day,bad:localStorage.getItem('zombieHavenR1_bad'),saved:ZH.saveGame()})")
     t.ok(r['from'] == 'bak' and r['name'] == 'Bak Town' and r['day'] == 7, f'a damaged save falls back to the day backup {r}')
     t.ok(r['bad'] == '{"broken' and r['saved'], 'the damaged copy is kept aside and the game saves normally')
@@ -360,7 +360,7 @@ async def t_saves(br, port, t):   # V2.42: slot isolation, day backup, damaged s
     # 3. damaged save, no backup: nothing is overwritten
     ctx = await br.new_context(viewport={'width': 390, 'height': 844}); await ctx.add_init_script("if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenR1','{\"S\":{\"day\":3},\"sv\":5}')}")
     pg = await ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(base + '?test=dmg'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
+    await pg.goto(base + '?test=dmg&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0'); await pg.wait_for_timeout(300)
     r = await pg.evaluate("()=>{const a=ZH.saveGame();ZH.step(3000);window.dispatchEvent(new Event('pagehide'));return {a,blocked:ZH.saveBlocked,raw:localStorage.getItem('zombieHavenR1'),pop:document.getElementById('ev')?getComputedStyle(document.getElementById('ev')).display:'?',txt:document.body.innerText.includes('SAVE COULD NOT BE OPENED')}}")
     t.ok(not r['a'] and r['blocked'] == 'load' and r['raw'] == '{"S":{"day":3},"sv":5}', f'a save that cannot be loaded is never overwritten {r}')
     t.ok(r['txt'], 'the player is told the save could not be opened')
@@ -494,17 +494,17 @@ async def t_replay(br, port, t):   # V2.46: starts, difficulty, legacy goals, th
     want = {'camp': (1, 4, 16)}   # 3D.58: every game starts the same: the camp tent and four survivors (the start picker was removed in 3D.39)
     for st, (nb, ns, mat) in want.items():
         await ctx.close(); ctx = await br.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(f'{base}?test=r{st}&start={st}'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+        await pg.goto(f'{base}?test=r{st}&start={st}&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
         r = await pg.evaluate("()=>({b:ZH.world.buildings.length,s:ZH.S.sv.length,m:ZH.S.mat,st:ZH.S.start})")
         t.ok(r['b'] == nb and r['s'] == ns and r['m'] == mat and r['st'] == st, f"start '{st}' sets up its town {r}")
     await ctx.close(); ctx = await br.new_context(viewport={'width': 390, 'height': 844}); pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
-    await pg.goto(f'{base}?test=rdiff'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.goto(f'{base}?test=rdiff&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     r = await pg.evaluate("""()=>{const S=ZH.S,o={};const sp=(d)=>{S.diff=d;ZH.spawn(5,3,'walker');return S.z[S.z.length-1]};const n=sp('normal'),h=sp('hard'),e=sp('easy');o.hp=[e.hp/n.hp,h.hp/n.hp];o.pw=[e.pw/n.pw,h.pw/n.pw];
       const b=ZH.world.buildings[0];S.diff='normal';const u0=ZH.upkeepTotal(),bl0=ZH.bleedMax();S.diff='hard';o.up=ZH.upkeepTotal()/u0;o.bl=ZH.bleedMax()/bl0;S.diff='normal';const sc0=ZH.scoreOf();S.diff='hard';o.sc=ZH.scoreOf()/sc0;S.diff='normal';return o}""")
     t.ok(abs(r['hp'][0] - .75) < .05 and abs(r['hp'][1] - 1.25) < .05 and abs(r['pw'][1] - 1.25) < .01, f"difficulty scales zombie health and damage {r['hp']} {r['pw']}")
     t.ok(abs(r['up'] - 1.25) < .01 and abs(r['bl'] - .8) < .01 and abs(r['sc'] - 1.6) < .02, f"hard costs more upkeep, bleeds out sooner and scores ×1.6 {r}")
     r = await pg.evaluate("""()=>{const S=ZH.S;S.diff='hard';S.start='scrap';const d=JSON.parse(ZH.serialize());delete d.S.diff;delete d.S.start;delete d.S.legacy;localStorage.setItem('zombieHavenR1',JSON.stringify(d));const o=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k.startsWith('zombieHavenR1'))return;return o.call(this,k,v)};return 1}""")
-    await pg.goto(f'{base}?test=rold'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
+    await pg.goto(f'{base}?test=rold&nocut=1'); await pg.wait_for_function('window.ZH && ZH.S && ZH.S.sv.length>0')
     r = await pg.evaluate("()=>[ZH.S.diff,ZH.S.start]")
     t.ok(r == ['normal', 'camp'], f'an older save plays as Survivor difficulty from the Roadside Camp {r}')
     r = await pg.evaluate("""()=>{const S=ZH.S;S.legacy={};S.day=31;const m=S.mat,ren=S.ren;ZH.legacyCheck();return {month:S.legacy.month,mat:S.mat-m,ren:S.ren-ren,ready:ZH.signalReady()}}""")
