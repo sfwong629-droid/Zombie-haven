@@ -92,39 +92,39 @@ async def t_geometry(br, port, t):   # V2.34: isometric geometry, sprite anchors
 async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, emergency controls
     ctx, pg, errs = await open_game(br, port, 'alerts')
     await close_popups(pg)
-    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};S.mat=80;S.z.length=0;ZH.alerts.clear();document.querySelectorAll('#fx .toast').forEach(e=>e.remove());
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};S.mat=80;S.z.length=0;ZH.alerts.clear();document.querySelectorAll('#fx .toast').forEach(e=>e.remove());ZH.OPTS.advisor=false;
+      const hub=()=>{ZH.alertsTick();ZH.advisorUpdate();if(!document.getElementById('alertPop'))document.getElementById('alertBtn').click()};   /* the alerts live in the Needs you list behind the alert button now */
       for(let x=8;x<=13;x++)ZH.tryWall(x,11,'wood');const wl=ZH.Wd.wallAt(W,10,11);
       const n0=S.log.length;ZH.note('routine','test routine line');out.routineToast=document.querySelectorAll('#fx .toast').length;out.routineLog=S.log[S.log.length-1].l;
       for(let i=0;i<5;i++)ZH.note('important','IMPORTANT '+i);out.toasts=document.querySelectorAll('#fx .toast').length;
       ZH.OPTS.autoSlow=true;document.getElementById('btnSpeed').click();out.sp0=ZH.simSpeed;
-      ZH.spawn(10,9,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);ZH.alertsTick();
-      out.keys=[...ZH.alerts.keys()];out.rows=document.querySelectorAll('#alerts .alert[data-k]').length;out.text=document.querySelector('#alerts .at').textContent;
-      out.btns=[...document.querySelectorAll('#alerts .aa')].map(b=>b.textContent+(b.disabled?'(off)':''));
-      ZH.centerOn(16,18);document.querySelector('#alerts .alert[data-k]').click();const p=ZH.project(10.5,11.5),c=document.getElementById('game').getBoundingClientRect();
+      ZH.spawn(10,9,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);hub();
+      out.keys=[...ZH.alerts.keys()];out.rows=document.querySelectorAll('#alertPop .apRow').length;out.text=document.querySelector('#alertPop .apT').textContent;
+      out.btns=[...document.querySelectorAll('#alertPop .apA')].map(b=>b.textContent+(b.disabled?'(off)':''));
+      ZH.centerOn(16,18);document.querySelector('#alertPop .apRow').click();const p=ZH.project(10.5,11.5),c=document.getElementById('game').getBoundingClientRect();
       out.centred=Math.abs(p.x-c.width/2)<40&&Math.abs(p.y-c.height*.46)<60;
-      const def=ZH.bestDefender({x:5.5,y:5.5});out.sent=ZH.sendDefender({x:5.5,y:5.5});out.defMode=def&&def.mode;
-      [...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Repair first').click();out.rf=ZH.repairFirst===wl;
-      wl.broken=false;wl.hp=wl.max;ZH.alertsTick();out.after=ZH.alerts.size;out.rowsAfter=document.querySelectorAll('#alerts .alert[data-k]').length;
+      const def=ZH.bestDefender({x:10.5,y:11.5});out.sent=ZH.sendDefender({x:10.5,y:11.5});out.defMode=def&&def.mode;
+      hub();[...document.querySelectorAll('#alertPop .apA')].find(b=>b.textContent==='Repair first').click();out.rf=ZH.repairFirst===wl;
+      wl.broken=false;wl.hp=wl.max;ZH.alertsTick();ZH.advisorUpdate();out.after=ZH.alerts.size;out.rowsAfter=document.querySelectorAll('#alertPop .apRow').length;out.btnGone=getComputedStyle(document.getElementById('alertBtn')).display==='none';
       return out}""")
     t.ok(r['routineToast'] == 0 and r['routineLog'] == 'routine', 'routine news goes to the log only, no banner')
     t.ok(r['toasts'] == 1, f"important banners never overlap ({r['toasts']} on screen after 5 at once)")
-    t.ok(r['keys'] == ['breach5,5'] and r['rows'] == 1, f"one breach alert per broken piece, not repeated {r['keys']}")
+    t.ok(r['keys'] == ['breach10,11'] and r['rows'] == 1, f"one breach alert per broken piece, not repeated {r['keys']}")
     t.ok('breached' in r['text'] and 'zombie' in r['text'], f"breach alert says what is going on: {r['text']}")
     t.ok('Repair first' in r['btns'][0] and 'Send defender' in r['btns'][1], f"breach actions offered {r['btns']}")
     t.ok(r['sp0'] == 2 and r['sp1'] == 1, f"first emergency drops 2x speed to 1x ({r['sp0']} -> {r['sp1']})")
     t.ok(r['centred'], 'tapping the alert centres the camera on the breach')
     t.ok(r['sent'] and r['defMode'] == 'chase', 'Send defender sends a fighter at the zombie')
     t.ok(r['rf'], 'Repair first puts the breach at the head of the repair queue')
-    t.ok(r['after'] == 0 and r['rowsAfter'] == 0, 'the alert clears itself once the wall is repaired')
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};ZH.OPTS.autoSlow=false;const s=S.sv[0];s.hp=0;ZH.step(2);out.down=[...ZH.alerts.keys()].some(k=>k.startsWith('down'));out.dtext=document.querySelector('#alerts .at').textContent;const el0=document.querySelector('#alerts .alert[data-k]');el0.classList.remove('new');ZH.step(130);const el1=document.querySelector('#alerts .alert[data-k]');out.same=el0===el1&&!el1.classList.contains('new');out.dtext2=el1.querySelector('.at').textContent;
-      ZH.startTool({kind:'building',type:'house'});ZH.showEventPopup({title:'TEST',text:'x'});out.popupWhileBuilding=!!document.getElementById('eventModal').innerHTML;out.compact=document.querySelectorAll('#alerts .alert[data-k]').length;
+    t.ok(r['after'] == 0 and r['rowsAfter'] == 0 and r['btnGone'], 'the alert clears itself once the wall is repaired, and the alert button goes away')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};ZH.OPTS.autoSlow=false;const s=S.sv[0];s.hp=0;ZH.step(2);out.down=[...ZH.alerts.keys()].some(k=>k.startsWith('down'));const hub=()=>{ZH.alertsTick();ZH.advisorUpdate();if(!document.getElementById('alertPop'))document.getElementById('alertBtn').click()};hub();out.dtext=document.querySelector('#alertPop .apT').textContent;const pop0=document.getElementById('alertPop');ZH.step(130);ZH.alertsTick();ZH.advisorUpdate();const pop1=document.getElementById('alertPop');out.same=pop0===pop1&&!document.getElementById('alertBtn').classList.contains('flash');out.dtext2=pop1.querySelector('.apT').textContent;
+      ZH.startTool({kind:'building',type:'house'});ZH.showEventPopup({title:'TEST',text:'x'});out.popupWhileBuilding=!!document.getElementById('eventModal').innerHTML;
       ZH.endBuildMode(true);return out}""")
     await pg.wait_for_timeout(50)
     pop = await pg.evaluate("()=>!!document.getElementById('eventModal').innerHTML")
     t.ok(r['down'] and 's left' in r['dtext'], f"a collapsed survivor raises an alert with the bleed-out timer: {r['dtext']}")
-    t.ok(r['same'] and r['dtext2'] != r['dtext'], f"a live alert updates its text in place without re-animating ({r['dtext']} -> {r['dtext2']})")
+    t.ok(r['same'] and r['dtext2'] != r['dtext'], f"a live alert updates its text in the open list without flashing the button again ({r['dtext']} -> {r['dtext2']})")
     t.ok(not r['popupWhileBuilding'] and pop, 'pop-ups wait until building placement is finished')
-    t.ok(r['compact'] <= 1, 'while placing a building the alerts shrink to one row')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_objectives(br, port, t):   # V2.34: actionable objectives
@@ -171,7 +171,7 @@ async def t_economy(br, port, t):   # V2.35: resource panels, building status, s
     t.ok(r['worker'] and r['unit'], "tapping a building's worker opens that survivor")
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};ZH.OPTS.autoSlow=false;ZH.alerts.clear();for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);for(const b of W.buildings.filter(b=>b.type==='water'))ZH.demolish(b);
       S.water=4;S.hour=11;ZH.step(1000);out.keys=[...ZH.alerts.keys()];const a=ZH.alerts.get('lowwater');out.text=a&&a.text;
-      const why=[...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Why?');if(why)why.click();out.panel=document.getElementById('it').textContent;
+      ZH.alertsTick();ZH.advisorUpdate();if(!document.getElementById('alertPop'))document.getElementById('alertBtn').click();const why=[...document.querySelectorAll('#alertPop .apA')].find(b=>b.textContent==='Why?');if(why)why.click();   /* the Needs you list behind the alert button */out.panel=document.getElementById('it').textContent;
       S.hour=17;while(ZH.tick%1000!==999)ZH.simTick();S.mat=0;S.wood=0;ZH.simTick();out.up=S.log.slice(-6).some(e=>/Upkeep at midnight/.test(e.t));return out}""")
     t.ok('lowwater' in r['keys'], f"a water shortage under a day raises a critical alert ({r['text']})")
     t.ok(r['panel'] == 'WATER', "the alert's Why? button opens the water panel")
@@ -282,10 +282,8 @@ async def t_input_staff(br, port, t):   # V2.39: touch gestures, roads, worker a
     t.ok(r['swap'], 'a worker who changes profession leaves the post and a matching survivor takes it')
     t.ok(r['released'] and r['refill'], 'a dead worker frees the post (a Civilian may cover), a new Farmer fills it')
     t.ok(r['burnt'], 'a burnt building releases its worker')
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.stage=2;S.guide=99;S.water=1;S.advMute={};ZH.OPTS.advisor=true;ZH.advisorUpdate();const el=document.getElementById('adv');out.shown=el.style.display!=='none';out.text=el.textContent;
-      const k=ZH.advShown&&ZH.advShown.key;document.getElementById('advX').click();out.muted=!ZH.advisorTips().some(t=>t.key===k);return out}""")
-    t.ok(r['shown'] and 'Water' in r['text'], f"the town advisor names the most urgent issue ({r['text']})")
-    t.ok(r['muted'], 'hiding an advisor tip mutes it for the day')
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.stage=2;S.guide=99;S.water=1;S.advMute={};ZH.OPTS.advisor=true;ZH.alerts.clear();ZH.advisorUpdate();if(!document.getElementById('alertPop'))document.getElementById('alertBtn').click();const rows=[...document.querySelectorAll('#alertPop .apT')].map(e=>e.textContent);out.shown=rows.length>0;out.text=rows[0]||'';out.all=rows;return out}""")
+    t.ok(r['shown'] and 'water' in r['text'].lower(), f"the town advisor's most urgent tip heads the Needs you list ({r['all']})")   # the old tip line and its hide button are gone: tips sit in the Needs you list (W40 asks about hiding)
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_title(br, port, t):   # V2.40: title screen and save slots
