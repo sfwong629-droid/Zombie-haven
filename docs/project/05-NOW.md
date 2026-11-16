@@ -44,9 +44,9 @@ Bugs chat:
 - ~~W19. Bug A3 (the game froze).~~ Closed 16 Nov: it doesn't happen now.
 - ~~W21. Bug A4: does tapping people work?~~ Confirmed 16 Nov.
 - ~~W32. Bug A6: a "Copy save" button?~~ Owner said yes, 16 Nov; not needed, the game already has one (More → event log → Backup this town → Copy text).
-- W36. Bug A6 (Ben can't reach it): next time someone is stuck on "Couldn't reach it", open More → event log → Backup this town → Copy text, and paste it in the Bugs chat.
-- W34. Bug A2 (angry face flashing): play 3D.180 and say whether it still flashes. If it does: who, and what their status line says.
-- W35. Bug A7 (Stalker): say whether the Stalker looks right now, in the note and in play.
+- W36. Bug A6 (Ben can't reach it): next time someone is stuck on "Couldn't reach it", open More → event log → Backup this town → Copy text, and paste it in the Bugs chat. (Owner, 16 Nov: the Copy text route works. No backup of a stuck town has been sent yet.)
+- ~~W34. Bug A2: does the angry face still flash?~~ Owner, 16 Nov: not seen in 3D.180+.
+- ~~W35. Bug A7: does the Stalker look right?~~ Owner, 16 Nov: looks OK in the zombie test.
 - W7. Any other bugs they have seen.
 
 UI chat:
