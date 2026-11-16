@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.173', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.174', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1726,14 +1726,26 @@ const jobMiss = (j) => Object.fromEntries(Object.entries(j.need || {}).map(([k, 
 function newJob(o, cost) { const sum = Object.values(cost).reduce((a, v) => a + v, 0), dur = Math.round(Math.min(4800, 900 + sum * 45)); return Object.assign(o, { id: (S.jobSeq = (S.jobSeq || 0) + 1), need: { ...cost }, got: {}, inb: {}, cons: dur, dur, made: tick }); }
 /* 3D.172 round 3 (New player: a Garden Plot unbuilt for 6 days; Builder: a Medical Tent waited 5 days for cloth, no word): a site that has had
    nothing delivered for 6 game hours says why, once a day: a material you have none of, or nobody is carrying to it */
-/* 3D.172: a storage building whose door is walled off from the rest of the town (no gate in the fence round it) */
+/* 3D.172: a storage building whose door is walled off from the rest of the town. 3D.174 (round 4: "the Lodge's door is walled in" every night,
+   with no way to find the tile): the game opens it itself, turning the fewest wall sections between the door and the town into Gates */
+function storeReach(st, others) { const t0 = Wd.approachTile(st), seen = new Set([t0.x + ',' + t0.y]), q = [t0];
+  while (q.length && seen.size < 4000) { const c = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = nx + ',' + ny; if (!seen.has(k) && Wd.walkable(world, nx, ny, false)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
+  return { seen, reach: others.filter((t) => seen.has(t.x + ',' + t.y)).length }; }
+function gateOut(st, others, seen) {   /* 0-1 search from the door: open ground costs 0, a wall section 1; stop at the first doorstep the door cannot reach */
+  const t0 = Wd.approachTile(st), want = new Set(others.filter((t) => !seen.has(t.x + ',' + t.y)).map((t) => t.x + ',' + t.y)); if (!want.size) return [];
+  const dist = new Map([[t0.x + ',' + t0.y, 0]]), prev = new Map(), dq = [t0];
+  while (dq.length) { const c = dq.shift(), ck = c.x + ',' + c.y, cd = dist.get(ck); if (want.has(ck)) { const walls = []; let k = ck; while (k) { const [x, y] = k.split(',').map(Number), w = Wd.wallAt(world, x, y); if (w && w.type !== 'gate' && !w.broken) walls.push(w); k = prev.get(k); } return walls; }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, nk = nx + ',' + ny, w = Wd.wallAt(world, nx, ny), walk = Wd.walkable(world, nx, ny, false);
+      const step = walk ? 0 : (w && w.type !== 'gate' ? 1 : -1); if (step < 0) continue; const nd = cd + step; if (nd > 3 || (dist.has(nk) && dist.get(nk) <= nd)) continue; dist.set(nk, nd); prev.set(nk, ck); if (step) dq.push({ x: nx, y: ny }); else dq.unshift({ x: nx, y: ny }); } }
+  return []; }
 function storeBoxCheck() {
-  if (S.boxTold === S.day) return; const stores = world.buildings.filter((b) => DEFS[b.type] && (DEFS[b.type].fam === 'hq' || DEFS[b.type].fam === 'storage')); if (!stores.length) return;
-  const others = world.buildings.filter((b) => !stores.includes(b)).map((b) => Wd.approachTile(b)); if (others.length < 3) return;
-  for (const st of stores) { const t0 = Wd.approachTile(st), seen = new Set([t0.x + ',' + t0.y]), q = [t0];
-    while (q.length && seen.size < 4000) { const c = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = c.x + dx, ny = c.y + dy, k = nx + ',' + ny; if (!seen.has(k) && Wd.walkable(world, nx, ny, false)) { seen.add(k); q.push({ x: nx, y: ny }); } } }
-    const reach = others.filter((t) => seen.has(t.x + ',' + t.y)).length;
-    if (reach < others.length / 2) { S.boxTold = S.day; note('important', `🚪 The ${DEFS[st.type].name}'s door is walled in: only ${reach} of ${others.length} buildings can reach it. Put a Gate in the fence (Build → Defend → Gate, tap a wall section).`, { at: () => Wd.approachPoint(st) }); return; } } }
+  const stores = world.buildings.filter((b) => DEFS[b.type] && (DEFS[b.type].fam === 'hq' || DEFS[b.type].fam === 'storage')); if (!stores.length) return;
+  const others = world.buildings.filter((b) => !stores.includes(b)).map((b) => Wd.approachTile(b)).filter((t) => Wd.walkable(world, t.x, t.y, false)); if (others.length < 3) return;   /* a doorstep nobody can stand on does not count */
+  for (const st of stores) { let r = storeReach(st, others); if (r.reach >= others.length / 2) continue;
+    const made = []; for (let n = 0; n < 3 && r.reach < others.length / 2; n++) { const ws = gateOut(st, others, r.seen); if (!ws.length) break; for (const w of ws) { const old = Wd.WALL_DEFS[w.type].name; w.type = 'gate'; w.max = Math.max(w.max || 0, Wd.WALL_DEFS.gate.hp); w.hp = w.max; made.push(old); } Wd.bump(world); r = storeReach(st, others); }
+    if (made.length) { checkPerimeter(); saveGame(); note('important', `🚪 The ${DEFS[st.type].name}'s door was walled in: ${made.length} wall section${made.length > 1 ? 's' : ''} turned into ${made.length > 1 ? 'Gates' : 'a Gate'} so people can reach it.`, { at: () => Wd.approachPoint(st) }); }
+    else if (S.boxTold !== S.day) { S.boxTold = S.day; note('important', `🚪 The ${DEFS[st.type].name}'s door is walled in: only ${r.reach} of ${others.length} buildings can reach it. Something other than a wall blocks the way: move a building or clear the path.`, { at: () => Wd.approachPoint(st) }); }
+    return; } }
 function siteWaitCheck() {
   for (const x of jobList()) { const j = x.j, got = Object.values(j.got || {}).reduce((a, v) => a + v, 0) + Object.values(j.inb || {}).reduce((a, v) => a + v, 0);
     if (j.lastGot !== got) { j.lastGot = got; j.waitH = 0; continue; } j.waitH = (j.waitH || 0) + 1; if (j.waitH < 6 || j.toldDay === S.day) continue;
@@ -6897,7 +6909,7 @@ function simTick() { Wd.touch();
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick); }   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */
   if (tick % 60 === 40) helpTick();
-  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); siteWaitCheck(); if (S.hour % 3 === 0) storeBoxCheck(); advisorUpdate(); eventSchedule(); radioHour(); foundryHour(); facHour(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour === 20) nightStart(); if (S.hour === 6) morningCard(); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
+  if (tick % 1000 === 0) { S.hour++; if (S.mat > scrapCap()) { S.mat = scrapCap(); if (!S.capNote || S.day > S.capNote) { S.capNote = S.day; say('Scrap storage is full: build storage or level up the Haven to keep more.'); } } if (S.hour % 24 === 6) for (const q of S.sv) q.daysHere = (q.daysHere || 0) + 1; assignHomes(); housingTidy(); rpStarter(); weatherHour(); barkHour(); nodesTick(); powerTick(); hourlyProduction(); ecoHour(); shortageCheck(); siteWaitCheck(); storeBoxCheck(); advisorUpdate(); eventSchedule(); radioHour(); foundryHour(); facHour(); if (S.hour === 20 || S.hour === 6) { SFX(S.hour === 20 ? 'night' : 'dawn'); if (window.SND) SND.music(isNight()); } if (S.hour === 19) note('important', '🌙 NIGHT IN 1 HOUR — MORE ZOMBIES', { log: 'Night falls at 20:00: more zombies, and they come for the town.' }); if (S.hour === 20) note('important', '🌙 NIGHT FALLS — THE DEAD ARE RESTLESS', { log: 'Night falls: more zombies, and they come for the town.' }); if (S.hour === 6) note('routine', 'Dawn: fewer zombies until nightfall.'); if (S.hour === 20) nightStart(); if (S.hour === 6) morningCard(); if (S.hour >= 24) { S.hour = 0; S.day++; endOfDay(); } ui(); }
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
