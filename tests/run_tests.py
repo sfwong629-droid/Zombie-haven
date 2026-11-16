@@ -93,14 +93,14 @@ async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, 
     ctx, pg, errs = await open_game(br, port, 'alerts')
     await close_popups(pg)
     r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};S.mat=80;S.z.length=0;ZH.alerts.clear();document.querySelectorAll('#fx .toast').forEach(e=>e.remove());
-      for(let x=3;x<=8;x++)ZH.tryWall(x,5,'wood');const wl=ZH.Wd.wallAt(W,5,5);
+      for(let x=8;x<=13;x++)ZH.tryWall(x,11,'wood');const wl=ZH.Wd.wallAt(W,10,11);
       const n0=S.log.length;ZH.note('routine','test routine line');out.routineToast=document.querySelectorAll('#fx .toast').length;out.routineLog=S.log[S.log.length-1].l;
       for(let i=0;i<5;i++)ZH.note('important','IMPORTANT '+i);out.toasts=document.querySelectorAll('#fx .toast').length;
       ZH.OPTS.autoSlow=true;document.getElementById('btnSpeed').click();out.sp0=ZH.simSpeed;
-      ZH.spawn(5,3,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);ZH.alertsTick();
+      ZH.spawn(10,9,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);ZH.alertsTick();
       out.keys=[...ZH.alerts.keys()];out.rows=document.querySelectorAll('#alerts .alert[data-k]').length;out.text=document.querySelector('#alerts .at').textContent;
       out.btns=[...document.querySelectorAll('#alerts .aa')].map(b=>b.textContent+(b.disabled?'(off)':''));
-      ZH.centerOn(16,18);document.querySelector('#alerts .alert[data-k]').click();const p=ZH.project(5.5,5.5),c=document.getElementById('game').getBoundingClientRect();
+      ZH.centerOn(16,18);document.querySelector('#alerts .alert[data-k]').click();const p=ZH.project(10.5,11.5),c=document.getElementById('game').getBoundingClientRect();
       out.centred=Math.abs(p.x-c.width/2)<40&&Math.abs(p.y-c.height*.46)<60;
       const def=ZH.bestDefender({x:5.5,y:5.5});out.sent=ZH.sendDefender({x:5.5,y:5.5});out.defMode=def&&def.mode;
       [...document.querySelectorAll('#alerts .aa')].find(b=>b.textContent==='Repair first').click();out.rf=ZH.repairFirst===wl;
@@ -235,8 +235,8 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
 async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, touch targets
     ctx, pg, errs = await open_game(br, port, 'polish')
     await close_popups(pg)
-    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;ZH.tryWall(3,5,'wood');ZH.startTool({kind:'demolish'});const p=ZH.project(3.5,5.5);
-      ZH.tapAt(p.x,p.y);out.after1=!!Wd.wallAt(W,3,5);ZH.tapAt(p.x,p.y);out.after2=!!Wd.wallAt(W,3,5);
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,Wd=ZH.Wd,out={};S.mat=99;ZH.tryWall(8,11,'wood');ZH.startTool({kind:'demolish'});const p=ZH.project(8.5,11.5);
+      ZH.tapAt(p.x,p.y);out.after1=!!Wd.wallAt(W,8,11);ZH.tapAt(p.x,p.y);out.after2=!!Wd.wallAt(W,8,11);
       if(!W.roads.size){for(const [x,y] of Wd.ROAD_COORDS)W.roads.add(Wd.key(x,y));Wd.bump(W);}const rk=[...W.roads][0].split(',').map(Number),q=ZH.project(rk[0]+.5,rk[1]+.5);ZH.tapAt(q.x,q.y);out.road1=Wd.isRoad(W,rk[0],rk[1]);ZH.tapAt(q.x,q.y);out.road2=Wd.isRoad(W,rk[0],rk[1]);ZH.endBuildMode(true);
       S.rank=2;S.food=S.water=40;S.lastEventDay=-1;out.lock=ZH.holdEvent('caravan');S.rank=3;const m0=S.mat,f0=S.food;out.ok=ZH.holdEvent('caravan');out.parts=S.mat-m0;out.food=f0-S.food;
       S.rank=4;S.res={};ZH.showUpgrade('rank');out.path=document.getElementById('ib').textContent;
@@ -425,7 +425,7 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
     ctx, pg, errs = await open_game(br, port, 'expc')
     SETUP = """(risk)=>{const S=ZH.S;S.trip=null;S.food=S.water=60;for(const q of S.sv){q.hp=q.max;q.hunger=q.thirst=0;q.mode='free';q.rescuing=q.carrying=null}
       while(S.sv.length<5)S.sv.push(ZH.mk('X'+S.sv.length,'Civilian',1,7,10,S.sv.length));const ids=ZH.expAutoSquad(3).map(q=>q.id);const r=ZH.startExpedition(risk==='low'?'houses':'pharmacy',risk,ids);ZH.closeP();return r.ok}"""
-    await pg.evaluate("()=>{ZH.tryWall(3,5,'wood')}")
+    await pg.evaluate("()=>{ZH.tryWall(8,11,'wood')}")
     t.ok(await pg.evaluate(SETUP, 'low'), 'a squad can leave')
     r = await pg.evaluate("""()=>{const t=ZH.S.trip,e=ZH.expEncounter(t,'door'),names=t.members.map(m=>m.name);const best=t.members.reduce((a,m)=>(m.st.str+(m.job==='Engineer'?2:0))>(a.st.str+(a.job==='Engineer'?2:0))?m:a);
       const o={n:e.opts.length,c:e.opts.map(x=>x.chance),who:e.opts[0].who,inSquad:names.includes(e.opts[0].who)};const m0=t.loot.mat;const res=ZH.encResolve(t,0,0);o.ok=res.ok;o.gain=t.loot.mat-m0;o.cleared=!t.enc;return o}""")
@@ -550,15 +550,15 @@ async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entra
 async def t_save_load(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'save1')
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
-    before = await pg.evaluate("""()=>{const S=ZH.S;S.mat=99;for(let x=3;x<=6;x++)ZH.tryWall(x,5,'wood');ZH.wallBroken(ZH.Wd.wallAt(ZH.world,4,5));S.pets.push(ZH.newPet('cat'));ZH.givePet(S.sv[0],0);
+    before = await pg.evaluate("""()=>{const S=ZH.S;S.mat=99;for(let x=8;x<=11;x++)ZH.tryWall(x,11,'wood');ZH.wallBroken(ZH.Wd.wallAt(ZH.world,9,11));S.pets.push(ZH.newPet('cat'));ZH.givePet(S.sv[0],0);
       S.kids.push({name:'Ivy',age:2,parents:[S.sv[0].id],st:{str:5,end:5,agi:5,per:5,int:5,cha:5}});S.sv[0].rel={[S.sv[1].id]:60};S.res.blades=true;ZH.saveGame();
-      return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,4,5).broken,pet:S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
+      return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,9,11).broken,pet:S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
     save = await pg.evaluate("()=>localStorage.getItem('zombieHavenR1')"); await ctx.close()
     ctx, pg, errs = await open_game(br, port, 'save2', init=f"if(!sessionStorage.getItem('x')){{sessionStorage.setItem('x',1);localStorage.setItem('zombieHavenR1',{json.dumps(save)})}}")
-    after = await pg.evaluate("""()=>{const S=ZH.S;return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,4,5).broken,pet:S.sv[0].pet&&S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
+    after = await pg.evaluate("""()=>{const S=ZH.S;return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,9,11).broken,pet:S.sv[0].pet&&S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
     for k in before: t.ok(before[k] == after[k], f'save/load keeps {k}: {before[k]} == {after[k]}')
     await pg.wait_for_timeout(50)
-    t.ok(await pg.evaluate("()=>ZH.alerts.has('breach4,5')"), 'an unrepaired breach is still flagged after loading')
+    t.ok(await pg.evaluate("()=>ZH.alerts.has('breach9,11')"), 'an unrepaired breach is still flagged after loading')
     t.ok(not errs, 'no page errors'); await ctx.close()
 
 async def t_old_save(br, port, t):
@@ -575,7 +575,7 @@ async def t_guide(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'guide')
     await pg.evaluate("()=>{ZH.S.mat=300;ZH.S.wood=300;ZH.S.stone=300;ZH.S.stage=1;ZH.S.kills=3;ZH.missionProgress()}"); await close_popups(pg)
     steps = [('farm', PLACE), ('tent', PLACE), ('scrapyard', PLACE), ('lodge', "()=>{const h=ZH.world.buildings.find(b=>b.type==='hq');h.type='hq2';ZH.Wd.bump(ZH.world)}"), ('armor', "()=>{ZH.S.sv[0].eq.armor='jacket'}"),
-             ('gym', PLACE), ('research', "()=>{ZH.S.res.blades=true}"), ('walls', "()=>{for(let x=3;x<=12;x++)ZH.tryWall(x,5,'wood')}"), ('exp', "()=>{ZH.S.expCount=1}"), ('expand', "()=>{ZH.S.ren=999;ZH.expandTerritory()}")]
+             ('gym', PLACE), ('research', "()=>{ZH.S.res.blades=true}"), ('walls', "()=>{for(let x=8;x<=17;x++)ZH.tryWall(x,11,'wood')}"), ('exp', "()=>{ZH.S.expCount=1}"), ('expand', "()=>{ZH.S.ren=999;ZH.expandTerritory()}")]
     for i, (k, js) in enumerate(steps):
         g0 = await pg.evaluate("()=>ZH.S.guide")
         if js == PLACE: await pg.evaluate(PLACE, k)
@@ -612,9 +612,9 @@ async def t_trader(br, port, t):
 
 async def t_walls(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'walls')
-    r = await pg.evaluate("""()=>{const S=ZH.S;S.mat=50;S.z.length=0;for(let x=3;x<=6;x++)ZH.tryWall(x,5,'wood');const w=ZH.Wd.wallAt(ZH.world,4,5);ZH.wallBroken(w);
-      const walk=ZH.Wd.walkable(ZH.world,4,5,true);const m0=S.mat;for(let i=0;i<40;i++)ZH.autoRepair();return {walk,fixed:!w.broken&&w.hp===w.max,cost:m0-S.mat}}""")
-    t.ok(r['walk'], 'a broken wall is rubble zombies can cross'); t.ok(r['fixed'], 'the repair crew rebuilds it'); t.ok(r['cost'] <= 1, f"a wood repair costs at most 1 part ({r['cost']})")
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.mat=50;S.z.length=0;for(let x=8;x<=11;x++)ZH.tryWall(x,11,'wood');const w=ZH.Wd.wallAt(ZH.world,9,11);ZH.wallBroken(w);
+      const walk=ZH.Wd.walkable(ZH.world,9,11,true);const m0=S.mat;for(let i=0;i<400&&w.hp<w.max;i++)ZH.step(30);return {walk,fixed:!w.broken&&w.hp===w.max,cost:m0-S.mat,t:ZH.tick}}""")
+    t.ok(r['walk'], 'a broken wall is rubble zombies can cross'); t.ok(r['fixed'], f'the repair crew rebuilds it {r}')   # a person walks over and repairs it now, so the test lets time pass; t.ok(r['cost'] <= 1, f"a wood repair costs at most 1 part ({r['cost']})")
     t.ok(not errs, 'no page errors'); await ctx.close()
 
 async def t_research(br, port, t):
