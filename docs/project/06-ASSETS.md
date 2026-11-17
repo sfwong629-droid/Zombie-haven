@@ -53,7 +53,7 @@ All 24 are **in game**. They are the owner's models; the current set went in wit
 
 The owner sent `Gatling_Boss.glb`, `Butcher.glb` and `Bloated_Queen.glb` again on 17 Nov: they are the same raw models these three were made from, so nothing was rigged again. All five bosses have a card on the Zombie test page since 3D.185.
 
-Sizes in the game (3D.185, owner): the Walker is drawn the same height as a survivor, the Lasher 1.6 times its model (chest at the top of a survivor's head), the Leaper 1.2 times.
+Sizes in the game (3D.185, owner): the Walker is drawn the same height as a survivor, the Lasher 1.6 times its model (chest at the top of a survivor's head), the Leaper 1.2 times. Since 3D.188 the Bloater Queen is drawn at 1.55 and the Butcher at 1.4 (owner: a bit smaller).
 
 ### New zombie models: on the Zombie test page only (3D.182, 16 Nov)
 Eleven models the owner delivered on 16 Nov. They are rigged, in `assets/characters/ai3d_v2/` and loaded by the game, but **only the Zombie test page shows them** (title screen → Zombie test, or `?zoo=1`). No zombie in a real game wears them yet. Each will be a **new kind of zombie** with its own name, strength and trick (owner, 16 Nov); the tricks are not decided (W48 in `05-NOW.md`, Planning chat). On the test page each stands in as a Walker (the Stag as a Dog) wearing the new model. Since 3D.183 the test page shows one zombie at a time, turning, with Stand / Walk / Run / Attack played on the spot and (3D.184) a survivor beside it for size. None carries a weapon.

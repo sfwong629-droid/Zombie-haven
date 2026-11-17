@@ -121,7 +121,7 @@ function zooStart() {
   $('zooAll').onclick = () => { if (zooOne) zooAll(); else zooShow('walker'); };
   $('zooGo').onclick = () => { zooRef(); for (const z of S.z) { z.zoo = false; z.zooOut = true; z.show = null; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } $('zooInfo').innerHTML = 'Loose: heading for the town. Tap a card or "Show all" to bring them back.'; };
   zooShow('walker');
-  setInterval(() => { if (S.z.some((z) => !z.zoo && !z.zooOut)) S.z = S.z.filter((z) => z.zoo || z.zooOut || !(z.escaped = true)); }, 400);   /* the game's own zombies (the day's roamers) stay off the test page */
+  const clean = () => { if (S.z.some((z) => !z.zoo && !z.zooOut)) S.z = S.z.filter((z) => z.zoo || z.zooOut || !(z.escaped = true)); requestAnimationFrame(clean); }; clean();   /* 3D.188 every frame (was every 0.4 s), so a roamer is gone before it is drawn */   /* the game's own zombies (the day's roamers) stay off the test page */
 }
 /* ---------------- V2.40 title screen and save slots (the DV2-style start flow, original look) ---------------- */
 function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }

@@ -304,9 +304,9 @@ const zombieTypes = {
 /* V3D.17 boss kinds: the name, look and feel change with the kind (look = the zombie skin it is drawn with) */
 const BOSS_KINDS = {
   mutant:  { name: 'Mutant Zombie', look: 'boss', sc: 1.6, hp: 1, spd: 1, atk: 1, line: 'A Mutant Zombie has appeared!' },
-  bloater: { name: 'Bloater Queen', look: 'bloated', sc: 1.75, hp: 1.25, spd: .8, atk: .9, line: 'A Bloater Queen has appeared!' },
+  bloater: { name: 'Bloater Queen', look: 'bloated', sc: 1.55,   /* 3D.188 owner: a bit smaller (was 1.75) */ hp: 1.25, spd: .8, atk: .9, line: 'A Bloater Queen has appeared!' },
   stalker: { name: 'Stalker', look: 'stalker',   /* 3D.80 own model; 3D.86 owner: at least 1.5x a survivor */ sc: 1.5,   /* 3D.93 owner: slower all round */ hp: .7, spd: 1.6, atk: 1.1, run: true, line: 'A Stalker has appeared!' },
-  butcher: { name: 'Butcher', look: 'brute', sc: 1.55, hp: 1.1, spd: 1, atk: 1.25, line: 'The Butcher has appeared!' },
+  butcher: { name: 'Butcher', look: 'brute', sc: 1.4,   /* 3D.188 owner: a bit smaller (was 1.55) */ hp: 1.1, spd: 1, atk: 1.25, line: 'The Butcher has appeared!' },
   gatling: { name: 'Gatling Boss', look: 'boss', sc: 1.6, hp: 1.2, spd: .85, atk: 1.2, line: 'The Gatling Boss has appeared!' },   /* 3D.143 owner: he is a zombie, not a Toll King */
 };
 const bossDefs = {};

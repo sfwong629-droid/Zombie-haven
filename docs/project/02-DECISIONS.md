@@ -137,6 +137,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Art chat): The Zombie test page shows one zombie at a time, turning, and plays Stand / Walk / Run / Attack on the spot, so it can be followed. Built in 3D.183.
 - 16 Nov (Art chat): On the Zombie test page a survivor stands next to the zombie for size. Built in 3D.184.
 - 17 Nov (Art chat): Zombie sizes, measured against a survivor: the Walker is the same height as a survivor; the Lasher is big, with its chest where the top of a survivor's head is; the Leaper is taller than a survivor. Built in 3D.185 (these are the sizes in the real game too, not only on the test page).
+- 17 Nov (Art chat): The Butcher and the Bloater Queen are a bit smaller: about a tenth. Built in 3D.188.
 - 17 Nov (Art chat): The Crawler has no legs. Built in 3D.185: the legs of both Crawler models are cut off a little below the hip.
 - 17 Nov (Art chat): Models the game already has are not rigged again when the owner sends them a second time (the Gatling Boss, Butcher and Bloater Queen files of 17 Nov were the ones already in the game).
 
