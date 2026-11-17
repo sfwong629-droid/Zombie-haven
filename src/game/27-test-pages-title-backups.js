@@ -1,5 +1,5 @@
 /* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
-   Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
+   Since 3D.183 it shows one at a time (tap a card) with Stand / Walk / Run / Attack played on the spot; "Show all" is the line-up. Nothing is saved. */
 const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
 /* 3D.182 the owner's 11 new models (16 Nov): looks only. Each stands in as a Walker (the Stag as a Dog) wearing the new model (z.mk); what they do in the game is not decided. */
 const ZOO_NEW = [['digger', 'Digger'], ['lineman', 'Lineman'], ['splitter', 'Splitter'], ['stag', 'Stag'], ['bilespewer', 'Bile Spewer'], ['hazmat', 'Hazmat'], ['leaper', 'Leaper'], ['listener', 'Listener'], ['nurse', 'Nurse'], ['soldier_m', 'Soldier'], ['soldier_f', 'Soldier (f)']];
@@ -67,16 +67,49 @@ function gearStart() {
   $('gmGo').onclick = () => { for (const q of S.sv) if (q.dummy) { q.go = true; q.mode = 'free'; q.stateTicks = 0; } const n = S.z.filter((z) => z.zoo).length; for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } if (!n) for (let i = 0; i < 4; i++) { const q = S.sv[Math.floor(rnd() * S.sv.length)]; if (q) spawn(q.w.x + 3 + i * .6, q.w.y + 3, 'walker'); } $('gearInfo').innerHTML = 'The Walkers are loose and the dummies fight back. Tap again for four more Walkers.'; };
   gearLine(); const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady && ZH3D.armorsReady()) { clearInterval(wait); gearLine(); } }, 400);   /* line up again once every model is in, so the 3D tags and order are right */
 }
+/* 3D.183 owner: "too many of them in that map and when I let them attack, I can't follow them". The page now shows ONE zombie at a time, big,
+   turning on the spot, and four buttons play it standing, walking, running or attacking in place (z.show; js/render3d.js draws it and the
+   simulation still sees a frozen 'zoo' zombie). "Show all" brings the old line-up back; the buttons then work on every zombie in it. */
+let zooOne = null, zooAct = 'stand', zooTurn = true;
+const ZOO_RUNS = (t) => ['runner', 'dog', 'stag', 'lasher', 'stalker'].includes(t);   /* the kinds that run in the game */
+const zooIs = (q, t) => ZOO_NEW.some(([mk]) => mk === t) ? q.mk === t : !q.mk && (t === 'boss' ? q.type === 'boss' && !q.bk : q.type === t || q.bk === t);
+const zooName = (t) => { const n = ZOO_NEW.find(([mk]) => mk === t); return n ? n[1] : t === 'stalker' ? 'Stalker (boss)' : (zombieTypes[t] && zombieTypes[t].name) || 'Mutant Boss'; };
+function zooApply() {   /* hand the chosen action to every zombie on show, and light the buttons */
+  for (const z of S.z) if (z.zoo) z.show = { act: zooAct, turn: zooTurn, yaw: z.show ? z.show.yaw : null };
+  const d = $('zooPanel'); if (!d) return;
+  d.querySelectorAll('.zact .act[data-a]').forEach((b) => b.classList.toggle('on', b.dataset.a === zooAct)); $('zooTurn').classList.toggle('on', zooTurn); $('zooTurn').textContent = zooTurn ? 'Turning' : 'Turn';
+  d.querySelectorAll('.zc').forEach((b) => b.classList.toggle('on', b.dataset.t === zooOne)); $('zooAll').textContent = zooOne ? 'Show all' : 'One at a time'; $('zooGo').textContent = zooOne ? 'Send it to town' : 'Let them attack';
+}
+function zooInfo(t) {
+  const isNew = ZOO_NEW.some(([mk]) => mk === t), def = zombieTypes[t] || (t === 'stalker' ? { hp: 182, atk: 15, chase: .009, desc: BOSS_KINDS.stalker.line } : null);
+  const what = isNew ? `new model, looks only<br>${t === 'stag' ? 'Moves like a Dog for now.' : 'Moves like a Walker for now.'} What it does in the game is not decided.`
+    : `HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`;
+  $('zooInfo').innerHTML = `<b>${esc(zooName(t))}</b> · ${what}${zooAct === 'run' && !ZOO_RUNS(t) ? '<br>This kind never runs in the game, so it keeps walking.' : ''}`;
+}
+function zooShow(t) {   /* one zombie alone, in the open, close up */
+  for (const q of S.z) q.escaped = true;   /* the one before leaves at once, with no death fall */
+  zooOne = t; zooLine(); let z = S.z.find((q) => zooIs(q, t)); S.z = [];
+  if (!z && zombieTypes[t]) { spawn(0, 0, t); z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; }   /* a kind the line-up has no room for (the Thrower) */
+  S.z = z ? [z] : [];
+  const S0 = 11 - 2 * 2.1, x = (S0 - 3) / 2 + OFF, y = (S0 + 3) / 2 + OFF; if (z) { z.w = tc(x, y); if (z.home) z.home = tc(x, y); }   /* open ground north of the town, away from the fence */
+  for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 3 && Math.abs(ty - y) < 3) { const n = treeNode(tx, ty); if (n.left) { n.left = 0; n.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }
+  centerOn(x + .5, y + .5, ZOOM_MAX); cam.y -= VH * .15; clampCam(); zooApply(); zooInfo(t);   /* the panel covers the lower half: the zombie stands in the upper one */
+}
+function zooAll() { for (const q of S.z) q.escaped = true; zooOne = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); zooApply(); $('zooInfo').innerHTML = 'Everyone lined up. The buttons work on all of them at once. Tap a card to see one alone.'; }
 function zooStart() {
-  S.mission = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;
+  S.mission = null; simSpeed = 1;
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
   const card = (t) => { const z = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, isNew: 1 } : { name: 'Mutant Boss' }); return `<button class="zc" data-t="${t}"><b>${esc(z.name || t)}</b>${z.isNew ? '<i>NEW</i>' : ''}<small>HP ${z.hp || 260} · ATK ${z.atk || 14}</small></button>`; };
-  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to look closer</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zh"><b>New models</b><span class="sm">${ZOO_NEW.length} · looks only, no behaviour yet</span></div><div class="zrow">${ZOO_NEW.map(([mk, name]) => `<button class="zc" data-t="${mk}" data-new="${esc(name)}"><b>${esc(name)}</b><i>NEW</i><small>model only</small></button>`).join('')}</div><div class="zinfo" id="zooInfo">Top two rows: the new zombies from the story plan (NEW). Bottom rows: the ones in the game today.</div><div class="zbtns"><button class="act" id="zooExit">Exit</button><button class="act" id="zooReset">Line up again</button><button class="act go" id="zooGo">Let them attack</button></div>`;
+  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to see it alone</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zh"><b>New models</b><span class="sm">${ZOO_NEW.length} · looks only, no behaviour yet</span></div><div class="zrow">${ZOO_NEW.map(([mk, name]) => `<button class="zc" data-t="${mk}"><b>${esc(name)}</b><i>NEW</i><small>model only</small></button>`).join('')}</div><div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" data-a="stand">Stand</button><button class="act" data-a="walk">Walk</button><button class="act" data-a="run">Run</button><button class="act" data-a="attack">Attack</button><button class="act" id="zooTurn">Turning</button></div><div class="zbtns" style="margin-top:8px"><button class="act" id="zooExit">Exit</button><button class="act" id="zooAll">Show all</button><button class="act go" id="zooGo">Send it to town</button></div>`;
   $('world').appendChild(d);
-  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { if (b.dataset.new) { const q = S.z.find((k) => k.mk === b.dataset.t && k.hp > 0); if (q) centerOn(q.w.x, q.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc(b.dataset.new)}</b> · new model, looks only<br>${b.dataset.t === 'stag' ? 'Moves like a Dog for now.' : 'Moves like a Walker for now.'} What it does in the game is not decided.`; return; }   /* 3D.182 */ const t = b.dataset.t, z = S.z.find((q) => (q.type === t || q.bk === t) && !q.mk && q.hp > 0), def = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, desc: BOSS_KINDS.stalker.line } : null); if (z) centerOn(z.w.x, z.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc((def && def.name) || 'Mutant Boss')}</b> · HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`; }; });
+  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => zooShow(b.dataset.t); });
+  d.querySelectorAll('.zact .act[data-a]').forEach((b) => { b.onclick = () => { zooAct = b.dataset.a; zooApply(); if (zooOne) zooInfo(zooOne); }; });
+  $('zooTurn').onclick = () => { zooTurn = !zooTurn; zooApply(); };
   $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('zoo'); location.search = q.toString(); };
-  $('zooReset').onclick = () => { zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); };
-  $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } };
+  $('zooAll').onclick = () => { if (zooOne) zooAll(); else zooShow('walker'); };
+  $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.zooOut = true; z.show = null; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } $('zooInfo').innerHTML = 'Loose: heading for the town. Tap a card or "Show all" to bring them back.'; };
+  zooShow('walker');
+  setInterval(() => { if (S.z.some((z) => !z.zoo && !z.zooOut)) S.z = S.z.filter((z) => z.zoo || z.zooOut || !(z.escaped = true)); }, 400);   /* the game's own zombies (the day's roamers) stay off the test page */
 }
 /* ---------------- V2.40 title screen and save slots (the DV2-style start flow, original look) ---------------- */
 function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }

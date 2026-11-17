@@ -1,10 +1,12 @@
 // tools/qa/new_zombies_check.js [shot.png] — 3D.182: the 11 new zombie models on the Zombie test page (?zoo).
-// Each must be lined up (one zombie with z.mk = its key), its model file must load, and the figure on screen must be
+// Each must be in the line-up ("Show all": one zombie with z.mk = its key), its model file must load, and the figure on screen must be
 // that model and not a stand-in. Also fails if the page throws an error. Exit 0 ok, 1 a model is missing or wrong.
 const Q = require('./lib');
 const KEYS = ['digger', 'lineman', 'splitter', 'stag', 'bilespewer', 'hazmat', 'leaper', 'listener', 'nurse', 'soldier_m', 'soldier_f'];
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 });
-  await p.goto(Q.BASE + '/index.html?3d=1&zoo=1'); await p.waitForFunction(() => window.ZH3D && window.ZH && ZH.S && ZH.S.z && ZH.S.z.some((z) => z.mk), null, { timeout: 200000 });
+  await p.goto(Q.BASE + '/index.html?3d=1&zoo=1'); await p.waitForFunction(() => window.ZH3D && window.ZH && ZH.S && ZH.S.z && ZH.S.z.length && document.getElementById('zooAll'), null, { timeout: 200000 });
+  await p.evaluate(() => document.getElementById('zooAll').click());   /* 3D.183 the page opens on one zombie: ask for the whole line-up */
+  await p.waitForFunction(() => ZH.S.z.some((z) => z.mk), null, { timeout: 60000 });
   for (let i = 0; i < 90; i++) { if (await p.evaluate((K) => K.every((k) => ZH3D.zReady(k) || ZH3D.zFail(k)), KEYS)) break; await p.waitForTimeout(1000); }
   await p.waitForTimeout(4000);
   const r = await p.evaluate((K) => K.map((k) => { const z = ZH.S.z.filter((q) => q.mk === k); return { k, lined: z.length, ready: ZH3D.zReady(k), fail: ZH3D.zFail(k), worn: z.length && ZH3D.zWorn ? ZH3D.zWorn(z[0]) : null }; }), KEYS);

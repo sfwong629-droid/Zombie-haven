@@ -1,13 +1,13 @@
 # Zombie Haven: assets
 
-Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (first written at commit 1c4ec0f, build 3D.181; updated for 3D.182) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
+Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (first written at commit 1c4ec0f, build 3D.181; updated for 3D.183) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
 
 **In game** = the game loads it and shows or plays it. **Loaded, not shown** = the game downloads it but never puts it on screen. **Waiting** = made, not used yet. **Archive** = left over from an older look; nothing loads it.
 
 Update this page whenever a file is added to or removed from `assets/`.
 
 ## Summary
-- 3,397 files, 312 MB. About 3,000 of them (roughly 205 MB) are archive: the old 2D sprite frames, test pages and mock-ups.
+- 321 files, 116 MB. (It was 3,397 files and 312 MB until the left-over 2D sprite frames, test pages and mock-ups were deleted on 16 Nov: section 9.)
 - In game: 2 survivor models, 24 zombie models (plus 11 new ones that so far appear only on the Zombie test page), 27 fitted armour sets (20 items the player can wear, 6 faction kits, and the Riot Vest which is both), 24 weapon models in one file, 212 sound files, 11 font files.
 - Waiting: the 11 new zombie models from 16 Nov are rigged and in `assets/`, but no zombie in a real game wears them yet (section 2). 14 armour items are in the game with no model of their own (section 4).
 - Most art is not in `assets/` at all: buildings, walls, props, hats, accessories and every icon are drawn by code (section 9).
@@ -52,7 +52,7 @@ All 24 are **in game**. They are the owner's models; the current set went in wit
 | Boss: Gatling Boss | `zombie_gatling.glb` | the one zombie with a weapon (owner, 16 Nov) |
 
 ### New zombie models: on the Zombie test page only (3D.182, 16 Nov)
-Eleven models the owner delivered on 16 Nov. They are rigged, in `assets/characters/ai3d_v2/` and loaded by the game, but **only the Zombie test page shows them** (title screen → Zombie test, or `?zoo=1`). No zombie in a real game wears them: what each one does is not decided (W46 in `05-NOW.md`). On the test page each stands in as a Walker (the Stag as a Dog) wearing the new model. None carries a weapon.
+Eleven models the owner delivered on 16 Nov. They are rigged, in `assets/characters/ai3d_v2/` and loaded by the game, but **only the Zombie test page shows them** (title screen → Zombie test, or `?zoo=1`). No zombie in a real game wears them yet. Each will be a **new kind of zombie** with its own name, strength and trick (owner, 16 Nov); the tricks are not decided (W48 in `05-NOW.md`, Planning chat). On the test page each stands in as a Walker (the Stag as a Dog) wearing the new model. Since 3D.183 the test page shows one zombie at a time, turning, with Stand / Walk / Run / Attack played on the spot. None carries a weapon.
 
 Made from the owner's raw Tripo models (one unrigged mesh of 0.7 to 1.1 million triangles each; on the owner's PC, not in the repo) by `tools/art/b3d/kit/zombie.sh` (two-legged) and `tools/art/b3d/ai_stag.py` (the Stag). Each is 20,000 triangles with the same skeleton and 35 animations as the other zombies; the Stag is 16,000 triangles on the Dog's four-legged skeleton with 5 animations, drawn 1.2 times its delivered size.
 
@@ -146,9 +146,6 @@ Four weapons use the models built into the survivor file instead: Baseball Bat, 
 |---|---|---|---|
 | `assets/buildings/ai3d/house/house_realtime.glb` | The old House | Loaded, not shown in a new town: the House is an old building type that can't be built any more (Housing replaced it); it only appears in a save that still has one | Hunyuan3D from `house/source/house_chatgpt.png` (ChatGPT drawing) → `tools/art/b3d/export_prop3d.py` |
 | `assets/buildings/ai3d/medic/medical_tent_realtime.glb` | Old Medical Tent model | Loaded, not shown: retired in 3D.41, the tent is drawn by code now | Hunyuan3D from `medic/source/medical_tent_ref.png` → `medic/source/medical_tent.glb` → `export_prop3d.py` |
-| `assets/buildings/ai3d/medic/rot*_f*.png` (32) + `anchor.json` | Old 2D pictures of the tent, four turns | Archive | rendered from the tent model |
-| `assets/buildings/ai3d/medic/source/style_options.png` | Style picker sheet | Archive | ChatGPT |
-| `assets/town3d/` (3 files) | The first 3D town test page | Archive | `tools/art/b3d/build_town3d.py` |
 
 Every building the player can build, the walls, gates, fences, trees, rocks, wrecks, carts and vehicles are built from simple shapes in `js/render3d.js`. There are no building kits in `assets/`; the faction camps reuse the same code-built buildings.
 
@@ -177,16 +174,20 @@ Every other sound effect (hits, alerts, the radio noise, zombie sounds) is made 
 
 Fonts (`assets/fonts/`, 11 files, all loaded by `index.html` or `css/glass.css`): Manrope 600 / 800, Nunito 700 / 800, Fredoka 500 / 600, Lilita One, Bangers, Comic Neue regular / bold, Jersey 15. All under the Open Font Licence (the four `*-OFL.txt` files).
 
-## 9. Archive (nothing loads these)
-| Folder | Files | What |
+## 9. Archive: deleted 16 Nov
+The owner said to delete the left-overs (W44). Removed from the branch in the 3D.183 commit: 3,076 files, 196 MB. They are still in the git history (last present in commit f9cffde), so they can be brought back.
+
+| Was | Files | What |
 |---|---|---|
 | `assets/characters/ai3d_male/full150`, `armor150` | 1,456 | 2D sprite frames of the old man, from before the game went 3D |
-| `assets/characters/ai3d_farmer/` | 1,474 | The first AI-model test (the Farmer): sprite frames, pixel versions, the Blender file, two test pages |
-| `assets/characters/ai3d_male/*.html` | 2 | Old survivor and equipment test pages (13 MB each) |
+| `assets/characters/ai3d_farmer/` | 1,474 | The first AI-model test (the Farmer): sprite frames, pixel versions, its Blender file, two test pages |
+| `assets/characters/ai3d_male/*.html` | 2 | Old survivor and equipment test pages |
 | `assets/characters/b3d/`, `ink3d/` | 43 | Early Blender-made characters and the ink-style walk test |
-| `assets/mockups/` | 64 | Style and look pictures from the art direction rounds (toy, storybook, ink, comic, low-poly…) |
+| `assets/mockups/` | 64 | Style and look pictures from the art direction rounds |
+| `assets/buildings/ai3d/medic/rot*_f*.png`, `anchor.json`, `source/style_options.png` | 34 | Old 2D pictures of the Medical Tent and its style picker sheet |
+| `assets/town3d/` | 3 | The first 3D town test page |
 
-The 2D renderer was removed in 3D.129, so none of this is needed to run the game. Together with the old tent pictures and the town test page it is about 205 MB of the 301 MB. Deleting it is the owner's call (W44 in `05-NOW.md`).
+Kept, though the game does not show them: the old survivor models and `male_rig.blend` (section 1), the old House and Medical Tent models (section 6) and the old pixel icon sheets (section 7).
 
 ## 10. Things the code asks for that are not there
 Neither breaks the game, because the code falls back quietly. Tidying them up belongs in the Bugs or Code clean-up chat.

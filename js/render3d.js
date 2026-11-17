@@ -1556,6 +1556,18 @@ function syncPeople(dt, vis) {
     a.show(true); a.place(T.w.x, T.w.y, null, dt); a.play(T.moving ? 'walk' : 'idle'); tickMixer(a, dt, vis); }
   for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
 }
+/* 3D.183 Zombie test page: a zombie with z.show = { act: 'stand' | 'walk' | 'run' | 'attack', turn, yaw } plays that on the spot. The simulation still
+   sees a frozen zombie (mode 'zoo'); only the figure moves. Walk, run and attack go through zombieAnim, so each kind shows the clips it uses in the game. */
+const SHOW_YAW = Math.PI * .25;   /* facing the camera */
+function zombieShow(a, z) {
+  const act = z.show.act || 'stand';
+  if (act === 'attack') { zombieAnim(a, Object.assign(Object.create(z), { mode: 'zattack', moving: false, turned: false })); return; }
+  a.attacking = false;
+  if (act === 'stand' && !(a.src && a.src.crawl) && !a.dog) { const h = z.type === 'raider' ? (z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold_idle' : 'melee_hold_idle') : 'idle'; if (a.acts && a.acts[h]) { a.play(h); return; } }
+  a.spd = act === 'run' ? 2 : act === 'walk' ? .3 : 0; a.movT = act === 'stand' ? 9 : 0;
+  zombieAnim(a, Object.assign(Object.create(z), { mode: 'zchase', moving: act !== 'stand', turned: false }));
+  if (act !== 'stand') { const st = strideOf(a); if (st) a.spd = st * (/run/.test(a.name) ? 1 / .85 : 1); }   /* tickMixer then plays the steps at their natural speed */
+}
 function zombieAnim(a, z) {
   if (z.fuseT > 0) { if (a.acts && a.acts.rot_swell && a.name !== 'rot_swell') a.play('rot_swell', true, true); return; }   /* 3D.85 */
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
@@ -1592,7 +1604,8 @@ function syncZombies(dt, vis) {
     }
     const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
     const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
-    a.place(z.w.x, z.w.y, tgt, dt, z.type === 'raider' ? 1 : a.big || z.big || (a.dogM ? 1 : bk && a.bossOwn ? bk.sc : ZSC[z.type] || 1)); zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
+    if (z.show) { const sh = z.show; if (sh.yaw == null) sh.yaw = SHOW_YAW; if (sh.turn) sh.yaw += dt * .8; a.yaw = sh.yaw; }   /* 3D.183 Zombie test: turning on the spot (a full turn in 8 s) */
+    a.place(z.w.x, z.w.y, tgt, dt, z.type === 'raider' ? 1 : a.big || z.big || (a.dogM ? 1 : bk && a.bossOwn ? bk.sc : ZSC[z.type] || 1)); if (z.show) zombieShow(a, z); else zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
   }
   for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
   for (const c of G.corpses) c.__3d = true;
@@ -2200,7 +2213,7 @@ const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
 /* 3D.178 bug A5: the "New: Raiders" note showed a walker. A raider is a person: drawn in the Toll Kings' kit (red bandana, black vest; owner's pick, 16 Nov) with a bat, from the same angle as the zombie pictures. Until the kit model has loaded, the plain drifter the game draws for a raider with no faction. */
 const raiderIso = () => { const kit = !!ARMOR3D.toll, o = { key: kit ? 'riso_toll' : 'riso', t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 }; return kit ? snapActor({ job: 'Raider', eq: { weapon: 'bat', armor: 'toll' } }, o) : snapActor({ job: 'Raider', eq: { weapon: 'bat' } }, { ...o, plain: 1 }); };
-window.ZH3D = { raiderIso, isFem: (q) => isFemale(q), clipNames: () => MALE.animations.map((c) => c.name), dbgBones: () => [MALE, FEMALE3D].map((m) => m && m.body && m.body.skeleton.bones.map((b) => b.name).join(',')), armor3d: (id) => !!ARMOR3D[id], armorsReady: () => ARMOR3D_DONE || !CHAR_V2, wModel: (id) => WMODEL[id] || null, pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zWorn: (z) => { const a = zeds.get(z); return a && a.src ? a.src.zkey || null : null; },   /* 3D.182 test hook: the model file a zombie is wearing */ zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { raiderIso, isFem: (q) => isFemale(q), clipNames: () => MALE.animations.map((c) => c.name), dbgBones: () => [MALE, FEMALE3D].map((m) => m && m.body && m.body.skeleton.bones.map((b) => b.name).join(',')), armor3d: (id) => !!ARMOR3D[id], armorsReady: () => ARMOR3D_DONE || !CHAR_V2, wModel: (id) => WMODEL[id] || null, pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zWorn: (z) => { const a = zeds.get(z); return a && a.src ? a.src.zkey || null : null; }, zClip: (z) => { const a = zeds.get(z); return a ? { clip: a.name, yaw: a.yaw, x: a.o.position.x, z: a.o.position.z, rate: a.cur ? a.cur.timeScale : 0 } : null; },   /* 3D.183 test hook */   /* 3D.182 test hook: the model file a zombie is wearing */ zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';

@@ -70,10 +70,12 @@ Code clean-up chat:
 
 Art chat:
 - ~~W43. Batch 5 armour: which five?~~ Decided 16 Nov: Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor, SWAT Armor. **Next (Claude):** the five three-view sheets, each shown whole to the owner before it is split for Tripo.
-- W44. `assets/` holds about 205 MB of files nothing loads. They are left-overs from before the game went 3D: about 2,900 small pictures of the old 2D survivor (every animation frame, in every direction), four old test pages, and 64 style pictures from when the look was being chosen (`06-ASSETS.md`, section 9). The game never opens them. Delete them from the branch, or keep them? (They stay in the git history either way, so they can be brought back.)
+- ~~W44. Delete the left-over files in `assets/`?~~ Decided 16 Nov: delete. Done with 3D.183 (3,076 files, 196 MB; still in the git history).
 - ~~W45. Paint the five soft armours in code?~~ Decided 16 Nov: no, they will be built in Tripo later.
-- W46. The eleven new zombie models (16 Nov). ~~Step 1~~ done in 3D.182: all eleven are rigged and stand on the Zombie test page, looks only. Still to decide, for each one: is it a **new kind of zombie** (its own name, strength and trick, like the Spitter or the Screamer), or just **another look for a kind the game already has** (as Walkers already come as a man and a woman)? Example: the Nurse could simply be a third Walker look; the Leaper could be a new kind that jumps walls. The tricks themselves are for the Planning chat.
-- W47. Look at the eleven on the Zombie test page (title screen → Zombie test; they are the three rows at the back, and the "New models" cards fly to each one): does any of them look wrong standing, walking or attacking ("Let them attack")?
+- ~~W46. The eleven new zombie models: new kinds, or new looks?~~ Decided 16 Nov: all eleven are new kinds of zombie. Step 1 (rigged, on the Zombie test page) was done in 3D.182. What each one does: W48.
+- ~~W47. Do the eleven look right on the Zombie test page?~~ Owner, 16 Nov: OK for now.
+- W48. **For the Planning chat:** the eleven new kinds of zombie (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female) each need a trick, a strength and a day they first appear. Until then they only stand on the Zombie test page. They are built in the Features chat once decided.
+- W49. The new Zombie test page (3D.183): one zombie at a time, turning, with Stand / Walk / Run / Attack on the spot. Is it easy to follow now, and is the zombie big enough?
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).

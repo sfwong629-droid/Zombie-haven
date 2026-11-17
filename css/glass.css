@@ -225,6 +225,7 @@ html.glass body:has(#infoPanel.show) .expBar { display: none; }
 .zooPanel .zinfo { font-size: 12px; font-weight: 600; color: #E6ECF2; line-height: 1.35; margin: 4px 2px 8px; min-height: 32px; }
 .zooPanel .zbtns { display: flex; gap: 8px; } .zooPanel .zbtns .act { flex: 1; min-height: 40px; font-size: 14px; }
 .zooPanel #zooExit { flex: 0 0 auto; padding: 0 14px; }
+.zooPanel .zc.on { background: rgba(198,255,77,.2); border-color: #C6FF4D; } .zooPanel .zact .act { min-height: 44px; font-size: 13px; padding: 0 4px; } .zooPanel .zact .act.on { background: #C6FF4D; color: #14200A; }   /* 3D.183 the zombie on show and the action being played */
 /* 3D.36 brute slam: a short screen shake */
 .zhShake { animation: zhShake .22s ease-out; }
 @keyframes zhShake { 20%, 80% { transform: translate(-1px, 0); } 40% { transform: translate(2px, -1px); } 60% { transform: translate(-2px, 1px); } }

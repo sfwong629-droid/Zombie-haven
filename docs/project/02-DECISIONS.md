@@ -108,6 +108,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Art chat): Armour Batch 5 is Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor and SWAT Armor.
 - 16 Nov (Art chat): The soft armours with no model (Work Jacket, Leather Jacket, Biker Leathers, Hoodie, Raincoat) will be built in Tripo later; they are not painted on in code.
 - 16 Nov (Art chat): New zombie models go in as looks first: rigged and shown on the Zombie test page with no new behaviour. What each one does is decided afterwards. (The 11 models of 16 Nov: built in 3D.182.)
+- 16 Nov (Art chat): All eleven new zombie models are **new kinds of zombie** (each with its own name, strength and trick), not new looks for kinds the game already has. The tricks are decided in the Planning chat.
+- 16 Nov (Art chat): The left-over files in `assets/` that nothing loads (old 2D sprite frames, test pages, mock-ups) are deleted from the branch. Done with 3D.183; list in `06-ASSETS.md`, section 9.
+- 16 Nov (Art chat): The Zombie test page shows one zombie at a time, turning, and plays Stand / Walk / Run / Attack on the spot, so it can be followed. Built in 3D.183.
 
 ## Open questions (not decided)
 - None on 16 Nov.
