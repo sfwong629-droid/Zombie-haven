@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.186', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.187', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2593,6 +2593,7 @@ function spawnRaid(fk = 'toll', leader = false) {
   for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, fk, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); rollRaider(S.z[S.z.length - 1], i); S.z[S.z.length - 1].fac = fk; }
   { const R = FAC_RAID[fk]; if (R) for (const z of S.z.slice(-n)) { z.hp = z.max = Math.round(z.max * R.hp); z.pw = (z.pw || 1) * (R.pw || 1); z.plate = true; } }   /* 3D.137/138 each faction's people fight differently */
   if (leader) { const L = S.z[S.z.length - 1]; L.kind = 'brute'; L.leader = true; L.name = (FAC_RAID[fk] || {}).lead || 'The Toll Collector'; L.hp = L.max = Math.round(L.max * 3.2); L.pw = (L.pw || 1) * 1.4; for (const q of S.z.slice(-4, -1)) { q.esc = true; q.kind = 'brute'; q.w = { x: L.w.x + (rnd() - .5) * .8, y: L.w.y + (rnd() - .5) * .8 }; q.stateTicks = L.stateTicks; } }   /* 3D.104 */
+  for (const z of S.z.slice(-n)) z.wpn = raiderWeapon(z.kind);   /* 3D.187 (W33, W55): set last, once the leader and his escort have their kind */
   SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
 /* V3D.13 raider personalities (Walking Dead style): most raiders are Thieves; some are Brutes who come to hurt people
@@ -2602,6 +2603,11 @@ const RAIDER_KINDS = {
   brute:   { name: 'Brute',   icon: '💀', hp: 1.6,  atk: 1.5, flee: 0,  hunt: true },
   firebug: { name: 'Firebug', icon: '🔥', hp: .9,   atk: .9,  flee: .35, burn: true },
 };
+/* 3D.187 (owner, 16-17 Nov, W33 and W55): in the town each kind of raider carries its own weapon, one step better per era (I to IV).
+   It used to be a random one of five, picked when the raider first came on screen. Looks only in this build: how much harder a better
+   weapon hits is a balance number (Balance chat). Raids and strongholds away from the town keep their own weapons. */
+const RAIDER_WPN = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'spiked', 'sledge', 'axe'], firebug: ['pipe', 'crowbar', 'hatchet', 'spear'] };
+const raiderWeapon = (kind, lvl = S.lvl || 1) => (RAIDER_WPN[kind] || RAIDER_WPN.thief)[Math.max(0, ERAS.indexOf(eraOf(lvl)))];
 function rollRaider(z, i) {
   const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
   z.kind = k; z.hp = z.max = Math.round(z.max * K.hp); z.pw = (z.pw || 1) * K.atk;
@@ -6550,7 +6556,7 @@ function intro(key) {   /* show a Field Note once per game */ if (ZOO) return;  
   S.intro[key] = S.day || 1; if (introOff()) return true;
   if (!key.startsWith('z:') && !key.startsWith('boss:')) { radio('dj', `${rLine('note')} ${d[1]}. ${String(d[2]).split('. ')[0].replace(/\.$/, '')}.`, { key: 'fn' + key, title: d[1], more: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Guide → Field Notes keeps every note.</div>` }); return true; }   /* 3D.135 */
   let pic = '';   /* 3D.102: a new zombie gets its picture, seen from the game's iso angle, in the middle of the card */
-  if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = key === 'z:raider' ? (window.ZH3D && ZH3D.raiderIso ? ZH3D.raiderIso() : null) /* 3D.178 bug A5: a raider is a person, not a walker */ : zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
+  if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = key === 'z:raider' ? (window.ZH3D && ZH3D.raiderIso ? ZH3D.raiderIso((S.z.find((z) => z.type === 'raider' && z.hp > 0 && z.wpn) || {}).wpn) : null) /* 3D.178 bug A5: a raider is a person, not a walker; 3D.187: holding the weapon of the raider that came */ : zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
   showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `${pic}<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
     buttons: [{ label: 'Got it' }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
   return true;
