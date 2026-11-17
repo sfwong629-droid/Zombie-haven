@@ -86,11 +86,12 @@ function alertHub() {
   if (!pop) { pop = document.createElement('div'); pop.id = 'alertPop'; pop.className = 'alertPop'; w.appendChild(pop); pop.onclick = (e) => e.stopPropagation(); }
   pop.style.top = (parseInt(b.style.top) || 120) + 'px';
   const sig = L.map((q) => q.key + q.text + q.acts.map((c) => c.label + c.ok).join()).join('|'); if (pop.dataset.sig === sig) return; pop.dataset.sig = sig;
-  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}</div>`).join('');
+  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕'}</span></button>` : ''}</div>`).join('');
   if (window.ZHIcons && ZHIcons.swap) try { ZHIcons.swap(pop); } catch (e) { /* emoji stay */ }
   pop.querySelector('.apX').onclick = () => { hubOpen = false; alertHub(); };
   pop.querySelectorAll('.apRow').forEach((r) => { const q = L[+r.dataset.i];
     r.onclick = () => { const p = q.at && q.at(); if (p) { centerOn(p.x, p.y); hubOpen = false; alertHub(); } };
+    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.185 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
     r.querySelectorAll('.apA').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); const c = q.acts[+bt.dataset.j]; if (c && c.ok) { hubOpen = false; alertHub(); c.fn(); } alertsTick(); }; }); });
 }
 document.addEventListener('pointerdown', (e) => { if (hubOpen && !e.target.closest('#alertPop, #alertBtn')) { hubOpen = false; alertHub(); } });
