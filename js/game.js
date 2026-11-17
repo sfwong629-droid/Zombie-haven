@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.185', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.186', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1292,7 +1292,7 @@ function alertHub() {
   pop.querySelector('.apX').onclick = () => { hubOpen = false; alertHub(); };
   pop.querySelectorAll('.apRow').forEach((r) => { const q = L[+r.dataset.i];
     r.onclick = () => { const p = q.at && q.at(); if (p) { centerOn(p.x, p.y); hubOpen = false; alertHub(); } };
-    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.185 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
+    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.186 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
     r.querySelectorAll('.apA').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); const c = q.acts[+bt.dataset.j]; if (c && c.ok) { hubOpen = false; alertHub(); c.fn(); } alertsTick(); }; }); });
 }
 document.addEventListener('pointerdown', (e) => { if (hubOpen && !e.target.closest('#alertPop, #alertBtn')) { hubOpen = false; alertHub(); } });

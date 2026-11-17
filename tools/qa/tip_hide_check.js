@@ -1,4 +1,4 @@
-// tools/qa/tip_hide_check.js — 3D.185 (W40): a tip in the Needs you list can be hidden until the next day.
+// tools/qa/tip_hide_check.js — 3D.186 (W40): a tip in the Needs you list can be hidden until the next day.
 // The old tip line had a ✕ for this; the list that replaced it had none. Makes three tips appear in a new game, opens the list and checks:
 // every tip row has a hide button with a 44px tap area; tapping it removes that tip only and keeps it away for the rest of the day;
 // the tip is back the next day. Optional: a file name to save a picture of the list.

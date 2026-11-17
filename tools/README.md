@@ -27,7 +27,7 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 | `node tools/qa/sos_skip_check.js` | 3D.180 bug A2 check: a fighter who cannot get to a zombie that is bashing a building is not sent straight back at it. |
 | `node tools/qa/radio_tap_check.js` | 3D.177 bug A4 check: a radio card that has closed must not take taps (it used to re-open its old message when you tapped the People list). |
 | `node tools/qa/raider_note_check.js [card.png]` | 3D.178 bug A5 check: the "New: Raiders" field note must show a raider (in the Toll Kings' kit), not the zombie picture. |
-| `node tools/qa/tip_hide_check.js [list.png]` | 3D.185 (W40) check: each tip in the Needs you list has a ✕ with a 44px tap area that hides it until the next day; the tip is back the next day. |
+| `node tools/qa/tip_hide_check.js [list.png]` | 3D.186 (W40) check: each tip in the Needs you list has a ✕ with a 44px tap area that hides it until the next day; the tip is back the next day. |
 | `node tools/qa/zoo_show_check.js [shot.png]` | 3D.183 check: the Zombie test page shows one zombie at a time; Stand / Walk / Run / Attack play the right clip on the spot; Turn turns it; "Show all" lines everyone up. |
 | `python3 tools/qa/crawler_legs_check.py` | 3D.185 check: both Crawler models end at the thigh (no legs) and still have their 35 clips. |
 | `node tools/qa/new_zombies_check.js [shot.png]` | 3D.182 check: the 11 new zombie models are lined up on the Zombie test page, each file loads, and each figure wears its own model. |

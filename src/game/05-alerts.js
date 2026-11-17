@@ -91,7 +91,7 @@ function alertHub() {
   pop.querySelector('.apX').onclick = () => { hubOpen = false; alertHub(); };
   pop.querySelectorAll('.apRow').forEach((r) => { const q = L[+r.dataset.i];
     r.onclick = () => { const p = q.at && q.at(); if (p) { centerOn(p.x, p.y); hubOpen = false; alertHub(); } };
-    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.185 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
+    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.186 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
     r.querySelectorAll('.apA').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); const c = q.acts[+bt.dataset.j]; if (c && c.ok) { hubOpen = false; alertHub(); c.fn(); } alertsTick(); }; }); });
 }
 document.addEventListener('pointerdown', (e) => { if (hubOpen && !e.target.closest('#alertPop, #alertBtn')) { hubOpen = false; alertHub(); } });

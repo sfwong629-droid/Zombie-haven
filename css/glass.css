@@ -189,7 +189,7 @@ html.glass #alerts, html.glass #adv { display: none !important; }
 .alertPop .apT { flex: 1; line-height: 1.25; }
 .alertPop .apA { flex: none; border: 0; border-radius: 999px; padding: 6px 10px; background: #C6FF4D; color: #14200A; font: 800 12px Manrope, sans-serif; }
 .alertPop .apA:disabled { opacity: .45; }
-/* 3D.185 (W40): hide a tip until tomorrow. The tap area is 44px; the circle drawn inside it is the size of the list's own close button. */
+/* 3D.186 (W40): hide a tip until tomorrow. The tap area is 44px; the circle drawn inside it is the size of the list's own close button. */
 .alertPop .apM { flex: none; width: 44px; height: 44px; margin: -8px -8px -8px -6px; padding: 0; border: 0; background: none; display: flex; align-items: center; justify-content: center; }
 .alertPop .apM span { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
 /* 3D.30 on/off switch (Gather toggle) */
