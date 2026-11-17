@@ -67,7 +67,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Planning chat): Upgrade Town: when 12 game hours or less are left, "12 h sooner" is hidden and only "Finish now" shows (the two cost the same there). (Not built yet.)
 - 16 Nov (UI chat): UI building (U13, U14, U18) waits until the `game.js` split is done. Owner-seen bugs are still fixed straight away. *(Lifted the same day, W42: step 1 of the split is done and is enough.)*
 - 17 Nov (UI chat): A tip in the Needs you list can be hidden until the next day with a ✕ (not the word "Hide"). Emergencies can't be hidden. Built in 3D.186.
-- 16-17 Nov (UI chat): In the town each kind of raider carries its own weapon (Thief a knife, Brute a sledgehammer; today the weapon is random), and the Raiders note shows the kind that came. The weapons upgrade as the Banners or levels go on. (Not built yet: the steps are W55.)
+- 16-17 Nov (UI chat): In the town each kind of raider carries its own weapon, one step better per era, and the Raiders note shows the weapon of the raider that came. Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe. Firebug: pipe, crowbar, hatchet, spear. Built in 3D.187 (before, the weapon was a random one of five).
+- 17 Nov (UI chat): Better raider weapons should "definitely" hit harder. (Not built: 3D.187 is looks only; how much harder is a balance number for the Balance chat.)
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.

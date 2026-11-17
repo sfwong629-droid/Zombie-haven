@@ -60,9 +60,10 @@ UI chat:
 - ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it. *(W42, 16 Nov: step 1 of the split is done and is enough: they can be built now.)*
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
 - ~~W30. Bug A5: is the new Raiders picture right?~~ Done 16 Nov: the picture is OK.
-- ~~W33. Town raiders' weapons.~~ Decided 16-17 Nov: in the town each kind of raider carries its own weapon (Thief a knife, Brute a sledgehammer), the Raiders note shows the kind that came, and the weapons upgrade as the Banners or levels go on (owner, 17 Nov). Not built: waits for W55.
+- ~~W33. Town raiders' weapons.~~ Decided 16-17 Nov and built in 3D.187: each kind of raider carries its own weapon, one step better per era, and the Raiders note shows the weapon of the raider that came.
 - ~~W41. Hide button on tips in the Needs you list.~~ Decided 17 Nov: a ✕. Built in 3D.186.
-- W55. Raider weapon upgrades (picture `raider-weapons-by-era.png` sent in the UI chat, 17 Nov). Proposal: one step per era. Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe (so the sledgehammer the owner approved becomes the era III weapon). Firebug: pipe, crowbar, hatchet, spear (a torch needs a new model). Waiting: (1) yes or no to one step per era; (2) yes or no to the table; (3) looks only, or should better weapons also hit harder (that part would go to the Balance chat)?
+- ~~W55. Raider weapon upgrades.~~ Decided 17 Nov: yes to one step per era and to the table (Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe. Firebug: pipe, crowbar, hatchet, spear), and better weapons must hit harder. The looks are built in 3D.187; how much harder is W57.
+- W58. Play 3D.187 and say whether the raiders' weapons look right in a raid on the town.
 - W56. Play 3D.186 and say whether the ✕ on tips in the Needs you list works as wanted.
 
 Code clean-up chat:
@@ -86,6 +87,7 @@ Balance chat:
 - W52. Measure today's game against the targets with the balance bot (time to level 15, deaths, horde sizes, what is short)? It changes nothing in the game. Claude's recommendation: yes, before any number is tuned.
 - W53. The order to build the building plan in (Features chat, one change per build). Claude's recommendation: the level spread first (no new art), then the School and Library split, then the festival at level 5, then the new buildings as their models arrive (Watchtower and Festival Ground first), the Landmark route last.
 - W54. Which number to tune first once W52 has measured. Claude's recommendation: horde size, the owner's own complaint. No number changes until the owner says so.
+- W57. **From the UI chat:** better raider weapons should hit harder (owner, 17 Nov). From 3D.187 a town raider's weapon goes up one step per era, but it is looks only: a raider's strength still comes from the danger level (how strong the town's people are, plus a slow daily creep) and its kind (a Brute hits 1.5 times as hard as a Thief). Waiting, in the Balance chat: how much harder each step hits, checked against the danger targets in `08-BALANCE.md`.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
