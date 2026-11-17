@@ -8,7 +8,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 ## The next three jobs
 1. ~~**Finish this folder.**~~ Done 16 Nov: `01-VISION.md` approved by the owner; `06-ASSETS.md` written in the Art chat from the repo's `assets/` folder. (`08-BALANCE.md` is its own job in the Planning chat.)
 2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov). Owner bugs fixed the same day: A4 (3D.177), A5 (3D.178, UI chat), A7 Stalker skin (3D.179), A2 angry face flashing (3D.180); A3 closed. Still open: A6 (Ben can't reach the Garden Plot), waiting for the owner's backup.
-3. ~~**Make the test suite trustworthy** (bugs C1, C2).~~ Done 16 Nov: the suite is green (39 of 39, about 2 minutes). Two tests each failed once in a full run and pass alone (`combat`, `expchoices`): watch them.
+3. ~~**Make the test suite trustworthy** (bugs C1, C2).~~ Done 16 Nov: the suite is green (39 of 39, about 2 minutes). Two tests each failed once in a full run and pass alone (`combat`, `expchoices`): watch them. *(UI chat, 17 Nov: in four full runs, `economy`, `sim` and `expchoices` each failed once and passed when run alone; the same happens without the UI change.)*
 
 ## After that (not started, in this order)
 - Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session, in the Code clean-up chat. Nothing waits for step 2 (owner, 16 Nov, W42).
@@ -60,8 +60,10 @@ UI chat:
 - ~~W27. Build the overlap fix now or after the `game.js` split?~~ Decided 16 Nov: after the split. U13, U14 and U18 are decided and wait for it. *(W42, 16 Nov: step 1 of the split is done and is enough: they can be built now.)*
 - ~~W28. Bug A5, what the Raiders note should show.~~ Decided 16 Nov: a raider in the Toll Kings' kit, fixed in the UI chat (3D.178).
 - ~~W30. Bug A5: is the new Raiders picture right?~~ Done 16 Nov: the picture is OK.
-- W33. Town raiders' weapons (owner, 16 Nov: the weapon should change with the raider). Decided: in the town each kind of raider carries its own weapon, and the Raiders note shows the kind that came. Today each raider gets a random one (bat, knife, crowbar, pistol or machete). Proposal sent in the UI chat: Thief knife, Brute sledgehammer, Firebug crowbar, nail bat or hatchet (a torch would be new art, which is frozen). Waiting: yes or no to Thief and Brute, and which weapon for the Firebug. (Planning chat, 16 Nov: new art is no longer frozen, so a torch is possible.)
-- W41. Hide button on tips in the Needs you list (decided in W40). A before / after picture was sent in the UI chat: a "Hide" button beside "Go" on each tip, which hides that tip until the next day; emergencies get no Hide. Waiting: is the look right (the word "Hide", or a small ✕ that takes less room), and build it now as its own build or after the `game.js` split?
+- ~~W33. Town raiders' weapons.~~ Decided 16-17 Nov: in the town each kind of raider carries its own weapon (Thief a knife, Brute a sledgehammer), the Raiders note shows the kind that came, and the weapons upgrade as the Banners or levels go on (owner, 17 Nov). Not built: waits for W55.
+- ~~W41. Hide button on tips in the Needs you list.~~ Decided 17 Nov: a ✕. Built in 3D.186.
+- W55. Raider weapon upgrades (picture `raider-weapons-by-era.png` sent in the UI chat, 17 Nov). Proposal: one step per era. Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe (so the sledgehammer the owner approved becomes the era III weapon). Firebug: pipe, crowbar, hatchet, spear (a torch needs a new model). Waiting: (1) yes or no to one step per era; (2) yes or no to the table; (3) looks only, or should better weapons also hit harder (that part would go to the Balance chat)?
+- W56. Play 3D.186 and say whether the ✕ on tips in the Needs you list works as wanted.
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
