@@ -75,7 +75,7 @@ Art chat:
 - ~~W45. Paint the five soft armours in code?~~ Decided 16 Nov: no, they will be built in Tripo later.
 - ~~W46. The eleven new zombie models: new kinds, or new looks?~~ Decided 16 Nov: all eleven are new kinds of zombie. Step 1 (rigged, on the Zombie test page) was done in 3D.182. What each one does: W48.
 - ~~W47. Do the eleven look right on the Zombie test page?~~ Owner, 16 Nov: OK for now.
-- W48. **For the Planning chat:** the eleven new kinds of zombie (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female) each need a trick, a strength and a day they first appear. Until then they only stand on the Zombie test page. They are built in the Features chat once decided.
+- W48. **In the Planning chat:** the eleven new kinds of zombie (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female) each need a trick, a strength and a day they first appear. Until then they only stand on the Zombie test page. They are built in the Features chat once decided. **17 Nov: Claude's proposal for all eleven was sent in the Planning chat (copy in `02-DECISIONS.md`, Open questions). Waiting: yes, no or changes for each, and which of two tricks the Nurse gets.**
 - W49. The new Zombie test page (3D.183): one zombie at a time, turning, with Stand / Walk / Run / Attack on the spot. Owner, 16 Nov: add a survivor next to the zombie for size. Done in 3D.184. Waiting: with the survivor beside them, is any zombie the wrong size (the Stag stands about chest-high to a survivor), and is the page easy to follow now?
 
 Balance chat:
