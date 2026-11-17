@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.181', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.182', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -455,7 +455,7 @@ function drawZombie(zm) {
   if (zm.dead != null) return; const top = p.y - CHAR_H * TWs() * (ZSCALE[zm.type] || 1);
   { const u = hudU();   /* 3D.32 new-zombie effects */
     if (zm.type === 'burnt') { ctx.save(); for (let i = 0; i < 5; i++) { const t = ((tick + i * 23 + (zm.phase || 0) * 9) % 70) / 70, x = p.x + Math.sin(i * 2.3 + tick / 20) * 8 * u, y = p.y - t * CHAR_H * TWs() * 1.1; ctx.globalAlpha = 1 - t; ctx.fillStyle = t < .5 ? '#FFB347' : '#FF6A2A'; ctx.beginPath(); ctx.arc(x, y, (2.6 - t * 1.6) * u, 0, 7); ctx.fill(); } ctx.restore(); }
-    if (zm.zoo) { const d = zombieTypes[zm.type] || {}, nm = zm.bk && BOSS_KINDS[zm.bk] ? BOSS_KINDS[zm.bk].name : d.name || zm.type, y = top - (zm.type === 'boss' || zm.type === 'alpha' ? 40 : 28) * u; ctx.save(); ctx.font = `800 ${Math.round(12 * u)}px Manrope, sans-serif`; const tw2 = ctx.measureText(nm).width + 16 * u + (d.isNew ? 34 * u : 0), h = 20 * u;
+    if (zm.zoo) { const d = zombieTypes[zm.type] || {}, nm = zm.zn ? zm.zn : zm.bk && BOSS_KINDS[zm.bk] ? BOSS_KINDS[zm.bk].name : d.name || zm.type, y = top - (zm.type === 'boss' || zm.type === 'alpha' ? 40 : 28) * u; ctx.save(); ctx.font = `800 ${Math.round(12 * u)}px Manrope, sans-serif`; const tw2 = ctx.measureText(nm).width + 16 * u + (d.isNew ? 34 * u : 0), h = 20 * u;
       ctx.beginPath(); ctx.roundRect(p.x - tw2 / 2, y - h, tw2, h, h / 2); ctx.fillStyle = 'rgba(16,22,28,.78)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(nm, p.x - tw2 / 2 + 8 * u, y - h / 2);
       if (d.isNew) { const bx = p.x + tw2 / 2 - 32 * u; ctx.beginPath(); ctx.roundRect(bx, y - h + 3 * u, 26 * u, h - 6 * u, 7 * u); ctx.fillStyle = '#C6FF4D'; ctx.fill(); ctx.fillStyle = '#14200A'; ctx.font = `800 ${Math.round(9 * u)}px Manrope, sans-serif`; ctx.fillText('NEW', bx + 3.5 * u, y - h / 2); } ctx.restore(); }
   }
@@ -6968,6 +6968,8 @@ async function init() {
 /* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
    Tap a card to fly to it; "Let them attack" releases them on the town; "Line up again" resets. Nothing is saved. */
 const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
+/* 3D.182 the owner's 11 new models (16 Nov): looks only. Each stands in as a Walker (the Stag as a Dog) wearing the new model (z.mk); what they do in the game is not decided. */
+const ZOO_NEW = [['digger', 'Digger'], ['lineman', 'Lineman'], ['splitter', 'Splitter'], ['stag', 'Stag'], ['bilespewer', 'Bile Spewer'], ['hazmat', 'Hazmat'], ['leaper', 'Leaper'], ['listener', 'Listener'], ['nurse', 'Nurse'], ['soldier_m', 'Soldier'], ['soldier_f', 'Soldier (f)']];
 function zooLine() {
   S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
     const S0 = 11 + r * 2.1, D = -3 + (i - (row.length - 1) / 2) * 2.2, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* a compact grid that runs across the screen (iso), north of the camp */
@@ -6976,6 +6978,9 @@ function zooLine() {
     if (t === 'boss') { S.z.push({ type: 'boss', boss: true, pw: 1, w: tc(x, y), hp: 260, max: 260, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true }); return; }
     spawn(x, y, t); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max;
   }));
+  ZOO_NEW.forEach(([mk, name], n) => { const r = -1 - Math.floor(n / 4), row = Math.min(4, ZOO_NEW.length - Math.floor(n / 4) * 4), i = n % 4, S0 = 11 + r * 2.1, D = -3 + (i - (row - 1) / 2) * 2.2, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* three more rows behind the others */
+    for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 1.6 && Math.abs(ty - y) < 1.6) { const t = treeNode(tx, ty); if (t.left) { t.left = 0; t.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }   /* no tree or rock in front of a new model */
+    spawn(x, y, mk === 'stag' ? 'dog' : 'walker'); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; z.mk = mk; z.zn = name; });
 }
 /* ---------------- 3D.151 Gear test page (?gear): every weapon, armour, helmet and accessory in ITEMS, worn by a survivor.
    It reads ITEMS, so a new item shows up here by itself. Never saves. */
@@ -7033,9 +7038,9 @@ function zooStart() {
   S.mission = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); simSpeed = 1;
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
   const card = (t) => { const z = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, isNew: 1 } : { name: 'Mutant Boss' }); return `<button class="zc" data-t="${t}"><b>${esc(z.name || t)}</b>${z.isNew ? '<i>NEW</i>' : ''}<small>HP ${z.hp || 260} · ATK ${z.atk || 14}</small></button>`; };
-  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to look closer</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zinfo" id="zooInfo">Top two rows: the new zombies from the story plan (NEW). Bottom rows: the ones in the game today.</div><div class="zbtns"><button class="act" id="zooExit">Exit</button><button class="act" id="zooReset">Line up again</button><button class="act go" id="zooGo">Let them attack</button></div>`;
+  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to look closer</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zh"><b>New models</b><span class="sm">${ZOO_NEW.length} · looks only, no behaviour yet</span></div><div class="zrow">${ZOO_NEW.map(([mk, name]) => `<button class="zc" data-t="${mk}" data-new="${esc(name)}"><b>${esc(name)}</b><i>NEW</i><small>model only</small></button>`).join('')}</div><div class="zinfo" id="zooInfo">Top two rows: the new zombies from the story plan (NEW). Bottom rows: the ones in the game today.</div><div class="zbtns"><button class="act" id="zooExit">Exit</button><button class="act" id="zooReset">Line up again</button><button class="act go" id="zooGo">Let them attack</button></div>`;
   $('world').appendChild(d);
-  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { const t = b.dataset.t, z = S.z.find((q) => (q.type === t || q.bk === t) && q.hp > 0), def = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, desc: BOSS_KINDS.stalker.line } : null); if (z) centerOn(z.w.x, z.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc((def && def.name) || 'Mutant Boss')}</b> · HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`; }; });
+  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { if (b.dataset.new) { const q = S.z.find((k) => k.mk === b.dataset.t && k.hp > 0); if (q) centerOn(q.w.x, q.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc(b.dataset.new)}</b> · new model, looks only<br>${b.dataset.t === 'stag' ? 'Moves like a Dog for now.' : 'Moves like a Walker for now.'} What it does in the game is not decided.`; return; }   /* 3D.182 */ const t = b.dataset.t, z = S.z.find((q) => (q.type === t || q.bk === t) && !q.mk && q.hp > 0), def = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, desc: BOSS_KINDS.stalker.line } : null); if (z) centerOn(z.w.x, z.w.y, 2.2); $('zooInfo').innerHTML = `<b>${esc((def && def.name) || 'Mutant Boss')}</b> · HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`; }; });
   $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('zoo'); location.search = q.toString(); };
   $('zooReset').onclick = () => { zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); };
   $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } };

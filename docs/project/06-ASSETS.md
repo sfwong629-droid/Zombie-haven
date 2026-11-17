@@ -1,15 +1,15 @@
 # Zombie Haven: assets
 
-Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (commit 1c4ec0f, build 3D.181) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
+Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (first written at commit 1c4ec0f, build 3D.181; updated for 3D.182) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
 
 **In game** = the game loads it and shows or plays it. **Loaded, not shown** = the game downloads it but never puts it on screen. **Waiting** = made, not used yet. **Archive** = left over from an older look; nothing loads it.
 
 Update this page whenever a file is added to or removed from `assets/`.
 
 ## Summary
-- 3,386 files, 301 MB. About 3,000 of them (roughly 205 MB) are archive: the old 2D sprite frames, test pages and mock-ups.
-- In game: 2 survivor models, 24 zombie models, 27 fitted armour sets (20 items the player can wear, 6 faction kits, and the Riot Vest which is both), 24 weapon models in one file, 212 sound files, 11 font files.
-- Waiting: nothing in `assets/` itself; every finished model there is already in the game. Waiting outside it: 11 new zombie models the owner delivered on 16 Nov (section 2), and 14 armour items that are in the game with no model of their own (section 4).
+- 3,397 files, 312 MB. About 3,000 of them (roughly 205 MB) are archive: the old 2D sprite frames, test pages and mock-ups.
+- In game: 2 survivor models, 24 zombie models (plus 11 new ones that so far appear only on the Zombie test page), 27 fitted armour sets (20 items the player can wear, 6 faction kits, and the Riot Vest which is both), 24 weapon models in one file, 212 sound files, 11 font files.
+- Waiting: the 11 new zombie models from 16 Nov are rigged and in `assets/`, but no zombie in a real game wears them yet (section 2). 14 armour items are in the game with no model of their own (section 4).
 - Most art is not in `assets/` at all: buildings, walls, props, hats, accessories and every icon are drawn by code (section 9).
 - The raw source models (Tripo and Hunyuan `.glb` files) are **not in the repo**. They are on the owner's PC. The repo holds the fitted result and the recipe that made it.
 
@@ -51,22 +51,24 @@ All 24 are **in game**. They are the owner's models; the current set went in wit
 | Boss: Butcher | `zombie_butcher.glb` | |
 | Boss: Gatling Boss | `zombie_gatling.glb` | the one zombie with a weapon (owner, 16 Nov) |
 
-### New zombie models, waiting (delivered 16 Nov, Art chat)
-Eleven raw Tripo models from the owner. None is in `assets/` or in the game yet: each is one unrigged mesh of 0.7 to 1.1 million triangles (23 to 35 MB), so it has to be shrunk, rigged and given the zombie animations first. The raw files are on the owner's PC, not in the repo. None of them carries a weapon. What each one does in the game is not decided (W46 in `05-NOW.md`).
+### New zombie models: on the Zombie test page only (3D.182, 16 Nov)
+Eleven models the owner delivered on 16 Nov. They are rigged, in `assets/characters/ai3d_v2/` and loaded by the game, but **only the Zombie test page shows them** (title screen → Zombie test, or `?zoo=1`). No zombie in a real game wears them: what each one does is not decided (W46 in `05-NOW.md`). On the test page each stands in as a Walker (the Stag as a Dog) wearing the new model. None carries a weapon.
 
-| Model | File as delivered | Look |
-|---|---|---|
-| Digger | `Digger.glb` | big miner: hard hat with a lamp, orange overalls |
-| Lineman | `Lineman.glb` | hard hat, hi-vis vest, tool belt, work gloves |
-| Splitter | `Spliter.glb` | two halves stitched down the middle, one green, one purple |
-| Stag | `Stag.glb` | zombie deer with antlers, ribs showing. Four-legged: needs its own rig, like the Dog |
-| Bile Spewer | `Bile_Spewer.glb` | swollen yellow-green head and throat, bile down the front |
-| Hazmat | `Hazmat.glb` | yellow hazmat suit, hood down |
-| Leaper | `Leaper.glb` | lean, barefoot, torn red hoodie vest, long legs |
-| Listener | `Listener.glb` | head and eyes wrapped in bandages, big ears, barefoot |
-| Nurse | `Nurse_Zombie.glb` | female, teal scrubs, face mask pulled down |
-| Soldier (male) | `Solider_Male.glb` | army helmet and uniform |
-| Soldier (female) | `Solider_Female.glb` | army helmet with red crosses, uniform |
+Made from the owner's raw Tripo models (one unrigged mesh of 0.7 to 1.1 million triangles each; on the owner's PC, not in the repo) by `tools/art/b3d/kit/zombie.sh` (two-legged) and `tools/art/b3d/ai_stag.py` (the Stag). Each is 20,000 triangles with the same skeleton and 35 animations as the other zombies; the Stag is 16,000 triangles on the Dog's four-legged skeleton with 5 animations, drawn 1.2 times its delivered size.
+
+| Model | File | Raw file as delivered | Look |
+|---|---|---|---|
+| Digger | `zombie_digger.glb` | `Digger.glb` | big miner: hard hat with a lamp, orange overalls |
+| Lineman | `zombie_lineman.glb` | `Lineman.glb` | hard hat, hi-vis vest, tool belt, work gloves |
+| Splitter | `zombie_splitter.glb` | `Spliter.glb` | two halves stitched down the middle, one green, one purple |
+| Stag | `zombie_stag.glb` | `Stag.glb` | zombie deer with antlers, ribs showing; four-legged |
+| Bile Spewer | `zombie_bilespewer.glb` | `Bile_Spewer.glb` | swollen yellow-green head and throat, bile down the front |
+| Hazmat | `zombie_hazmat.glb` | `Hazmat.glb` | yellow hazmat suit, hood down |
+| Leaper | `zombie_leaper.glb` | `Leaper.glb` | lean, barefoot, torn red hoodie vest, long legs |
+| Listener | `zombie_listener.glb` | `Listener.glb` | head and eyes wrapped in bandages, big ears, barefoot |
+| Nurse | `zombie_nurse.glb` | `Nurse_Zombie.glb` | female, teal scrubs, face mask pulled down |
+| Soldier (male) | `zombie_soldier_m.glb` | `Solider_Male.glb` | army helmet and uniform |
+| Soldier (female) | `zombie_soldier_f.glb` | `Solider_Female.glb` | army helmet with red crosses, uniform |
 
 ## 3. Armour models and faction kits
 All 27 are **in game**. Each is `assets/characters/ai3d_v2/armor_<id>_m3.glb`, made from the owner's Tripo model by `tools/art/b3d/kit/runspec.sh <id>`. The recipe for each is in `tools/art/b3d/fits/<name>_tripo.json` (joints) and, for the 14 newest, `tools/art/b3d/fits/specs.json` (what to cut, keep and hold rigid). The Tripo `.glb` itself is on the owner's PC, not in the repo.
@@ -122,13 +124,13 @@ These 14 are in the game and can be found and worn, but have no model of their o
 | Hazmat Suit | `hazmat` | full suit (like the Beekeeper Suit): Tripo model for the hard parts, the suit painted |
 | Firefighter Coat | `firecoat` | coat painted; Tripo model only if it gets hard parts (air tank, buckles) |
 | Ghillie Suit | `ghillie` | shaggy shape: Tripo model |
-| Work Jacket | `jacket` | soft only: painted in code, no Tripo model needed |
-| Leather Jacket | `leather` | soft only: painted in code |
-| Biker Leathers | `biker` | soft only: painted in code |
-| Hoodie | `hoodie` | soft only: painted in code |
-| Raincoat | `raincoat` | soft only: painted in code |
+| Work Jacket | `jacket` | soft clothing: Tripo model later (owner, 16 Nov) |
+| Leather Jacket | `leather` | soft clothing: Tripo model later (owner, 16 Nov) |
+| Biker Leathers | `biker` | soft clothing: Tripo model later (owner, 16 Nov) |
+| Hoodie | `hoodie` | soft clothing: Tripo model later (owner, 16 Nov) |
+| Raincoat | `raincoat` | soft clothing: Tripo model later (owner, 16 Nov) |
 
-Batch 5 comes from this list. Which five is waiting on the owner (see `05-NOW.md`, W43).
+**Batch 5** (owner, 16 Nov): Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor, SWAT Armor. Next step: the three-view sheets. The five soft ones will also be built in Tripo, later (owner, 16 Nov); they are not painted in code.
 
 ## 5. Weapons
 | File | What | Status | Source |

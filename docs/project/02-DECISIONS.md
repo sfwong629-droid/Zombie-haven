@@ -105,6 +105,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 13 Nov: Show the owner the whole sheet first; split and save only after approval.
 - 13 Nov: No hair sticking out of a helmet. Full suits recolour the survivor below the neck. The survivor body stays as is for fitting.
 - 13 Nov: Hold on stronghold and raid maps; enough town maps for now.
+- 16 Nov (Art chat): Armour Batch 5 is Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor and SWAT Armor.
+- 16 Nov (Art chat): The soft armours with no model (Work Jacket, Leather Jacket, Biker Leathers, Hoodie, Raincoat) will be built in Tripo later; they are not painted on in code.
+- 16 Nov (Art chat): New zombie models go in as looks first: rigged and shown on the Zombie test page with no new behaviour. What each one does is decided afterwards. (The 11 models of 16 Nov: built in 3D.182.)
 
 ## Open questions (not decided)
 - None on 16 Nov.

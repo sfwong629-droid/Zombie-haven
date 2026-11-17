@@ -27,6 +27,7 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 | `node tools/qa/sos_skip_check.js` | 3D.180 bug A2 check: a fighter who cannot get to a zombie that is bashing a building is not sent straight back at it. |
 | `node tools/qa/radio_tap_check.js` | 3D.177 bug A4 check: a radio card that has closed must not take taps (it used to re-open its old message when you tapped the People list). |
 | `node tools/qa/raider_note_check.js [card.png]` | 3D.178 bug A5 check: the "New: Raiders" field note must show a raider (in the Toll Kings' kit), not the zombie picture. |
+| `node tools/qa/new_zombies_check.js [shot.png]` | 3D.182 check: the 11 new zombie models are lined up on the Zombie test page, each file loads, and each figure wears its own model. |
 | `node tools/qa/ink_check.js mattress,hawaii` | Armour close-ups with the ink outline on and off (the 3D.157 speckle check). |
 | `node tools/art/b3d/gate_poses.js OUT id1,id2` + `python3 tools/art/b3d/kit/gsheet.py OUT 5 sheet.png` | The armour "gate": each armour in idle, cheer, walk, run, swing, hammer and collapse, male and female, on one sheet. Look at it before showing the owner. |
 
@@ -42,6 +43,13 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 5. **Fit:** `tools/art/b3d/kit/runspec.sh <id> [...]` -> `assets/characters/ai3d_v2/armor_<id>_m3.glb`. The rig it fits to is `assets/characters/ai3d_v2/rig/armor_base.blend`.
 6. **Game code:** ARMOR3D loader list, SUIT3D colours and PAINT3D (painted cloth) in `js/render3d.js`; the item in `ITEMS` (`js/game.js`); its icon in `js/itemicons.js`.
 7. **Gate** (above), then show the owner, then publish.
+
+## Zombie pipeline (raw Tripo model -> in-game zombie model)
+
+1. **Two-legged:** `tools/art/b3d/kit/zombie.sh <id> <Model>.glb` -> `assets/characters/ai3d_v2/zombie_<id>.glb` (the settings some models need are listed at the top of the script).
+   **Four-legged:** `python3 tools/art/b3d/ai_stag.py <Model>.glb OUT.glb`, then `node tools/art/compress_glb.mjs OUT.glb assets/characters/ai3d_v2/zombie_<id>.glb zombie`.
+2. **Game code:** an entry in `ZMODEL` in `js/render3d.js` (walking speeds from `tools/art/stride/measure.html?m=zombie_<id>`). A model no zombie type uses yet goes on the Zombie test page through `ZOO_NEW` (`src/game/27-test-pages-title-backups.js`).
+3. **Check:** `node tools/qa/new_zombies_check.js shot.png`, and look at the Zombie test page (`?zoo=1`).
 
 ## Publishing the playable game (claude.ai artifact)
 

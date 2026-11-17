@@ -1044,6 +1044,19 @@ const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', s
   butcher: { url: 'assets/characters/ai3d_v2/zombie_butcher.glb', stride: { zombie_walk: 0.276, zombie_run: 0.716 }, kind: 'brute' },
   mutant: { url: 'assets/characters/ai3d_v2/zombie_mutant.glb', stride: { zombie_walk: 0.481, zombie_run: 1.306 }, kind: 'mutant' },
   thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: 0.353, zombie_run: 0.92 }, atkClip: 'melee_swing_a' },
+  /* 3D.182 the owner's 11 new models (16 Nov). Looks only for now: no zombie type uses them yet. A zombie with z.mk = one of these keys wears that model
+     and keeps the behaviour of its own type (the Zombie test page lines them up). four: the Dog's four-legged rig (tools/art/b3d/ai_stag.py). */
+  digger: { url: 'assets/characters/ai3d_v2/zombie_digger.glb', stride: { zombie_walk: 0.414, zombie_run: 1.096 } },
+  lineman: { url: 'assets/characters/ai3d_v2/zombie_lineman.glb', stride: { zombie_walk: 0.434, zombie_run: 1.136 } },
+  splitter: { url: 'assets/characters/ai3d_v2/zombie_splitter.glb', stride: { zombie_walk: 0.445, zombie_run: 1.203 } },
+  bilespewer: { url: 'assets/characters/ai3d_v2/zombie_bilespewer.glb', stride: { zombie_walk: 0.455, zombie_run: 1.217 } },
+  hazmat: { url: 'assets/characters/ai3d_v2/zombie_hazmat.glb', stride: { zombie_walk: 0.442, zombie_run: 1.163 } },
+  leaper: { url: 'assets/characters/ai3d_v2/zombie_leaper.glb', stride: { zombie_walk: 0.556, zombie_run: 1.476 } },
+  listener: { url: 'assets/characters/ai3d_v2/zombie_listener.glb', stride: { zombie_walk: 0.442, zombie_run: 1.18 } },
+  nurse: { url: 'assets/characters/ai3d_v2/zombie_nurse.glb', stride: { zombie_walk: 0.567, zombie_run: 1.494 } },
+  soldier_m: { url: 'assets/characters/ai3d_v2/zombie_soldier_m.glb', stride: { zombie_walk: 0.417, zombie_run: 1.104 } },
+  soldier_f: { url: 'assets/characters/ai3d_v2/zombie_soldier_f.glb', stride: { zombie_walk: 0.444, zombie_run: 1.174 } },
+  stag: { url: 'assets/characters/ai3d_v2/zombie_stag.glb', stride: { zombie_walk: .44, zombie_run: .9 }, four: true },
   gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.111, gun_hold_walk: 1.026, run: 1.709 }, human: true, kind: 'gatling' } }, ZSRC = {};
 const ZVAR = { walker: ['walker', 'walker_f'], runner: ['runner', 'runner_f'], burnt: ['burnt', 'burnt_f'], crawler: ['crawler', 'crawler_m'] };   /* a type's models; one is picked per zombie */
 const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher', gatling: 'gatling' };   /* boss kind -> its model */
@@ -1053,6 +1066,7 @@ function zLoad(k) { const d = ZMODEL[k]; if (!d || ZSRC[k] || ZLOAD[k] || ZFAIL[
   return (ZLOAD[k] = load(d.url).then((g) => { g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; g.kind = d.kind || k; g.zkey = k; ZSRC[k] = g; }).catch((e) => { console.warn('zombie model', k, e); ZFAIL[k] = true; }).finally(() => { delete ZLOAD[k]; })); }
 const zGat = (z) => false;   /* 3D.143 owner: the Gatling Boss is a zombie, not a Toll King. He is a boss kind now (BOSS_KINDS.gatling); the Toll Collector is a man in the Toll Kings' kit */
 function zKeys(z) {   /* the models this zombie needs */
+  if (z.mk && ZMODEL[z.mk]) return [z.mk];   /* 3D.182 a zombie told which model to wear */
   if (z.type === 'raider') return zGat(z) ? ['gatling'] : []; if (z.type === 'boss') return [ZBOSS[z.bk] || 'mutant'];
   return (ZVAR[z.type] || [z.type]).filter((k) => ZMODEL[k]); }
 function zWaiting(z) { let w = false; for (const k of zKeys(z)) if (!ZSRC[k] && !ZFAIL[k]) { zLoad(k); w = true; } return w; }   /* 3D.80 the user's dog (four-legged rig, tools/art/b3d/ai_dog.py) */   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
@@ -1561,7 +1575,8 @@ function syncZombies(dt, vis) {
     if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
     if (!a && MALE.v2 && zWaiting(z)) continue;   /* 3D.126 its model is still loading: it appears a moment later */
     if (!a) {
-      if (z.type === 'raider' && zGat(z) && ZSRC.gatling) { a = zombieOwn('gatling'); a.setWeapon(null); a.setArmor(false); a.big = 1.2; }   /* the Toll Kings' leader: the Gatling Boss */
+      if (z.mk && ZSRC[z.mk]) { a = zombieOwn(z.mk); a.setWeapon(null); a.setArmor(false); if (ZMODEL[z.mk].four) a.dogM = true; }   /* 3D.182 */
+      else if (z.type === 'raider' && zGat(z) && ZSRC.gatling) { a = zombieOwn('gatling'); a.setWeapon(null); a.setArmor(false); a.big = 1.2; }   /* the Toll Kings' leader: the Gatling Boss */
       else if (z.type === 'boss' && ZSRC[ZBOSS[z.bk] || 'mutant']) { a = zombieOwn(ZBOSS[z.bk] || 'mutant'); a.setWeapon(null); a.setArmor(false); a.bossOwn = true; }
       else if (z.type !== 'raider' && z.type !== 'dog' && z.type !== 'boss' && (ZVAR[z.type] || [z.type]).some((k) => ZSRC[k])) { a = zombieOwn(z.type, z.turned ? !!z.turned.fem : undefined); a.setWeapon(null); a.setArmor(false); }
       else if (z.type === 'raider' && FAC_GEAR3D[z.fk || z.fac] && ARMOR3D[FAC_GEAR3D[z.fk || z.fac]] && !z.worker) { { const fg = FAC_GEAR3D[z.fk || z.fac], fm = MALE.v2 ? clothMaterial(false, fg, null, null, SUIT3D[fg] || null) : jobMaterial('Raider'); a = new Actor(MALE, fm, false, () => fm); } a.setWeapon(WMODEL[z.wpn] || 'bat'); a.setArmor(false); setArmor3D(a, FAC_GEAR3D[z.fk || z.fac]); }   /* 3D.141 each faction's own gear, fitted to the survivor body */
@@ -2185,7 +2200,7 @@ const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_
 const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
 /* 3D.178 bug A5: the "New: Raiders" note showed a walker. A raider is a person: drawn in the Toll Kings' kit (red bandana, black vest; owner's pick, 16 Nov) with a bat, from the same angle as the zombie pictures. Until the kit model has loaded, the plain drifter the game draws for a raider with no faction. */
 const raiderIso = () => { const kit = !!ARMOR3D.toll, o = { key: kit ? 'riso_toll' : 'riso', t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 }; return kit ? snapActor({ job: 'Raider', eq: { weapon: 'bat', armor: 'toll' } }, o) : snapActor({ job: 'Raider', eq: { weapon: 'bat' } }, { ...o, plain: 1 }); };
-window.ZH3D = { raiderIso, isFem: (q) => isFemale(q), clipNames: () => MALE.animations.map((c) => c.name), dbgBones: () => [MALE, FEMALE3D].map((m) => m && m.body && m.body.skeleton.bones.map((b) => b.name).join(',')), armor3d: (id) => !!ARMOR3D[id], armorsReady: () => ARMOR3D_DONE || !CHAR_V2, wModel: (id) => WMODEL[id] || null, pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+window.ZH3D = { raiderIso, isFem: (q) => isFemale(q), clipNames: () => MALE.animations.map((c) => c.name), dbgBones: () => [MALE, FEMALE3D].map((m) => m && m.body && m.body.skeleton.bones.map((b) => b.name).join(',')), armor3d: (id) => !!ARMOR3D[id], armorsReady: () => ARMOR3D_DONE || !CHAR_V2, wModel: (id) => WMODEL[id] || null, pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zWorn: (z) => { const a = zeds.get(z); return a && a.src ? a.src.zkey || null : null; },   /* 3D.182 test hook: the model file a zombie is wearing */ zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
 inkButton();
 (async () => {
   const base = 'assets/characters/ai3d_male/realtime/';
