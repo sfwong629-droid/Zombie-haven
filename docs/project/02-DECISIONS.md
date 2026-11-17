@@ -24,6 +24,13 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
 - 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the next job in the Planning chat.
 - 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
+- 16 Nov (Balance chat): `08-BALANCE.md` is written and approved ("looks good"). It holds the targets in full; the main ones follow. No number in the game was changed.
+- 16 Nov (Balance chat): Pace: level 3 in the first sitting (about 30 minutes); level 15 in about 4 to 6 weeks for a daily player; a check-in takes 5 to 10 minutes; a level waits on the player's work first and the timer second; every level unlocks at least one building and one piece of gear, every era one new big thing to do.
+- 16 Nov (Balance chat): Danger: a handful of deaths on the road to level 15; about 3 in 4 ordinary nights are comfortable wins for a town that keeps up; a lost night or horde is a setback of a day or two, never game over; daytime roamers are safe to deal with when prepared.
+- 16 Nov (Balance chat): Hordes: one big night horde per level, arriving only while the player is playing; a big weak crowd of about 40, 100 and 200 zombies by era (today's hordes are far too small), 50 to 60 on screen at once; an ordinary night is a quarter of that and a daytime horde half; winning always pays (loot, renown, mood, a results card); Take command gives a cleaner win and is never required.
+- 16 Nov (Balance chat): Banner routes: same effort, different cost; each route has its own lasting reward; all routes are open at once and the first finished wins the Banner; unused routes of earlier Banners stay open for good and still give their reward (levels are gated only by the highest Banner held).
+- 16 Nov (Balance chat): Economy: always short of one thing, never of food for long; away production stops at about one day's worth; renown takes a quarter to a third off waiting; the town covers every basic need, and trips, raids and strongholds give extras and things the town cannot make.
+- 16 Nov (Balance chat): Town size by era: about 15, 30 and 50 survivors (one in three a fighter) and about 12, 25 and 40 buildings.
 
 ## Hard rules
 - Must work fully offline.
@@ -69,6 +76,12 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 15 Nov: "Sealed" means the HQ and at least 3 in 4 buildings are inside the wall.
 - 15 Nov: Add a Banner route that isn't a fight (built as the Founders' Festival).
 - 16 Nov: When the land grows, existing walls do **not** move out for free: the player rebuilds or moves them.
+- 16 Nov (Balance chat): Building rules (in full in `08-BALANCE.md`): one clear job each; build more and upgrade, with land as the limit; a building job is done by the next check-in; people run production buildings; fighters are the stars and defences help; placement matters a little, by rules shown before placing.
+- 16 Nov (Balance chat): Building looks: readable by shape plus one signature feature; every upgrade level looks different; era 1 is a scrap camp, era 2 a patched-up village, era 3 a solid fortified town.
+- 16 Nov (Balance chat): Spread the existing buildings over levels 1 to 10 (today they open in three batches, at levels 1, 4 and 7). (Not built yet.)
+- 16 Nov (Balance chat): Move the Stone step to era 3, from level 11 (today level 7). (Not built yet.)
+- 16 Nov (Balance chat): Seven new buildings: Watchtower, Memorial Garden, Festival Ground, Landmark (the build-route reward, one per Banner), Trophy Hall, Shelter Bunker (era 3), Forge (era 3). (Not built yet; level, cost, size and look still to design.)
+- 16 Nov (Balance chat): The School is for children only (they grow up faster); the Library trains adults' Intelligence. (Not built yet.)
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.

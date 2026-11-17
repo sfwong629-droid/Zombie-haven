@@ -15,7 +15,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `05-NOW.md` | The next three jobs, and what is frozen | live |
 | `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | live (written 16 Nov, Art chat) |
 | `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | live |
-| `08-BALANCE.md` | Balance targets (pace, danger, hordes, routes, economy), not numbers | **to write, next job in the Planning chat** |
+| `08-BALANCE.md` | Balance targets (pace, danger, hordes, Banner routes, economy, town size, buildings), not numbers; what every building does today; the building changes decided | live (written 16 Nov, Balance chat) |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
@@ -50,6 +50,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
 - **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Can start: step 1 of the `game.js` split is done and the owner said that is enough (16 Nov, W42).
+- **Balance**: the targets in `08-BALANCE.md` and the building list; numbers are tuned against them, one change per build.
 - **Planning**: vision, decisions, what's next. Also the general chat: ideas, questions and anything that has no chat of its own start here.
 
 Chats can't see each other. They share only this folder, so each chat re-reads `05-NOW.md` (latest repo copy) before listing what is waiting, and takes the next free W number from it.

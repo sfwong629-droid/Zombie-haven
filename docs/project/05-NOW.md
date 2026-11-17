@@ -14,7 +14,8 @@ New features, balance changes and new art in the game are allowed again. The wor
 - Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session, in the Code clean-up chat. Nothing waits for step 2 (owner, 16 Nov, W42).
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
-- Write `08-BALANCE.md`, the balance targets page: the next job in the Planning chat (owner, 16 Nov; the owner answers the target questions, W38).
+- ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
+- Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. Not designed in detail yet (W50); built afterwards in the Features chat, one change per build.
 - Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
 
 ## Waiting on the owner
@@ -33,7 +34,7 @@ Planning chat:
 - ~~W29. Hide "12 h sooner" when it would finish the upgrade anyway?~~ Decided 16 Nov: yes (UI problem U17; built in the UI chat).
 - ~~W11. When to end the freeze.~~ Decided 16 Nov: everything is unfrozen except full tester rounds.
 - ~~W37. When to build the new features.~~ Decided 16 Nov: after the `game.js` split (so after the test suite is green too). *(W42, 16 Nov: step 1 of the split is done and is enough: they can start now.)*
-- W38. The balance targets page (`08-BALANCE.md`) is now the next job in the Planning chat: say go, and Claude asks the target questions (pace, danger, hordes, routes, economy).
+- ~~W38. The balance targets page.~~ Done 16 Nov in the Balance chat: the owner answered the target questions and approved the page.
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
@@ -76,6 +77,9 @@ Art chat:
 - ~~W47. Do the eleven look right on the Zombie test page?~~ Owner, 16 Nov: OK for now.
 - W48. **For the Planning chat:** the eleven new kinds of zombie (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female) each need a trick, a strength and a day they first appear. Until then they only stand on the Zombie test page. They are built in the Features chat once decided.
 - W49. The new Zombie test page (3D.183): one zombie at a time, turning, with Stand / Walk / Run / Attack on the spot. Is it easy to follow now, and is the zombie big enough?
+
+Balance chat:
+- W50. The building plan. **Next (Claude):** a proposal for which level each existing building opens at (levels 1 to 10), and for each of the seven new buildings its level, cost, size and look. The owner then says yes or changes it; nothing is built before that.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).

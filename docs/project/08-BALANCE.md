@@ -1,0 +1,184 @@
+# Zombie Haven: balance targets (16 Nov 2026)
+
+Answered by the owner in the Balance chat on 16 Nov 2026. These are **targets, not numbers**: what the game should feel like to play. Numbers in the game are tuned later to hit them, one change per build, and no number was changed when this page was written.
+
+How to use it: before changing a number, find the target it serves. If a change moves the game away from a target, don't make it. If no target covers it, ask the owner. Change a target only on the owner's say, and log it in `02-DECISIONS.md`.
+
+"A daily player" below means someone who checks in about once a day. Era 1 is levels 1–5, era 2 is levels 6–10, era 3 is levels 11–15.
+
+## 1. Pace
+- **First sitting (about 30 minutes): level 3**, with a first small zombie night won. The first sitting shows the whole loop: build, gear up, fight, win. Level 4 by the end of the first day.
+- **Level 15 in about 4 to 6 weeks** for a daily player, so roughly two weeks per era.
+- **A check-in takes 5 to 10 minutes** and that is enough to keep up: collect, queue building, gear up, send a trip, handle one event. Longer play (raids, strongholds, decorating) is always possible and never needed.
+- **Work first, timer second.** A level-up waits mostly on the player's own work (buildings built, people housed, a goal done). The level timer is a floor that is usually over by the time the work is done. The game rarely says "just wait".
+- **Something new every level:** at least one new building and one new piece of gear. **Something big every era:** each Banner opens one new thing to do. No level is only bigger numbers.
+
+## 2. Danger
+- **Deaths are rare and remembered:** a handful on the whole road to level 15 for a careful player, about one every week or two. Each one traces back to a risk the player saw and took. Injuries are the usual price. (Vision: never a death without a warning or a choice.)
+- **Ordinary nights for a town that keeps up:** about 3 in 4 are comfortable wins that are fun to watch, about 1 in 4 is tense. A lost night comes from falling behind or ignoring a warning, not from bad luck.
+- **Losing is a setback, never the end.** A lost night or horde costs damaged buildings and walls, lost supplies, injuries, at worst one or two deaths. The town is back on its feet in a day or two of play. No game over, and the next attack is not stronger because the town lost.
+- **Daytime roamers: prepare and you are safe.** An escorted or armed worker outside the walls is safe. An unprotected one is chased home or injured. A death happens only after a clear warning was ignored. They are a reason to prepare, not a reason to stay in. (Not in the game yet.)
+
+## 3. Hordes
+- **One big night horde per level**, as that level's climax: build, gear up, horde, win.
+- **It only arrives while the player is playing.** The radio announces it, the player gets time to gear up and repair, and the fight is always seen. Never while away.
+- **A big, weak crowd.** Many weak zombies that clearly outnumber the fighters, a few special ones mixed in. The fight lasts about 2 to 4 minutes.
+- **Size of a big horde, total over the whole fight:** about **40** in era 1, **100** in era 2, **200** in era 3. Owner, 16 Nov: today's hordes are far smaller than wanted.
+- **On screen at once, at the peak of a late horde: 50 to 60**, the rest arriving as others fall. Test on a real phone; go higher if it stays smooth.
+- **Smaller fights, measured against that level's big horde:** an ordinary night is about a quarter, a warned daytime horde about half. Late-game example: 50, 100, 200. Nights stay the biggest fights.
+- **Winning pays every time:** loot from the fallen horde, renown, a town-wide mood lift with a short celebration, and a results card naming who fought best. Worth about a good day's production. A clean win (nobody hurt, walls held) pays a little more.
+- **Take command gives a cleaner win:** fewer injuries, less wall damage, and it can turn a narrow loss into a narrow win. A prepared town still wins left alone; steering is never required. (Not in the game yet.)
+
+## 4. Banner routes
+- **Same effort, different cost.** Each route (fight, ally, build, celebrate) takes about the same amount of play, a few days of check-ins, but costs a different thing: fight costs risk and gear, ally costs gifts and favours, build costs materials and land, celebrate costs food and happiness. The fastest route is the one that fits the town the player built, not one fixed route for everyone.
+- **Each route has a reward of its own** on top of the Banner: small, lasting, different in kind and about equal in value. Examples: fight gives a trophy and a weapon, ally a faction perk, build a landmark building, celebrate a town-wide mood bonus and a yearly festival. This is also where "some things can only be won by raiding or strongholds" lives.
+- **All routes are open at once; the first one finished wins the Banner.** No choosing up front. The player sees every route's progress side by side and what is missing on each.
+- **Unused routes stay open for good** (owner's idea, 16 Nov). A town that took the level 5 Banner by building can go back at level 10 and finish the level 5 fight route for that route's reward. Levels are gated only by the highest Banner held. Old routes keep their original difficulty, so they get easier as the town grows.
+
+## 5. Economy
+- **Always short of one thing, comfortable with the rest.** Which thing is short changes from era to era. Never short of everything, never full of everything. Food is never the long-term shortage: hunger is a warning sign, not the normal state. The game always says what is short and how to get more.
+- **Away production fills storage to about one day's worth, then stops.** A day away gives a full, satisfying collect; a week away gives the same. Storage buildings raise the cap.
+- **Renown is a helper.** An active player's renown takes about a quarter to a third off the waiting. A quiet player loses nothing but that. Renown is earned only by playing, and spending it never feels required.
+- **The town alone covers every basic need** (food, wood, scrap, basic gear). Trips, raids and strongholds give extras and things the town cannot make: rare gear, special materials, the fight-route rewards. A player who never raids is never stuck, only missing those prizes.
+
+## 6. Town size
+- **Survivors at the end of each era:** about **15**, **30**, **50**. Roughly one in three is a fighter.
+- **Buildings at the end of each era** (not counting walls and decorations): about **12**, **25**, **40**.
+- **Land is always a little tight**, so where things go is a real choice.
+
+## 7. Building balance
+- **One clear job each.** Every building does one thing no other building does, and the player can see it working (people walk to it and use it). No building is a better copy of another. A building that is never worth building is a balance bug; so is one that beats everything.
+- **Build more and upgrade, with land as the limit.** A new building adds a new job; an upgrade makes a job stronger on the same land. Early on the town spreads; when land gets tight it upgrades. The big upgrade steps add something new, not only a bigger number.
+- **Done by the next check-in.** In the quick start, building takes seconds to a couple of minutes, so the town grows while the player watches. After that most jobs finish between two check-ins, and nothing takes longer than about one real day. Survivors do the work: more builders, faster building. The level timer sets the long pace, not single buildings.
+
+## 8. Building design
+**What buildings do**
+- **People run them.** A production building works only while a survivor with the right job is there. Better workers make more. An idle building says why ("No cook assigned") with one tap to fix it.
+- **Fighters are the stars, defences help.** Walls, towers and traps buy time and thin the crowd. A town cannot win on defences alone, and fighters with no walls are overrun. Defences decide how clean the win is. The player watches people fight, not turrets.
+
+**Placement and layout**
+- **Placement matters a little, by rules shown before placing:** inside the wall is protected, homes close to work mean shorter walks, a few buildings help their neighbours. Never a puzzle. A messy town still works, and moving a building is cheap.
+
+**How buildings look**
+- **Readable by shape plus one signature feature** (a chimney, a water tank, a red cross, crates), from the normal zoomed-out phone view, without reading a label. No two buildings share a silhouette.
+- **Every upgrade level looks different** (owner's choice). Today a building has at most three steps (for example Tent, Cabin, Stone House), so this means one model per step.
+- **Camp, village, town.** Era 1 is a scrap camp (tents, pallets, tarps), era 2 a patched-up village (wood, brick, sheet metal), era 3 a solid fortified town (concrete, steel, lights). Buildings of the same era match, so the town looks like one place and the growth shows at every Banner.
+- The general look rules (low-poly, chunky, no chibi) stay in `01-VISION.md`; model files are tracked in `06-ASSETS.md`.
+
+## 9. The buildings today (build 3D.183)
+What each building does in the game now, taken from the game's own tables (`js/world.js`) and building notes. "Opens" is the Haven level where it can first be built: Camp buildings at level 1, Timber buildings with the Lodge at level 4, Stone buildings with the Fort at level 7. This section describes today's game; it is not a target.
+
+**Headquarters**
+| Building | Opens | What it does |
+|---|---|---|
+| Camp → Lodge → Fort | 1 / 4 / 7 | The town's centre. Upgrading it unlocks the next set of buildings (Timber, then Stone) and more land. |
+
+**Homes and daily life**
+| Building | Opens | What it does |
+|---|---|---|
+| Tent → Cabin → Stone House | 1 / 4 / 7 | Beds: 2, then 3, then 4. |
+| Campfire | 1 | Lights the camp about 4 tiles around at night. |
+| Canteen → Mess Hall | 1 / 7 | Where people eat. A Cook on shift makes every meal more filling. The Mess Hall seats 4 instead of 2. |
+| Kennel | 1 | Keeps two dogs; strays turn up while there is room. |
+
+**Water and food**
+| Building | Opens | What it does |
+|---|---|---|
+| Rain Barrel → Rain Collector → Stone Well | 1 / 4 / 7 | Makes water; more at each step. A Farmer makes it collect more. |
+| Electric Pump | 7 | Makes more water than the Stone Well. Needs power; a Mechanic runs it at full speed. |
+| Garden Plot → Fenced Farm → Irrigated Farm | 1 / 4 / 7 | Grows food and uses water; more at each step. A Farmer grows more. |
+| Greenhouse | 7 | Grows food all year; 40% more with power. |
+
+**Materials and storage**
+| Building | Opens | What it does |
+|---|---|---|
+| Scrapyard | 1 | Makes scrap. A Scavenger gets more out of it. |
+| Lumber Camp | 4 | Makes wood. A Scavenger chops faster. |
+| Pallet Yard | 4 | A Scavenger turns 6 scrap into 4 wood a day; it waits when scrap runs low. |
+| Quarry | 4 | Makes stone. An Engineer digs faster. |
+| Fuel Still | 4 | A Mechanic turns 2 wood into 1 fuel. |
+| Supply Crates → Storehouse → Warehouse | 1 / 4 / 7 | Holds more food, water, wood and stone; more at each step. |
+| Cold Store | 7 | With power, stores 40 more food and water. |
+
+**Care**
+| Building | Opens | What it does |
+|---|---|---|
+| Medical Tent → Clinic → Hospital | 1 / 4 / 7 | Heals the hurt and sick; faster at each step, slower without a Medic. Patient beds: 2, 3, 4. The Hospital can operate when it has power. |
+
+**Research, gear and ammo**
+| Building | Opens | What it does |
+|---|---|---|
+| Workbench → Workshop | 1 / 4 | Research and gear crafting. An Engineer works fastest. |
+| Armory | 4 | Survivors buy basic gear there with spare scrap. |
+| Barracks | 7 | Next to an Armory, gear gets cheaper. |
+| Ammo Bench | 4 | A Mechanic loads 16 rounds a day. |
+| Ammo Factory | 7 | With power, a Mechanic makes 64 rounds a day. A separate building, not an upgrade of the Ammo Bench. |
+
+**Training** (each raises one survivor stat when visited)
+| Building | Opens | What it does |
+|---|---|---|
+| Gym | 1 | Trains Strength. |
+| Library | 4 | Trains Intelligence; every visit adds research. |
+| School | 4 | Trains Intelligence; children grow up in 3 days, not 5. |
+| Lounge | 4 | Trains Charisma and lifts the mood. |
+| Archery Range | 4 | Trains Perception. |
+| Obstacle Course | 4 | Trains Agility. |
+| Sparring Ring | 4 | Trains Endurance. |
+
+**Trade and vehicles**
+| Building | Opens | What it does |
+|---|---|---|
+| Trading Post | 1 | Traders come twice as often and pay 20% more. |
+| Garage | 4 | Holds one vehicle and fixes up the wrecks squads find. |
+
+**Power and radio**
+| Building | Opens | What it does |
+|---|---|---|
+| Generator | 7 | Burns fuel. Gives 4 power and +20% output to buildings within 5 tiles. A Mechanic on shift saves fuel. |
+| Wind Turbine | 7 | +2 power, day and night, no fuel. |
+| Solar Array | 7 | +3 power in daylight, no fuel. |
+| Power Pole | 7 | Carries the Generator's boost 5 tiles further. |
+| Radio Tower | 7 | With power: newcomers come 30% sooner, and it can send the rescue signal. |
+
+**Defence** (in the Build menu's Defend tab)
+| Item | Opens | What it does |
+|---|---|---|
+| Wood Fence, Log Palisade, Stone Wall, Electric Fence, Gate | 1 on | Walls of rising strength. The Electric Fence zaps zombies that hit it while the power is on. The gate is the one wall tile survivors can walk through. |
+| Guard post | 1 | A sandbagged spot a fighter holds on a day or night watch; the holder engages from farther away. |
+| Floodlight | 7 | With power, zombies within 5 tiles are slowed at night. |
+| Spike Strip, Barbed Wire | 4 | Traps: damage and a stumble; half speed for zombies crossing. |
+| Fire Trench, Land Mine, Noise Lure | 7 | Traps: burns a crossing zombie; one blast in a small area; pulls part of a boss's horde aside. |
+
+**The City (levels 16–17)**
+| Building | Opens | What it does |
+|---|---|---|
+| Town Hall | 16 | +3 renown a day and one more Specialist and Hybrid slot. |
+| Water Tower | 16 | Pumps 30 water a day with power, a quarter without. |
+| Market Square | 17 | A trader comes every day. |
+
+That is 36 kinds of building before the City (counting each upgrade ladder once), plus 3 City buildings.
+
+## 10. Building changes decided (owner, 16 Nov; none built yet)
+The gaps found when section 9 was checked against the targets, and what the owner decided. Exact levels and numbers are set when each is built.
+1. **Spread the existing buildings over levels 1 to 10**, two to four new ones per level. Today they open in three batches (levels 1, 4 and 7), so levels 2, 3, 5, 6 and 8 to 15 unlock no building. No new art needed.
+2. **Move the Stone step to era 3** (from level 11), so the three looks match the three eras: camp, village, town. Today the town is already stone at level 7.
+3. **Seven new buildings**, for jobs no building does today:
+   - **Watchtower:** a guard on it sees and shoots farther and spots daytime roamers early.
+   - **Memorial Garden:** the dead are remembered there; visiting lifts mood.
+   - **Festival Ground:** the home of the celebrate route and of town parties.
+   - **Landmark:** the build-route reward, one per Banner.
+   - **Trophy Hall:** shows the fight-route trophies.
+   - **Shelter Bunker** (era 3): civilians wait out a horde inside.
+   - **Forge** (era 3): makes the top steel gear.
+4. **School and Library get one job each:** the School is for children only (they grow up faster), the Library trains adults' Intelligence.
+
+Still to design before building: each new building's level, cost, size and look, and how the festival and trophy code that exists today fits the Festival Ground and Trophy Hall (not checked yet).
+
+## 11. Where today's game is known to miss these targets
+Not fixed yet; listed so nothing is forgotten. Everything else on this page still has to be measured against the game (balance bot first, see `07-TESTING.md`).
+- **Horde size:** far smaller than the targets (owner, 16 Nov).
+- **Road to level 15:** the level timers add up to about 9 real days to level 15 and about 15 to level 20. The 4 to 6 week target therefore has to come from the work each level asks for, or the timers change.
+- **First sitting:** the level 2 and level 3 timers are 6 and 12 game hours, which is 1 and 2 real hours. Level 3 in 30 minutes is not reachable on the timers alone.
+- **Unlocks and era looks:** see section 10, points 1 and 2.
+- **Not built yet:** the daytime threat (roamers and the warned daytime horde), Take command, going back to an earlier Banner's unused routes, the seven new buildings.
+- **To check, unknown today:** whether every route has its own reward; whether storage caps away production at about a day; whether every upgrade step already has its own model (`06-ASSETS.md`).
