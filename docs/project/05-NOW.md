@@ -72,6 +72,7 @@ Art chat:
 - W43. Batch 5 armour: which five? The list was never written down (not in this folder, not in the repo). 14 armour items have no model yet (`06-ASSETS.md`, section 4). Claude's proposal, the five with the most hard pieces: Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor, SWAT Armor. Waiting: yes, or the owner's own five. Then, per item: Claude makes the three-view sheet, the owner approves the whole sheet, Claude splits it into three square files, the owner makes the Tripo model and sends the `.glb`.
 - W44. `assets/` holds about 205 MB of files nothing loads (old 2D sprite frames, test pages, mock-ups: `06-ASSETS.md`, section 9). Delete them from the branch, or keep them? (They stay in the git history either way.)
 - W45. Five soft armours (Work Jacket, Leather Jacket, Biker Leathers, Hoodie, Raincoat) need no Tripo model: they can be painted on the survivor in code, like the Chef's Whites. Do them after Batch 5, one build each?
+- W46. Eleven new zombie models arrived 16 Nov (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female; list in `06-ASSETS.md`, section 2). Claude's proposal: first rig all eleven and show them on the Zombie test page as looks only, with no new behaviour; what each one does in the game is then decided in the Planning chat and built in the Features chat. Waiting: go, and for each model whether it is a new kind of zombie or a new look for a kind the game already has.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
