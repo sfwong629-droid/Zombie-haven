@@ -141,8 +141,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Art chat): The Crawler has no legs. Built in 3D.185: the legs of both Crawler models are cut off a little below the hip.
 - 17 Nov (Art chat): Models the game already has are not rigged again when the owner sends them a second time (the Gatling Boss, Butcher and Bloater Queen files of 17 Nov were the ones already in the game).
 
-## Open questions (not decided)
-- **The eleven new zombies (W48): Claude's proposal, 17 Nov, not decided.** Trick; how to beat it; strength next to a Walker; first day.
+## Zombies
+- 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
   - Stag: by day it roams outside the walls and charges in a straight line, knocking a person down; can't break walls. Beat it with walls, fences and escorts. Weak but very fast. Day 6.
   - Leaper: jumps fences and first-level walls and lands inside. Beat it with upgraded walls or a fighter inside. Weak, fast. Day 11.
   - Splitter: when killed it splits into two weak halves that keep coming. Beat it with area damage or by saving a hit for the halves. Medium. Day 13.
@@ -151,6 +151,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
   - Lineman: goes for the power; the electric fence doesn't hurt it, and what it breaks stays dark until repaired. Beat it by guarding the generator. Medium. Day 18.
   - Listener: blind; ignores quiet people and runs at noise (gunfire, machines). Beat it with quiet weapons (melee, bows). Low health, hits hard. Day 20.
   - Hazmat: fire, bile, spores and rot blasts don't hurt it; traps do half. Beat it with fighters. Fairly tough. Day 22.
-  - Nurse: gets a fallen zombie near her back on its feet every few seconds. Beat her by killing her first. Weak, stays at the back. Day 24. (Other option: her scratch leaves a wound that only the Infirmary cures.)
+  - Nurse: gets a fallen zombie near her back on its feet every few seconds. Beat her by killing her first. Weak, stays at the back. Day 24.
   - Soldier (male): helmet and vest: bullets and arrows do half damage (the reverse of the Riot Zombie). Beat it with melee. Tough. Day 27. No gun.
   - Soldier (female, red crosses): the squad's medic: wounded zombies near her slowly heal. Comes with male Soldiers. Beat her by killing her first. Medium. Day 27. No gun.
+
+## Open questions (not decided)
+- None on 17 Nov.

@@ -17,6 +17,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
 - Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
 - Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
+- Build the eleven new kinds of zombie (decided 17 Nov; list in `02-DECISIONS.md`, "Zombies"), in the Features chat, one kind per build. The Stag needs the daytime roaming groups first.
 
 ## Waiting on the owner
 Every chat brings its open items back in every reply until they are done (rule in `00-START-HERE.md`). Tick items off here.
@@ -78,7 +79,7 @@ Art chat:
 - ~~W45. Paint the five soft armours in code?~~ Decided 16 Nov: no, they will be built in Tripo later.
 - ~~W46. The eleven new zombie models: new kinds, or new looks?~~ Decided 16 Nov: all eleven are new kinds of zombie. Step 1 (rigged, on the Zombie test page) was done in 3D.182. What each one does: W48.
 - ~~W47. Do the eleven look right on the Zombie test page?~~ Owner, 16 Nov: OK for now.
-- W48. **In the Planning chat:** the eleven new kinds of zombie (Digger, Lineman, Splitter, Stag, Bile Spewer, Hazmat, Leaper, Listener, Nurse, Soldier male and female) each need a trick, a strength and a day they first appear. Until then they only stand on the Zombie test page. They are built in the Features chat once decided. **17 Nov: Claude's proposal for all eleven was sent in the Planning chat (copy in `02-DECISIONS.md`, Open questions). Waiting: yes, no or changes for each, and which of two tricks the Nurse gets.**
+- ~~W48. The eleven new kinds of zombie: trick, strength and first day.~~ Decided 17 Nov in the Planning chat: Claude's proposal approved as it stands (the Nurse raises fallen zombies). The list is in `02-DECISIONS.md`, "Zombies". Built in the Features chat, one kind per build.
 - ~~W49. Is the new Zombie test page easy to follow?~~ Owner, 17 Nov: yes. The size and model changes asked for the same day are in 3D.185 (W51).
 - W51. Sizes and models changed in 3D.185 on the owner's say (Walker, Lasher, Leaper, legless Crawlers, three more boss cards). Owner, 17 Nov: make the Butcher and the Bloater Queen a bit smaller. Done in 3D.188: the Bloater Queen is drawn at 1.55 times a model (was 1.75) and the Butcher at 1.4 (was 1.55), about a tenth smaller each. Waiting: is that enough, and are the Leaper's height and the Crawlers' stumps right?
 
