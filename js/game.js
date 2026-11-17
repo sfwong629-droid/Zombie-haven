@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.183', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.184', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7035,7 +7035,7 @@ function gearStart() {
   gearLine(); const wait = setInterval(() => { if (window.ZH3D && ZH3D.armorsReady && ZH3D.armorsReady()) { clearInterval(wait); gearLine(); } }, 400);   /* line up again once every model is in, so the 3D tags and order are right */
 }
 /* 3D.183 owner: "too many of them in that map and when I let them attack, I can't follow them". The page now shows ONE zombie at a time, big,
-   turning on the spot, and four buttons play it standing, walking, running or attacking in place (z.show; js/render3d.js draws it and the
+   turning on the spot, with a survivor beside it for size (3D.184), and four buttons play it standing, walking, running or attacking in place (z.show; js/render3d.js draws it and the
    simulation still sees a frozen 'zoo' zombie). "Show all" brings the old line-up back; the buttons then work on every zombie in it. */
 let zooOne = null, zooAct = 'stand', zooTurn = true;
 const ZOO_RUNS = (t) => ['runner', 'dog', 'stag', 'lasher', 'stalker'].includes(t);   /* the kinds that run in the game */
@@ -7053,6 +7053,10 @@ function zooInfo(t) {
     : `HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`;
   $('zooInfo').innerHTML = `<b>${esc(zooName(t))}</b> · ${what}${zooAct === 'run' && !ZOO_RUNS(t) ? '<br>This kind never runs in the game, so it keeps walking.' : ''}`;
 }
+function zooRef(x, y) {   /* 3D.184 owner: a survivor beside the zombie, for size. He stands still, faces the camera, and nobody fights */
+  S.sv = S.sv.filter((q) => !q.zooRef); if (x == null) return;
+  const q = mk('Sam', 'Guard', 1, x, y, 0); q.eq = { weapon: null, armor: null, head: null, acc: null }; q.dummy = true; q.zooRef = true; q.tag = 'Survivor'; q.resident = true; q.faceW = { x: q.w.x + 5, y: q.w.y + 5 }; S.sv.push(q);
+}
 function zooShow(t) {   /* one zombie alone, in the open, close up */
   for (const q of S.z) q.escaped = true;   /* the one before leaves at once, with no death fall */
   zooOne = t; zooLine(); let z = S.z.find((q) => zooIs(q, t)); S.z = [];
@@ -7060,9 +7064,10 @@ function zooShow(t) {   /* one zombie alone, in the open, close up */
   S.z = z ? [z] : [];
   const S0 = 11 - 2 * 2.1, x = (S0 - 3) / 2 + OFF, y = (S0 + 3) / 2 + OFF; if (z) { z.w = tc(x, y); if (z.home) z.home = tc(x, y); }   /* open ground north of the town, away from the fence */
   for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 3 && Math.abs(ty - y) < 3) { const n = treeNode(tx, ty); if (n.left) { n.left = 0; n.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }
-  centerOn(x + .5, y + .5, ZOOM_MAX); cam.y -= VH * .15; clampCam(); zooApply(); zooInfo(t);   /* the panel covers the lower half: the zombie stands in the upper one */
+  zooRef(x + .5, y - .5);
+  centerOn(x + .75, y + .25, ZOOM_MAX); cam.y -= VH * .09; clampCam(); zooApply(); zooInfo(t);   /* the panel covers the lower half: the zombie stands in the upper one */
 }
-function zooAll() { for (const q of S.z) q.escaped = true; zooOne = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); zooApply(); $('zooInfo').innerHTML = 'Everyone lined up. The buttons work on all of them at once. Tap a card to see one alone.'; }
+function zooAll() { for (const q of S.z) q.escaped = true; zooRef(); zooOne = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); zooApply(); $('zooInfo').innerHTML = 'Everyone lined up. The buttons work on all of them at once. Tap a card to see one alone.'; }
 function zooStart() {
   S.mission = null; simSpeed = 1;
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
@@ -7074,7 +7079,7 @@ function zooStart() {
   $('zooTurn').onclick = () => { zooTurn = !zooTurn; zooApply(); };
   $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('zoo'); location.search = q.toString(); };
   $('zooAll').onclick = () => { if (zooOne) zooAll(); else zooShow('walker'); };
-  $('zooGo').onclick = () => { for (const z of S.z) { z.zoo = false; z.zooOut = true; z.show = null; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } $('zooInfo').innerHTML = 'Loose: heading for the town. Tap a card or "Show all" to bring them back.'; };
+  $('zooGo').onclick = () => { zooRef(); for (const z of S.z) { z.zoo = false; z.zooOut = true; z.show = null; z.mode = 'appear'; z.stateTicks = 0; z.siege = true; } $('zooInfo').innerHTML = 'Loose: heading for the town. Tap a card or "Show all" to bring them back.'; };
   zooShow('walker');
   setInterval(() => { if (S.z.some((z) => !z.zoo && !z.zooOut)) S.z = S.z.filter((z) => z.zoo || z.zooOut || !(z.escaped = true)); }, 400);   /* the game's own zombies (the day's roamers) stay off the test page */
 }

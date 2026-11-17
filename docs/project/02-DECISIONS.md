@@ -124,6 +124,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Art chat): All eleven new zombie models are **new kinds of zombie** (each with its own name, strength and trick), not new looks for kinds the game already has. The tricks are decided in the Planning chat.
 - 16 Nov (Art chat): The left-over files in `assets/` that nothing loads (old 2D sprite frames, test pages, mock-ups) are deleted from the branch. Done with 3D.183; list in `06-ASSETS.md`, section 9.
 - 16 Nov (Art chat): The Zombie test page shows one zombie at a time, turning, and plays Stand / Walk / Run / Attack on the spot, so it can be followed. Built in 3D.183.
+- 16 Nov (Art chat): On the Zombie test page a survivor stands next to the zombie for size. Built in 3D.184.
 
 ## Open questions (not decided)
 - None on 16 Nov.
