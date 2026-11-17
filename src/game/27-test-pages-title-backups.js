@@ -2,6 +2,8 @@
    Since 3D.183 it shows one at a time (tap a card) with Stand / Walk / Run / Attack played on the spot; "Show all" is the line-up. Nothing is saved. */
 const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
 /* 3D.182 the owner's 11 new models (16 Nov): looks only. Each stands in as a Walker (the Stag as a Dog) wearing the new model (z.mk); what they do in the game is not decided. */
+const ZOO_BOSS = ['bloater', 'butcher', 'gatling'];   /* 3D.185 owner: the Bloater Queen, the Butcher and the Gatling Boss were missing from the page (the Mutant and the Stalker are in ZOO_ROWS) */
+const zooBoss = (bk, x, y) => ({ type: 'boss', bk, boss: true, pw: 1, w: tc(x, y), hp: 260, max: 260, cool: 40, phase: 0, mode: 'zoo', stateTicks: 0, target: null, path: null, zoo: true });
 const ZOO_NEW = [['digger', 'Digger'], ['lineman', 'Lineman'], ['splitter', 'Splitter'], ['stag', 'Stag'], ['bilespewer', 'Bile Spewer'], ['hazmat', 'Hazmat'], ['leaper', 'Leaper'], ['listener', 'Listener'], ['nurse', 'Nurse'], ['soldier_m', 'Soldier'], ['soldier_f', 'Soldier (f)']];
 function zooLine() {
   S.z = []; ZOO_GRID.forEach((row, r) => row.forEach((t, i) => {
@@ -14,6 +16,9 @@ function zooLine() {
   ZOO_NEW.forEach(([mk, name], n) => { const r = -1 - Math.floor(n / 4), row = Math.min(4, ZOO_NEW.length - Math.floor(n / 4) * 4), i = n % 4, S0 = 11 + r * 2.1, D = -3 + (i - (row - 1) / 2) * 2.2, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* three more rows behind the others */
     for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 1.6 && Math.abs(ty - y) < 1.6) { const t = treeNode(tx, ty); if (t.left) { t.left = 0; t.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }   /* no tree or rock in front of a new model */
     spawn(x, y, mk === 'stag' ? 'dog' : 'walker'); const z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; z.mk = mk; z.zn = name; });
+  ZOO_BOSS.forEach((bk, i) => { const S0 = 11 - 4 * 2.1, D = -3 + (i - 1) * 3, x = (S0 + D) / 2 + OFF, y = (S0 - D) / 2 + OFF;   /* the three bosses stand behind everyone, wider apart */
+    for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 2 && Math.abs(ty - y) < 2) { const t = treeNode(tx, ty); if (t.left) { t.left = 0; t.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }
+    S.z.push(zooBoss(bk, x, y)); });
 }
 /* ---------------- 3D.151 Gear test page (?gear): every weapon, armour, helmet and accessory in ITEMS, worn by a survivor.
    It reads ITEMS, so a new item shows up here by itself. Never saves. */
@@ -73,7 +78,7 @@ function gearStart() {
 let zooOne = null, zooAct = 'stand', zooTurn = true;
 const ZOO_RUNS = (t) => ['runner', 'dog', 'stag', 'lasher', 'stalker'].includes(t);   /* the kinds that run in the game */
 const zooIs = (q, t) => ZOO_NEW.some(([mk]) => mk === t) ? q.mk === t : !q.mk && (t === 'boss' ? q.type === 'boss' && !q.bk : q.type === t || q.bk === t);
-const zooName = (t) => { const n = ZOO_NEW.find(([mk]) => mk === t); return n ? n[1] : t === 'stalker' ? 'Stalker (boss)' : (zombieTypes[t] && zombieTypes[t].name) || 'Mutant Boss'; };
+const zooName = (t) => { const n = ZOO_NEW.find(([mk]) => mk === t); return n ? n[1] : ZOO_BOSS.includes(t) ? BOSS_KINDS[t].name + ' (boss)' : t === 'stalker' ? 'Stalker (boss)' : (zombieTypes[t] && zombieTypes[t].name) || 'Mutant Boss'; };
 function zooApply() {   /* hand the chosen action to every zombie on show, and light the buttons */
   for (const z of S.z) if (z.zoo) z.show = { act: zooAct, turn: zooTurn, yaw: z.show ? z.show.yaw : null };
   const d = $('zooPanel'); if (!d) return;
@@ -81,7 +86,7 @@ function zooApply() {   /* hand the chosen action to every zombie on show, and l
   d.querySelectorAll('.zc').forEach((b) => b.classList.toggle('on', b.dataset.t === zooOne)); $('zooAll').textContent = zooOne ? 'Show all' : 'One at a time'; $('zooGo').textContent = zooOne ? 'Send it to town' : 'Let them attack';
 }
 function zooInfo(t) {
-  const isNew = ZOO_NEW.some(([mk]) => mk === t), def = zombieTypes[t] || (t === 'stalker' ? { hp: 182, atk: 15, chase: .009, desc: BOSS_KINDS.stalker.line } : null);
+  const isNew = ZOO_NEW.some(([mk]) => mk === t), bk = ZOO_BOSS.includes(t) ? BOSS_KINDS[t] : null, def = zombieTypes[t] || (t === 'stalker' ? { hp: 182, atk: 15, chase: .009, desc: BOSS_KINDS.stalker.line } : bk ? { hp: Math.round(260 * bk.hp), atk: Math.round(14 * bk.atk), chase: .009 * bk.spd, desc: t === 'gatling' ? 'The one zombie with a weapon: the gun is part of his arm.' : 'One of the bosses that can come instead of the Mutant.' } : null);
   const what = isNew ? `new model, looks only<br>${t === 'stag' ? 'Moves like a Dog for now.' : 'Moves like a Walker for now.'} What it does in the game is not decided.`
     : `HP ${(def && def.hp) || 260} · ATK ${(def && def.atk) || 14} · speed ${def ? Math.round(def.chase * 1000) : 9}<br>${esc((def && def.desc) || (t === 'boss' ? 'The big mutant that comes every few nights.' : t === 'raider' ? 'Human enemy: steals from your stockpile and runs.' : 'A regular in every wave.'))}`;
   $('zooInfo').innerHTML = `<b>${esc(zooName(t))}</b> · ${what}${zooAct === 'run' && !ZOO_RUNS(t) ? '<br>This kind never runs in the game, so it keeps walking.' : ''}`;
@@ -93,6 +98,7 @@ function zooRef(x, y) {   /* 3D.184 owner: a survivor beside the zombie, for siz
 function zooShow(t) {   /* one zombie alone, in the open, close up */
   for (const q of S.z) q.escaped = true;   /* the one before leaves at once, with no death fall */
   zooOne = t; zooLine(); let z = S.z.find((q) => zooIs(q, t)); S.z = [];
+  if (!z && ZOO_BOSS.includes(t)) z = zooBoss(t, 0, 0);
   if (!z && zombieTypes[t]) { spawn(0, 0, t); z = S.z[S.z.length - 1]; z.zoo = true; z.mode = 'zoo'; z.hp = z.max; }   /* a kind the line-up has no room for (the Thrower) */
   S.z = z ? [z] : [];
   const S0 = 11 - 2 * 2.1, x = (S0 - 3) / 2 + OFF, y = (S0 + 3) / 2 + OFF; if (z) { z.w = tc(x, y); if (z.home) z.home = tc(x, y); }   /* open ground north of the town, away from the fence */
@@ -105,7 +111,8 @@ function zooStart() {
   S.mission = null; simSpeed = 1;
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
   const card = (t) => { const z = zombieTypes[t] || (t === 'stalker' ? { name: 'Stalker (boss)', hp: 182, atk: 15, isNew: 1 } : { name: 'Mutant Boss' }); return `<button class="zc" data-t="${t}"><b>${esc(z.name || t)}</b>${z.isNew ? '<i>NEW</i>' : ''}<small>HP ${z.hp || 260} · ATK ${z.atk || 14}</small></button>`; };
-  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length} types · tap one to see it alone</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}</div><div class="zh"><b>New models</b><span class="sm">${ZOO_NEW.length} · looks only, no behaviour yet</span></div><div class="zrow">${ZOO_NEW.map(([mk, name]) => `<button class="zc" data-t="${mk}"><b>${esc(name)}</b><i>NEW</i><small>model only</small></button>`).join('')}</div><div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" data-a="stand">Stand</button><button class="act" data-a="walk">Walk</button><button class="act" data-a="run">Run</button><button class="act" data-a="attack">Attack</button><button class="act" id="zooTurn">Turning</button></div><div class="zbtns" style="margin-top:8px"><button class="act" id="zooExit">Exit</button><button class="act" id="zooAll">Show all</button><button class="act go" id="zooGo">Send it to town</button></div>`;
+  const bcard = (bk) => `<button class="zc" data-t="${bk}"><b>${esc(BOSS_KINDS[bk].name)}</b><small>boss · HP ${Math.round(260 * BOSS_KINDS[bk].hp)} · ATK ${Math.round(14 * BOSS_KINDS[bk].atk)}</small></button>`;
+  d.innerHTML = `<div class="zh"><b>Zombie test</b><span class="sm">${ZOO_ROWS.flat().length + ZOO_BOSS.length} types · tap one to see it alone</span></div><div class="zrow">${[...ZOO_ROWS[1], ...ZOO_ROWS[0]].map(card).join('')}${ZOO_BOSS.map(bcard).join('')}</div><div class="zh"><b>New models</b><span class="sm">${ZOO_NEW.length} · looks only, no behaviour yet</span></div><div class="zrow">${ZOO_NEW.map(([mk, name]) => `<button class="zc" data-t="${mk}"><b>${esc(name)}</b><i>NEW</i><small>model only</small></button>`).join('')}</div><div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" data-a="stand">Stand</button><button class="act" data-a="walk">Walk</button><button class="act" data-a="run">Run</button><button class="act" data-a="attack">Attack</button><button class="act" id="zooTurn">Turning</button></div><div class="zbtns" style="margin-top:8px"><button class="act" id="zooExit">Exit</button><button class="act" id="zooAll">Show all</button><button class="act go" id="zooGo">Send it to town</button></div>`;
   $('world').appendChild(d);
   d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => zooShow(b.dataset.t); });
   d.querySelectorAll('.zact .act[data-a]').forEach((b) => { b.onclick = () => { zooAct = b.dataset.a; zooApply(); if (zooOne) zooInfo(zooOne); }; });

@@ -28,6 +28,7 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 | `node tools/qa/radio_tap_check.js` | 3D.177 bug A4 check: a radio card that has closed must not take taps (it used to re-open its old message when you tapped the People list). |
 | `node tools/qa/raider_note_check.js [card.png]` | 3D.178 bug A5 check: the "New: Raiders" field note must show a raider (in the Toll Kings' kit), not the zombie picture. |
 | `node tools/qa/zoo_show_check.js [shot.png]` | 3D.183 check: the Zombie test page shows one zombie at a time; Stand / Walk / Run / Attack play the right clip on the spot; Turn turns it; "Show all" lines everyone up. |
+| `python3 tools/qa/crawler_legs_check.py` | 3D.185 check: both Crawler models end at the thigh (no legs) and still have their 35 clips. |
 | `node tools/qa/new_zombies_check.js [shot.png]` | 3D.182 check: the 11 new zombie models are lined up on the Zombie test page, each file loads, and each figure wears its own model. |
 | `node tools/qa/ink_check.js mattress,hawaii` | Armour close-ups with the ink outline on and off (the 3D.157 speckle check). |
 | `node tools/art/b3d/gate_poses.js OUT id1,id2` + `python3 tools/art/b3d/kit/gsheet.py OUT 5 sheet.png` | The armour "gate": each armour in idle, cheer, walk, run, swing, hammer and collapse, male and female, on one sheet. Look at it before showing the owner. |
@@ -51,6 +52,8 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
    **Four-legged:** `python3 tools/art/b3d/ai_stag.py <Model>.glb OUT.glb`, then `node tools/art/compress_glb.mjs OUT.glb assets/characters/ai3d_v2/zombie_<id>.glb zombie`.
 2. **Game code:** an entry in `ZMODEL` in `js/render3d.js` (walking speeds from `tools/art/stride/measure.html?m=zombie_<id>`). A model no zombie type uses yet goes on the Zombie test page through `ZOO_NEW` (`src/game/27-test-pages-title-backups.js`).
 3. **Check:** `node tools/qa/new_zombies_check.js shot.png`, and look at the Zombie test page (`?zoo=1`).
+
+To take the legs off a rigged model without touching its skeleton or clips (the Crawlers, 3D.185): `node tools/art/cut_legs.mjs IN.glb OUT.glb [how far down the thigh, 0 to 1] [u,v of a dark red texture point]`.
 
 ## Publishing the playable game (claude.ai artifact)
 

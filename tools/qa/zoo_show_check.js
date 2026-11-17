@@ -1,6 +1,7 @@
 // tools/qa/zoo_show_check.js [shot.png] — 3D.183, 3D.184 (a survivor beside it for size): the Zombie test page shows one zombie at a time, playing on the spot.
 // Checks: one zombie on the map at the start and after tapping a card; Stand / Walk / Run / Attack each play the right clip
 // while the zombie stays where it is; Turn on turns it and Turn off holds it still; a kind that never runs keeps walking;
+// the Walker, Lasher and Leaper are drawn at the sizes the owner asked for and the three other bosses have cards (3D.185);
 // "Show all" lines everyone up and the buttons reach all of them; no page errors. Exit 0 ok, 1 something is wrong.
 const Q = require('./lib');
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 }); let bad = 0;
@@ -17,8 +18,11 @@ const Q = require('./lib');
     for (const [a, re] of Object.entries(want)) { const c0 = await act(a); await p.waitForTimeout(1200); const c1 = await p.evaluate(() => ZH3D.zClip(ZH.S.z[0]));
       ok(c1 && re.test(c1.clip), card + ' ' + a + ': plays ' + (c1 && c1.clip)); ok(c0 && c1 && Math.hypot(c1.x - c0.x, c1.z - c0.z) < .01 && Math.abs(c1.yaw - c0.yaw) < .01, card + ' ' + a + ': stays on the spot, not turning'); }
     await turn(true); const y0 = (await p.evaluate(() => ZH3D.zClip(ZH.S.z[0]))).yaw; await p.waitForTimeout(1500); const y1 = (await p.evaluate(() => ZH3D.zClip(ZH.S.z[0]))).yaw; ok(y1 - y0 > .03, card + ': Turn turns it'); }
+  // 3D.185: sizes beside the survivor, and the three bosses that were missing from the page
+  for (const [card, want] of [['walker', 1.156], ['lasher', 1.6], ['leaper', 1.2], ['digger', 1]]) { await pick(card); await p.waitForTimeout(800); const c = await p.evaluate(() => ZH3D.zClip(ZH.S.z[0])); ok(c && Math.abs(c.sc - want) < .01, card + ': drawn at ' + (c && c.sc.toFixed(3)) + ' (want ' + want + ')'); }
+  for (const bk of ['bloater', 'butcher', 'gatling']) { await pick(bk); await p.waitForTimeout(800); const r = await p.evaluate(() => ({ n: ZH.S.z.length, bk: ZH.S.z[0] && ZH.S.z[0].bk, c: ZH3D.zClip(ZH.S.z[0]) })); ok(r.n === 1 && r.bk === bk && r.c && r.c.clip, bk + ': on the page as a boss, playing ' + (r.c && r.c.clip)); }
   if (process.argv[2]) { await pick('digger'); await turn(false); await act('walk'); await Q.shot(p, process.argv[2]); }
   await p.evaluate(() => document.getElementById('zooAll').click()); await p.waitForTimeout(2500);
-  const all = await p.evaluate(() => ({ n: ZH.S.z.length, show: ZH.S.z.every((z) => z.show && z.show.act) })); ok(all.n === 28 && all.show && !(await p.evaluate(() => ZH.S.sv.some((s) => s.zooRef))), '"Show all": ' + all.n + ' zombies lined up, all taking the buttons');
+  const all = await p.evaluate(() => ({ n: ZH.S.z.length, show: ZH.S.z.every((z) => z.show && z.show.act) })); ok(all.n === 31 && all.show && !(await p.evaluate(() => ZH.S.sv.some((s) => s.zooRef))), '"Show all": ' + all.n + ' zombies lined up, all taking the buttons');
   ok(!p.errs.length, 'no page errors' + (p.errs.length ? ': ' + p.errs.slice(0, 3).join(' | ') : ''));
   console.log(bad ? 'FAIL: ' + bad + ' problem(s)' : 'ok: the Zombie test shows one zombie at a time, playing on the spot'); await b.close(); process.exit(bad ? 1 : 0); })();

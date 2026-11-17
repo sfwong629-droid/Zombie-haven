@@ -1,6 +1,6 @@
 # Zombie Haven: assets
 
-Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (first written at commit 1c4ec0f, build 3D.181; updated for 3D.183) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
+Everything in the repo's `assets/` folder: what it is, whether the game uses it, and where it came from. Checked against the code on branch art-direction-b (first written at commit 1c4ec0f, build 3D.181; updated for 3D.185) on 16 Nov 2026, by reading what `index.html`, `css/` and `js/` actually load.
 
 **In game** = the game loads it and shows or plays it. **Loaded, not shown** = the game downloads it but never puts it on screen. **Waiting** = made, not used yet. **Archive** = left over from an older look; nothing loads it.
 
@@ -32,7 +32,7 @@ All 24 are **in game**. They are the owner's models; the current set went in wit
 |---|---|---|
 | Walker | `zombie_walker.glb`, `zombie_walker_f.glb` | male and female |
 | Runner | `zombie_runner.glb`, `zombie_runner_f.glb` | male and female |
-| Crawler | `zombie_crawler.glb`, `zombie_crawler_m.glb` | female and male |
+| Crawler | `zombie_crawler.glb`, `zombie_crawler_m.glb` | female and male; legs cut off below the hip in 3D.185 (owner, 17 Nov) with `tools/art/cut_legs.mjs` |
 | Burnt | `zombie_burnt.glb`, `zombie_burnt_f.glb` | male and female |
 | Brute | `zombie_brute.glb` | |
 | Alpha | `zombie_alpha.glb` | |
@@ -50,6 +50,10 @@ All 24 are **in game**. They are the owner's models; the current set went in wit
 | Boss: Bloater Queen | `zombie_queen.glb` | |
 | Boss: Butcher | `zombie_butcher.glb` | |
 | Boss: Gatling Boss | `zombie_gatling.glb` | the one zombie with a weapon (owner, 16 Nov) |
+
+The owner sent `Gatling_Boss.glb`, `Butcher.glb` and `Bloated_Queen.glb` again on 17 Nov: they are the same raw models these three were made from, so nothing was rigged again. All five bosses have a card on the Zombie test page since 3D.185.
+
+Sizes in the game (3D.185, owner): the Walker is drawn the same height as a survivor, the Lasher 1.6 times its model (chest at the top of a survivor's head), the Leaper 1.2 times.
 
 ### New zombie models: on the Zombie test page only (3D.182, 16 Nov)
 Eleven models the owner delivered on 16 Nov. They are rigged, in `assets/characters/ai3d_v2/` and loaded by the game, but **only the Zombie test page shows them** (title screen → Zombie test, or `?zoo=1`). No zombie in a real game wears them yet. Each will be a **new kind of zombie** with its own name, strength and trick (owner, 16 Nov); the tricks are not decided (W48 in `05-NOW.md`, Planning chat). On the test page each stands in as a Walker (the Stag as a Dog) wearing the new model. Since 3D.183 the test page shows one zombie at a time, turning, with Stand / Walk / Run / Attack played on the spot and (3D.184) a survivor beside it for size. None carries a weapon.
