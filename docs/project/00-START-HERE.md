@@ -13,7 +13,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `03-BUGS.md` | The one bug list. Owner-seen bugs first | live |
 | `04-UI.md` | UI direction, rules and the UI problem list | live (first version) |
 | `05-NOW.md` | The next three jobs, and what is frozen | live |
-| `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | **to write** |
+| `06-ASSETS.md` | Every model, kit, icon, sound: in game or waiting, source file | live (written 16 Nov, Art chat) |
 | `07-TESTING.md` | How we test, cheapest first; how ChatGPT is used | live |
 | `08-BALANCE.md` | Balance targets (pace, danger, hordes, routes, economy), not numbers | **to write, next job in the Planning chat** |
 

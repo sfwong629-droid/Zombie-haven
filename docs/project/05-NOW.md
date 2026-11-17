@@ -6,7 +6,7 @@
 New features, balance changes and new art in the game are allowed again. The working rules in `00-START-HERE.md` still apply: the owner's bugs first, one change per build with a scripted check, every change checked against the vision.
 
 ## The next three jobs
-1. **Finish this folder.** `01-VISION.md` was approved by the owner on 16 Nov. Still to write: `06-ASSETS.md` (from the repo's `assets/` folder).
+1. ~~**Finish this folder.**~~ Done 16 Nov: `01-VISION.md` approved by the owner; `06-ASSETS.md` written in the Art chat from the repo's `assets/` folder. (`08-BALANCE.md` is its own job in the Planning chat.)
 2. ~~**Bug A1, the sliding survivors.**~~ Fixed in 3D.176 (16 Nov). Owner bugs fixed the same day: A4 (3D.177), A5 (3D.178, UI chat), A7 Stalker skin (3D.179), A2 angry face flashing (3D.180); A3 closed. Still open: A6 (Ben can't reach the Garden Plot), waiting for the owner's backup.
 3. ~~**Make the test suite trustworthy** (bugs C1, C2).~~ Done 16 Nov: the suite is green (39 of 39, about 2 minutes). Two tests each failed once in a full run and pass alone (`combat`, `expchoices`): watch them.
 
@@ -68,9 +68,14 @@ Code clean-up chat:
 - ~~W40. Advisor tips in the Needs you list can no longer be hidden for the day: add a hide button?~~ Decided 16 Nov: yes. Passed to the UI chat (see W41).
 - ~~W42. Do the UI overlap fixes and the new features wait for step 2 of the split?~~ Decided 16 Nov: no, they start now. Step 2 runs alongside in the Code clean-up chat.
 
+Art chat:
+- W43. Batch 5 armour: which five? The list was never written down (not in this folder, not in the repo). 14 armour items have no model yet (`06-ASSETS.md`, section 4). Claude's proposal, the five with the most hard pieces: Hockey Pads, Kevlar Vest, Scrap Plate, Military Armor, SWAT Armor. Waiting: yes, or the owner's own five. Then, per item: Claude makes the three-view sheet, the owner approves the whole sheet, Claude splits it into three square files, the owner makes the Tripo model and sends the `.glb`.
+- W44. `assets/` holds about 205 MB of files nothing loads (old 2D sprite frames, test pages, mock-ups: `06-ASSETS.md`, section 9). Delete them from the branch, or keep them? (They stay in the git history either way.)
+- W45. Five soft armours (Work Jacket, Leather Jacket, Biker Leathers, Hoodie, Raincoat) need no Tripo model: they can be painted on the survivor in code, like the Chef's Whites. Do them after Batch 5, one build each?
+
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
-- W10. Batch 5 armour (Tripo models): art is unfrozen (16 Nov), so this can go ahead in an Art chat.
+- ~~W10. Batch 5 armour (Tripo models).~~ Started 16 Nov in the Art chat: see W43.
 - (W11 is closed: see the Planning chat list.)
 
 ## Parked
