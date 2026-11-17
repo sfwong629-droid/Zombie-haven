@@ -170,7 +170,7 @@ Fonts (`assets/fonts/`, 11 files, all loaded by `index.html` or `css/glass.css`)
 The 2D renderer was removed in 3D.129, so none of this is needed to run the game. Together with the old tent pictures and the town test page it is about 205 MB of the 301 MB. Deleting it is the owner's call (W44 in `05-NOW.md`).
 
 ## 10. Things the code asks for that are not there
-Passed to the Bugs chat; neither breaks the game, because the code falls back quietly.
+Neither breaks the game, because the code falls back quietly. Tidying them up belongs in the Bugs or Code clean-up chat.
 - `assets/ui/stats.png`: asked for by the field notes code; the file was never made. The Glass UI uses the sticker icons instead.
 - `assets/map/v7/wreck.png`: named in the wreckage code; the folder does not exist. Wrecks are drawn by code.
 
