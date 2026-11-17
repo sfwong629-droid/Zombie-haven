@@ -91,6 +91,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Balance chat): The build route to a Banner is that era's Landmark; it replaces "finish a Trading Post or the Radio Tower". (Not built yet.)
 - 17 Nov (Balance chat): The Founders' Festival opens at level 5 (today level 8), held at the Festival Ground, so the celebrate route can earn the first Banner. (Not built yet.)
 - 17 Nov (Balance chat): The Quarry opens at level 8, before the power buildings, which cost stone. (Not built yet.)
+- 17 Nov (Balance chat): The order to build the building plan in: the level spread first, then the School and Library split, then the festival at level 5, then the new buildings as their models arrive (Watchtower and Festival Ground first), the Landmark route last.
+- 17 Nov (Balance chat): Children should work as in Fallout Shelter: a growth period, school before they are useful, and good stats inherited from the parents. (The game already has babies who grow up in 5 days, 3 with a School, with the average of their parents' stats; what to add is open, W59.)
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.

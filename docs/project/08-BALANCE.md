@@ -203,9 +203,34 @@ Today the buildings open in three batches (levels 1, 4 and 7) and the Stone step
 
 ## 11. Where today's game is known to miss these targets
 Not fixed yet; listed so nothing is forgotten. Everything else on this page still has to be measured against the game (balance bot first, see `07-TESTING.md`).
-- **Horde size:** far smaller than the targets (owner, 16 Nov).
-- **Road to level 15:** the level timers add up to about 9 real days to level 15 and about 15 to level 20. The 4 to 6 week target therefore has to come from the work each level asks for, or the timers change.
-- **First sitting:** the level 2 and level 3 timers are 6 and 12 game hours, which is 1 and 2 real hours. Level 3 in 30 minutes is not reachable on the timers alone.
+- **Horde size:** far smaller than the targets (owner, 16 Nov). Measured in section 12: a big-horde night is no bigger than an ordinary night.
+- **Road to level 15:** the level timers add up to 1,326 game hours. The clock runs at two speeds: while the game is open, one game hour takes about 17 seconds (a game day is under 7 minutes); while away, one game hour takes 10 real minutes. So the timers alone are about 6 hours of open play or about 9 days away, and playing with the game open passes them 36 times faster than staying away. The 4 to 6 week target therefore has to come from the work each level asks for, or the timers change.
+- **First sitting:** on target today. The bot reaches level 3 on game day 3 to 4, about 20 to 27 minutes of open play (section 12). An earlier version of this page said level 3 could not be reached in 30 minutes; that used the away speed and was wrong.
+- **The quick start runs too far:** the bot reaches level 5 in under an hour of open play, against the target of level 4 by the end of the first day.
 - **Unlocks, era looks, the build route and the festival level:** see section 10.
 - **Not built yet:** the daytime threat (roamers and the warned daytime horde), Take command, going back to an earlier Banner's unused routes, the seven new buildings.
 - **To check, unknown today:** whether every route has its own reward; whether storage caps away production at about a day; whether every upgrade step already has its own model (`06-ASSETS.md`).
+
+## 12. First measurement with the balance bot (17 Nov, build 3D.187)
+The balance bot (`tools/balance/horde_study.py`) played 30 game days on three seeds (3, 5, 7), about 3.3 hours of open play each. Nothing in the game was changed. The bot plays like a sensible but simple player and is known to lose more people than a person would, so read pace and horde sizes from it, not deaths.
+
+| What | Today (bot) | Target |
+|---|---|---|
+| Level 3 reached | Game day 3 to 4 (20 to 27 minutes open) | First sitting, about 30 minutes |
+| Level 5 reached | Game day 7 to 9 (47 to 60 minutes open) | Level 4 by the end of day one |
+| After level 5 | Stuck: the bot never earns a Banner | Level 15 in 4 to 6 weeks |
+| Survivors at level 5 | 8 to 14 | About 15 |
+| Buildings at level 5 | 25 to 27 | About 12 |
+| Zombies on an ordinary night | 16 to 17 a night in days 1 to 10, 22 to 29 after | About 10 in era 1 (a quarter of the big horde) |
+| Zombies on a boss night (every third night) | 10 to 38, the same as ordinary nights | About 40 in era 1 |
+| Most zombies on screen at once | 9 to 18 | 50 to 60 late in the game |
+| Deaths in 30 game days | 2 to 4 per town, all after day 17 | A handful on the whole road to 15 |
+| What runs short | Water in days 5 to 15 (1 to 11 in stock); wood around day 10 | One thing short at a time |
+
+What this shows:
+- **The first sitting is on target; the rest of era 1 is far too fast** in open play.
+- **There is no big horde today.** Boss nights bring a boss but no more zombies than any other night, and never more than 18 are on screen.
+- **Ordinary nights are already bigger than the quarter rule gives for era 1** (about 20 against 10), so the era 1 numbers in section 3 need the owner's choice (W54).
+- **The building target for era 1 is half of what a level 5 town has today** (W61).
+- **Not measured:** anything past level 5 (W60), a daily player's real pace (the bot plays with the game open all the time), and whether deaths come with a warning.
+
