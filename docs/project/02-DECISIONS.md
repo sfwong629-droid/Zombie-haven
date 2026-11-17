@@ -30,6 +30,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Balance chat): Hordes: one big night horde per level, arriving only while the player is playing; a big weak crowd of about 40, 100 and 200 zombies by era (today's hordes are far too small), 50 to 60 on screen at once; an ordinary night is a quarter of that and a daytime horde half; winning always pays (loot, renown, mood, a results card); Take command gives a cleaner win and is never required.
 - 16 Nov (Balance chat): Banner routes: same effort, different cost; each route has its own lasting reward; all routes are open at once and the first finished wins the Banner; unused routes of earlier Banners stay open for good and still give their reward (levels are gated only by the highest Banner held).
 - 16 Nov (Balance chat): Economy: always short of one thing, never of food for long; away production stops at about one day's worth; renown takes a quarter to a third off waiting; the town covers every basic need, and trips, raids and strongholds give extras and things the town cannot make.
+- 17 Nov (Balance chat): Nothing unlocks at the very end of the game: an unlock needs game left to use it in. (Level 15 is not the end; the City runs to level 20.)
 - 16 Nov (Balance chat): Town size by era: about 15, 30 and 50 survivors (one in three a fighter) and about 12, 25 and 40 buildings.
 
 ## Hard rules
@@ -82,6 +83,11 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Balance chat): Move the Stone step to era 3, from level 11 (today level 7). (Not built yet.)
 - 16 Nov (Balance chat): Seven new buildings: Watchtower, Memorial Garden, Festival Ground, Landmark (the build-route reward, one per Banner), Trophy Hall, Shelter Bunker (era 3), Forge (era 3). (Not built yet; level, cost, size and look still to design.)
 - 16 Nov (Balance chat): The School is for children only (they grow up faster); the Library trains adults' Intelligence. (Not built yet.)
+- 17 Nov (Balance chat): **The building plan is approved** (`08-BALANCE.md`, section 10): the level each building opens at, levels 1 to 15, and the level, size, first-guess cost, job and look of the seven new buildings. (Not built yet.)
+- 17 Nov (Balance chat): Seven existing buildings open in era 3 (Wind Turbine, Cold Store, Electric Fence, Greenhouse, Solar Array, Barracks, Ammo Factory), so the spread runs to level 15, not 10.
+- 17 Nov (Balance chat): The build route to a Banner is that era's Landmark; it replaces "finish a Trading Post or the Radio Tower". (Not built yet.)
+- 17 Nov (Balance chat): The Founders' Festival opens at level 5 (today level 8), held at the Festival Ground, so the celebrate route can earn the first Banner. (Not built yet.)
+- 17 Nov (Balance chat): The Quarry opens at level 8, before the power buildings, which cost stone. (Not built yet.)
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.

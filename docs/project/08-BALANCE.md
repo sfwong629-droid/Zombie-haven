@@ -1,4 +1,4 @@
-# Zombie Haven: balance targets (16 Nov 2026)
+# Zombie Haven: balance targets (16 Nov 2026; building plan 17 Nov)
 
 Answered by the owner in the Balance chat on 16 Nov 2026. These are **targets, not numbers**: what the game should feel like to play. Numbers in the game are tuned later to hit them, one change per build, and no number was changed when this page was written.
 
@@ -12,6 +12,7 @@ How to use it: before changing a number, find the target it serves. If a change 
 - **A check-in takes 5 to 10 minutes** and that is enough to keep up: collect, queue building, gear up, send a trip, handle one event. Longer play (raids, strongholds, decorating) is always possible and never needed.
 - **Work first, timer second.** A level-up waits mostly on the player's own work (buildings built, people housed, a goal done). The level timer is a floor that is usually over by the time the work is done. The game rarely says "just wait".
 - **Something new every level:** at least one new building and one new piece of gear. **Something big every era:** each Banner opens one new thing to do. No level is only bigger numbers.
+- **Nothing unlocks at the very end.** An unlock is only worth it if there is game left to use it in (owner, 17 Nov). Level 15 is not the end: the City runs to level 20. Today the last buildings open at levels 16 and 17, and nothing new should open at the last level or two.
 
 ## 2. Danger
 - **Deaths are rare and remembered:** a handful on the whole road to level 15 for a careful player, about one every week or two. Each one traces back to a risk the player saw and took. Injuries are the usual price. (Vision: never a death without a warning or a choice.)
@@ -158,27 +159,53 @@ What each building does in the game now, taken from the game's own tables (`js/w
 
 That is 36 kinds of building before the City (counting each upgrade ladder once), plus 3 City buildings.
 
-## 10. Building changes decided (owner, 16 Nov; none built yet)
-The gaps found when section 9 was checked against the targets, and what the owner decided. Exact levels and numbers are set when each is built.
-1. **Spread the existing buildings over levels 1 to 10**, two to four new ones per level. Today they open in three batches (levels 1, 4 and 7), so levels 2, 3, 5, 6 and 8 to 15 unlock no building. No new art needed.
-2. **Move the Stone step to era 3** (from level 11), so the three looks match the three eras: camp, village, town. Today the town is already stone at level 7.
-3. **Seven new buildings**, for jobs no building does today:
-   - **Watchtower:** a guard on it sees and shoots farther and spots daytime roamers early.
-   - **Memorial Garden:** the dead are remembered there; visiting lifts mood.
-   - **Festival Ground:** the home of the celebrate route and of town parties.
-   - **Landmark:** the build-route reward, one per Banner.
-   - **Trophy Hall:** shows the fight-route trophies.
-   - **Shelter Bunker** (era 3): civilians wait out a horde inside.
-   - **Forge** (era 3): makes the top steel gear.
-4. **School and Library get one job each:** the School is for children only (they grow up faster), the Library trains adults' Intelligence.
+## 10. The building plan (approved by the owner, 17 Nov; none built yet)
+Section 9 was checked against the targets and the owner approved this plan. Each change is built on its own, one change per build. Costs of the new buildings are first guesses, sized against today's similar buildings, and are tuned when built.
 
-Still to design before building: each new building's level, cost, size and look, and how the festival and trophy code that exists today fits the Festival Ground and Trophy Hall (not checked yet).
+**When each building opens** (new buildings in bold)
+| Level | Opens |
+|---|---|
+| 1 | Camp, Tent, Campfire, Rain Barrel, Garden Plot, Supply Crates, Wood Fence, Gate, Guard post |
+| 2 | Canteen, Scrapyard, Medical Tent |
+| 3 | Workbench, Gym, Kennel, Spike Strip |
+| 4 | Lodge and the timber upgrades (Cabin, Rain Collector, Fenced Farm, Storehouse), Lumber Camp, Log Palisade, **Watchtower** |
+| 5 | Trading Post, Armory, Barbed Wire, **Festival Ground**, **Landmark 1** |
+| 6 | Clinic, Workshop, Pallet Yard, Library, **Memorial Garden** |
+| 7 | School, Lounge, Garage, **Trophy Hall** |
+| 8 | Quarry, Fuel Still, Archery Range, Fire Trench |
+| 9 | Generator, Power Pole, Floodlight, Ammo Bench, Obstacle Course |
+| 10 | Radio Tower, Electric Pump, Sparring Ring, Land Mine, Noise Lure, **Landmark 2** |
+| 11 | Fort, Stone House, Stone Wall, **Forge** |
+| 12 | Stone Well, Irrigated Farm, Wind Turbine, **Shelter Bunker** |
+| 13 | Warehouse, Mess Hall, Cold Store, Electric Fence |
+| 14 | Hospital, Greenhouse, Solar Array |
+| 15 | Barracks, Ammo Factory, **Landmark 3** |
+
+Today the buildings open in three batches (levels 1, 4 and 7) and the Stone step comes at level 7. In the plan the Stone step starts at level 11, so the three looks match the three eras. Levels 16 and 17 (the City) are unchanged.
+
+**The seven new buildings**
+| Building | Level | Size | Cost (first guess) | What it does | Look |
+|---|---|---|---|---|---|
+| Watchtower | 4 | 1×1 | 10 wood, 3 scrap | One fighter stands on it, sees and shoots farther, and spots daytime roamers early. Upgrades to a stone tower at level 11. | Log legs, ladder, roofed platform, a warning bell |
+| Festival Ground | 5 | 2×2 | 12 wood, 4 scrap, 4 cloth | Where the Founders' Festival and town parties are held; a party lifts everyone's mood. | Pallet stage, bunting, string lights, benches |
+| Landmark | 5, 10, 15 | 2×2 | About three ordinary buildings of that era, paid in three stages | Finishing it is the build route to the Banner. It stays for good with a small town-wide mood bonus. | 1: scrap flag mast. 2: timber clock tower. 3: stone beacon with a light |
+| Memorial Garden | 6 | 1×1 | 6 wood, 1 cloth | Each lost survivor gets a named marker. People visit, and grief passes sooner. One per town. | Small fenced plot, wooden markers, flowers, a lantern |
+| Trophy Hall | 7 | 2×1 | 12 wood, 6 scrap | Shows the town's trophies (today's Trophy shelf screen opens from it); each trophy adds a little renown a day. One per town. | Long hut with a boss skull over the door |
+| Forge | 11 | 2×2 | 16 stone, 14 scrap, 6 wood, 2 fuel | An Engineer makes the top steel weapons and armour, which the Workshop cannot. | Brick, a tall glowing chimney, an anvil outside |
+| Shelter Bunker | 12 | 2×2 | 24 stone, 12 scrap, 6 wood | Holds 12 civilians, children first; anyone inside is safe during a horde. | Low concrete mound, steel hatch, sandbags, a vent pipe |
+
+**Decided with the plan**
+- **Era 3 gets seven existing buildings** (Wind Turbine, Cold Store, Electric Fence, Greenhouse, Solar Array, Barracks, Ammo Factory, at levels 12 to 15), so every era 3 level opens more than stone upgrades.
+- **The build route to a Banner is that era's Landmark.** Today it is "finish a Trading Post or the Radio Tower", and the Trading Post is a level 1 building, which makes it by far the easiest Banner.
+- **The Founders' Festival opens at level 5**, held at the Festival Ground. Today it needs level 8, so the celebrate route cannot earn the first Banner.
+- **The Quarry opens at level 8, before power.** Power buildings cost stone today, so stone has to exist by level 9 even though stone buildings wait for level 11.
+- **School and Library get one job each:** the School is for children only (they grow up faster), the Library trains adults' Intelligence.
 
 ## 11. Where today's game is known to miss these targets
 Not fixed yet; listed so nothing is forgotten. Everything else on this page still has to be measured against the game (balance bot first, see `07-TESTING.md`).
 - **Horde size:** far smaller than the targets (owner, 16 Nov).
 - **Road to level 15:** the level timers add up to about 9 real days to level 15 and about 15 to level 20. The 4 to 6 week target therefore has to come from the work each level asks for, or the timers change.
 - **First sitting:** the level 2 and level 3 timers are 6 and 12 game hours, which is 1 and 2 real hours. Level 3 in 30 minutes is not reachable on the timers alone.
-- **Unlocks and era looks:** see section 10, points 1 and 2.
+- **Unlocks, era looks, the build route and the festival level:** see section 10.
 - **Not built yet:** the daytime threat (roamers and the warned daytime horde), Take command, going back to an earlier Banner's unused routes, the seven new buildings.
 - **To check, unknown today:** whether every route has its own reward; whether storage caps away production at about a day; whether every upgrade step already has its own model (`06-ASSETS.md`).

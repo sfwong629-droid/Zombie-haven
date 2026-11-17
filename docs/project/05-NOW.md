@@ -15,7 +15,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - The rest of `03-BUGS.md` section B.
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
-- Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. Not designed in detail yet (W50); built afterwards in the Features chat, one change per build.
+- Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
 - Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
 
 ## Waiting on the owner
@@ -80,7 +80,10 @@ Art chat:
 - W51. Sizes and models changed in 3D.185 on the owner's say: Walker the same height as a survivor, Lasher with its chest at the top of a survivor's head, Leaper taller, both Crawlers with no legs, and cards for the Bloater Queen, the Butcher and the Gatling Boss on the Zombie test page. Waiting: are they right now? Two were Claude's guess: the Leaper is drawn 1.2 times its old size, and the Crawlers' legs end a little below the hip in a dark red stump.
 
 Balance chat:
-- W50. The building plan. **Next (Claude):** a proposal for which level each existing building opens at (levels 1 to 10), and for each of the seven new buildings its level, cost, size and look. The owner then says yes or changes it; nothing is built before that.
+- ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
+- W52. Measure today's game against the targets with the balance bot (time to level 15, deaths, horde sizes, what is short)? It changes nothing in the game. Claude's recommendation: yes, before any number is tuned.
+- W53. The order to build the building plan in (Features chat, one change per build). Claude's recommendation: the level spread first (no new art), then the School and Library split, then the festival at level 5, then the new buildings as their models arrive (Watchtower and Festival Ground first), the Landmark route last.
+- W54. Which number to tune first once W52 has measured. Claude's recommendation: horde size, the owner's own complaint. No number changes until the owner says so.
 
 Later:
 - W9. Claude Code setup on the PC (optional; makes the checks faster).
