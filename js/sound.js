@@ -144,9 +144,9 @@
     hit: (c, o, t) => { if (!sfx(c, o, t, 'woodH' + rnd3(), .42, .7)) return FX.hit(c, o, t); thud(c, o, t, 90, .28, .14); noise(c, o, t, .05, .12, 900, .8, 'lowpass', 250); },
     hurt: (c, o, t) => { noise(c, o, t, .18, .14, 750, 5); noise(c, o, t, .16, .09, 1250, 6); formant(c, o, t, 190, .16, .06, [[700, 6, 1], [1200, 8, .5]], 140); thud(c, o, t, 120, .15, .08); },
     kill: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .42, .5)) return FX.kill(c, o, t); thud(c, o, t, 70, .32, .3); noise(c, o, t + .03, .5, .05, 500, 4, 'bandpass', 250); formant(c, o, t + .02, 95, .5, .06, [[480, 5, 1], [850, 6, .4]], 65, 5); },
-    down: (c, o, t, f, take = Math.random() < .5 ? 0 : 1) => { if (!SFXB.oofm0) return FX.down(c, o, t); const k = ((f ?? Math.random() < .5) ? 'ooff' : 'oofm') + take; sfx(c, o, t, k, .6 * ({ oofm1: 1.6, ooff0: 1.6 }[k] || 1), .97 + Math.random() * .06); sfx(c, o, t + .2, 'woodL' + rnd3(), .3, .55); thud(c, o, t + .2, 70, .22, .25); },   /* a short oof or ugh, and the fall */
+    down: (c, o, t, f, take = Math.random() < .5 ? 0 : 1) => { if (!SFXB.oofm0) return FX.down(c, o, t); const k = ((f ?? Math.random() < .5) ? 'ooff' : 'oofm') + take; sfx(c, o, t, k, .6 * ({ oofm1: 1.6, ooff0: 1.6, ooff2: 1.8, ooff3: 1.1, ooff4: 1 }[k] || 1), .97 + Math.random() * .06); sfx(c, o, t + .2, 'woodL' + rnd3(), .3, .55); thud(c, o, t + .2, 70, .22, .25); },   /* a short oof or ugh, and the fall */
     down_f: (c, o, t) => NEWFX.down(c, o, t, true), down_m: (c, o, t) => NEWFX.down(c, o, t, false),
-    down_f0: (c, o, t) => NEWFX.down(c, o, t, true, 0), down_f1: (c, o, t) => NEWFX.down(c, o, t, true, 1), down_m0: (c, o, t) => NEWFX.down(c, o, t, false, 0), down_m1: (c, o, t) => NEWFX.down(c, o, t, false, 1),
+    down_f0: (c, o, t) => NEWFX.down(c, o, t, true, 0), down_f1: (c, o, t) => NEWFX.down(c, o, t, true, 1), down_m0: (c, o, t) => NEWFX.down(c, o, t, false, 0), down_m1: (c, o, t) => NEWFX.down(c, o, t, false, 1), down_f2: (c, o, t) => NEWFX.down(c, o, t, true, 2), down_f3: (c, o, t) => NEWFX.down(c, o, t, true, 3), down_f4: (c, o, t) => NEWFX.down(c, o, t, true, 4),
     groan: (c, o, t) => { if (!sfx(c, o, t, 'zgroan' + Math.floor(Math.random() * 7), .7, .8 + Math.random() * .12)) FX.groan(c, o, t); },   /* recorded moans and growls, slowed so they drag on */
     boss: (c, o, t) => { sfx(c, o, t, 'zgroan6', .8, .55); sfx(c, o, t + .05, 'zgroan4', .55, .5); formant(c, o, t, 52, 2, .18, [[290, 4, 1], [680, 5, .7], [1500, 7, .2]], 38, 4.5); noise(c, o, t + .1, 1.4, .12, 220, .5, 'lowpass'); if (!samp(c, o, t, 'timp', N(-12), .5, 2)) thud(c, o, t, 45, .4, .8); },   /* a huge zombie roar (recorded growls slowed down) over a timpani hit */
     radio: (c, o, t, beeps = true) => {   /* radio static with the signal pulsing through it: A little beeps between bursts, B the static itself throbbing */
@@ -159,6 +159,13 @@
       tone(c, o, t + .3, 1300, 1.4, 'sine', .01, 700);
     },
     radio_b: (c, o, t) => NEWFX.radio(c, o, t, false),
+    radio_c: (c, o, t, tone2 = false) => {   /* a steady bed of static with pulses rising out of it (D: a faint tone inside each pulse) */
+      const d = 2.4, bed = c.createBufferSource(); bed.buffer = noiseBuf(c, d + .1); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = .5; const g = c.createGain();
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.065, t + .1); g.gain.setValueAtTime(.065, t + d - .3); g.gain.linearRampToValueAtTime(.0001, t + d); bed.connect(bp); bp.connect(g); g.connect(o); bed.start(t); bed.stop(t + d + .1);
+      for (let k = 0; k < 5; k++) { const pt = t + .3 + k * .4; noise(c, o, pt, .13, .11, 1700, .9); if (tone2) tone(c, o, pt + .01, 880, .11, 'sine', .028, null, .01); }
+      for (let i = 0; i < 18; i++) noise(c, o, t + Math.random() * (d - .1), .008 + Math.random() * .02, .09, 2500 + Math.random() * 3000, 2);
+    },
+    radio_d: (c, o, t) => NEWFX.radio_c(c, o, t, true),
     caralarm: (c, o, t) => {   /* a real car alarm's cycle through its little horn speaker: rising whoops, a fast warble, then hi-lo */
       const sp = c.createBiquadFilter(); sp.type = 'bandpass'; sp.frequency.value = 2000; sp.Q.value = .7; const ws = c.createWaveShaper(), cv = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cv[i] = Math.tanh(3 * x); } ws.curve = cv; ws.connect(sp); sp.connect(o);
       const sweep = (t0, f0, f1, d, v = .05) => { const os = c.createOscillator(), g = c.createGain(); os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t0); os.frequency.exponentialRampToValueAtTime(f1, t0 + d); g.gain.setValueAtTime(v, t0); g.gain.setValueAtTime(v, t0 + d - .01); g.gain.linearRampToValueAtTime(0, t0 + d); os.connect(g); g.connect(ws); os.start(t0); os.stop(t0 + d + .02); };
@@ -170,7 +177,7 @@
     woof: (c, o, t) => { if (!sfx(c, o, t, 'dog0', .8, 1)) FX.woof(c, o, t); },   /* a real dog barking */
     breach: (c, o, t) => { if (!SFXB.rockb0) return FX.breach(c, o, t); thud(c, o, t, 55, .4, .5); sfx(c, o, t, 'rockb' + rnd3(), .6, .8); sfx(c, o, t + .08, 'woodL' + rnd3(), .3, .5); [.18, .34, .55, .8].forEach((dt, i) => sfx(c, o, t + dt, 'rockf' + rnd3(), .5 - i * .08, .85 + Math.random() * .2)); noise(c, o, t + .1, 1.1, .08, 900, .5, 'lowpass', 120); },   /* a wall crumbling: cracking, then rubble falling */
   };
-  const NFXV = { chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4 };   /* level each new sound to sit near the old one */
+  const NFXV = { chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4, radio_c: .6 };   /* level each new sound to sit near the old one */
   for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t, ...r) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t, ...r); };
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
@@ -232,7 +239,7 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
-  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'oofm0', 'oofm1', 'ooff0', 'ooff1', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
+  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'oofm0', 'oofm1', 'ooff0', 'ooff1', 'ooff2', 'ooff3', 'ooff4', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
   const rnd3 = () => Math.floor(Math.random() * 3);
   function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
@@ -325,15 +332,15 @@
       if (!x.pass) line(x, 'cel', m, .2, { ring: 1.6, loose: 1, pan: .15 });
       else { line(x, 'flu', m, .17, { pan: .1, att: .1 }); line(x, 'cel', m, .06, { ring: 1.6, oct: 12, to: 1, pan: .3 }); if (x.i % 2) x.P('mbox')(x.t0 + 2.5 * x.beat, x.F(c[2] + 24), .07, 2, -.3); }
     },
-    stand(x) {   /* the fight: danger, not a march. Restless cellos rocking on a half step, trembling violins, a heartbeat on the timpani, low piano, horns carry the tune */
-      const m = SONG_DEF.stand.m[x.i], c = x.ch, ce = x.P('cello'), s16 = x.beat / 4;
-      for (let k = 0; k < 16; k++) ce(x.t0 + k * s16, x.F(x.root - 12 + ([0, 0, 1, 0, 0, 1, 0, 3][k % 8])), k % 4 ? .1 : .16, s16 * .85, -.1, .003, .03);
-      for (let k = 0; k < 16; k++) x.P('str')(x.t0 + k * s16, x.F((k % 2 ? c[2] + 1 : c[2]) + 12), .028, s16 * .9, k % 2 ? .3 : -.3, .004, .03);
-      x.P('timp')(x.t0, x.F(x.root - 12), .22, .8); x.P('timp')(x.t0 + .28, x.F(x.root - 12), .13, .6);
-      x.P('piano')(x.t0, x.F(x.root - 24), .16, 2.4, -.2); if (x.i % 2) x.P('piano')(x.t0 + 2 * x.beat, x.F(x.root - 23), .1, 1.6, -.2);
-      x.PAD('str', x.t0, [x.F(c[0]), x.F(c[0] + 1)], x.beat * 4, .018, 1400);
-      line(x, 'hrn', m, .22, { att: .06 });
-      if (x.pass) { line(x, 'obo', m, .07, { oct: 12, pan: .2 }); if (x.i % 4 === 3) [0, 1, 2, 3].forEach((k) => x.P('pz')(x.t0 + (2 + k * .5) * x.beat, x.F(x.root + 12 - k), .2, .3, .25)); }
+    stand(x) {   /* the fight: danger with no drums at all. Trembling low strings, a cello creeping a half step up and back, high strings rubbing a half step apart, horns carry the tune */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, s32 = x.beat / 8, ce = x.P('cello');
+      for (let k = 0; k < 32; k++) x.P('str')(x.t0 + k * s32, x.F(x.root - 12 + (k >= 16 && x.i % 2 ? 1 : 0)), .026 + (k % 8 === 0 ? .01 : 0), s32 * .95, -.25, .004, .02);
+      for (let k = 0; k < 32; k++) x.P('str')(x.t0 + k * s32 + s32 / 2, x.F(c[1]), .016, s32 * .9, .25, .004, .02);
+      ce(x.t0, x.F(x.root - 12), .16, x.beat * 2 * .98, -.1, .2, .3); ce(x.t0 + 2 * x.beat, x.F(x.root - 11), .15, x.beat * 2 * .98, -.1, .2, .3);
+      x.PAD('str', x.t0, [x.F(c[2] + 12), x.F(c[2] + 13)], x.beat * 4 + .2, .02, 1600);
+      if (x.i % 4 === 0) x.P('piano')(x.t0, x.F(x.root - 24), .1, 3, -.2);
+      line(x, 'hrn', m, .22, { att: .08 });
+      if (x.pass) line(x, 'obo', m, .07, { oct: 12, pan: .2 });
     },
     tide(x) {   /* a horde or a boss: slower and heavier, great drums, a timpani roll, trembling strings, low brass swelling under the horns */
       const m = SONG_DEF.tide.m[x.i], c = x.ch, s16 = x.beat / 4;
