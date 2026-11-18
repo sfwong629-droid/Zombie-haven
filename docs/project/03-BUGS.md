@@ -71,6 +71,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.212: the leg tool could leave a squash on a shin (a bone set from a matrix picks up scale, which is not saved in the game file); in the new spear stance the front shin was 9% short in the tool, so in the game the foot sank 4 cm into the ground. The tool now keeps leg bones at full size; the leg check caught it. Also the stab turned the back foot twice (fixed).
 - 3D.211: in two-handed C the hips and thighs changed shape (owner's video, 18 Nov: "the butt area and thigh still look weird"): both thighs were turned about 175 degrees about their own length, wringing the skin, the knees pointing backwards. Each leg now keeps the stance's natural turn. Check: `tools/art/b3d/legcheck.py` (no thigh or shin turned more than 90 degrees; run by `tools/qa/twohand_check.sh`).
 - 3D.210: two-handed C's legs "looked like jelly fish" (owner, 18 Nov): the blend from the stance to the recorded chopper's wide stance slid both feet 0.6 to 0.7 across the ground, unlifted, and pushed the toes into it. The feet now stay planted. Check: `tools/art/b3d/legcheck.py` (run by `tools/qa/twohand_check.sh`).
 - 3D.206: the weapon no longer dips into the body (found by Claude while answering the owner, 18 Nov): Swing 1's follow-through went about 4 cm into the right thigh, Swing 3's handle end about 2 cm into its own wrist. The swing tool now keeps the weapon out of the body as well as the head. Check: `tools/qa/swing_head_check.sh` (now also `tools/art/b3d/bodyhit.py`).
@@ -88,4 +89,3 @@ UI problems are listed in `04-UI.md`, not here.
 - 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.
 - 3D.175: frozen-pose check in the Animation tracker (tool only).
 - 3D.174: a storage door walled off from the town is opened by the game (Gates).
-- 3D.173 + f88fa57: stuck stronghold coach hint removed.
