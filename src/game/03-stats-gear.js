@@ -188,6 +188,8 @@ const fairRound = (x) => Math.floor(x) + (rnd() < x - Math.floor(x) ? 1 : 0);   
 const FISTS = { name: 'Bare hands', slot: 'weapon', atk: 1, rate: .9, kind: 'blunt', cost: 0 };   /* V3D.15: everyone starts bare-handed in 3D mode */
 const GUN_BUTT = { name: 'Empty gun (swung)', slot: 'weapon', atk: 5, rate: 1.1, kind: 'blunt', cost: 0 };   /* 3D.77: out of ammo, a gunner clubs with the gun */
 const usesAmmo = (w) => !!(w && w.mag && w.kind !== 'bow');   /* crossbows and bows never need ammo */
+const SHOT_SFX = { Pistol: 'shot_pistol', Revolver: 'shot_magnum', Magnum: 'shot_magnum', Shotgun: 'shot_shotgun', 'Hunting Bow': 'shot_arrow', SMG: 'shot_smg', 'Hunting Rifle': 'shot_rifle', 'Assault Rifle': 'shot_auto', Crossbow: 'shot_bow' };   /* Music chat (W100): each gun its own shot */
+const hitSfx = (w) => (w && w.ranged ? SHOT_SFX[w.name] || (w.kind === 'bow' ? 'shot_bow' : 'shot') : 'hit');
 const weaponOf = (s) => { const w = itemOf(s, 'weapon'); if (w && s.dry && usesAmmo(w)) return GUN_BUTT; return w || ((FISTS)); };
 function reloadGun(s, w = itemOf(s, 'weapon')) {   /* 3D.77: limited ammo: refill the magazine from the town's stock (bows refill free) */
   if (!w || !w.mag) return; const cur = Math.max(0, s.ammo == null ? 0 : s.ammo);

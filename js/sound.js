@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, rescued4: 1200, rescued5: 1200, rescued6: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
+  const GAP = { shot: 60, shot_pistol: 60, shot_smg: 50, shot_magnum: 90, shot_auto: 50, shot_rifle: 120, shot_bow: 120, shot_arrow: 120, shot_shotgun: 150, chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, rescued4: 1200, rescued5: 1200, rescued6: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -38,7 +38,40 @@
   const thud = (c, o, t, f = 110, vol = .3, d = .18) => tone(c, o, t, f, d, 'sine', vol, f * .4, .002);
   const knock = (c, o, t, f = 420, vol = .25) => { pluck(c, o, t, f, vol, .25); noise(c, o, t, .03, vol * .8, f * 3, 3); thud(c, o, t, f * .45, vol * .5, .1); };
   const clang = (c, o, t, f = 600, vol = .12, d = 1.1) => { [1, 2.76, 5.4, 8.9].forEach((m, i) => tone(c, o, t, f * m, d / (1 + i * .7), 'sine', vol / (1 + i), null, .001)); noise(c, o, t, .02, vol, 5000, 1); };
+  /* Music chat (W100): gunshots. A sharp crack, a blast that darkens, a low thump, then an outdoor echo rolling away (all made here, no files) */
+  function swell(c, out, t, dur, vol, f, fTo, a = .02) {   // filtered noise that fades in and dies away slowly (the gun's tail)
+    const n = c.createBufferSource(); n.buffer = noiseBuf(c, dur + .05); const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(f, t); fl.frequency.exponentialRampToValueAtTime(fTo, t + dur); fl.Q.value = .5;
+    const g = c.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + dur); n.connect(fl); fl.connect(g); g.connect(out); n.start(t); n.stop(t + dur + .05);
+  }
+  function gun(c, o, t, G) {   // G: crack, blast (length), thump (pitch), tail (length), echo (delay), size (loudness)
+    const v = G.size * .36, r = 1 + (Math.random() - .5) * .08;
+    noise(c, o, t, .018, .34 * v, G.crack * r, 1.2, 'highpass');
+    noise(c, o, t, G.blast, .42 * v, 3200 * r, .6, 'lowpass', 260);
+    thud(c, o, t, G.thump * r, .45 * v, G.blast * 1.4);
+    swell(c, o, t + .01, G.tail, .11 * v, 1400, 140, .015);
+    swell(c, o, t + G.echo, G.tail * .8, .045 * v, 900, 120, .04);
+    if (G.echo2) swell(c, o, t + G.echo2, G.tail * .6, .03 * v, 650, 100, .06);
+    if (G.snap) noise(c, o, t, .008, .35 * v, 6000, 1, 'highpass');
+    if (G.boom) { swell(c, o, t + .005, .9, .3 * v, 420, 45, .03); tone(c, o, t, 38, .7, 'sine', .35 * v, 30, .01); }
+  }
+  const GUNS = {   /* pistols are short, snappy and dry; the shotgun a wide boom; rifles boom and roll away twice down the valley (owner-approved, 18 Nov) */
+    shot_pistol: { crack: 3600, blast: .045, thump: 170, tail: .28, echo: .11, size: .9 },
+    shot_smg: { crack: 3300, blast: .04, thump: 160, tail: .25, echo: .1, size: .7 },
+    shot_magnum: { crack: 2300, blast: .12, thump: 95, tail: .7, echo: .18, size: .9 },
+    shot_auto: { crack: 2600, blast: .07, thump: 115, tail: .5, echo: .2, size: .8 },
+    shot_shotgun: { crack: 900, blast: .34, thump: 42, tail: 1.6, echo: .3, size: .85, boom: 1 },   /* a wide, blooming boom: no sharp crack */
+    shot_rifle: { crack: 1300, blast: .2, thump: 50, tail: 1.9, echo: .38, echo2: .85, size: .9, snap: 1 },
+  };
   const FX = {   // each: (context, output, start time)
+    ...Object.fromEntries(Object.entries(GUNS).map(([k, G]) => [k, (c, o, t) => gun(c, o, t, G)])),
+    shot: (c, o, t) => gun(c, o, t, GUNS.shot_pistol),   /* any gun without its own sound */
+    shot_arrow: (c, o, t) => {   /* a hunting bow: a soft thwip and a low thrum of the limbs */
+      noise(c, o, t, .16, .26, 1900, 2.2, 'bandpass', 380); tone(c, o, t, 105, .08, 'sine', .12, 70, .002); noise(c, o, t, .012, .08, 2600, 2);
+    },
+    shot_bow: (c, o, t) => {   /* a crossbow: a hard wooden thunk of the stock and the bolt hissing away */
+      if (!sfx(c, o, t, 'woodM' + rnd3(), .36, 1.5)) knock(c, o, t, 520, .22); noise(c, o, t, .015, .2, 4000, 1, 'highpass'); thud(c, o, t, 140, .18, .06);
+      noise(c, o, t + .02, .22, .12, 2400, 1.2, 'bandpass', 700);
+    },
     hit: (c, o, t) => { thud(c, o, t, 95, .32, .16); noise(c, o, t, .09, .32, 700, .9, 'lowpass', 200); noise(c, o, t, .025, .18, 3200, 1.5); },
     hurt: (c, o, t) => { formant(c, o, t, 210, .22, .2, [[700, 6, 1], [1200, 8, .6]], 150); thud(c, o, t, 120, .18, .1); },
     kill: (c, o, t) => { thud(c, o, t, 80, .38, .3); noise(c, o, t, .22, .3, 600, .7, 'lowpass', 120); formant(c, o, t + .02, 120, .45, .11, [[500, 5, 1], [900, 6, .5]], 70, 6); },

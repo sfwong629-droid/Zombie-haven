@@ -185,7 +185,7 @@ function shUnitAI(s, zs, live) {
   const w = weaponOf(s), reach = (w.ranged ? Math.min(4.5, rangeOf(s)) : .8) + (s.aimNext ? 1.5 : 0);
   if (s.mode === 'attack') { s.moving = false; if (--s.stateTicks > 0) return; const z = s.target;
     if (z && z.hp > 0 && dist(s.w, z.w) <= reach + .3) { const cr = !!s.critNext || !!s.aimNext, dm = shUnitDmg(s, z) * (cr ? 3 : 1); if (cr) { s.critNext = false; s.aimNext = false; shFx({ x: z.w.x, y: z.w.y - .4 }, 'CRIT!', '#ffd56b'); } else s.crit = Math.min(100, (s.crit || 0) + 14);
-      z.hp -= dm; z.hitT = 9; if (z.mode === 'sleep') z.mode = 'idle'; SFX(w.ranged ? 'shot' : 'hit'); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+      z.hp -= dm; z.hitT = 9; if (z.mode === 'sleep') z.mode = 'idle'; SFX(hitSfx(w)); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (w.ranged && usesAmmo(w)) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) s.reloadT = Math.round((w.reload || 2) * 60); }
       if (z.hp <= 0) { H.kills++; if (!H.practice) { S.kills++; gainXp(s, z.boss ? 12 : 2); } if (H.order === z) H.order = null; for (const q of H.units) if (q.order === z) q.order = null; } }
     s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); return; }
