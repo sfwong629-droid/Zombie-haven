@@ -71,6 +71,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.205: the free arm no longer jumps when a swing starts or repeats (owner, 18 Nov: "the left arm is the same issue"): the old swings started 46 to 61 degrees away from the stance and ended 55 to 75 degrees away from where they started. Every swing now starts and ends in the stance. Check: `tools/qa/swing_arm_check.sh`.
 - 3D.203: the weapon arm no longer "teleports" in the melee swings (owner's video, 18 Nov): the bat crossed from behind the back to the front in about two screen frames. The swing's timing is re-spread so the weapon turns at most 38 degrees per screen frame. Check: `tools/qa/swing_head_check.sh` (now also: at most 48 degrees per frame).
 - 3D.201: melee swings no longer pass the weapon or a hand through the survivor's head (seen by the owner, 17 Nov). Check: `tools/qa/swing_head_check.sh`.
 - 3D.200: A9 the Survivor test panel no longer covers the survivor on a phone. Check: `tools/qa/survivor_test_check.js`.

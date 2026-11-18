@@ -1480,7 +1480,8 @@ function personAnim(a, s, dt) {
   if (ATTACK.has(anim)) {
     const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
     if (!a.attacking || (burst && a.comboSeen !== step)) {
-      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', a.acts.melee_swing_d ? 'melee_swing_d' : 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a');
+      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a');
+      /* 3D.205 owner (18 Nov): Swing 4 (overhead) is out of the one-handed set; the third blow of a quick combo is Swing 3, the rising cut */
       a.play(clip, true, true); a.attacking = true; a.atkT = performance.now(); a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
     }
     return;
