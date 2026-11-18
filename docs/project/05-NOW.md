@@ -91,7 +91,8 @@ Art chat:
 - ~~W68. Carrying, the reference.~~ Owner, 17 Nov: lean back a bit, as people do to balance the weight. Built in 3D.191: the legs and body of the gentle recorded jog (clip 35_17), the body leaning back about 9 degrees, the arms kept on the crate; carriers keep today's pace.
 - ~~W69. Is the carrying lean right, and do the walk and jog still look right at their true pace (3D.191)?~~ Owner, 17 Nov: looks good.
 - ~~W70. Moving with a weapon in the hand.~~ Owner, 17 Nov: looks fine. Built in 3D.192: walk and jog with a melee weapon, walk and jog with a gun (the recorded walk and jog; the weapon arm as before). Raiders use them too.
-- W71. Watch the four weapon movements on the Survivor test page (3D.192: Melee row and Guns row, "Walk with…" and "Jog with…") and say if anything looks wrong.
+- ~~W71. Do the four weapon movements (3D.192) look right?~~ Owner, 17 Nov: looks good.
+- W72. Standing, the reference (shown 17 Nov as before/after pictures). The library's standing recordings have unusable legs (knees bent 20 to 60 degrees while standing still), so: the upper body, arms and small movements come from a recording of a person standing still (clip 113_21, 4 seconds), the head is kept level, and the legs are worked out (feet planted, one leg straight, the other relaxed 10 to 17 degrees as the hips shift a little). Is that the standing you want? If yes it is the next build (Stand; the other standing poses, talk, wave, stances, follow on the same legs).
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
