@@ -249,6 +249,7 @@ def place_left():
         return w - P(PB['hand.L'].head)
     return tgt - (P(PB['hand.L'].head) + P(PB['hand.L'].tail)) / 2
 TWISTS = []
+TIPP = []
 PLFR = [None]
 def ik_arm(side, centre, pole_c, fr=None):   # put the hand's middle at `centre` (world): two bones, the elbow towards pole_c (chest frame); a few passes
     sc_ = ao.matrix_world.to_scale()[0]; l1 = PB['upperarm.' + side].length * sc_; l2 = PB['forearm.' + side].length * sc_; s_ = P(PB['upperarm.' + side].head)
@@ -289,15 +290,15 @@ CHT = math.radians(float(os.environ.get('ZH_CHESTTURN', '0')))
 # driven along its line and levels out; then back to the stance). Offsets: from the neck in the character's own frame (left, forward, up), not turned.
 SP2 = TWO in ('spear2hold', 'spear2')
 S2_READY = dict(drop=.07, fwd=0., yaw=-32., chest=-8., hand=(-.183, .052, .013), dir=(.30, 1., .62), gap=.28)
-S2_DRAW = dict(drop=.075, fwd=-.03, yaw=-36., chest=-10., hand=(-.20, -.06, .0), dir=(.14, 1., .14), gap=.28)   # (3D.213) drawn back AND lowered to the line of the thrust
-S2_HIT = dict(drop=.09, fwd=.12, yaw=-26., chest=-4., hand=(-0.159, 0.234, 0.041), dir=(.14, 1., .14), gap=.16)   # (3D.213, owner: "the path of the stab should be more straight") the hand 0.30 further along the same line, the spear's direction unchanged
+S2_DRAW = dict(drop=.08, fwd=-.06, yaw=-40., chest=-12., hand=(-.215, -.13, .0), dir=(.14, 1., .14), gap=.28)   # (3D.213) drawn back AND lowered to the line of the thrust; (3D.214) drawn further back, the weight on the back leg
+S2_HIT = dict(drop=.12, fwd=.17, yaw=-24., chest=-2., hand=(-0.155, 0.302, 0.060), dir=(.14, 1., .14), gap=.10)   # (3D.213, owner: "the path of the stab should be more straight") along the same line; (3D.214, owner: "it feels like a little poke") 0.44 along it (was 0.30), a deep lunge (hips 0.26 forward, 0.04 lower), the shaft sliding further through the front hand
 FEET2 = {'L': ((.10, -.23), -12.), 'R': ((-.12, .19), -60.)}   # (left, back) from where the hips start; the foot's turn (negative: toes to the right)
 def s2_mix(a, b, u): return {k: (tuple(x * (1 - u) + y * u for x, y in zip(a[k], b[k])) if isinstance(a[k], tuple) else a[k] * (1 - u) + b[k] * u) for k in a}
 def s2_key(fr):
     if TWO == 'spear2hold': return S2_READY
     t = fr / nf   # (3D.213) ready -> drawn back on the line -> straight thrust along it -> straight back along it -> ready
-    if t < .30: return s2_mix(S2_READY, S2_DRAW, sst(.05, .30, t))
-    if t < .52: return s2_mix(S2_DRAW, S2_HIT, sst(.30, .44, t))
+    if t < .33: return s2_mix(S2_READY, S2_DRAW, sst(.05, .33, t))
+    if t < .52: return s2_mix(S2_DRAW, S2_HIT, sst(.33, .41, t))   # (3D.214) the drive takes 0.10 s (was 0.17)
     if t < .70: return s2_mix(S2_HIT, S2_DRAW, sst(.52, .70, t))
     return s2_mix(S2_DRAW, S2_READY, sst(.70, .97, t))
 S2_BASE = {}
@@ -316,24 +317,38 @@ def s2_feet():   # the planted feet of the stance from the picture
         if SJ: out[s_] = (np.array(S2_BASE['a'][s_]), S2_BASE['f'][s_].copy())   # (3D.212) the stab starts from the stance itself: its feet stay exactly where the stance put them (turning them again turned the back foot twice)
     return out
 LERR = []
+SPCEN = [None]
 def spear2_at(k):
     anc = np.array((ao.matrix_world @ S2_BASE['p'].translation)[:]); cen = anc + A2W @ np.array([k['hand'][0], -k['hand'][1], k['hand'][2]]);   # (3D.213) hand places fixed to the ground (from where the hips start), not to the moving neck, so a straight line stays straight
     dirw = nz(A2W @ np.array([k['dir'][0], -k['dir'][1], k['dir'][2]])); global GAP; GAP = k['gap']   # (3D.213) at the thrust the shaft slides through the front hand, as in a real spear thrust (the front hand guides, the back hand drives)
     for _ in range(5):   # if the left hand cannot reach its place on the shaft, both hands slide towards it together (the gap is kept)
-        ik_arm('R', cen, [-.4, -.8, -.2], PLFR[0]); aim_arm(W2A @ dirw); err = place_left()
-        if os.environ.get('ZH_DBGS') and PLFR[0] in (41, 44):
+        hcen = cen
+        for _k in range(4):   # (3D.214) aiming turns the hand about the wrist, and the shaft runs about 3 cm from the hand's middle: place the arm again until the SHAFT passes through the planned point (so the thrust runs on one line)
+            ik_arm('R', hcen, [-.4, -.8, -.2], PLFR[0] if _k == 0 else None); aim_arm(W2A @ dirw)
+            mw_ = np.array(bat.matrix_world); g_ = mw_[:3, :3] @ AXV[GRIPI] + mw_[:3, 3]; wd_ = nz(mw_[:3, :3] @ (AXV[TIPI] - AXV[GRIPI])); q_ = g_ + wd_ * float((cen - g_) @ wd_)
+            hcen = hcen + (cen - q_)
+        err = place_left()
+        if os.environ.get('ZH_DBGS') and PLFR[0] in (-1,):
             rc_ = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; shL = P(PB['upperarm.L'].head); shR = P(PB['upperarm.R'].head); lL = (PB['upperarm.L'].length + PB['forearm.L'].length); lR = (PB['upperarm.R'].length + PB['forearm.R'].length)
             print('REACH', PLFR[0], _, 'right miss %.3f' % np.linalg.norm(cen - rc_), 'R shoulder->target %.3f of %.3f' % (np.linalg.norm(cen - shR), lR), 'left err %.3f' % np.linalg.norm(err), 'L shoulder->wrist %.3f of %.3f' % (np.linalg.norm(P(PB['hand.L'].head) - shL), lL))
         if err is None or np.linalg.norm(err) < .008: break
         cen = cen - dirw * float(err @ dirw) * 1.1   # (3D.213) slide only along the spear's own line, so the thrust stays on it
-    LERR.append(float(np.linalg.norm(err)) if err is not None else 0.)
-    if os.environ.get('ZH_DBGS') and PLFR[0] in (0, 14, 27, 34, 41, 50, 60, 75, 90):
+    LERR.append(float(np.linalg.norm(err)) if err is not None else 0.); SPCEN[0] = cen.copy()
+    if os.environ.get('ZH_DBGT'):
+        mw_ = np.array(bat.matrix_world); g_ = mw_[:3, :3] @ AXV[GRIPI] + mw_[:3, 3]; wd_ = nz(mw_[:3, :3] @ (AXV[TIPI] - AXV[GRIPI])); q_ = g_ + wd_ * float((cen - g_) @ wd_)
+        print('SCALE', PLFR[0], {b_: tuple(round(x, 3) for x in PB[b_].scale) for b_ in ('upperarm.R', 'forearm.R', 'hand.R', 'chest', 'pelvis', 'neck') if any(abs(x - 1) > .002 for x in PB[b_].scale)})
+        anc_ = np.array((ao.matrix_world @ S2_BASE['p'].translation)[:]); print('SHAFT', PLFR[0], 'off %.4f' % np.linalg.norm(cen - q_), 'cen rel %s' % np.round(W2A @ (cen - anc_), 3).tolist(), 'dir %s' % np.round(W2A @ wd_, 3).tolist())
+    if os.environ.get('ZH_DBGS') and PLFR[0] in (0, 14, 29, 33, 37, 41, 50, 60, 75, 90):
         anc = np.array((ao.matrix_world @ S2_BASE['p'].translation)[:]); rc_ = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; a_ = W2A @ (rc_ - anc); nk_ = W2A @ (P(PB['neck'].head) - anc)
         print('S2DBG', PLFR[0], 'hand(l,f,u) %.3f %.3f %.3f' % (a_[0], -a_[1], a_[2]), 'neck %.3f %.3f %.3f' % (nk_[0], -nk_[1], nk_[2]))
 def two_pose(fr):
     if SP2:
         global FOOTST
-        k = s2_key(fr); s2_body(k); FOOTST = s2_feet(); plant_legs(); PLFR[0] = fr; spear2_at(k); return
+        k = s2_key(fr); s2_body(k); FOOTST = s2_feet()
+        for _ in range(4):   # (3D.214) settle the legs fully (in the deep lunge one pass left the hips 2 cm to sink later, after the spear was placed, bending the thrust)
+            _p = np.array(PB['pelvis'].matrix.translation[:]); plant_legs()
+            if np.linalg.norm(np.array(PB['pelvis'].matrix.translation[:]) - _p) < 1e-4: break
+        PLFR[0] = fr; spear2_at(k); return
     if CHT:
         for b_, k_ in (('pelvis', .35), ('chest', .65)):
             m_ = PB[b_].matrix.copy(); R_ = Matrix.Rotation(-CHT * k_, 4, 'Z'); t_ = m_.translation.copy(); m_ = R_ @ m_; m_.translation = t_; PB[b_].matrix = m_; upd()
@@ -501,8 +516,12 @@ for fr in range(nf + 1):
     if RISE: set_rarm(fr)
     if TWO: two_pose(fr)
     WL = 0.
-    if TWO and SJ: CURW[0] = stance_lock(TT0[fr]); lock_all(fr); plant_legs(); place_left(); WL = CURW[0]   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
-    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):
+    if TWO and SJ:
+        _p0 = np.array(PB['pelvis'].matrix.translation[:]); CURW[0] = stance_lock(TT0[fr]); lock_all(fr); _p1 = np.array(PB['pelvis'].matrix.translation[:])
+        if not (SP2 and CURW[0] <= 0): plant_legs()   # (3D.214) the spear's pose (legs included) is already whole when no blend to the stance is under way: planting again sank the hips after the spear was placed
+        _p2 = np.array(PB['pelvis'].matrix.translation[:]); place_left(); WL = CURW[0]
+        if os.environ.get('ZH_DBGT') and fr in (34, 36, 37, 40): print('PELVIS', fr, 'w %.3f' % CURW[0], 'lock moved %.4f' % np.linalg.norm(_p1 - _p0), 'plant moved %.4f' % np.linalg.norm(_p2 - _p1))   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
+    for bone, viol in (() if SP2 else (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m)))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):   # (3D.214) not for the spear: its pose is placed whole (the clearance turn bent the thrust off its line by 13 mm); the spear's clearance is checked on the real body by bodyhit.py
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr] * (1 - WL), base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
             ok_ = False
@@ -524,7 +543,9 @@ for fr in range(nf + 1):
     if os.environ.get('ZH_DBGF') and fr in (0, 30): upd(); print('Q', [(b_, PB[b_].rotation_mode, tuple(round(x, 3) for x in PB[b_].rotation_quaternion), tuple(round(x,3) for x in PB[b_].scale)) for b_ in ('pelvis','thigh.L','shin.L')]); print('FOOTEND', fr, {b_: tuple(round(x, 3) for x in PB[b_].location) for b_ in ('thigh.L','shin.L','foot.L','thigh.R','chest')}, {c_: round(float(P(PB['foot.' + c_].head)[2]), 3) for c_ in 'LR'}, 'want', {c_: round(float(FOOTST[c_][0][2]), 3) for c_ in 'LR'} if FOOTST else None)
     ARMQ.append([list(PB[b_].rotation_quaternion) for b_ in ARMB])
     MEAS_RAW[0] = True; after.append(meas()); MEAS_RAW[0] = False; frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
-    _mw = np.array(bat.matrix_world); _bv2 = AXV @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); HANDP.append(P(PB['hand.R'].tail)); HANDL.append(P(PB['hand.L'].tail)); SHL.append(P(PB['upperarm.L'].head)); CHM.append((chest3().copy(), P(PB['chest'].head)))
+    _mw = np.array(bat.matrix_world); _bv2 = AXV @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); TIPP.append(_bv2[TIPI].copy()); HANDP.append(P(PB['hand.R'].tail)); HANDL.append(P(PB['hand.L'].tail)); SHL.append(P(PB['upperarm.L'].head)); CHM.append((chest3().copy(), P(PB['chest'].head)))
+    if os.environ.get('ZH_DBGT') and SP2 and SPCEN[0] is not None:
+        _g = _bv2[GRIPI]; _w = nz(_bv2[TIPI] - _bv2[GRIPI]); _q = _g + _w * float((SPCEN[0] - _g) @ _w); print('ENDSHAFT', fr, 'off %.4f' % np.linalg.norm(SPCEN[0] - _q))
 # ---- timing (owner, 18 Nov, video: "the right arm is still teleporting"): going round the head is a longer way than going through it, and the old clip gave the
 # blow only two or three frames, so the weapon jumped from behind the back to the front. Time is moved from the still part of the wind-up to the blow:
 # the weapon may turn at most OMEGA degrees a second and the hand move at most VHAND units a second; the clip keeps its length.
@@ -561,6 +582,8 @@ g = lambda L, k: [round(x[k], 3) for x in L]
 print('RESULT', clip, 'frames', nf + 1, '| weapon-head before min %.3f after min %.3f | right hand %.3f -> %.3f | left hand %.3f -> %.3f | elbows %.3f -> %.3f | weapon lowest %.3f -> %.3f | hips lifted up to %.3f | frames turned R %d L %d' % (
     min(g(before, 'bat')), min(g(after, 'bat')), min(g(before, 'hR')), min(g(after, 'hR')), min(g(before, 'hL')), min(g(after, 'hL')), min(min(g(before, 'eR')), min(g(before, 'eL'))), min(min(g(after, 'eR')), min(g(after, 'eL'))),
     min(g(before, 'low')), min(g(after, 'low')), lift.max(), int((np.linalg.norm(RV['upperarm.R'], axis=1) > 0).sum()), int((np.linalg.norm(RV['upperarm.L'], axis=1) > 0).sum())))
+if TIPP and os.environ.get('ZH_DBGT'):
+    _T = np.array(TIPP); _a = nz(_T[int(.41 * nf)] - _T[int(.33 * nf)]); _S = _T[int(.33 * nf):int(.41 * nf) + 1]; _c = _S[0]; print('SOLVERTIP dev', np.round(np.linalg.norm((_S - _c) - np.outer((_S - _c) @ _a, _a), axis=1), 4).tolist(), 'times', np.round(np.array(tt[int(.33 * nf):int(.41 * nf) + 1]) if 'tt' in dir() else 0, 3))
 if LERR: print('LEFTERR left hand off its place on the shaft: max %.3f' % max(LERR))
 if TWISTS: print('ULTWIST forearm roll for the underhand grip: %.0f to %.0f degrees' % (min(TWISTS), max(TWISTS)))
 print('BODY', clip, 'own arm after %.3f |' % min(g(after, 'own')), 'body clearance before %.3f after %.3f | wrist turned at %d frames' % (min(g(before, 'body')), min(g(after, 'body')), int((np.linalg.norm(RV['hand.R'], axis=1) > 0).sum())))
