@@ -81,8 +81,8 @@ Art chat:
 - ~~W47. Do the eleven look right on the Zombie test page?~~ Owner, 16 Nov: OK for now.
 - ~~W48. The eleven new kinds of zombie: trick, strength and first day.~~ Decided 17 Nov in the Planning chat: Claude's proposal approved as it stands (the Nurse raises fallen zombies). The list is in `02-DECISIONS.md`, "Zombies". Built in the Features chat, one kind per build.
 - ~~W49. Is the new Zombie test page easy to follow?~~ Owner, 17 Nov: yes. The size and model changes asked for the same day are in 3D.185 (W51).
-- W51. Sizes and models changed in 3D.185 on the owner's say (Walker, Lasher, Leaper, legless Crawlers, three more boss cards). Owner, 17 Nov: make the Butcher and the Bloater Queen a bit smaller. Done in 3D.188: the Bloater Queen is drawn at 1.55 times a model (was 1.75) and the Butcher at 1.4 (was 1.55), about a tenth smaller each. Waiting: is that enough, and are the Leaper's height and the Crawlers' stumps right?
-- W62. Bug A8 (the Zombie test shows menus but no map or zombie on the phone, 3D.188): not reproduced. Waiting: (1) on the same phone, does a normal game (New game) show the town? (2) Is there a line "Graphics paused by the phone"? (3) Does it come back after closing the game completely and opening it again, waiting about 30 seconds? A screenshot helps.
+- ~~W51. Zombie sizes and models (3D.185, 3D.188): are they right?~~ Owner, 17 Nov: yes, the size is good. (Walker, Lasher, Leaper, legless Crawlers, the smaller Butcher and Bloater Queen. The owner said nothing against the Crawlers' stumps.)
+- ~~W62. Bug A8: the Zombie test showed menus but no map or zombie on the phone.~~ Owner, 17 Nov: fine now, it looks like a connection issue. Closed; nothing in the game was changed.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
