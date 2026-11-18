@@ -42,7 +42,7 @@ How: the owner's ChatGPT project "Zombie Haven testing". Claude types the messag
 | Date | Build | Screens | Score | Logged |
 |---|---|---|---|---|
 | 15 Nov | 3D.170 | 24 | 6/10 | U1–U8 |
-| 18 Nov | 3D.212 | 21 | 6.5/10 ("looks more finished; information priority hardly better") | U22–U38; questions W108, W109. Two findings were corrected on checking (U26, U37) |
+| 18 Nov | 3D.212 | 21 | 6.5/10 ("looks more finished; information priority hardly better") | U22–U38, U39 after W109 (health stays a count, W108). Two findings were corrected on checking (U26, U37) |
 
 ## History
 | Round | Build | Average | Deaths | Notes |
