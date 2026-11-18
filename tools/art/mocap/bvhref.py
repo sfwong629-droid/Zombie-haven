@@ -23,7 +23,15 @@ for title, path, f0, f1, N, grip in rows:
     g = min(P[:, I('LeftToeBase'), 1].min(), P[:, I('RightToeBase'), 1].min())
     # the weapon: through both hands, smoothed (the recorded hands are rough); length 1.9 x the forearm
     R = P[:, I('RightHand')]; L = P[:, I('LeftHand')]; fl = np.linalg.norm(P[0, I('RightHand')] - P[0, I('RightForeArm')])
-    if grip != 'none':
+    if grip == 'chop':   # 3D.209: a two-handed overhead swing: the weapon follows the forearms, the wrists holding it cocked back while the arms are raised
+        fa = ((P[:, I('RightHand')] - P[:, I('RightForeArm')]) + (P[:, I('LeftHand')] - P[:, I('LeftForeArm')])) / 2; fa /= np.linalg.norm(fa, axis=1, keepdims=True)
+        hm = (R + L) / 2; sm = (P[:, I('RightArm')] + P[:, I('LeftArm')]) / 2; el = np.degrees(np.arcsin(np.clip((hm - sm)[:, 1] / np.linalg.norm(hm - sm, axis=1), -1, 1)))
+        ck = np.radians(np.clip((el + 30) / 120, 0, 1) * 85); back = -fw
+        d = []
+        for i_ in range(len(P)):
+            a_ = fa[i_]; b_ = back - a_ * (back @ a_); b_ = b_ / max(1e-9, np.linalg.norm(b_)); d.append(a_ * np.cos(ck[i_]) + b_ * np.sin(ck[i_]))
+        d = np.array(d); k = 6; d = np.array([d[max(0, i - k):i + k + 1].mean(0) for i in range(len(d))]); d /= np.linalg.norm(d, axis=1, keepdims=True); top = (R + L) / 2; low = top; grip = 'RL'
+    elif grip != 'none':
         d = (R - L) if grip == 'RL' else (L - R); k = 9; d = np.array([d[max(0, i - k):i + k + 1].mean(0) for i in range(len(d))]); d /= np.linalg.norm(d, axis=1, keepdims=True)
         top = R if grip == 'RL' else L; low = L if grip == 'RL' else R
     img = Image.new('RGB', (FW * N, FH * 2 + PAD), 'white'); dr = ImageDraw.Draw(img)
