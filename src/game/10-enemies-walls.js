@@ -157,7 +157,7 @@ function spawnRaid(fk = 'toll', leader = false) {
   for (let i = 0; i < n; i++) { const d = zombieTypes.raider; S.z.push({ type: 'raider', human: true, fk, w: tc(a[0] + (i % 2) * .4, a[1] + (i >> 1) * .4), home: tc(a[0], a[1]), pw: 1 + (danger() - 1) * .5, hp: Math.round(d.hp * danger()), max: Math.round(d.hp * danger()), cool: 30, phase: rnd() * 100, mode: 'appear', stateTicks: 30 + i * 20, target: null, path: null, loot: { food: 0, water: 0, mat: 0 }, carried: 0, goalB: null, evadeT: 0 }); rollRaider(S.z[S.z.length - 1], i); S.z[S.z.length - 1].fac = fk; }
   { const R = FAC_RAID[fk]; if (R) for (const z of S.z.slice(-n)) { z.hp = z.max = Math.round(z.max * R.hp); z.pw = (z.pw || 1) * (R.pw || 1); z.plate = true; } }   /* 3D.137/138 each faction's people fight differently */
   if (leader) { const L = S.z[S.z.length - 1]; L.kind = 'brute'; L.leader = true; L.name = (FAC_RAID[fk] || {}).lead || 'The Toll Collector'; L.hp = L.max = Math.round(L.max * 3.2); L.pw = (L.pw || 1) * 1.4; for (const q of S.z.slice(-4, -1)) { q.esc = true; q.kind = 'brute'; q.w = { x: L.w.x + (rnd() - .5) * .8, y: L.w.y + (rnd() - .5) * .8 }; q.stateTicks = L.stateTicks; } }   /* 3D.104 */
-  for (const z of S.z.slice(-n)) z.wpn = raiderWeapon(z.kind);   /* 3D.187 (W33, W55): set last, once the leader and his escort have their kind */
+  for (const z of S.z.slice(-n)) { z.wpn = raiderWeapon(z.kind); z.pw = (z.pw || 1) * raiderHit(z.wpn); }   /* 3D.187 (W33, W55): set last, once the leader and his escort have their kind */
   SFX('alarm'); raidAlert(n); S.alert = 1200;
 }
 /* V3D.13 raider personalities (Walking Dead style): most raiders are Thieves; some are Brutes who come to hurt people
@@ -172,9 +172,13 @@ const RAIDER_KINDS = {
    weapon hits is a balance number (Balance chat). Raids and strongholds away from the town keep their own weapons. */
 const RAIDER_WPN = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'axe', 'spiked', 'sledge'], firebug: ['pipe', 'hatchet', 'crowbar', 'spear'] };   /* 3D.196 (owner, W72): Brute and Firebug reordered so each step is at least as strong as the one before, by the weapons' own attack */
 const raiderWeapon = (kind, lvl = S.lvl || 1) => (RAIDER_WPN[kind] || RAIDER_WPN.thief)[Math.max(0, ERAS.indexOf(eraOf(lvl)))];
+/* 3D.197 (owner, 17-18 Nov, W57: "follow the weapon type"): a town raider hits as hard as the weapon in its hand. A hit is RAIDER_HIT.base +
+   RAIDER_HIT.per x the weapon's own attack (ITEMS[id].atk, the number a survivor gets from it), in place of the flat 7 x the kind's factor.
+   Era I: Thief 5.3, Brute 11, Firebug 6.5 (were 7, 10.5, 6.3). Era IV: 14.6, 15.8, 13.1. The danger level, a faction's factor and a leader's factor still multiply it. */
+const RAIDER_HIT = { base: 5, per: .3 }; const raiderHit = (id) => (RAIDER_HIT.base + RAIDER_HIT.per * ((ITEMS[id] || {}).atk || 0)) / zombieTypes.raider.atk;
 function rollRaider(z, i) {
   const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
-  z.kind = k; z.hp = z.max = Math.round(z.max * K.hp); z.pw = (z.pw || 1) * K.atk;
+  z.kind = k; z.hp = z.max = Math.round(z.max * K.hp);   /* 3D.197: the hit no longer comes from the kind (K.atk) but from the weapon: see raiderHit */
 }
 const RK = (z) => RAIDER_KINDS[z.kind] || RAIDER_KINDS.thief;
 function raidTarget(z) { let best = null, bd = 1e9; for (const b of world.buildings) { if (!RAID_TARGETS.includes(b.type)) continue; const d = dist(z.w, Wd.doorPoint(b)); if (d < bd) { bd = d; best = b; } } return best; }
