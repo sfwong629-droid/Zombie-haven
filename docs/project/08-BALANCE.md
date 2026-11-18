@@ -262,3 +262,14 @@ What this shows:
 - **The raider change cannot be judged from three towns.** Deaths rose in two towns and fell in one, and the run-to-run spread is that large without any change. One town lost 9 people in two days at level 7 with raiders nearby. It needs more towns (W57).
 - **Research runs out early** (W82): the bot finishes 6 or 7 of the 8 projects by game day 25 to 30, at level 5 to 7. No building is locked behind research today.
 
+**Fourth measurement, 18 Nov: the big horde reworked (3D.199, live with 3D.200).** Owner: the same number of zombies, much weaker. Two versions were measured, three towns each:
+
+| Version | Deaths per town | Deaths on boss nights | Most standing on a boss night |
+|---|---|---|---|
+| Much weaker, capped at 30 (era 1) on top of the night's crowd | 5, 12, 8 | 5, 12, 7 | 33 to 61 |
+| Much weaker, capped, and the night's crowd makes room (released) | 17, 8, 3 | 3, 2, 2 | 31 in era 1, 46 later |
+
+- **Boss nights now meet the danger target** in the released version: a few deaths spread over the run, none in a single night.
+- **The size target is half met in era 1:** boss nights bring 25 to 34 zombies by day 12, against about 60. The rest of the horde stops when the boss falls, and the fighters kill it early. Later boss nights bring 43 to 73.
+- **The 17 deaths in one town were a raid:** 12 people died on day 18 with raiders nearby, not on a boss night. With the town of 3D.197 that lost 9, this is the second sign that raiders now hit too hard (W57).
+

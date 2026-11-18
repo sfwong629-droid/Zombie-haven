@@ -98,7 +98,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Balance chat): Children, decided: they are seen in town and walk to the School each day; a School only helps (they grow up sooner and with one stat higher) and is not needed to grow up; a child gets the better parent's value in two stats, the average in the rest, and one trait from a parent. (Not built yet.)
 - 17 Nov (Balance chat): A town raider hits as hard as the weapon it carries: the weapon's own attack and speed, the same numbers a survivor gets from it ("follow the weapon type"). ~~(Not built yet; W57.)~~ Built in 3D.197: a hit is 5 + 0.3 x the weapon's attack; the weapon's speed is not used yet.
 - 18 Nov (Balance chat): The raider weapon table is reordered so no step is weaker than the one before. Brute: nail bat, fire axe, spiked club, sledgehammer. Firebug: pipe, hatchet, crowbar, spear. The Thief is unchanged. Built in 3D.196. (This replaces the Brute and Firebug order in the UI section.)
-- 18 Nov (Balance chat): Go for the first big horde on boss nights. (Built and measured, not released: the first cut killed too many people; W54.)
+- 18 Nov (Balance chat): Go for the first big horde on boss nights. ~~(Built and measured, not released: the first cut killed too many people; W54.)~~
+- 18 Nov (Balance chat): The big horde is the same number of zombies, much weaker: a third of the health and half the hit; at most 30 standing at once in era 1 (45 in era 2, 60 later); the night's ordinary crowd makes room for it. Built in 3D.199, live with 3D.200.
 - 18 Nov (Balance chat): The first Banner stays as hard as it is until the Landmark and the festival at level 5 are built.
 
 ## Nights and survival
