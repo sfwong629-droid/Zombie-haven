@@ -131,29 +131,43 @@ function svtPut() {   /* (re)make the one survivor: a new person object, so the 
   const S0 = 11 - 2 * 2.1, x = (S0 - 3) / 2 + OFF + .25, y = (S0 + 3) / 2 + OFF - .25, q = mk(svtFem ? 'Maya' : 'Sam', 'Civilian', 1, x, y, 0);   /* the Zombie test's open spot north of the town */
   for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 3 && Math.abs(ty - y) < 3) { const n = treeNode(tx, ty); if (n.left) { n.left = 0; n.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }
   q.look = { sex: svtFem ? 'f' : 'm', skin: 1, hair: 2 }; q.eq = { weapon: null, armor: null, head: null, acc: null }; q.dummy = true; q.svt = true; q.resident = true; q.tag = svtFem ? 'Woman' : 'Man';
-  q.show = { clip: svtClip, turn: svtTurn, yaw }; S.sv.push(q); centerOn(x + .3, y + .3, ZOOM_MAX); cam.y -= VH * .2; clampCam();   /* the panel is tall: the survivor stands in the top third */
+  q.show = { clip: svtClip, turn: svtTurn, yaw }; S.sv.push(q); svtAim();
+}
+/* 3D.199 the survivor stands in the middle of the part of the screen the panel leaves free (owner, 18 Nov: on the phone the menu covered the whole screen and the character could not be seen) */
+let svtAimN = 0;
+function svtAim() {
+  const q = svtWho(), d = $('zooPanel'); if (!q) return; centerOn(q.w.x + .3, q.w.y + .3, ZOOM_MAX * 1.5); if (!d || !(window.ZH3D && ZH3D.screenOf)) return;   /* closer than the game allows: this page is for looking at one person */
+  /* where the survivor is on screen is measured (the 3D camera is tilted), then the view is slid until the survivor's middle sits a little below the middle of the free part */
+  const my = ++svtAimN, mid = () => { const wr = $('world').getBoundingClientRect(); return (ZH3D.screenOf(q.w.x, q.w.y, 0).y + ZH3D.screenOf(q.w.x, q.w.y, 1.15).y) / 2 * wr.height; };
+  const want = () => { const wr = $('world').getBoundingClientRect(); return Math.max(120, d.getBoundingClientRect().top - wr.top) * .55; };
+  const wait = (fn) => setTimeout(() => requestAnimationFrame(fn), 280);   /* the camera eases to its place, so each look waits for it to settle */
+  wait(() => { if (my !== svtAimN) return; const m0 = mid(); cam.y += 24; wait(() => { if (my !== svtAimN) return; const k = (mid() - m0) / 24; if (Math.abs(k) < .01) return;
+    let n = 0; const fix = () => { if (my !== svtAimN) return; const e = want() - mid(); if (Math.abs(e) > 4 && n++ < 5) { cam.y += e / k; wait(fix); } }; fix(); }); });
 }
 function svtApply(again) {
   const q = svtWho(); if (q) q.show = { clip: svtClip, turn: svtTurn, yaw: q.show ? q.show.yaw : null, again: !!again };
   const d = $('zooPanel'); if (!d) return; const i = svtList.indexOf(svtClip), info = (window.ZH3D && ZH3D.survivorClips ? ZH3D.survivorClips(svtFem) : []).find((c) => c.name === svtClip);
-  d.querySelectorAll('.zc').forEach((b) => { b.classList.toggle('on', b.dataset.c === svtClip); if (b.dataset.c === svtClip) b.scrollIntoView({ block: 'nearest', inline: 'center' }); });
-  $('svtTurn').classList.toggle('on', svtTurn); $('svtTurn').textContent = svtTurn ? 'Turning' : 'Turn'; $('svtSex').textContent = svtFem ? 'Woman · tap for the man' : 'Man · tap for the woman';
-  $('zooInfo').innerHTML = `<b>${esc(SVT_NAME[svtClip] || svtClip)}</b> · ${i + 1} of ${svtList.length}${info ? ' · ' + info.dur.toFixed(2) + ' s' : ''} · file name <code>${esc(svtClip)}</code><br>${SVT_REAL.has(svtClip) ? (SVT_SWING.has(svtClip) ? 'New: a recorded one-handed cut, made wider and faster so it reads; the feet stay planted.' : SVT_PART.has(svtClip) ? 'New: the body stands like a real person (recorded); the arms are the old hand-made ones.' : 'A recording of a real person.') : 'Old hand-made animation: still to be replaced.'}`;
+  const g = SVT_GROUPS.findIndex((x) => x[1].includes(svtClip));
+  d.querySelectorAll('.zt').forEach((b) => b.classList.toggle('on', +b.dataset.g === g));
+  $('svtRow').innerHTML = SVT_GROUPS[g][1].map((c) => `<button class="zc${c === svtClip ? ' on' : ''}" data-c="${c}"><b>${esc(SVT_NAME[c] || c)}</b>${SVT_REAL.has(c) ? '<i>REAL</i>' : ''}</button>`).join('');
+  $('svtRow').querySelectorAll('.zc').forEach((b) => { b.onclick = () => { svtClip = b.dataset.c; svtApply(true); }; if (b.dataset.c === svtClip) b.scrollIntoView({ block: 'nearest', inline: 'center' }); });
+  $('svtTurn').classList.toggle('on', svtTurn); $('svtSex').textContent = svtFem ? 'Woman' : 'Man';
+  $('zooInfo').innerHTML = `<b>${esc(SVT_NAME[svtClip] || svtClip)}</b> · ${i + 1} of ${svtList.length}${info ? ' · ' + info.dur.toFixed(1) + ' s' : ''} · ${SVT_REAL.has(svtClip) ? (SVT_SWING.has(svtClip) ? 'new: a recorded cut, made wider and faster' : SVT_PART.has(svtClip) ? 'new: recorded body, old arms' : 'a real recording') : 'old, still to replace'}`;
 }
 function svtStart() {
   S.mission = null; simSpeed = 1; zooLine(); S.z = []; svtList = SVT_GROUPS.flatMap((g) => g[1]);
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel svt';
-  d.innerHTML = `<div class="zh"><b>Survivor test</b><span class="sm">${svtList.length} animations · tap one, or use Next</span></div>` +
-    SVT_GROUPS.map(([g, cs]) => `<div class="zg"><span class="zgn">${g}</span><div class="zrow">${cs.map((c) => `<button class="zc" data-c="${c}"><b>${esc(SVT_NAME[c] || c)}</b>${SVT_REAL.has(c) ? '<i>REAL</i>' : ''}</button>`).join('')}</div></div>`).join('') +
-    `<div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" id="svtPrev">◀ Back</button><button class="act" id="svtNext">Next ▶</button><button class="act" id="svtAgain">Again</button><button class="act" id="svtTurn">Turning</button></div>` +
-    `<div class="zbtns" style="margin-top:8px"><button class="act" id="zooExit">Exit</button><button class="act" id="svtSex">Man</button></div>`;
-  $('world').appendChild(d);
-  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { svtClip = b.dataset.c; svtApply(true); }; });
+  /* 3D.199 a short panel: one row of group tabs, one row with that group's animations, one line of facts, one row of buttons */
+  d.innerHTML = `<div class="zh"><b>Survivor test</b><span class="sm">${svtList.length} animations</span><button class="act zs" id="svtSex">Man</button><button class="act zs" id="zooExit">Exit</button></div>` +
+    `<div class="zrow ztabs">${SVT_GROUPS.map(([g], k) => `<button class="zt" data-g="${k}">${g}</button>`).join('')}</div><div class="zrow" id="svtRow"></div>` +
+    `<div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" id="svtPrev">◀ Back</button><button class="act" id="svtNext">Next ▶</button><button class="act" id="svtAgain">Again</button><button class="act" id="svtTurn">Turn</button></div>`;
+  $('world').appendChild(d); $('app').classList.add('svtOn');   /* 3D.199 nothing but the survivor and this panel: the game's own bars and buttons are hidden here */
+  d.querySelectorAll('.zt').forEach((b) => { b.onclick = () => { svtClip = SVT_GROUPS[+b.dataset.g][1][0]; svtApply(true); }; });
   const step = (k) => { svtClip = svtList[(svtList.indexOf(svtClip) + k + svtList.length) % svtList.length]; svtApply(true); };
   $('svtPrev').onclick = () => step(-1); $('svtNext').onclick = () => step(1); $('svtAgain').onclick = () => svtApply(true);
   $('svtTurn').onclick = () => { svtTurn = !svtTurn; svtApply(); }; $('svtSex').onclick = () => { svtFem = !svtFem; svtPut(); svtApply(); };
   $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('svt'); location.search = q.toString(); };
-  svtPut(); svtApply();
+  svtPut(); svtApply(); svtAim(); addEventListener('resize', () => setTimeout(svtAim, 60));
   const clean = () => { if (S.z.length) { for (const z of S.z) z.escaped = true; S.z = []; } requestAnimationFrame(clean); }; clean();   /* no zombies on the stage */
 }
 function zooStart() {

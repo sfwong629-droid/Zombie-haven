@@ -102,6 +102,7 @@ Art chat:
 - ~~W81. Melee swings.~~ Owner, 18 Nov: more force and wider; then yes to the second version, and yes to a separate two-handed set. Built in 3D.198: Swing 1, 2 and 4 are three cuts from a recording of sword practice (clip 02_09), exaggerated so they read (bigger wind-up, straight arm, hips into the blow, slow wind-up and fast blow); Swing 3 is a copy of Swing 1. Check: `tools/qa/swing_head_check.sh` (the bat is never inside the head). The six combos are not rebuilt: the game does not use them (only the Survivor test page shows them).
 - W83. Watch Swing 1, 2 and 4 on the Survivor test page (3D.198), and a fight in the town, and say if anything looks wrong.
 - W84. The two-handed set for the big weapons (decided 18 Nov: separate). Next (Claude): find recordings, show the reference. Waiting: which weapons are two-handed? Claude's proposal: Sledgehammer, Fire Axe, Scrap Spear, Shovel, Road Sign; one-handed: everything else (bat, pipe, crowbar, machete, katana, hatchet, cleaver, knife, golf club, spiked club, nail bat).
+- W85. Bug A9 (the Survivor test menu covered the survivor on the phone): fixed in 3D.199. Open the Survivor test on the phone and say whether the survivor can be seen now.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).

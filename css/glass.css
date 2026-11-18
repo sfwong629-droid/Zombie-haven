@@ -425,7 +425,10 @@ html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }
 
 /* 3D.166 the level-timer speed-up buttons: a button you can't afford looks it */
 #uRush:disabled, #uRushAll:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
-
-/* 3D.190 Survivor test page */
-.zooPanel.svt .zg { display: flex; align-items: center; gap: 6px; } .zooPanel.svt .zgn { flex: 0 0 58px; font: 800 11px Manrope, sans-serif; color: #C9D1D9; } .zooPanel.svt .zg .zrow { flex: 1; min-width: 0; padding-bottom: 4px; }
-.zooPanel.svt .zc { min-width: 0; padding: 6px 9px; } .zooPanel.svt .zc b { padding-right: 0; white-space: nowrap; } .zooPanel.svt .zc i { position: static; display: inline-block; margin-top: 2px; } .zooPanel.svt code { font: 600 11px monospace; color: #C6FF4D; }
+/* 3D.190 Survivor test page; 3D.199 made short so the survivor is never hidden on a phone: tabs, one row of animations, one line of facts, one row of buttons */
+.zooPanel.svt { padding: 8px; bottom: calc(92px + env(safe-area-inset-bottom)); } .zooPanel.svt .zh { align-items: center; margin: 0 2px 5px; } .zooPanel.svt .zh b { font-size: 14px; } .zooPanel.svt .zh .sm { flex: 1; }
+.zooPanel.svt .zh .zs { flex: none; min-height: 30px; padding: 0 10px; font-size: 12px; } .zooPanel.svt .zrow { padding-bottom: 5px; }
+.zooPanel.svt .zt { flex: none; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: #C9D1D9; font: 800 12px Manrope, sans-serif; } .zooPanel.svt .zt.on { background: #fff; color: #14200A; border-color: #fff; }
+.zooPanel.svt .zc { min-width: 0; padding: 7px 10px; display: flex; align-items: center; gap: 6px; } .zooPanel.svt .zc b { padding-right: 0; white-space: nowrap; } .zooPanel.svt .zc i { position: static; }
+.zooPanel.svt .zinfo { min-height: 0; margin: 1px 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .zooPanel.svt .zact .act { min-height: 40px; }
+#app.svtOn #world > :not(canvas):not(#zooPanel):not(#game):not(#fx), #app.svtOn > :not(#world):not(canvas) { display: none !important; } #app.svtOn .zooPanel.svt { bottom: calc(10px + env(safe-area-inset-bottom)); }
