@@ -52,16 +52,17 @@
     swell(c, o, t + G.echo, G.tail * .8, .045 * v, 900, 120, .04);
     if (G.echo2) swell(c, o, t + G.echo2, G.tail * .6, .03 * v, 650, 100, .06);
     if (G.snap) noise(c, o, t, .008, .35 * v, 6000, 1, 'highpass');
+    if (G.boom) { swell(c, o, t + .005, .9, .3 * v, 420, 45, .03); tone(c, o, t, 38, .7, 'sine', .35 * v, 30, .01); }
     if (G.tink) { clang(c, o, t + .32, 4300, .01, .18); clang(c, o, t + .41, 4700, .006, .12); }
     if (G.bolt) { if (!sfx(c, o, t + .6, 'metalL' + rnd3(), .07, 2.3)) noise(c, o, t + .6, .02, .05, 3000, 3); if (!sfx(c, o, t + .78, 'metalL' + rnd3(), .08, 1.9)) noise(c, o, t + .78, .02, .05, 2500, 3); }
   }
   const GUNS = {   /* pistols are short, snappy and dry with a case tinkling down; rifles boom and roll away twice down the valley, then the bolt is worked */
-    shot_pistol: { crack: 3600, blast: .045, thump: 170, tail: .28, echo: .11, size: .9, tink: 1 },
+    shot_pistol: { crack: 3600, blast: .045, thump: 170, tail: .28, echo: .11, size: .9 },
     shot_smg: { crack: 3300, blast: .04, thump: 160, tail: .25, echo: .1, size: .7 },
     shot_magnum: { crack: 2300, blast: .12, thump: 95, tail: .7, echo: .18, size: .9 },
     shot_auto: { crack: 2600, blast: .07, thump: 115, tail: .5, echo: .2, size: .8 },
-    shot_shotgun: { crack: 1500, blast: .24, thump: 58, tail: 1, echo: .26, size: .95 },
-    shot_rifle: { crack: 1300, blast: .2, thump: 50, tail: 1.9, echo: .38, echo2: .85, size: .9, snap: 1, bolt: 1 },
+    shot_shotgun: { crack: 900, blast: .34, thump: 42, tail: 1.6, echo: .3, size: .85, boom: 1 },   /* a wide, blooming boom: no sharp crack */
+    shot_rifle: { crack: 1300, blast: .2, thump: 50, tail: 1.9, echo: .38, echo2: .85, size: .9, snap: 1 },
   };
   const FX = {   // each: (context, output, start time)
     ...Object.fromEntries(Object.entries(GUNS).map(([k, G]) => [k, (c, o, t) => gun(c, o, t, G)])),
@@ -129,25 +130,43 @@
      (harp, celesta, glockenspiel, horn, a village bell); fighting sounds are wood and body, natural and solid. Each falls back to the old sound until the samples load. */
   const NEWFX = {
     click: (c, o, t) => { if (!sfx(c, o, t, 'woodM' + rnd3(), .11, 2.6)) FX.click(c, o, t); },   /* a soft wooden tock */
-    chime: (c, o, t) => { if (!samp(c, o, t, 'harp', N(19), .42, 1.4)) return FX.chime(c, o, t); samp(c, o, t + .1, 'harp', N(26), .42, 1.6); samp(c, o, t + .1, 'cel', N(26), .22, 1.6, .2); },
-    reward: (c, o, t) => { if (!samp(c, o, t, 'harp', N(15), .001, .1)) return FX.reward(c, o, t); [15, 17, 19, 22, 24, 27].forEach((sm, i) => samp(c, o, t + i * .045, 'harp', N(sm), .36, 1.6, (i / 5 - .5) * .4)); samp(c, o, t + .3, 'glk', N(39), .26, 2, .2); samp(c, o, t + .3, 'glk', N(34), .16, 2, .2); [3, 7, 10].forEach((sm) => samp(c, o, t + .05, 'str', N(sm + 12), .07, 1.4, 0, .25, .5)); },
+    chime: (c, o, t) => { if (!samp(c, o, t, 'tpt', N(22), .3, .16, .1, .015, .08)) return FX.chime(c, o, t); samp(c, o, t + .13, 'tpt', N(27), .3, .5, .1, .015, .25); },   /* a light trumpet call */
+    reward_a: (c, o, t) => { if (!samp(c, o, t, 'vibes', N(15), .001, .1)) return FX.reward(c, o, t); [15, 19, 22, 27, 31].forEach((sm, i) => samp(c, o, t + i * .06, 'vibes', N(sm), .4, 1.6, (i / 4 - .5) * .4)); samp(c, o, t + .3, 'glk', N(39), .24, 2, .2); [3, 7, 10].forEach((sm) => samp(c, o, t + .05, 'str', N(sm + 12), .07, 1.4, 0, .25, .5)); },   /* vibraphone */
+    reward_b: (c, o, t) => { if (!samp(c, o, t, 'cel', N(27), .001, .1)) return FX.reward(c, o, t); [27, 31, 34, 39].forEach((sm, i) => samp(c, o, t + i * .07, 'cel', N(sm), .36, 1.6, (i / 3 - .5) * .4)); [3, 7, 10, 15].forEach((sm) => samp(c, o, t, 'str', N(sm + 12), .08, 1.6, 0, .15, .6)); samp(c, o, t + .3, 'glk', N(39), .2, 2); },   /* celesta */
+    reward_c: (c, o, t) => { if (!samp(c, o, t, 'flu', N(22), .001, .1)) return FX.reward(c, o, t); [[22, 0, .1], [24, .09, .1], [27, .18, .9]].forEach(([sm, dt, d]) => { samp(c, o, t + dt, 'flu', N(sm), .4, d, .1, .02, .25); samp(c, o, t + dt, 'obo', N(sm - 5), .22, d, -.1, .02, .25); }); [3, 7, 10].forEach((sm) => samp(c, o, t + .18, 'str', N(sm + 12), .09, 1.3, 0, .1, .5)); samp(c, o, t + .2, 'glk', N(39), .2, 2, .2); },   /* flute and oboe */
     coin: (c, o, t) => { if (!samp(c, o, t, 'glk', N(31), .26, .9)) return FX.coin(c, o, t); samp(c, o, t + .07, 'glk', N(36), .26, 1.1); },
     rankup: (c, o, t) => { if (!samp(c, o, t, 'hrn', N(10), .3, .16)) return FX.rankup(c, o, t); samp(c, o, t + .15, 'hrn', N(15), .3, .16); samp(c, o, t + .3, 'hrn', N(19), .3, .16); samp(c, o, t + .45, 'hrn', N(22), .36, 1.2, 0, .02, .4); [15, 19, 22].forEach((sm) => samp(c, o, t + .45, 'str', N(sm), .08, 1.3, 0, .08, .5)); samp(c, o, t + .45, 'timp', N(-9), .3, 1.2); samp(c, o, t + .47, 'glk', N(39), .22, 2, .3); },
     event: (c, o, t) => { if (!samp(c, o, t, 'cel', N(22), .3, 1)) return FX.event(c, o, t); [27, 31, 29, 27].forEach((sm, i) => samp(c, o, t + (i + 1) * .1, 'cel', N(sm), .3, 1.2, .15)); samp(c, o, t, 'pz', N(-9), .4, .6, -.2); samp(c, o, t + .2, 'pz', N(-2), .35, .6, -.2); },
     rescued: (c, o, t) => { if (!samp(c, o, t, 'nyl', N(-2), .45, 2)) return FX.rescued(c, o, t); [2, 5, 10].forEach((sm, i) => samp(c, o, t + .02 + i * .022, 'nyl', N(sm), .42, 2)); [[14, 0, .2], [17, .18, .2], [22, .36, 1]].forEach(([sm, dt, d]) => samp(c, o, t + .05 + dt, 'flu', N(sm), .4, d, .1, .04, .25)); },
     night: (c, o, t) => { if (!samp(c, o, t, 'cel', N(24), .3, 1.8, .1)) return FX.night(c, o, t); samp(c, o, t + .45, 'cel', N(20), .28, 1.8, .1); samp(c, o, t + .9, 'cel', N(17), .3, 2.4, .1); [-7, 0].forEach((sm) => samp(c, o, t, 'str', N(sm), .07, 2.6, 0, .6, .9)); },
-    dawn: (c, o, t) => { if (!samp(c, o, t, 'harp', N(5), .3, 1.5)) return FX.dawn(c, o, t); [12, 17, 21].forEach((sm, i) => samp(c, o, t + (i + 1) * .08, 'harp', N(sm), .3, 1.6, (i / 2 - .5) * .4)); [[17, .3, .3], [19, .6, .3], [24, .9, 1.2]].forEach(([sm, dt, d]) => samp(c, o, t + dt, 'flu', N(sm), .36, d, .1, .05, .3)); [5, 9, 12].forEach((sm) => samp(c, o, t + .3, 'str', N(sm), .05, 1.9, 0, .5, .7)); },
-    alarm: (c, o, t) => { if (!samp(c, o, t, 'tub', N(10), .45, 1.6)) return FX.alarm(c, o, t); for (let i = 1; i < 4; i++) samp(c, o, t + i * .3, 'tub', N(10), .42 - i * .03, 1.6); clang(c, o, t, 880, .03, .4); },   /* the village bell */
+    dawn: (c, o, t) => { if (sfx(c, o, t, 'rooster', .6, 1)) return; if (!samp(c, o, t, 'harp', N(5), .3, 1.5)) return FX.dawn(c, o, t); [12, 17, 21].forEach((sm, i) => samp(c, o, t + (i + 1) * .08, 'harp', N(sm), .3, 1.6, (i / 2 - .5) * .4)); [[17, .3, .3], [19, .6, .3], [24, .9, 1.2]].forEach(([sm, dt, d]) => samp(c, o, t + dt, 'flu', N(sm), .36, d, .1, .05, .3)); [5, 9, 12].forEach((sm) => samp(c, o, t + .3, 'str', N(sm), .05, 1.9, 0, .5, .7)); },
+    alarm: (c, o, t) => { if (!samp(c, o, t, 'tub', N(10), .5, 1.2)) return FX.alarm(c, o, t); for (let i = 1; i < 8; i++) { const tt = t + i * .15 - i * i * .002; samp(c, o, tt, 'tub', N(i % 2 ? 15 : 10), .5, 1.2); clang(c, o, tt, i % 2 ? 1180 : 880, .02, .3); } },   /* the village bell rung fast, two bells clashing: a warning */
     hit: (c, o, t) => { if (!sfx(c, o, t, 'woodH' + rnd3(), .42, .7)) return FX.hit(c, o, t); thud(c, o, t, 90, .28, .14); noise(c, o, t, .05, .12, 900, .8, 'lowpass', 250); },
     hurt: (c, o, t) => { noise(c, o, t, .18, .14, 750, 5); noise(c, o, t, .16, .09, 1250, 6); formant(c, o, t, 190, .16, .06, [[700, 6, 1], [1200, 8, .5]], 140); thud(c, o, t, 120, .15, .08); },
     kill: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .42, .5)) return FX.kill(c, o, t); thud(c, o, t, 70, .32, .3); noise(c, o, t + .03, .5, .05, 500, 4, 'bandpass', 250); formant(c, o, t + .02, 95, .5, .06, [[480, 5, 1], [850, 6, .4]], 65, 5); },
-    down: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .4, .55)) return FX.down(c, o, t); thud(c, o, t, 70, .3, .3); noise(c, o, t + .05, .35, .08, 650, 5); sfx(c, o, t + .45, 'woodL' + rnd3(), .15, .6); },
-    groan: (c, o, t) => { const d = 1.5 + Math.random() * .6, f = 70 + Math.random() * 18; formant(c, o, t, f, d, .1, [[400, 5, 1], [780, 7, .5], [2300, 10, .12]], f * .78, 2.8); noise(c, o, t, d, .05, 420, 3); },
-    boss: (c, o, t) => { formant(c, o, t, 52, 2, .3, [[290, 4, 1], [680, 5, .7], [1500, 7, .2]], 38, 4.5); noise(c, o, t + .1, 1.4, .12, 220, .5, 'lowpass'); if (samp(c, o, t, 'timp', N(-12), .55, 2)) [-12, -9, -6].forEach((sm) => samp(c, o, t + .05, 'brass', N(sm), .16, 1.8, 0, .05, .6)); else thud(c, o, t, 45, .4, .8); },
-    breach: (c, o, t) => { if (!SFXB.woodL0) return FX.breach(c, o, t); thud(c, o, t, 55, .45, .5); [0, .06, .13, .21, .3].forEach((dt, i) => sfx(c, o, t + dt, (i % 2 ? 'woodH' : 'woodL') + rnd3(), .4 - i * .05, .5 + Math.random() * .3)); noise(c, o, t + .05, .6, .15, 700, .5, 'lowpass', 90); },
+    down: (c, o, t, f) => { if (!SFXB.downm0) return FX.down(c, o, t); sfx(c, o, t, (f ?? Math.random() < .5) ? 'downf0' : 'downm0', .55, .97 + Math.random() * .06); sfx(c, o, t + .32, 'woodL' + rnd3(), .32, .55); thud(c, o, t + .32, 70, .25, .3); },   /* a person crying out and falling */
+    down_f: (c, o, t) => NEWFX.down(c, o, t, true), down_m: (c, o, t) => NEWFX.down(c, o, t, false),
+    groan: (c, o, t) => { if (!sfx(c, o, t, 'zgroan' + Math.floor(Math.random() * 7), .7, .8 + Math.random() * .12)) FX.groan(c, o, t); },   /* recorded moans and growls, slowed so they drag on */
+    boss: (c, o, t) => { sfx(c, o, t, 'zgroan6', .8, .55); sfx(c, o, t + .05, 'zgroan4', .55, .5); formant(c, o, t, 52, 2, .18, [[290, 4, 1], [680, 5, .7], [1500, 7, .2]], 38, 4.5); noise(c, o, t + .1, 1.4, .12, 220, .5, 'lowpass'); if (!samp(c, o, t, 'timp', N(-12), .5, 2)) thud(c, o, t, 45, .4, .8); },   /* a huge zombie roar (recorded growls slowed down) over a timpani hit */
+    radio: (c, o, t) => {   /* a long burst of radio static: hiss that swells and flutters, crackles, a tuning whistle drifting through */
+      const d = 2.3, n = c.createBufferSource(); n.buffer = noiseBuf(c, d + .1); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = .5; const g = c.createGain();
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.12, t + .08); for (let k = 1; k < 18; k++) g.gain.linearRampToValueAtTime(.06 + Math.random() * .07, t + k * .12); g.gain.linearRampToValueAtTime(.0001, t + d); n.connect(bp); bp.connect(g); g.connect(o); n.start(t); n.stop(t + d + .1);
+      for (let i = 0; i < 26; i++) noise(c, o, t + Math.random() * (d - .1), .008 + Math.random() * .02, .1, 2500 + Math.random() * 3000, 2);
+      tone(c, o, t + .3, 1300, 1.4, 'sine', .012, 700); tone(c, o, t + 1.2, 900, .8, 'sine', .008, 1600);
+    },
+    caralarm: (c, o, t) => {   /* a real car alarm's cycle through its little horn speaker: rising whoops, a fast warble, then hi-lo */
+      const sp = c.createBiquadFilter(); sp.type = 'bandpass'; sp.frequency.value = 2000; sp.Q.value = .7; const ws = c.createWaveShaper(), cv = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cv[i] = Math.tanh(3 * x); } ws.curve = cv; ws.connect(sp); sp.connect(o);
+      const sweep = (t0, f0, f1, d, v = .05) => { const os = c.createOscillator(), g = c.createGain(); os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t0); os.frequency.exponentialRampToValueAtTime(f1, t0 + d); g.gain.setValueAtTime(v, t0); g.gain.setValueAtTime(v, t0 + d - .01); g.gain.linearRampToValueAtTime(0, t0 + d); os.connect(g); g.connect(ws); os.start(t0); os.stop(t0 + d + .02); };
+      for (let i = 0; i < 3; i++) sweep(t + i * .4, 650, 1600, .38);
+      for (let i = 0; i < 12; i++) sweep(t + 1.2 + i * .08, i % 2 ? 1500 : 1100, i % 2 ? 1500 : 1100, .08);
+      for (let i = 0; i < 4; i++) sweep(t + 2.2 + i * .3, i % 2 ? 950 : 1250, i % 2 ? 950 : 1250, .3);
+      swell(c, o, t + .2, 3.2, .015, 1500, 600, .3);
+    },
+    woof: (c, o, t) => { if (!sfx(c, o, t, 'dog0', .8, 1)) FX.woof(c, o, t); },   /* a real dog barking */
+    breach: (c, o, t) => { if (!SFXB.rockb0) return FX.breach(c, o, t); thud(c, o, t, 55, .4, .5); sfx(c, o, t, 'rockb' + rnd3(), .6, .8); sfx(c, o, t + .08, 'woodL' + rnd3(), .3, .5); [.18, .34, .55, .8].forEach((dt, i) => sfx(c, o, t + dt, 'rockf' + rnd3(), .5 - i * .08, .85 + Math.random() * .2)); noise(c, o, t + .1, 1.1, .08, 900, .5, 'lowpass', 120); },   /* a wall crumbling: cracking, then rubble falling */
   };
-  const NFXV = { chime: 2.1, reward: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: 2, alarm: 2, boss: 1.4, down: 1, hurt: 2.2, breach: .8 };   /* level each new sound to sit near the old one */
-  for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t); };
+  const NFXV = { chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4 };   /* level each new sound to sit near the old one */
+  for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t, ...r) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t, ...r); };
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
      night  low drone, sparse music-box / piano notes in a big reverb, a faint heartbeat on the tense chord (D minor, 60 bpm)
@@ -208,7 +227,7 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
-  const SFXN = ['chop', 'pizzi', ...['woodH', 'woodL', 'woodM', 'metalL'].flatMap((k) => [0, 1, 2].map((i) => k + i))], SFXB = {};   /* 3D.57 recorded effects */
+  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
   const rnd3 = () => Math.floor(Math.random() * 3);
   function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
@@ -264,14 +283,14 @@
   const SONGS = {   // each gets x: { c, out, t0, beat, root, ch, i (bar in the tune), pass (0 first time through, 1 second), P, PAD, K, F, j }
     meadow(x) {   /* storybook waltz: piano alone, then flute over harp and strings, a glockenspiel sparkle */
       const v = [x.root - 12, x.root - 5, x.ch[1], x.ch[x.ch.length - 1]], m = SONG_DEF.meadow.m[x.i];
-      if (x.pass === 0) { arp(x, 'piano', v, [0, 1, 2, 3, 2, 1], .5, .1, { ring: 1.6 }); line(x, 'piano', m, .23, { ring: .9, loose: 1 }); }
+      if (x.pass === 0 && x.i < 8) { arp(x, 'piano', v, [0, 1, 2, 3, 2, 1], .5, .1, { ring: 1.6 }); line(x, 'piano', m, .23, { ring: .9, loose: 1 }); }
       else { x.P('piano')(x.t0, x.F(x.root - 12), .16, x.beat * 3, -.1); arp(x, 'harp', v, [0, 1, 2, 3, 2, 1], .5, .13, { oct: 12, wide: .4 }); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.ch[1]), x.F(x.ch[x.ch.length - 1])], x.beat * 3 + .25, .03, 900); line(x, 'flu', m, .22, { pan: .1 }); if ([1, 2, 9, 10, 15].includes(x.i)) line(x, 'glk', m, .12, { ring: 1.8, oct: 12, to: 1, pan: .25 }); }
     },
     morning(x) {   /* walking tune: nylon guitar picking, flute; second time strings, glockenspiel and a soft shaker */
       const v = [x.root - 12, x.ch[2] - 12, x.ch[1], x.ch[2], x.root + 12], m = SONG_DEF.morning.m[x.i];
       arp(x, 'nyl', v, [0, 2, 3, 4, 1, 3, 2, 3], .5, .12, { ring: 1.4 });
       line(x, 'flu', m, .2, { pan: .1 });
-      if (x.pass) { x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.ch[1]), x.F(x.ch[2])], x.beat * 4 + .3, .025, 1000); if (x.i % 4 === 0) line(x, 'glk', m, .1, { ring: 1.6, oct: 12, to: 1, pan: .3 }); for (let b = 0; b < 8; b++) x.K(x.t0 + b * x.beat / 2, b % 2 ? 'shaker_up' : 'shaker_dn', .12); }
+      if (x.pass) { x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.ch[1]), x.F(x.ch[2])], x.beat * 4 + .3, .025, 1000); if (x.i % 4 === 0) line(x, 'glk', m, .1, { ring: 1.6, oct: 12, to: 1, pan: .3 }); for (let b = 0; b < 8; b++) x.K(x.t0 + b * x.beat / 2, b % 2 ? 'shaker_up' : 'shaker_dn', .045); }
     },
     fair(x) {   /* village two-step: accordion tune over pizzicato oom-pah; second time a glockenspiel joins */
       const m = SONG_DEF.fair.m[x.i], pz = x.P('pz');
@@ -287,11 +306,11 @@
       if (Math.floor(x.j() * 1e4) % 2 === 0) x.P('piano')(x.t0 + (2 + Math.floor((x.j() + .01) * 100) % 4) * x.beat / 2 * 1.5, x.F(c[(x.i) % c.length] + 24), .045, 2, .35);   /* a drop of rain */
       if (x.pass) { const ce = x.P('cello'); ce(x.t0, x.F(c[1] - 12), .14, x.beat * 2 * .97, -.2, .15, .3); ce(x.t0 + 2 * x.beat, x.F(c[2] - 12), .13, x.beat * 2 * .97, -.2, .15, .3); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(c[1])], x.beat * 4 + .3, .02, 700); }
     },
-    harvest(x) {   /* 6/8 pastoral: harp and guitar rolling, oboe tune; second time the flute, a held oboe note, strings and a frame drum */
+    harvest(x) {   /* 6/8 pastoral: harp and guitar rolling, oboe tune; second time the flute, a held oboe note and strings */
       const m = SONG_DEF.harvest.m[x.i], c = x.ch, v = [x.root - 12, c[2] - 12, c[1], c[2], x.root + 12];
       arp(x, 'harp', v, [0, 1, 2, 3, 2, 4], 1, .12, { ring: 1.4 }); x.P('nyl')(x.t0, x.F(x.root - 12), .14, 1.8, -.2);
       if (!x.pass) line(x, 'obo', m, .2, { pan: .1 });
-      else { line(x, 'flu', m, .21, { pan: .1 }); x.P('obo')(x.t0, x.F(c[1]), .07, x.beat * 6 * .97, -.2, .2, .3); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(c[2] - 12)], x.beat * 6 + .3, .025, 800); x.K(x.t0, 'cajon_lo', .25); x.K(x.t0 + 3 * x.beat, 'tom', .1, .7); }
+      else { line(x, 'flu', m, .21, { pan: .1 }); x.P('obo')(x.t0, x.F(c[1]), .07, x.beat * 6 * .97, -.2, .2, .3); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(c[2] - 12)], x.beat * 6 + .3, .025, 800); }
       return x.beat * 6;
     },
     lantern(x) {   /* night: low strings, a slow harp, a celesta tune; second time the flute carries it and a music box twinkles */
@@ -301,15 +320,15 @@
       if (!x.pass) line(x, 'cel', m, .2, { ring: 1.6, loose: 1, pan: .15 });
       else { line(x, 'flu', m, .17, { pan: .1, att: .1 }); line(x, 'cel', m, .06, { ring: 1.6, oct: 12, to: 1, pan: .3 }); if (x.i % 2) x.P('mbox')(x.t0 + 2.5 * x.beat, x.F(c[2] + 24), .07, 2, -.3); }
     },
-    stand(x) {   /* the fight: driving cellos, timpani and drums, French horns carry the tune; second time trumpets and brass hits join */
-      const m = SONG_DEF.stand.m[x.i], c = x.ch, ce = x.P('cello'), e8 = x.beat / 2;
-      for (let k = 0; k < 8; k++) ce(x.t0 + k * e8, x.F(x.root - 12 + (k % 4 === 2 ? 12 : k % 4 === 3 ? 7 : 0)), k % 4 ? .15 : .22, e8 * .9, -.1, .004, .05);
-      x.P('timp')(x.t0, x.F(x.root - 12), .34, 1.2); x.P('timp')(x.t0 + 2 * x.beat, x.F(x.root - 5), .22, 1);
-      x.K(x.t0, 'kick', .5); x.K(x.t0 + 2 * x.beat, 'tom', .3, .8); [1, 3].forEach((b) => x.K(x.t0 + b * x.beat, 'snare', .22, .95));
-      if (x.i % 4 === 3) for (let k = 0; k < 4; k++) x.K(x.t0 + 3 * x.beat + k * x.beat / 4, 'tom', .22 + k * .06, 1.05 - k * .07);
-      x.PAD('str', x.t0, [x.F(c[0] + 12), x.F(c[2] + 12)], x.beat * 4, .03, 1800);
-      line(x, 'hrn', m, .26, { att: .04 });
-      if (x.pass) { line(x, 'tpt', m, .1, { att: .03, pan: .2 }); c.forEach((s2) => x.P('brass')(x.t0, x.F(s2), .1, .5, 0, .01, .15)); }
+    stand(x) {   /* the fight: danger, not a march. Restless cellos rocking on a half step, trembling violins, a heartbeat on the timpani, low piano, horns carry the tune */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, ce = x.P('cello'), s16 = x.beat / 4;
+      for (let k = 0; k < 16; k++) ce(x.t0 + k * s16, x.F(x.root - 12 + ([0, 0, 1, 0, 0, 1, 0, 3][k % 8])), k % 4 ? .1 : .16, s16 * .85, -.1, .003, .03);
+      for (let k = 0; k < 16; k++) x.P('str')(x.t0 + k * s16, x.F((k % 2 ? c[2] + 1 : c[2]) + 12), .028, s16 * .9, k % 2 ? .3 : -.3, .004, .03);
+      x.P('timp')(x.t0, x.F(x.root - 12), .22, .8); x.P('timp')(x.t0 + .28, x.F(x.root - 12), .13, .6);
+      x.P('piano')(x.t0, x.F(x.root - 24), .16, 2.4, -.2); if (x.i % 2) x.P('piano')(x.t0 + 2 * x.beat, x.F(x.root - 23), .1, 1.6, -.2);
+      x.PAD('str', x.t0, [x.F(c[0]), x.F(c[0] + 1)], x.beat * 4, .018, 1400);
+      line(x, 'hrn', m, .22, { att: .06 });
+      if (x.pass) { line(x, 'obo', m, .07, { oct: 12, pan: .2 }); if (x.i % 4 === 3) [0, 1, 2, 3].forEach((k) => x.P('pz')(x.t0 + (2 + k * .5) * x.beat, x.F(x.root + 12 - k), .2, .3, .25)); }
     },
     tide(x) {   /* a horde or a boss: slower and heavier, great drums, a timpani roll, trembling strings, low brass swelling under the horns */
       const m = SONG_DEF.tide.m[x.i], c = x.ch, s16 = x.beat / 4;
@@ -322,7 +341,7 @@
       line(x, 'hrn', m, .28, { att: .08 }); if (x.pass || x.i >= 8) line(x, 'tpt', m, .09, { att: .05, pan: .2 });
     },
   };
-  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45, meadow: 4.8, morning: 2.4, fair: 2.25, rain: 6.2, harvest: 2.8, lantern: 5, stand: 1, tide: 1.05 };   /* 3D.53 even out the moods' loudness */
+  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45, meadow: 4.8, morning: 2.4, fair: 2.25, rain: 6.2, harvest: 3.5, lantern: 5, stand: 4.8, tide: 1.05 };   /* 3D.53 even out the moods' loudness */
   function writeBar(c, out0, t0, mood, bar) {   // schedules one bar; returns its length in seconds
     const out = c.createGain(); out.gain.value = MVOL[mood] || 1; out.connect(out0);
     const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);
