@@ -94,7 +94,8 @@ Art chat:
 - ~~W71. Do the four weapon movements (3D.192) look right?~~ Owner, 17 Nov: looks good.
 - ~~W74. Standing, the reference.~~ Owner, 17 Nov: yes. Built in 3D.193: the upper body and small movements of a person standing still (clip 113_21, 4 seconds), head level, legs worked out (feet planted, one leg straight, the other relaxed).
 - ~~W75. Does the new stand (3D.193) look right?~~ Owner, 17 Nov: looks good.
-- W76. Six more standing poses got the new legs and upright body in 3D.194 (the arms are still the old hand-made ones): Carry standing, Talk, Wave, Melee stance, Gun stance, Reload. The two stances keep one foot forward. Watch them on the Survivor test page and say if anything looks wrong.
+- ~~W76. Do the six standing poses of 3D.194 look right?~~ Owner, 18 Nov: looks good.
+- W77. The run, the reference (shown 18 Nov as before/after pictures): a recorded run (clip 78_12) with a forward lean, pumping arms and both feet off the ground between steps. It covers 2.2 units a second on the survivor, the pace people chase and flee at today, so it plays at its true speed. Is that the run you want? If yes it is the next build.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
