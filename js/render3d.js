@@ -1746,8 +1746,8 @@ const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.
 const JOG_ON = 1.22, JOG_OFF = 1.1;   /* 3D.189 ground speed (model units a second) where the walk becomes the jog, and back */
 const STRIDE = {
   v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .550, zombie_run: 1.301 },
-  m3: { walk: .798, walk_f: .798, jog: 1.209, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: .854, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
-  f3: { walk: .767, walk_f: .767, jog: 1.162, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: .854, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these strides; the woman's legs are a little shorter */
+  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
+  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
   v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .561, zombie_run: 1.291 },
   v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
 };

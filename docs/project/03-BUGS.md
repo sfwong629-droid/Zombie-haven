@@ -70,6 +70,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.191: the new walk and jog of 3D.189 played too fast (walk 14%, jog 29%), so the feet slid a little: the pace table in `js/render3d.js` wants ground covered per second, and Claude had put in ground per cycle. Found by Claude while adding the carrying movement; the owner had not reported it. Check: `tools/qa/walk_jog_check.js` now compares the table with the recordings.
 - 3D.181: B17 a Medic no longer stands all day beside a fence instead of patching someone up. Check: `tests/run_tests.py profession`.
 - 3D.180: A2 the angry face no longer flashes on a fighter who can't get to a zombie that is bashing a building. Check: `tools/qa/sos_skip_check.js`.
 - 3D.179: A7 the Stalker wears its own skin (it wore the stand-in Runner's). Check: `tools/qa/stalker_look_check.js`.

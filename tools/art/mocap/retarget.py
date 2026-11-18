@@ -15,7 +15,7 @@ ankM=np.minimum(W(P)[:,I('LeftFoot'),2],W(P)[:,I('RightFoot'),2]); ank0=np.perce
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
 ao=next(o for o in bpy.data.objects if o.type=='ARMATURE'); body=bpy.data.objects['body']; BN=ao.data.bones
 rest={b.name:b.matrix_local.copy() for b in BN}
-SC=(BN['thigh.L'].length+BN['shin.L'].length)/LEG; print('scale',SC,'stride per cycle',dist*SC,'seconds',T*dt)
+SC=(BN['thigh.L'].length+BN['shin.L'].length)/LEG; print('scale',SC,'ground per cycle',dist*SC,'seconds',T*dt,'GROUND SPEED for STRIDE in render3d.js: %.3f'%(dist*SC/(T*dt)))
 def nz(v): v=np.asarray(v,float); return v/max(np.linalg.norm(v),1e-9)
 def frame(y,x):   # bone rotation with Y along y, X as close to x as possible
     y=nz(y); x=nz(x-y*(x@y)); z=np.cross(x,y); return Matrix(np.stack([x,y,z],1).tolist())
@@ -40,10 +40,12 @@ def solve(i):
     for sd in'LR':
         hp=R['pelvis']@(rest['pelvis'].to_3x3().inverted()@(rest['thigh.'+sd].translation-rest['pelvis'].translation)); az=hp[2]+BN['thigh.'+sd].length*R['thigh.'+sd].col[1][2]+BN['shin.'+sd].length*R['shin.'+sd].col[1][2]; low=min(low,az)
     pz=rest['foot.L'].translation[2]+SC*(ankM[i]-ank0)-low
+    if LEAN:   # lean the body back (carrying a load): chest by LEAN degrees, pelvis by a third of it; the head stays level
+        for b,k in(('chest',1.),('pelvis',.35)): R[b]=Matrix.Rotation(-math.radians(LEAN*k),3,'X')@R[b]
     for b in list(R):
         if any(b.startswith(k) for k in KEEPB): del R[b]
     return R,Vector((hx[i]*SC,hy[i]*SC,pz))
-import os; KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
+import os; LEAN=float(os.environ.get('ZH_LEAN','0')); KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
 fps=bpy.context.scene.render.fps; nf=round(T*dt*fps); old=bpy.data.actions[clip]
 def fcs(act):
     try: return list(act.fcurves)
