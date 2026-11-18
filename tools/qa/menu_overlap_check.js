@@ -1,4 +1,4 @@
-// tools/qa/menu_overlap_check.js [sizes] [tag] — 3D.194 (owner, 16 Nov, U13 and U14): nothing floats over an open menu.
+// tools/qa/menu_overlap_check.js [sizes] [tag] — 3D.195 (owner, 16 Nov, U13 and U14): nothing floats over an open menu.
 // At six phone sizes, with the alert button and the radio button both on screen, opens Build, People, Town and a survivor's details and checks:
 //   the radio button is hidden; the alert button is hidden whole where the menu reaches it, and shows where the menu is clear of it;
 //   the "Paused" pill sits centred on the menu's top edge and does not touch the mission card;

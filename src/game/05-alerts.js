@@ -75,7 +75,7 @@ function hubItems() {
   for (const t of tips) L.push({ key: 't:' + t.key, icon: t.icon, text: t.text, urgent: t.pri >= 80, acts: t.act ? [{ label: 'Go', ok: true, fn: t.act }] : [], mute: t.key });
   return L;
 }
-/* 3D.194 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
+/* 3D.195 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
    and it comes back when the menu closes or gets shorter. A menu that stays clear of it leaves it showing. */
 function menuCover() {
   const b = $('alertBtn'), p = $('infoPanel'); if (!b || !p) return; let cov = false;

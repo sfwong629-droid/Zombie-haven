@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.194', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.195', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1276,7 +1276,7 @@ function hubItems() {
   for (const t of tips) L.push({ key: 't:' + t.key, icon: t.icon, text: t.text, urgent: t.pri >= 80, acts: t.act ? [{ label: 'Go', ok: true, fn: t.act }] : [], mute: t.key });
   return L;
 }
-/* 3D.194 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
+/* 3D.195 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
    and it comes back when the menu closes or gets shorter. A menu that stays clear of it leaves it showing. */
 function menuCover() {
   const b = $('alertBtn'), p = $('infoPanel'); if (!b || !p) return; let cov = false;

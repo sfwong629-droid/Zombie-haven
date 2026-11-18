@@ -405,7 +405,7 @@ html.glass #quest b#clock[data-ph="night"] { background: rgba(18, 28, 60, .72); 
 
 /* menus pause the game */
 #pausedChip { position: absolute; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top) + 60px); translate: -50% 0; display: none; align-items: center; gap: 4px; padding: 5px 10px; white-space: nowrap; border-radius: 14px; background: rgba(16, 22, 28, .82); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: .06em; pointer-events: none; }
-/* 3D.194 (owner, 16 Nov; UI problems U13, U14, U1): nothing floats over an open menu.
+/* 3D.195 (owner, 16 Nov; UI problems U13, U14, U1): nothing floats over an open menu.
    The radio button is hidden; the alert button goes under the menu, which covers it where they meet (it is never part of the menu);
    the "Paused" pill sits centred on the menu's top edge, where it used to sit on the mission card. */
 body:has(#infoPanel.show) .radioBtn { display: none !important; }
