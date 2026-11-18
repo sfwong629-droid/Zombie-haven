@@ -53,6 +53,7 @@ Serve the game while testing: `python3 -m http.server 8765` from the repo root (
 1. **Two-legged:** `tools/art/b3d/kit/zombie.sh <id> <Model>.glb` -> `assets/characters/ai3d_v2/zombie_<id>.glb` (the settings some models need are listed at the top of the script).
    **Four-legged:** `python3 tools/art/b3d/ai_stag.py <Model>.glb OUT.glb`, then `node tools/art/compress_glb.mjs OUT.glb assets/characters/ai3d_v2/zombie_<id>.glb zombie`.
    **Checking animations:** `node tools/art/decomp.mjs MODEL.glb RAW.glb` if needed, then `python3 tools/art/b3d/animdump.py RAW.glb OUT.npz 9` and `python3 tools/art/b3d/strips.py OUT.npz OUTDIR 4 [clip,clip]` draw every clip as a strip of pictures (side and front).
+   **Copying a recorded movement:** `python3 tools/art/mocap/retarget.py -- RAW.glb CLIP.bvh START LENGTH <clip name> OUT.npz 9` fits a motion capture cycle (CMU library, BVH) to the survivor skeleton and writes old and new for `strips.py`.
 2. **Game code:** an entry in `ZMODEL` in `js/render3d.js` (walking speeds from `tools/art/stride/measure.html?m=zombie_<id>`). A model no zombie type uses yet goes on the Zombie test page through `ZOO_NEW` (`src/game/27-test-pages-title-backups.js`).
 3. **Check:** `node tools/qa/new_zombies_check.js shot.png`, and look at the Zombie test page (`?zoo=1`).
 
