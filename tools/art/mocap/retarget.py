@@ -3,7 +3,8 @@ import bpy,sys,numpy as np,math
 from mathutils import Matrix,Vector,Quaternion
 import os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import bvh
 a=sys.argv[sys.argv.index('--')+1:]; src,bv,f0,T,clip,out=a[0],a[1],int(a[2]),int(a[3]),a[4],a[5]; N=int(a[6]) if len(a)>6 else 9
-n,par,off,ch,D,dt=bvh.load(bv); P=np.array([bvh.fk(n,par,off,ch,r) for r in D[f0:f0+T+1]]); I=n.index
+n,par,off,ch,D,dt=bvh.load(bv); _pm=[bvh.fk(n,par,off,ch,r,True) for r in D[f0:f0+T+1]]; P=np.array([x[0] for x in _pm]); I=n.index
+HM={S:np.array([x[1][n.index(S+'Hand')] for x in _pm]) for S in('Left','Right')}   # the hands' full recorded turn (world, 3x3 per frame)
 # --- mocap -> rig axes (rig: +X left, -Y forward, +Z up)
 import os
 h=P[:,0]; u=np.array([0,1.,0])
@@ -12,8 +13,12 @@ if os.environ.get('ZH_STAND'):   # a standing recording: no travel, so the facin
 else: f=h[-1]-h[0]; f[1]=0; dist=np.linalg.norm(f); f/=dist
 s=np.cross(f,u)
 def W(v): return np.stack([-(v@s),-(v@f),v@u],-1)
+Wm=lambda v: np.array([-(v@s),-(v@f),v@u])
 Q=W(P); hip=Q[:,0].copy(); Q=Q-hip[:,None]          # joints relative to hips, rig axes
-k=np.linspace(0,1,T+1)[:,None,None]; Q=Q-k*(Q[-1]-Q[0])   # close the loop
+ONESHOT=bool(os.environ.get('ZH_ONESHOT'))   # an action played once (a swing): no loop to close, the last frame is the recording's own
+if not ONESHOT: k=np.linspace(0,1,T+1)[:,None,None]; Q=Q-k*(Q[-1]-Q[0])   # close the loop
+RET=float(os.environ.get('ZH_RETURN','0'))   # a one-shot action: over this last share of the clip the body eases back to the pose it started in (so the swing ends in the stance it began from)
+pass   # (done on the finished pose, after the keys are made: see below)
 tt=np.linspace(0,1,T+1); hx=hip[:,0]-(hip[0,0]+tt*(hip[-1,0]-hip[0,0])); hy=hip[:,1]-(hip[0,1]+tt*(hip[-1,1]-hip[0,1])); hx-=hx.mean(); hy-=hy.mean()
 LEG=np.linalg.norm(Q[0,I('LeftLeg')]-Q[0,I('LeftUpLeg')])+np.linalg.norm(Q[0,I('LeftFoot')]-Q[0,I('LeftLeg')])
 ankM=np.minimum(W(P)[:,I('LeftFoot'),2],W(P)[:,I('RightFoot'),2]); ank0=np.percentile(np.concatenate([W(P)[:,I('LeftFoot'),2],W(P)[:,I('RightFoot'),2]]),8)
@@ -48,7 +53,9 @@ def solve(i):
         R['foot.'+sd]=frame([hd[0]*math.cos(pit),hd[1]*math.cos(pit),-math.sin(pit)],hh)
         du=nz(J(S+'ForeArm')-J(S+'Arm')); df=nz(J(S+'Hand')-J(S+'ForeArm')); nn=np.cross(du,df); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
         hh=nz(w*nz(nn)+(1-w)*(-cx)); R['upperarm.'+sd]=frame(du,hh); R['forearm.'+sd]=frame(df,hh)
-        if HANDS: R['hand.'+sd]=frame(nz(J(S+'HandIndex1')-J(S+'Hand')),hh)   # the recorded wrist bend (direction only)
+        if HANDS:   # the recorded wrist, turn and all. In the recording's rest pose (a T) the fingers point out to the side and the palm faces down;
+            m=HM[S][i]; sg=1. if sd=='L' else -1.   # on the model the hand bone's Y runs along the fingers and its X is the palm's normal on the left hand, the back of the hand on the right
+            R['hand.'+sd]=frame(Wm(m@np.array([sg,0,0])),Wm(m@np.array([0,-sg,0])))
     # stance height: the lower ankle sits where the recorded one does (scaled)
     low=9
     for sd in'LR':
@@ -81,7 +88,7 @@ def solve(i):
         if any(b.startswith(k) for k in KEEPB): del R[b]
     return R,pv
 import os; LEAN=float(os.environ.get('ZH_LEAN','0')); KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
-fps=bpy.context.scene.render.fps; nf=round(T*dt*fps); old=bpy.data.actions[clip]
+fps=bpy.context.scene.render.fps; SPEED=float(os.environ.get('ZH_SPEED','1')); nf=round(T*dt*fps/SPEED); old=bpy.data.actions[clip]   # ZH_SPEED: play the recording this many times faster (a practice swing done slowly)
 OLDT=bool(os.environ.get('ZH_OLDTIME'))   # the new clip keeps the old clip's length, and the kept bones (ZH_KEEP) keep their old movement over time (a wave, a reload) instead of the first frame
 of0,of1=old.frame_range
 if OLDT: nf=int(round(of1-of0))
@@ -109,8 +116,8 @@ for tr in ad.nla_tracks: tr.mute=True
 ad.action=new
 order=[b.name for b in BN]; prevq={}; KEY={b:{'rot':[],'loc':[]} for b in order}
 for fr in range(nf+1):
-    keep.fr=fr if fr<nf else 0
-    i=min(T,round(fr/nf*T)) if fr<nf else 0
+    keep.fr=fr if (fr<nf or ONESHOT) else 0
+    i=min(T,round(fr/nf*T)) if (fr<nf or ONESHOT) else 0
     R,ploc=solve(i); posed={}
     for b in order:
         pb=ao.pose.bones[b]; bn=BN[b]
@@ -128,9 +135,19 @@ for fr in range(nf+1):
         q=pb.rotation_quaternion.copy()
         if b in prevq and q.dot(prevq[b])<0: q.negate(); pb.rotation_quaternion=q
         prevq[b]=q; pb.keyframe_insert('rotation_quaternion',frame=fr); posed[b]=M; KEY[b]['rot'].append([q.x,q.y,q.z,q.w]); KEY[b]['loc'].append(list(pb.location)) if b in('pelvis','gun') else None
+if RET>0:   # ease every bone from where it is at the start of the return back to its first-frame pose (turns blended as turns, so no limb collapses on the way)
+    fr0=int(round(nf*(1-RET)))
+    for fr in range(fr0+1,nf+1):
+        t=(fr-fr0)/max(1,nf-fr0); t=t*t*(3-2*t)
+        for b in order:
+            pb=ao.pose.bones[b]; qa=Quaternion([KEY[b]['rot'][fr0][3]]+KEY[b]['rot'][fr0][:3]); qb=Quaternion([KEY[b]['rot'][0][3]]+KEY[b]['rot'][0][:3])
+            if qa.dot(qb)<0: qb.negate()
+            q=qa.slerp(qb,t); pb.rotation_quaternion=q; pb.keyframe_insert('rotation_quaternion',frame=fr); KEY[b]['rot'][fr]=[q.x,q.y,q.z,q.w]
+            if KEY[b]['loc']:
+                la=Vector(KEY[b]['loc'][fr0]); lb=Vector(KEY[b]['loc'][0]); l=la.lerp(lb,t); pb.location=l; pb.keyframe_insert('location',frame=fr); KEY[b]['loc'][fr]=list(l)
 for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
-import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':T*dt,'bones':KEY},open(out.replace('.npz','.json'),'w'))
+import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':T*dt/SPEED,'bones':KEY},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))
 # --- dump old and new for strips
 me=body.data; me.calc_loop_triangles(); tri=np.array([t.vertices[:] for t in me.loop_triangles]); tl=np.array([t.loops[:] for t in me.loop_triangles]); uv=np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]

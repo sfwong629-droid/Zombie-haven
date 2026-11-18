@@ -14,7 +14,7 @@ def load(path):
 def R(ax,a):
     c,s=np.cos(a),np.sin(a)
     return {'X':np.array([[1,0,0],[0,c,-s],[0,s,c]]),'Y':np.array([[c,0,s],[0,1,0],[-s,0,c]]),'Z':np.array([[c,-s,0],[s,c,0],[0,0,1]])}[ax]
-def fk(names,par,off,ch,row):
+def fk(names,par,off,ch,row,mats=False):
     P=np.zeros((len(names),3)); M=[None]*len(names); k=0
     for j in range(len(names)):
         r=np.eye(3); t=off[j].copy()
@@ -24,4 +24,4 @@ def fk(names,par,off,ch,row):
             else: r=r@R(c[0],np.radians(v))
         if par[j]<0: M[j]=r; P[j]=t
         else: M[j]=M[par[j]]@r; P[j]=P[par[j]]+M[par[j]]@t
-    return P
+    return (P,M) if mats else P
