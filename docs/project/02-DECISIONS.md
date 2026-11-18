@@ -71,9 +71,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (UI chat): A tip in the Needs you list can be hidden until the next day with a ✕ (not the word "Hide"). Emergencies can't be hidden. Built in 3D.186.
 - 16-17 Nov (UI chat): In the town each kind of raider carries its own weapon, one step better per era, and the Raiders note shows the weapon of the raider that came. Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe. Firebug: pipe, crowbar, hatchet, spear. Built in 3D.187 (before, the weapon was a random one of five).
 - 17 Nov (UI chat): Better raider weapons should "definitely" hit harder. (Not built: 3D.187 is looks only; how much harder is a balance number for the Balance chat.)
-
 - 18 Nov (ChatGPT chat, W108): Health is never a percentage: survivors' HP, a building's health and walls' HP stay as counts ("49/101"). The percentage rule is for other shares of a whole, such as the level-up progress (U18).
 - 18 Nov (ChatGPT chat, W109): Lime marks only Build / go / recommended. A selected tab or option (Status, Haven, Roadside...) is plain white instead. (Not built: U39, done in the same pass as the Town tab icons, W79.)
+
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
 - 12 Nov: Banner gates left as they are.
