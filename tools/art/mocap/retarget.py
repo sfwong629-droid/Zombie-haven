@@ -1,10 +1,13 @@
 # retarget.py RAW.glb BVH f0 T CLIP OUT.npz [N]  : fit a recorded (BVH) cycle onto the survivor rig as action CLIP+'_new', dump strips data for old and new
-import bpy,sys,numpy as np,math
+import bpy,sys,numpy as np,math,os
 from mathutils import Matrix,Vector,Quaternion
 sys.path.insert(0,'/home/claude/zwork/mocap'); import bvh
 a=sys.argv[sys.argv.index('--')+1:]; src,bv,f0,T,clip,out=a[0],a[1],int(a[2]),int(a[3]),a[4],a[5]; N=int(a[6]) if len(a)>6 else 9
 n,par,off,ch,D,dt=bvh.load(bv); _pm=[bvh.fk(n,par,off,ch,r,True) for r in D[f0:f0+T+1]]; P=np.array([x[0] for x in _pm]); I=n.index
-HM={S:np.array([x[1][n.index(S+'Hand')] for x in _pm]) for S in('Left','Right')}   # the hands' full recorded turn (world, 3x3 per frame)
+HM={S:np.array([x[1][n.index(S+'Hand')] for x in _pm]) for S in('Left','Right')}
+if os.environ.get('ZH_MIRROR'):   # 3D.208: the recording mirrored left for right (owner: two-handed B, the backhand return, is swing A the other way)
+    _perm=[n.index(x.replace('Left','#').replace('Right','Left').replace('#','Right')) if ('Left' in x or 'Right' in x) and x.replace('Left','#').replace('Right','Left').replace('#','Right') in n else i for i,x in enumerate(n)]
+    P=P[:,_perm].copy(); P[:,:,0]*=-1; _S=np.diag([-1.,1,1]); HM={'Left':np.einsum('ij,fjk,kl->fil',_S,HM['Right'],_S),'Right':np.einsum('ij,fjk,kl->fil',_S,HM['Left'],_S)}   # the hands' full recorded turn (world, 3x3 per frame)
 # --- mocap -> rig axes (rig: +X left, -Y forward, +Z up)
 import os
 h=P[:,0]; u=np.array([0,1.,0])
@@ -179,7 +182,7 @@ for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
 WD=None
 if os.environ.get('ZH_WDIR'):   # 3D.207 two-handed weapons: the line from the left hand to the right hand in the recording (the weapon runs through both hands), smoothed
-    _d=Q[:,I('RightHand')]-Q[:,I('LeftHand')]; _k=int(os.environ.get('ZH_WSMOOTH','9')); _d=np.array([_d[max(0,j-_k):j+_k+1].mean(0) for j in range(len(_d))]); _d/=np.linalg.norm(_d,axis=1,keepdims=True)
+    _d=(Q[:,I('RightHand')]-Q[:,I('LeftHand')])*(-1 if os.environ.get('ZH_MIRROR') else 1); _k=int(os.environ.get('ZH_WSMOOTH','9')); _d=np.array([_d[max(0,j-_k):j+_k+1].mean(0) for j in range(len(_d))]); _d/=np.linalg.norm(_d,axis=1,keepdims=True)
     WD=[list(map(float,_d[min(T,int(round(float(warp(fr/nf)))))])) for fr in range(nf+1)]
 import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':(DUR or T*dt/SPEED),'bones':KEY,'wdir':WD},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))

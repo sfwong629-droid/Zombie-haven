@@ -79,7 +79,7 @@ def meas():
 M_BAT = HEADR + float(os.environ.get('ZH_MBAT', '.055')); M_HAND = HEADR + float(os.environ.get('ZH_MHAND', '.06')); M_ELB = HEADR + float(os.environ.get('ZH_MELB', '.035'))
 BODYM = float(os.environ.get('ZH_BODYM', '.008'))
 def violOwn(m): return max(0, BODYM - m['own'])
-def violR(m): return max(0, BODYM - m['body']) + max(0, M_BAT - m['bat']) + ((max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])) if TWO else 0) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
+def violR(m): return (max(0, GROUND - m['low']) if TWO else 0) + max(0, BODYM - m['body']) + max(0, M_BAT - m['bat']) + ((max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])) if TWO else 0) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
 def violL(m): return max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])
 def turn(bone, rv, base):   # turn a bone about its own head by the rotation vector rv (world axes), starting from its matrix `base`
     ang = float(np.linalg.norm(rv)); pb = PB[bone]
@@ -196,6 +196,7 @@ def place_left():
         if os.environ.get('ZH_DBGL') and PLFR[0] in (0, 30): print('PL', PLFR[0], _, 'err %.3f' % np.linalg.norm(err), 'reach %.3f of %.3f' % (np.linalg.norm(w - s_), l1 + l2), 'hand.L len', round(PB['hand.L'].length * sc_, 3))
         if np.linalg.norm(err) < .004: break
         w = w + err
+    return tgt - (P(PB['hand.L'].head) + P(PB['hand.L'].tail)) / 2
 PLFR = [None]
 def ik_arm(side, centre, pole_c, fr=None):   # put the hand's middle at `centre` (world): two bones, the elbow towards pole_c (chest frame); a few passes
     sc_ = ao.matrix_world.to_scale()[0]; l1 = PB['upperarm.' + side].length * sc_; l2 = PB['forearm.' + side].length * sc_; s_ = P(PB['upperarm.' + side].head)
@@ -211,19 +212,23 @@ def ik_arm(side, centre, pole_c, fr=None):   # put the hand's middle at `centre`
         w = w + err
 # the spear (3D.207): the right hand's middle at a point in front of the body, as an offset from the neck in the hips' frame (left, forward, up), and the
 # spear pointing straight ahead (hips' frame), whatever the chest does. The chest is turned (ZH_CHESTTURN) so the left shoulder comes forward.
-SP_READY = (np.array([-.04, .14, -.17]), np.array([.24, 1., .00])); SP_DRAW = (np.array([-.08, .04, -.16]), np.array([.24, 1., .02])); SP_HIT = (np.array([.00, .30, -.12]), np.array([.20, 1., .02]))   # angled a little across the body, so the butt passes outside the right hip
+SP_READY = (np.array([-.08, .06, -.27]), np.array([.24, 1., .14])); SP_DRAW = (np.array([-.10, -.02, -.27]), np.array([.24, 1., .16])); SP_HIT = (np.array([-.02, .26, -.22]), np.array([.18, 1., .06]))   # (3D.208) the rear hand low, by the right hip; the spear angled a little up and across   # angled a little across the body, so the butt passes outside the right hip
 def hips3():   # the hips' turn about the vertical only (3D.207: when the body leans into the thrust the spear stays level)
     m = np.array(PB['pelvis'].matrix.to_3x3()); f = m[:, 2].copy(); f[2] = 0; f = nz(f); up = np.array([0, 0, 1.]); l = nz(np.cross(up, f)); return np.stack([l, up, f], 1)
 def spear_at(key):
     off, d = key; H = A2W @ hips3(); nk = P(PB['neck'].head)
     # the pelvis bone's columns are (left, up along the spine, forward) like the chest's: offsets given as (left, forward, up) map to columns 0, 2, 1
     cen = nk + H @ np.array([off[0], off[2], off[1]]); dirw = nz(H @ np.array([d[0], d[2], d[1]]))
-    ik_arm('R', cen, [-.4, -.8, -.2], PLFR[0]); aim_arm(W2A @ dirw)
+    for _ in range(4):   # (3D.208) if the left hand cannot reach its place on the shaft, both hands slide towards it together (the gap is kept)
+        ik_arm('R', cen, [-.4, -.8, -.2], PLFR[0]); aim_arm(W2A @ dirw); err = place_left()
+        if err is None or np.linalg.norm(err) < .008: break
+        cen = cen - err * 1.1   # (towards the left hand, which is as far as its arm reaches)
 HOLD = os.environ.get('ZH_HOLD', '')
 H_READY = (nz([-.02, -.78, .62]), nz([.78, .40, .48]), nz([-.30, .90, -.30]))   # two-handed ready: hands in front of the breastbone (the arms are short), the weapon up over the right shoulder
 S_READY = (nz([-.20, -.62, .76]), nz([.82, .12, .56]), nz([.00, -.04, 1.]))      # spear ready (high guard; the arms are short): the right forearm across the chest, the spear pointing forward
 S_DRAW = (nz([-.25, -.85, .45]), nz([.75, .15, .64]), nz([.02, -.02, 1.]))       # drawn back for the thrust
 S_HIT = (nz([.05, -.25, .97]), nz([.55, -.02, .84]), nz([-.02, -.06, 1.]))        # driven forward
+SL_UP = nz(np.array([0., .35, 1.])); SL_OVER = nz(np.array([0., -1., .35])); SL_DOWN = nz(np.array([0., -.72, -.70]))   # armature space: +Y is behind, -Y in front, +Z up
 CHT = math.radians(float(os.environ.get('ZH_CHESTTURN', '0')))
 def two_pose(fr):
     if CHT:
@@ -232,6 +237,13 @@ def two_pose(fr):
     if fr == 0: HQ.pop('q', None)
     if TWO == 'rec':
         aim_arm(wdir_at(fr))
+    elif TWO == 'slam':   # (3D.208, owner: "big overhead slam") the arms as recorded (chopping wood), the weapon set by hand: lifted straight up overhead,
+        # over the top in front, slammed forward-down to the ground; held there a moment; then back with the recording
+        kB = T_S - 4 * SUB; kE = T_S + 2 * SUB; w1 = sst(T_W * .15, kB, fr); u = sst(kB, kE, fr); w3 = sst(kE + (nf - kE) * .4, nf, fr)
+        d = SL_UP   # (the stance already holds it up over the shoulder: it stays up through the wind-up)
+        if u > 0: d = gpath([SL_UP, SL_OVER, SL_DOWN], u)
+        if w3 > 0: d = gslerp(d, SL_UP, w3)
+        aim_arm(d)
     elif TWO == 'hold' and HOLD == 'stab':
         PLFR[0] = fr; spear_at(SP_READY)
     elif TWO == 'hold':
@@ -240,7 +252,12 @@ def two_pose(fr):
         kB = T_S - 3 * SUB; kE = T_S + SUB; w1 = sst(T_W * .2, kB, fr); u = sst(kB, kE, fr); w3 = sst(kE + (nf - kE) * .35, nf, fr); out = []
         L = lambda a, b, t: (a[0] * (1 - t) + b[0] * t, nz(a[1] * (1 - t) + b[1] * t))
         PLFR[0] = fr; spear_at(L(L(L(SP_READY, SP_DRAW, w1), SP_HIT, u), SP_READY, w3))
-    PLFR[0] = fr; place_left()
+    PLFR[0] = fr; err = place_left()
+    if TWO in ('rec', 'slam'):   # (3D.208) where the left hand cannot reach the handle, the right hand gives way towards it (the weapon keeps its direction)
+        wd_ = batdir()
+        for _ in range(3):
+            if err is None or np.linalg.norm(err) < .01: break
+            rc_ = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; ik_arm('R', rc_ - err * 1.1, [-.4, -.8, -.2], None); aim_arm(W2A @ wd_); err = place_left()
 def aim_arm(v_arm):   # aim the weapon along a direction in armature space, the hand starting from its last turn (no flips)
     if 'q' in HQ: PB['hand.R'].rotation_quaternion = HQ['q']; upd()
     aim_bat(chest3().T @ nz(v_arm)); HQ['q'] = PB['hand.R'].rotation_quaternion.copy()
@@ -370,18 +387,20 @@ for fr in range(nf + 1):
     if FREEARM: set_larm(larm_at(fr), fr); lock_larm(fr)
     if RISE: set_rarm(fr)
     if TWO: two_pose(fr)
+    WL = 0.
+    if TWO and SJ: lock_all(fr); place_left(); WL = stance_lock(TT0[fr])   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
     for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):
-        base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr], base); m = meas()
+        base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr] * (1 - WL), base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
             ok_ = False
             for k_ in (1.1, 1.2, 1.35, 1.5):   # a little more of the same turn, before searching afresh
                 turn(bone, RV[bone][fr] * k_, base)
                 if viol(meas()) == 0: ok_ = True; break
             if not ok_: turn(bone, np.zeros(3), base); upd(); rv = solve(bone, viol, RV0[bone][fr]); turn(bone, rv, base); upd()
-    if SJ: lock_all(fr)
+    if SJ and not TWO: lock_all(fr)
     if TWO:
         place_left()
-        if SJ:   # (3D.207) near the two ends the left arm is the stance's own (which holds the handle), blended in, so the clip ends exactly where it starts
+        if SJ and not os.environ.get('ZH_NOLBLEND'):   # (3D.207) near the two ends the left arm is the stance's own (which holds the handle), blended in, so the clip ends exactly where it starts
             w_ = stance_lock(TT0[fr])
             if w_ > 0:
                 for b_ in ('upperarm.L', 'forearm.L', 'hand.L', 'fingers.L'):
