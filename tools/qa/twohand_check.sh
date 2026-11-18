@@ -29,6 +29,6 @@ P
   done
   python3 tools/art/b3d/armcheck.py -- $T/$m.glb melee2h_swing_a@melee2h_hold_idle,melee2h_swing_b@melee2h_hold_idle,melee2h_swing_c@melee2h_hold_idle,spear_stab@spear_hold_idle 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/a.txt || true
   grep -v ^BAD $T/a.txt; grep -q "^BAD 0" $T/a.txt || bad=1
-  python3 tools/art/b3d/legcheck.py -- $T/$m.glb melee2h_hold_idle,melee2h_swing_c,spear_hold_idle,melee2h_swing_a:step,melee2h_swing_b:step,spear_stab:step 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/l.txt || true   # 3D.210: the feet stay planted
+  python3 tools/art/b3d/legcheck.py -- $T/$m.glb melee2h_hold_idle,melee2h_swing_c,spear_hold_idle,melee2h_swing_a:step,melee2h_swing_b:step,spear_stab 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/l.txt || true   # 3D.210: the feet stay planted
   grep -v ^BAD $T/l.txt; grep -q "^BAD 0" $T/l.txt || bad=1
 done; rm -rf $T; [ $bad = 0 ] && echo "ALL OK" || { echo FAILED; exit 1; }

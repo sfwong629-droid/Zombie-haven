@@ -26,11 +26,12 @@ _ax = np.argmax(np.ptp(batv, axis=0)); TIPI = int(batv[:, _ax].argmax()); GRIPI 
 AXV = batv.copy()   # the bat's own points: they give the weapon's line (tip, grip) even when the clearances use other weapons
 # 3D.207: the real weapons (ZH_GEAR = the decompressed gear_weapons.glb, ZH_GEARW = sledge,axe,... ): each is placed on the bat as the game places it
 # (js/render3d.js fitGear: its position relative to the bat in the rest pose), and the head and body clearances use all of them at once.
+SPEAR_SHIFT = float(os.environ.get('ZH_SPEAR_SHIFT', '.25'))
 if os.environ.get('ZH_GEAR'):
     _before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=os.environ['ZH_GEAR']); _new = [o for o in bpy.data.objects if o not in _before]
     ao.data.pose_position = 'REST'; bpy.context.view_layer.update(); _Wb = bat.matrix_world.copy(); _G = []
     for _k in os.environ.get('ZH_GEARW', 'sledge').split(','):
-        _o = bpy.data.objects['gw_' + _k]; _o.data.calc_loop_triangles(); _R = _Wb.inverted() @ _o.matrix_world
+        _o = bpy.data.objects['gw_' + _k]; _o.data.calc_loop_triangles(); _R = (Matrix.Translation((0, -SPEAR_SHIFT, 0)) if _k == 'spear' else Matrix()) @ _Wb.inverted() @ _o.matrix_world   # (3D.212) the spear held near its end, as js/render3d.js fitGear does
         _gv = np.array([(_R @ v.co)[:] for v in _o.data.vertices]); _gt = _gv[np.array([t.vertices[:] for t in _o.data.loop_triangles])]
         _G.append(np.concatenate([_gv, _gt.mean(1), (_gt[:, 0] + _gt[:, 1]) / 2, (_gt[:, 1] + _gt[:, 2]) / 2, (_gt[:, 0] + _gt[:, 2]) / 2]))
     ao.data.pose_position = 'POSE'; bpy.context.view_layer.update()
@@ -58,6 +59,7 @@ for _b in CAPS:
     _vs = np.array([(_mw @ v.co)[:] for v in body.data.vertices if any(g.group == _gi2 and g.weight > .6 for g in v.groups)])
     _u = np.clip(((_vs - _h) @ (_t - _h)) / max(1e-9, (_t - _h) @ (_t - _h)), 0, 1); CAPR[_b] = float(np.percentile(np.linalg.norm(_vs - (_h + _u[:, None] * (_t - _h)), axis=1), 80))
 print('CAPSULES', {k: round(v, 3) for k, v in CAPR.items()})
+WORSTB = ['']
 def segd(Pts, h, t):
     u = np.clip(((Pts - h) @ (t - h)) / max(1e-9, (t - h) @ (t - h)), 0, 1); return np.linalg.norm(Pts - (h + u[:, None] * (t - h)), axis=1)
 def meas():
@@ -72,7 +74,9 @@ def meas():
         for _b in CAPS:
             c_ = float(segd(far, P(PB[_b].head), P(PB[_b].tail)).min()) - CAPR[_b]
             if _b in ('upperarm.R', 'forearm.R') or (TWO and _b in ('upperarm.L', 'forearm.L')): own = min(own, c_)   # the weapon arm itself: only the wrist can clear it
-            else: bod = min(bod, c_)
+            else:
+                if c_ < bod: WORSTB[0] = _b
+                bod = min(bod, c_)
     return {'bat': float(np.linalg.norm(bv - hc, axis=1).min()), 'low': float(bv[:, 2].min()), 'body': bod, 'own': own,
             'hR': min(d(P(PB['hand.R'].head)), d(P(PB['hand.R'].tail)), d(P(PB['fingers.R'].tail))), 'eR': d(P(PB['forearm.R'].head)),
             'hL': min(d(P(PB['hand.L'].head)), d(P(PB['hand.L'].tail)), d(P(PB['fingers.L'].tail))), 'eL': d(P(PB['forearm.L'].head))}
@@ -182,8 +186,9 @@ def swing_bone(bone, want):   # turn a bone the shortest way so it points along 
     c_ = W2A @ nz(P(PB[bone].tail) - P(PB[bone].head)); w_ = W2A @ nz(want); ax = np.cross(c_, w_); sn = float(np.linalg.norm(ax))
     if sn > 1e-7: turn(bone, ax / sn * math.atan2(sn, float(c_ @ w_)), PB[bone].matrix.copy()); upd()
 CURW = [0.]
+LEGERR = {}
 def plant_legs():
-    if not (PLANT and FOOTST): return
+    if not ((PLANT or SP2) and FOOTST): return
     sc_ = ao.matrix_world.to_scale()[0]; f = A2W @ hips3()[:, 2]
     over = 0.   # the hips higher than the legs reach (with a little bend kept): lower them first
     for s_ in 'LR':
@@ -192,14 +197,19 @@ def plant_legs():
     if over > 0:
         m = PB['pelvis'].matrix.copy(); m.translation.z -= over / ao.matrix_world.to_scale()[2]; PB['pelvis'].matrix = m; upd()
     for s_ in 'LR':   # (3D.211) each leg starts from the stance's own turn, so it keeps the stance's natural twist (the recorded chopper's thighs came in turned about 175 degrees about their own length, which wrung the skin at the hips)
-        for b_ in ('thigh.', 'shin.'): PB[b_ + s_].rotation_quaternion = STALL[b_ + s_][0].copy()
+        for b_ in ('thigh.', 'shin.', 'foot.'): PB[b_ + s_].scale = (1., 1., 1.)   # (3D.212) a bone set from a matrix can pick up a squash the game file never gets (the spear's front shin came out 9% short, so in the game its foot sank into the ground)
+        for b_ in ('thigh.', 'shin.'): PB[b_ + s_].rotation_quaternion = (STALL[b_ + s_][0] if SJ else Quaternion()).copy()
     upd()
-    for s_ in 'LR':
-        hip = P(PB['thigh.' + s_].head); A = FOOTST[s_][0]; l1 = PB['thigh.' + s_].length * sc_; l2 = PB['shin.' + s_].length * sc_
+    for s_ in [c_ for c_ in 'LR' for _ in range(3)]:   # (3D.212) three passes per leg: each one aims at the planted place corrected by what the last one missed
+        hip = P(PB['thigh.' + s_].head); A = (LEGERR[s_] + FOOTST[s_][0] - P(PB['foot.' + s_].head)) if s_ in LEGERR else FOOTST[s_][0]; LEGERR[s_] = A; l1 = PB['thigh.' + s_].length * sc_; l2 = PB['shin.' + s_].length * sc_
         dv = A - hip; dd = float(np.clip(np.linalg.norm(dv), .05, (l1 + l2) * .999)); dn = nz(dv); pole = nz(f - dn * (f @ dn))
         x = (l1 * l1 - l2 * l2 + dd * dd) / (2 * dd); y = math.sqrt(max(0., l1 * l1 - x * x)); e = hip + dn * x + pole * y
         swing_bone('thigh.' + s_, e - hip); swing_bone('shin.' + s_, (hip + dn * dd) - P(PB['shin.' + s_].head))
-        m = FOOTST[s_][1].copy(); m.translation = PB['foot.' + s_].matrix.translation.copy(); PB['foot.' + s_].matrix = m; upd()
+        m = FOOTST[s_][1].copy(); m.translation = PB['foot.' + s_].matrix.translation.copy(); PB['foot.' + s_].matrix = m
+        for b_ in ('thigh.', 'shin.', 'foot.'): PB[b_ + s_].scale = (1., 1., 1.)
+        upd()
+    if os.environ.get('ZH_DBGF') and PLFR[0] in (0, 30, 45): print('FOOT', PLFR[0], {c_: np.round(FOOTST[c_][0] - P(PB['foot.' + c_].head), 3) for c_ in 'LR'})
+    LEGERR.clear()
 def place_left():
     upd(); mw = np.array(bat.matrix_world); tip = mw[:3, :3] @ AXV[TIPI] + mw[:3, 3]; grp = mw[:3, :3] @ AXV[GRIPI] + mw[:3, 3]; wd = nz(tip - grp)
     rc = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; t_ = float((rc - grp) @ wd); c = grp + wd * t_; perp = rc - c
@@ -252,7 +262,46 @@ S_DRAW = (nz([-.25, -.85, .45]), nz([.75, .15, .64]), nz([.02, -.02, 1.]))      
 S_HIT = (nz([.05, -.25, .97]), nz([.55, -.02, .84]), nz([-.02, -.06, 1.]))        # driven forward
 SL_UP = nz(np.array([0., .35, 1.])); SL_OVER = nz(np.array([0., -1., .35])); SL_DOWN = nz(np.array([0., -.72, -.70]))   # armature space: +Y is behind, -Y in front, +Z up
 CHT = math.radians(float(os.environ.get('ZH_CHESTTURN', '0')))
+# ---- 3D.212 the spear, from the owner's picture (a spear form: a deep, wide stance, the rear hand at the end of the spear by the right hip, the front
+# hand high on the shaft, the spear angled up about 30 degrees at the target, the body side-on). The library has no spear form, so the whole pose is made
+# here, all of a piece: the hips sink and turn, the feet are planted wide (the legs solved, no twist), both arms reach their places on the shaft.
+# ZH_TWOHAND=spear2hold : the stance; spear2 : the stab (a short draw back, a lunge: the hips drive forward, the back leg straightens, the spear is
+# driven along its line and levels out; then back to the stance). Offsets: from the neck in the character's own frame (left, forward, up), not turned.
+SP2 = TWO in ('spear2hold', 'spear2')
+S2_READY = dict(drop=.07, fwd=0., yaw=-32., chest=-8., hand=(-.19, .02, -.33), dir=(.30, 1., .62))
+S2_DRAW = dict(drop=.075, fwd=-.03, yaw=-36., chest=-10., hand=(-.20, -.04, -.33), dir=(.30, 1., .66))
+S2_HIT = dict(drop=.09, fwd=.12, yaw=-18., chest=0., hand=(-.12, .27, -.24), dir=(.18, 1., .12))
+FEET2 = {'L': ((.10, -.23), -12.), 'R': ((-.12, .19), -60.)}   # (left, back) from where the hips start; the foot's turn (negative: toes to the right)
+def s2_mix(a, b, u): return {k: (tuple(x * (1 - u) + y * u for x, y in zip(a[k], b[k])) if isinstance(a[k], tuple) else a[k] * (1 - u) + b[k] * u) for k in a}
+def s2_key(fr):
+    if TWO == 'spear2hold': return S2_READY
+    t = fr / nf; w1 = sst(.05, .30, t); u = sst(.30, .46, t); w3 = sst(.62, .97, t)
+    return s2_mix(s2_mix(s2_mix(S2_READY, S2_DRAW, w1), S2_HIT, u), S2_READY, w3)
+S2_BASE = {}
+def s2_body(k):
+    if not S2_BASE:   # the hips and the stance's feet where the clip starts
+        S2_BASE['p'] = PB['pelvis'].matrix.copy(); S2_BASE['f'] = {s_: PB['foot.' + s_].matrix.copy() for s_ in 'LR'}; S2_BASE['a'] = {s_: P(PB['foot.' + s_].head) for s_ in 'LR'}
+    m = PB['pelvis'].matrix.copy(); t_ = m.translation.copy(); R_ = Matrix.Rotation(math.radians(k['yaw']), 4, 'Z'); m = R_ @ m
+    m.translation = t_ + Vector((0, -k['fwd'], -k['drop'])); PB['pelvis'].matrix = m; upd()
+    for b_, ang in (('chest', k['chest']), ('head', -(k['yaw'] + k['chest']) * .8)):
+        m = PB[b_].matrix.copy(); t_ = m.translation.copy(); m = Matrix.Rotation(math.radians(ang), 4, 'Z') @ m; m.translation = t_; PB[b_].matrix = m; upd()
+def s2_feet():   # the planted feet of the stance from the picture
+    pz = np.array(S2_BASE['p'].translation[:]); out = {}
+    for s_, ((l_, b_), turn_) in FEET2.items():
+        a0 = S2_BASE['a'][s_]; pos = A2W @ np.array([pz[0] + l_, pz[1] + b_, (W2A @ a0)[2]]) if False else np.array((ao.matrix_world @ Vector((pz[0] + l_, pz[1] + b_, (ao.matrix_world.inverted() @ Vector(a0))[2])))[:])
+        fm = S2_BASE['f'][s_].copy(); t_ = fm.translation.copy(); fm = Matrix.Rotation(math.radians(turn_), 4, 'Z') @ fm; fm.translation = t_; out[s_] = (pos, fm)
+        if SJ: out[s_] = (np.array(S2_BASE['a'][s_]), S2_BASE['f'][s_].copy())   # (3D.212) the stab starts from the stance itself: its feet stay exactly where the stance put them (turning them again turned the back foot twice)
+    return out
+def spear2_at(k):
+    nk = P(PB['neck'].head); cen = nk + A2W @ np.array([k['hand'][0], -k['hand'][1], k['hand'][2]]); dirw = nz(A2W @ np.array([k['dir'][0], -k['dir'][1], k['dir'][2]]))
+    for _ in range(5):   # if the left hand cannot reach its place on the shaft, both hands slide towards it together (the gap is kept)
+        ik_arm('R', cen, [-.4, -.8, -.2], PLFR[0]); aim_arm(W2A @ dirw); err = place_left()
+        if err is None or np.linalg.norm(err) < .008: break
+        cen = cen - err * 1.1
 def two_pose(fr):
+    if SP2:
+        global FOOTST
+        k = s2_key(fr); s2_body(k); FOOTST = s2_feet(); plant_legs(); PLFR[0] = fr; spear2_at(k); return
     if CHT:
         for b_, k_ in (('pelvis', .35), ('chest', .65)):
             m_ = PB[b_].matrix.copy(); R_ = Matrix.Rotation(-CHT * k_, 4, 'Z'); t_ = m_.translation.copy(); m_ = R_ @ m_; m_.translation = t_; PB[b_].matrix = m_; upd()
@@ -342,6 +391,7 @@ for fr in range(nf + 1):
     plant_legs()
     if RISE: upd(); set_rarm(fr)
     if TWO: upd(); two_pose(fr)
+    if os.environ.get('ZH_DBGV') and fr % 10 == 0: m_ = meas(); print('DBGV', fr, {k_: round(v_, 3) for k_, v_ in m_.items()}, 'violR %.3f' % violR(m_), 'part', WORSTB[0], 'BODYM', BODYM, 'M_BAT %.3f M_HAND %.3f M_ELB %.3f' % (M_BAT, M_HAND, M_ELB))
     for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + (() if (FREEARM or TWO) else (('upperarm.L', violL),)):
         if bone == 'hand.R': turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd()
         RV[bone][fr] = solve(bone, viol, RV[bone][fr - 1] if fr else np.zeros(3))
@@ -439,6 +489,7 @@ for fr in range(nf + 1):
                     if q_.dot(q0_) < 0: q_.negate()
                     PB[b_].rotation_quaternion = q_.slerp(q0_, w_)
                 upd()
+    if os.environ.get('ZH_DBGF') and fr in (0, 30): upd(); print('Q', [(b_, PB[b_].rotation_mode, tuple(round(x, 3) for x in PB[b_].rotation_quaternion), tuple(round(x,3) for x in PB[b_].scale)) for b_ in ('pelvis','thigh.L','shin.L')]); print('FOOTEND', fr, {b_: tuple(round(x, 3) for x in PB[b_].location) for b_ in ('thigh.L','shin.L','foot.L','thigh.R','chest')}, {c_: round(float(P(PB['foot.' + c_].head)[2]), 3) for c_ in 'LR'}, 'want', {c_: round(float(FOOTST[c_][0][2]), 3) for c_ in 'LR'} if FOOTST else None)
     ARMQ.append([list(PB[b_].rotation_quaternion) for b_ in ARMB])
     MEAS_RAW[0] = True; after.append(meas()); MEAS_RAW[0] = False; frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
     _mw = np.array(bat.matrix_world); _bv2 = AXV @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); HANDP.append(P(PB['hand.R'].tail)); HANDL.append(P(PB['hand.L'].tail)); SHL.append(P(PB['upperarm.L'].head)); CHM.append((chest3().copy(), P(PB['chest'].head)))

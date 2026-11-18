@@ -15,7 +15,8 @@ GR={}
 if os.environ.get('ZH_GEAR'):
     _b=set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=os.environ['ZH_GEAR']); bat0=bpy.data.objects['weapon_bat']
     ao.data.pose_position='REST'; bpy.context.view_layer.update(); _Wb=bat0.matrix_world.copy()
-    for o in [o for o in bpy.data.objects if o not in _b and o.name.startswith('gw_')]: GR[o.name[3:]]=(o,_Wb.inverted()@o.matrix_world); o.hide_set(True)
+    from mathutils import Matrix as _M
+    for o in [o for o in bpy.data.objects if o not in _b and o.name.startswith('gw_')]: GR[o.name[3:]]=(o,(_M.Translation((0,-.25,0)) if o.name=='gw_spear' else _M())@_Wb.inverted()@o.matrix_world); o.hide_set(True)   # (3D.212) the spear held near its end, as fitGear does
     ao.data.pose_position='POSE'; bpy.context.view_layer.update()
 for tr in ad.nla_tracks: tr.mute=True
 for clip,wn in pairs:

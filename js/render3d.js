@@ -1110,13 +1110,14 @@ const STAND_OF = { walk: 'idle', walk_f: 'idle', jog: 'idle', run: 'idle', carry
    the survivor's rest pose). Each is fitted next to the weapon it borrowed: same bone, same grip, so every clip still lines up. */
 const GEAR_REF = { pipe: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat',
   knife: 'axe', machete: 'axe', katana: 'axe', hatchet: 'axe', cleaver: 'axe', revolver: 'pistol', magnum: 'pistol', shotgun: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', axe: 'axe' };   // 3D.95: axe last, it replaces the old fire axe in place
+const SPEAR_SHIFT = new THREE.Matrix4().makeTranslation(0, 0, .25);   /* along the bat's own line, towards its tip (the bat's local +Z in the file; -Y once Blender has turned it upright) */
 function fitGear(gear, srcs) {
   gear.scene.updateMatrixWorld(true); const inv = new THREE.Matrix4(), R = new THREE.Matrix4();
   for (const [k, ref] of Object.entries(GEAR_REF)) {
     const gw = gear.scene.getObjectByName('gw_' + k); if (!gw) continue; let ok = false;
     for (const src of srcs) { if (!src) continue; src.scene.updateMatrixWorld(true); const rn = src.scene.getObjectByName('weapon_' + ref); if (!rn || !rn.parent) continue;
       R.copy(inv.copy(rn.matrixWorld).invert()).multiply(gw.matrixWorld);   // the new weapon relative to the one it borrowed (both in the male rest pose)
-      const o = gw.clone(); o.name = 'weapon_' + k; o.matrix.copy(rn.matrix).multiply(R); o.matrix.decompose(o.position, o.quaternion, o.scale); o.visible = false; rn.parent.add(o); ok = true;
+      const o = gw.clone(); o.name = 'weapon_' + k; o.matrix.copy(rn.matrix); if (k === 'spear') o.matrix.multiply(SPEAR_SHIFT); o.matrix.multiply(R);   /* 3D.212 owner's picture: the rear hand holds the spear near its end (it was 0.33 from the end, like a bat) */ o.matrix.decompose(o.position, o.quaternion, o.scale); o.visible = false; rn.parent.add(o); ok = true;
       if (k === ref) { rn.name = 'weapon_old_' + ref; rn.visible = false; } }
     if (ok) { WMODEL[k] = k; WCLASS[k] = WCLASS[ref]; }
   }
