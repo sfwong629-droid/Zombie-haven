@@ -189,6 +189,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 18 Nov: **Guns must make a sound** (W100). Each ranged weapon gets its own shot (pistol, revolver / magnum, shotgun, SMG, assault rifle, hunting rifle, hunting bow, crossbow).
 - 18 Nov: **Fight music** (W102): yes to a short fade between moods (no hard cut), then a bigger track of its own for hordes and bosses.
 - 18 Nov: **The whole soundtrack and every sound effect are remade to match Studio Ghibli** (warm, melodic, storybook; original tunes, nothing copied from the films). Built one piece at a time, each with a sample first; the order is in `05-NOW.md` (Music chat).
+- 18 Nov (review, round 1): **Approved as they are:** Revolver and Magnum, SMG, Assault Rifle, Hunting Bow, Crossbow; the day tunes Village Fair and Morning Road (with a softer shaker); The Tide (horde and boss music); the fade between moods; button click, coin, level up, event, rescue, night falls; hit, survivor hurt, zombie falls; build, hammer, axe, fire. **Owner's changes:** no case tinkle on the pistol, no bolt on the rifle, a shotgun with more boom; Meadow with less piano alone (the flute over harp is liked); Harvest Song without the drum; Stand Firm less like war drums, more like danger; the chime a light trumpet; the reward not on harp; a rooster at dawn; a more alerting alarm (the bell stays); a human voice when a survivor goes down; longer zombie groans from real recordings; no brass chord on the boss roar; crumbling for a broken wall; long radio static; a real car alarm; a real dog.
+- 18 Nov: Real recordings are fine where they sound better (animals, voices, zombies, stone), as long as the licence lets us ship them (CC0 is used).
 
 ## Open questions (not decided)
 - None on 17 Nov.
