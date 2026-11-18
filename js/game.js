@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.203', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.204', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2633,7 +2633,7 @@ const raiderWeapon = (kind, lvl = S.lvl || 1) => (RAIDER_WPN[kind] || RAIDER_WPN
 /* 3D.197 (owner, 17-18 Nov, W57: "follow the weapon type"): a town raider hits as hard as the weapon in its hand. A hit is RAIDER_HIT.base +
    RAIDER_HIT.per x the weapon's own attack (ITEMS[id].atk, the number a survivor gets from it), in place of the flat 7 x the kind's factor.
    Era I: Thief 5.3, Brute 11, Firebug 6.5 (were 7, 10.5, 6.3). Era IV: 14.6, 15.8, 13.1. The danger level, a faction's factor and a leader's factor still multiply it. */
-const RAIDER_HIT = { base: 5, per: .3 }; const raiderHit = (id) => (RAIDER_HIT.base + RAIDER_HIT.per * ((ITEMS[id] || {}).atk || 0)) / zombieTypes.raider.atk;
+const RAIDER_HIT = { base: 5, per: .2 };   /* 3D.204 (owner, 18 Nov, W57): softened from .3; two of six bot towns lost 9 and 12 people to one raid at .3. Era I: Thief 5.2, Brute 9, Firebug 6. Era IV: 11.4, 12.2, 10.4 */ const raiderHit = (id) => (RAIDER_HIT.base + RAIDER_HIT.per * ((ITEMS[id] || {}).atk || 0)) / zombieTypes.raider.atk;
 function rollRaider(z, i) {
   const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
   z.kind = k; z.hp = z.max = Math.round(z.max * K.hp);   /* 3D.197: the hit no longer comes from the kind (K.atk) but from the weapon: see raiderHit */

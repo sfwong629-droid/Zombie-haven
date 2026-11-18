@@ -1,5 +1,5 @@
 // tools/qa/raider_hit_check.js — 3D.197 (owner, W57: "follow the weapon type"): a town raider hits as hard as the weapon it carries.
-// A hit is 5 + 0.3 x the weapon's own attack, in place of the flat 7 x the kind's factor (Thief 1, Brute 1.5, Firebug 0.9).
+// A hit is 5 + 0.2 x the weapon's own attack (3D.204, W57: softened from 0.3), in place of the flat 7 x the kind's factor (Thief 1, Brute 1.5, Firebug 0.9).
 // For a town level in each era it sends raids and checks, for every ordinary raider (no leader, no escort): its hit, with the danger level
 // taken out, matches the weapon in its hand; a better weapon never hits softer; and a Brute still hits harder than a Thief.
 // Serve the repo first (python3 -m http.server 8765). Exit 0 ok, 1 a check failed, 2 the raids could not be made.
@@ -11,7 +11,7 @@ const Q = require('./lib');
       for (let i = 0; i < 40; i++) { const n0 = S.z.length; ZH.spawnRaid('', false); for (const z of S.z.slice(n0)) if (!z.leader && !z.esc) out.push([z.kind, z.wpn, +(z.pw / dg * ZH.zombieTypes.raider.atk).toFixed(2), ZH.ITEMS[z.wpn].atk]); S.z.length = n0; }
       return out; }, { lvl });
     made += r.length;
-    for (const [k, w, hit, atk] of r) { const want = +(5 + .3 * atk).toFixed(2); (by[k] = by[k] || [])[era] = hit; if (Math.abs(hit - want) > .06) { bad.push('era ' + (era + 1) + ' ' + k + ' with ' + w + ': hit ' + hit + ', the weapon gives ' + want); break; } }
+    for (const [k, w, hit, atk] of r) { const want = +(5 + .2 * atk).toFixed(2); (by[k] = by[k] || [])[era] = hit; if (Math.abs(hit - want) > .06) { bad.push('era ' + (era + 1) + ' ' + k + ' with ' + w + ': hit ' + hit + ', the weapon gives ' + want); break; } }
   }
   if (!made) { console.log('no raiders were made'); await b.close(); process.exit(2); }
   for (const [k, l] of Object.entries(by)) { console.log(k + ' hit by era: ' + l.join(', ')); if (l.some((v, i) => i && v < l[i - 1])) bad.push(k + ': a later era hits softer'); }
