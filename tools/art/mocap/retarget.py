@@ -28,6 +28,7 @@ def sstep(a,b,x): t=min(1,max(0,(x-a)/(b-a))); return t*t*(3-2*t)
 def footflat(side):
     d=Q[:,I(side+'ToeBase')]-Q[:,I(side+'Foot')]; z=W(P)[:,I(side+'Foot'),2]; i=np.argsort(z)[:max(3,T//6)]; dd=d[i].mean(0); return math.atan2(-dd[2],-dd[1])
 FLAT={'Left':footflat('Left'),'Right':footflat('Right')}; ry=rest['foot.L'].col[1]; RESTP=math.atan2(-ry[2],-ry[1]); print('foot flat pitch',FLAT,'rest',RESTP)
+HANDS=bool(os.environ.get('ZH_HANDS'))
 STAND=bool(os.environ.get('ZH_STAND')); HIPS=float(os.environ.get('ZH_HIPS','.3')); FOOTBACK=float(os.environ.get('ZH_FOOTBACK','0')); SWAY=float(os.environ.get('ZH_SWAY','1')); TOE=float(os.environ.get('ZH_TOE','7'))   # SWAY: how much of the recorded hip sway to keep; TOE: degrees the feet turn out
 def _m(a,b): v=Q[:,I(a)]-Q[:,I(b)]; v/=np.linalg.norm(v,axis=1,keepdims=True); return v.mean(0)
 NDM=_m('Head','Neck'); HDM=_m('Head_end','Head')
@@ -38,7 +39,7 @@ def solve(i):
     R['pelvis']=frame(pup,px)
     cx=nz(J('LeftArm')-J('RightArm')); R['chest']=frame(nz(J('Neck')-J('Spine')),cx)
     nd=nz(J('Head')-J('Neck')); hd=nz(J('Head_end')-J('Head'))
-    if STAND: nd=nz(nd-NDM+np.array([0,-.05,1.])); hd=nz(hd-HDM+np.array([0,-.04,1.]))   # standing: the head keeps its small recorded movements around a level, forward-looking pose (people in the recordings look up, down or aside)
+    if STAND and not HANDS: nd=nz(nd-NDM+np.array([0,-.05,1.])); hd=nz(hd-HDM+np.array([0,-.04,1.]))   # standing: the head keeps its small recorded movements around a level, forward-looking pose (people in the recordings look up, down or aside)
     R['neck']=frame(nd,cx); R['head']=frame(hd,cx)
     for sd,S in(('L','Left'),('R','Right')):
         dt_=nz(J(S+'Leg')-J(S+'UpLeg')); ds=nz(J(S+'Foot')-J(S+'Leg')); nn=np.cross(dt_,ds); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
@@ -47,6 +48,7 @@ def solve(i):
         R['foot.'+sd]=frame([hd[0]*math.cos(pit),hd[1]*math.cos(pit),-math.sin(pit)],hh)
         du=nz(J(S+'ForeArm')-J(S+'Arm')); df=nz(J(S+'Hand')-J(S+'ForeArm')); nn=np.cross(du,df); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
         hh=nz(w*nz(nn)+(1-w)*(-cx)); R['upperarm.'+sd]=frame(du,hh); R['forearm.'+sd]=frame(df,hh)
+        if HANDS: R['hand.'+sd]=frame(nz(J(S+'HandIndex1')-J(S+'Hand')),hh)   # the recorded wrist bend (direction only)
     # stance height: the lower ankle sits where the recorded one does (scaled)
     low=9
     for sd in'LR':
