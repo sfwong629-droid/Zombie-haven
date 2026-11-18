@@ -75,12 +75,20 @@ function hubItems() {
   for (const t of tips) L.push({ key: 't:' + t.key, icon: t.icon, text: t.text, urgent: t.pri >= 80, acts: t.act ? [{ label: 'Go', ok: true, fn: t.act }] : [], mute: t.key });
   return L;
 }
+/* 3D.194 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
+   and it comes back when the menu closes or gets shorter. A menu that stays clear of it leaves it showing. */
+function menuCover() {
+  const b = $('alertBtn'), p = $('infoPanel'); if (!b || !p) return; let cov = false;
+  if (p.classList.contains('show') && b.style.display !== 'none') { const br = b.getBoundingClientRect(), pr = p.getBoundingClientRect(); cov = br.bottom > pr.top + 1 && br.top < pr.bottom && br.right > pr.left && br.left < pr.right; }
+  b.classList.toggle('under', cov);
+}
 function alertHub() {
   const w = $('world'); if (!w) return; let b = $('alertBtn');
-  if (!b) { b = document.createElement('button'); b.id = 'alertBtn'; b.className = 'alertBtn'; b.innerHTML = `<span class="abI">${window.ZHIcons ? ZHIcons.svg('warn', 34) : '⚠'}</span><b class="abN"></b>`; w.appendChild(b); b.onclick = (e) => { e.stopPropagation(); hubOpen = !hubOpen; alertHub(); }; }
+  if (!b) { b = document.createElement('button'); b.id = 'alertBtn'; b.className = 'alertBtn'; b.innerHTML = `<span class="abI">${window.ZHIcons ? ZHIcons.svg('warn', 34) : '⚠'}</span><b class="abN"></b>`; w.appendChild(b); b.onclick = (e) => { e.stopPropagation(); hubOpen = !hubOpen; alertHub(); };
+    { const ip = $('infoPanel'); if (ip) { if (window.ResizeObserver) new ResizeObserver(menuCover).observe(ip); if (window.MutationObserver) new MutationObserver(menuCover).observe(ip, { attributes: true, attributeFilter: ['class'] }); addEventListener('resize', menuCover); } } }
   const L = hubItems(), n = L.length, fresh = L.some((q) => !hubSeen.has(q.key)), urgent = L.some((q) => q.urgent);
   b.style.display = n ? 'flex' : 'none'; b.querySelector('.abN').textContent = n; b.classList.toggle('flash', fresh && !hubOpen); b.classList.toggle('urgent', urgent);
-  { const q = $('quest'), wr = w.getBoundingClientRect(); if (q) b.style.top = Math.round((q.getBoundingClientRect().bottom - wr.top + 10) / UI_U) + 'px'; const rb = $('radioBtn'); if (rb) rb.style.top = ((parseInt(b.style.top) || 120) + (n ? 64 : 0)) + 'px'; }
+  { const q = $('quest'), wr = w.getBoundingClientRect(); if (q) b.style.top = Math.round((q.getBoundingClientRect().bottom - wr.top + 10) / UI_U) + 'px'; const rb = $('radioBtn'); if (rb) rb.style.top = ((parseInt(b.style.top) || 120) + (n ? 64 : 0)) + 'px'; } menuCover();
   let pop = $('alertPop'); if (!hubOpen || !n) { if (pop) pop.remove(); if (!n) hubOpen = false; return; }
   for (const q of L) hubSeen.add(q.key);
   if (!pop) { pop = document.createElement('div'); pop.id = 'alertPop'; pop.className = 'alertPop'; w.appendChild(pop); pop.onclick = (e) => e.stopPropagation(); }
