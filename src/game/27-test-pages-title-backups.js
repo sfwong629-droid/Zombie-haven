@@ -121,7 +121,7 @@ const SVT_NAME = { idle: 'Stand', walk: 'Walk', jog: 'Jog', run: 'Run', walk_f: 
   melee_hold_idle: 'Melee stance', melee_hold_walk: 'Walk with melee weapon', melee_hold_jog: 'Jog with melee weapon', gun_hold_jog: 'Jog with gun', punch: 'Punch', shove: 'Shove', melee_swing_a: 'Swing 1', melee_swing_b: 'Swing 2', melee_swing_c: 'Swing 3', melee_swing_d: 'Swing 4 (overhead)',
   melee_combo_1: 'Combo 1', melee_combo_2: 'Combo 2', melee_combo_3: 'Combo 3', melee_combo2h_1: 'Two-hand combo 1', melee_combo2h_2: 'Two-hand combo 2', melee_combo2h_3: 'Two-hand combo 3',
   gun_hold_idle: 'Gun stance', gun_hold_walk: 'Walk with gun', gun_fire: 'Fire rifle', pistol_fire: 'Fire pistol', gun_reload: 'Reload', hurt: 'Hurt', melee_hold_hurt: 'Hurt (melee)', gun_hold_hurt: 'Hurt (gun)', grabbed: 'Grabbed', knockdown: 'Knocked down', collapse: 'Collapse' };
-const SVT_REAL = new Set(['carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload', 'idle', 'walk', 'walk_f', 'jog', 'carry_walk', 'melee_hold_walk', 'melee_hold_jog', 'gun_hold_walk', 'gun_hold_jog']);   /* the clips that are already recordings of real people; add to this as they are replaced (W63) */
+const SVT_REAL = new Set(['run', 'carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload', 'idle', 'walk', 'walk_f', 'jog', 'carry_walk', 'melee_hold_walk', 'melee_hold_jog', 'gun_hold_walk', 'gun_hold_jog']);   /* the clips that are already recordings of real people; add to this as they are replaced (W63) */
 const SVT_PART = new Set(['carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload']);   /* recorded body, old arms */
 let svtClip = 'walk', svtTurn = true, svtFem = false, svtList = [];
 const svtWho = () => S.sv.find((q) => q.svt);

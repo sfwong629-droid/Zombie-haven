@@ -83,7 +83,7 @@ Art chat:
 - ~~W49. Is the new Zombie test page easy to follow?~~ Owner, 17 Nov: yes. The size and model changes asked for the same day are in 3D.185 (W51).
 - ~~W51. Zombie sizes and models (3D.185, 3D.188): are they right?~~ Owner, 17 Nov: yes, the size is good. (Walker, Lasher, Leaper, legless Crawlers, the smaller Butcher and Bloater Queen. The owner said nothing against the Crawlers' stumps.)
 - ~~W62. Bug A8: the Zombie test showed menus but no map or zombie on the phone.~~ Owner, 17 Nov: fine now, it looks like a connection issue. Closed; nothing in the game was changed.
-- W63. Survivor animations (review of all 46, 17 Nov; list in `06-ASSETS.md`, "Survivor animation review"). Decided 17 Nov: survivors must move like real people; each movement is copied from a recording of a real person, shown to the owner first (`02-DECISIONS.md`, "Survivor movement"). Done: walk and jog (3D.189, W64), carrying while walking (3D.191), walking and jogging with a weapon (3D.192), standing (3D.193), six more standing poses on the same legs (3D.194). Next, one at a time: the run, melee swings, firing, then the rest. Waiting: nothing; Claude brings the next reference.
+- W63. Survivor animations (review of all 46, 17 Nov; list in `06-ASSETS.md`, "Survivor animation review"). Decided 17 Nov: survivors must move like real people; each movement is copied from a recording of a real person, shown to the owner first (`02-DECISIONS.md`, "Survivor movement"). Done: walk and jog (3D.189, W64), carrying while walking (3D.191), walking and jogging with a weapon (3D.192), standing (3D.193), six more standing poses on the same legs (3D.194), the run (3D.197). Next, one at a time: melee swings, firing, then the rest. Waiting: nothing; Claude brings the next reference.
 - ~~W64. Walking speed against the real walk.~~ Decided 17 Nov and built in 3D.189: the speed stays; survivors walk (brisk walk, 63% of the old pace) in free time and on short trips and jog (jog A, clip 09_11) to work and when zombies are about. Rule in `02-DECISIONS.md`, "Survivor movement".
 - ~~W65. Carrying.~~ Decided 17 Nov: (a) carriers keep today's pace and get a hurried carrying movement; no change to the town's income.
 - ~~W66. Do the walk and the jog (3D.189) look right?~~ Owner, 17 Nov: looks great.
@@ -95,7 +95,8 @@ Art chat:
 - ~~W74. Standing, the reference.~~ Owner, 17 Nov: yes. Built in 3D.193: the upper body and small movements of a person standing still (clip 113_21, 4 seconds), head level, legs worked out (feet planted, one leg straight, the other relaxed).
 - ~~W75. Does the new stand (3D.193) look right?~~ Owner, 17 Nov: looks good.
 - ~~W76. Do the six standing poses of 3D.194 look right?~~ Owner, 18 Nov: looks good.
-- W77. The run, the reference (shown 18 Nov as before/after pictures): a recorded run (clip 78_12) with a forward lean, pumping arms and both feet off the ground between steps. It covers 2.2 units a second on the survivor, the pace people chase and flee at today, so it plays at its true speed. Is that the run you want? If yes it is the next build.
+- ~~W77. The run, the reference.~~ Owner, 18 Nov: yes. Built in 3D.197 (clip 78_12; it plays at its true pace, so the old 85% slow-down no longer applies to the survivors' run).
+- W78. Watch "Run" on the Survivor test page (3D.197), and people running in a fight, and say if anything looks wrong.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).

@@ -1569,7 +1569,7 @@ const showProp = (c) => TOOL_OF[c] || (/^gun_|gun_hold/.test(c) ? 'rifle' : c ==
 function survivorShow(a, s) {
   const c = s.show.clip || 'idle', pr = showProp(c); a.attacking = false; a.setWeapon(pr && a.w[pr] ? pr : null); if (a.w.plank) a.w.plank.visible = c === 'work_barricade'; a.setArmor(false);
   a.movT = 0; a.play(c, false, s.show.again === true); s.show.again = false;
-  const st = strideOf(a); a.spd = st ? st * (/run/.test(a.name) ? 1 / .85 : 1) : 0;
+  const st = strideOf(a); a.spd = st ? st * (/run/.test(a.name) && !recRun(a) ? 1 / .85 : 1) : 0;
 }
 function zombieShow(a, z) {
   const act = z.show.act || 'stand';
@@ -1578,7 +1578,7 @@ function zombieShow(a, z) {
   if (act === 'stand' && !(a.src && a.src.crawl) && !a.dog) { const h = z.type === 'raider' ? (z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold_idle' : 'melee_hold_idle') : 'idle'; if (a.acts && a.acts[h]) { a.play(h); return; } }
   a.spd = act === 'run' ? 2 : act === 'walk' ? .3 : 0; a.movT = act === 'stand' ? 9 : 0;
   zombieAnim(a, Object.assign(Object.create(z), { mode: 'zchase', moving: act !== 'stand', turned: false }));
-  if (act !== 'stand') { const st = strideOf(a); if (st) a.spd = st * (/run/.test(a.name) ? 1 / .85 : 1); }   /* tickMixer then plays the steps at their natural speed */
+  if (act !== 'stand') { const st = strideOf(a); if (st) a.spd = st * (/run/.test(a.name) && !recRun(a) ? 1 / .85 : 1); }   /* tickMixer then plays the steps at their natural speed */
 }
 function zombieAnim(a, z) {
   if (z.fuseT > 0) { if (a.acts && a.acts.rot_swell && a.name !== 'rot_swell') a.play('rot_swell', true, true); return; }   /* 3D.85 */
@@ -1748,8 +1748,8 @@ const JOG_ON = 1.22, JOG_OFF = 1.1;   /* 3D.189 ground speed (model units a seco
 const holdLoco = (a, h) => { const jg = h + '_hold_jog'; return a.acts[jg] && a.spd > (a.name === jg ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1) ? jg : h + '_hold_walk'; };
 const STRIDE = {
   v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .550, zombie_run: 1.301 },
-  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 1.690, hold_walk: .912, gun_hold_walk: .912, melee_hold_jog: 1.560, gun_hold_jog: 1.560, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
-  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 1.690, hold_walk: .876, gun_hold_walk: .876, melee_hold_jog: 1.500, gun_hold_jog: 1.500, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
+  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 2.221, hold_walk: .912, gun_hold_walk: .912, melee_hold_jog: 1.560, gun_hold_jog: 1.560, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
+  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 2.134, hold_walk: .876, gun_hold_walk: .876, melee_hold_jog: 1.500, gun_hold_jog: 1.500, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
   v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .561, zombie_run: 1.291 },
   v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
 };
@@ -1758,8 +1758,9 @@ function strideOf(a) {
   const v = t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
   return a.src.zkey && !a.src.crawl && !a.dogM ? v * (a.o.scale.x || 1) : v;   /* 3D.147 zombie strides are measured at model size (tools/art/stride/measure.html); a Brute drawn 1.32x big steps 1.32x as far */
 }
+const recRun = (a) => a.name === 'run' && !!(a.src && a.src.m3);   /* 3D.197 the recorded run of the two survivor models */
 function tickMixer(a, dt, vis) {
-  const st = a.cur && strideOf(a); if (st) { const run = /run/.test(a.name); a.cur.timeScale = Math.max(.15, Math.min((run ? 1.25 : 1.45) * (G.simSpeed ? G.simSpeed() : 1), (a.spd / st) * (run ? .85 : 1))); }   /* the caps grow with the 2x/3x game speed so nobody skates */   /* 3D.123 owner: the run played too fast; it now plays at 85% and no clip is pushed past 1.25x (run) or 1.45x (walk) */   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
+  const st = a.cur && strideOf(a); if (st) { const run = /run/.test(a.name), slow = run && !recRun(a); a.cur.timeScale = Math.max(.15, Math.min((run ? 1.25 : 1.45) * (G.simSpeed ? G.simSpeed() : 1), (a.spd / st) * (slow ? .85 : 1))); }   /* 3D.197 the survivors' run is a recording of a real run: it plays at its true pace, with no 85% slow-down (that was for the old hand-made run, and still is for the zombies') */   /* the caps grow with the 2x/3x game speed so nobody skates */   /* 3D.123 owner: the run played too fast; it now plays at 85% and no clip is pushed past 1.25x (run) or 1.45x (walk) */   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
   a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
   const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
   if (a.acc >= every) { a.mixer.update(a.acc); a.hands(); a.acc = 0; }
