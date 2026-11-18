@@ -16,7 +16,7 @@ for clip,wn in pairs:
     except Exception: pass
     w=bpy.data.objects.get('weapon_'+wn) if wn!='none' else None
     if w: wm=w.data; wm.calc_loop_triangles(); wt=np.array([t.vertices[:] for t in wm.loop_triangles])+len(me.vertices)
-    f0,f1=act.frame_range; V=[];J=[];M=[]
+    f0,f1=act.frame_range; V=[];J=[];M=[];DD=[]
     for i in range(N):
         f=f0+(f1-f0)*i/(N-1); bpy.context.scene.frame_set(int(f),subframe=f-int(f)); dg=bpy.context.evaluated_depsgraph_get(); ev=body.evaluated_get(dg); m=ev.to_mesh()
         v=np.array([(ev.matrix_world@x.co)[:] for x in m.vertices],np.float32); ev.to_mesh_clear()
@@ -27,8 +27,11 @@ for clip,wn in pairs:
             mw=w.evaluated_get(dg).matrix_world; wv=np.array([(mw@x.co)[:] for x in wm.vertices],np.float32)
             # dense samples on weapon triangles
             P=wv[wt-len(me.vertices)]; S=np.concatenate([wv,P.mean(1),(P[:,0]+P[:,1])/2,(P[:,1]+P[:,2])/2,(P[:,0]+P[:,2])/2]); wd=float(np.linalg.norm(S-hc,axis=1).min()); v=np.concatenate([v,wv])
+        if w:
+            ax=int(np.argmax(np.ptp(np.array([x.co[:] for x in wm.vertices]),axis=0))); lo=np.array([x.co[:] for x in wm.vertices]); a_=wv[int(lo[:,ax].argmin())]; b_=wv[int(lo[:,ax].argmax())]; DD.append((b_-a_)/np.linalg.norm(b_-a_))
         M.append([hr,wd]); V.append(v)
     res['V:'+clip]=np.array(V); res['J:'+clip]=np.array(J); res['M:'+clip]=np.array(M); res['F:'+clip]=np.array([f0,f1,bpy.context.scene.render.fps])
+    res['D:'+clip]=np.array(DD)   # the weapon's direction at each moment
     res['T:'+clip]=np.concatenate([tri,wt]) if w else tri
     res['U:'+clip]=np.concatenate([uv,np.zeros((len(wt),3,2))+.0005]) if w else uv
 np.savez_compressed(out,**res); print('ok')

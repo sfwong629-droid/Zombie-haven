@@ -119,7 +119,8 @@ except Exception: pass
 for fr in range(nf + 1):
     goto(fr); upd(); lows.append(bodylow())
 lift = np.array([max(0., restlow - z) for z in lows]); lift = np.array([max(lift[max(0, i - SUB):i + SUB + 1]) for i in range(len(lift))]); k_ = 2 * SUB + 1; lift = np.convolve(np.pad(lift, SUB, mode='edge'), np.ones(k_) / k_, 'valid')
-new = bpy.data.actions.new(clip + '_fix'); frames = []
+new = bpy.data.actions.new(clip + '_fix'); frames = []; BATD = []; HANDP = []; _l = batv @ np.array([0, 0, 0.]) if False else None
+_ax = np.argmax(np.ptp(batv, axis=0)); TIPI = int(batv[:, _ax].argmax()); GRIPI = int(batv[:, _ax].argmin())
 for fr in range(nf + 1):
     goto(fr); upd()
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
@@ -133,6 +134,31 @@ for fr in range(nf + 1):
                 if viol(meas()) == 0: ok_ = True; break
             if not ok_: turn(bone, np.zeros(3), base); upd(); rv = solve(bone, viol, RV0[bone][fr]); turn(bone, rv, base); upd()
     after.append(meas()); frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
+    _mw = np.array(bat.matrix_world); _bv2 = batv @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); HANDP.append(P(PB['hand.R'].tail))
+# ---- timing (owner, 18 Nov, video: "the right arm is still teleporting"): going round the head is a longer way than going through it, and the old clip gave the
+# blow only two or three frames, so the weapon jumped from behind the back to the front. Time is moved from the still part of the wind-up to the blow:
+# the weapon may turn at most OMEGA degrees a second and the hand move at most VHAND units a second; the clip keeps its length.
+OMEGA = float(os.environ.get('ZH_OMEGA', '1150')); VHAND = float(os.environ.get('ZH_VHAND', '5.5')); Tclip = nf / fps / SUB
+dth = np.degrees(np.arccos(np.clip((np.array(BATD[1:]) * np.array(BATD[:-1])).sum(1), -1, 1))); dh = np.linalg.norm(np.diff(np.array(HANDP), axis=0), axis=1)
+need = np.maximum(dth / OMEGA, dh / VHAND); base_ = np.full(nf, Tclip / nf); tau = base_.copy()
+capped = np.zeros(nf, bool)
+for _ in range(200):
+    newc = (need > tau + 1e-12) & ~capped
+    if not newc.any(): break
+    capped |= newc; free = ~capped; left = Tclip - need[capped].sum()
+    if left <= 0 or not free.any(): tau = need * (Tclip / need.sum()); break
+    tau[capped] = need[capped]; tau[free] = base_[free] * left / base_[free].sum()
+tt = np.concatenate([[0], np.cumsum(tau)]); tt *= Tclip / tt[-1]
+def pose_at(t):
+    k = int(min(nf - 1, max(0, np.searchsorted(tt, t, side='right') - 1))); u = 0 if tt[k + 1] == tt[k] else (t - tt[k]) / (tt[k + 1] - tt[k]); out = {}
+    for b in order:
+        qa, la = frames[k][b]; qb, lb = frames[k + 1][b]; qb = qb.copy()
+        if qa.dot(qb) < 0: qb.negate()
+        out[b] = (qa.slerp(qb, u), la.lerp(lb, u))
+    return out
+print('DIAG total turn %.0f deg, need.sum %.2f s of %.2f, hand path %.2f, segs' % (dth.sum(), need.sum(), Tclip, dh.sum()), np.round(dth / base_)[::2].astype(int).tolist())
+print('TIMING weapon turn before: fastest %.0f deg/s; after: %.0f deg/s | the blow (turn over 400 deg/s) lasted %.2f s, now %.2f s' % ((dth / base_).max(), (dth / np.diff(tt)).max(), base_[dth / base_ > 400].sum(), np.diff(tt)[dth / np.diff(tt) > 400].sum()))
+frames2 = [pose_at(Tclip * i / nf) for i in range(nf + 1)]; frames = frames2
 prevq = {}
 ad.action = new
 for fr in range(nf + 1):
@@ -154,7 +180,7 @@ if dump:   # old and new, body + bat, for wstrips.py
     me.calc_loop_triangles(); tri = np.array([t.vertices[:] for t in me.loop_triangles]); tl = np.array([t.loops[:] for t in me.loop_triangles]); uv = np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
     img = next(i for i in bpy.data.images if i.size[0] > 0 and len(i.pixels)); Wd, Hd = img.size; px = (np.array(img.pixels[:]).reshape(Hd, Wd, 4)[:, :, :3] * 255).astype(np.uint8); px[0:3, 0:3] = (70, 70, 75)
     wm = bat.data; wm.calc_loop_triangles(); wt = np.array([t.vertices[:] for t in wm.loop_triangles]) + len(me.vertices)
-    res = {'tex': px, 'bones': np.array(order)}; N = 11
+    res = {'tex': px, 'bones': np.array(order)}; N = int(os.environ.get('ZH_N', '11'))
     for nm, act, fa, fb in ((clip, old, f0, f1), (clip + '_fix', new, 0, nf)):
         if act is new: sc.render.fps = fps * SUB
         ad.action = act
