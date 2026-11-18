@@ -141,6 +141,10 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Art chat): The Crawler has no legs. Built in 3D.185: the legs of both Crawler models are cut off a little below the hip.
 - 17 Nov (Art chat): Models the game already has are not rigged again when the owner sends them a second time (the Gatling Boss, Butcher and Bloater Queen files of 17 Nov were the ones already in the game).
 
+### Survivor movement (owner, 17 Nov)
+- **Survivors must move like real people.** Each movement is copied from a recording of a real person (the CMU motion capture library, free for commercial use; mocap.cs.cmu.edu, copy at `sfd158/cmu-mocap` on GitHub). Claude shows the owner the recording first, then the survivor wearing it, and it goes in the game only after a yes. Tools: `tools/art/mocap/retarget.py` (fits a recording to the survivor skeleton) and `tools/art/inject_clips.mjs` (puts the clip into the model file).
+- **Walk or jog** (3D.189). At the pace survivors cross the town, a real person of their build jogs. So they **walk** (brisk walk, clip 07_12, 63% of the old pace) in free time (a stroll, a chat, the campfire, going to eat or to bed) and on short trips (under 4 tiles), and they **jog** (clip 09_11, the old pace) to work, to a job and whenever a zombie is about. Carrying and walking with a weapon are unchanged until their own recordings are chosen.
+
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
   - Stag: by day it roams outside the walls and charges in a straight line, knocking a person down; can't break walls. Beat it with walls, fences and escorts. Weak but very fast. Day 6.

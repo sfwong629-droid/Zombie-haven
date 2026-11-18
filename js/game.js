@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.188', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.189', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1443,20 +1443,30 @@ function steer(o, p, sp) {
 }
 let litCache = { t: -1, L: [] };
 const litAt = (w) => { if (!isNight()) return false; if (litCache.t !== S.hour) litCache = { t: S.hour, L: world.buildings.filter((b) => b.type === 'floodlight' && powered(b)) }; return litCache.L.some((b) => Math.hypot(b.x + .5 - w.x, b.y + .5 - w.y) < 5); };   /* 3D.104 Floodlight */
+/* 3D.189 walk or jog (owner, 17 Nov). The survivors' walk and jog are recordings of real people. At the pace people cross the town a real person jogs,
+   so: in free time (a stroll, a chat, the campfire, going to eat or to bed) and on short trips (under 4 tiles) they walk, at the real walk's pace
+   (STROLL of the old speed); to work, to a job and in any danger they keep today's speed and jog. Carrying is unchanged for now. */
+const STROLL = .63, STROLL_MODE = new Set(['chat', 'campfire', 'goFacility']);
+let zLiveC = { t: -1, n: 0 };
+const zLive = () => { if (zLiveC.t !== tick) zLiveC = { t: tick, n: S.z.some((z) => z.hp > 0 && !z.zoo) ? 1 : 0 }; return zLiveC.n; };
+const strolling = (o) => !o.carrying && !zLive() && (STROLL_MODE.has(o.mode) || (o.mode === 'walk' && o.purpose === 'roam') || (o.tripLen || 9) < 4);
 function followPath(o, goal, sp) {
   { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y), same = o.arrG && Math.abs(o.arrG.x - goal.x) < .01 && Math.abs(o.arrG.y - goal.y) < .01; o.nearT = dG < .5 ? (o.nearT || 0) + 1 : 0;
     if (dG < .03 || o.nearT > 45 || (same && dG < 1.3)) { o.path = null; o.pathGoal = null; o.moving = false; o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } }   /* 3D.59 owner's tracker log (Maya): someone already on their goal never re-paths, and someone kept off it by another person standing there (the anti-overlap push) stops at arm's length instead of walking in place forever */   /* 3D.59 owner's tracker log: someone already standing on their goal never re-paths (a goal on a building footprint sent them out to the door and back in, forever: the chat moonwalk) */
-  sp *= TUNE.move; if (o.job === undefined && !o.human && litAt(o.w)) sp *= .75;
+  const sp0 = sp; sp *= TUNE.move; if (o.job === undefined && !o.human && litAt(o.w)) sp *= .75;
   const curvy = o.job !== undefined, go = (p) => curvy ? steer(o, p, sp) : stepToward(o, p, sp);
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;
   if (!o.path || o.pathGoal !== gk + (o.wallCost ? '#w' : '') || o.pathVer !== world.ver) {
+    const fresh = o.pathGoal !== gk + (o.wallCost ? '#w' : '');
     const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human, o.wallCost || 0); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver;
     if (!p) { o.path = null; return 'fail'; }
+    if (fresh) o.tripLen = p.length;   /* 3D.189 how long this trip was when it began: short trips are walked */
     o.path = p.map((q, i) => curvy && i < p.length - 1 ? { x: q.x + .5 + (rnd() - .5) * .44, y: q.y + .5 + (rnd() - .5) * .44 } : tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
     const fb = o.job !== undefined || o.human ? Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y)) : null;   /* V2.34: leaving a building = step out through its entrance tile first (the path starts AFTER that tile, so people cut across the footprint) */
     if (fb) { const at = Wd.approachTile(fb); if (!p.length || p[0].x !== at.x || p[0].y !== at.y) o.path.unshift(tc(at.x, at.y)); }
   }
+  if (o.job !== undefined && sp0 <= WALK * 1.16 && strolling(o)) sp *= STROLL * WALK / sp0;   /* 3D.189 owner: people walk (a real walk covers less ground) in free time and on short trips, and jog to work */
   if (o.path.length > 0 && o.path.length === 1) { /* last leg handled below */ }
   const target = o.path.length ? o.path[0] : goal;
   const before = { x: o.w.x, y: o.w.y };

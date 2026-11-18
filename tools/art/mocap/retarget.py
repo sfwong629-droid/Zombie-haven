@@ -50,7 +50,7 @@ for fc in fcs(old): keep[(fc.data_path,fc.array_index)]=fc.evaluate(0)
 new=bpy.data.actions.new(clip+'_new'); ad=ao.animation_data
 for tr in ad.nla_tracks: tr.mute=True
 ad.action=new
-order=[b.name for b in BN]; prevq={}
+order=[b.name for b in BN]; prevq={}; KEY={b:{'rot':[],'loc':[]} for b in order}
 for fr in range(nf+1):
     i=min(T,round(fr/nf*T)) if fr<nf else 0
     R,ploc=solve(i); posed={}
@@ -69,10 +69,10 @@ for fr in range(nf+1):
             M=base@Matrix.LocRotScale(pb.location if b=='gun' else None,pb.rotation_quaternion,None)
         q=pb.rotation_quaternion.copy()
         if b in prevq and q.dot(prevq[b])<0: q.negate(); pb.rotation_quaternion=q
-        prevq[b]=q; pb.keyframe_insert('rotation_quaternion',frame=fr); posed[b]=M
+        prevq[b]=q; pb.keyframe_insert('rotation_quaternion',frame=fr); posed[b]=M; KEY[b]['rot'].append([q.x,q.y,q.z,q.w]); KEY[b]['loc'].append(list(pb.location)) if b in('pelvis','gun') else None
 for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
-new.frame_range if False else None
+import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':T*dt,'bones':KEY},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))
 # --- dump old and new for strips
 me=body.data; me.calc_loop_triangles(); tri=np.array([t.vertices[:] for t in me.loop_triangles]); tl=np.array([t.loops[:] for t in me.loop_triangles]); uv=np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
