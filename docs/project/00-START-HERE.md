@@ -21,7 +21,7 @@ The older docs under `claude/` are an archive in the **Game Development** projec
 
 ## Where things are
 - Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.190**.
-- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 230 = 3D.189, page cache tag v=3d.227). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
+- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 231 = 3D.190, page cache tag v=3d.228). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
 - Game code: `js/game.js` is kept as 27 area files in `src/game/` (guide: `src/game/README.md`). Edit the area file, run `python3 tools/build/game.py` to join them into `js/game.js`, and commit both. If you edited `js/game.js` directly, run `python3 tools/build/game.py --split` instead. The test suite fails (`parts`) when the two differ. `js/game.js` is still the file that is published.
 - Publishing: full slug `b7f9181b-346a-4ccb-85be-5f1f659593f9`; take the *published* index.html, bump v=3d.N, publish only changed js/css. Never use the repo's index.html. Another chat may have published since: always read the live version first.
 - ChatGPT: project "Zombie Haven testing" in the owner's ChatGPT; details in `claude/zombie-haven-chatgpt-testing.md`.
