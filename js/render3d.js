@@ -1099,7 +1099,7 @@ const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47',
   golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat', hatchet: 'axe', cleaver: 'axe', magnum: 'pistol' };   // 3D.28 new gear
 let WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
-const STAND_OF = { walk: 'idle', walk_f: 'idle', jog: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
+const STAND_OF = { walk: 'idle', walk_f: 'idle', jog: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', melee_hold_jog: 'melee_hold_idle', gun_hold_jog: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
 /* 3D.94 own models for the weapons that used to borrow the bat, axe, pistol or rifle (tools/art/b3d/gear3d.py builds them in
    the survivor's rest pose). Each is fitted next to the weapon it borrowed: same bone, same grip, so every clip still lines up. */
 const GEAR_REF = { pipe: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat',
@@ -1492,7 +1492,7 @@ function personAnim(a, s, dt) {
   const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || s.mode === 'cutRun' || (s.mode === 'chase' && !hold));
   if (anim === 'walk' && rush && a.spd > (a.name === 'run' ? .65 : .8)) { a.play('run'); return; }   /* 3D.45: only sprint when actually moving fast */
   if (anim === 'walk' && !hold && s.hp < s.max * .3 && a.acts.limp_walk && !rush) { a.play('limp_walk'); return; }   /* 3D.107 badly hurt: limps */
-  if (anim === 'walk' || anim === 'carry') { a.play(hold ? hold + '_hold_walk' : 'walk'); return; }
+  if (anim === 'walk' || anim === 'carry') { a.play(hold ? holdLoco(a, hold) : 'walk'); return; }
   a.play(hold ? hold + '_hold_idle' : 'idle');
 }
 /* 3D.32 Infected Dog: a low-detail toon dog built from boxes, legs swing with its ground speed (no rig needed) */
@@ -1588,7 +1588,7 @@ function zombieAnim(a, z) {
   if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { a.play(z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_fire' : (z.swingN = (z.swingN || 0) + 1) % 2 ? 'melee_swing_a' : 'melee_swing_b', true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people */
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = (a.src && a.src.kind === 'spitter') && a.acts.spit && z.mode === 'zattack'; a.play((a.src && a.src.kind === 'lasher') && z.lash && a.acts.lash ? 'lash' : z.smash && a.acts.smash ? 'smash' : a.src.atkClip && a.acts[a.src.atkClip] ? a.src.atkClip : (a.src && a.src.kind === 'bloated') && a.acts.bloated_attack ? 'bloated_attack' : (a.src && a.src.kind === 'brute') && a.acts.brute_attack ? 'brute_attack' : (a.src && a.src.kind === 'sporehead') && a.acts.spore_combo ? 'spore_combo' : (a.src && a.src.kind === 'screamer') && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
-  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? h + '_idle' : z.mode === 'rflee' && !z.ranged ? 'run' : h + '_walk'); return; }
+  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? h + '_idle' : z.mode === 'rflee' && !z.ranged ? 'run' : holdLoco(a, h.replace('_hold', ''))); return; }   /* 3D.192 raiders walk or jog with the weapon, like the townspeople */
   if (a.src && a.src.human && a.acts.walk) { const rc = a.acts[a.src.runClip] ? a.src.runClip : 'run', wc = a.acts[a.src.walkClip] ? a.src.walkClip : 'walk'; a.play(a.spd > (a.name === rc ? .6 : .75) ? rc : wc); return; }   /* 3D.82 Lasher and Stalker move like people */
   if (z.type === 'runner' || a.dogM) { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) * (a.dogM ? .8 : 1) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.80 the dog gallops, the Stalker runs */   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
   a.play((a.src && a.src.kind === 'bloated') && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
@@ -1744,10 +1744,12 @@ const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.
 // measured from the exported models (tools: scratchpad stride/meas.py). Playback speed = ground speed / this,
 // so the feet stay planted instead of skating or running in place.
 const JOG_ON = 1.22, JOG_OFF = 1.1;   /* 3D.189 ground speed (model units a second) where the walk becomes the jog, and back */
+/* 3D.192 with a weapon in the hand: the same recorded walk and jog, the weapon arm as before. h = 'melee' or 'gun' */
+const holdLoco = (a, h) => { const jg = h + '_hold_jog'; return a.acts[jg] && a.spd > (a.name === jg ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1) ? jg : h + '_hold_walk'; };
 const STRIDE = {
   v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .550, zombie_run: 1.301 },
-  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
-  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 1.690, hold_walk: 1.045, gun_hold_walk: .951, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
+  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 1.690, hold_walk: .912, gun_hold_walk: .912, melee_hold_jog: 1.560, gun_hold_jog: 1.560, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
+  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 1.690, hold_walk: .876, gun_hold_walk: .876, melee_hold_jog: 1.500, gun_hold_jog: 1.500, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
   v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .561, zombie_run: 1.291 },
   v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
 };
