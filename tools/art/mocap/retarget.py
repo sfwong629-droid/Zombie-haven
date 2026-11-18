@@ -40,7 +40,10 @@ def solve(i):
     for sd in'LR':
         hp=R['pelvis']@(rest['pelvis'].to_3x3().inverted()@(rest['thigh.'+sd].translation-rest['pelvis'].translation)); az=hp[2]+BN['thigh.'+sd].length*R['thigh.'+sd].col[1][2]+BN['shin.'+sd].length*R['shin.'+sd].col[1][2]; low=min(low,az)
     pz=rest['foot.L'].translation[2]+SC*(ankM[i]-ank0)-low
+    for b in list(R):
+        if any(b.startswith(k) for k in KEEPB): del R[b]
     return R,Vector((hx[i]*SC,hy[i]*SC,pz))
+import os; KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
 fps=bpy.context.scene.render.fps; nf=round(T*dt*fps); old=bpy.data.actions[clip]
 def fcs(act):
     try: return list(act.fcurves)
