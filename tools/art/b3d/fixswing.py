@@ -34,15 +34,35 @@ def upd(): bpy.context.view_layer.update()
 _gi = body.vertex_groups['head'].index; _hv = [v.co.copy() for v in body.data.vertices if any(g.group == _gi and g.weight > .6 for g in v.groups)]
 _c = sum(_hv, Vector()) / len(_hv); HEADR = float(np.median([(v - _c).length for v in _hv])); HCL = ao.data.bones['head'].matrix_local.inverted() @ (ao.matrix_world.inverted() @ (body.matrix_world @ _c))
 def P(v): return np.array((ao.matrix_world @ v)[:])
+# 3D.206 (owner, 18 Nov: "the weapons are not going through the head or body correct?"): the body as one rounded tube per bone, as thick as the model there
+# (the 80th percentile distance of the bone's own vertices from it, in the rest pose). The weapon must stay out of all of them, except within 9 cm of the
+# gripping hand (the fist closes round the handle; tools/art/b3d/bodyhit.py, the independent check, skips the same zone).
+CAPS = ('pelvis', 'chest', 'thigh.L', 'thigh.R', 'shin.L', 'shin.R', 'upperarm.L', 'forearm.L', 'upperarm.R', 'forearm.R')
+_mw = body.matrix_world; CAPR = {}
+for _b in CAPS:
+    _gi2 = body.vertex_groups[_b].index; _bb = ao.data.bones[_b]; _h = np.array((ao.matrix_world @ _bb.head_local)[:]); _t = np.array((ao.matrix_world @ _bb.tail_local)[:])
+    _vs = np.array([(_mw @ v.co)[:] for v in body.data.vertices if any(g.group == _gi2 and g.weight > .6 for g in v.groups)])
+    _u = np.clip(((_vs - _h) @ (_t - _h)) / max(1e-9, (_t - _h) @ (_t - _h)), 0, 1); CAPR[_b] = float(np.percentile(np.linalg.norm(_vs - (_h + _u[:, None] * (_t - _h)), axis=1), 80))
+print('CAPSULES', {k: round(v, 3) for k, v in CAPR.items()})
+def segd(Pts, h, t):
+    u = np.clip(((Pts - h) @ (t - h)) / max(1e-9, (t - h) @ (t - h)), 0, 1); return np.linalg.norm(Pts - (h + u[:, None] * (t - h)), axis=1)
 def meas():
     upd(); hc = P(PB['head'].matrix @ HCL)
     mw = np.array(bat.matrix_world); bv = batv @ mw[:3, :3].T + mw[:3, 3]
     d = lambda p: float(np.linalg.norm(p - hc))
-    return {'bat': float(np.linalg.norm(bv - hc, axis=1).min()), 'low': float(bv[:, 2].min()),
+    hr = P(PB['hand.R'].tail); far = bv[np.linalg.norm(bv - hr, axis=1) > .09]; bod = 9.; own = 9.
+    if len(far):
+        for _b in CAPS:
+            c_ = float(segd(far, P(PB[_b].head), P(PB[_b].tail)).min()) - CAPR[_b]
+            if _b in ('upperarm.R', 'forearm.R'): own = min(own, c_)   # the weapon arm itself: only the wrist can clear it
+            else: bod = min(bod, c_)
+    return {'bat': float(np.linalg.norm(bv - hc, axis=1).min()), 'low': float(bv[:, 2].min()), 'body': bod, 'own': own,
             'hR': min(d(P(PB['hand.R'].head)), d(P(PB['hand.R'].tail)), d(P(PB['fingers.R'].tail))), 'eR': d(P(PB['forearm.R'].head)),
             'hL': min(d(P(PB['hand.L'].head)), d(P(PB['hand.L'].tail)), d(P(PB['fingers.L'].tail))), 'eL': d(P(PB['forearm.L'].head))}
 M_BAT = HEADR + float(os.environ.get('ZH_MBAT', '.055')); M_HAND = HEADR + float(os.environ.get('ZH_MHAND', '.06')); M_ELB = HEADR + float(os.environ.get('ZH_MELB', '.035'))
-def violR(m): return max(0, M_BAT - m['bat']) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
+BODYM = float(os.environ.get('ZH_BODYM', '.008'))
+def violOwn(m): return max(0, BODYM - m['own'])
+def violR(m): return max(0, BODYM - m['body']) + max(0, M_BAT - m['bat']) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
 def violL(m): return max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])
 def turn(bone, rv, base):   # turn a bone about its own head by the rotation vector rv (world axes), starting from its matrix `base`
     ang = float(np.linalg.norm(rv)); pb = PB[bone]
@@ -106,7 +126,7 @@ def aim_bat(d):   # turn the hand so the weapon points along d (chest frame), by
 RISE = os.environ.get('ZH_RISE', '0') == '1'
 R_WOUND = (nz([-.45, -.80, -.40]), nz([-.25, -.90, -.20]), nz([-.30, -.70, -.65]))   # the elbow slightly bent forwards (3D.205: it bent backwards)
 R_MID = (nz([-.25, -.75, .60]), nz([.15, -.25, .95]), nz([-.35, -.25, .90]))
-R_END = (nz([.35, .55, .76]), nz([.70, .65, .30]), nz([.40, .88, -.25]))
+R_END = (nz([.35, .45, .82]), nz([.90, .25, .36]), nz([.42, .86, -.28]))   # (3D.206) forearm across the chest, so the weapon leans over the left shoulder and its handle stays off the wrist
 def gslerp(a, b, u):   # along the great circle from direction a to direction b
     a = nz(a); b = nz(b); c = float(np.clip(a @ b, -1, 1)); th = math.acos(c)
     if th < 1e-4: return a
@@ -174,11 +194,12 @@ for fr in range(nf + 1): goto(fr); upd(); RH.append(P(PB['hand.R'].tail) - P(PB[
 RHa = np.array(RH); _v = np.linalg.norm(np.diff(RHa, axis=0), axis=1); _v = np.convolve(np.pad(_v, 3, mode='edge'), np.ones(7) / 7, 'valid'); T_S = int(_v.argmax()); T_W = int(max(3, _v[int(nf * .12):max(int(nf * .12) + 1, T_S - 2)].argmin() + int(nf * .12)))
 print('KEYS wind-up', T_W, 'strike', T_S, 'of', nf)
 # ---- pass 1: the turn each frame needs
-RV = {'upperarm.R': np.zeros((nf + 1, 3)), 'upperarm.L': np.zeros((nf + 1, 3))}; before = []
+RV = {'upperarm.R': np.zeros((nf + 1, 3)), 'upperarm.L': np.zeros((nf + 1, 3)), 'hand.R': np.zeros((nf + 1, 3))}; before = []
 for fr in range(nf + 1):
     goto(fr); m = meas(); before.append(m)
     if RISE: upd(); set_rarm(fr)
-    for bone, viol in (('upperarm.R', violR),) + (() if FREEARM else (('upperarm.L', violL),)):
+    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + (() if FREEARM else (('upperarm.L', violL),)):
+        if bone == 'hand.R': turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd()
         RV[bone][fr] = solve(bone, viol, RV[bone][fr - 1] if fr else np.zeros(3))
     if RISE and os.environ.get('ZH_DBG') and 28 <= fr <= 40: m2 = meas(); print('DBG', fr, 'rv %.0f' % np.degrees(np.linalg.norm(RV['upperarm.R'][fr])), {k: round(v, 2) for k, v in m2.items()}, 'hand', np.round(P(PB['hand.R'].tail), 2), 'bat', np.round(batdir(), 2), 'chestF', np.round(chest3()[:, 2], 2), 'up', np.round(chest3()[:, 1], 2))
 # ---- spread each turn over the frames around it
@@ -236,7 +257,7 @@ for fr in range(nf + 1):
     goto(fr); upd()
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
     if RISE: set_rarm(fr)
-    turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd(); _B.append(batdir()); _H.append(P(PB['hand.R'].tail)); _C.append((chest3().copy(), P(PB['chest'].head))); _L0 = P(PB['hand.L'].tail) if fr == 0 else _L0
+    turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd(); turn('hand.R', RV['hand.R'][fr], PB['hand.R'].matrix.copy()); upd(); _B.append(batdir()); _H.append(P(PB['hand.R'].tail)); _C.append((chest3().copy(), P(PB['chest'].head))); _L0 = P(PB['hand.L'].tail) if fr == 0 else _L0
 TT0 = retime(_B, _H, [c[0] @ (_C[0][0].T @ (_L0 - _C[0][1])) + c[1] for c in _C])[0]
 new = bpy.data.actions.new(clip + '_fix'); frames = []; BATD = []; HANDP = []; HANDL = []; SHL = []; CHM = []; _l = batv @ np.array([0, 0, 0.]) if False else None
 for fr in range(nf + 1):
@@ -244,7 +265,7 @@ for fr in range(nf + 1):
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
     if FREEARM: set_larm(larm_at(fr), fr); lock_larm(fr)
     if RISE: set_rarm(fr)
-    for bone, viol in (('upperarm.R', violR),) + ((() if FREEARM else (('upperarm.L', violL),))):
+    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if FREEARM else (('upperarm.L', violL),))):
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr], base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
             ok_ = False
@@ -291,6 +312,7 @@ g = lambda L, k: [round(x[k], 3) for x in L]
 print('RESULT', clip, 'frames', nf + 1, '| weapon-head before min %.3f after min %.3f | right hand %.3f -> %.3f | left hand %.3f -> %.3f | elbows %.3f -> %.3f | weapon lowest %.3f -> %.3f | hips lifted up to %.3f | frames turned R %d L %d' % (
     min(g(before, 'bat')), min(g(after, 'bat')), min(g(before, 'hR')), min(g(after, 'hR')), min(g(before, 'hL')), min(g(after, 'hL')), min(min(g(before, 'eR')), min(g(before, 'eL'))), min(min(g(after, 'eR')), min(g(after, 'eL'))),
     min(g(before, 'low')), min(g(after, 'low')), lift.max(), int((np.linalg.norm(RV['upperarm.R'], axis=1) > 0).sum()), int((np.linalg.norm(RV['upperarm.L'], axis=1) > 0).sum())))
+print('BODY', clip, 'own arm after %.3f |' % min(g(after, 'own')), 'body clearance before %.3f after %.3f | wrist turned at %d frames' % (min(g(before, 'body')), min(g(after, 'body')), int((np.linalg.norm(RV['hand.R'], axis=1) > 0).sum())))
 if dump:   # old and new, body + bat, for wstrips.py
     me.calc_loop_triangles(); tri = np.array([t.vertices[:] for t in me.loop_triangles]); tl = np.array([t.loops[:] for t in me.loop_triangles]); uv = np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
     img = next(i for i in bpy.data.images if i.size[0] > 0 and len(i.pixels)); Wd, Hd = img.size; px = (np.array(img.pixels[:]).reshape(Hd, Wd, 4)[:, :, :3] * 255).astype(np.uint8); px[0:3, 0:3] = (70, 70, 75)

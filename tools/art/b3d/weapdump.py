@@ -33,5 +33,6 @@ for clip,wn in pairs:
     res['V:'+clip]=np.array(V); res['J:'+clip]=np.array(J); res['M:'+clip]=np.array(M); res['F:'+clip]=np.array([f0,f1,bpy.context.scene.render.fps])
     res['D:'+clip]=np.array(DD)   # the weapon's direction at each moment
     res['T:'+clip]=np.concatenate([tri,wt]) if w else tri
+    res['NB:'+clip]=np.array(len(me.vertices))   # how many of the vertices are the body's (the rest are the weapon's)
     res['U:'+clip]=np.concatenate([uv,np.zeros((len(wt),3,2))+.0005]) if w else uv
 np.savez_compressed(out,**res); print('ok')
