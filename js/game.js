@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.206', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.207', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7124,15 +7124,17 @@ const SVT_GROUPS = [
   ['Everyday', ['talk', 'wave', 'cheer', 'sit', 'sit_f', 'eat', 'sleep']],
   ['Work', ['work_chop', 'work_hammer', 'work_dig', 'work_tinker', 'work_barricade']],
   ['Melee', ['melee_hold_idle', 'melee_hold_walk', 'melee_hold_jog', 'punch', 'shove', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'melee_combo_1', 'melee_combo_2', 'melee_combo_3', 'melee_combo2h_1', 'melee_combo2h_2', 'melee_combo2h_3']],
+  ['Two-handed', ['melee2h_hold_idle', 'melee2h_swing_a', 'melee2h_swing_b', 'melee2h_swing_c', 'spear_hold_idle', 'spear_stab']],
   ['Guns', ['gun_hold_idle', 'gun_hold_walk', 'gun_hold_jog', 'gun_fire', 'pistol_fire', 'gun_reload']],
   ['Hurt', ['hurt', 'melee_hold_hurt', 'gun_hold_hurt', 'grabbed', 'knockdown', 'collapse']]];
 const SVT_NAME = { idle: 'Stand', walk: 'Walk', jog: 'Jog', run: 'Run', walk_f: 'Walk (woman, calm)', limp_walk: 'Limp', carry_idle: 'Carry, standing', carry_walk: 'Carry, walking', rescue: 'Pushing the rescue cart', pickup: 'Pick up',
   talk: 'Talk', wave: 'Wave', cheer: 'Cheer', sit: 'Sit', sit_f: 'Sit (woman)', eat: 'Eat', sleep: 'Sleep', work_chop: 'Chop', work_hammer: 'Hammer', work_dig: 'Dig', work_tinker: 'Tinker', work_barricade: 'Board up',
-  melee_hold_idle: 'Melee stance', melee_hold_walk: 'Walk with melee weapon', melee_hold_jog: 'Jog with melee weapon', gun_hold_jog: 'Jog with gun', punch: 'Punch', shove: 'Shove', melee_swing_a: 'Swing 1', melee_swing_b: 'Swing 2', melee_swing_c: 'Swing 3 (rising)',
+  melee_hold_idle: 'Melee stance', melee_hold_walk: 'Walk with melee weapon', melee_hold_jog: 'Jog with melee weapon', gun_hold_jog: 'Jog with gun', punch: 'Punch', shove: 'Shove', melee_swing_a: 'Swing 1', melee_swing_b: 'Swing 2', melee_swing_c: 'Swing 3 (rising)', melee2h_hold_idle: 'Two-hand stance', melee2h_swing_a: 'Two-hand A (level)', melee2h_swing_b: 'Two-hand B (low rising)', melee2h_swing_c: 'Two-hand C (overhead chop)', spear_hold_idle: 'Spear stance', spear_stab: 'Spear stab',
   melee_combo_1: 'Combo 1', melee_combo_2: 'Combo 2', melee_combo_3: 'Combo 3', melee_combo2h_1: 'Two-hand combo 1', melee_combo2h_2: 'Two-hand combo 2', melee_combo2h_3: 'Two-hand combo 3',
   gun_hold_idle: 'Gun stance', gun_hold_walk: 'Walk with gun', gun_fire: 'Fire rifle', pistol_fire: 'Fire pistol', gun_reload: 'Reload', hurt: 'Hurt', melee_hold_hurt: 'Hurt (melee)', gun_hold_hurt: 'Hurt (gun)', grabbed: 'Grabbed', knockdown: 'Knocked down', collapse: 'Collapse' };
 const SVT_REAL = new Set(['run', 'carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload', 'idle', 'walk', 'walk_f', 'jog', 'carry_walk', 'melee_hold_walk', 'melee_hold_jog', 'gun_hold_walk', 'gun_hold_jog']);   /* the clips that are already recordings of real people; add to this as they are replaced (W63) */
 const SVT_PART = new Set(['carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload']);   /* recorded body, old arms */
+const SVT_TWO = new Set(['melee2h_swing_a', 'melee2h_swing_b', 'melee2h_swing_c', 'spear_stab']);   /* 3D.207 the body from a recording of a real person (baseball swing, golf swing, chopping wood, a step-in punch), both hands on the weapon */
 const SVT_SWING = new Set(['melee_swing_a', 'melee_swing_b', 'melee_swing_c']);   /* 3D.205: Swing 4 (overhead) taken out of the one-handed set (owner, 18 Nov); its clip stays in the model file, unused, for the two-handed set (W84). Swing 3 is a new rising cut. */   /* 3D.201 the old hand-made swings, corrected by tools/art/b3d/fixswing.py (owner, 18 Nov: the recorded swings of 3D.198 looked weak) */
 let svtClip = 'walk', svtTurn = true, svtFem = false, svtList = [];
 const svtWho = () => S.sv.find((q) => q.svt);
@@ -7159,10 +7161,10 @@ function svtApply(again) {
   const d = $('zooPanel'); if (!d) return; const i = svtList.indexOf(svtClip), info = (window.ZH3D && ZH3D.survivorClips ? ZH3D.survivorClips(svtFem) : []).find((c) => c.name === svtClip);
   const g = SVT_GROUPS.findIndex((x) => x[1].includes(svtClip));
   d.querySelectorAll('.zt').forEach((b) => b.classList.toggle('on', +b.dataset.g === g));
-  $('svtRow').innerHTML = SVT_GROUPS[g][1].map((c) => `<button class="zc${c === svtClip ? ' on' : ''}" data-c="${c}"><b>${esc(SVT_NAME[c] || c)}</b>${SVT_REAL.has(c) ? '<i>REAL</i>' : SVT_SWING.has(c) ? '<i>FIXED</i>' : ''}</button>`).join('');
+  $('svtRow').innerHTML = SVT_GROUPS[g][1].map((c) => `<button class="zc${c === svtClip ? ' on' : ''}" data-c="${c}"><b>${esc(SVT_NAME[c] || c)}</b>${SVT_REAL.has(c) || SVT_TWO.has(c) ? '<i>REAL</i>' : SVT_SWING.has(c) ? '<i>FIXED</i>' : ''}</button>`).join('');
   $('svtRow').querySelectorAll('.zc').forEach((b) => { b.onclick = () => { svtClip = b.dataset.c; svtApply(true); }; if (b.dataset.c === svtClip) b.scrollIntoView({ block: 'nearest', inline: 'center' }); });
   $('svtTurn').classList.toggle('on', svtTurn); $('svtSex').textContent = svtFem ? 'Woman' : 'Man';
-  $('zooInfo').innerHTML = `<b>${esc(SVT_NAME[svtClip] || svtClip)}</b> · ${i + 1} of ${svtList.length}${info ? ' · ' + info.dur.toFixed(1) + ' s' : ''} · ${SVT_SWING.has(svtClip) ? 'the old swing, corrected: nothing passes through the head' : SVT_REAL.has(svtClip) ? (SVT_PART.has(svtClip) ? 'new: recorded body, old arms' : 'a real recording') : 'old, still to replace'}`;
+  $('zooInfo').innerHTML = `<b>${esc(SVT_NAME[svtClip] || svtClip)}</b> · ${i + 1} of ${svtList.length}${info ? ' · ' + info.dur.toFixed(1) + ' s' : ''} · ${SVT_TWO.has(svtClip) ? 'new: the body of a real person, both hands on the weapon' : /^melee2h|^spear/.test(svtClip) ? 'new: ready stance, both hands on the weapon' : SVT_SWING.has(svtClip) ? 'the old swing, corrected: nothing passes through the head' : SVT_REAL.has(svtClip) ? (SVT_PART.has(svtClip) ? 'new: recorded body, old arms' : 'a real recording') : 'old, still to replace'}`;
 }
 function svtStart() {
   S.mission = null; simSpeed = 1; zooLine(); S.z = []; svtList = SVT_GROUPS.flatMap((g) => g[1]);

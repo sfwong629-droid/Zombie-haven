@@ -23,9 +23,22 @@ def goto(fr): t = f0 + fr / SUB; sc.frame_set(int(t), subframe=t - int(t))
 bat.data.calc_loop_triangles(); _bv = np.array([v.co[:] for v in bat.data.vertices]); _bt = _bv[np.array([t.vertices[:] for t in bat.data.loop_triangles])]
 batv = np.concatenate([_bv, _bt.mean(1), (_bt[:, 0] + _bt[:, 1]) / 2, (_bt[:, 1] + _bt[:, 2]) / 2, (_bt[:, 0] + _bt[:, 2]) / 2])   # the weapon's surface, sampled as the check samples it (its triangles are long)
 _ax = np.argmax(np.ptp(batv, axis=0)); TIPI = int(batv[:, _ax].argmax()); GRIPI = int(batv[:, _ax].argmin())
+AXV = batv.copy()   # the bat's own points: they give the weapon's line (tip, grip) even when the clearances use other weapons
+# 3D.207: the real weapons (ZH_GEAR = the decompressed gear_weapons.glb, ZH_GEARW = sledge,axe,... ): each is placed on the bat as the game places it
+# (js/render3d.js fitGear: its position relative to the bat in the rest pose), and the head and body clearances use all of them at once.
+if os.environ.get('ZH_GEAR'):
+    _before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=os.environ['ZH_GEAR']); _new = [o for o in bpy.data.objects if o not in _before]
+    ao.data.pose_position = 'REST'; bpy.context.view_layer.update(); _Wb = bat.matrix_world.copy(); _G = []
+    for _k in os.environ.get('ZH_GEARW', 'sledge').split(','):
+        _o = bpy.data.objects['gw_' + _k]; _o.data.calc_loop_triangles(); _R = _Wb.inverted() @ _o.matrix_world
+        _gv = np.array([(_R @ v.co)[:] for v in _o.data.vertices]); _gt = _gv[np.array([t.vertices[:] for t in _o.data.loop_triangles])]
+        _G.append(np.concatenate([_gv, _gt.mean(1), (_gt[:, 0] + _gt[:, 1]) / 2, (_gt[:, 1] + _gt[:, 2]) / 2, (_gt[:, 0] + _gt[:, 2]) / 2]))
+    ao.data.pose_position = 'POSE'; bpy.context.view_layer.update()
+    for _o in _new: bpy.data.objects.remove(_o, do_unlink=True)
+    batv = np.concatenate(_G); print('GEAR', os.environ.get('ZH_GEARW'), len(batv), 'points')
 def _fixtip():   # the tip is the end further from the hand
     global TIPI, GRIPI
-    bpy.context.view_layer.update(); mw = np.array(bat.matrix_world); h = np.array((ao.matrix_world @ ao.pose.bones['hand.R'].head)[:]); e = [np.linalg.norm(mw[:3, :3] @ batv[i] + mw[:3, 3] - h) for i in (TIPI, GRIPI)]
+    bpy.context.view_layer.update(); mw = np.array(bat.matrix_world); h = np.array((ao.matrix_world @ ao.pose.bones['hand.R'].head)[:]); e = [np.linalg.norm(mw[:3, :3] @ AXV[i] + mw[:3, 3] - h) for i in (TIPI, GRIPI)]
     if e[0] < e[1]: TIPI, GRIPI = GRIPI, TIPI
 _fixtip()
 order = [b.name for b in ao.data.bones]
@@ -34,6 +47,7 @@ def upd(): bpy.context.view_layer.update()
 _gi = body.vertex_groups['head'].index; _hv = [v.co.copy() for v in body.data.vertices if any(g.group == _gi and g.weight > .6 for g in v.groups)]
 _c = sum(_hv, Vector()) / len(_hv); HEADR = float(np.median([(v - _c).length for v in _hv])); HCL = ao.data.bones['head'].matrix_local.inverted() @ (ao.matrix_world.inverted() @ (body.matrix_world @ _c))
 def P(v): return np.array((ao.matrix_world @ v)[:])
+MEAS_RAW = [False]
 # 3D.206 (owner, 18 Nov: "the weapons are not going through the head or body correct?"): the body as one rounded tube per bone, as thick as the model there
 # (the 80th percentile distance of the bone's own vertices from it, in the rest pose). The weapon must stay out of all of them, except within 9 cm of the
 # gripping hand (the fist closes round the handle; tools/art/b3d/bodyhit.py, the independent check, skips the same zone).
@@ -47,14 +61,17 @@ print('CAPSULES', {k: round(v, 3) for k, v in CAPR.items()})
 def segd(Pts, h, t):
     u = np.clip(((Pts - h) @ (t - h)) / max(1e-9, (t - h) @ (t - h)), 0, 1); return np.linalg.norm(Pts - (h + u[:, None] * (t - h)), axis=1)
 def meas():
+    if TWO and PLFR[0] is not None and not MEAS_RAW[0]: place_left()
     upd(); hc = P(PB['head'].matrix @ HCL)
     mw = np.array(bat.matrix_world); bv = batv @ mw[:3, :3].T + mw[:3, 3]
     d = lambda p: float(np.linalg.norm(p - hc))
-    hr = P(PB['hand.R'].tail); far = bv[np.linalg.norm(bv - hr, axis=1) > .09]; bod = 9.; own = 9.
+    hr = P(PB['hand.R'].tail); farm = np.linalg.norm(bv - hr, axis=1) > .09
+    if TWO: farm &= np.linalg.norm(bv - P(PB['hand.L'].tail), axis=1) > .09
+    far = bv[farm]; bod = 9.; own = 9.
     if len(far):
         for _b in CAPS:
             c_ = float(segd(far, P(PB[_b].head), P(PB[_b].tail)).min()) - CAPR[_b]
-            if _b in ('upperarm.R', 'forearm.R'): own = min(own, c_)   # the weapon arm itself: only the wrist can clear it
+            if _b in ('upperarm.R', 'forearm.R') or (TWO and _b in ('upperarm.L', 'forearm.L')): own = min(own, c_)   # the weapon arm itself: only the wrist can clear it
             else: bod = min(bod, c_)
     return {'bat': float(np.linalg.norm(bv - hc, axis=1).min()), 'low': float(bv[:, 2].min()), 'body': bod, 'own': own,
             'hR': min(d(P(PB['hand.R'].head)), d(P(PB['hand.R'].tail)), d(P(PB['fingers.R'].tail))), 'eR': d(P(PB['forearm.R'].head)),
@@ -62,7 +79,7 @@ def meas():
 M_BAT = HEADR + float(os.environ.get('ZH_MBAT', '.055')); M_HAND = HEADR + float(os.environ.get('ZH_MHAND', '.06')); M_ELB = HEADR + float(os.environ.get('ZH_MELB', '.035'))
 BODYM = float(os.environ.get('ZH_BODYM', '.008'))
 def violOwn(m): return max(0, BODYM - m['own'])
-def violR(m): return max(0, BODYM - m['body']) + max(0, M_BAT - m['bat']) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
+def violR(m): return max(0, BODYM - m['body']) + max(0, M_BAT - m['bat']) + ((max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])) if TWO else 0) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
 def violL(m): return max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])
 def turn(bone, rv, base):   # turn a bone about its own head by the rotation vector rv (world axes), starting from its matrix `base`
     ang = float(np.linalg.norm(rv)); pb = PB[bone]
@@ -102,10 +119,11 @@ L_HIT = (nz([.38, -.80, -.46]), nz([.10, -.45, .88]))     # elbow drawn back, fi
 def frame4(y, x, head):
     y = nz(y); x = nz(x - y * (x @ y)); z = np.cross(x, y); m = Matrix(np.stack([x, y, z], 1).tolist()).to_4x4(); m.translation = head; return m
 HPREV = {}
+IKH = [False]
 def hinge_of(side, C, du, df, fr):   # 3D.204: the elbow's hinge is square to both arm bones; when the arm is nearly straight that is undefined and it used to
     # switch to a fixed axis all at once (an 84-degree flip in Swing 4). It now blends towards the last hinge as the arm straightens.
     if fr == 0 or side not in HPREV: HPREV[side] = -C[:, 0]
-    n = np.cross(du, df); prev = HPREV[side]; prev = nz(prev - du * (prev @ du)); w = sst(.04, .22, float(np.linalg.norm(n))) * sst(-.05, .3, float(nz(n) @ prev))   # (3D.205) a bend the other way (the elbow backwards) keeps the last hinge; the hand-over is gradual
+    n = np.cross(du, df); prev = HPREV[side]; prev = nz(prev - du * (prev @ du)); w = sst(.04, .22, float(np.linalg.norm(n))) * (1. if IKH[0] else sst(-.05, .3, float(nz(n) @ prev)))   # (3D.207) an arm solved to reach a point always bends towards its hint, so its true bend is always right   # (3D.205) a bend the other way (the elbow backwards) keeps the last hinge; the hand-over is gradual
     h = nz(nz(n) * w + prev * (1 - w)) if w > 0 else prev; HPREV[side] = h
     if os.environ.get('ZH_DBG') and side == 'R' and fr is not None and 26 <= fr <= 44: print('HINGE', fr, '|n| %.2f n.prev %.2f w %.2f' % (np.linalg.norm(n), float(n @ prev), w), 'du', np.round(du, 2), 'df', np.round(df, 2), 'h', np.round(h, 2))
     return h
@@ -116,7 +134,7 @@ def set_arm(side, dirs, fr=None):   # upper arm and forearm along two directions
     C = chest3(); du = nz(C @ dirs[0]); df = nz(C @ dirs[1]); hinge = hinge_of(side, C, du, df, fr)
     pb = PB['upperarm.' + side]; pb.matrix = frame4(du, hinge, pb.matrix.translation.copy()); upd(); pb = PB['forearm.' + side]; pb.matrix = frame4(df, hinge, pb.matrix.translation.copy()); upd()
 def batdir():
-    upd(); mw = np.array(bat.matrix_world); return nz(mw[:3, :3] @ (batv[TIPI] - batv[GRIPI]))
+    upd(); mw = np.array(bat.matrix_world); return nz(mw[:3, :3] @ (AXV[TIPI] - AXV[GRIPI]))
 def aim_bat(d):   # turn the hand so the weapon points along d (chest frame), by the shortest turn
     W2A = np.array(ao.matrix_world.to_3x3()).T; want = nz(chest3() @ nz(d)); cur = nz(W2A @ batdir()); ax = np.cross(cur, want); sn = np.linalg.norm(ax)
     if sn > 1e-6: turn('hand.R', ax / sn * math.atan2(sn, float(cur @ want)), PB['hand.R'].matrix.copy()); upd()
@@ -147,6 +165,85 @@ def set_rarm(fr):   # the hand starts from its last turn, so aiming the weapon i
     d = rarm_at(fr); set_arm('R', d[:2], fr)
     if fr and 'q' in HQ: PB['hand.R'].rotation_quaternion = HQ['q']; upd()
     aim_bat(d[2]); HQ['q'] = PB['hand.R'].rotation_quaternion.copy()
+# ---- 3D.207 two-handed weapons (owner, 18 Nov: two-handed swings copied from real people: a baseball swing, a golf swing, chopping wood; a spear stab).
+# ZH_TWOHAND = rec  : the weapon runs along the line between the recorded hands (ZH_WDIR: the retarget.py JSON with 'wdir'), the right arm as recorded
+#              hold : a still pose for a ready stance (ZH_HOLD: 'stab' for the spear, otherwise the two-handed ready stance)
+#              stab : the spear thrust, made by hand on the recorded body: the spear drawn back at the hip, driven forward, recovered
+# Every frame the left hand is put on the handle (ZH_GRIP: 'below' = towards the handle's end, as on a bat or an axe; 'ahead' = towards the tip, as on a spear),
+# ZH_GAP apart, by solving the left arm (two bones, the elbow kept down and out).
+TWO = os.environ.get('ZH_TWOHAND', ''); GRIP = os.environ.get('ZH_GRIP', 'below'); GAP = float(os.environ.get('ZH_GAP', '.11'))
+if TWO: FREEARM = False
+WDJ = json.load(open(os.environ['ZH_WDIR'])) if os.environ.get('ZH_WDIR') else None
+W2A = np.array(ao.matrix_world.to_3x3()).T; A2W = np.array(ao.matrix_world.to_3x3())
+def wdir_at(fr):   # the recorded weapon line at this fine frame, in armature space
+    t = fr / (fps * SUB); W = WDJ['wdir']; x = min(len(W) - 1.001, max(0., t * WDJ['fps'])); i = int(x); u = x - i
+    return nz(np.array(W[i]) * (1 - u) + np.array(W[i + 1]) * u)
+def place_left():
+    upd(); mw = np.array(bat.matrix_world); tip = mw[:3, :3] @ AXV[TIPI] + mw[:3, 3]; grp = mw[:3, :3] @ AXV[GRIPI] + mw[:3, 3]; wd = nz(tip - grp)
+    rc = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; t_ = float((rc - grp) @ wd); c = grp + wd * t_; perp = rc - c
+    tgt = c + wd * (GAP if GRIP == 'ahead' else -GAP) + perp   # the left hand's middle: on the handle, the same side of it as the right hand's
+    w = tgt + (P(PB['hand.R'].head) - rc)
+    s_ = P(PB['upperarm.L'].head); sc_ = ao.matrix_world.to_scale()[0]; l1 = PB['upperarm.L'].length * sc_; l2 = PB['forearm.L'].length * sc_
+    for _ in range(4):
+        dv = w - s_; dd = float(np.clip(np.linalg.norm(dv), .05, (l1 + l2) * .999)); dn = nz(dv)
+        C = A2W @ chest3(); pole = nz(C @ np.array([.55, -.75, -.25])); pole = nz(pole - dn * (pole @ dn))
+        x = (l1 * l1 - l2 * l2 + dd * dd) / (2 * dd); y = math.sqrt(max(0., l1 * l1 - x * x)); e = s_ + dn * x + pole * y
+        du = W2A @ nz(e - s_); df = W2A @ nz(s_ + dn * dd - e); Cc = chest3(); IKH[0] = True; set_arm('L', (Cc.T @ du, Cc.T @ df), PLFR[0] if _ == 0 else None); IKH[0] = False
+        m = PB['hand.R'].matrix.copy(); mL = PB['hand.L'].matrix.copy(); r = m.to_3x3() @ Matrix.Rotation(math.pi, 3, 'Y'); n_ = r.to_4x4(); n_.translation = mL.translation; PB['hand.L'].matrix = n_; upd()
+        err = tgt - (P(PB['hand.L'].head) + P(PB['hand.L'].tail)) / 2
+        if os.environ.get('ZH_DBGL') and PLFR[0] in (0, 30): print('PLR', PLFR[0], _, 'reach %.3f of %.3f' % (np.linalg.norm(w - s_), l1 + l2), 'shoulder->right hand %.3f' % np.linalg.norm(rc - s_), 'tgt-rc', np.round(tgt - rc, 3))
+        if np.linalg.norm(w - s_) > (l1 + l2) * .999: break   # out of reach: as close as the arm allows
+        if os.environ.get('ZH_DBGL') and PLFR[0] in (0, 30): print('PL', PLFR[0], _, 'err %.3f' % np.linalg.norm(err), 'reach %.3f of %.3f' % (np.linalg.norm(w - s_), l1 + l2), 'hand.L len', round(PB['hand.L'].length * sc_, 3))
+        if np.linalg.norm(err) < .004: break
+        w = w + err
+PLFR = [None]
+def ik_arm(side, centre, pole_c, fr=None):   # put the hand's middle at `centre` (world): two bones, the elbow towards pole_c (chest frame); a few passes
+    sc_ = ao.matrix_world.to_scale()[0]; l1 = PB['upperarm.' + side].length * sc_; l2 = PB['forearm.' + side].length * sc_; s_ = P(PB['upperarm.' + side].head)
+    hc = lambda: (P(PB['hand.' + side].head) + P(PB['hand.' + side].tail)) / 2
+    w = centre + (P(PB['hand.' + side].head) - hc())
+    for k in range(4):
+        dv = w - s_; dd = float(np.clip(np.linalg.norm(dv), .05, (l1 + l2) * .999)); dn = nz(dv)
+        pole = nz(A2W @ chest3() @ np.array(pole_c)); pole = nz(pole - dn * (pole @ dn))
+        x = (l1 * l1 - l2 * l2 + dd * dd) / (2 * dd); y = math.sqrt(max(0., l1 * l1 - x * x)); e = s_ + dn * x + pole * y
+        Cc = chest3(); IKH[0] = True; set_arm(side, (Cc.T @ (W2A @ nz(e - s_)), Cc.T @ (W2A @ nz(s_ + dn * dd - e))), fr if k == 0 else None); IKH[0] = False
+        err = centre - hc()
+        if np.linalg.norm(err) < .004 or np.linalg.norm(w - s_) > (l1 + l2): break
+        w = w + err
+# the spear (3D.207): the right hand's middle at a point in front of the body, as an offset from the neck in the hips' frame (left, forward, up), and the
+# spear pointing straight ahead (hips' frame), whatever the chest does. The chest is turned (ZH_CHESTTURN) so the left shoulder comes forward.
+SP_READY = (np.array([-.04, .14, -.17]), np.array([.24, 1., .00])); SP_DRAW = (np.array([-.08, .04, -.16]), np.array([.24, 1., .02])); SP_HIT = (np.array([.00, .30, -.12]), np.array([.20, 1., .02]))   # angled a little across the body, so the butt passes outside the right hip
+def hips3():   # the hips' turn about the vertical only (3D.207: when the body leans into the thrust the spear stays level)
+    m = np.array(PB['pelvis'].matrix.to_3x3()); f = m[:, 2].copy(); f[2] = 0; f = nz(f); up = np.array([0, 0, 1.]); l = nz(np.cross(up, f)); return np.stack([l, up, f], 1)
+def spear_at(key):
+    off, d = key; H = A2W @ hips3(); nk = P(PB['neck'].head)
+    # the pelvis bone's columns are (left, up along the spine, forward) like the chest's: offsets given as (left, forward, up) map to columns 0, 2, 1
+    cen = nk + H @ np.array([off[0], off[2], off[1]]); dirw = nz(H @ np.array([d[0], d[2], d[1]]))
+    ik_arm('R', cen, [-.4, -.8, -.2], PLFR[0]); aim_arm(W2A @ dirw)
+HOLD = os.environ.get('ZH_HOLD', '')
+H_READY = (nz([-.02, -.78, .62]), nz([.78, .40, .48]), nz([-.30, .90, -.30]))   # two-handed ready: hands in front of the breastbone (the arms are short), the weapon up over the right shoulder
+S_READY = (nz([-.20, -.62, .76]), nz([.82, .12, .56]), nz([.00, -.04, 1.]))      # spear ready (high guard; the arms are short): the right forearm across the chest, the spear pointing forward
+S_DRAW = (nz([-.25, -.85, .45]), nz([.75, .15, .64]), nz([.02, -.02, 1.]))       # drawn back for the thrust
+S_HIT = (nz([.05, -.25, .97]), nz([.55, -.02, .84]), nz([-.02, -.06, 1.]))        # driven forward
+CHT = math.radians(float(os.environ.get('ZH_CHESTTURN', '0')))
+def two_pose(fr):
+    if CHT:
+        for b_, k_ in (('pelvis', .35), ('chest', .65)):
+            m_ = PB[b_].matrix.copy(); R_ = Matrix.Rotation(-CHT * k_, 4, 'Z'); t_ = m_.translation.copy(); m_ = R_ @ m_; m_.translation = t_; PB[b_].matrix = m_; upd()
+    if fr == 0: HQ.pop('q', None)
+    if TWO == 'rec':
+        aim_arm(wdir_at(fr))
+    elif TWO == 'hold' and HOLD == 'stab':
+        PLFR[0] = fr; spear_at(SP_READY)
+    elif TWO == 'hold':
+        d = H_READY; set_arm('R', d[:2], fr); aim_bat(d[2])
+    elif TWO == 'stab':
+        kB = T_S - 3 * SUB; kE = T_S + SUB; w1 = sst(T_W * .2, kB, fr); u = sst(kB, kE, fr); w3 = sst(kE + (nf - kE) * .35, nf, fr); out = []
+        L = lambda a, b, t: (a[0] * (1 - t) + b[0] * t, nz(a[1] * (1 - t) + b[1] * t))
+        PLFR[0] = fr; spear_at(L(L(L(SP_READY, SP_DRAW, w1), SP_HIT, u), SP_READY, w3))
+    PLFR[0] = fr; place_left()
+def aim_arm(v_arm):   # aim the weapon along a direction in armature space, the hand starting from its last turn (no flips)
+    if 'q' in HQ: PB['hand.R'].rotation_quaternion = HQ['q']; upd()
+    aim_bat(chest3().T @ nz(v_arm)); HQ['q'] = PB['hand.R'].rotation_quaternion.copy()
 def rarm_local():
     C = chest3(); W2A = np.array(ao.matrix_world.to_3x3()).T; u = nz(P(PB['upperarm.R'].tail) - P(PB['upperarm.R'].head)); f = nz(P(PB['forearm.R'].tail) - P(PB['forearm.R'].head)); return (C.T @ (W2A @ u), C.T @ (W2A @ f), C.T @ (W2A @ batdir()))
 def sst(a, b, x): t = min(1., max(0., (x - a) / max(1e-6, b - a))); return t * t * (3 - 2 * t)
@@ -172,7 +269,8 @@ try:
     if old.slots: ad.action_slot = old.slots[0]
 except Exception: pass
 def stance_lock(t):   # 1 at the clip's two ends, 0 in the swing
-    tW = TT0[T_W]; Tc = TT0[-1]; return max(1 - sst(0, max(.08, tW * .45), t), sst(Tc - max(.12, (Tc - TT0[T_S]) * .35), Tc, t))
+    tW = TT0[T_W]; Tc = TT0[-1]; e_ = max(.25, (Tc - TT0[T_S]) * .5) if TWO else max(.12, (Tc - TT0[T_S]) * .35)   # (3D.207) two hands on the weapon: a longer return
+    return max(1 - sst(0, max(.08, tW * .45), t), sst(Tc - e_, Tc, t))
 def lock_all(fr):   # 3D.205: the whole body starts and ends in the game's stance
     w = stance_lock(TT0[fr])
     if w <= 0: return
@@ -198,7 +296,8 @@ RV = {'upperarm.R': np.zeros((nf + 1, 3)), 'upperarm.L': np.zeros((nf + 1, 3)), 
 for fr in range(nf + 1):
     goto(fr); m = meas(); before.append(m)
     if RISE: upd(); set_rarm(fr)
-    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + (() if FREEARM else (('upperarm.L', violL),)):
+    if TWO: upd(); two_pose(fr)
+    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + (() if (FREEARM or TWO) else (('upperarm.L', violL),)):
         if bone == 'hand.R': turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd()
         RV[bone][fr] = solve(bone, viol, RV[bone][fr - 1] if fr else np.zeros(3))
     if RISE and os.environ.get('ZH_DBG') and 28 <= fr <= 40: m2 = meas(); print('DBG', fr, 'rv %.0f' % np.degrees(np.linalg.norm(RV['upperarm.R'][fr])), {k: round(v, 2) for k, v in m2.items()}, 'hand', np.round(P(PB['hand.R'].tail), 2), 'bat', np.round(batdir(), 2), 'chestF', np.round(chest3()[:, 2], 2), 'up', np.round(chest3()[:, 1], 2))
@@ -237,10 +336,14 @@ for fr in range(nf + 1):
 lift = np.array([max(0., restlow - z) for z in lows]); lift = np.array([max(lift[max(0, i - SUB):i + SUB + 1]) for i in range(len(lift))]); k_ = 2 * SUB + 1; lift = np.convolve(np.pad(lift, SUB, mode='edge'), np.ones(k_) / k_, 'valid')
 OMEGA = float(os.environ.get('ZH_OMEGA', '1150')); VHAND = float(os.environ.get('ZH_VHAND', '5.5')); Tclip = nf / fps / SUB
 VLEFT = float(os.environ.get('ZH_VLEFT', '99'))   # 3D.204: the free hand too (the body's own twist threw it across in two frames)
-def retime(BATD, HANDP, HANDL=None):
+OMEGA_ARM = float(os.environ.get('ZH_OMEGA_ARM', '1300'))   # (3D.207, two-handed) no arm bone turns faster than this, degrees a second
+ARMB = ('upperarm.L', 'forearm.L', 'hand.L', 'upperarm.R', 'forearm.R', 'hand.R')
+def retime(BATD, HANDP, HANDL=None, ARMQ=None):
     dth = np.degrees(np.arccos(np.clip((np.array(BATD[1:]) * np.array(BATD[:-1])).sum(1), -1, 1))); dh = np.linalg.norm(np.diff(np.array(HANDP), axis=0), axis=1)
     need = np.maximum(dth / OMEGA, dh / VHAND)
     if HANDL is not None: need = np.maximum(need, np.linalg.norm(np.diff(np.array(HANDL), axis=0), axis=1) / VLEFT)
+    if ARMQ is not None:
+        A = np.array(ARMQ); dq = np.degrees(2 * np.arccos(np.clip(np.abs((A[1:] * A[:-1]).sum(2)), 0, 1))).max(1); need = np.maximum(need, dq / OMEGA_ARM)
     base_ = np.full(nf, Tclip / nf); tau = base_.copy()
     capped = np.zeros(nf, bool)
     for _ in range(200):
@@ -257,15 +360,17 @@ for fr in range(nf + 1):
     goto(fr); upd()
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
     if RISE: set_rarm(fr)
+    if TWO: two_pose(fr)
     turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd(); turn('hand.R', RV['hand.R'][fr], PB['hand.R'].matrix.copy()); upd(); _B.append(batdir()); _H.append(P(PB['hand.R'].tail)); _C.append((chest3().copy(), P(PB['chest'].head))); _L0 = P(PB['hand.L'].tail) if fr == 0 else _L0
 TT0 = retime(_B, _H, [c[0] @ (_C[0][0].T @ (_L0 - _C[0][1])) + c[1] for c in _C])[0]
-new = bpy.data.actions.new(clip + '_fix'); frames = []; BATD = []; HANDP = []; HANDL = []; SHL = []; CHM = []; _l = batv @ np.array([0, 0, 0.]) if False else None
+new = bpy.data.actions.new(clip + '_fix'); frames = []; BATD = []; HANDP = []; HANDL = []; SHL = []; CHM = []; ARMQ = []; _l = batv @ np.array([0, 0, 0.]) if False else None
 for fr in range(nf + 1):
     goto(fr); upd()
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
     if FREEARM: set_larm(larm_at(fr), fr); lock_larm(fr)
     if RISE: set_rarm(fr)
-    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if FREEARM else (('upperarm.L', violL),))):
+    if TWO: two_pose(fr)
+    for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr], base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
             ok_ = False
@@ -274,12 +379,23 @@ for fr in range(nf + 1):
                 if viol(meas()) == 0: ok_ = True; break
             if not ok_: turn(bone, np.zeros(3), base); upd(); rv = solve(bone, viol, RV0[bone][fr]); turn(bone, rv, base); upd()
     if SJ: lock_all(fr)
-    after.append(meas()); frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
-    _mw = np.array(bat.matrix_world); _bv2 = batv @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); HANDP.append(P(PB['hand.R'].tail)); HANDL.append(P(PB['hand.L'].tail)); SHL.append(P(PB['upperarm.L'].head)); CHM.append((chest3().copy(), P(PB['chest'].head)))
+    if TWO:
+        place_left()
+        if SJ:   # (3D.207) near the two ends the left arm is the stance's own (which holds the handle), blended in, so the clip ends exactly where it starts
+            w_ = stance_lock(TT0[fr])
+            if w_ > 0:
+                for b_ in ('upperarm.L', 'forearm.L', 'hand.L', 'fingers.L'):
+                    q_ = PB[b_].rotation_quaternion.copy(); q0_ = STALL[b_][0]
+                    if q_.dot(q0_) < 0: q_.negate()
+                    PB[b_].rotation_quaternion = q_.slerp(q0_, w_)
+                upd()
+    ARMQ.append([list(PB[b_].rotation_quaternion) for b_ in ARMB])
+    MEAS_RAW[0] = True; after.append(meas()); MEAS_RAW[0] = False; frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
+    _mw = np.array(bat.matrix_world); _bv2 = AXV @ _mw[:3, :3].T + _mw[:3, 3]; BATD.append(nz(_bv2[TIPI] - _bv2[GRIPI])); HANDP.append(P(PB['hand.R'].tail)); HANDL.append(P(PB['hand.L'].tail)); SHL.append(P(PB['upperarm.L'].head)); CHM.append((chest3().copy(), P(PB['chest'].head)))
 # ---- timing (owner, 18 Nov, video: "the right arm is still teleporting"): going round the head is a longer way than going through it, and the old clip gave the
 # blow only two or three frames, so the weapon jumped from behind the back to the front. Time is moved from the still part of the wind-up to the blow:
 # the weapon may turn at most OMEGA degrees a second and the hand move at most VHAND units a second; the clip keeps its length.
-tt, dth, dh, need, base_ = retime(BATD, HANDP, HANDL)
+tt, dth, dh, need, base_ = retime(BATD, HANDP, HANDL, ARMQ if TWO else None)
 def pose_at(t):
     k = int(min(nf - 1, max(0, np.searchsorted(tt, t, side='right') - 1))); u = 0 if tt[k + 1] == tt[k] else (t - tt[k]) / (tt[k + 1] - tt[k]); out = {}
     for b in order:
@@ -329,5 +445,6 @@ if dump:   # old and new, body + bat, for wstrips.py
             fr = fa + (fb - fa) * i / (N - 1); sc.frame_set(int(fr), subframe=fr - int(fr)); dg = bpy.context.evaluated_depsgraph_get(); ev = body.evaluated_get(dg); m = ev.to_mesh()
             vv = np.array([(ev.matrix_world @ v.co)[:] for v in m.vertices], np.float32); ev.to_mesh_clear(); mw = bat.evaluated_get(dg).matrix_world
             V.append(np.concatenate([vv, np.array([(mw @ x.co)[:] for x in wm.vertices], np.float32)])); J.append(np.array([list(P(pb.head)) + list(P(pb.tail)) for pb in PB], np.float32))
+        res['NB:' + nm] = np.array(len(me.vertices))
         res['V:' + nm] = np.array(V); res['J:' + nm] = np.array(J); res['F:' + nm] = np.array([fa, fb, fps * (SUB if act is new else 1)]); res['T:' + nm] = np.concatenate([tri, wt]); res['U:' + nm] = np.concatenate([uv, np.zeros((len(wt), 3, 2)) + .0005])
     np.savez_compressed(dump, **res)

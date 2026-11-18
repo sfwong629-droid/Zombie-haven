@@ -1099,6 +1099,12 @@ const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge
   pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47',
   golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat', hatchet: 'axe', cleaver: 'axe', magnum: 'pistol' };   // 3D.28 new gear
 let WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
+/* 3D.207 owner (18 Nov): the big weapons are swung with both hands, copied from real people (a baseball swing, a golf swing, chopping wood), and the spear stabs.
+   Before the weapon models have loaded these weapons still borrow the bat, and swing as one-handed weapons. */
+const TWO_H = new Set(['sledge', 'axe', 'shovel', 'roadsign', 'spear']);
+const twoKind = (a, m) => (m === 'spear' && a.acts.spear_stab ? 'spear' : TWO_H.has(m) && a.acts.melee2h_swing_a ? '2h' : null);
+const twoIdle = (a, m) => { const k = twoKind(a, m); return k === 'spear' ? 'spear_hold_idle' : k === '2h' ? 'melee2h_hold_idle' : 'melee_hold_idle'; };
+const twoSwing = (a, m, n) => { const k = twoKind(a, m); return k === 'spear' ? 'spear_stab' : k === '2h' ? ['melee2h_swing_a', 'melee2h_swing_b', 'melee2h_swing_c'][((n % 3) + 3) % 3] : null; };
 const STAND_OF = { walk: 'idle', walk_f: 'idle', jog: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', melee_hold_jog: 'melee_hold_idle', gun_hold_jog: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
 /* 3D.94 own models for the weapons that used to borrow the bat, axe, pistol or rifle (tools/art/b3d/gear3d.py builds them in
    the survivor's rest pose). Each is fitted next to the weapon it borrowed: same bone, same grip, so every clip still lines up. */
@@ -1475,12 +1481,13 @@ function personAnim(a, s, dt) {
   { const sp = G.simSpeed ? G.simSpeed() : 1; if (anim === 'walk' && !hold && !s.carrying && a.acts.run && a.spd > (a.name === 'run' ? 1.6 : 1.8) * sp) { a.attacking = false; a.setWeapon(null); a.play('run'); return; } }   /* 3D.123 owner: anyone hurrying (faster than a walk) runs; women's hurried hip-sway walk looked sped up */
   if (anim === 'walk' && !hold && !s.carrying && a.acts.jog && !(s.hp < s.max * .3) && a.spd > (a.name === 'jog' ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1)) { a.attacking = false; a.setWeapon(null); a.play('jog'); return; }   /* 3D.189 owner: at the pace people cross the town a real person jogs; the walk is for strolls and short trips */
   const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); if (a.w.plank) a.w.plank.visible = day === 'work_barricade'; a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
-  if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
+  if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold === 'melee' ? twoIdle(a, model) : hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
   if (ATTACK.has(anim) && anim === 'shoot' && hold && a.isMov() && a.spd > .15) { a.attacking = false; a.play(hold + '_hold_walk'); return; }   /* 3D.100 owner (bow: frozen and sliding): a shooter stepping back between shots walks with the weapon up instead of gliding in the aim pose */
   if (ATTACK.has(anim)) {
     const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
     if (!a.attacking || (burst && a.comboSeen !== step)) {
-      const clip = anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a');
+      const two = cls === 'melee' && anim !== 'punch' && anim !== 'shoot' ? twoSwing(a, model, burst ? step - 1 : s.swingN || 0) : null;   /* 3D.207 two-handed weapons and the spear */
+      const clip = two || (anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a'));
       /* 3D.205 owner (18 Nov): Swing 4 (overhead) is out of the one-handed set; the third blow of a quick combo is Swing 3, the rising cut */
       a.play(clip, true, true); a.attacking = true; a.atkT = performance.now(); a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
     }
@@ -1494,7 +1501,7 @@ function personAnim(a, s, dt) {
   if (anim === 'walk' && rush && a.spd > (a.name === 'run' ? .65 : .8)) { a.play('run'); return; }   /* 3D.45: only sprint when actually moving fast */
   if (anim === 'walk' && !hold && s.hp < s.max * .3 && a.acts.limp_walk && !rush) { a.play('limp_walk'); return; }   /* 3D.107 badly hurt: limps */
   if (anim === 'walk' || anim === 'carry') { a.play(hold ? holdLoco(a, hold) : 'walk'); return; }
-  a.play(hold ? hold + '_hold_idle' : 'idle');
+  a.play(hold === 'melee' ? twoIdle(a, model) : hold ? hold + '_hold_idle' : 'idle');   /* 3D.207 two-handed weapons have their own ready stance */
 }
 /* 3D.32 Infected Dog: a low-detail toon dog built from boxes, legs swing with its ground speed (no rig needed) */
 class DogActor {
@@ -1566,7 +1573,7 @@ function syncPeople(dt, vis) {
 const SHOW_YAW = Math.PI * .25;   /* facing the camera */
 /* 3D.190 Survivor test page: the survivor plays the one clip the page asks for, on the spot, with the thing that clip is held with
    (bat for melee, rifle or pistol for firing, the tool for work). Walks, jogs and runs play at their natural pace. */
-const showProp = (c) => TOOL_OF[c] || (/^gun_|gun_hold/.test(c) ? 'rifle' : c === 'pistol_fire' ? 'pistol' : /melee/.test(c) ? 'bat' : null);
+const showProp = (c) => TOOL_OF[c] || (/^gun_|gun_hold/.test(c) ? 'rifle' : c === 'pistol_fire' ? 'pistol' : /^melee2h/.test(c) ? 'sledge' : /^spear_/.test(c) ? 'spear' : /melee/.test(c) ? 'bat' : null);   /* 3D.207: the two-handed set shows the sledgehammer, the stab the spear */
 function survivorShow(a, s) {
   const c = s.show.clip || 'idle', pr = showProp(c); a.attacking = false; a.setWeapon(pr && a.w[pr] ? pr : null); if (a.w.plank) a.w.plank.visible = c === 'work_barricade'; a.setArmor(false);
   a.movT = 0; a.play(c, false, s.show.again === true); s.show.again = false;
@@ -1586,10 +1593,10 @@ function zombieAnim(a, z) {
   if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
   if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
   if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
-  if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { a.play(z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_fire' : (z.swingN = (z.swingN || 0) + 1) % 2 ? 'melee_swing_a' : 'melee_swing_b', true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people */
+  if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { z.swingN = (z.swingN || 0) + 1; a.play(z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_fire' : twoSwing(a, a.weapon, z.swingN) || (z.swingN % 2 ? 'melee_swing_a' : 'melee_swing_b'), true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people; 3D.207 with both hands on the big weapons */
   if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = (a.src && a.src.kind === 'spitter') && a.acts.spit && z.mode === 'zattack'; a.play((a.src && a.src.kind === 'lasher') && z.lash && a.acts.lash ? 'lash' : z.smash && a.acts.smash ? 'smash' : a.src.atkClip && a.acts[a.src.atkClip] ? a.src.atkClip : (a.src && a.src.kind === 'bloated') && a.acts.bloated_attack ? 'bloated_attack' : (a.src && a.src.kind === 'brute') && a.acts.brute_attack ? 'brute_attack' : (a.src && a.src.kind === 'sporehead') && a.acts.spore_combo ? 'spore_combo' : (a.src && a.src.kind === 'screamer') && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
   a.attacking = false;
-  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? h + '_idle' : z.mode === 'rflee' && !z.ranged ? 'run' : holdLoco(a, h.replace('_hold', ''))); return; }   /* 3D.192 raiders walk or jog with the weapon, like the townspeople */
+  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? (h === 'melee_hold' ? twoIdle(a, a.weapon) : h + '_idle') : z.mode === 'rflee' && !z.ranged ? 'run' : holdLoco(a, h.replace('_hold', ''))); return; }   /* 3D.192 raiders walk or jog with the weapon, like the townspeople */
   if (a.src && a.src.human && a.acts.walk) { const rc = a.acts[a.src.runClip] ? a.src.runClip : 'run', wc = a.acts[a.src.walkClip] ? a.src.walkClip : 'walk'; a.play(a.spd > (a.name === rc ? .6 : .75) ? rc : wc); return; }   /* 3D.82 Lasher and Stalker move like people */
   if (z.type === 'runner' || a.dogM) { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) * (a.dogM ? .8 : 1) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.80 the dog gallops, the Stalker runs */   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
   a.play((a.src && a.src.kind === 'bloated') && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)

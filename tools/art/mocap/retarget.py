@@ -1,14 +1,14 @@
 # retarget.py RAW.glb BVH f0 T CLIP OUT.npz [N]  : fit a recorded (BVH) cycle onto the survivor rig as action CLIP+'_new', dump strips data for old and new
 import bpy,sys,numpy as np,math
 from mathutils import Matrix,Vector,Quaternion
-import os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import bvh
+sys.path.insert(0,'/home/claude/zwork/mocap'); import bvh
 a=sys.argv[sys.argv.index('--')+1:]; src,bv,f0,T,clip,out=a[0],a[1],int(a[2]),int(a[3]),a[4],a[5]; N=int(a[6]) if len(a)>6 else 9
 n,par,off,ch,D,dt=bvh.load(bv); _pm=[bvh.fk(n,par,off,ch,r,True) for r in D[f0:f0+T+1]]; P=np.array([x[0] for x in _pm]); I=n.index
 HM={S:np.array([x[1][n.index(S+'Hand')] for x in _pm]) for S in('Left','Right')}   # the hands' full recorded turn (world, 3x3 per frame)
 # --- mocap -> rig axes (rig: +X left, -Y forward, +Z up)
 import os
 h=P[:,0]; u=np.array([0,1.,0])
-if os.environ.get('ZH_STAND'):   # a standing recording: no travel, so the facing comes from the hips (left hip - right hip, crossed with up)
+if os.environ.get('ZH_STAND') or os.environ.get('ZH_FACEHIPS'):   # (ZH_FACEHIPS, 3D.207: the facing from the hips but the recorded legs kept: a swing with a step) a standing recording: no travel, so the facing comes from the hips (left hip - right hip, crossed with up)
     lf=(P[:,I('LeftUpLeg')]-P[:,I('RightUpLeg')]).mean(0); f=np.cross(lf,u); f[1]=0; f/=np.linalg.norm(f); dist=0.
 else: f=h[-1]-h[0]; f[1]=0; dist=np.linalg.norm(f); f/=dist
 s=np.cross(f,u)
@@ -177,7 +177,11 @@ if RET>0:   # ease every bone from where it is at the start of the return back t
                 la=Vector(KEY[b]['loc'][fr0]); lb=Vector(KEY[b]['loc'][0]); l=la.lerp(lb,t); pb.location=l; pb.keyframe_insert('location',frame=fr); KEY[b]['loc'][fr]=list(l)
 for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
-import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':(DUR or T*dt/SPEED),'bones':KEY},open(out.replace('.npz','.json'),'w'))
+WD=None
+if os.environ.get('ZH_WDIR'):   # 3D.207 two-handed weapons: the line from the left hand to the right hand in the recording (the weapon runs through both hands), smoothed
+    _d=Q[:,I('RightHand')]-Q[:,I('LeftHand')]; _k=int(os.environ.get('ZH_WSMOOTH','9')); _d=np.array([_d[max(0,j-_k):j+_k+1].mean(0) for j in range(len(_d))]); _d/=np.linalg.norm(_d,axis=1,keepdims=True)
+    WD=[list(map(float,_d[min(T,int(round(float(warp(fr/nf)))))])) for fr in range(nf+1)]
+import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':(DUR or T*dt/SPEED),'bones':KEY,'wdir':WD},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))
 # --- dump old and new for strips
 me=body.data; me.calc_loop_triangles(); tri=np.array([t.vertices[:] for t in me.loop_triangles]); tl=np.array([t.loops[:] for t in me.loop_triangles]); uv=np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
