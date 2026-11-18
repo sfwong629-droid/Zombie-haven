@@ -266,7 +266,7 @@ What this shows:
 
 | Version | Deaths per town | Deaths on boss nights | Most standing on a boss night |
 |---|---|---|---|
-| Much weaker, capped at 30 (era 1) on top of the night's crowd | 5, 12, 8 | 5, 12, 7 | 33 to 61 |
+| Much weaker, capped at 30 (era 1) on top of the night's crowd | 5, 12, 8 | 5, 12, 7 | up to 61 |
 | Much weaker, capped, and the night's crowd makes room (released) | 17, 8, 3 | 3, 2, 2 | 31 in era 1, 46 later |
 
 - **Boss nights now meet the danger target** in the released version: a few deaths spread over the run, none in a single night.
