@@ -181,5 +181,11 @@ Add new decisions at the end of their topic with the date. If a decision replace
   - Soldier (male): helmet and vest: bullets and arrows do half damage (the reverse of the Riot Zombie). Beat it with melee. Tough. Day 27. No gun.
   - Soldier (female, red crosses): the squad's medic: wounded zombies near her slowly heal. Comes with male Soldiers. Beat her by killing her first. Medium. Day 27. No gun.
 
+## Music and sound
+- 18 Nov (Music chat): The Music chat owns the game's music and sound effects. Everything works offline: music and sounds are made by the game (`js/sound.js`) or are files in the repo with a licence we can use. One change per build, and the owner hears a sample before it goes in.
+- 18 Nov: **Guns must make a sound** (W100). Each ranged weapon gets its own shot (pistol, revolver / magnum, shotgun, SMG, assault rifle, hunting rifle, hunting bow, crossbow).
+- 18 Nov: **Fight music** (W102): yes to a short fade between moods (no hard cut), then a bigger track of its own for hordes and bosses.
+- 18 Nov: **The whole soundtrack and every sound effect are remade to match Studio Ghibli** (warm, melodic, storybook; original tunes, nothing copied from the films). Built one piece at a time, each with a sample first; the order is in `05-NOW.md` (Music chat).
+
 ## Open questions (not decided)
 - None on 17 Nov.
