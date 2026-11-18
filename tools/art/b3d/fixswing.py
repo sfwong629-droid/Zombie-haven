@@ -178,6 +178,25 @@ W2A = np.array(ao.matrix_world.to_3x3()).T; A2W = np.array(ao.matrix_world.to_3x
 def wdir_at(fr):   # the recorded weapon line at this fine frame, in armature space
     t = fr / (fps * SUB); W = WDJ['wdir']; x = min(len(W) - 1.001, max(0., t * WDJ['fps'])); i = int(x); u = x - i
     return nz(np.array(W[i]) * (1 - u) + np.array(W[i + 1]) * u)
+def swing_bone(bone, want):   # turn a bone the shortest way so it points along `want` (world)
+    c_ = W2A @ nz(P(PB[bone].tail) - P(PB[bone].head)); w_ = W2A @ nz(want); ax = np.cross(c_, w_); sn = float(np.linalg.norm(ax))
+    if sn > 1e-7: turn(bone, ax / sn * math.atan2(sn, float(c_ @ w_)), PB[bone].matrix.copy()); upd()
+CURW = [0.]
+def plant_legs():
+    if not (PLANT and FOOTST): return
+    sc_ = ao.matrix_world.to_scale()[0]; f = A2W @ hips3()[:, 2]
+    over = 0.   # the hips higher than the legs reach (with a little bend kept): lower them first
+    for s_ in 'LR':
+        L_ = (PB['thigh.' + s_].length + PB['shin.' + s_].length) * sc_ * .975; over = max(over, float(np.linalg.norm(FOOTST[s_][0] - P(PB['thigh.' + s_].head))) - L_)
+    over *= 1 - CURW[0]   # (none at the two ends, where the clip is the stance itself)
+    if over > 0:
+        m = PB['pelvis'].matrix.copy(); m.translation.z -= over / ao.matrix_world.to_scale()[2]; PB['pelvis'].matrix = m; upd()
+    for s_ in 'LR':
+        hip = P(PB['thigh.' + s_].head); A = FOOTST[s_][0]; l1 = PB['thigh.' + s_].length * sc_; l2 = PB['shin.' + s_].length * sc_
+        dv = A - hip; dd = float(np.clip(np.linalg.norm(dv), .05, (l1 + l2) * .999)); dn = nz(dv); pole = nz(f - dn * (f @ dn))
+        x = (l1 * l1 - l2 * l2 + dd * dd) / (2 * dd); y = math.sqrt(max(0., l1 * l1 - x * x)); e = hip + dn * x + pole * y
+        swing_bone('thigh.' + s_, e - hip); swing_bone('shin.' + s_, (hip + dn * dd) - P(PB['shin.' + s_].head))
+        m = FOOTST[s_][1].copy(); m.translation = PB['foot.' + s_].matrix.translation.copy(); PB['foot.' + s_].matrix = m; upd()
 def place_left():
     upd(); mw = np.array(bat.matrix_world); tip = mw[:3, :3] @ AXV[TIPI] + mw[:3, 3]; grp = mw[:3, :3] @ AXV[GRIPI] + mw[:3, 3]; wd = nz(tip - grp)
     rc = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; t_ = float((rc - grp) @ wd); c = grp + wd * t_; perp = rc - c
@@ -281,6 +300,11 @@ if SJ:
     upd()
 STL = larm_local(); STQ = {b: PB[b].rotation_quaternion.copy() for b in ('upperarm.L', 'forearm.L', 'hand.L', 'fingers.L')}
 STALL = {b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order}
+# 3D.210 (owner on C: "the leg is not ok at all. It looks like jelly fish"): ZH_PLANT=1 keeps both feet planted where the stance has them all through the
+# clip, and solves the legs (two bones, the knee forwards) to the recorded hips. (The chopper stood square with his feet wide; blending from the
+# staggered stance to that slid both feet 0.6 to 0.7 across the ground, unlifted.)
+PLANT = os.environ.get('ZH_PLANT') == '1'
+FOOTST = {s_: (P(PB['foot.' + s_].head), PB['foot.' + s_].matrix.copy()) for s_ in 'LR'} if SJ else None
 ad.action = old
 try:
     if old.slots: ad.action_slot = old.slots[0]
@@ -312,6 +336,7 @@ print('KEYS wind-up', T_W, 'strike', T_S, 'of', nf)
 RV = {'upperarm.R': np.zeros((nf + 1, 3)), 'upperarm.L': np.zeros((nf + 1, 3)), 'hand.R': np.zeros((nf + 1, 3))}; before = []
 for fr in range(nf + 1):
     goto(fr); m = meas(); before.append(m)
+    plant_legs()
     if RISE: upd(); set_rarm(fr)
     if TWO: upd(); two_pose(fr)
     for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + (() if (FREEARM or TWO) else (('upperarm.L', violL),)):
@@ -375,7 +400,8 @@ def retime(BATD, HANDP, HANDL=None, ARMQ=None):
 _B = []; _H = []; _C = []   # a first run through the corrected weapon arm, only to learn the timing (the free arm is timed in real seconds)
 for fr in range(nf + 1):
     goto(fr); upd()
-    if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
+    if lift[fr] > 1e-4 and not PLANT: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
+    plant_legs()
     if RISE: set_rarm(fr)
     if TWO: two_pose(fr)
     turn('upperarm.R', RV['upperarm.R'][fr], PB['upperarm.R'].matrix.copy()); upd(); turn('hand.R', RV['hand.R'][fr], PB['hand.R'].matrix.copy()); upd(); _B.append(batdir()); _H.append(P(PB['hand.R'].tail)); _C.append((chest3().copy(), P(PB['chest'].head))); _L0 = P(PB['hand.L'].tail) if fr == 0 else _L0
@@ -383,12 +409,14 @@ TT0 = retime(_B, _H, [c[0] @ (_C[0][0].T @ (_L0 - _C[0][1])) + c[1] for c in _C]
 new = bpy.data.actions.new(clip + '_fix'); frames = []; BATD = []; HANDP = []; HANDL = []; SHL = []; CHM = []; ARMQ = []; _l = batv @ np.array([0, 0, 0.]) if False else None
 for fr in range(nf + 1):
     goto(fr); upd()
-    if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
+    if lift[fr] > 1e-4 and not PLANT: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
+    CURW[0] = stance_lock(TT0[fr]) if SJ else 0.
+    plant_legs()
     if FREEARM: set_larm(larm_at(fr), fr); lock_larm(fr)
     if RISE: set_rarm(fr)
     if TWO: two_pose(fr)
     WL = 0.
-    if TWO and SJ: lock_all(fr); place_left(); WL = stance_lock(TT0[fr])   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
+    if TWO and SJ: CURW[0] = stance_lock(TT0[fr]); lock_all(fr); plant_legs(); place_left(); WL = CURW[0]   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
     for bone, viol in (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr] * (1 - WL), base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
