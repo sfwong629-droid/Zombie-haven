@@ -131,6 +131,12 @@ Balance chat:
 - ~~W73. The first Banner wall.~~ Decided 18 Nov: leave it until the Landmark and the festival at level 5 are built.
 - W82. Research. Decided 18 Nov: no building is locked behind research, and research lasts the whole game. **Draft sent 18 Nov** (`08-BALANCE.md`, section 13): today's recipe sets split by era (better gear with each Banner, the top gear at the Forge), the four old boosts kept, five new boosts, 19 projects in all. **Waiting: yes, or changes.** Then it is built in the Features chat.
 
+Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.md`, section 8, and `js/sound.js`):
+- W100. Silent sounds: guns make no sound (the game asks for a `shot` sound that was never made); the hammering, axe-chop and night / dawn bell sounds exist but nothing plays them. Fix the gunshot first? (Claude: yes.)
+- W101. Rescue jingle: five recorded versions (B to F) were made in 3D.57, but the game still plays the old synth one. Hear them and pick one? (Claude: yes, sample first.)
+- W102. Fight music: one track for every fight, starting only once zombies are inside the town, and the old tune cuts off before it. Give hordes and bosses a bigger track, or keep one? (Claude: a short fade between moods first, then a boss / horde track.)
+- W103. Where new music comes from: keep the music the game writes itself (no files, nothing to licence), or add recorded tracks (CC0 or CC BY files in the repo)? (Claude: keep it, add recorded music only where the written music falls short.)
+
 Later:
 - ~~W9. Claude Code setup on the PC.~~ Done 18 Nov (Planning chat): Claude Code installed on the owner's PC, the repo cloned into `Zombie Haven\repo` on the Desktop, and the setup message sent. It uses the same plan limits as the chats; the gain is speed (the PC has a graphics card).
 - W93. Claude Code on the PC: what did it report back (how long the test suite and the browser check took, anything red)? That decides whether checks move to the PC. Before working there, pull the latest `art-direction-b` first: other chats push to it all day. No pushing from the PC until the owner says so.
