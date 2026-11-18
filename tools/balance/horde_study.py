@@ -10,16 +10,19 @@ from playwright.async_api import async_playwright
 AP = open(os.path.join(R.ROOT, 'tools', 'balance', 'ap.js')).read()
 PROBE = """(days)=>{const S=ZH.S, seen=new WeakSet(), out={days:[]}; let downs0=0;
   for(let d=0;d<days;d++){const day={day:S.day,spawn:{},night:{},downs:0,deaths:0,peak:0,peakNight:0,bossNight:false};
-    for(let h=0;h<24;h++){for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick();
+    for(let h=0;h<24;h++){for(let k=0;k<1000;k+=60){ZH.step(60);ZH.tripUpdate();AP.tick();if(window.__flushTimers)__flushTimers();
         const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
         for(const z of S.z){if(seen.has(z))continue;seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;}}
       AP.hour();}
-    day.downs=AP.downs.length-downs0;downs0=AP.downs.length;day.deaths=AP.deaths.filter(x=>x.d===S.day-1||x.d===S.day).length;day.alive=S.sv.length;day.fallen=(S.fallen||[]).length;day.rank=S.rank;day.food=Math.round(S.food);day.water=Math.round(S.water);
+    day.downs=AP.downs.length-downs0;downs0=AP.downs.length;day.deaths=AP.deaths.filter(x=>x.d===S.day-1||x.d===S.day).length;day.alive=S.sv.length;day.fallen=(S.fallen||[]).length;day.rank=S.rank;day.lvl=S.lvl||1;day.pop=S.sv.length;day.bld=AP.snap().nb;day.ban=(S.banners||[]).map(b=>b.route).join(',');day.food=Math.round(S.food);day.water=Math.round(S.water);
     out.days.push(day);}
   out.downs=AP.downs.map(x=>({d:x.d,h:x.h,by:x.by,who:x.who,was:x.was,inTown:x.inTown}));out.deaths=AP.deaths.map(x=>({d:x.d,h:x.h,who:x.who,z:x.z}));out.events=AP.events;out.snap=AP.snap();return out}"""
 async def one(br, port, seed, days):
     ctx, pg, errs = await R.open_game(br, port, 'horde%d' % seed)
-    await pg.evaluate("(sd)=>{let x=sd;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};const b0=Date.now();Date.now=()=>b0+ZH.tick*1000/60;}", seed)
+    await pg.evaluate("""(sd)=>{let x=sd;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};const b0=Date.now();Date.now=()=>b0+ZH.tick*1000/60;
+      /* W60 (17 Nov): the whole run is one synchronous call, so the game's own setTimeout calls (a Banner is raised 0.4 to 0.9 s after it is earned) never fired and no town could pass level 5. Timers now run on the game clock. */
+      const q=[];window.setTimeout=(fn,ms,...a)=>{q.push({t:ZH.tick+Math.ceil((ms||0)*60/1000),fn,a});return q.length;};window.clearTimeout=(id)=>{if(q[id-1])q[id-1]=null;};
+      window.__flushTimers=()=>{for(let i=0;i<q.length;i++){const e=q[i];if(e&&e.t<=ZH.tick){q[i]=null;try{typeof e.fn==='function'&&e.fn(...e.a);}catch(err){}}}};}""", seed)
     await pg.evaluate(AP); await pg.evaluate("()=>{AP.exp=true}")
     r = await pg.evaluate(PROBE, days); r['seed'] = seed; r['errs'] = errs[:2]; await ctx.close(); return r
 async def main():

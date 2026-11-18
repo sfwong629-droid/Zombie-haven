@@ -31,7 +31,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (Balance chat): Banner routes: same effort, different cost; each route has its own lasting reward; all routes are open at once and the first finished wins the Banner; unused routes of earlier Banners stay open for good and still give their reward (levels are gated only by the highest Banner held).
 - 16 Nov (Balance chat): Economy: always short of one thing, never of food for long; away production stops at about one day's worth; renown takes a quarter to a third off waiting; the town covers every basic need, and trips, raids and strongholds give extras and things the town cannot make.
 - 17 Nov (Balance chat): Nothing unlocks at the very end of the game: an unlock needs game left to use it in. (Level 15 is not the end; the City runs to level 20.)
-- 16 Nov (Balance chat): Town size by era: about 15, 30 and 50 survivors (one in three a fighter) and about 12, 25 and 40 buildings.
+- 16 Nov (Balance chat): Town size by era: about 15, 30 and 50 survivors (one in three a fighter) and ~~about 12, 25 and 40 buildings~~.
+- 17 Nov (Balance chat): Buildings by era: about 25, 40 and 55 (a level 5 town already has about 25).
+- 17 Nov (Balance chat): Big hordes are about 60, 120 and 240 zombies by era (first set at 40, 100 and 200). Ordinary nights stay the size they are today, so a big horde is about three times an ordinary night. (No number changed yet.)
 
 ## Hard rules
 - Must work fully offline.
@@ -93,6 +95,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Balance chat): The Quarry opens at level 8, before the power buildings, which cost stone. (Not built yet.)
 - 17 Nov (Balance chat): The order to build the building plan in: the level spread first, then the School and Library split, then the festival at level 5, then the new buildings as their models arrive (Watchtower and Festival Ground first), the Landmark route last.
 - 17 Nov (Balance chat): Children should work as in Fallout Shelter: a growth period, school before they are useful, and good stats inherited from the parents. (The game already has babies who grow up in 5 days, 3 with a School, with the average of their parents' stats; what to add is open, W59.)
+- 17 Nov (Balance chat): Children, decided: they are seen in town and walk to the School each day; a School only helps (they grow up sooner and with one stat higher) and is not needed to grow up; a child gets the better parent's value in two stats, the average in the rest, and one trait from a parent. (Not built yet.)
+- 17 Nov (Balance chat): A town raider hits as hard as the weapon it carries: the weapon's own attack and speed, the same numbers a survivor gets from it ("follow the weapon type"). (Not built yet; W57.)
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.

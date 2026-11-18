@@ -24,9 +24,9 @@ How to use it: before changing a number, find the target it serves. If a change 
 - **One big night horde per level**, as that level's climax: build, gear up, horde, win.
 - **It only arrives while the player is playing.** The radio announces it, the player gets time to gear up and repair, and the fight is always seen. Never while away.
 - **A big, weak crowd.** Many weak zombies that clearly outnumber the fighters, a few special ones mixed in. The fight lasts about 2 to 4 minutes.
-- **Size of a big horde, total over the whole fight:** about **40** in era 1, **100** in era 2, **200** in era 3. Owner, 16 Nov: today's hordes are far smaller than wanted.
+- **Size of a big horde, total over the whole fight:** about **60** in era 1, **120** in era 2, **240** in era 3 (owner, 17 Nov; first set at 40, 100 and 200). Owner, 16 Nov: today's hordes are far smaller than wanted.
 - **On screen at once, at the peak of a late horde: 50 to 60**, the rest arriving as others fall. Test on a real phone; go higher if it stays smooth.
-- **Smaller fights, measured against that level's big horde:** an ordinary night is about a quarter, a warned daytime horde about half. Late-game example: 50, 100, 200. Nights stay the biggest fights.
+- **Smaller fights:** ordinary nights stay the size they are today (about 15 to 30 zombies in era 1; owner, 17 Nov), so a big horde is about three times an ordinary night. A warned daytime horde is about half the big horde. Nights stay the biggest fights.
 - **Winning pays every time:** loot from the fallen horde, renown, a town-wide mood lift with a short celebration, and a results card naming who fought best. Worth about a good day's production. A clean win (nobody hurt, walls held) pays a little more.
 - **Take command gives a cleaner win:** fewer injuries, less wall damage, and it can turn a narrow loss into a narrow win. A prepared town still wins left alone; steering is never required. (Not in the game yet.)
 
@@ -44,7 +44,7 @@ How to use it: before changing a number, find the target it serves. If a change 
 
 ## 6. Town size
 - **Survivors at the end of each era:** about **15**, **30**, **50**. Roughly one in three is a fighter.
-- **Buildings at the end of each era** (not counting walls and decorations): about **12**, **25**, **40**.
+- **Buildings at the end of each era** (not counting walls and decorations): about **25**, **40**, **55** (owner, 17 Nov; first set at 12, 25 and 40, but a level 5 town already has about 25 and looks right at that size).
 - **Land is always a little tight**, so where things go is a real choice.
 
 ## 7. Building balance
@@ -205,8 +205,8 @@ Today the buildings open in three batches (levels 1, 4 and 7) and the Stone step
 Not fixed yet; listed so nothing is forgotten. Everything else on this page still has to be measured against the game (balance bot first, see `07-TESTING.md`).
 - **Horde size:** far smaller than the targets (owner, 16 Nov). Measured in section 12: a big-horde night is no bigger than an ordinary night.
 - **Road to level 15:** the level timers add up to 1,326 game hours. The clock runs at two speeds: while the game is open, one game hour takes about 17 seconds (a game day is under 7 minutes); while away, one game hour takes 10 real minutes. So the timers alone are about 6 hours of open play or about 9 days away, and playing with the game open passes them 36 times faster than staying away. The 4 to 6 week target therefore has to come from the work each level asks for, or the timers change.
-- **First sitting:** on target today. The bot reaches level 3 on game day 3 to 4, about 20 to 27 minutes of open play (section 12). An earlier version of this page said level 3 could not be reached in 30 minutes; that used the away speed and was wrong.
-- **The quick start runs too far:** the bot reaches level 5 in under an hour of open play, against the target of level 4 by the end of the first day.
+- **First sitting:** not settled. The bot reached level 3 after anything from 20 to 55 minutes of open play, depending on the run (section 12). An earlier version of this page said level 3 could not be reached in 30 minutes; that used the away speed and was wrong.
+- **The quick start runs too far:** the bot reaches level 5 in one to two hours of open play, against the target of level 4 by the end of the first day.
 - **Unlocks, era looks, the build route and the festival level:** see section 10.
 - **Not built yet:** the daytime threat (roamers and the warned daytime horde), Take command, going back to an earlier Banner's unused routes, the seven new buildings.
 - **To check, unknown today:** whether every route has its own reward; whether storage caps away production at about a day; whether every upgrade step already has its own model (`06-ASSETS.md`).
@@ -228,9 +228,25 @@ The balance bot (`tools/balance/horde_study.py`) played 30 game days on three se
 | What runs short | Water in days 5 to 15 (1 to 11 in stock); wood around day 10 | One thing short at a time |
 
 What this shows:
-- **The first sitting is on target; the rest of era 1 is far too fast** in open play.
-- **There is no big horde today.** Boss nights bring a boss but no more zombies than any other night, and never more than 18 are on screen.
-- **Ordinary nights are already bigger than the quarter rule gives for era 1** (about 20 against 10), so the era 1 numbers in section 3 need the owner's choice (W54).
-- **The building target for era 1 is half of what a level 5 town has today** (W61).
+- **Era 1 goes by far too fast in open play.**
+- **There is no big horde today.** Boss nights bring a boss but no more zombies than any other night, and never more than about 20 are on screen.
+- **Ordinary nights are 15 to 30 zombies.** The owner kept them and raised the big horde targets instead (section 3).
+- **A level 5 town has about 25 buildings.** The owner raised the building targets to match (section 6).
 - **Not measured:** anything past level 5 (W60), a daily player's real pace (the bot plays with the game open all the time), and whether deaths come with a warning.
+
+**Second run, the same day, after the bot was fixed (W60).** The first run could never pass level 5: the bot runs the whole game in one go, so the short delay between earning a Banner and the Banner being raised never ran out. The bot now runs the game's delays on the game clock (`tools/balance/horde_study.py`; the game itself is unchanged). Three towns, 30 game days again:
+
+| What | Second run |
+|---|---|
+| Level 3 reached | Game day 6 to 8 (40 to 55 minutes open) |
+| Level 5 reached | Game day 11 to 16 (about 75 to 105 minutes open) |
+| First Banner | One town by day 20 (an alliance), one on day 28 (the clinic stronghold), one never |
+| Level 6 reached | Day 27 and day 30 in two towns; the third was still level 5 on day 30 |
+| Highest level in 30 game days | 7, 6 and 5 |
+| Zombies on an ordinary night | 14 to 16 in days 1 to 10, 26 to 29 in days 21 to 30 |
+| Zombies on a boss night | 10 to 56; most on screen at once 18 to 21 |
+
+- **The pace differs a lot from run to run.** Level 3 came on game day 3 to 4 in the first run and day 6 to 8 in the second; a single town replayed between the two took 13 days. The second run is closer to the real game, because the game's delayed events now happen. More towns are needed before the first-sitting number can be trusted.
+- **The first Banner is the wall.** Towns sit at level 5 for 10 to 20 game days waiting for one, and the bot loses its first try at the clinic stronghold every time.
+- **Still not measured:** anything past level 7, and a daily player's real pace.
 
