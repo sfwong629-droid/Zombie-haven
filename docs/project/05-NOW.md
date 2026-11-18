@@ -136,14 +136,15 @@ Balance chat:
 - W82. Research. Decided 18 Nov: no building is locked behind research, and research lasts the whole game. **Draft sent 18 Nov** (`08-BALANCE.md`, section 13): today's recipe sets split by era (better gear with each Banner, the top gear at the Forge), the four old boosts kept, five new boosts, 19 projects in all. **Waiting: yes, or changes.** Then it is built in the Features chat.
 
 Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.md`, section 8, and `js/sound.js`):
-- ~~W100. Silent sounds: guns make no sound.~~ Owner, 18 Nov: "definitely guns should make sound". Gunshot sample sent 18 Nov (own sound for each of the 9 ranged weapons, made in code; new check `tools/qa/sfx_names_check.js`). **Waiting: OK to build?** The hammer, axe-chop and night / dawn bells come with the Ghibli remake of the effects (W106).
+- ~~W100. Silent sounds: guns make no sound.~~ Built in **3D.215** (live, version 253): each of the 9 ranged weapons has its own shot, approved in the sound review. New check `tools/qa/sfx_names_check.js`.
 - W101. Rescue jingle: five recorded versions (B to F) were made in 3D.57, but the game still plays the old synth one. Hear them and pick one? (Claude: yes, sample first.)
 - ~~W102. Fight music.~~ Owner, 18 Nov: yes: a short fade between moods first, then a bigger track for hordes and bosses (steps 2 and 5 of the remake below).
 - ~~W103. Where new music comes from.~~ Not answered directly; the owner asked for a Ghibli remake of everything (W106), which the game writes itself with recorded instruments. Claude takes that as "keep the game-written music"; recorded tracks only if the owner asks.
 - ~~W105. "I want the music to be more Ghibli."~~ Owner, 18 Nov: "remake all music and effect to match ghibli" (W106). The sample Meadow (an original 3/4 waltz in F; flute and glockenspiel added from the same FluidR3 sound font, CC BY 3.0, 24 files, not committed yet) is the first day track of the remake; the owner has not said yet whether it sounds right.
 - ~~W106 round 1.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W110. Sound review round 2.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
-- W112. Sound review **round 3** sent 18 Nov (same page, https://claude.ai/artifact/FMEJyTAEJySoMRq6sSEtXe): the chime (dum dum dum daaa), two takes each of a man's and a woman's short oof / ugh for survivor down, two takes of the radio (beeps through the static, or pulsing static); plus still to mark from round 2: the guns (pistol, shotgun, hunting rifle), Meadow, Morning Road, Harvest Song, Stand Firm. Work on branch `music-chat-wip`. **Waiting: OK or change for each.**
+- ~~W112. Sound review round 3.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
+- W114. Sound review **round 4** sent 18 Nov (same page): three new takes of the woman's grunt (C, D, E), radio takes C and D (a steady static with pulses; D with a faint tone in each pulse), Stand Firm with no drums at all. **Waiting: OK or change for each.** Next builds, one at a time: the fade between moods, the day music, the night music, then the effects in groups.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)
