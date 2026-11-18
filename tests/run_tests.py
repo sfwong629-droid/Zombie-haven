@@ -716,7 +716,7 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
     t.ok(abs((r.get('range') or 0) - 1.5) < .01, f"Police Officers shoot 1.5 tiles further ({r.get('range')})")
     t.ok(r['save'] is True, f"saves still work mid field-aid ({r['save']})")
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.day=6;S.hour=21;ZH.spawnBoss();const b=S.z.find(z=>z.type==='boss');const mob=S.z.filter(z=>z.mob);out.mob=mob.length;
-      const n0=S.z.length;ZH.step(400);out.noRefill=S.z.filter(z=>z.hp>0&&!z.human).length<=n0;
+      const fresh=()=>S.z.filter(z=>z.hp>0&&!z.human&&!z.mob&&!z.boss).length;const n0=fresh();ZH.step(400);out.noRefill=fresh()<=n0;   /* 3D.199: the boss's own horde streams in behind it; only zombies that are not part of it count as fresh */
       b.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(2);out.flee=mob.filter(z=>z.hp>0).every(z=>z.mode==='zleave');const act=()=>S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length;const n1=act();ZH.step(600);out.calm=act()<=n1;out.n=[n1,act()];return out}""")
     t.ok(r['mob'] > 0 and r['noRefill'], f"no fresh zombies join while the boss lives {r}")
     t.ok(r['flee'] and r['calm'], f"killing the boss breaks its horde and the rest of the night is quiet {r}")

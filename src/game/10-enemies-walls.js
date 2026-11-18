@@ -133,6 +133,9 @@ const nightWave = () => (S.hour >= 23 || (S.hour >= 2 && S.hour < 6) ? (S.hour >
 function monsterGeneration() {
   bossWatch();
   const night = isNight(); if (night !== S.wasNight) { S.wasNight = night; S.nightSpawned = 0; S.waveN = 0; S.nightCap = 0; }
+  if ((S.mobLeft || 0) > 0) {   /* 3D.199: the rest of the big horde streams in behind the boss */
+    if (!night || S.bossOn == null || !S.z.some((z) => z.boss && z.hp > 0)) S.mobLeft = 0;
+    else if (tick % BIG_HORDE.gap === 0 && S.z.filter((z) => z.mob && z.hp > 0).length < mobCap()) { mobZombie(S.mobAt || spawnPoint()); S.mobLeft--; S.nightSpawned = (S.nightSpawned || 0) + 1; } }
   if (night && (S.bossOn != null || nowD() < (S.calmUntil || 0))) return;   /* 3D.68: no fresh zombies while the boss lives, nor after it falls */
   const SP = window.ZH_SPAWN || {};   /* study knobs (tools/balance/respawn_study.py); the game itself never sets these */
   if (night && !SP.old && S.nightCap) {   /* 3D.70: a fixed horde per night, in three waves: the full horde at dusk, then two smaller pushes. Kill them all and the night goes quiet. Days are unchanged. */
@@ -143,7 +146,7 @@ function monsterGeneration() {
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
-  if (activeZ() < desired - (S.day === S.nextBoss && S.hour >= 18 ? bossMob() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.68: the boss brings its own horde; the night's usual crowd makes room for it */
+  if (activeZ() < desired - (S.bossOn != null || (S.day === S.nextBoss && S.hour >= 18) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
     if (far.length) { const z = far[Math.floor(rnd() * far.length)]; z.hp = 0; z.escaped = true; }
@@ -224,13 +227,23 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
   if (!z.human || z.escaped) return; if (z.leader && !z.leaderDone) { z.leaderDone = true; const fk0 = FACTIONS[z.fac] ? z.fac : 'toll', F = fac(fk0); F.goneUntil = S.day + 60; { const fk = Object.keys(S.fac || {}).find((q) => S.fac[q] === F) || 'toll', t0 = facTier(fk); F.beaten = (F.beaten || 0) + 1; facTierUp(fk, t0); }   /* 3D.147 gear tier */ F.war = false; for (const q of S.z) if (q.human && q.hp > 0 && q.fac === fk0) { q.mode = 'rflee'; } setTimeout(() => earnBanner('faction', `${z.name || 'Their leader'} fell at your gate. ${FACTIONS[fk0].name} scatter${fk0 === 'toll' ? '' : 's'}.`), 500); } S.raiderKills = (S.raiderKills || 0) + 1; for (const k of ['food', 'water', 'mat']) if (z.loot && z.loot[k]) { S[k] += z.loot[k]; floats.push({ w: { ...z.w }, t: '+' + z.loot[k] + ' ' + SHORT_ICON[k], col: '#9fe58a', a: 80 }); }
 }
 /* ---------------- V2.13 boss: every 3rd night a boss leads a mob against the town ---------------- */
-const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(hDay() / 5)) * (S.day <= 14 ? .7 : 1));
+/* 3D.199 (owner, 17-18 Nov, W54): the big horde. A boss night used to bring no more zombies than any other night (the boss's mob was 4 to 13,
+   and the night's usual crowd made room for it). Now the mob is BIG_HORDE.mult times that, so a boss night is about three times an ordinary
+   night (target: about 60 zombies in era 1, 120 in era 2, 240 in era 3; 08-BALANCE.md). It is a big WEAK crowd (owner, 18 Nov: same number,
+   much weaker): mob zombies have BIG_HORDE.hp of the usual health and hit with BIG_HORDE.hit of the usual force. BIG_HORDE.first of them
+   arrive with the boss; the rest follow one every BIG_HORDE.gap ticks while the boss lives, but only while fewer than BIG_HORDE.cap[era]
+   mob zombies are standing, so the crowd is replaced as it falls instead of piling up. They stop coming when the boss falls or the sun rises.
+   (The first cut, 60% health, full hit, no cap, killed 6 to 12 people in one night in the bot's towns: tools/balance/shelved/.) */
+const BIG_HORDE = { mult: 4, hp: .33, hit: .5, first: .4, gap: 150, cap: [30, 45, 60, 60] };
+const mobCap = () => BIG_HORDE.cap[Math.min(3, Math.floor(((S.lvl || 1) - 1) / 5))];
+const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(hDay() / 5)) * (S.day <= 14 ? .7 : 1)) * BIG_HORDE.mult;
+function mobZombie(a) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.hp = z.max = Math.max(1, Math.round(z.max * BIG_HORDE.hp)); z.pw = (z.pw || 1) * BIG_HORDE.hit; return z; }
 function spawnBoss(force) {
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = force || (S.day <= 4 ? 'mutant' : ks[Math.floor(rnd() * ks.length)]), K = BOSS_KINDS[bk]; if (!force) S.lastBoss = bk;
   const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * hDay()) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
   S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * hDay()) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   { const bz = S.z[S.z.length - 1]; bz.hp = bz.max = Math.round(bz.hp * K.hp); }
-  const mob = bossMob(); for (let i = 0; i < mob; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); S.z[S.z.length - 1].siege = true; S.z[S.z.length - 1].mob = true; }
+  const mob = bossMob(), first = Math.max(1, Math.round(mob * BIG_HORDE.first)); for (let i = 0; i < first; i++) mobZombie(a); S.mobLeft = mob - first; S.mobAt = [a[0], a[1]];   /* 3D.199: the rest follow in monsterGeneration */
   lureFire();   /* 3D.76 */
   S.bossOn = S.bossKills || 0;   /* 3D.68: the boss night is on (no fresh zombies join while it lives) */
   SFX('boss'); showEventPopup({ stage: { scene: 'boss', boss: bk, head: 'Boss!' }, short: K.line, chips: [`☠ ${mob} zombies follow`], title: K.name.toUpperCase() });
