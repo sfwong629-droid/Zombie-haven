@@ -64,8 +64,10 @@ UI chat:
 - ~~W33. Town raiders' weapons.~~ Decided 16-17 Nov and built in 3D.187: each kind of raider carries its own weapon, one step better per era, and the Raiders note shows the weapon of the raider that came.
 - ~~W41. Hide button on tips in the Needs you list.~~ Decided 17 Nov: a ✕. Built in 3D.186.
 - ~~W55. Raider weapon upgrades.~~ Decided 17 Nov: yes to one step per era and to the table (Thief: knife, cleaver, machete, katana. Brute: nail bat, spiked club, sledgehammer, fire axe. Firebug: pipe, crowbar, hatchet, spear), and better weapons must hit harder. The looks are built in 3D.187; how much harder is W57.
-- W58. Play 3D.187 and say whether the raiders' weapons look right in a raid on the town.
-- W56. Play 3D.186 and say whether the ✕ on tips in the Needs you list works as wanted.
+- ~~W58. Do the raiders' weapons look right?~~ Owner, 17 Nov: looks right.
+- ~~W56. Does the ✕ on tips work as wanted?~~ Owner, 17 Nov: looks good.
+- W79. Icons on the Town tabs (owner, 18 Nov: "can we add some icon to these?"; UI problem U21). A before / after picture was sent in the UI chat: Haven a house, Defense a shield, People two people, More the menu bars, spaced so all four fit a phone without scrolling. Waiting: are these four icons right, and should the other tab rows that have only words get icons too (a survivor's Status / Gear / Job / About; People / Workplaces; Food / Water / Wood / Stone / Scrap)?
+- W80. Play 3D.195 or later and say whether the open menus look right: no radio button, the alert button gone where the menu reaches it, "Paused" on the menu's top edge.
 
 Code clean-up chat:
 - ~~W31. Delete the old 2D drawing checks from four tests?~~ Decided 16 Nov: yes. Done.
