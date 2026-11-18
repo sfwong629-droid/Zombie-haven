@@ -126,7 +126,8 @@ Balance chat:
 - W82. Research. Decided 18 Nov: no building is locked behind research, and research lasts the whole game. **Draft sent 18 Nov** (`08-BALANCE.md`, section 13): today's recipe sets split by era (better gear with each Banner, the top gear at the Forge), the four old boosts kept, five new boosts, 19 projects in all. **Waiting: yes, or changes.** Then it is built in the Features chat.
 
 Later:
-- W9. Claude Code setup on the PC (optional; makes the checks faster).
+- ~~W9. Claude Code setup on the PC.~~ Done 18 Nov (Planning chat): Claude Code installed on the owner's PC, the repo cloned into `Zombie Haven\repo` on the Desktop, and the setup message sent. It uses the same plan limits as the chats; the gain is speed (the PC has a graphics card).
+- W93. Claude Code on the PC: what did it report back (how long the test suite and the browser check took, anything red)? That decides whether checks move to the PC. Before working there, pull the latest `art-direction-b` first: other chats push to it all day. No pushing from the PC until the owner says so.
 - ~~W10. Batch 5 armour (Tripo models).~~ Started 16 Nov in the Art chat: see W43.
 - (W11 is closed: see the Planning chat list.)
 
