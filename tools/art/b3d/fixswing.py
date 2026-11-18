@@ -191,6 +191,9 @@ def plant_legs():
     over *= 1 - CURW[0]   # (none at the two ends, where the clip is the stance itself)
     if over > 0:
         m = PB['pelvis'].matrix.copy(); m.translation.z -= over / ao.matrix_world.to_scale()[2]; PB['pelvis'].matrix = m; upd()
+    for s_ in 'LR':   # (3D.211) each leg starts from the stance's own turn, so it keeps the stance's natural twist (the recorded chopper's thighs came in turned about 175 degrees about their own length, which wrung the skin at the hips)
+        for b_ in ('thigh.', 'shin.'): PB[b_ + s_].rotation_quaternion = STALL[b_ + s_][0].copy()
+    upd()
     for s_ in 'LR':
         hip = P(PB['thigh.' + s_].head); A = FOOTST[s_][0]; l1 = PB['thigh.' + s_].length * sc_; l2 = PB['shin.' + s_].length * sc_
         dv = A - hip; dd = float(np.clip(np.linalg.norm(dv), .05, (l1 + l2) * .999)); dn = nz(dv); pole = nz(f - dn * (f @ dn))

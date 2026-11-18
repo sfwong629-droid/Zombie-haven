@@ -2,7 +2,7 @@
 # tools/qa/twohand_check.sh — 3D.207: the two-handed set (owner, 18 Nov: copied from real people; "the weapons are not going through the head or body"),
 # checked with each real weapon it is used with (the models in gear_weapons.glb, placed in the hand as the game places them):
 #   the weapon is never inside the head or the body, never jumps (48 degrees per screen frame at most), both hands stay on it,
-#   each clip starts and ends in its own stance and no arm bone jumps; (3D.210) in C and the two stances the feet stay planted. Also: the game plays these clips for the five two-handed weapons.
+#   each clip starts and ends in its own stance and no arm bone jumps; (3D.210) in C and the two stances the feet stay planted; (3D.211) no leg is twisted round. Also: the game plays these clips for the five two-handed weapons.
 set -e; cd "$(dirname "$0")/../.."; T=$(mktemp -d); bad=0
 for w in sledge axe shovel roadsign spear; do grep -q "'$w'" js/render3d.js || { echo "FAIL $w is not in the game's two-handed list"; bad=1; }; done
 grep -q "const TWO_H = new Set(\['sledge', 'axe', 'shovel', 'roadsign', 'spear'\])" js/render3d.js && echo "ok   the game's two-handed list: sledgehammer, fire axe, shovel, road sign, spear" || { echo "FAIL the two-handed list in js/render3d.js"; bad=1; }
@@ -29,6 +29,6 @@ P
   done
   python3 tools/art/b3d/armcheck.py -- $T/$m.glb melee2h_swing_a@melee2h_hold_idle,melee2h_swing_b@melee2h_hold_idle,melee2h_swing_c@melee2h_hold_idle,spear_stab@spear_hold_idle 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/a.txt || true
   grep -v ^BAD $T/a.txt; grep -q "^BAD 0" $T/a.txt || bad=1
-  python3 tools/art/b3d/legcheck.py -- $T/$m.glb melee2h_hold_idle,melee2h_swing_c,spear_hold_idle 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/l.txt || true   # 3D.210: the feet stay planted
+  python3 tools/art/b3d/legcheck.py -- $T/$m.glb melee2h_hold_idle,melee2h_swing_c,spear_hold_idle,melee2h_swing_a:step,melee2h_swing_b:step,spear_stab:step 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/l.txt || true   # 3D.210: the feet stay planted
   grep -v ^BAD $T/l.txt; grep -q "^BAD 0" $T/l.txt || bad=1
 done; rm -rf $T; [ $bad = 0 ] && echo "ALL OK" || { echo FAILED; exit 1; }
