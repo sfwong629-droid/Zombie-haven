@@ -26,14 +26,28 @@ bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(file
 ao=next(o for o in bpy.data.objects if o.type=='ARMATURE'); body=bpy.data.objects['body']; BN=ao.data.bones
 rest={b.name:b.matrix_local.copy() for b in BN}
 SC=(BN['thigh.L'].length+BN['shin.L'].length)/LEG; print('scale',SC,'ground per cycle',dist*SC,'seconds',T*dt,'GROUND SPEED for STRIDE in render3d.js: %.3f'%(dist*SC/(T*dt)))
+def sstep(a,b,x): t=min(1,max(0,(x-a)/(b-a))); return t*t*(3-2*t)
 def nz(v): v=np.asarray(v,float); return v/max(np.linalg.norm(v),1e-9)
 def frame(y,x):   # bone rotation with Y along y, X as close to x as possible
     y=nz(y); x=nz(x-y*(x@y)); z=np.cross(x,y); return Matrix(np.stack([x,y,z],1).tolist())
-def sstep(a,b,x): t=min(1,max(0,(x-a)/(b-a))); return t*t*(3-2*t)
+
 def footflat(side):
     d=Q[:,I(side+'ToeBase')]-Q[:,I(side+'Foot')]; z=W(P)[:,I(side+'Foot'),2]; i=np.argsort(z)[:max(3,T//6)]; dd=d[i].mean(0); return math.atan2(-dd[2],-dd[1])
 FLAT={'Left':footflat('Left'),'Right':footflat('Right')}; ry=rest['foot.L'].col[1]; RESTP=math.atan2(-ry[2],-ry[1]); print('foot flat pitch',FLAT,'rest',RESTP)
 HANDS=bool(os.environ.get('ZH_HANDS'))
+# --- more force (owner, 18 Nov: "a bit more force and wide so the player can see it"): ZH_TWIST turns the chest and hips further than recorded, ZH_REACH straightens the weapon arm
+# through the strike (a wider arc), ZH_LUNGE moves the hips into the blow, ZH_DUR + ZH_STRIKE give the strike a short share of the clip (a slow wind-up, a fast hit).
+TWIST=float(os.environ.get('ZH_TWIST','1')); REACH=float(os.environ.get('ZH_REACH','0')); LUNGE=float(os.environ.get('ZH_LUNGE','0')); DUR=float(os.environ.get('ZH_DUR','0'))
+_hv=np.linalg.norm(np.diff(Q[:,I('RightHand')],axis=0),axis=1); _hv=np.convolve(_hv,np.ones(9)/9,'same'); _pk=int(_hv.argmax()); _thr=_hv[_pk]*.4
+S0=_pk
+while S0>0 and _hv[S0]>_thr: S0-=1
+S1=_pk
+while S1<T-1 and _hv[S1]>_thr: S1+=1
+CUT=bool(os.environ.get('ZH_CUT'))
+if CUT: S1=min(S1,_pk+int(os.environ.get('ZH_AFTER','14')))
+def strikeW(i): return sstep(S0-18,S0,i)*(1-sstep(S1,S1+22,i))
+_sh=Q[:,I('LeftArm')]-Q[:,I('RightArm')]; _phi=np.unwrap(np.arctan2(_sh[:,1],_sh[:,0])); PHI0=float(_phi[0])
+print('strike: recording frames',S0,'to',S1,'of',T,'; chest turn range (deg)',round(float(np.degrees(_phi.min()-PHI0))),round(float(np.degrees(_phi.max()-PHI0))))
 STAND=bool(os.environ.get('ZH_STAND')); HIPS=float(os.environ.get('ZH_HIPS','.3')); FOOTBACK=float(os.environ.get('ZH_FOOTBACK','0')); SWAY=float(os.environ.get('ZH_SWAY','1')); TOE=float(os.environ.get('ZH_TOE','7'))   # SWAY: how much of the recorded hip sway to keep; TOE: degrees the feet turn out
 def _m(a,b): v=Q[:,I(a)]-Q[:,I(b)]; v/=np.linalg.norm(v,axis=1,keepdims=True); return v.mean(0)
 NDM=_m('Head','Neck'); HDM=_m('Head_end','Head')
@@ -42,7 +56,11 @@ def solve(i):
     px=nz(J('LeftUpLeg')-J('RightUpLeg')); pup=nz(J('Spine1')-J('Hips')); pup=nz(pup*.6+np.array([0,0,.4])); 
     if STAND: px=nz(px*HIPS+np.array([1.,0,0])*(1-HIPS)); pup=nz(pup*HIPS+np.array([0,0,1.])*(1-HIPS))   # standing: only part of the recorded hip tilt and turn, or the planted legs must bend a lot to follow
     R['pelvis']=frame(pup,px)
-    cx=nz(J('LeftArm')-J('RightArm')); R['chest']=frame(nz(J('Neck')-J('Spine')),cx)
+    dphi=(TWIST-1)*float(_phi[i]-PHI0); RZ=np.array(Matrix.Rotation(dphi,3,'Z')); sw=strikeW(i)
+    cx=nz(J('LeftArm')-J('RightArm')); cup=nz(J('Neck')-J('Spine'))
+    if TWIST!=1: cx=RZ@cx; cup=RZ@cup; R['pelvis']=Matrix.Rotation(dphi*.45,3,'Z')@R['pelvis']
+    if LUNGE: cup=nz(cup+np.array([0,-.22*LUNGE*sw,0]))   # lean into the blow
+    R['chest']=frame(cup,cx)
     nd=nz(J('Head')-J('Neck')); hd=nz(J('Head_end')-J('Head'))
     if STAND and not HANDS: nd=nz(nd-NDM+np.array([0,-.05,1.])); hd=nz(hd-HDM+np.array([0,-.04,1.]))   # standing: the head keeps its small recorded movements around a level, forward-looking pose (people in the recordings look up, down or aside)
     R['neck']=frame(nd,cx); R['head']=frame(hd,cx)
@@ -51,11 +69,16 @@ def solve(i):
         hh=nz(w*(-nz(nn))+(1-w)*(-px)); R['thigh.'+sd]=frame(dt_,hh); R['shin.'+sd]=frame(ds,hh)
         d=J(S+'ToeBase')-J(S+'Foot'); pit=math.atan2(-d[2],math.hypot(d[0],d[1]))-FLAT[S]+RESTP; hd=nz([d[0],d[1],0]); hd=nz(hd*.6+np.array([0,-.4,0]))
         R['foot.'+sd]=frame([hd[0]*math.cos(pit),hd[1]*math.cos(pit),-math.sin(pit)],hh)
-        du=nz(J(S+'ForeArm')-J(S+'Arm')); df=nz(J(S+'Hand')-J(S+'ForeArm')); nn=np.cross(du,df); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
+        du=nz(J(S+'ForeArm')-J(S+'Arm')); df=nz(J(S+'Hand')-J(S+'ForeArm'))
+        if TWIST!=1: du=RZ@du; df=RZ@df
+        if REACH and sd=='R': dd_=nz(du*np.linalg.norm(J(S+'ForeArm')-J(S+'Arm'))+df*np.linalg.norm(J(S+'Hand')-J(S+'ForeArm'))); a_=REACH*sw; du=nz(du*(1-a_)+dd_*a_); df=nz(df*(1-a_)+dd_*a_)
+        nn=np.cross(du,df); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
         hh=nz(w*nz(nn)+(1-w)*(-cx)); R['upperarm.'+sd]=frame(du,hh); R['forearm.'+sd]=frame(df,hh)
         if HANDS:   # the recorded wrist, turn and all. In the recording's rest pose (a T) the fingers point out to the side and the palm faces down;
             m=HM[S][i]; sg=1. if sd=='L' else -1.   # on the model the hand bone's Y runs along the fingers and its X is the palm's normal on the left hand, the back of the hand on the right
-            R['hand.'+sd]=frame(Wm(m@np.array([sg,0,0])),Wm(m@np.array([0,-sg,0])))
+            hy_,hx_=Wm(m@np.array([sg,0,0])),Wm(m@np.array([0,-sg,0]))
+            if TWIST!=1: hy_,hx_=RZ@hy_,RZ@hx_
+            R['hand.'+sd]=frame(hy_,hx_)
     # stance height: the lower ankle sits where the recorded one does (scaled)
     low=9
     for sd in'LR':
@@ -70,6 +93,7 @@ def solve(i):
         # Standing: the library's standing recordings have unusable knees (20 to 60 degrees of bend while standing still), so the legs are solved instead:
         # both feet planted where the model's feet rest, the hips swaying as recorded, each knee as straight as the sway allows.
         sx,sy=hx[i]*SC*SWAY,hy[i]*SC*SWAY; hp={}; pz=9.
+        if LUNGE: sy-=.07*LUNGE*strikeW(i)   # the hips move into the blow
         if FEET: sy+=(FEET['L'][0][1]+FEET['R'][0][1])/2-rest['foot.L'].translation[1]+FOOTBACK   # the hips sit over the middle of the two feet
         for sd in'LR':
             off=np.array(R['pelvis']@(rest['pelvis'].to_3x3().inverted()@(rest['thigh.'+sd].translation-rest['pelvis'].translation))); an=np.array(rest['foot.'+sd].translation)
@@ -89,6 +113,12 @@ def solve(i):
     return R,pv
 import os; LEAN=float(os.environ.get('ZH_LEAN','0')); KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
 fps=bpy.context.scene.render.fps; SPEED=float(os.environ.get('ZH_SPEED','1')); nf=round(T*dt*fps/SPEED); old=bpy.data.actions[clip]   # ZH_SPEED: play the recording this many times faster (a practice swing done slowly)
+if DUR: nf=round(DUR*fps)
+SHARE=[float(x) for x in os.environ.get('ZH_STRIKE','.46,.64').split(',')]   # the strike's place in the clip (start, end, as shares of its length)
+def warp(u):
+    if not DUR: return u*T
+    a0,a1=SHARE
+    return np.interp(u,[0,a0,a1,1],[0,S0,S1,S1 if CUT else T])   # ZH_CUT: nothing of the recording after the strike is used; the return eases back from the end of the blow
 OLDT=bool(os.environ.get('ZH_OLDTIME'))   # the new clip keeps the old clip's length, and the kept bones (ZH_KEEP) keep their old movement over time (a wave, a reload) instead of the first frame
 of0,of1=old.frame_range
 if OLDT: nf=int(round(of1-of0))
@@ -117,7 +147,7 @@ ad.action=new
 order=[b.name for b in BN]; prevq={}; KEY={b:{'rot':[],'loc':[]} for b in order}
 for fr in range(nf+1):
     keep.fr=fr if (fr<nf or ONESHOT) else 0
-    i=min(T,round(fr/nf*T)) if (fr<nf or ONESHOT) else 0
+    i=min(T,int(round(float(warp(fr/nf))))) if (fr<nf or ONESHOT) else 0
     R,ploc=solve(i); posed={}
     for b in order:
         pb=ao.pose.bones[b]; bn=BN[b]
@@ -147,7 +177,7 @@ if RET>0:   # ease every bone from where it is at the start of the return back t
                 la=Vector(KEY[b]['loc'][fr0]); lb=Vector(KEY[b]['loc'][0]); l=la.lerp(lb,t); pb.location=l; pb.keyframe_insert('location',frame=fr); KEY[b]['loc'][fr]=list(l)
 for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
-import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':T*dt/SPEED,'bones':KEY},open(out.replace('.npz','.json'),'w'))
+import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':(DUR or T*dt/SPEED),'bones':KEY},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))
 # --- dump old and new for strips
 me=body.data; me.calc_loop_triangles(); tri=np.array([t.vertices[:] for t in me.loop_triangles]); tl=np.array([t.loops[:] for t in me.loop_triangles]); uv=np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
