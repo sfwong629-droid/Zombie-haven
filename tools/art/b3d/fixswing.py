@@ -7,6 +7,7 @@
 import bpy, sys, json, math, os, numpy as np
 from mathutils import Matrix, Vector, Quaternion
 a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]; dump = a[3] if len(a) > 3 else None
+FREEARM = os.environ.get('ZH_FREEARM', '1') != '0'
 GROUND = .012   # (the head clearances are set below, from the head's measured size)
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
 ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; bat = bpy.data.objects['weapon_bat']; PB = ao.pose.bones
@@ -34,7 +35,7 @@ def meas():
     return {'bat': float(np.linalg.norm(bv - hc, axis=1).min()), 'low': float(bv[:, 2].min()),
             'hR': min(d(P(PB['hand.R'].head)), d(P(PB['hand.R'].tail)), d(P(PB['fingers.R'].tail))), 'eR': d(P(PB['forearm.R'].head)),
             'hL': min(d(P(PB['hand.L'].head)), d(P(PB['hand.L'].tail)), d(P(PB['fingers.L'].tail))), 'eL': d(P(PB['forearm.L'].head))}
-M_BAT = HEADR + float(os.environ.get('ZH_MBAT', '.05')); M_HAND = HEADR + float(os.environ.get('ZH_MHAND', '.045')); M_ELB = HEADR + float(os.environ.get('ZH_MELB', '.035'))
+M_BAT = HEADR + float(os.environ.get('ZH_MBAT', '.055')); M_HAND = HEADR + float(os.environ.get('ZH_MHAND', '.06')); M_ELB = HEADR + float(os.environ.get('ZH_MELB', '.035'))
 def violR(m): return max(0, M_BAT - m['bat']) + max(0, M_HAND - m['hR']) + max(0, M_ELB - m['eR']) + max(0, GROUND - m['low'])
 def violL(m): return max(0, M_HAND - m['hL']) + max(0, M_ELB - m['eL'])
 def turn(bone, rv, base):   # turn a bone about its own head by the rotation vector rv (world axes), starting from its matrix `base`
@@ -61,11 +62,29 @@ def solve(bone, viol, prev):
         rv = min(c, key=np.linalg.norm)
     if np.linalg.norm(rv) < math.radians(2) and v(np.zeros(3)) == 0: rv = np.zeros(3)
     turn(bone, np.zeros(3), base); upd(); return rv
+# ---- the free arm (owner, 18 Nov: "the arm that is not holding the weapon is still glitching ... make them look more natural").
+# In the old swings the free fist jumps up in front of the chin and flings about. It is replaced by what a person's free arm does in a one-handed swing:
+# it comes forward across the body as the weapon is drawn back, is pulled back to the hip as the blow lands (the counter-weight), then returns to the stance.
+# Directions are in the chest's own frame (left, up, forward), so the arm follows the body's turn.
+def nz(v): v = np.asarray(v, float); return v / max(np.linalg.norm(v), 1e-9)
+def chest3(): return np.array(PB['chest'].matrix.to_3x3())   # columns: left, up (along the spine), forward
+def larm_local():
+    C = chest3(); u = nz(P(PB['upperarm.L'].tail) - P(PB['upperarm.L'].head)); f = nz(P(PB['forearm.L'].tail) - P(PB['forearm.L'].head)); W2A = np.array(ao.matrix_world.to_3x3()).T
+    return (C.T @ (W2A @ u), C.T @ (W2A @ f))
+L_WIND = (nz([.30, -.62, .72]), nz([-.42, .30, .86]))    # upper arm forward and down, forearm across the chest: the fist in front of the breastbone, below the chin
+L_HIT = (nz([.38, -.80, -.46]), nz([.10, -.45, .88]))     # elbow drawn back, fist by the hip
+def frame4(y, x, head):
+    y = nz(y); x = nz(x - y * (x @ y)); z = np.cross(x, y); m = Matrix(np.stack([x, y, z], 1).tolist()).to_4x4(); m.translation = head; return m
+def set_larm(dirs):
+    C = chest3(); du = nz(C @ dirs[0]); df = nz(C @ dirs[1]); n = np.cross(du, df); hinge = nz(n) if np.linalg.norm(n) > .12 else -C[:, 0]
+    pb = PB['upperarm.L']; pb.matrix = frame4(du, hinge, pb.matrix.translation.copy()); upd(); pb = PB['forearm.L']; pb.matrix = frame4(df, hinge, pb.matrix.translation.copy()); upd()
+def sst(a, b, x): t = min(1., max(0., (x - a) / max(1e-6, b - a))); return t * t * (3 - 2 * t)
+RH = []; LARM = []
 # ---- pass 1: the turn each frame needs
 RV = {'upperarm.R': np.zeros((nf + 1, 3)), 'upperarm.L': np.zeros((nf + 1, 3))}; before = []
 for fr in range(nf + 1):
-    goto(fr); m = meas(); before.append(m)
-    for bone, viol in (('upperarm.R', violR), ('upperarm.L', violL)):
+    goto(fr); m = meas(); before.append(m); RH.append(P(PB['hand.R'].tail) - P(PB['chest'].head)); LARM.append(larm_local())
+    for bone, viol in (('upperarm.R', violR),) + (() if FREEARM else (('upperarm.L', violL),)):
         RV[bone][fr] = solve(bone, viol, RV[bone][fr - 1] if fr else np.zeros(3))
 # ---- spread each turn over the frames around it
 def spread(A):
@@ -78,7 +97,15 @@ def spread(A):
                 if 0 <= j < n and np.linalg.norm(A[j]) > 0 and np.linalg.norm(A[j]) * w > np.linalg.norm(acc): acc = A[j] * w
         B[i] = acc
     return B
-pass   # (no spreading needed: each moment's turn starts from the one before)
+RHa = np.array(RH); _v = np.linalg.norm(np.diff(RHa, axis=0), axis=1); _v = np.convolve(np.pad(_v, 3, mode='edge'), np.ones(7) / 7, 'valid'); T_S = int(_v.argmax()); T_W = int(max(3, _v[int(nf * .12):max(int(nf * .12) + 1, T_S - 2)].argmin() + int(nf * .12)))
+def larm_at(fr):
+    a0, a1 = LARM[0], LARM[-1]; w1 = sst(T_W * .2, T_W, fr); w2 = sst(T_W, T_S + 2, fr); w3 = sst(T_S + (nf - T_S) * .25, nf, fr); out = []
+    for k in (0, 1):
+        d = nz(a0[k] * (1 - w1) + L_WIND[k] * w1); d = nz(d * (1 - w2) + L_HIT[k] * w2); d = nz(d * (1 - w3) + a1[k] * w3); out.append(d)
+    return out
+RV0 = {b: RV[b].copy() for b in RV}
+for b in RV:   # even out the turn over time (the search works in 4-degree steps, which would shake the arm)
+    A = np.pad(RV[b], ((3, 3), (0, 0)), mode='edge'); RV[b] = sum(A[k:k + nf + 1] * w for k, w in enumerate([1, 2, 3, 4, 3, 2, 1])) / 16
 # ---- pass 2: apply, lift the hips where the feet sink, read the finished pose
 me = body.data; restlow = None; KEY = {b: {'rot': [], 'loc': []} for b in order}; after = []; lows = []
 def bodylow():
@@ -96,10 +123,15 @@ new = bpy.data.actions.new(clip + '_fix'); frames = []
 for fr in range(nf + 1):
     goto(fr); upd()
     if lift[fr] > 1e-4: m = PB['pelvis'].matrix.copy(); m.translation.z += lift[fr]; PB['pelvis'].matrix = m; upd()
-    for bone, viol in (('upperarm.R', violR), ('upperarm.L', violL)):
+    if FREEARM: set_larm(larm_at(fr))
+    for bone, viol in (('upperarm.R', violR),) + ((() if FREEARM else (('upperarm.L', violL),))):
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr], base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
-            turn(bone, np.zeros(3), base); upd(); rv = solve(bone, viol, RV[bone][fr]); turn(bone, rv, base); upd()
+            ok_ = False
+            for k_ in (1.1, 1.2, 1.35, 1.5):   # a little more of the same turn, before searching afresh
+                turn(bone, RV[bone][fr] * k_, base)
+                if viol(meas()) == 0: ok_ = True; break
+            if not ok_: turn(bone, np.zeros(3), base); upd(); rv = solve(bone, viol, RV0[bone][fr]); turn(bone, rv, base); upd()
     after.append(meas()); frames.append({b: (PB[b].rotation_quaternion.copy(), PB[b].location.copy()) for b in order})
 prevq = {}
 ad.action = new

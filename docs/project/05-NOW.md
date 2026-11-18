@@ -103,7 +103,8 @@ Art chat:
 - ~~W83. Do the swings of 3D.198 look right?~~ Owner, 18 Nov: no, they look weak; correct the previous swings instead. Done in 3D.201: the old hand-made swings are back, corrected by `tools/art/b3d/fixswing.py` (the weapon arm is turned just enough that the weapon, hands and elbows stay out of the head; the weapon stays out of the ground; the hips are lifted where the feet sank).
 - W84. The two-handed set for the big weapons (decided 18 Nov: separate). Next (Claude): find recordings, show the reference. Waiting: which weapons are two-handed? Claude's proposal: Sledgehammer, Fire Axe, Scrap Spear, Shovel, Road Sign; one-handed: everything else (bat, pipe, crowbar, machete, katana, hatchet, cleaver, knife, golf club, spiked club, nail bat).
 - ~~W85. Bug A9: can the survivor be seen on the phone now?~~ Owner, 18 Nov: the test looks good.
-- W86. Watch Swing 1 to 4 on the Survivor test page (3D.201: the old swings, corrected) and say whether they are right now.
+- ~~W86. Are the corrected swings (3D.201) right?~~ Owner, 18 Nov: OK, but the arm that does not hold the weapon is still glitching; make the swings more natural. Done in 3D.202: the free arm no longer jumps up in front of the chin and flings about: it comes forward across the chest as the weapon is drawn back, is pulled back to the hip as the blow lands, then returns; the weapon arm's correction is evened out so it does not shake; the weapon hand is kept further from the face. Swing 4 (overhead) is now one-handed.
+- W87. Watch Swing 1 to 4 on the Survivor test page (3D.202) and say whether the free arm and the swings look natural now.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
