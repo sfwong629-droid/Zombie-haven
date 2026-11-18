@@ -204,3 +204,15 @@ Neither breaks the game, because the code falls back quietly. Tidying them up be
 - **Fit recipes**: `tools/art/b3d/fits/`.
 - **How a Tripo model becomes in-game armour**: `tools/README.md`, "Armour pipeline".
 - **Old ChatGPT building pictures** (2D era): `tools/art/sources/`.
+
+## Survivor animation review (17 Nov, nothing changed yet: W63)
+All 46 survivor animations were drawn as picture strips and measured (`tools/art/b3d/animdump.py`, `tools/art/b3d/strips.py`). They are made by formulas in `tools/art/b3d/anims.py` and saved inside each survivor model.
+
+Wrong:
+- **All walks** (walk, walk_f, carry_walk, rescue, melee_hold_walk, gun_hold_walk): the knee never gets straighter than 20 to 25 degrees, the step is too long (half the body height) and the body rides low. Cause: `walk_legs` keeps at least 26 degrees of knee bend on purpose.
+- **Standing poses** (idle, carry_idle, talk, wave, work_barricade, gun_hold_idle, gun_reload, pistol_fire, hurt): knees bent 18 to 35 degrees while standing still. Cause: `soft_legs`.
+- **Feet sink into the ground**: punch (11 cm), knockdown (11), limp_walk (9), pickup (9), grabbed (8), melee swings a to d (7), gun_hold_hurt (7).
+- **punch**: lunges so deep the head drops a quarter of the body height.
+- **work_barricade**: arms held out, almost no movement.
+
+Acceptable: run (low, but reads as a run), melee_hold_idle and gun_fire (fighting stance), melee combos, shove, cheer, work_chop, work_hammer, work_dig, work_tinker, sit, sit_f, eat, sleep, collapse, melee_hold_hurt.

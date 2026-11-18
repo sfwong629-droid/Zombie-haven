@@ -83,6 +83,7 @@ Art chat:
 - ~~W49. Is the new Zombie test page easy to follow?~~ Owner, 17 Nov: yes. The size and model changes asked for the same day are in 3D.185 (W51).
 - ~~W51. Zombie sizes and models (3D.185, 3D.188): are they right?~~ Owner, 17 Nov: yes, the size is good. (Walker, Lasher, Leaper, legless Crawlers, the smaller Butcher and Bloater Queen. The owner said nothing against the Crawlers' stumps.)
 - ~~W62. Bug A8: the Zombie test showed menus but no map or zombie on the phone.~~ Owner, 17 Nov: fine now, it looks like a connection issue. Closed; nothing in the game was changed.
+- W63. Survivor animations (review of all 46, 17 Nov; list in `06-ASSETS.md`, "Survivor animation review"). Fix them in three builds, each shown as before/after pictures first? (1) Walk and stand: straight legs, normal step (6 walks, 9 standing poses). (2) Feet sinking into the ground: punch, melee swings, limp, knockdown, pickup, grabbed. (3) Stiff ones: punch lunge, barricade work. Nothing changed yet. After that: the same review for the 22 zombie and boss animations.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).
