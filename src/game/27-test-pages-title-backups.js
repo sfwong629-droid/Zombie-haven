@@ -107,6 +107,53 @@ function zooShow(t) {   /* one zombie alone, in the open, close up */
   centerOn(x + .75, y + .25, ZOOM_MAX); cam.y -= VH * .09; clampCam(); zooApply(); zooInfo(t);   /* the panel covers the lower half: the zombie stands in the upper one */
 }
 function zooAll() { for (const q of S.z) q.escaped = true; zooRef(); zooOne = null; zooLine(); centerOn(6.3 + OFF, 9.3 + OFF, Math.max(.95, Math.min(1.3, VW / 330))); zooApply(); $('zooInfo').innerHTML = 'Everyone lined up. The buttons work on all of them at once. Tap a card to see one alone.'; }
+/* ---------------- 3D.190 Survivor test page (?svt): one survivor in the open, turning, playing whichever animation is tapped (owner, 17 Nov:
+   "like the zombie test but for the survivor, where I can click through the animations"). Looks only: nothing here changes a real game. */
+const SVT_GROUPS = [
+  ['Moving', ['idle', 'walk', 'jog', 'run', 'walk_f', 'limp_walk', 'carry_idle', 'carry_walk', 'rescue', 'pickup']],
+  ['Everyday', ['talk', 'wave', 'cheer', 'sit', 'sit_f', 'eat', 'sleep']],
+  ['Work', ['work_chop', 'work_hammer', 'work_dig', 'work_tinker', 'work_barricade']],
+  ['Melee', ['melee_hold_idle', 'melee_hold_walk', 'punch', 'shove', 'melee_swing_a', 'melee_swing_b', 'melee_swing_c', 'melee_swing_d', 'melee_combo_1', 'melee_combo_2', 'melee_combo_3', 'melee_combo2h_1', 'melee_combo2h_2', 'melee_combo2h_3']],
+  ['Guns', ['gun_hold_idle', 'gun_hold_walk', 'gun_fire', 'pistol_fire', 'gun_reload']],
+  ['Hurt', ['hurt', 'melee_hold_hurt', 'gun_hold_hurt', 'grabbed', 'knockdown', 'collapse']]];
+const SVT_NAME = { idle: 'Stand', walk: 'Walk', jog: 'Jog', run: 'Run', walk_f: 'Walk (woman, calm)', limp_walk: 'Limp', carry_idle: 'Carry, standing', carry_walk: 'Carry, walking', rescue: 'Pushing the rescue cart', pickup: 'Pick up',
+  talk: 'Talk', wave: 'Wave', cheer: 'Cheer', sit: 'Sit', sit_f: 'Sit (woman)', eat: 'Eat', sleep: 'Sleep', work_chop: 'Chop', work_hammer: 'Hammer', work_dig: 'Dig', work_tinker: 'Tinker', work_barricade: 'Board up',
+  melee_hold_idle: 'Melee stance', melee_hold_walk: 'Walk with melee weapon', punch: 'Punch', shove: 'Shove', melee_swing_a: 'Swing 1', melee_swing_b: 'Swing 2', melee_swing_c: 'Swing 3', melee_swing_d: 'Swing 4 (overhead)',
+  melee_combo_1: 'Combo 1', melee_combo_2: 'Combo 2', melee_combo_3: 'Combo 3', melee_combo2h_1: 'Two-hand combo 1', melee_combo2h_2: 'Two-hand combo 2', melee_combo2h_3: 'Two-hand combo 3',
+  gun_hold_idle: 'Gun stance', gun_hold_walk: 'Walk with gun', gun_fire: 'Fire rifle', pistol_fire: 'Fire pistol', gun_reload: 'Reload', hurt: 'Hurt', melee_hold_hurt: 'Hurt (melee)', gun_hold_hurt: 'Hurt (gun)', grabbed: 'Grabbed', knockdown: 'Knocked down', collapse: 'Collapse' };
+const SVT_REAL = new Set(['walk', 'walk_f', 'jog']);   /* the clips that are already recordings of real people; add to this as they are replaced (W63) */
+let svtClip = 'walk', svtTurn = true, svtFem = false, svtList = [];
+const svtWho = () => S.sv.find((q) => q.svt);
+function svtPut() {   /* (re)make the one survivor: a new person object, so the renderer builds the right body */
+  const old = svtWho(), yaw = old && old.show ? old.show.yaw : null; S.sv = S.sv.filter((q) => !q.svt); S.z = [];
+  const S0 = 11 - 2 * 2.1, x = (S0 - 3) / 2 + OFF + .25, y = (S0 + 3) / 2 + OFF - .25, q = mk(svtFem ? 'Maya' : 'Sam', 'Civilian', 1, x, y, 0);   /* the Zombie test's open spot north of the town */
+  for (const [tx, ty] of [...TREE_SPOTS, ...ROCK_SPOTS]) if (Math.abs(tx - x) < 3 && Math.abs(ty - y) < 3) { const n = treeNode(tx, ty); if (n.left) { n.left = 0; n.regrow = 1e9; if (window.ZH3D && ZH3D.dirty) ZH3D.dirty(); } }
+  q.look = { sex: svtFem ? 'f' : 'm', skin: 1, hair: 2 }; q.eq = { weapon: null, armor: null, head: null, acc: null }; q.dummy = true; q.svt = true; q.resident = true; q.tag = svtFem ? 'Woman' : 'Man';
+  q.show = { clip: svtClip, turn: svtTurn, yaw }; S.sv.push(q); centerOn(x + .3, y + .3, ZOOM_MAX); cam.y -= VH * .2; clampCam();   /* the panel is tall: the survivor stands in the top third */
+}
+function svtApply(again) {
+  const q = svtWho(); if (q) q.show = { clip: svtClip, turn: svtTurn, yaw: q.show ? q.show.yaw : null, again: !!again };
+  const d = $('zooPanel'); if (!d) return; const i = svtList.indexOf(svtClip), info = (window.ZH3D && ZH3D.survivorClips ? ZH3D.survivorClips(svtFem) : []).find((c) => c.name === svtClip);
+  d.querySelectorAll('.zc').forEach((b) => { b.classList.toggle('on', b.dataset.c === svtClip); if (b.dataset.c === svtClip) b.scrollIntoView({ block: 'nearest', inline: 'center' }); });
+  $('svtTurn').classList.toggle('on', svtTurn); $('svtTurn').textContent = svtTurn ? 'Turning' : 'Turn'; $('svtSex').textContent = svtFem ? 'Woman · tap for the man' : 'Man · tap for the woman';
+  $('zooInfo').innerHTML = `<b>${esc(SVT_NAME[svtClip] || svtClip)}</b> · ${i + 1} of ${svtList.length}${info ? ' · ' + info.dur.toFixed(2) + ' s' : ''} · file name <code>${esc(svtClip)}</code><br>${SVT_REAL.has(svtClip) ? 'A recording of a real person.' : 'Old hand-made animation: still to be replaced.'}`;
+}
+function svtStart() {
+  S.mission = null; simSpeed = 1; zooLine(); S.z = []; svtList = SVT_GROUPS.flatMap((g) => g[1]);
+  const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel svt';
+  d.innerHTML = `<div class="zh"><b>Survivor test</b><span class="sm">${svtList.length} animations · tap one, or use Next</span></div>` +
+    SVT_GROUPS.map(([g, cs]) => `<div class="zg"><span class="zgn">${g}</span><div class="zrow">${cs.map((c) => `<button class="zc" data-c="${c}"><b>${esc(SVT_NAME[c] || c)}</b>${SVT_REAL.has(c) ? '<i>REAL</i>' : ''}</button>`).join('')}</div></div>`).join('') +
+    `<div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" id="svtPrev">◀ Back</button><button class="act" id="svtNext">Next ▶</button><button class="act" id="svtAgain">Again</button><button class="act" id="svtTurn">Turning</button></div>` +
+    `<div class="zbtns" style="margin-top:8px"><button class="act" id="zooExit">Exit</button><button class="act" id="svtSex">Man</button></div>`;
+  $('world').appendChild(d);
+  d.querySelectorAll('.zc').forEach((b) => { b.onclick = () => { svtClip = b.dataset.c; svtApply(true); }; });
+  const step = (k) => { svtClip = svtList[(svtList.indexOf(svtClip) + k + svtList.length) % svtList.length]; svtApply(true); };
+  $('svtPrev').onclick = () => step(-1); $('svtNext').onclick = () => step(1); $('svtAgain').onclick = () => svtApply(true);
+  $('svtTurn').onclick = () => { svtTurn = !svtTurn; svtApply(); }; $('svtSex').onclick = () => { svtFem = !svtFem; svtPut(); svtApply(); };
+  $('zooExit').onclick = () => { const q = new URLSearchParams(location.search); q.delete('svt'); location.search = q.toString(); };
+  svtPut(); svtApply();
+  const clean = () => { if (S.z.length) { for (const z of S.z) z.escaped = true; S.z = []; } requestAnimationFrame(clean); }; clean();   /* no zombies on the stage */
+}
 function zooStart() {
   S.mission = null; simSpeed = 1;
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel';
@@ -143,7 +190,7 @@ function showTitle() {
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
   if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
-  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; } { const gb = $('tGear'); if (gb) gb.onclick = () => { const q = new URLSearchParams(location.search); q.set('gear', '1'); location.search = q.toString(); }; }   /* 3D.151 */   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
+  $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; } { const sb = $('tSvt'); if (sb) sb.onclick = () => { const q = new URLSearchParams(location.search); q.set('svt', '1'); location.search = q.toString(); }; } { const gb = $('tGear'); if (gb) gb.onclick = () => { const q = new URLSearchParams(location.search); q.set('gear', '1'); location.search = q.toString(); }; }   /* 3D.151 */   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;
 function showSlots() {

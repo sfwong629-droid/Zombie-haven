@@ -3,11 +3,11 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.189', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.190', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
-let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune', 'zoo', 'gear'].some((k) => QS.has(k)), GEAR = QS.has('gear'), ZOO = QS.has('zoo') || GEAR;   /* 3D.151 ?gear = gear test page (never saves, like ?zoo) */   /* 3D.32 ?zoo = zombie test page (never saves) */
+let titleOn = false; const SAVE_KEY = SLOT_KEYS[SLOT - 1], SKIP_TITLE = ['test', 's', 'play', 'tune', 'zoo', 'gear', 'svt'].some((k) => QS.has(k)), GEAR = QS.has('gear'), SVT = QS.has('svt'), ZOO = QS.has('zoo') || GEAR || SVT;   /* 3D.190 ?svt = Survivor test */   /* 3D.151 ?gear = gear test page (never saves, like ?zoo) */   /* 3D.32 ?zoo = zombie test page (never saves) */
 /* V2.42 save safety: a day backup per slot (<key>_bak), a copy of a save that would not load (<key>_bad), a session id so a second tab on the same slot is noticed */
 const BAK = (k) => k + '_bak', BAD = (k) => k + '_bad', SID = Math.random().toString(36).slice(2, 10);
 let saveBlocked = '', saveErr = '', loadedFrom = '';

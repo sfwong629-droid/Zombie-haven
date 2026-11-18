@@ -420,3 +420,7 @@ html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }
 
 /* 3D.166 the level-timer speed-up buttons: a button you can't afford looks it */
 #uRush:disabled, #uRushAll:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
+
+/* 3D.190 Survivor test page */
+.zooPanel.svt .zg { display: flex; align-items: center; gap: 6px; } .zooPanel.svt .zgn { flex: 0 0 58px; font: 800 11px Manrope, sans-serif; color: #C9D1D9; } .zooPanel.svt .zg .zrow { flex: 1; min-width: 0; padding-bottom: 4px; }
+.zooPanel.svt .zc { min-width: 0; padding: 6px 9px; } .zooPanel.svt .zc b { padding-right: 0; white-space: nowrap; } .zooPanel.svt .zc i { position: static; display: inline-block; margin-top: 2px; } .zooPanel.svt code { font: 600 11px monospace; color: #C6FF4D; }
