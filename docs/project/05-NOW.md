@@ -89,7 +89,8 @@ Art chat:
 - ~~W66. Do the walk and the jog (3D.189) look right?~~ Owner, 17 Nov: looks great.
 - ~~W67. Is the Survivor test page (3D.190) what you wanted?~~ Owner, 17 Nov: yes. (The owner can name animations that look wrong there at any time.)
 - ~~W68. Carrying, the reference.~~ Owner, 17 Nov: lean back a bit, as people do to balance the weight. Built in 3D.191: the legs and body of the gentle recorded jog (clip 35_17), the body leaning back about 9 degrees, the arms kept on the crate; carriers keep today's pace.
-- W69. Watch "Carry, walking" on the Survivor test page (3D.191): is the lean right, or more, or less? Also: 3D.191 slowed the walk's and the jog's steps to their true pace (they played a little fast in 3D.189 and 3D.190); say if they still look right.
+- ~~W69. Is the carrying lean right, and do the walk and jog still look right at their true pace (3D.191)?~~ Owner, 17 Nov: looks good.
+- W70. Moving with a weapon in the hand, the reference (shown 17 Nov as before/after pictures). Proposal: the same recorded walk and jog as everyone, with the weapon arm (melee: the right arm, the left one swings freely; gun: both arms on the rifle, held low across the body) kept as it is today. Four animations instead of two, because a person with a weapon also walks on strolls and jogs to a job: walk and jog with a melee weapon, walk and jog with a gun. Is that what you want? If yes it is the next build.
 
 Balance chat:
 - ~~W50. The building plan.~~ Approved 17 Nov (`08-BALANCE.md`, section 10): when each building opens, the seven new buildings, and four linked changes (era 3 buildings, the Landmark as the build route, the festival at level 5, the Quarry before power).

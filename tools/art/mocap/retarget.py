@@ -82,6 +82,8 @@ if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz'
 # --- dump old and new for strips
 me=body.data; me.calc_loop_triangles(); tri=np.array([t.vertices[:] for t in me.loop_triangles]); tl=np.array([t.loops[:] for t in me.loop_triangles]); uv=np.array([d.uv[:] for d in me.uv_layers[0].data])[tl]
 img=next(i for i in bpy.data.images if i.size[0]>0 and len(i.pixels)); Wd,Hd=img.size; px=(np.array(img.pixels[:]).reshape(Hd,Wd,4)[:,:,:3]*255).astype(np.uint8)
+PROP=os.environ.get('ZH_PROP'); wob=bpy.data.objects.get('weapon_'+PROP) if PROP else None
+if wob: wm=wob.data; wm.calc_loop_triangles(); wt=np.array([t.vertices[:] for t in wm.loop_triangles])+len(me.vertices); px[0:3,0:3]=(70,70,75)
 res={'tri':tri,'uv':uv,'tex':px,'bones':np.array(order)}
 for nm,act,fa,fb in((clip,old,*old.frame_range),(clip+'_new',new,0,nf)):
     ad.action=act
@@ -91,7 +93,10 @@ for nm,act,fa,fb in((clip,old,*old.frame_range),(clip+'_new',new,0,nf)):
     V=[];J=[]
     for i in range(N):
         fr=fa+(fb-fa)*i/(N-1); bpy.context.scene.frame_set(int(fr),subframe=fr-int(fr)); dg=bpy.context.evaluated_depsgraph_get(); ev=body.evaluated_get(dg); m=ev.to_mesh()
-        V.append(np.array([(ev.matrix_world@v.co)[:] for v in m.vertices],np.float32)); ev.to_mesh_clear()
+        vv=np.array([(ev.matrix_world@v.co)[:] for v in m.vertices],np.float32); ev.to_mesh_clear()
+        if wob: mw=wob.evaluated_get(dg).matrix_world; vv=np.concatenate([vv,np.array([(mw@x.co)[:] for x in wm.vertices],np.float32)])
+        V.append(vv)
         J.append(np.array([list((ao.matrix_world@pb.head)[:])+list((ao.matrix_world@pb.tail)[:]) for pb in ao.pose.bones],np.float32))
+    res['T:'+nm]=np.concatenate([tri,wt]) if wob else tri; res['U:'+nm]=np.concatenate([uv,np.zeros((len(wt),3,2))+.0005]) if wob else uv
     res['V:'+nm]=np.array(V); res['J:'+nm]=np.array(J); res['F:'+nm]=np.array([fa,fb,fps])
 np.savez_compressed(out,**res); print('done',nf)
