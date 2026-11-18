@@ -133,7 +133,7 @@ function svtPut() {   /* (re)make the one survivor: a new person object, so the 
   q.look = { sex: svtFem ? 'f' : 'm', skin: 1, hair: 2 }; q.eq = { weapon: null, armor: null, head: null, acc: null }; q.dummy = true; q.svt = true; q.resident = true; q.tag = svtFem ? 'Woman' : 'Man';
   q.show = { clip: svtClip, turn: svtTurn, yaw }; S.sv.push(q); svtAim();
 }
-/* 3D.199 the survivor stands in the middle of the part of the screen the panel leaves free (owner, 18 Nov: on the phone the menu covered the whole screen and the character could not be seen) */
+/* 3D.200 the survivor stands in the middle of the part of the screen the panel leaves free (owner, 18 Nov: on the phone the menu covered the whole screen and the character could not be seen) */
 let svtAimN = 0;
 function svtAim() {
   const q = svtWho(), d = $('zooPanel'); if (!q) return; centerOn(q.w.x + .3, q.w.y + .3, ZOOM_MAX * 1.5); if (!d || !(window.ZH3D && ZH3D.screenOf)) return;   /* closer than the game allows: this page is for looking at one person */
@@ -157,11 +157,11 @@ function svtApply(again) {
 function svtStart() {
   S.mission = null; simSpeed = 1; zooLine(); S.z = []; svtList = SVT_GROUPS.flatMap((g) => g[1]);
   const d = document.createElement('div'); d.id = 'zooPanel'; d.className = 'zooPanel svt';
-  /* 3D.199 a short panel: one row of group tabs, one row with that group's animations, one line of facts, one row of buttons */
+  /* 3D.200 a short panel: one row of group tabs, one row with that group's animations, one line of facts, one row of buttons */
   d.innerHTML = `<div class="zh"><b>Survivor test</b><span class="sm">${svtList.length} animations</span><button class="act zs" id="svtSex">Man</button><button class="act zs" id="zooExit">Exit</button></div>` +
     `<div class="zrow ztabs">${SVT_GROUPS.map(([g], k) => `<button class="zt" data-g="${k}">${g}</button>`).join('')}</div><div class="zrow" id="svtRow"></div>` +
     `<div class="zinfo" id="zooInfo"></div><div class="zbtns zact"><button class="act" id="svtPrev">◀ Back</button><button class="act" id="svtNext">Next ▶</button><button class="act" id="svtAgain">Again</button><button class="act" id="svtTurn">Turn</button></div>`;
-  $('world').appendChild(d); $('app').classList.add('svtOn');   /* 3D.199 nothing but the survivor and this panel: the game's own bars and buttons are hidden here */
+  $('world').appendChild(d); $('app').classList.add('svtOn');   /* 3D.200 nothing but the survivor and this panel: the game's own bars and buttons are hidden here */
   d.querySelectorAll('.zt').forEach((b) => { b.onclick = () => { svtClip = SVT_GROUPS[+b.dataset.g][1][0]; svtApply(true); }; });
   const step = (k) => { svtClip = svtList[(svtList.indexOf(svtClip) + k + svtList.length) % svtList.length]; svtApply(true); };
   $('svtPrev').onclick = () => step(-1); $('svtNext').onclick = () => step(1); $('svtAgain').onclick = () => svtApply(true);

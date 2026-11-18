@@ -425,7 +425,7 @@ html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }
 
 /* 3D.166 the level-timer speed-up buttons: a button you can't afford looks it */
 #uRush:disabled, #uRushAll:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
-/* 3D.190 Survivor test page; 3D.199 made short so the survivor is never hidden on a phone: tabs, one row of animations, one line of facts, one row of buttons */
+/* 3D.190 Survivor test page; 3D.200 made short so the survivor is never hidden on a phone: tabs, one row of animations, one line of facts, one row of buttons */
 .zooPanel.svt { padding: 8px; bottom: calc(92px + env(safe-area-inset-bottom)); } .zooPanel.svt .zh { align-items: center; margin: 0 2px 5px; } .zooPanel.svt .zh b { font-size: 14px; } .zooPanel.svt .zh .sm { flex: 1; }
 .zooPanel.svt .zh .zs { flex: none; min-height: 30px; padding: 0 10px; font-size: 12px; } .zooPanel.svt .zrow { padding-bottom: 5px; }
 .zooPanel.svt .zt { flex: none; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: #C9D1D9; font: 800 12px Manrope, sans-serif; } .zooPanel.svt .zt.on { background: #fff; color: #14200A; border-color: #fff; }

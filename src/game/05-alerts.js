@@ -34,7 +34,7 @@ function critStrip(text, icon) {
 }
 const newsKey = (t) => (typeof t === 'object' ? t.t : t).replace(/[\d,.]+/g, '#').toLowerCase();
 function banner(t, who) {
-  if (SVT) return;   /* 3D.199 the Survivor test page shows the survivor and nothing else */
+  if (SVT) return;   /* 3D.200 the Survivor test page shows the survivor and nothing else */
   if ((who)) t = { t, who };
   const k = newsKey(t);
   if (bannerOn && bannerOn.k === k) { bannerOn.n++; bannerOn.show(t); return; }   /* the same news again while it is showing: count it */
