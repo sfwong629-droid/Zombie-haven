@@ -24,3 +24,4 @@ Recorded effects in sfx/, all CC0 1.0 (public domain; no credit required, given 
   dog1.mp3               "barking_01" from "80 CC0 creature SFX" (OpenGameArt), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds
   downm0-1.mp3, downf0-1.mp3   male and female "falldeath" and "pain100" from Warfork (Team Forbidden, CC0 asset release), same collection
   rockb0-2.mp3, rockf0-2.mp3   "rock_breaking" and "rock_falling" from "75 CC0 breaking / falling / hit SFX" (OpenGameArt), same collection
+  oofm0-1.mp3, ooff0-1.mp3     male and female short "pain" grunts from Warfork (Team Forbidden, CC0), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds; silence trimmed
