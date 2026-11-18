@@ -250,3 +250,15 @@ What this shows:
 - **The first Banner is the wall.** Towns sit at level 5 for 10 to 20 game days waiting for one, and the bot loses its first try at the clinic stronghold every time.
 - **Still not measured:** anything past level 7, and a daily player's real pace.
 
+**Third measurement, 18 Nov: the first two number changes.** Three towns, 30 game days each, as before.
+
+| Build | What changed | Deaths in the three towns | Boss nights |
+|---|---|---|---|
+| 3D.195 (before) | nothing | 5, 3, 2 | 10 to 56 zombies, at most 21 on screen |
+| 3D.197 (live) | a raider hits as hard as its weapon | 9, 6, 1 | unchanged |
+| First cut of the big horde (not released) | the boss's mob four times bigger, at 60% health | 11, 8, 18 (one town wiped out) | 23 to 81 zombies, 50 to 79 on screen |
+
+- **The big horde's size is on target and its danger is not.** From day 15 a boss night killed 6 to 12 people at once. The towns cannot thin the crowd fast enough, so it piles up to 50 to 79 on screen against the era 1 aim of far fewer. Not released; the change is kept in `tools/balance/shelved/` for the rework (W54).
+- **The raider change cannot be judged from three towns.** Deaths rose in two towns and fell in one, and the run-to-run spread is that large without any change. One town lost 9 people in two days at level 7 with raiders nearby. It needs more towns (W57).
+- **Research runs out early** (W82): the bot finishes 6 or 7 of the 8 projects by game day 25 to 30, at level 5 to 7. No building is locked behind research today.
+
