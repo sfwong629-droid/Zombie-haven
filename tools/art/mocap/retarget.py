@@ -28,7 +28,7 @@ def sstep(a,b,x): t=min(1,max(0,(x-a)/(b-a))); return t*t*(3-2*t)
 def footflat(side):
     d=Q[:,I(side+'ToeBase')]-Q[:,I(side+'Foot')]; z=W(P)[:,I(side+'Foot'),2]; i=np.argsort(z)[:max(3,T//6)]; dd=d[i].mean(0); return math.atan2(-dd[2],-dd[1])
 FLAT={'Left':footflat('Left'),'Right':footflat('Right')}; ry=rest['foot.L'].col[1]; RESTP=math.atan2(-ry[2],-ry[1]); print('foot flat pitch',FLAT,'rest',RESTP)
-STAND=bool(os.environ.get('ZH_STAND')); HIPS=float(os.environ.get('ZH_HIPS','.3')); SWAY=float(os.environ.get('ZH_SWAY','1')); TOE=float(os.environ.get('ZH_TOE','7'))   # SWAY: how much of the recorded hip sway to keep; TOE: degrees the feet turn out
+STAND=bool(os.environ.get('ZH_STAND')); HIPS=float(os.environ.get('ZH_HIPS','.3')); FOOTBACK=float(os.environ.get('ZH_FOOTBACK','0')); SWAY=float(os.environ.get('ZH_SWAY','1')); TOE=float(os.environ.get('ZH_TOE','7'))   # SWAY: how much of the recorded hip sway to keep; TOE: degrees the feet turn out
 def _m(a,b): v=Q[:,I(a)]-Q[:,I(b)]; v/=np.linalg.norm(v,axis=1,keepdims=True); return v.mean(0)
 NDM=_m('Head','Neck'); HDM=_m('Head_end','Head')
 def solve(i):
@@ -54,35 +54,60 @@ def solve(i):
     pz=rest['foot.L'].translation[2]+SC*(ankM[i]-ank0)-low
     if LEAN:   # lean the body back (carrying a load): chest by LEAN degrees, pelvis by a third of it; the head stays level
         for b,k in(('chest',1.),('pelvis',.35)): R[b]=Matrix.Rotation(-math.radians(LEAN*k),3,'X')@R[b]
+    if STAND and FEET:
+        for b in('pelvis','chest'): R[b]=Matrix.Rotation(FEET[b],3,'Z')@R[b]
     pv=Vector((hx[i]*SC,hy[i]*SC,pz))
     if STAND:
         # Standing: the library's standing recordings have unusable knees (20 to 60 degrees of bend while standing still), so the legs are solved instead:
         # both feet planted where the model's feet rest, the hips swaying as recorded, each knee as straight as the sway allows.
         sx,sy=hx[i]*SC*SWAY,hy[i]*SC*SWAY; hp={}; pz=9.
+        if FEET: sy+=(FEET['L'][0][1]+FEET['R'][0][1])/2-rest['foot.L'].translation[1]+FOOTBACK   # the hips sit over the middle of the two feet
         for sd in'LR':
-            off=np.array(R['pelvis']@(rest['pelvis'].to_3x3().inverted()@(rest['thigh.'+sd].translation-rest['pelvis'].translation))); an=np.array(rest['foot.'+sd].translation); Lg=(BN['thigh.'+sd].length+BN['shin.'+sd].length)*.998
+            off=np.array(R['pelvis']@(rest['pelvis'].to_3x3().inverted()@(rest['thigh.'+sd].translation-rest['pelvis'].translation))); an=np.array(rest['foot.'+sd].translation)
+            if FEET: an=np.array([FEET[sd][0][0],FEET[sd][0][1],an[2]])
+            Lg=(BN['thigh.'+sd].length+BN['shin.'+sd].length)*.998
             dx,dy=an[0]-(sx+off[0]),an[1]-(sy+off[1]); pz=min(pz,an[2]+math.sqrt(max(1e-9,Lg*Lg-dx*dx-dy*dy))-off[2]); hp[sd]=(off,an)
         for sd in'LR':
             off,an=hp[sd]; h0=np.array([sx,sy,pz])+off; dv=an-h0; dd=min(np.linalg.norm(dv),(BN['thigh.'+sd].length+BN['shin.'+sd].length)*.9999); l1,l2=BN['thigh.'+sd].length,BN['shin.'+sd].length; dn=dv/np.linalg.norm(dv)
             x=(l1*l1-l2*l2+dd*dd)/(2*dd); y=math.sqrt(max(0.,l1*l1-x*x)); fw=np.array([0,-1.,0]); fw=nz(fw-dn*(fw@dn)); kn=h0+dn*x+fw*y
             hh=np.array([-1.,0,0]); R['thigh.'+sd]=frame(kn-h0,hh); R['shin.'+sd]=frame(an-kn,hh)
-            yw=math.radians(TOE)*(1 if sd=='L' else -1); ry_=np.array(rest['foot.'+sd].col[1][:3]); c_,s_=math.cos(yw),math.sin(yw); R['foot.'+sd]=frame([ry_[0]*c_-ry_[1]*s_,ry_[0]*s_+ry_[1]*c_,ry_[2]],hh)
+            yw=math.radians(TOE)*(1 if sd=='L' else -1)
+            if FEET: yw=-FEET[sd][1]
+            ry_=np.array(rest['foot.'+sd].col[1][:3]); c_,s_=math.cos(yw),math.sin(yw); R['foot.'+sd]=frame([ry_[0]*c_-ry_[1]*s_,ry_[0]*s_+ry_[1]*c_,ry_[2]],hh)
         pv=Vector((sx,sy,pz))
     for b in list(R):
         if any(b.startswith(k) for k in KEEPB): del R[b]
     return R,pv
 import os; LEAN=float(os.environ.get('ZH_LEAN','0')); KEEPB=[k for k in os.environ.get('ZH_KEEP','').split(',') if k]   # bones left as the old clip has them at its first frame (ZH_KEEP=upperarm,forearm,hand : arms keep holding the crate)
 fps=bpy.context.scene.render.fps; nf=round(T*dt*fps); old=bpy.data.actions[clip]
+OLDT=bool(os.environ.get('ZH_OLDTIME'))   # the new clip keeps the old clip's length, and the kept bones (ZH_KEEP) keep their old movement over time (a wave, a reload) instead of the first frame
+of0,of1=old.frame_range
+if OLDT: nf=int(round(of1-of0))
+FEET=None
+if os.environ.get('ZH_FEET')=='old':   # standing: plant the feet where the old clip has them (a fighting stance with one foot forward)
+    _ad=ao.animation_data; _ad.action=old
+    try:
+        if old.slots: _ad.action_slot=old.slots[0]
+    except Exception: pass
+    bpy.context.scene.frame_set(int(of0)); bpy.context.view_layer.update(); FEET={}
+    for sd in'LR':
+        pb=ao.pose.bones['foot.'+sd]; y=pb.matrix.col[1]; FEET[sd]=(np.array(pb.head[:]),math.atan2(-y[0],-y[1]))
+    for b in('pelvis','chest'): x=ao.pose.bones[b].matrix.col[0]; FEET[b]=math.atan2(x[1],x[0])   # how far the old stance turns the hips and the chest
 def fcs(act):
     try: return list(act.fcurves)
     except Exception: return [fc for l in act.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves]
-keep={}
-for fc in fcs(old): keep[(fc.data_path,fc.array_index)]=fc.evaluate(0)
+keepfc={(fc.data_path,fc.array_index):fc for fc in fcs(old)}
+class _K:
+    fr=0
+    def get(self,k,d):
+        fc=keepfc.get(k); return fc.evaluate(of0+(of1-of0)*self.fr/nf if OLDT else 0) if fc else d
+keep=_K()
 new=bpy.data.actions.new(clip+'_new'); ad=ao.animation_data
 for tr in ad.nla_tracks: tr.mute=True
 ad.action=new
 order=[b.name for b in BN]; prevq={}; KEY={b:{'rot':[],'loc':[]} for b in order}
 for fr in range(nf+1):
+    keep.fr=fr if fr<nf else 0
     i=min(T,round(fr/nf*T)) if fr<nf else 0
     R,ploc=solve(i); posed={}
     for b in order:
