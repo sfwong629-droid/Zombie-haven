@@ -101,6 +101,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 18 Nov (Balance chat): Go for the first big horde on boss nights. ~~(Built and measured, not released: the first cut killed too many people; W54.)~~
 - 18 Nov (Balance chat): The big horde is the same number of zombies, much weaker: a third of the health and half the hit; at most 30 standing at once in era 1 (45 in era 2, 60 later); the night's ordinary crowd makes room for it. Built in 3D.199, live with 3D.200.
 - 18 Nov (Balance chat): The first Banner stays as hard as it is until the Landmark and the festival at level 5 are built.
+- 18 Nov (Balance chat): Town raiders hit softer: 5 + 0.2 x the weapon's attack (was 0.3). Built in 3D.204.
+- 18 Nov (Balance chat): No building is locked behind research. Research should last the whole game: a few projects per era, opening with each Banner. (Draft list in `08-BALANCE.md`, section 13; not approved yet.)
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.

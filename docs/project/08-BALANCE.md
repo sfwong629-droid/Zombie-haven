@@ -273,3 +273,47 @@ What this shows:
 - **The size target is half met in era 1:** boss nights bring 25 to 34 zombies by day 12, against about 60. The rest of the horde stops when the boss falls, and the fighters kill it early. Later boss nights bring 43 to 73.
 - **The 17 deaths in one town were a raid:** 12 people died on day 18 with raiders nearby, not on a boss night. With the town of 3D.197 that lost 9, this is the second sign that raiders now hit too hard (W57).
 
+**Raiders softened, 18 Nov (3D.204).** Owner: soften it. A town raider's hit is now 5 + 0.2 x its weapon's attack (was 0.3). Era 1: Thief 5.2, Brute 9, Firebug 6; era 4: 11.4, 12.2, 10.4. Bot, three towns, 30 game days: 4, 3 and 3 deaths, never more than 2 on one day (at 0.3: 9 and 12 lost to single raids in two of six towns).
+
+## 13. Research plan (draft, 18 Nov; waiting for the owner's yes or changes)
+Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
+
+The draft splits today's four recipe sets by era, so better gear opens with each Banner and the top gear needs the Forge, and adds a few new boosts per era. Every item below is already in the game; only the new boosts are new code. Costs in research points are first guesses (today's projects cost 20 to 40) and get tuned with the bot. A project needs nothing but its era and, where marked, the Forge.
+
+**Era 1, from the start (6 projects, about 150 points)**
+| Project | Points | What it gives |
+|---|---|---|
+| Salvage Methods | 25 | Scrapyards make 25% more scrap (as today) |
+| Field Medicine | 25 | Cheaper, longer-lasting bandages (as today) |
+| Reinforced Walls | 30 | Walls get 30% more health (as today) |
+| Basic Blades | 20 | Craft: Machete, Nail Bat |
+| Scrap Armour | 25 | Craft: Biker Leathers, Football Pads, Cookware Cuirass, Football Helmet, Knee Pads |
+| Simple Gadgets | 25 | Craft: Lifting Gloves, Back Brace, Running Shoes, Reading Glasses, Lucky Charm, School Backpack, Tool Belt |
+
+**Era 2, after the first Banner (6 projects, about 360 points)**
+| Project | Points | What it gives |
+|---|---|---|
+| Bigger Stockpiles | 60 | +30 storage (as today, moved here) |
+| Heavy Blades | 60 | Craft: Scrap Spear, Shovel, Fire Axe, Road Sign |
+| Firearms | 70 | Craft: Pistol, Revolver, Hunting Rifle, Crossbow |
+| Protective Gear | 60 | Craft: Riot Vest, Firefighter Coat, Hazmat Suit, Ghillie Suit, Gas Mask, Army Helmet, Riot Helmet |
+| Field Gear | 50 | Craft: Scope Goggles, Walkie-Talkie, Wristwatch, Medic Pouch, Hiking Backpack |
+| Trap Making (new) | 60 | Traps hit 25% harder |
+
+**Era 3, after the second Banner (5 projects, about 560 points; the Forge opens at level 11)**
+| Project | Points | What it gives |
+|---|---|---|
+| Heavy Weapons (Forge) | 130 | Craft: Sledgehammer, Spiked Club, Shotgun, Magnum |
+| Hard Armour (Forge) | 130 | Craft: Kevlar Vest, Scrap Plate, Tactical Vest, SWAT Helmet |
+| Veteran Kit | 80 | Craft: Dog Tags |
+| Generator Tuning (new) | 100 | Generators burn 25% less fuel |
+| Field Surgery (new) | 120 | A downed survivor holds on 50% longer before dying |
+
+**The City, after the third Banner (2 projects, about 400 points; opens at level 16, so there is game left to use them)**
+| Project | Points | What it gives |
+|---|---|---|
+| Masterwork (Forge) | 220 | Craft: Katana, SMG, Military Armor, SWAT Armor |
+| Town Planning (new) | 180 | Building and upgrading 20% faster |
+
+Not checked yet: whether traders, loot or the Armory already hand out era 3 and City gear early, which would undercut this. A town that already crafted or found an item keeps it.
+
