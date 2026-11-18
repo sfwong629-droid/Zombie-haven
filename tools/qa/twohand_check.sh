@@ -2,7 +2,7 @@
 # tools/qa/twohand_check.sh — 3D.207: the two-handed set (owner, 18 Nov: copied from real people; "the weapons are not going through the head or body"),
 # checked with each real weapon it is used with (the models in gear_weapons.glb, placed in the hand as the game places them):
 #   the weapon is never inside the head or the body, never jumps (48 degrees per screen frame at most), both hands stay on it,
-#   each clip starts and ends in its own stance and no arm bone jumps; (3D.210) in C and the two stances the feet stay planted; (3D.211) no leg is twisted round. Also: the game plays these clips for the five two-handed weapons.
+#   each clip starts and ends in its own stance and no arm bone jumps; (3D.210) in C and the two stances the feet stay planted; (3D.211) no leg is twisted round; (3D.213) the spear: the front hand underhand, the hands towards its middle, the stab a straight thrust. Also: the game plays these clips for the five two-handed weapons.
 set -e; cd "$(dirname "$0")/../.."; T=$(mktemp -d); bad=0
 for w in sledge axe shovel roadsign spear; do grep -q "'$w'" js/render3d.js || { echo "FAIL $w is not in the game's two-handed list"; bad=1; }; done
 grep -q "const TWO_H = new Set(\['sledge', 'axe', 'shovel', 'roadsign', 'spear'\])" js/render3d.js && echo "ok   the game's two-handed list: sledgehammer, fire axe, shovel, road sign, spear" || { echo "FAIL the two-handed list in js/render3d.js"; bad=1; }
@@ -26,6 +26,7 @@ sys.exit(1 if bad else 0)
 P
     python3 tools/art/b3d/bodyhit.py $T/$m-$w.npz RL | sed "s/^\(ok   \|FAIL \)/\1$m $w /" > $T/b.txt; grep -v ^BAD $T/b.txt; grep -q "^BAD 0" $T/b.txt || bad=1
     python3 tools/art/b3d/gripcheck.py $T/$m-$w.npz | sed "s/^\(ok   \|FAIL \)/\1$m $w /" > $T/g.txt; grep -v ^BAD $T/g.txt; grep -q "^BAD 0" $T/g.txt || bad=1
+    if [ $w = spear ]; then python3 tools/art/b3d/spearcheck.py $T/$m-$w.npz | sed "s/^\(ok   \|FAIL \)/\1$m $w /" > $T/s.txt; grep -v ^BAD $T/s.txt; grep -q "^BAD 0" $T/s.txt || bad=1; fi   # 3D.213: underhand front hand, hands towards the middle, a straight thrust
   done
   python3 tools/art/b3d/armcheck.py -- $T/$m.glb melee2h_swing_a@melee2h_hold_idle,melee2h_swing_b@melee2h_hold_idle,melee2h_swing_c@melee2h_hold_idle,spear_stab@spear_hold_idle 2>/dev/null | grep -E "^(ok|FAIL|BAD)" > $T/a.txt || true
   grep -v ^BAD $T/a.txt; grep -q "^BAD 0" $T/a.txt || bad=1
