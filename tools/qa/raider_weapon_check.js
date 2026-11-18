@@ -1,12 +1,13 @@
 // tools/qa/raider_weapon_check.js — 3D.187 (owner, W33 and W55): in the town each kind of raider carries its own weapon, one step better per era.
-//   Thief: knife, cleaver, machete, katana.  Brute: nail bat, spiked club, sledgehammer, fire axe.  Firebug: pipe, crowbar, hatchet, spear.
+//   Thief: knife, cleaver, machete, katana.  Brute: nail bat, fire axe, spiked club, sledgehammer.  Firebug: pipe, hatchet, crowbar, spear.
+//   (3D.196, W72: Brute and Firebug reordered so no step is weaker than the one before; the check also fails if a step's attack drops.)
 // It used to be a random one of five (bat, knife, crowbar, pistol, machete), picked when the raider first came on screen.
 // For a town level in each era, sends raids until all three kinds have come and checks every raider's weapon against the table,
 // that each weapon has a model of its own, and that the "New: Raiders" note shows the weapon of the raider that came.
 // Optional: a file name to save a picture of an era IV raid. Exit 0 ok, 1 a check failed, 2 the raids could not be made.
 const Q = require('./lib');
-const T = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'spiked', 'sledge', 'axe'], firebug: ['pipe', 'crowbar', 'hatchet', 'spear'] };
-(async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, expose: 'spawnRaid, intro' }); await Q.newGame(p); await Q.clearCards(p);
+const T = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'axe', 'spiked', 'sledge'], firebug: ['pipe', 'hatchet', 'crowbar', 'spear'] };
+(async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, expose: 'spawnRaid, intro, ITEMS' }); await Q.newGame(p); await Q.clearCards(p);
   await p.waitForFunction(() => ZH3D.armorsReady(), null, { timeout: 120000 }).catch(() => {});
   const bad = []; let made = 0;
   for (const [era, lvl] of [[0, 3], [1, 8], [2, 13], [3, 18]]) {
@@ -18,6 +19,8 @@ const T = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat',
     if (kinds.size < 3) bad.push('era ' + (era + 1) + ': not all three kinds came'); if (wrong.length) bad.push('era ' + (era + 1) + ': ' + wrong.length + ' raiders with the wrong weapon, e.g. ' + wrong[0].join(' '));
   }
   if (!made) { console.log('no raiders were made'); await b.close(); process.exit(2); }
+  const atk = await p.evaluate((T) => Object.fromEntries(Object.entries(T).map(([k, l]) => [k, l.map((i) => ZH.ITEMS[i].atk)])), T);
+  for (const [k, l] of Object.entries(atk)) { console.log(k + ' attack by era: ' + l.join(', ')); if (l.some((v, i) => i && v < l[i - 1])) bad.push(k + ': a later weapon is weaker than the one before (' + l.join(', ') + ')'); }
   const models = await p.evaluate((ids) => ids.filter((i) => ZH3D.wModel(i) !== i), [].concat(...Object.values(T)));
   if (models.length) bad.push('no model of its own for: ' + models.join(' '));
   const note = await p.evaluate(() => { const S = ZH.S; S.lvl = 18; S.introOff = false; if (S.intro) delete S.intro['z:raider']; const n0 = S.z.length; ZH.spawnRaid('toll'); const z = S.z[n0]; ZH.intro('z:raider');

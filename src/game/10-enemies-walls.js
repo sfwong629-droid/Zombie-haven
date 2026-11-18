@@ -170,7 +170,7 @@ const RAIDER_KINDS = {
 /* 3D.187 (owner, 16-17 Nov, W33 and W55): in the town each kind of raider carries its own weapon, one step better per era (I to IV).
    It used to be a random one of five, picked when the raider first came on screen. Looks only in this build: how much harder a better
    weapon hits is a balance number (Balance chat). Raids and strongholds away from the town keep their own weapons. */
-const RAIDER_WPN = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'spiked', 'sledge', 'axe'], firebug: ['pipe', 'crowbar', 'hatchet', 'spear'] };
+const RAIDER_WPN = { thief: ['knife', 'cleaver', 'machete', 'katana'], brute: ['nailbat', 'axe', 'spiked', 'sledge'], firebug: ['pipe', 'hatchet', 'crowbar', 'spear'] };   /* 3D.196 (owner, W72): Brute and Firebug reordered so each step is at least as strong as the one before, by the weapons' own attack */
 const raiderWeapon = (kind, lvl = S.lvl || 1) => (RAIDER_WPN[kind] || RAIDER_WPN.thief)[Math.max(0, ERAS.indexOf(eraOf(lvl)))];
 function rollRaider(z, i) {
   const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
