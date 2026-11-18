@@ -182,7 +182,15 @@ for fc in fcs(new):
     for kp in fc.keyframe_points: kp.interpolation='LINEAR'
 WD=None
 if os.environ.get('ZH_WDIR'):   # 3D.207 two-handed weapons: the line from the left hand to the right hand in the recording (the weapon runs through both hands), smoothed
-    _d=(Q[:,I('RightHand')]-Q[:,I('LeftHand')])*(-1 if os.environ.get('ZH_MIRROR') else 1); _k=int(os.environ.get('ZH_WSMOOTH','9')); _d=np.array([_d[max(0,j-_k):j+_k+1].mean(0) for j in range(len(_d))]); _d/=np.linalg.norm(_d,axis=1,keepdims=True)
+    _d=(Q[:,I('RightHand')]-Q[:,I('LeftHand')])*(-1 if os.environ.get('ZH_MIRROR') else 1);
+    if os.environ.get('ZH_WDIR')=='chop':   # 3D.209: an overhead chop: the weapon follows the forearms, the wrists holding it cocked back while the arms are raised (85 degrees with the arms straight up, none with them 30 degrees below level); rig axes: +Z up, +Y behind
+        _fa=(Q[:,I('RightHand')]-Q[:,I('RightForeArm')])+(Q[:,I('LeftHand')]-Q[:,I('LeftForeArm')]); _fa/=np.linalg.norm(_fa,axis=1,keepdims=True)
+        _hm=(Q[:,I('RightHand')]+Q[:,I('LeftHand')])/2; _sm=(Q[:,I('RightArm')]+Q[:,I('LeftArm')])/2; _el=np.degrees(np.arcsin(np.clip((_hm-_sm)[:,2]/np.linalg.norm(_hm-_sm,axis=1),-1,1)))
+        _ck=np.radians(np.clip((_el+30)/120,0,1)*85); _bk=np.array([0,1.,0]); _dd=[]
+        for _j in range(len(_fa)):
+            _b=_bk-_fa[_j]*(_bk@_fa[_j]); _b=_b/max(1e-9,np.linalg.norm(_b)); _dd.append(_fa[_j]*np.cos(_ck[_j])+_b*np.sin(_ck[_j]))
+        _d=np.array(_dd)
+    _k=int(os.environ.get('ZH_WSMOOTH','9')); _d=np.array([_d[max(0,j-_k):j+_k+1].mean(0) for j in range(len(_d))]); _d/=np.linalg.norm(_d,axis=1,keepdims=True)
     WD=[list(map(float,_d[min(T,int(round(float(warp(fr/nf)))))])) for fr in range(nf+1)]
 import json; json.dump({'fps':fps,'frames':nf,'stride':dist*SC,'seconds':(DUR or T*dt/SPEED),'bones':KEY,'wdir':WD},open(out.replace('.npz','.json'),'w'))
 if '--save' in sys.argv: bpy.ops.wm.save_as_mainfile(filepath=out.replace('.npz','.blend'))
