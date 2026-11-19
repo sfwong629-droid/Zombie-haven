@@ -67,7 +67,8 @@ UI chat:
 - ~~W58. Do the raiders' weapons look right?~~ Owner, 17 Nov: looks right.
 - ~~W56. Does the ✕ on tips work as wanted?~~ Owner, 17 Nov: looks good.
 - ~~W79. Icons on the Town tabs.~~ Owner, 18 Nov: the icons are good, but too much empty space around and inside the tab buttons.
-- W113. Town tabs, second try, and a "twist" for the Glass style (owner, 18 Nov: "it seems just a little bland"). Picture `town-twists.png` sent in the UI chat, trial styles only, nothing built: the tabs become one full-width bar with the icon above the word (52 px tall, no gaps; the selected tab white, as U39 decided), then three twists on top: **A scrap camp** (a hazard stripe along the menu's top edge, title in capitals, an amber edge and two rivets on each card, dashed buttons), **B rim light** (a bright glass rim and a soft blue tint at the top of the menu, cards lit from above like raised glass), **C field radio** (faint scan lines, cut corners on cards and buttons, a typewriter title). Waiting: is the tab bar right, and which twist (A, B, C, a mix, or none)? Dark frosted panels, lime for go and the sticker icons stay in all three.
+- ~~W113. The tab bar and a twist for the Glass style.~~ Owner, 18 Nov: B (rim light), with each tab its own button, rim-lit. Built in 3D.217.
+- W116. Play 3D.217 and say whether the rim light and the tabs look right in every menu (Town, Build, People, a survivor). Anything to change: a picture with a circle is enough.
 - W80. Play 3D.195 or later and say whether the open menus look right: no radio button, the alert button gone where the menu reaches it, "Paused" on the menu's top edge.
 
 Code clean-up chat:
