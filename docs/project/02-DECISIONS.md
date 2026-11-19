@@ -97,6 +97,8 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (UI chat, W128): Inventory, second look: the item boxes are smaller (five to a row) and the icons are more detailed: each item is a picture of its own 3D model, weapons laid across the box. Tapping an item shows a big picture of it that can be turned round, as in Resident Evil, with its stats and "Give to" under it. (Mockup sent; waiting on W131.)
 - 19 Nov (UI chat, W126): A radio message stays on screen until it is tapped away: a ✕ closes it, a tap on the card opens the full words. Built in 3D.224.
 - 19 Nov (UI chat): Inventory: the grid icons drawn from each item's 3D model are OK ("the icon is ok"). The Inventory gets the Story chat's fifth tab, **Story** (key items and papers, a Read button that opens a paper full screen; `09-STORY.md`, 10.5). The owner suggests the big pictures on an item's page are made with ChatGPT (not built; how: W139).
+- 19 Nov (UI chat, W131): The Inventory mockups are approved, with **empty slots** so the grid looks like an inventory. Built one tab per build: Gear and Supplies in 3D.227 (the backpack on the resource bar opens it; Supplies is the old Stash list); Combat, Tools and Story next.
+- 19 Nov (UI chat, W139): Yes to a trial of three ChatGPT pictures for item pages (Crowbar, Riot Vest, Farmer Fresh Poster), made with the Art chat. **Item descriptions must be funny** (numbers first, the joke last, as for every item).
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
