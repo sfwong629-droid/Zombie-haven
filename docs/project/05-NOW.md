@@ -49,6 +49,7 @@ Bugs chat:
 - W36. Bug A6 (Ben can't reach it): next time someone is stuck on "Couldn't reach it", open More → event log → Backup this town → Copy text, and paste it in the Bugs chat. (Owner, 16 Nov: the Copy text route works. No backup of a stuck town has been sent yet.)
 - ~~W34. Bug A2: does the angry face still flash?~~ Owner, 16 Nov: not seen in 3D.180+.
 - ~~W35. Bug A7: does the Stalker look right?~~ Owner, 16 Nov: looks OK in the zombie test.
+- W119. Bug B1 (3D.219): the night horde now leaves town at dawn, all of it (half used to stay all day). Play a morning after a hard night and say whether the town is clear by mid-morning, and whether mornings now feel too easy (the old half-stays rule can come back).
 - W7. Any other bugs they have seen.
 
 UI chat:

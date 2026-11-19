@@ -30,7 +30,7 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 ## B. Found by testers or ChatGPT, confirmed in the logs
 | # | What | Source | Status |
 |---|---|---|---|
-| B1 | Walkers stay inside the town all day | rounds 2–4 | open |
+| B1 | Walkers stay inside the town all day | rounds 2–4 | **fixed in 3D.219** (Bugs chat, 18 Nov), waiting for the owner to confirm. Two parts: (1) the night horde: at 06:00 `dawnRetreat` sent only a random half out of town and skipped any zombie caught mid-swing; the rest never got bored in a busy town (someone is always in sight), so they chased people and bashed buildings all day. Now the whole night horde leaves at dawn, and one caught mid-fight finishes that blow and then leaves. (2) the 3 to 9 walkers the game keeps on the map by day still wander towards the town: that is how days work today, and its replacement (roamers outside the walls) is the daytime threat in the Features chat, so it was not changed here. Balance: weak towns get easier mornings; `ZH_BAL.dawn` still sets the share for studies. Check: `python3 tests/run_tests.py dawn` (3D.218: 10 of 10 unkillable walkers still in town at 10:00, 8 bashing at 16:00; 3D.219: 0). |
 | B2 | Rescue loops: "X is rescuing Y" for hours, the rescuer changing, nobody picked up (Theo 107 h in round 4) | rounds 2–4 | open (walled-in doors were one cause; fixed in 3D.174, not re-tested) |
 | B3 | Guards stuck chasing walkers they can't reach ("postCombat" for a day) | round 3 Builder | open |
 | B4 | The Armory swaps gear the player chose, and spends scrap | rounds 2, 4; ChatGPT judge | open |
@@ -71,6 +71,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.219: B1 the night horde leaves town at dawn, including zombies caught mid-fight (half used to stay all day). Check: `tests/run_tests.py dawn`.
 - 3D.214 (found by Claude while making the stab stronger, tools only): in the spear tool the feet were planted a second time after the spear was placed, which sank the hips 2 cm in a deep lunge and bent the thrust off its line; and aiming the spear moved the hand's middle. Check: `tools/art/b3d/spearcheck.py` (the thrust within 1 cm of one straight line).
 - 3D.212: the leg tool could leave a squash on a shin (a bone set from a matrix picks up scale, which is not saved in the game file); in the new spear stance the front shin was 9% short in the tool, so in the game the foot sank 4 cm into the ground. The tool now keeps leg bones at full size; the leg check caught it. Also the stab turned the back foot twice (fixed).
 - 3D.211: in two-handed C the hips and thighs changed shape (owner's video, 18 Nov: "the butt area and thigh still look weird"): both thighs were turned about 175 degrees about their own length, wringing the skin, the knees pointing backwards. Each leg now keeps the stance's natural turn. Check: `tools/art/b3d/legcheck.py` (no thigh or shin turned more than 90 degrees; run by `tools/qa/twohand_check.sh`).
@@ -80,12 +81,3 @@ UI problems are listed in `04-UI.md`, not here.
 - 3D.203: the weapon arm no longer "teleports" in the melee swings (owner's video, 18 Nov): the bat crossed from behind the back to the front in about two screen frames. The swing's timing is re-spread so the weapon turns at most 38 degrees per screen frame. Check: `tools/qa/swing_head_check.sh` (now also: at most 48 degrees per frame).
 - 3D.201: melee swings no longer pass the weapon or a hand through the survivor's head (seen by the owner, 17 Nov). Check: `tools/qa/swing_head_check.sh`.
 - 3D.200: A9 the Survivor test panel no longer covers the survivor on a phone. Check: `tools/qa/survivor_test_check.js`.
-- 3D.191: the new walk and jog of 3D.189 played too fast (walk 14%, jog 29%), so the feet slid a little: the pace table in `js/render3d.js` wants ground covered per second, and Claude had put in ground per cycle. Found by Claude while adding the carrying movement; the owner had not reported it. Check: `tools/qa/walk_jog_check.js` now compares the table with the recordings.
-- 3D.181: B17 a Medic no longer stands all day beside a fence instead of patching someone up. Check: `tests/run_tests.py profession`.
-- 3D.180: A2 the angry face no longer flashes on a fighter who can't get to a zombie that is bashing a building. Check: `tools/qa/sos_skip_check.js`.
-- 3D.179: A7 the Stalker wears its own skin (it wore the stand-in Runner's). Check: `tools/qa/stalker_look_check.js`.
-- 16 Nov (tools only): C2 the test runner closes every page after each test; C1: 85 test hooks put back, old 2D checks removed, 17 out-of-date tests brought up to date (35 → 1 failure).
-- 3D.178: A5 the "New: Raiders" note shows a raider (Toll Kings' kit), not a walker. Check: `tools/qa/raider_note_check.js`.
-- 3D.177: A4 a closed radio card no longer takes taps (it re-opened its old message when you tapped the People list). Check: `tools/qa/radio_tap_check.js`.
-- 3D.176: A1 sliding survivors (the animation clock and the accessory list shared a name). Check: `tools/qa/frozen_check.js`.
-- 3D.175: frozen-pose check in the Animation tracker (tool only).
