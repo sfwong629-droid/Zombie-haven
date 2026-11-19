@@ -200,6 +200,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 18 Nov: Owner on 3D.214: "spear looks good now". The two-handed set is approved as built (A, B, C, the spear stance and the stab).
 - 19 Nov: **Firing** (W115): the long guns (rifle, assault rifle, shotgun, SMG, bow, crossbow) use the body of a real man aiming a long gun (CMU 79_96, the owner's pick); the pistol, revolver and magnum use the same recorded legs and hips with the pistol held in both hands, arms out. Each shot loops in the aim with a short kick; the feet stay where the gun stance has them. Built in 3D.225.
 - 19 Nov: Owner on 3D.225: the long gun's **right elbow stands out from the body** (it looked like part of the body). The right hand holds the rifle further back, on the stock's wrist, so the arm bends and the elbow points out to the side. Built in 3D.226.
+- 19 Nov: Owner on 3D.226 (W140, with a picture of a man aiming a carbine): the left arm is OK; the long gun's **right elbow must not be over the gun or the shoulder: it hangs lower**, under the gun, the forearm nearly upright to the grip. Built in 3D.228.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
