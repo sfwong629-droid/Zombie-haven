@@ -397,7 +397,10 @@ def set_hand_world(side, HWm):   # the arm to the hand's place, then the hand's 
         aimc = aimc + miss
     return float(np.linalg.norm(want_head - P(PB['hand.' + side].head)))
 AIMERR = []
-RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-.4,-1,.4').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.05')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-.4,-1,.4').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+# (3D.235, owner on 3D.234, a drawing: shoulder, the elbow lower and forward, the forearm up to the hand on the grip) the rifle sits 4 cm further back
+# into the shoulder (RIFF .09 -> .05; the woman .07 -> .03 in build_fire.sh), so the hand on the grip comes nearer the shoulder and the right arm folds:
+# the elbow bends about 105 degrees (was 138, nearly straight) and hangs 7 cm below the line from the shoulder to the hand.
 # (3D.228, owner on 3D.226, W140: "the elbow should not be over the gun or the shoulder. It should be lower", with a picture of a man aiming a carbine) the
 # rifle arm's elbow hint points down (chest frame: Y is up the spine), a little out and to the side: the elbow hangs under the gun and the hand,
 # the forearm nearly upright to the grip. The old hint (-1,.3,-.2) pointed it out and up, so the upper arm rose 70 to 80 degrees above the shoulder.

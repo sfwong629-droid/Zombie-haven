@@ -13,7 +13,9 @@
 #     should be lower") and it hangs low: never above the shoulder, at least 8 cm below the right hand on the gun, and at least
 #     8 cm from the spine line. 3D.226 fails it (the elbow 14 to 15 cm above the shoulder).
 #   - (3D.234, owner: "the right hand should be here", a circle on the grip in front of the chin) the right hand at least 9 cm in front of the head centre;
-#     with the hand that far forward the man's short arm leaves the elbow 6 cm out from the spine line (at least 5.5; further out lifts it and puts the forearm in the gun);
+#   - (3D.235, owner's drawing: shoulder, elbow low, forearm up to the hand) the right arm bent at most 120 degrees, the elbow at least 5 cm below the
+#     shoulder-to-hand line; the hand at least 6 cm in front of the head centre (the rifle sits 4 cm further back into the shoulder).
+#     (3D.234:) with the hand that far forward the man's short arm leaves the elbow 6 cm out from the spine line (at least 5.5; further out lifts it and puts the forearm in the gun);
 #     the elbow at most level with the shoulder (1.5 cm) and at least 7 cm under the hand.
 set -e; cd "$(dirname "$0")/../.."; T=$(mktemp -d); bad=0
 for m in m3 f3; do
@@ -44,7 +46,14 @@ for d, c in ((r, 'gun_fire'), (p, 'pistol_fire')):
         say(min(el) >= .055, c + ': the right elbow stands out from the body (%.3f from the spine line, at least 0.055)' % min(el))
         es = max(Jx[B.index('forearm.R')][2] - Jx[B.index('upperarm.R')][2] for Jx in J); say(es <= .015, c + ': the right elbow is never over the shoulder (%.3f above it at most, limit 0.015: level with it)' % es)
         eh = max(Jx[B.index('forearm.R')][2] - mid(Jx, 'hand.R')[2] for Jx in J); say(eh <= -.07, c + ': the right elbow is under the hand on the gun (%.3f above the hand at most, limit -0.070)' % eh)
-        hf = min(((Jx[B.index('head')][:3] + Jx[B.index('head')][3:]) / 2)[1] - mid(Jx, 'hand.R')[1] for Jx in J); say(hf >= .09, c + ': the right hand holds the grip in front of the chin (%.3f in front of the head centre at least, limit 0.090; 3D.228 had it at the cheek, 0.00)' % hf)
+        hf = min(((Jx[B.index('head')][:3] + Jx[B.index('head')][3:]) / 2)[1] - mid(Jx, 'hand.R')[1] for Jx in J); say(hf >= .06, c + ': the right hand holds the grip in front of the chin (%.3f in front of the head centre at least, limit 0.060; 3D.228 had it at the cheek, 0.00)' % hf)
+        def bendline(Jx):
+            S = Jx[B.index('upperarm.R')][:3]; E = Jx[B.index('forearm.R')][:3]; H = Jx[B.index('hand.R')][:3]
+            a = S - E; f = H - E; u = (H - S) / np.linalg.norm(H - S); off = E - (S + u * ((E - S) @ u))
+            return np.degrees(np.arccos(np.clip(a @ f / np.linalg.norm(a) / np.linalg.norm(f), -1, 1))), -off[2]
+        bl = [bendline(Jx) for Jx in J]; mb = max(x[0] for x in bl); md = min(x[1] for x in bl)
+        say(mb <= 120, c + ': the right arm is bent, not straight (elbow at most %.0f degrees, limit 120; 3D.234 had 138)' % mb)
+        say(md >= .05, c + ': the right elbow hangs below the line from the shoulder to the hand (%.3f at least, limit 0.050; 3D.234 had 0.043)' % md)
     W = V[:, nb:]; hd = max(np.linalg.norm(W[i] - mid(J[i], 'hand.' + s_), axis=1).min() for i in range(len(J)) for s_ in 'LR'); say(hd <= .06, c + ': both hands on the gun (each hand within %.3f of it, limit 0.060)' % hd)
 sys.exit(1 if bad else 0)
 P
