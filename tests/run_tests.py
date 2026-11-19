@@ -889,8 +889,8 @@ async def t_dawn(br, port, t):   # bug A12 (3D.233, owner 19 Nov: zombies never 
       S.bossOn=S.bossKills||0;boss.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(120);out.mob=mob.length;out.mobLeaving=mob.filter(z=>z.mode==='zleave'||z.escaped).length;out.mobLeft=mob.filter(z=>z.hp>0&&!z.escaped).length;return out}""")
     print('      dawn:', r)
     t.ok(r['h05']['alive'] == 10, f"before dawn 10 walkers are in town ({r['h05']})")
-    t.ok(r['h10']['leaving'] == 0 and r['h10']['inTown'] == r['h10']['alive'] and r['h10']['alive'] >= 7, f"at 10:00 none is walking away and the rest are still in town ({r['h10']}; 3D.232: 6 had walked off; 'vanished' is the V2.18 surplus rule, W146)")
-    t.ok(r['h16']['leaving'] == 0 and r['h16']['inTown'] == r['h16']['alive'] and r['h16']['alive'] >= 7, f"at 16:00 likewise ({r['h16']})")
+    t.ok(r['h10']['leaving'] == 0 and r['h10']['inTown'] == r['h10']['alive'] and r['h10']['alive'] == 10, f"at 10:00 all 10 are still in town and none is walking away ({r['h10']}; 3D.232: 6 had walked off)")
+    t.ok(r['h16']['leaving'] == 0 and r['h16']['inTown'] == r['h16']['alive'] and r['h16']['alive'] == 10, f"at 16:00 likewise, none has quietly vanished either ({r['h16']})")
     t.ok(r['mob'] >= 3 and r['mobLeaving'] == 0 and r['mobLeft'] == r['mob'], f"when the boss dies its mob stays and fights on ({r['mob']} in the mob, {r['mobLeaving']} leaving)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
