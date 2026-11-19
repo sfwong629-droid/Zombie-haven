@@ -28,3 +28,5 @@ Recorded effects in sfx/, all CC0 1.0 (public domain; no credit required, given 
   ooff2-4.mp3            female "fall_0", "fall_1" and "pain100" (the last raised 12% in pitch) from Warfork (Team Forbidden, CC0), same collection; silence trimmed
   ooff5,6,8.mp3          female "death", "falldeath" (cut to 1 s, softened, faded) and "fall_2" from Warfork (Team Forbidden, CC0), same collection; silence trimmed
   ooff7.mp3              "human_07" from "80 CC0 creature SFX 2" (rubberduck, OpenGameArt, CC0), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds; silence trimmed
+  ooff9,10.mp3           ooff8 and ooff5 made softer (pitched down a little, low-passed, eased in)
+  ooff11,12.mp3          "Madameberry - Whyyyyy" from "Micro Pack - MadameBerry - Stream Noises" (Ben Burnes / MadameBerry, CC0), same collection; the word's start cut off, low-passed, faded
