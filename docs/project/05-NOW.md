@@ -17,6 +17,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
 - Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
 - Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
+- Build the story (approved 19 Nov, `09-STORY.md`) in the Features chat: first the scene player and the Story tab (the opening moved onto it unchanged), then the scenes in story order, one per build, each shown to the owner first. New zombie: the Delivery Driver. New places and strongholds need maps from the Art chat.
 - Build the eleven new kinds of zombie (decided 17 Nov; list in `02-DECISIONS.md`, "Zombies"), in the Features chat, one kind per build. The Stag needs the daytime roaming groups first.
 
 ## Waiting on the owner
@@ -81,6 +82,8 @@ UI chat:
 - W127. Play 3D.223: (1) open Build and scroll: the four tabs sit on the menu's own glass, no dark bar, and nothing scrolls behind them; (2) the move-in card's "Not yet" is a plain glass button. Right?
 - ~~W128. The Inventory mockup.~~ Owner, 19 Nov: the icon is a little too big, make the item boxes smaller; more detail on the icons; tapping an item should show a more detailed picture, as Resident Evil does.
 - W131. The second Inventory mockup (pictures sent 19 Nov): five smaller boxes to a row; each icon is a picture of the item's own 3D model (weapons laid across the box; 9 soft clothes with no model keep their sticker icon); tapping an item opens a big picture of it on a dark stage that turns round (drag to turn), then its stats, joke and "Give to". Right, or what changes? Then it is built one tab per build, Gear first.
+- W139. Inventory item pictures made with ChatGPT (owner's idea, 19 Nov; the grid icons from the 3D models stay). The plan: the **Art chat** writes one style sheet and a prompt per item, starting with a trial of three (the Crowbar, the Riot Vest, the Farmer Fresh Poster); the owner makes them in ChatGPT and sends them back; the Art chat cuts them out, shrinks them (about 40 KB each, shipped with the game, so offline is kept) and records them in `06-ASSETS.md`. About 120 pictures in all (87 gear, the story items and the 12 papers). Waiting: (1) yes to the plan and the trial; (2) on an item's page, does the ChatGPT picture replace the turning 3D view, or show first with a Turn button for the 3D?
+- W131 now also covers the Story tab mockup (sent 19 Nov): a fifth tab, Story, with Key items and Papers (4/12 found), a READ tag on papers, a paper's page with Read, and Read full screen.
 - W80. Play 3D.195 or later and say whether the open menus look right. The menus are Build, People, Town and a survivor's details (tap a person). With one open: no round radio button on the right, the alert button gone where the menu covers it, and "Paused" centred on the menu's top edge. (Owner, 19 Nov, asked which menus: explained.)
 
 Code clean-up chat:
@@ -163,6 +166,16 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W117. Sound review round 5.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (both Stand Firm takes approved).
 - ~~W120. The woman's survivor-down.~~ Owner, 18 Nov (round 8): takes S and T, played in turn (Female Gruntwork 1, PlumpDev, CC BY-SA 4.0). **Every sound in the review is now approved.**
 - ~~W122. Stand Firm A or B?~~ Owner, 19 Nov: switch between the two, from one fight night to the next. Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
+
+Story chat (started 19 Nov; the story is in `09-STORY.md`, approved 19 Nov):
+- W133. **The cure** (`09-STORY.md`, section 7): 12 steps, each needing one special thing, then about 4 real weeks of growing; about a year in all, for completion players. Yes, or changes?
+- W134. **Shut the Line** (section 6): three new strongholds at the Sunnyside plant after the main ending, easier with allies. Yes?
+- W135. **The Rook choice** in C16: when Lena unmasks the Collector (her brother Rook), let him ride away or call the fighters. Yes?
+- W136. **DJ Moth's new lines** for the whole game (section 12: morning show, dusk, level-ups, calls, the radio card's words, the tutorial). Approve, or mark the ones to change. Then built in one build.
+- W137. **"The Old Brine"**, the name for Greenwater's pickle brine: keep it?
+
+Video chat (approved 19 Nov, not started):
+- W138. Start the Video chat. First job: pick the look for the 15 clips with the owner on one test clip, and whether they are made in Luma AI (paid plan needed for commercial use) or by Claude from the game's own 3D (`09-STORY.md`, 8.3, 10.4, 11).
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)

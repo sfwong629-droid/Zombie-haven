@@ -36,6 +36,19 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (Balance chat): Buildings by era: about 25, 40 and 55 (a level 5 town already has about 25).
 - 17 Nov (Balance chat): Big hordes are about 60, 120 and 240 zombies by era (first set at 40, 100 and 200). Ordinary nights stay the size they are today, so a big horde is about three times an ordinary night. (No number changed yet.)
 
+## Story
+Full story, cutscene list and storyboards: `09-STORY.md`.
+- 19 Nov: The story is **Forever Fresh** (picked over Site Seven, The Chime and Second Life; no fungus, "too similar to The Last of Us"). Freshlock, an additive in Forever Fresh tins, stops food going off; after about ten years of eating it a body can't go off either, so the dead keep walking. Bites carry it (a fever; one bite doesn't turn the living). The cure is living microbes in Greenwater's pickle brine (the word "rot" is not used).
+- 19 Nov: **"General story is good."** `09-STORY.md` is approved; its open items are listed in its section 13.
+- 19 Nov: The secret comes out in layers, level by level, through clues the player sees too; every faction has a part; Helix made the problem and planned to sell the cure ("make the lock, sell the key").
+- 19 Nov: The main story ends with the truth told (DJ Moth's broadcast through the Haven's tower, then the Loudest Night), not with the threat solved. **Shutting the factory is an optional completion**, and **the cure is a much longer optional completion** (about a year) that most players never reach.
+- 19 Nov: Add the new places: Sunnyside, Helix Lab 7 and the Records Office (strongholds), the Dusk Radio Mast (stronghold), the Loudest Night, and the Sunnyside plant (three strongholds, optional). Places already in the game get a story role.
+- 19 Nov: **DJ Moth does not move into the Haven.** He stays on his hill and is seen only at his mast.
+- 19 Nov: The founders' secrets (Marcus drove the Forever Fresh lorries, Amy worked on Freshlock at Helix, Lena's brother Rook is the Collector) are **always revealed**: if the founder has died, an item from them reveals it.
+- 19 Nov: The Toll Kings sell tins and take their toll in scrap; **tins are not a currency**.
+- 19 Nov: Cutscenes are of two kinds: on the game map like the opening (anything with our survivors), and **generated video** for in-world footage (adverts, a training film, flashbacks, the endings), never showing the founders' faces. A new **Video chat** chooses the look and how the clips are made (Luma AI on a paid plan, or made by Claude from the game's own 3D).
+- 19 Nov: **Story items in the Inventory** (like Resident Evil): every item has a page with its picture and description; story items and papers (posters, reports) sit in a Story tab and can't be used. Built by the UI chat as part of its Inventory.
+
 ## Hard rules
 - Must work fully offline.
 - No Claude (or any AI service) for character AI.
@@ -47,6 +60,8 @@ Add new decisions at the end of their topic with the date. If a decision replace
 ## Names
 - The era key is a **Banner** (needed for level 5→6, 10→11, 15→16).
 - Factions: The Toll Kings, Greenwater Commune (friendly), The Foundry (rival town), Quarantine Command, Helix Biotech, The Hollow.
+- 19 Nov (Story chat): a seventh faction, **Sunnyside Foods** (the company behind Forever Fresh), with its town **Sunnyside**, a new area for levels 16 to 20. ("The City" at levels 16 to 20 stays the Haven itself growing into a city.)
+- 19 Nov (Story chat): the additive in the tins is **Freshlock** ("it is a brand"); the brand is **Forever Fresh**, slogan **"Forever Fresh. It'll outlast you."**
 
 ## Text and tone
 - 12 Nov: Building notes: the joke first, the fact second ("leave it as it").
@@ -81,6 +96,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 19 Nov (UI chat): An **Inventory** menu (owner's picks): it holds everything (gear, supplies, ammo and explosives, tools and medicine) in tabs; it opens by tapping the resource bar and replaces today's Stash screen; you can look at an item and give it to a survivor, who is shown how much better or worse it is (no scrapping); items are an icon grid with a count and a rarity-coloured edge. (Not built yet.)
 - 19 Nov (UI chat, W128): Inventory, second look: the item boxes are smaller (five to a row) and the icons are more detailed: each item is a picture of its own 3D model, weapons laid across the box. Tapping an item shows a big picture of it that can be turned round, as in Resident Evil, with its stats and "Give to" under it. (Mockup sent; waiting on W131.)
 - 19 Nov (UI chat, W126): A radio message stays on screen until it is tapped away: a ✕ closes it, a tap on the card opens the full words. Built in 3D.224.
+- 19 Nov (UI chat): Inventory: the grid icons drawn from each item's 3D model are OK ("the icon is ok"). The Inventory gets the Story chat's fifth tab, **Story** (key items and papers, a Read button that opens a paper full screen; `09-STORY.md`, 10.5). The owner suggests the big pictures on an item's page are made with ChatGPT (not built; how: W139).
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
@@ -195,6 +211,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
   - Nurse: gets a fallen zombie near her back on its feet every few seconds. Beat her by killing her first. Weak, stays at the back. Day 24.
   - Soldier (male): helmet and vest: bullets and arrows do half damage (the reverse of the Riot Zombie). Beat it with melee. Tough. Day 27. No gun.
   - Soldier (female, red crosses): the squad's medic: wounded zombies near her slowly heal. Comes with male Soldiers. Beat her by killing her first. Medium. Day 27. No gun.
+  - Delivery Driver (Story chat, 19 Nov): a Route 9 driver still pushing a loaded trolley; the trolley takes hits from the front (hit it from the side or behind, or knock the trolley over); drops a few tins (food). Medium, slow. Day 8 (estimate). No weapon.
 
 ## Music and sound
 - 18 Nov (Music chat): The Music chat owns the game's music and sound effects. Everything works offline: music and sounds are made by the game (`js/sound.js`) or are files in the repo with a licence we can use. One change per build, and the owner hears a sample before it goes in.
