@@ -409,6 +409,7 @@ html.glass #quest b#clock[data-ph="night"] { background: rgba(18, 28, 60, .72); 
    The radio button is hidden; the alert button goes under the menu, which covers it where they meet (it is never part of the menu);
    the "Paused" pill sits centred on the menu's top edge, where it used to sit on the mission card. */
 body:has(#infoPanel.show) .radioBtn { display: none !important; }
+body:has(#infoPanel.show) #requestBox, body:has(#infoPanel.show) .radioCard { display: none !important; }   /* 3D.220 (U22, U23): the move-in card and the radio card step aside too; the move-in card waits unchanged (it has no timer), the radio message is held and replayed (radioHold in the game code) */
 body:has(#infoPanel.show) #alertBtn { z-index: 10; } #alertBtn.under { visibility: hidden; }   /* hidden whole where the menu reaches it: menuCover() in the game code */
 html.glass #infoPanel.show::after { content: 'PAUSED'; position: absolute; z-index: 2; left: 50%; top: 0; translate: -50% -50%; padding: 5px 10px 5px 25px; white-space: nowrap; border-radius: 14px; background: linear-gradient(#fff, #fff) 10px 50% / 3px 10px no-repeat, linear-gradient(#fff, #fff) 16px 50% / 3px 10px no-repeat, rgb(16, 22, 28);   /* the two bars are drawn, so they look the same on every phone */ border: 1px solid rgba(255, 255, 255, .25); color: #fff; font: 800 11px Manrope, sans-serif; letter-spacing: .06em; pointer-events: none; }
 

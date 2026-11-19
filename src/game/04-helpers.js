@@ -63,8 +63,17 @@ function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: t
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
   radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null, urgent: o.urgent || o.level === 'important' || o.level === 'critical' }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
+/* 3D.220 (owner, 16 Nov rule, U23): nothing floats over an open menu. A radio message waits while a menu is open; one that is already
+   playing when a menu opens is stopped, put back at the front of the queue and plays again from the start when the menu closes
+   (it types out and closes itself on a real-time clock, so hiding it would let it run out unseen). */
+const menuOpenNow = () => { const p = $('infoPanel'); return !!(p && p.classList.contains('show')); };
+function radioHold() {
+  if (!radioOn) return; const c = radioOn, el = $('radioCard'); clearTimeout(radioNext.t); clearTimeout(radioNext.ty); radioOn = null;
+  if (el) el.classList.remove('in', 'talk'); radioQ.unshift(c); if (radioQ.length > 3) radioQ.pop(); clearTimeout(radioNext.wt); radioNext.wt = setTimeout(radioNext, 800);
+}
 function radioNext() {
-  if (radioOn || !radioQ.length) return; const w = nStack('nBot'); if (!w) return; if (cardOpen() || (!radioQ[0].urgent && fightOn())) { clearTimeout(radioNext.wt); radioNext.wt = setTimeout(radioNext, 800); return; }   /* 3D.159 the radio waits while a card is open, and ordinary chatter waits out a fight */ const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c; radioLast = c; radioBtn();
+  if (!radioNext.mo && window.MutationObserver && $('infoPanel')) { radioNext.mo = new MutationObserver(() => { if (menuOpenNow()) radioHold(); }); radioNext.mo.observe($('infoPanel'), { attributes: true, attributeFilter: ['class'] }); }
+  if (radioOn || !radioQ.length) return; const w = nStack('nBot'); if (!w) return; if (menuOpenNow() || cardOpen() || (!radioQ[0].urgent && fightOn())) { clearTimeout(radioNext.wt); radioNext.wt = setTimeout(radioNext, 800); return; }   /* 3D.159 the radio waits while a card is open, and ordinary chatter waits out a fight */ const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c; radioLast = c; radioBtn();
   let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); } else if (el.parentElement !== w) w.appendChild(el);
   const tap = true;   /* 3D.159 the card shows 2 lines: a tap always opens the full words (or the action) */
   el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
