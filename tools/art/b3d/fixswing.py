@@ -10,7 +10,7 @@ a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]; dump
 FREEARM = os.environ.get('ZH_FREEARM', '1') != '0'
 GROUND = .012   # (the head clearances are set below, from the head's measured size)
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
-ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; bat = bpy.data.objects['weapon_bat']; PB = ao.pose.bones
+ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; bat = bpy.data.objects['weapon_' + os.environ.get('ZH_WOBJ', 'bat')]; PB = ao.pose.bones   # (3D.225) ZH_WOBJ=rifle / pistol for firing
 ad = ao.animation_data
 for tr in ad.nla_tracks: tr.mute = True
 old = bpy.data.actions[clip]; ad.action = old
@@ -188,7 +188,7 @@ def swing_bone(bone, want):   # turn a bone the shortest way so it points along 
 CURW = [0.]
 LEGERR = {}
 def plant_legs():
-    if not ((PLANT or SP2) and FOOTST): return
+    if not ((PLANT or SP2 or AIMM) and FOOTST): return
     sc_ = ao.matrix_world.to_scale()[0]; f = A2W @ hips3()[:, 2]
     over = 0.   # the hips higher than the legs reach (with a little bend kept): lower them first
     for s_ in 'LR':
@@ -210,8 +210,9 @@ def plant_legs():
         upd()
     if os.environ.get('ZH_DBGF') and PLFR[0] in (0, 30, 45): print('FOOT', PLFR[0], {c_: np.round(FOOTST[c_][0] - P(PB['foot.' + c_].head), 3) for c_ in 'LR'})
     LEGERR.clear()
-UNDER = TWO in ('spear2hold', 'spear2'); PALM = float(os.environ.get('ZH_PALM', '1')); ULROT_ = [None]
+AIMM = TWO in ('aimrifle', 'aimpistol'); UNDER = TWO in ('spear2hold', 'spear2'); PALM = float(os.environ.get('ZH_PALM', '1')); ULROT_ = [None]
 def place_left():
+    if AIMM: return np.zeros(3)   # (3D.225) firing: both hands are placed with the gun (aim_at)
     upd(); mw = np.array(bat.matrix_world); tip = mw[:3, :3] @ AXV[TIPI] + mw[:3, 3]; grp = mw[:3, :3] @ AXV[GRIPI] + mw[:3, 3]; wd = nz(tip - grp)
     rc = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; t_ = float((rc - grp) @ wd); c = grp + wd * t_; perp = rc - c
     tgt = c + wd * (GAP if GRIP == 'ahead' else -GAP) + perp   # the left hand's middle: on the handle, the same side of it as the right hand's
@@ -341,6 +342,97 @@ def spear2_at(k):
     if os.environ.get('ZH_DBGS') and PLFR[0] in (0, 14, 29, 33, 37, 41, 50, 60, 75, 90):
         anc = np.array((ao.matrix_world @ S2_BASE['p'].translation)[:]); rc_ = (P(PB['hand.R'].head) + P(PB['hand.R'].tail)) / 2; a_ = W2A @ (rc_ - anc); nk_ = W2A @ (P(PB['neck'].head) - anc)
         print('S2DBG', PLFR[0], 'hand(l,f,u) %.3f %.3f %.3f' % (a_[0], -a_[1], a_[2]), 'neck %.3f %.3f %.3f' % (nk_[0], -nk_[1], nk_[2]))
+
+# ---- 3D.225 firing (owner, 19 Nov: "1 for long gun, yes to pistol plan"): the recorded body of a man aiming a long gun (CMU 79_96, frames 320-372,
+# facing the line of the gun), the feet planted where the gun stance has them, and the gun placed: the rifle's butt in the right shoulder, its line
+# just beside the cheek, the front hand under the fore-end; the pistol in both hands in front of the face. Each shot replays the clip, so it starts
+# and ends aiming, with the recoil in between: a quick kick (the muzzle up, the gun back) that settles within a quarter of a second.
+FOREDROP = float(os.environ.get('ZH_FOREDROP', '.025')); YSH = float(os.environ.get('ZH_YSH', '.05')); KICK = float(os.environ.get('ZH_KICK', '6' if TWO == 'aimrifle' else '14'))
+REACH = float(os.environ.get('ZH_REACH', '.95')); PISZ = float(os.environ.get('ZH_PISZ', '.03')); SQUARE = float(os.environ.get('ZH_SQUARE', '.8')); AIMUP = float(os.environ.get('ZH_AIMUP', '0'))
+if AIMM:
+    upd(); _HW = ao.matrix_world @ PB['hand.R'].matrix; H2W = _HW.inverted() @ bat.matrix_world; W2H = H2W.inverted()
+    _A = AXV - AXV.mean(0); _u, _s, _vt = np.linalg.svd(_A, full_matrices=False); A_LOC = nz(AXV[TIPI] - AXV[GRIPI])
+    _c2 = [v for v in _vt if abs(v @ A_LOC) < .5][0]; _pr = _A @ _c2; _med = float(np.median(_pr))
+    UP_LOC = nz((-_c2 if (_pr.max() - _med) < (_med - _pr.min()) else _c2) - A_LOC * 0)   # the grip and the magazine stick out below the bore: the far side is down
+    UP_LOC = nz(UP_LOC - A_LOC * (UP_LOC @ A_LOC)); TH_LOC = np.cross(A_LOC, UP_LOC); LOCB = np.stack([A_LOC, UP_LOC, TH_LOC], 1)
+    _ry = np.array((ao.matrix_world @ PB['hand.R'].matrix).to_3x3()); RR0 = None
+    ao.data.pose_position = 'REST'; upd(); RR_REST = np.array(PB['hand.R'].matrix.to_3x3()); RL_REST = np.array(PB['hand.L'].matrix.to_3x3()); ao.data.pose_position = 'POSE'; upd()
+    RR_REST = RR_REST / np.linalg.norm(RR_REST, axis=0); RL_REST = RL_REST / np.linalg.norm(RL_REST, axis=0); CMIR = RR_REST.T @ np.diag([-1., 1, 1]) @ RL_REST
+    if TWO == 'aimrifle':   # the rifle hangs from the 'gun' bone (a child of the chest), not from the hand: place the bone, then put both hands on the rifle
+        G2W = (ao.matrix_world @ PB['gun'].matrix).inverted() @ bat.matrix_world   # constant: the rifle is parented to the bone
+        _keep = (ad.action, ad.action_slot if hasattr(ad, 'action_slot') else None); _gi_ = bpy.data.actions['gun_hold_idle']; ad.action = _gi_
+        try: ad.action_slot = _gi_.slots[0]
+        except Exception: pass
+        sc.frame_set(int(_gi_.frame_range[0])); upd(); _RW = bat.matrix_world.copy()
+        REL_R = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.R'].matrix)); REL_L = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.L'].matrix))   # the hands' grip on the rifle, as the approved gun stance has it
+        ad.action = _keep[0]
+        try: ad.action_slot = _keep[1]
+        except Exception: pass
+        goto(0); upd()
+    print('AIM weapon', bat.name, 'up (local)', np.round(UP_LOC, 2), 'along', np.round(A_LOC, 2))
+def recoil(t):   # 0 at rest, 1 at the peak (0.035 s after the shot), back to 0 by 0.30 s
+    if t < .035: return t / .035
+    return .5 * (1 + math.cos(math.pi * min(1., (t - .035) / .265)))
+def head_centre(): return np.array((ao.matrix_world @ (PB['head'].matrix @ HCL))[:])
+def turn_world(b, R3, pivot):   # turn a bone (and what hangs from it) about a world point
+    M = np.array(ao.matrix_world @ PB[b].matrix); T = np.eye(4); T[:3, :3] = R3; T[:3, 3] = pivot - R3 @ pivot
+    PB[b].matrix = ao.matrix_world.inverted() @ Matrix((T @ M).tolist()); upd()
+def rot(axis, deg): return np.array(Matrix.Rotation(math.radians(deg), 3, Vector(axis)))
+def weapon_world(pos_loc, pos_w, aim, upw):   # the weapon's world matrix: its local axis along `aim`, its up towards `upw`, its local point pos_loc at pos_w
+    upw = nz(upw - aim * (upw @ aim)); Rw = np.stack([aim, upw, np.cross(aim, upw)], 1) @ LOCB.T
+    M = np.eye(4); M[:3, :3] = Rw; M[:3, 3] = pos_w - Rw @ pos_loc; return M
+def set_hand_world(side, HWm):   # the arm to the hand's place, then the hand's own turn exactly (a few passes: the wrist turn moves the hand's middle)
+    ln = PB['hand.' + side].length; want_head = HWm[:3, 3].copy(); cen = (HWm @ np.array([0, ln / 2, 0, 1.]))[:3]; aimc = cen.copy()
+    pole = (RPOLE if TWO == 'aimrifle' else [-.9, -.35, -.1]) if side == 'R' else [.7, -.65, -.1]
+    for _k in range(4):
+        ik_arm(side, aimc, pole, PLFR[0] if _k == 0 else None)
+        m_ = Matrix(HWm.tolist()); m_.translation = (ao.matrix_world @ PB['hand.' + side].matrix).translation; PB['hand.' + side].matrix = ao.matrix_world.inverted() @ m_; upd()
+        miss = want_head - P(PB['hand.' + side].head)
+        if np.linalg.norm(miss) < .002: break
+        aimc = aimc + miss
+    return float(np.linalg.norm(want_head - P(PB['hand.' + side].head)))
+AIMERR = []
+RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-.5,.6,-.1').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+def look_along(d, down, cant):   # turn the neck (half the turn about the vertical) and the head so the face looks along d, a little down, tipped to the right
+    U = np.array([0., 0, 1]); hp = P(PB['head'].head)
+    Hm = np.array((ao.matrix_world @ PB['head'].matrix).to_3x3()); hf = nz(Hm[:, 2]); hf[2] = 0; dh = d.copy(); dh[2] = 0
+    yaw = math.degrees(math.atan2(np.cross(nz(hf), nz(dh)) @ U, nz(hf) @ nz(dh)))
+    turn_world('neck', rot(U, yaw * .5), P(PB['neck'].head))
+    Lh = nz(np.cross(U, d)); Fd = nz(rot(Lh, down) @ d); Ud = rot(Fd, cant) @ U; Ud = nz(Ud - Fd * (Ud @ Fd)); Xd = np.cross(Ud, Fd)
+    M = ao.matrix_world @ PB['head'].matrix; sc_ = M.to_scale(); R4 = Matrix(np.stack([Xd, Ud, Fd], 1).tolist()).to_4x4(); R4.translation = M.translation
+    PB['head'].matrix = ao.matrix_world.inverted() @ R4; upd()
+def aim_at(fr):
+    t = fr / nf * (f1 - f0) / fps; r = recoil(t)
+    F = nz(A2W @ np.array([0., -1, 0])); L = nz(A2W @ np.array([1., 0, 0])); U = np.array([0., 0, 1])
+    aim = nz(rot(L, -(AIMUP + KICK * r)) @ F)   # the kick lifts the muzzle (a turn about the left axis)
+    if TWO == 'aimrifle':
+        look_along(aim, HEADDOWN, CANT)   # the head looks down the rifle, tipped onto the stock
+        hc = head_centre(); sh = P(PB['upperarm.R'].head)
+        z = sh @ U + RIFZ; lat = sh @ L + RIFX; fwd = sh @ F + RIFF - .015 * r
+        for _k in range(12):   # the rifle stays out of the head (the cartoon head is big): move it out to the right until it is clear
+            B = lat * L + z * U + fwd * F; BW = weapon_world(AXV[GRIPI], B, aim, U); _pts = batv @ BW[:3, :3].T + BW[:3, 3]
+            if np.linalg.norm(_pts - hc, axis=1).min() >= HEADR * HEADCLR: break
+            lat -= .01
+        PB['gun'].matrix = ao.matrix_world.inverted() @ Matrix((BW @ np.array(G2W.inverted())).tolist()); upd()
+        AIMERR.append(set_hand_world('R', BW @ REL_R)); AIMERR.append(set_hand_world('L', BW @ REL_L))
+        if os.environ.get('ZH_DBGA') and fr in (0,):
+            Hm = np.array((ao.matrix_world @ PB['head'].matrix).to_3x3()); hf = nz(Hm[:, 2]); hf2 = nz(Hm[:, 1])
+            print('GEO', 'hc', np.round(hc, 3), 'sh', np.round(sh, 3), 'B', np.round(B, 3), 'head z-axis', np.round(hf, 2), 'head y-axis', np.round(hf2, 2), 'errs', np.round(AIMERR[-2:], 3), 'arm reach R', round(float(np.linalg.norm((BW @ REL_R)[:3, 3] - sh)), 3), 'L', round(float(np.linalg.norm((BW @ REL_L)[:3, 3] - P(PB['upperarm.L'].head))), 3), 'arm len', round((PB['upperarm.R'].length + PB['forearm.R'].length), 3))
+        if os.environ.get('ZH_DBGA') and fr in (0, 15):
+            upd(); mw_ = np.array(bat.matrix_world); print('AIMDBG', fr, 'want aim', np.round(aim, 3), 'got', np.round(nz(mw_[:3, :3] @ (AXV[TIPI] - AXV[GRIPI])), 3), 'BW aim', np.round(nz(BW[:3, :3] @ (AXV[TIPI] - AXV[GRIPI])), 3), 'butt want', np.round(B, 3), 'got', np.round(mw_[:3, :3] @ AXV[GRIPI] + mw_[:3, 3], 3))
+    else:
+        Cm = np.array((ao.matrix_world @ PB['chest'].matrix).to_3x3()); cf = nz(Cm[:, 2]); cf[2] = 0
+        yaw = math.degrees(math.atan2(np.cross(nz(cf), F) @ U, nz(cf) @ F)); turn_world('chest', rot(U, yaw * SQUARE), P(PB['chest'].head))   # the chest turns to face the target (both arms reach forward; the hips stay as recorded)
+        look_along(aim, HEADDOWN * .6, CANT * .3)   # the head looks along the pistol
+        hc = head_centre(); shR = P(PB['upperarm.R'].head); shL = P(PB['upperarm.L'].head); shm = (shR + shL) / 2
+        l_ = (PB['upperarm.R'].length + PB['forearm.R'].length) * ao.matrix_world.to_scale()[0]; half = abs((shR - shm) @ L)
+        fwd = math.sqrt(max(.01, (REACH * l_) ** 2 - half ** 2 - PISZ ** 2))
+        G = (shm @ L) * L + (shm @ U + PISZ + .015 * r) * U + (shm @ F + fwd - .02 * r) * F   # the grip: both arms out, the hands meeting in front of the chest's middle, a little above the shoulders
+        upd(); _Hc = ao.matrix_world @ PB['hand.R'].matrix; ln = PB['hand.R'].length
+        Rh = weapon_world(np.zeros(3), np.zeros(3), aim, U)[:3, :3] @ np.array(W2H)[:3, :3]
+        HWm = np.eye(4); HWm[:3, :3] = Rh; HWm[:3, 3] = G - Rh @ np.array([0, ln / 2, 0]); AIMERR.append(set_hand_world('R', HWm))
+        S = np.eye(3) - 2 * np.outer(L, L); RL = S @ Rh @ CMIR; hr = P(PB['hand.R'].head); hl = hr - 2 * ((hr - G) @ L) * L + L * .022 - U * .012 - F * .01
+        HL = np.eye(4); HL[:3, :3] = RL; HL[:3, 3] = hl; AIMERR.append(set_hand_world('L', HL))
 def two_pose(fr):
     if SP2:
         global FOOTST
@@ -349,6 +441,11 @@ def two_pose(fr):
             _p = np.array(PB['pelvis'].matrix.translation[:]); plant_legs()
             if np.linalg.norm(np.array(PB['pelvis'].matrix.translation[:]) - _p) < 1e-4: break
         PLFR[0] = fr; spear2_at(k); return
+    if AIMM:
+        for _ in range(4):
+            _p = np.array(PB['pelvis'].matrix.translation[:]); plant_legs()
+            if np.linalg.norm(np.array(PB['pelvis'].matrix.translation[:]) - _p) < 1e-4: break
+        PLFR[0] = fr; aim_at(fr); return
     if CHT:
         for b_, k_ in (('pelvis', .35), ('chest', .65)):
             m_ = PB[b_].matrix.copy(); R_ = Matrix.Rotation(-CHT * k_, 4, 'Z'); t_ = m_.translation.copy(); m_ = R_ @ m_; m_.translation = t_; PB[b_].matrix = m_; upd()
@@ -409,6 +506,7 @@ try:
     if old.slots: ad.action_slot = old.slots[0]
 except Exception: pass
 def stance_lock(t):   # 1 at the clip's two ends, 0 in the swing
+    if AIMM: return 0.   # (3D.225) firing loops in the aim: each shot replays the clip, so it starts and ends aiming
     tW = TT0[T_W]; Tc = TT0[-1]; e_ = max(.25, (Tc - TT0[T_S]) * .5) if TWO else max(.12, (Tc - TT0[T_S]) * .35)   # (3D.207) two hands on the weapon: a longer return
     return max(1 - sst(0, max(.08, tW * .45), t), sst(Tc - e_, Tc, t))
 def lock_all(fr):   # 3D.205: the whole body starts and ends in the game's stance
@@ -518,10 +616,10 @@ for fr in range(nf + 1):
     WL = 0.
     if TWO and SJ:
         _p0 = np.array(PB['pelvis'].matrix.translation[:]); CURW[0] = stance_lock(TT0[fr]); lock_all(fr); _p1 = np.array(PB['pelvis'].matrix.translation[:])
-        if not (SP2 and CURW[0] <= 0): plant_legs()   # (3D.214) the spear's pose (legs included) is already whole when no blend to the stance is under way: planting again sank the hips after the spear was placed
+        if not ((SP2 or AIMM) and CURW[0] <= 0): plant_legs()   # (3D.214) the spear's pose (legs included) is already whole when no blend to the stance is under way: planting again sank the hips after the spear was placed
         _p2 = np.array(PB['pelvis'].matrix.translation[:]); place_left(); WL = CURW[0]
         if os.environ.get('ZH_DBGT') and fr in (34, 36, 37, 40): print('PELVIS', fr, 'w %.3f' % CURW[0], 'lock moved %.4f' % np.linalg.norm(_p1 - _p0), 'plant moved %.4f' % np.linalg.norm(_p2 - _p1))   # (3D.208) into the stance first, then the head and body are cleared (the other way round the return to the stance undid the clearing)
-    for bone, viol in (() if SP2 else (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m)))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):   # (3D.214) not for the spear: its pose is placed whole (the clearance turn bent the thrust off its line by 13 mm); the spear's clearance is checked on the real body by bodyhit.py
+    for bone, viol in (() if (SP2 or AIMM) else (('upperarm.R', violR), ('hand.R', lambda m: violR(m) + violOwn(m)))) + ((() if (FREEARM or TWO) else (('upperarm.L', violL),))):   # (3D.214) not for the spear: its pose is placed whole (the clearance turn bent the thrust off its line by 13 mm); the spear's clearance is checked on the real body by bodyhit.py
         base = PB[bone].matrix.copy(); turn(bone, RV[bone][fr] * (1 - WL), base); m = meas()
         if viol(m) > 0:   # the hips were lifted since pass 1: solve again from the same turn
             ok_ = False
@@ -585,6 +683,7 @@ print('RESULT', clip, 'frames', nf + 1, '| weapon-head before min %.3f after min
 if TIPP and os.environ.get('ZH_DBGT'):
     _T = np.array(TIPP); _a = nz(_T[int(.41 * nf)] - _T[int(.33 * nf)]); _S = _T[int(.33 * nf):int(.41 * nf) + 1]; _c = _S[0]; print('SOLVERTIP dev', np.round(np.linalg.norm((_S - _c) - np.outer((_S - _c) @ _a, _a), axis=1), 4).tolist(), 'times', np.round(np.array(tt[int(.33 * nf):int(.41 * nf) + 1]) if 'tt' in dir() else 0, 3))
 if LERR: print('LEFTERR left hand off its place on the shaft: max %.3f' % max(LERR))
+if AIMERR: print('AIMERR hands off their places: max %.4f' % max(AIMERR))
 if TWISTS: print('ULTWIST forearm roll for the underhand grip: %.0f to %.0f degrees' % (min(TWISTS), max(TWISTS)))
 print('BODY', clip, 'own arm after %.3f |' % min(g(after, 'own')), 'body clearance before %.3f after %.3f | wrist turned at %d frames' % (min(g(before, 'body')), min(g(after, 'body')), int((np.linalg.norm(RV['hand.R'], axis=1) > 0).sum())))
 if dump:   # old and new, body + bat, for wstrips.py

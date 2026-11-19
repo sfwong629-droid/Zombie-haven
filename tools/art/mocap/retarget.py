@@ -11,7 +11,9 @@ if os.environ.get('ZH_MIRROR'):   # 3D.208: the recording mirrored left for righ
 # --- mocap -> rig axes (rig: +X left, -Y forward, +Z up)
 import os
 h=P[:,0]; u=np.array([0,1.,0])
-if os.environ.get('ZH_STAND') or os.environ.get('ZH_FACEHIPS'):   # (ZH_FACEHIPS, 3D.207: the facing from the hips but the recorded legs kept: a swing with a step) a standing recording: no travel, so the facing comes from the hips (left hip - right hip, crossed with up)
+if os.environ.get('ZH_FACEAIM'):   # 3D.225 firing: a person aiming stands side-on; the facing is the line from the right hand to the left hand (the gun's line), level
+    f=(P[:,I('LeftHand')]-P[:,I('RightHand')]).mean(0); f[1]=0; f/=np.linalg.norm(f); dist=0.
+elif os.environ.get('ZH_STAND') or os.environ.get('ZH_FACEHIPS'):   # (ZH_FACEHIPS, 3D.207: the facing from the hips but the recorded legs kept: a swing with a step) a standing recording: no travel, so the facing comes from the hips (left hip - right hip, crossed with up)
     lf=(P[:,I('LeftUpLeg')]-P[:,I('RightUpLeg')]).mean(0); f=np.cross(lf,u); f[1]=0; f/=np.linalg.norm(f); dist=0.
 else: f=h[-1]-h[0]; f[1]=0; dist=np.linalg.norm(f); f/=dist
 s=np.cross(f,u)
