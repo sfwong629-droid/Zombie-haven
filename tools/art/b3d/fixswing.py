@@ -394,7 +394,10 @@ def set_hand_world(side, HWm):   # the arm to the hand's place, then the hand's 
         aimc = aimc + miss
     return float(np.linalg.norm(want_head - P(PB['hand.' + side].head)))
 AIMERR = []
-RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-1,.3,-.2').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-.4,-1,.4').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+# (3D.228, owner on 3D.226, W140: "the elbow should not be over the gun or the shoulder. It should be lower", with a picture of a man aiming a carbine) the
+# rifle arm's elbow hint points down (chest frame: Y is up the spine), a little out and to the side: the elbow hangs under the gun and the hand,
+# the forearm nearly upright to the grip. The old hint (-1,.3,-.2) pointed it out and up, so the upper arm rose 70 to 80 degrees above the shoulder.
 def look_along(d, down, cant):   # turn the neck (half the turn about the vertical) and the head so the face looks along d, a little down, tipped to the right
     U = np.array([0., 0, 1]); hp = P(PB['head'].head)
     Hm = np.array((ao.matrix_world @ PB['head'].matrix).to_3x3()); hf = nz(Hm[:, 2]); hf[2] = 0; dh = d.copy(); dh[2] = 0
