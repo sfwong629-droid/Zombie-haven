@@ -139,7 +139,7 @@ Balance chat:
 Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.md`, section 8, and `js/sound.js`):
 - ~~W100. Silent sounds: guns make no sound.~~ Built in **3D.215** (live, version 253): each of the 9 ranged weapons has its own shot, approved in the sound review. New check `tools/qa/sfx_names_check.js`.
 - W101. Rescue jingle: five recorded versions (B to F) were made in 3D.57, but the game still plays the old synth one. Hear them and pick one? (Claude: yes, sample first.)
-- ~~W102. Fight music.~~ Owner, 18 Nov: yes: a short fade between moods first, then a bigger track for hordes and bosses (steps 2 and 5 of the remake below).
+- ~~W102. Fight music.~~ Owner, 18 Nov: yes: a short fade between moods first, then a bigger track for hordes and bosses (steps 2 and 5 of the remake below). Fade built in **3D.216** (live, version 254): the old tune plays one more bar while fading out (at most 2.5 s), the new one fades in over 1.2 s; no more cut to silence. Still to do: the horde/boss track.
 - ~~W103. Where new music comes from.~~ Not answered directly; the owner asked for a Ghibli remake of everything (W106), which the game writes itself with recorded instruments. Claude takes that as "keep the game-written music"; recorded tracks only if the owner asks.
 - ~~W105. "I want the music to be more Ghibli."~~ Owner, 18 Nov: "remake all music and effect to match ghibli" (W106). The sample Meadow (an original 3/4 waltz in F; flute and glockenspiel added from the same FluidR3 sound font, CC BY 3.0, 24 files, not committed yet) is the first day track of the remake; the owner has not said yet whether it sounds right.
 - ~~W106 round 1.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
