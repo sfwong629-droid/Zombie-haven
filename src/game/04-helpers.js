@@ -65,7 +65,7 @@ function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: t
 }
 /* 3D.221 (owner, 16 Nov rule, U23): nothing floats over an open menu. A radio message waits while a menu is open; one that is already
    playing when a menu opens is stopped, put back at the front of the queue and plays again from the start when the menu closes
-   (it types out and closes itself on a real-time clock, so hiding it would let it run out unseen). */
+   (it types out on a real-time clock, so hiding it would let it run on unseen). */
 const menuOpenNow = () => { const p = $('infoPanel'); return !!(p && p.classList.contains('show')); };
 function radioHold() {
   if (!radioOn) return; const c = radioOn, el = $('radioCard'); clearTimeout(radioNext.t); clearTimeout(radioNext.ty); radioOn = null;
@@ -77,13 +77,14 @@ function radioNext() {
   let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); } else if (el.parentElement !== w) w.appendChild(el);
   const tap = true;   /* 3D.159 the card shows 2 lines: a tap always opens the full words (or the action) */
   el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
-  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}`;
+  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}<span class="rcX" role="button" aria-label="Close the radio message">✕</span>`;   /* 3D.224 (owner, 19 Nov, W126): the card stays until it is tapped away: the ✕ closes it, a tap on the card opens the full words */
   const close = () => { clearTimeout(radioNext.t); clearTimeout(radioNext.ty); el.classList.remove('in', 'talk'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
+  el.querySelector('.rcX').onclick = (e) => { e.stopPropagation(); close(); };
   el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text) }); };
   requestAnimationFrame(() => el.classList.add('in')); SFX('radio');
   /* 3D.147 owner: the words come out in order, as if someone is talking, not all at once. Each line types out word by word, a breath between lines */
   const box = el.querySelector('.rcT b'), lines = c.lines && c.lines.length ? c.lines : [c.text], quiet = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const done = () => { el.classList.remove('talk'); radioNext.t = setTimeout(close, Math.min(9000, 2600 + c.text.length * 22)); };
+  const done = () => { el.classList.remove('talk'); };   /* 3D.224 (W126): no timer; the message stays until it is tapped away (it used to close itself after 3 to 9 s) */
   if (quiet) { box.innerHTML = lines.map((l) => `<span class="rcL">${esc(l)}</span>`).join(' '); done(); return; }
   el.classList.add('talk');   /* each word has its own due time; a slow frame shows the late ones together instead of stretching the speech */
   const toks = []; let at = 380; lines.forEach((l, li) => { if (li) at += 520; String(l).split(/(\s+)/).forEach((w) => { if (!w) return; toks.push({ li, w, at }); if (!/\s/.test(w)) at += 40 + w.length * 28 + (/[,:;]$/.test(w) ? 160 : /[.!?]$/.test(w) ? 260 : 0); }); });

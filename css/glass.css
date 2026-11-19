@@ -327,6 +327,7 @@ html.glass .evStage .fence { opacity: .55; filter: saturate(.5) brightness(.7); 
 .radioCard .rcT { flex: 1; min-width: 0; padding-left: 8px; } .radioCard .rcT small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rc, #f2b84a); margin-bottom: 2px; }
 .radioCard .rcT b { display: block; font-size: 15px; line-height: 1.25; font-weight: 600; }
 .radioCard .rcA { color: var(--rc, #f2b84a); font-size: 22px; }
+.radioCard .rcX { flex: 0 0 auto; display: grid; place-items: center; width: 44px; height: 44px; margin: -8px -8px -8px 0; color: var(--mu); font-size: 16px; font-weight: 800; border-radius: 12px; }   /* 3D.224 (W126): close the message; 44 px tap area */
 html.shView .radioCard, #app.cutMode .radioCard, #app.titleMode .radioCard { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .radioCard .rcI i { animation: none; } .radioCard { transition: opacity .2s; } }
 /* 3D.147 the radio talks: words arrive one after another, a caret blinks while the voice is still going */
