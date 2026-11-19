@@ -298,13 +298,21 @@
     }
     return len;
   }
-  let mood = 'day', want = 'day', bar = 0, musOut = null, danger = false;
+  let mood = 'day', want = 'day', bar = 0, musOut = null, layer = null, danger = false;
+  /* Music chat (W102): moods cross-fade. The old tune plays one more bar while it fades out (at most 2.5 s); the new one fades in over 1.2 s */
+  function crossfade(c, out, oldLayer, t, oldMood, oldBar) {
+    const fade = Math.min(2.5, writeBar(c, oldLayer, t, oldMood, oldBar));
+    oldLayer.gain.cancelScheduledValues(t); oldLayer.gain.setValueAtTime(1, t); oldLayer.gain.linearRampToValueAtTime(.0001, t + fade);
+    const g = c.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(1, t + 1.2); g.connect(out);
+    if (!(window.OfflineAudioContext && c instanceof OfflineAudioContext)) setTimeout(() => { try { oldLayer.disconnect(); } catch (e) { /* gone */ } }, (fade + 4) * 1000);
+    return g;
+  }
   function scheduler() {
-    if (!ctx || mode !== 'all') return; if (!musOut) { musOut = musicGraph(ctx, musBus); loadBank(ctx); }
+    if (!ctx || mode !== 'all') return; if (!musOut) { musOut = musicGraph(ctx, musBus); layer = ctx.createGain(); layer.connect(musOut); loadBank(ctx); }
     while (nextNote < ctx.currentTime + .6) {
       const t = Math.max(nextNote, ctx.currentTime + .05);
-      if (want !== mood && bar % 2 === 0) { mood = want; bar = 0; musBus.gain.cancelScheduledValues(t); musBus.gain.setValueAtTime(.0001, t); musBus.gain.linearRampToValueAtTime(mode === 'all' ? 1 : 0, t + 1.2); }
-      nextNote = t + writeBar(ctx, musOut, t, mood, bar++);
+      if (want !== mood) { layer = crossfade(ctx, musOut, layer, t, mood, bar); mood = want; bar = 0; }
+      nextNote = t + writeBar(ctx, layer, t, mood, bar++);
     }
   }
   const DAY_TRACKS = ['strum', 'calm', 'western', 'day', 'jig', 'hearth', 'travis', 'rag', 'lounge', 'porch'], SLOW_TRACKS = ['calm', 'hearth', 'day']; let dayN = 0, dayPick = 'hearth';
@@ -337,6 +345,12 @@
       await loadBank(new OfflineAudioContext(1, 1, 44100));
       for (const [t, n] of events) FX[n](c, g.s, t);
       const md = dark === true ? 'night' : dark || 'day', o = musicSec ? musicGraph(c, g.mu) : null; let tt = .05, i = 0; while (tt < musicSec) tt += writeBar(c, o, tt, md, i++);
+      const buf = await c.startRendering(); return buf.getChannelData(0);
+    },
+    async renderSeq(segs, sec) {   // offline: moods one after another, [[mood, seconds], ...], with the same cross-fade as the game
+      const c = new OfflineAudioContext(2, Math.ceil(44100 * sec), 44100), g = build(c); await loadBank(new OfflineAudioContext(1, 1, 44100));
+      const o = musicGraph(c, g.mu); let ly = c.createGain(); ly.connect(o); let tt = .05, b = 0, md = segs[0][0], end = 0;
+      for (const [m, s2] of segs) { end += s2; if (m !== md) { ly = crossfade(c, o, ly, tt, md, b); md = m; b = 0; } while (tt < Math.min(end, sec - 3)) tt += writeBar(c, ly, tt, md, b++); }
       const buf = await c.startRendering(); return buf.getChannelData(0);
     },
     names: Object.keys(FX),
