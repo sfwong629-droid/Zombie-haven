@@ -75,6 +75,9 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 17 Nov (UI chat): Better raider weapons should "definitely" hit harder. (Not built: 3D.187 is looks only; how much harder is a balance number for the Balance chat.)
 - 18 Nov (ChatGPT chat, W108): Health is never a percentage: survivors' HP, a building's health and walls' HP stay as counts ("49/101"). The percentage rule is for other shares of a whole, such as the level-up progress (U18).
 - 18 Nov (ChatGPT chat, W109): Lime marks only Build / go / recommended. A selected tab or option (Status, Haven, Roadside...) is plain white instead. (Not built: U39, done in the same pass as the Town tab icons, W79.)
+- 19 Nov (UI chat, W118): Behind the tabs at the top of a menu there is no dark backing: the tabs sit on the menu's own glass and the list scrolls only below them. Built in 3D.222. (A tab row further down, in survivor details, gets a backing in the menu's tint only while it sticks to the top.)
+- 19 Nov (UI chat, W125): "Not yet" on the move-in card is a plain glass button, not coral (coral means danger); "Accept" stays lime. Built in 3D.223.
+- 19 Nov (UI chat, W124): A move-in card or a radio message held by an open menu comes back when the menu closes.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
