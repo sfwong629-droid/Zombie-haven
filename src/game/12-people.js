@@ -283,7 +283,7 @@ function cancelUpgrade(b) { const u = b.upg; if (!u) return; for (const [k, v] o
 function queueResidentRequest(s) { S.requests.push({ type: 'resident', s }); showNextRequest(); }
 function showNextRequest() {
   const box = $('requestBox'); if (!box || box.innerHTML || !S.requests.length) return; const q = S.requests[0], s = q.s;
-  box.innerHTML = `<div class="request frame"><b class="out">🏠 Wants to stay for good</b><br>${esc(s.name)} (${s.job}, here ${Math.max(1, Math.round(s.daysHere || 1))} day${Math.round(s.daysHere || 1) > 1 ? 's' : ''}) wants to become a resident. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act danger out" id="declineReq">Not yet</button></div>`;
+  box.innerHTML = `<div class="request frame"><b class="out">🏠 Wants to stay for good</b><br>${esc(s.name)} (${s.job}, here ${Math.max(1, Math.round(s.daysHere || 1))} day${Math.round(s.daysHere || 1) > 1 ? 's' : ''}) wants to become a resident. <span style="color:#ff9ab0">♥${Math.floor(s.sat)}</span><br><button class="act go out" id="acceptReq">Accept</button><button class="act out" id="declineReq">Not yet</button></div>`;
   $('acceptReq').onclick = () => { s.resident = true; renownGain(4, 'New resident'); say(s.name + ' became a resident!', true); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
