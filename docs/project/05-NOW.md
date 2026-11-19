@@ -177,14 +177,14 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W122. Stand Firm A or B?~~ Owner, 19 Nov: switch between the two, from one fight night to the next. Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
 
 Story chat (started 19 Nov; the story is in `09-STORY.md`, approved 19 Nov):
-- W133. **The cure** (`09-STORY.md`, section 7): 12 steps, each needing one special thing, then about 4 real weeks of growing; about a year in all, for completion players. Yes, or changes?
-- W134. **Shut the Line** (section 6): three new strongholds at the Sunnyside plant after the main ending, easier with allies. Yes?
-- W135. **The Rook choice** in C16: when Lena unmasks the Collector (her brother Rook), let him ride away or call the fighters. Yes?
-- W136. **DJ Moth's new lines** for the whole game (section 12: morning show, dusk, level-ups, calls, the radio card's words, the tutorial). Approve, or mark the ones to change. Then built in one build.
-- W137. **"The Old Brine"**, the name for Greenwater's pickle brine: keep it?
+- ~~W133. The cure, how long?~~ Owner, 19 Nov: "3 month at most". 12 steps of about one real week each (`09-STORY.md`, section 7).
+- ~~W134. Shut the Line as three plant strongholds?~~ Owner, 19 Nov: yes.
+- ~~W135. The Rook choice in C16?~~ Owner, 19 Nov: yes.
+- W136. **DJ Moth's lines, second version** (`09-STORY.md`, section 12). Owner, 19 Nov, on the first version: he should sound like "Whoever is out there, I hope you are safe. Here are some tips." and "Some info for the survivors out there, there is a Leaper zombie, they might jump over your gate." Rewritten that way (morning show, dusk, level-ups, calls, the radio card's words, the tutorial, and a warning for each new kind of zombie). Approve, or mark the ones to change. Then built in one build.
+- ~~W137. The name "the Old Brine"?~~ Owner, 19 Nov: yes.
 
 Video chat (approved 19 Nov, not started):
-- W138. Start the Video chat. First job: pick the look for the 15 clips with the owner on one test clip, and whether they are made in Luma AI (paid plan needed for commercial use) or by Claude from the game's own 3D (`09-STORY.md`, 8.3, 10.4, 11).
+- W138. Start the Video chat: the owner pastes the starting prompt written in `09-STORY.md`, section 11 ("How to start the Video chat"). Its first job: one test clip (V1, the Forever Fresh advert) in three looks, and Luma AI against clips made by Claude from the game's own 3D.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)

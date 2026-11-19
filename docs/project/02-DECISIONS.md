@@ -41,13 +41,15 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: The story is **Forever Fresh** (picked over Site Seven, The Chime and Second Life; no fungus, "too similar to The Last of Us"). Freshlock, an additive in Forever Fresh tins, stops food going off; after about ten years of eating it a body can't go off either, so the dead keep walking. Bites carry it (a fever; one bite doesn't turn the living). The cure is living microbes in Greenwater's pickle brine (the word "rot" is not used).
 - 19 Nov: **"General story is good."** `09-STORY.md` is approved; its open items are listed in its section 13.
 - 19 Nov: The secret comes out in layers, level by level, through clues the player sees too; every faction has a part; Helix made the problem and planned to sell the cure ("make the lock, sell the key").
-- 19 Nov: The main story ends with the truth told (DJ Moth's broadcast through the Haven's tower, then the Loudest Night), not with the threat solved. **Shutting the factory is an optional completion**, and **the cure is a much longer optional completion** (about a year) that most players never reach.
+- 19 Nov: The main story ends with the truth told (DJ Moth's broadcast through the Haven's tower, then the Loudest Night), not with the threat solved. **Shutting the factory is an optional completion**, and **the cure is a much longer optional completion** (~~about a year~~ three months at most, W133) that most players never reach.
 - 19 Nov: Add the new places: Sunnyside, Helix Lab 7 and the Records Office (strongholds), the Dusk Radio Mast (stronghold), the Loudest Night, and the Sunnyside plant (three strongholds, optional). Places already in the game get a story role.
 - 19 Nov: **DJ Moth does not move into the Haven.** He stays on his hill and is seen only at his mast.
 - 19 Nov: The founders' secrets (Marcus drove the Forever Fresh lorries, Amy worked on Freshlock at Helix, Lena's brother Rook is the Collector) are **always revealed**: if the founder has died, an item from them reveals it.
 - 19 Nov: The Toll Kings sell tins and take their toll in scrap; **tins are not a currency**.
 - 19 Nov: Cutscenes are of two kinds: on the game map like the opening (anything with our survivors), and **generated video** for in-world footage (adverts, a training film, flashbacks, the endings), never showing the founders' faces. A new **Video chat** chooses the look and how the clips are made (Luma AI on a paid plan, or made by Claude from the game's own 3D).
 - 19 Nov: **Story items in the Inventory** (like Resident Evil): every item has a page with its picture and description; story items and papers (posters, reports) sit in a Story tab and can't be used. Built by the UI chat as part of its Inventory.
+- 19 Nov: **The cure takes three months at most** ("3 month at most"): 12 steps of about one real week each (W133). Shut the Line is three plant strongholds (W134). The Rook choice in C16 stays (W135). Greenwater's brine is called **the Old Brine** (W137).
+- 19 Nov: **DJ Moth's voice:** a man broadcasting to strangers he can't see: "Whoever is out there, I hope you are safe. Here are some tips." and "Some info for the survivors out there, there is a Leaper zombie, they might jump over your gate." (Lines rewritten in `09-STORY.md`, section 12; waiting on W136.)
 
 ## Hard rules
 - Must work fully offline.
