@@ -31,3 +31,7 @@ Recorded effects in sfx/, all CC0 1.0 (public domain; no credit required, given 
   ooff9,10.mp3           ooff8 and ooff5 made softer (pitched down a little, low-passed, eased in)
   ooff11,12.mp3          "Madameberry - Whyyyyy" from "Micro Pack - MadameBerry - Stream Noises" (Ben Burnes / MadameBerry, CC0), same collection; the word's start cut off, low-passed, faded
   ooff13-15.mp3          oofm0 (the man's grunt) turned into a woman's voice with the WORLD vocoder, tools/audio/fem_voice.py
+  ooff16-19.mp3          "Female Gruntwork - 1" by PlumpDev, https://opengameart.org/content/female-gruntwork-1 , CC BY-SA 4.0
+                         (licence shown as CC BY 4.0 on the page itself; treated as BY-SA, the stricter). Hurt takes 3, 4, 5, 20,
+                         via the cuts in github.com/Appuxif/forest-chopper (assets/audio/voices/female/hurt); cut to 0.42 s and faded.
+                         These four files are shared under CC BY-SA 4.0 too.
