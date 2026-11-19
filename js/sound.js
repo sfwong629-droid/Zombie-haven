@@ -144,9 +144,9 @@
     hit: (c, o, t) => { if (!sfx(c, o, t, 'woodH' + rnd3(), .42, .7)) return FX.hit(c, o, t); thud(c, o, t, 90, .28, .14); noise(c, o, t, .05, .12, 900, .8, 'lowpass', 250); },
     hurt: (c, o, t) => { noise(c, o, t, .18, .14, 750, 5); noise(c, o, t, .16, .09, 1250, 6); formant(c, o, t, 190, .16, .06, [[700, 6, 1], [1200, 8, .5]], 140); thud(c, o, t, 120, .15, .08); },
     kill: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .42, .5)) return FX.kill(c, o, t); thud(c, o, t, 70, .32, .3); noise(c, o, t + .03, .5, .05, 500, 4, 'bandpass', 250); formant(c, o, t + .02, 95, .5, .06, [[480, 5, 1], [850, 6, .4]], 65, 5); },
-    down: (c, o, t, f, take = Math.random() < .5 ? 0 : 1) => { if (!SFXB.oofm0) return FX.down(c, o, t); const k = ((f ?? Math.random() < .5) ? 'ooff' : 'oofm') + take; sfx(c, o, t, k, .6 * ({ oofm1: 1.6, ooff0: 1.6, ooff2: 1.8, ooff3: 1.1, ooff4: 1 }[k] || 1), .97 + Math.random() * .06); sfx(c, o, t + .2, 'woodL' + rnd3(), .3, .55); thud(c, o, t + .2, 70, .22, .25); },   /* a short oof or ugh, and the fall */
+    down: (c, o, t, f, take = Math.random() < .5 ? 0 : 1) => { if (!SFXB.oofm0) return FX.down(c, o, t); const k = ((f ?? Math.random() < .5) ? 'ooff' : 'oofm') + take; sfx(c, o, t, k, .6 * ({ oofm1: 1.6, ooff0: 1.6, ooff2: 1.8, ooff3: 1.1, ooff4: 1, ooff5: .8, ooff6: .75, ooff7: .85, ooff8: 1.05 }[k] || 1), .97 + Math.random() * .06); sfx(c, o, t + .2, 'woodL' + rnd3(), .3, .55); thud(c, o, t + .2, 70, .22, .25); },   /* a short oof or ugh, and the fall */
     down_f: (c, o, t) => NEWFX.down(c, o, t, true), down_m: (c, o, t) => NEWFX.down(c, o, t, false),
-    down_f0: (c, o, t) => NEWFX.down(c, o, t, true, 0), down_f1: (c, o, t) => NEWFX.down(c, o, t, true, 1), down_m0: (c, o, t) => NEWFX.down(c, o, t, false, 0), down_m1: (c, o, t) => NEWFX.down(c, o, t, false, 1), down_f2: (c, o, t) => NEWFX.down(c, o, t, true, 2), down_f3: (c, o, t) => NEWFX.down(c, o, t, true, 3), down_f4: (c, o, t) => NEWFX.down(c, o, t, true, 4),
+    down_f0: (c, o, t) => NEWFX.down(c, o, t, true, 0), down_f1: (c, o, t) => NEWFX.down(c, o, t, true, 1), down_m0: (c, o, t) => NEWFX.down(c, o, t, false, 0), down_m1: (c, o, t) => NEWFX.down(c, o, t, false, 1), down_f2: (c, o, t) => NEWFX.down(c, o, t, true, 2), down_f3: (c, o, t) => NEWFX.down(c, o, t, true, 3), down_f4: (c, o, t) => NEWFX.down(c, o, t, true, 4), down_f5: (c, o, t) => NEWFX.down(c, o, t, true, 5), down_f6: (c, o, t) => NEWFX.down(c, o, t, true, 6), down_f7: (c, o, t) => NEWFX.down(c, o, t, true, 7), down_f8: (c, o, t) => NEWFX.down(c, o, t, true, 8),
     groan: (c, o, t) => { if (!sfx(c, o, t, 'zgroan' + Math.floor(Math.random() * 7), .7, .8 + Math.random() * .12)) FX.groan(c, o, t); },   /* recorded moans and growls, slowed so they drag on */
     boss: (c, o, t) => { sfx(c, o, t, 'zgroan6', .8, .55); sfx(c, o, t + .05, 'zgroan4', .55, .5); formant(c, o, t, 52, 2, .18, [[290, 4, 1], [680, 5, .7], [1500, 7, .2]], 38, 4.5); noise(c, o, t + .1, 1.4, .12, 220, .5, 'lowpass'); if (!samp(c, o, t, 'timp', N(-12), .5, 2)) thud(c, o, t, 45, .4, .8); },   /* a huge zombie roar (recorded growls slowed down) over a timpani hit */
     radio: (c, o, t, beeps = true) => {   /* radio static with the signal pulsing through it: A little beeps between bursts, B the static itself throbbing */
@@ -239,7 +239,7 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
-  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'oofm0', 'oofm1', 'ooff0', 'ooff1', 'ooff2', 'ooff3', 'ooff4', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
+  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'oofm0', 'oofm1', 'ooff0', 'ooff1', 'ooff2', 'ooff3', 'ooff4', 'ooff5', 'ooff6', 'ooff7', 'ooff8', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
   const rnd3 = () => Math.floor(Math.random() * 3);
   function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
@@ -291,6 +291,7 @@
     tide: { bpm: 92, beats: 4, prog: 'Dm Bb Gm A Dm Bb Eb A7 Dm Bb Gm A Dm Bb Eb A7',
       mel: 'A4:4 | Bb4:2 D5:2 | D5:3 C5 | C#5:4 | F5:2 E5 D5 | D5:2 F5:2 | G5:3 Eb5 | E5:2 C#5:2 | A4:4 | Bb4:2 D5:2 | G5:3 F5 | E5:4 | F5:2 G5 A5 | Bb5:2 F5:2 | G5:3 Bb4 | A4:2 C#5:2' },
   };
+  SONG_DEF.stand_a = { ...SONG_DEF.stand, bpm: 144 }; SONG_DEF.stand_b = { ...SONG_DEF.stand, bpm: 138 };   /* round 5: survivors fighting, not an army */
   for (const [k, d] of Object.entries(SONG_DEF)) { MOODS[k] = { bpm: d.bpm, prog: chords(d.prog) }; d.m = tune(d.mel); }
   const SONGS = {   // each gets x: { c, out, t0, beat, root, ch, i (bar in the tune), pass (0 first time through, 1 second), P, PAD, K, F, j }
     meadow(x) {   /* storybook waltz: piano alone, then flute over harp and strings, a glockenspiel sparkle */
@@ -342,6 +343,24 @@
       line(x, 'hrn', m, .22, { att: .08 });
       if (x.pass) line(x, 'obo', m, .07, { oct: 12, pan: .2 });
     },
+    stand_a(x) {   /* round 5, take A: a scrappy survivors' band. Galloping muted guitar, a bass, the fiddle carries the tune, the accordion joins; knocks on a crate and a pipe instead of drums */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, e = x.beat / 2, g = x.P('gtr'), bs = x.P('bass'), lo = [x.root - 12, x.root - 5];
+      [0, 1, 1.5, 2, 3, 3.5].forEach((b, k) => lo.forEach((s2, i) => g(x.t0 + b * x.beat + i * .01, x.F(s2), k % 3 === 0 ? .2 : .12, e * .55, -.2, .003, .04)));
+      [0, 2].forEach((b) => [x.root - 12, x.root - 5, x.root, c[1], c[2]].forEach((s2, i) => g(x.t0 + b * x.beat + .3 * e + i * .012, x.F(s2), .09, e * 1.6, .15)));
+      bs(x.t0, x.F(x.root - 24), .45, e * 1.8); bs(x.t0 + 1.5 * x.beat, x.F(x.root - 17), .35, e * .9); bs(x.t0 + 2 * x.beat, x.F(x.root - 24), .42, e * 1.8); bs(x.t0 + 3 * x.beat, x.F(c[1] - 24), .32, e * 1.6);
+      [0, 2].forEach((b) => sfx(x.c, x.out, x.t0 + b * x.beat, 'woodL' + ((x.i + b) % 3), .35, .9)); [1, 3].forEach((b) => sfx(x.c, x.out, x.t0 + b * x.beat, 'woodH' + ((x.i + b) % 3), .16, 1.1));
+      if (x.i % 4 === 3) sfx(x.c, x.out, x.t0 + 3.5 * x.beat, 'metalL' + (x.i % 3), .12, 1.2);
+      line(x, 'fid', m, .24, { pan: .1, att: .03, rel: .08 });
+      if (x.pass) { line(x, 'acc', m, .09, { oct: -12, pan: -.25, att: .02 }); x.PAD('str', x.t0, [x.F(c[2] + 12)], x.beat * 4 + .2, .012, 1400); }
+    },
+    stand_b(x) {   /* round 5, take B: lean and tense. Pizzicato strings running in eighths, a muted guitar on the off-beats, a tin whistle tune (the fiddle second time), the cello creeping; one soft crate knock */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, e = x.beat / 2, pz = x.P('pz'), g = x.P('gtr'), ce = x.P('cello');
+      [0, 0, 7, 0, 8, 7, 3, 5].forEach((s2, k) => pz(x.t0 + k * e, x.F(x.root - 12 + (s2 === 8 && c[1] - x.root === 4 ? 9 : s2 === 3 && c[1] - x.root === 4 ? 4 : s2)), k % 2 ? .22 : .3, e * .8, k % 2 ? .2 : -.2));
+      [.5, 1.5, 2.5, 3.5].forEach((b) => [x.root, c[1], c[2]].forEach((s2, i) => g(x.t0 + b * x.beat + i * .008, x.F(s2), .07, e * .4, .25, .002, .03)));
+      ce(x.t0, x.F(x.root - 12), .12, x.beat * 4 * .98, -.1, .3, .4);
+      sfx(x.c, x.out, x.t0, 'woodL' + (x.i % 3), .22, .85);
+      line(x, x.pass ? 'fid' : 'whis', m, x.pass ? .21 : .18, { pan: .1, att: .03, rel: .08 });
+    },
     tide(x) {   /* a horde or a boss: slower and heavier, great drums, a timpani roll, trembling strings, low brass swelling under the horns */
       const m = SONG_DEF.tide.m[x.i], c = x.ch, s16 = x.beat / 4;
       x.K(x.t0, 'kick', .7); [0, 1.5, 2].forEach((b, k) => x.K(x.t0 + b * x.beat, 'tom', k ? .45 : .65, .55));
@@ -353,7 +372,7 @@
       line(x, 'hrn', m, .28, { att: .08 }); if (x.pass || x.i >= 8) line(x, 'tpt', m, .09, { att: .05, pan: .2 });
     },
   };
-  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45, meadow: 4.8, morning: 2.4, fair: 2.25, rain: 6.2, harvest: 3.5, lantern: 5, stand: 4.8, tide: 1.05 };   /* 3D.53 even out the moods' loudness */
+  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45, meadow: 4.8, morning: 2.4, fair: 2.25, rain: 6.2, harvest: 3.5, lantern: 5, stand: 4.8, stand_a: 1.3, stand_b: 4.4, tide: 1.05 };   /* 3D.53 even out the moods' loudness */
   function writeBar(c, out0, t0, mood, bar) {   // schedules one bar; returns its length in seconds
     const out = c.createGain(); out.gain.value = MVOL[mood] || 1; out.connect(out0);
     const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);

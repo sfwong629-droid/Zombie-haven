@@ -26,3 +26,5 @@ Recorded effects in sfx/, all CC0 1.0 (public domain; no credit required, given 
   rockb0-2.mp3, rockf0-2.mp3   "rock_breaking" and "rock_falling" from "75 CC0 breaking / falling / hit SFX" (OpenGameArt), same collection
   oofm0-1.mp3, ooff0-1.mp3     male and female short "pain" grunts from Warfork (Team Forbidden, CC0), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds; silence trimmed
   ooff2-4.mp3            female "fall_0", "fall_1" and "pain100" (the last raised 12% in pitch) from Warfork (Team Forbidden, CC0), same collection; silence trimmed
+  ooff5,6,8.mp3          female "death", "falldeath" (cut to 1 s, softened, faded) and "fall_2" from Warfork (Team Forbidden, CC0), same collection; silence trimmed
+  ooff7.mp3              "human_07" from "80 CC0 creature SFX 2" (rubberduck, OpenGameArt, CC0), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds; silence trimmed
