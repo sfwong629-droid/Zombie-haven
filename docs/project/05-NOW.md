@@ -149,7 +149,8 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W110. Sound review round 2.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W112. Sound review round 3.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W114. Sound review round 4.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (radio take C approved).
-- W117. Sound review **round 5** sent 18 Nov (same page): four takes of the woman's hurt moan (F, G, H, I; recorded, CC0), and two new Stand Firm takes: A, a small survivors' band (galloping guitar, bass, fiddle tune, accordion, knocks on a crate and a pipe instead of drums) and B, lean and tense (pizzicato strings, muted guitar, tin whistle, cello). **Waiting: OK or change for each.** Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
+- ~~W117. Sound review round 5.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (both Stand Firm takes approved).
+- W120. Sound review **round 6** sent 18 Nov (same page): four softer takes of the woman's moan (J, K: takes I and F made softer; L, M: a different woman's voice, a held moan sinking at the end, M closed-mouth), with F and I again. **Waiting: OK on one.** Also: Stand Firm A and B are both approved; Claude's plan is to alternate them from one fight night to the next (yes, or one of them only?). Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)
