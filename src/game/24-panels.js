@@ -2,7 +2,22 @@
 let panelBack = null;
 function showPanel(title, back) {
   $('say').style.opacity = 0; if (title) $('it').textContent = title; panelBack = back || null; $('pBack').style.display = panelBack ? 'block' : 'none';
-  $('infoPanel').classList.add('show'); $('ib').scrollTop = 0;
+  $('infoPanel').classList.add('show'); $('ib').scrollTop = 0; tabTop();
+}
+/* 3D.222 (owner, 19 Nov; W118): a tab row at the top of a menu sits outside the scrolling list, on the menu's own glass, so nothing
+   scrolls under it and it needs no dark backing of its own. It stays in #ib (every [data-tab] wiring still finds it); the menu gets
+   the class tabTop, the row is placed under the title and the list starts below it (glass.css). */
+function tabTop() {
+  const P = $('infoPanel'), ib = $('ib'); if (!P || !ib) return;
+  if (!tabTop.mo && window.MutationObserver) { tabTop.mo = new MutationObserver(() => tabTop()); tabTop.mo.observe(ib, { childList: true }); window.addEventListener('resize', () => tabTop()); ib.addEventListener('scroll', tabStuck, { passive: true }); }
+  const t = ib.firstElementChild, on = !!(t && t.classList.contains('tabs')); P.classList.toggle('tabTop', on); tabStuck(); if (!on) return;
+  const ph = P.querySelector('.ph'); P.style.setProperty('--tabTop', (ph.offsetTop + ph.offsetHeight) + 'px'); P.style.setProperty('--tabH', t.offsetHeight + 'px');
+}
+/* a tab row further down (survivor details) sticks to the top while the list scrolls: only then does it get a backing, so the list
+   does not show through it; otherwise it sits on the menu's glass like the rest */
+function tabStuck() {
+  const ib = $('ib'); if (!ib) return; const top = ib.getBoundingClientRect().top;
+  for (const r of ib.querySelectorAll('.tabs')) r.classList.toggle('stuck', ib.scrollTop > 0 && getComputedStyle(r).position === 'sticky' && r.getBoundingClientRect().top <= top + 1);
 }
 const BDESC = {   /* 3D.134 owner: funny first, facts second, and short. The first sentence is also the toast when it is built. Numbers live in the Makes / Uses table. */
   townhall: 'Meetings, but with a roof. +3 renown a day and one more Specialist and Hybrid slot.', market: 'Capitalism survived the apocalypse. A trader comes every day.', watertower: 'A very tall drink. Pumps 30 water a day with power, a quarter without.',

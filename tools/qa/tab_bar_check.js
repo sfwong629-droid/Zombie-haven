@@ -1,7 +1,7 @@
 // tools/qa/tab_bar_check.js [sizes] [tag] — 3D.217 (owner, 18 Nov; W113, U21, U25, U39): the tab rows.
 // At six phone sizes, opens Town, Build, People and a survivor's details and checks every tab row:
 //   each tab is its own button at least 44 px tall; a row with icons fills the menu's width without scrolling, with the icon above the word;
-//   no tab runs past the menu's edge; a row that stays on top while the menu scrolls is solid (3D.218: scrolled text showed through); the selected tab is white and no tab is lime (lime is only for Build / go / recommended).
+//   no tab runs past the menu's edge; a top tab row sits on the menu's glass outside the scrolling list, and a row further down gets a solid backing only while it sticks (3D.218, 3D.222); the selected tab is white and no tab is lime (lime is only for Build / go / recommended).
 // Optional: a tag to save pictures as <tag>_<size>_<menu>.png. Exit 0 ok, 1 a check failed, 2 a menu could not be opened.
 const Q = require('./lib');
 const SIZES = (process.argv[2] || 'phone:390x844,phoneS:360x640,phoneM:375x667,phoneXL:430x932,phoneN:320x568,phoneT:412x915').split(',').map((s) => { const [n, d] = s.split(':'); const [w, h] = d.split('x'); return [n, +w, +h]; });
@@ -12,7 +12,7 @@ const TAG = process.argv[3] || '';
       await p.evaluate(() => { const x = document.getElementById('closeInfo'); if (document.getElementById('infoPanel').classList.contains('show') && x) x.click(); const e = document.getElementById('eventModal'); if (e) e.style.display = 'none'; }); await p.waitForTimeout(250);
       const opened = await p.evaluate((m) => { const $ = (i) => document.getElementById(i); if (m === 'person') { $('mSurv').click(); const row = document.querySelector('#ib .card'); if (row) row.click(); } else $({ town: 'mTown', build: 'mBuild', people: 'mSurv' }[m]).click(); return $('infoPanel').classList.contains('show') ? $('it').textContent : null; }, m);
       await p.waitForTimeout(450); if (!opened) { stuck++; console.log(`STUCK ${nm} ${m}`); continue; }
-      const r = await p.evaluate(() => { const P = document.getElementById('infoPanel').getBoundingClientRect(), out = [], rows = [...document.querySelectorAll('#ib .tabs')];
+      const r = await p.evaluate(async () => { const P = document.getElementById('infoPanel').getBoundingClientRect(), out = [], rows = [...document.querySelectorAll('#ib .tabs')];
         const rgb = (c) => (c.match(/\d+(\.\d+)?/g) || []).map(Number), isLime = (c) => { const [r, g, b2] = rgb(c); return r > 170 && g > 230 && b2 < 140; }, isWhite = (c) => { const [r, g, b2, a = 1] = rgb(c); return r > 240 && g > 240 && b2 > 240 && a > .9; };
         for (const row of rows) { const bs = [...row.querySelectorAll('button')], icons = bs.every((x) => x.querySelector('.zi-ti'));
           for (const x of bs) { const r2 = x.getBoundingClientRect(), cs = getComputedStyle(x), name = x.textContent.trim();
@@ -20,7 +20,13 @@ const TAG = process.argv[3] || '';
             if (isLime(cs.backgroundColor) || /198, 255, 77/.test(cs.backgroundImage)) out.push(`"${name}" is lime`);
             if (x.classList.contains('on') && !isWhite(cs.backgroundColor)) out.push(`the selected tab "${name}" is not white`);
             if (icons) { const ic = x.querySelector('.zi-ti').getBoundingClientRect(), tx = document.createRange(); tx.selectNodeContents(x); if (ic.bottom > r2.top + r2.height * .7) out.push(`"${name}": the icon is not above the word`); } }
-          { const rs = getComputedStyle(row), a = rgb(rs.backgroundColor)[3]; if (rs.position === 'sticky' && !(a >= .9)) out.push('the row stays on top while the menu scrolls but is see-through (background alpha ' + (a === undefined ? 1 : a) + '), so scrolled text shows behind the tabs'); }   /* 3D.218, owner's screenshot */
+          { const rs = getComputedStyle(row), a = rgb(rs.backgroundColor)[3], clear = (a === 0 || rs.backgroundColor === 'transparent') && rs.backgroundImage === 'none', ib = document.getElementById('ib');   /* 3D.222 (owner, 19 Nov; W118): no dark backing; the menu's own glass shows behind the row */
+            if (document.getElementById('infoPanel').classList.contains('tabTop') && row === ib.firstElementChild) { if (!clear) out.push('the top tab row has a backing of its own (' + rs.backgroundColor + '): it should sit on the menu\'s glass');
+              if (ib.getBoundingClientRect().top < row.getBoundingClientRect().bottom - 1) out.push('the list starts under the top tab row, so it scrolls behind the tabs');
+              const y0 = row.getBoundingClientRect().top; ib.scrollTop = 400; await new Promise((r) => setTimeout(r, 120)); if (Math.abs(row.getBoundingClientRect().top - y0) > 1) out.push('the top tab row moves when the list scrolls'); ib.scrollTop = 0; await new Promise((r) => setTimeout(r, 120)); }
+            else if (rs.position === 'sticky') { if (!clear && !row.classList.contains('stuck')) out.push('a tab row has a backing while not stuck (' + rs.backgroundColor + ')');
+              ib.scrollTop = row.offsetTop + 200; await new Promise((r) => setTimeout(r, 150)); const st = row.getBoundingClientRect().top <= ib.getBoundingClientRect().top + 1, a2 = rgb(getComputedStyle(row).backgroundColor)[3];
+              if (st && !(a2 >= .9)) out.push('the row sticks to the top while the menu scrolls but is see-through (background alpha ' + (a2 === undefined ? 1 : a2) + '), so scrolled text shows behind the tabs'); ib.scrollTop = 0; await new Promise((r) => setTimeout(r, 150)); } }
           if (icons) { if (row.scrollWidth > row.clientWidth + 1) out.push('the row scrolls'); const used = bs.reduce((s, x) => s + x.getBoundingClientRect().width, 0); if (used < row.clientWidth * .85) out.push(`the row fills only ${Math.round(100 * used / row.clientWidth)}% of the width`);
             for (let i = 1; i < bs.length; i++) if (bs[i].getBoundingClientRect().left - bs[i - 1].getBoundingClientRect().right < 2) out.push('two tabs touch: they should be separate buttons'); } }
         return { out, rows: rows.length, n: rows.map((x) => x.children.length).join('+') }; });

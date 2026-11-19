@@ -451,3 +451,13 @@ html.glass .tabs { gap: 6px; padding: 4px 6px 10px; margin: 0 -6px 4px; border-r
 html.glass .tabs:has(.zi-ti) { display: flex; gap: 6px; overflow: visible; padding: 2px 0 10px; }
 html.glass .tabs:has(.zi-ti) button { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; height: 54px; padding: 5px 2px 4px; border-radius: 14px; font-size: 11.5px; line-height: 1.1; }
 html.glass .tabs:has(.zi-ti) .zi-ti svg { width: 26px; height: 26px; }
+
+/* 3D.222 (owner, 19 Nov; W118): "the background behind the 4 buttons should match the menu colour instead of black". A tab row at the
+   top of a menu (Build, Town, a building, resources, Upgrade Town) is taken out of the scrolling list: it sits under the title on the
+   menu's own glass, with no backing of its own, and the list scrolls only below it. (tabTop() in the game code measures the row.)
+   A row further down (survivor details) has no backing either, until the list scrolls and it sticks to the top: then it gets one in
+   the menu's own tint, so the list does not show through it. */
+html.glass #infoPanel.tabTop #ib { margin-top: var(--tabH, 0px); }
+html.glass #infoPanel.tabTop #ib > .tabs:first-child { position: absolute; z-index: 1; top: var(--tabTop, 0px); left: 8px; right: 8px; margin: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.glass #ib .tabs { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.glass #ib .tabs.stuck { background: rgba(92, 104, 100, .97); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
