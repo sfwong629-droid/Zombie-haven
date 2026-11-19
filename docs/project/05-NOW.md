@@ -150,7 +150,7 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W112. Sound review round 3.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W114. Sound review round 4.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (radio take C approved).
 - ~~W117. Sound review round 5.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (both Stand Firm takes approved).
-- W120. Sound review **round 6** sent 18 Nov (same page): four softer takes of the woman's moan (J, K: takes I and F made softer; L, M: a different woman's voice, a held moan sinking at the end, M closed-mouth), with F and I again. **Waiting: OK on one.** Also: Stand Firm A and B are both approved; Claude's plan is to alternate them from one fight night to the next (yes, or one of them only?). Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
+- W120. The woman's survivor-down. Round 6 (four softer moans) was overtaken: the owner asked for "the same as the man but with a woman's voice". **Round 7 sent 18 Nov** (same page): the man's approved grunt turned into a woman's voice, three heights (N lower, O middle, P higher; `tools/audio/fem_voice.py`). **Waiting: OK on one.** Also: Stand Firm A and B are both approved; Claude's plan is to alternate them from one fight night to the next (yes, or one of them only?). Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)
