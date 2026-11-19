@@ -433,7 +433,7 @@ html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }
 .zooPanel.svt .zinfo { min-height: 0; margin: 1px 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .zooPanel.svt .zact .act { min-height: 40px; }
 #app.svtOn #world > :not(canvas):not(#zooPanel):not(#game):not(#fx), #app.svtOn > :not(#world):not(canvas) { display: none !important; } #app.svtOn .zooPanel.svt { bottom: calc(10px + env(safe-area-inset-bottom)); }
 
-/* 3D.216 (owner, 18 Nov; W113, U21, U39, U40): the "rim light" twist on the Glass style, and the tab rows.
+/* 3D.217 (owner, 18 Nov; W113, U21, U39, U40): the "rim light" twist on the Glass style, and the tab rows.
    Menus get a bright glass rim fading down from the top edge and a soft blue glow in the top-left corner; cards, buttons and tabs
    are lit from above like raised glass. Tabs: each is its own button; a row with icons fills the menu's width, icon above the word,
    54 px tall (U25: 44 px or more). The selected tab is plain white, never lime (lime is only for Build / go / recommended).

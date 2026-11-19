@@ -1,4 +1,4 @@
-// tools/qa/tab_bar_check.js [sizes] [tag] — 3D.216 (owner, 18 Nov; W113, U21, U25, U39): the tab rows.
+// tools/qa/tab_bar_check.js [sizes] [tag] — 3D.217 (owner, 18 Nov; W113, U21, U25, U39): the tab rows.
 // At six phone sizes, opens Town, Build, People and a survivor's details and checks every tab row:
 //   each tab is its own button at least 44 px tall; a row with icons fills the menu's width without scrolling, with the icon above the word;
 //   no tab runs past the menu's edge; the selected tab is white and no tab is lime (lime is only for Build / go / recommended).
