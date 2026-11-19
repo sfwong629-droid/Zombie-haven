@@ -41,15 +41,65 @@ function lootReveal(o) {   // { title, sub, entries, note, best }: cards flip in
   E.forEach((e, i) => setTimeout(() => SFX(RARITY[e.rar].o >= 2 ? 'chime' : 'coin'), (i * step + .2) * 1000));
   el.querySelector('#lrOk').onclick = () => { el.remove(); SFX('reward'); if (o.onClose) o.onClose(); };
 }
-function showStash() {   /* every resource, how much room there is, and where more comes from */
-  endBuildMode(true); closeP(); $('it').textContent = 'STASH';
-  const WHERE = { food: 'Garden Plots, farms; Abandoned Houses trips', water: 'Rain Barrels and Collectors, wells', wood: 'chopping trees, a Lumber Camp; Lumber Yard trips', stone: 'breaking rocks, a Quarry; Old Quarry trips',
-    mat: 'salvaging wrecks, the Scrapyard, zombie bags; Warehouse trips', cloth: 'clothes bins past the walls; Abandoned Houses trips; some zombies', meds: 'Pharmacy trips, bloated and spitter zombies, supply drops', fuel: 'Gas Station trips, siphoning wrecks, raiders, supply drops' };
-  const row = (k) => { const cap = k === 'food' || k === 'water' ? supplyCap() : k === 'mat' ? 0 : resCap(k), v = Math.floor(S[k] || 0); return `<div class="card" style="padding:7px 10px"><div class="row" style="gap:8px"><span style="font-size:22px">${RES_ICON[k]}</span><span class="sp"><b>${RES_TITLE[k]}</b> <small style="color:${RARITY[RES_RAR[k]].c};font-weight:700">${RARITY[RES_RAR[k]].n}</small><br><small>${WHERE[k]}</small></span><b>${v}${cap ? ' / ' + cap : ''}</b></div></div>`; };
-  const inv = Object.entries(S.inv || {}).filter(([id, n]) => n > 0 && ITEMS[id]);
-  $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">Storage buildings (Supply Crates → Storehouse → Warehouse) hold more of everything.</div>` + ['food', 'water', 'wood', 'stone', 'mat', 'cloth', 'meds', 'fuel'].map(row).join('')
-    + `<div class="card"><b>Gear in the stash</b>${inv.length ? inv.map(([id, n]) => `<div class="row" style="gap:6px"><span class="sp">${esc(ITEMS[id].name)}${n > 1 ? ' ×' + n : ''}</span><small style="color:${RARITY[itemRar(id)].c};font-weight:700">${RARITY[itemRar(id)].n}</small></div>`).join('') : '<div class="sm">Nothing spare.</div>'}</div>`;
-  showPanel('Stash');
+/* 3D.227 (owner, 19 Nov; U42, W128, W131): the Inventory. The backpack chip on the resource bar opens it (it replaces the old Stash
+   screen). Tabs: Gear (spare weapons, clothing, hats and extras as an icon grid, five to a row, with empty slots so it reads as an
+   inventory), Supplies (the old Stash list). Tapping an item opens its page, Resident Evil style: a big picture that turns (drag or the
+   arrows), the numbers, the joke, then Give to: everyone who could use it, best first, with what they would gain. The Combat, Tools and
+   Story tabs come in later builds (one tab per build). Pictures come from each item's own 3D model (ZH3D.snapItem). */
+let invTab = 'gear', invFilt = 'all';
+const INV_FILT = [['all', 'All'], ['weapon', 'Weapons'], ['armor', 'Clothing'], ['head', 'Hats'], ['acc', 'Extras']];
+const invPic = (id, W, yaw) => { try { return window.ZH3D && ZH3D.snapItem ? ZH3D.snapItem(id, { W, H: W, yaw }) : null; } catch (e) { return null; } };
+function showStash() { showInventory(); }   /* the old name: anything that opened the Stash opens the Inventory */
+function showInventory(tab) {
+  if (tab) invTab = tab; endBuildMode(true); if (!$('infoPanel').classList.contains('show')) closeP();
+  const tabs = tabBar([['gear', 'Gear', 'gear'], ['sup', 'Supplies', 'supplies']], invTab);
+  if (invTab === 'sup') {
+    const WHERE = { food: 'Garden Plots, farms; Abandoned Houses trips', water: 'Rain Barrels and Collectors, wells', wood: 'chopping trees, a Lumber Camp; Lumber Yard trips', stone: 'breaking rocks, a Quarry; Old Quarry trips',
+      mat: 'salvaging wrecks, the Scrapyard, zombie bags; Warehouse trips', cloth: 'clothes bins past the walls; Abandoned Houses trips; some zombies', meds: 'Pharmacy trips, bloated and spitter zombies, supply drops', fuel: 'Gas Station trips, siphoning wrecks, raiders, supply drops' };
+    const row = (k) => { const cap = k === 'food' || k === 'water' ? supplyCap() : k === 'mat' ? 0 : resCap(k), v = Math.floor(S[k] || 0); return `<div class="card" style="padding:7px 10px"><div class="row" style="gap:8px"><span style="font-size:22px">${RES_ICON[k]}</span><span class="sp"><b>${RES_TITLE[k]}</b> <small style="color:${RARITY[RES_RAR[k]].c};font-weight:700">${RARITY[RES_RAR[k]].n}</small><br><small>${WHERE[k]}</small></span><b>${v}${cap ? ' / ' + cap : ''}</b></div></div>`; };
+    $('ib').innerHTML = tabs + `<div class="sm" style="margin-bottom:6px">Storage buildings (Supply Crates → Storehouse → Warehouse) hold more of everything.</div>` + ['food', 'water', 'wood', 'stone', 'mat', 'cloth', 'meds', 'fuel'].map(row).join('');
+  } else {
+    const ids = Object.keys(S.inv || {}).filter((id) => S.inv[id] > 0 && ITEMS[id] && (invFilt === 'all' || ITEMS[id].slot === invFilt)).sort((a, b) => (ITEMS[b].cost || 0) - (ITEMS[a].cost || 0) || ITEMS[a].name.localeCompare(ITEMS[b].name));
+    const slots = Math.max(20, Math.ceil((ids.length + 1) / 5) * 5);
+    const tile = (id) => `<button class="invT" data-inv="${id}" style="--rc:${RARITY[itemRar(id)].c}" aria-label="${esc(ITEMS[id].name)}">${itemIcon(id)}${S.inv[id] > 1 ? `<span class="n">×${S.inv[id]}</span>` : ''}</button>`;   /* the sticker first; the 3D picture replaces it a moment later (below) */
+    $('ib').innerHTML = tabs + `<div class="invF">${INV_FILT.map(([k, l]) => `<button data-if="${k}" class="${k === invFilt ? 'on' : ''}">${l}</button>`).join('')}</div>`
+      + `<div class="invG">${ids.map(tile).join('')}${'<div class="invT empty"></div>'.repeat(slots - ids.length)}</div>`
+      + `<div class="sm" style="margin-top:10px">${ids.length ? 'Tap an item to look at it and give it to someone.' : invFilt === 'all' ? 'Nothing spare. The Armory sells basics; trips and crafting find more.' : 'Nothing of this kind spare.'} What people wear is under People.</div>`;
+    $('ib').querySelectorAll('[data-if]').forEach((b) => { b.onclick = () => { invFilt = b.dataset.if; showInventory(); }; });
+    $('ib').querySelectorAll('[data-inv]').forEach((b) => { b.onclick = () => showInvItem(b.dataset.inv); });
+    const job = showInventory.job = (showInventory.job || 0) + 1, todo = [...$('ib').querySelectorAll('[data-inv]')];
+    const fill = () => { if (job !== showInventory.job) return; for (let n = 0; n < 3 && todo.length; n++) { const b = todo.shift(), u = b.isConnected && invPic(b.dataset.inv, 160); if (u) { const ic = b.querySelector('.icon'); if (ic) ic.outerHTML = `<img src="${u}" alt="">`; } } if (todo.length) setTimeout(fill, 16); };
+    setTimeout(fill, 0);   /* three pictures a frame, so a big stash never stalls the menu */
+  }
+  $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showInventory(b.dataset.tab); });
+  showPanel('Inventory');
+}
+/* gain from giving an item: the attack of a weapon, the armour of clothing or a hat; extras show what they replace */
+function invGain(s, it) {
+  const cur = itemOf(s, it.slot);
+  if (it.slot === 'weapon') { const w = weaponOf(s), a = w.atk || 0; return { d: (it.atk || 0) - a, txt: `now: ${esc(w.name)} · ATK ${a} → ${it.atk || 0}` }; }
+  if (it.slot === 'armor' || it.slot === 'head') { const a = (cur && cur.def) || 0; return { d: (it.def || 0) - a, txt: `now: ${cur ? esc(cur.name) : 'nothing'} · armour ${a} → ${it.def || 0}` }; }
+  return { d: cur ? 0 : 1, txt: `now: ${cur ? esc(cur.name) : 'nothing'}` };
+}
+function showInvItem(id) {
+  const it = ITEMS[id]; if (!it || !(S.inv || {})[id]) { showInventory(); return; } const R = RARITY[itemRar(id)];
+  const who = S.sv.filter((q) => q.hp > 0 && !q.dummy && !['down', 'away'].includes(q.mode)).map((q) => ({ q, g: invGain(q, it) })).sort((a, b) => b.g.d - a.g.d);
+  const big = invPic(id, 320, -.6), up = (d) => (d > 0 ? `<span class="up">+${d}</span>` : d < 0 ? `<span class="dn">${d}</span>` : '');
+  $('ib').innerHTML = `<div class="reStage" id="reStage" style="--rc:${R.c}">${big ? `<img id="reImg" src="${big}" alt="" draggable="false">` : `<div class="reIcon">${itemIcon(id)}</div>`}`
+    + (big ? `<button class="reRot" data-rot="-1" aria-label="Turn left">‹</button><button class="reRot r" data-rot="1" aria-label="Turn right">›</button><div class="hint">drag to turn</div>` : '') + `</div>`
+    + `<div class="reName">${esc(it.name)}${S.inv[id] > 1 ? ` <span class="sm">×${S.inv[id]}</span>` : ''}</div><div class="reMeta"><b style="color:${R.c}">${R.n}</b> · ${SLOT_NAME[it.slot]} · ${itemText(it)}</div>`
+    + `<div class="reQuip">${iQuip(id).replace(/^<br>/, '')}</div>`
+    + `<div class="invSec">GIVE TO · BEST FIRST</div>` + (who.length ? who.map((w, i) => `<div class="card giveR"><div class="sp"><b>${esc(w.q.name)}</b> <span class="sm">${esc(w.q.job)}</span><div class="sm">${w.g.txt} ${up(w.g.d)}</div></div><button class="act${i === 0 && w.g.d > 0 ? ' go' : ''}" data-give="${w.q.id}">Give</button></div>`).join('') : '<p class="sm">Nobody in town can take it right now.</p>');
+  $('ib').querySelectorAll('[data-give]').forEach((b) => { b.onclick = () => { const q = S.sv.find((v) => String(v.id) === b.dataset.give); if (q && equip(q, id)) { say(`${q.name} takes the ${it.name}.`); ui(); } if ((S.inv || {})[id]) showInvItem(id); else showInventory(); }; });
+  showPanel(it.name, () => showInventory());
+  const img = $('reImg'); if (!img) return; let yaw = -.6, drag = null, still = 0; const STEP = Math.PI * 2 / 48;
+  const turn = (y) => { yaw = y; const q = Math.round(yaw / STEP) * STEP, u = invPic(id, 320, q); if (u && img.isConnected) img.src = u; };
+  $('ib').querySelectorAll('[data-rot]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); still = 40; turn(yaw + (+b.dataset.rot) * Math.PI / 6); }; });
+  const st = $('reStage');
+  st.onpointerdown = (e) => { if (e.target.closest('.reRot')) return; drag = { x: e.clientX, y0: yaw }; st.setPointerCapture && st.setPointerCapture(e.pointerId); };
+  st.onpointermove = (e) => { if (!drag) return; still = 40; turn(drag.y0 + (e.clientX - drag.x) * .02); };
+  st.onpointerup = st.onpointercancel = () => { drag = null; };
+  clearInterval(showInvItem.t); showInvItem.t = setInterval(() => { if (!img.isConnected || !$('infoPanel').classList.contains('show')) { clearInterval(showInvItem.t); return; } if (drag) return; if (still > 0) { still--; return; } turn(yaw + STEP / 2); }, 90);   /* a slow turn of its own while nobody is touching it */
 }
 /* ---------------- expeditions (V2.8): a squad leaves the map for a timed trip in real time ---------------- */
 // Trips run on the real clock (Date.now), so they keep going while the game is closed; the town itself pauses while closed.
