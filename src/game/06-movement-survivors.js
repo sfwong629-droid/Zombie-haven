@@ -1,5 +1,5 @@
 /* ---------------- movement & path following (A* on the tile grid; recompute only when needed) ---------------- */
-const solidWall = (x, y) => { const wl = Wd.wallAt(world, Math.floor(x), Math.floor(y)); return !!wl && !wl.broken; };
+const solidWall = (x, y) => { const wl = Wd.wallAt(world, Math.floor(x), Math.floor(y)); return !!wl && !wl.broken && wl.type !== 'gate'; };   /* 3D.229 bug A6: a gate is a way through for people (the route finder already sends them through it); since 3D.103 the walking rule treated it as a wall, so anyone walled in with only a gate pressed against it until "Couldn't reach it" */
 function stepToward(o, p, sp) {
   const dx = p.x - o.w.x, dy = p.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > 0.02;
   const k = d <= sp ? 1 : sp / d, nx = o.w.x + dx * k, ny = o.w.y + dy * k;

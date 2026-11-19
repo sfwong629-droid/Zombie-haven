@@ -918,8 +918,30 @@ async def t_wallemo(br, port, t):   # bug A10 (3D.220): a fighter beside a wall 
     t.ok(r['reached'], "a walker in the open coming for the Guard still makes him fight (the fix only skips the one across the wall)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
+    ctx, pg, errs = await open_game(br, port, 'gatewalk')
+    await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world, Wd = ZH.Wd, Zn = Wd.WALLZONE; S.mat = 500; S.wood = 500; S.z.length = 0; S.hour = 10; S.water = 50; S.food = 50;
+    const free = (x, y) => Wd.walkable(W, x, y, true) && !Wd.wallAt(W, x, y), door = (x, y) => W.buildings.some((bb) => { const q = Wd.approachTile(bb); return q.x === x && q.y === y; });
+    let spot = null; for (let y = Zn.y0 + 1; y <= Zn.y1 - 3 && !spot; y++) for (let x = Zn.x0 + 1; x <= Zn.x1 - 1 && !spot; x++) { let ok = free(x, y) && free(x, y + 2); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && (Wd.buildingAt(W, x + dx, y + dy) || door(x + dx, y + dy) || !Wd.inWallZone(x + dx, y + dy))) ok = false; if (ok) spot = { x, y }; }
+    if (!spot) return { err: 'no spot' };
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) { const gx = spot.x + dx, gy = spot.y + dy, gate = dx === 0 && dy === 1; if (!Wd.wallAt(W, gx, gy) || gate) ZH.tryWall(gx, gy, gate ? 'gate' : 'wood'); }
+    const ring = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) { const wl = Wd.wallAt(W, spot.x + dx, spot.y + dy); ring.push(wl ? (wl.type === 'gate' ? 'G' : 'W') : '.'); }
+    S.mat = 0; S.wood = 0; const s = S.sv.find((q) => q.w); for (const q of S.sv) if (q !== s) { q.mode = 'away'; }
+    s.w = { x: spot.x + .5, y: spot.y + .5 }; s.mode = 'free'; s.stateTicks = 0; s.path = null; s.noReach = null; s.thirst = 96; s.hunger = 96; s.job = 'Civilian'; s.post = null;
+    let fails = 0, out = false, last = ''; const ev = [];
+    for (let k = 0; k < 4000; k++) { ZH.step(1); for (const q of S.sv) if (q !== s && q.mode !== 'away') q.mode = 'away';
+      if (s.why === "Couldn't reach it — trying later" && last !== s.why) fails++; last = s.why; if (Math.floor(s.w.x) !== spot.x || Math.floor(s.w.y) !== spot.y) { const t = Wd.wallAt(W, Math.floor(s.w.x), Math.floor(s.w.y)); if (!t) out = true; }
+      if (ev.length < 6 && k % 500 === 0) ev.push(k + ':' + s.mode + '/' + s.why + ' @' + s.w.x.toFixed(2) + ',' + s.w.y.toFixed(2)); }
+    return { ring: ring.join(''), fails, out, ev, end: s.mode + '/' + s.why };
+    }""")
+    print('      gatewalk:', {k: r.get(k) for k in ('ring', 'out', 'fails', 'end')})
+    t.ok(r.get('ring') == 'WWWWWWGW', f"a survivor is penned in by 7 walls and a gate ({r.get('ring')})")
+    t.ok(r.get('out'), f"she walks out through the gate (3D.228: she stood pressed against it all day) {r.get('ev', [])[:3]}")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('gatewalk', t_gatewalk), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()

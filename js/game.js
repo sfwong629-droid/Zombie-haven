@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.228', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.229', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1435,7 +1435,7 @@ function isT(b, t) { return !!b && (b.type === t || (DEFS[b.type] && DEFS[b.type
 function aliasT(tab) { for (const [k, d] of Object.entries(DEFS)) if (d.like && tab[d.like] !== undefined && tab[k] === undefined) tab[k] = tab[d.like]; return tab; }
 
 /* ---------------- movement & path following (A* on the tile grid; recompute only when needed) ---------------- */
-const solidWall = (x, y) => { const wl = Wd.wallAt(world, Math.floor(x), Math.floor(y)); return !!wl && !wl.broken; };
+const solidWall = (x, y) => { const wl = Wd.wallAt(world, Math.floor(x), Math.floor(y)); return !!wl && !wl.broken && wl.type !== 'gate'; };   /* 3D.229 bug A6: a gate is a way through for people (the route finder already sends them through it); since 3D.103 the walking rule treated it as a wall, so anyone walled in with only a gate pressed against it until "Couldn't reach it" */
 function stepToward(o, p, sp) {
   const dx = p.x - o.w.x, dy = p.y - o.w.y, d = Math.hypot(dx, dy); o.moving = d > 0.02;
   const k = d <= sp ? 1 : sp / d, nx = o.w.x + dx * k, ny = o.w.y + dy * k;
