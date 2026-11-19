@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.220', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.221', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1140,7 +1140,7 @@ function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: t
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
   radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null, urgent: o.urgent || o.level === 'important' || o.level === 'critical' }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
-/* 3D.220 (owner, 16 Nov rule, U23): nothing floats over an open menu. A radio message waits while a menu is open; one that is already
+/* 3D.221 (owner, 16 Nov rule, U23): nothing floats over an open menu. A radio message waits while a menu is open; one that is already
    playing when a menu opens is stopped, put back at the front of the queue and plays again from the start when the menu closes
    (it types out and closes itself on a real-time clock, so hiding it would let it run out unseen). */
 const menuOpenNow = () => { const p = $('infoPanel'); return !!(p && p.classList.contains('show')); };

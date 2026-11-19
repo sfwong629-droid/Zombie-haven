@@ -1,4 +1,4 @@
-// tools/qa/menu_cards_check.js [sizes] — 3D.220 (owner's rule of 16 Nov, U22 and U23): the move-in card and the radio card don't float over an open menu.
+// tools/qa/menu_cards_check.js [sizes] — 3D.221 (owner's rule of 16 Nov, U22 and U23): the move-in card and the radio card don't float over an open menu.
 // At six phone sizes, with a move-in card ("Wants to stay for good") and a radio message on screen, opens Build, People, Town and a survivor's
 // details and checks that neither card can be seen. Then, at the first size, opens a menu while a radio message is still typing, waits
 // longer than the message would have lasted, closes the menu and checks the move-in card is back unchanged and the radio message plays
