@@ -200,6 +200,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 18 Nov (review, round 4): **Approved:** radio take C (a steady static bed with pulses of static rising out of it). **Changes:** the woman's survivor-down should be "a feminine hurt moan" instead of a grunt; Stand Firm is "too grand", like a bunch of soldiers, without the feel of survivors fighting (round 5: a small scrappy band, or a lean tense take; no horns or brass).
 - 18 Nov (review, round 5): **Approved:** Stand Firm take A (a survivors' band: galloping guitar, bass, fiddle, accordion, knocks on a crate and a pipe) and take B (lean and tense: pizzicato strings, muted guitar, tin whistle, cello). **Changes:** the woman's takes G and H are "more of a scream than moan": redo (round 6: softer moans). F and I were not marked.
 - 18 Nov (review, rounds 6 to 8): the woman's survivor-down must be **a young woman's voice** (the man's grunt pitched up did not pass; a YouTube clip the owner sent has no licence, so it can't ship). **Approved:** takes S and T, real hurt grunts from "Female Gruntwork - 1" by PlumpDev (OpenGameArt, CC BY-SA 4.0: credit PlumpDev in the game), cut under half a second, the game plays them in turn. With this, every sound in the review is approved.
+- 19 Nov: **Stand Firm** (ordinary fight music) switches between take A and take B from one fight night to the next.
 
 ## Open questions (not decided)
 - None on 17 Nov.

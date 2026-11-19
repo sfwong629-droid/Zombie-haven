@@ -155,7 +155,7 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W114. Sound review round 4.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (radio take C approved).
 - ~~W117. Sound review round 5.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (both Stand Firm takes approved).
 - ~~W120. The woman's survivor-down.~~ Owner, 18 Nov (round 8): takes S and T, played in turn (Female Gruntwork 1, PlumpDev, CC BY-SA 4.0). **Every sound in the review is now approved.**
-- W122. Stand Firm A and B are both approved: Claude's plan is to alternate them from one fight night to the next. Yes, or one of them only? Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
+- ~~W122. Stand Firm A or B?~~ Owner, 19 Nov: switch between the two, from one fight night to the next. Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)
