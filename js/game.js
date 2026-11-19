@@ -6497,7 +6497,7 @@ const progRow = (label, have, need) => `<div class="row"><span style="width:96px
 function showTown(tab) {
   endBuildMode(true); closeP(); if (tab) tTab = tab; const nx = rankRules[S.rank], st = supplyStats();
   const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days`);
-  let h = tabBar([['overview', 'Haven'], ['defense', 'Defense'], ['people', 'People'], ['more', 'More']], tTab);
+  let h = tabBar([['overview', 'Haven', 'haven'], ['defense', 'Defense', 'defense'], ['people', 'People', 'people'], ['more', 'More', 'more']], tTab);
   if (tTab === 'overview') {
     h += `<div class="card"><b>Town policy</b><div class="row" style="gap:4px;flex-wrap:wrap;margin:4px 0">${Object.entries(POLICIES).map(([k, q]) => `<button class="act${policy() === k ? ' go' : ''}" data-pol="${k}" style="flex:1 1 45%;margin:0;padding:6px 4px;font-size:17px">${q.icon} ${q.name}</button>`).join('')}</div><div class="sm">${POLICIES[policy()].desc}</div></div>`;
     h += `<div class="card"><div style="font-size:23px">Level ${S.lvl || 1} <span class="sm">· Era ${eraOf().n}: ${eraOf().name} · threat ☠${S.threat}</span></div>`
@@ -6764,7 +6764,7 @@ function SI(k) {
 }
 function wireSI(root) { root.querySelectorAll('[data-si]').forEach((e) => { e.onclick = (ev) => { ev.stopPropagation(); say(SI_LABEL[e.dataset.si] || e.dataset.si); }; }); }
 function uiIcon(name) {   /* V2.32: DV2-style menu icons (assets/ui/icons.png), 2x crisp */
-  if (GLASS && window.ZHIcons) { const n = { living: 'home', care: 'medic', train: 'train', defend: 'shield', road: 'road', demolish: 'demolish', events: 'bang', trader: 'shop', rating: 'star', supplies: 'box' }[name]; if (n) return `<span class="ti zi-ti">${ZHIcons.svg(n, 24)}</span>`; }   /* 3D.28 Glass: sticker icons, no pixel art */
+  if (GLASS && window.ZHIcons) { const n = { living: 'home', care: 'medic', train: 'train', defend: 'shield', road: 'road', demolish: 'demolish', events: 'bang', trader: 'shop', rating: 'star', supplies: 'box', haven: 'town', defense: 'shield', people: 'people', more: 'menu' }[name]; if (n) return `<span class="ti zi-ti">${ZHIcons.svg(n, 24)}</span>`; }   /* 3D.28 Glass: sticker icons, no pixel art */
   if (uiIconCache[name] !== undefined) return uiIconCache[name]; const im = IMG.uiIcons, i = UIM ? UIM.icons.indexOf(name) : -1; if (i < 0 || !okImg(im)) return '';
   const n = UIM.n, Z = 2, c = document.createElement('canvas'); c.width = c.height = n * Z; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, i * n, 0, n, n, 0, 0, n * Z, n * Z);
   return (uiIconCache[name] = `<img class="pix ti" src="${c.toDataURL()}" alt="">`);

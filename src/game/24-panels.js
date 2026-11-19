@@ -309,7 +309,7 @@ const progRow = (label, have, need) => `<div class="row"><span style="width:96px
 function showTown(tab) {
   endBuildMode(true); closeP(); if (tab) tTab = tab; const nx = rankRules[S.rank], st = supplyStats();
   const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days`);
-  let h = tabBar([['overview', 'Haven'], ['defense', 'Defense'], ['people', 'People'], ['more', 'More']], tTab);
+  let h = tabBar([['overview', 'Haven', 'haven'], ['defense', 'Defense', 'defense'], ['people', 'People', 'people'], ['more', 'More', 'more']], tTab);
   if (tTab === 'overview') {
     h += `<div class="card"><b>Town policy</b><div class="row" style="gap:4px;flex-wrap:wrap;margin:4px 0">${Object.entries(POLICIES).map(([k, q]) => `<button class="act${policy() === k ? ' go' : ''}" data-pol="${k}" style="flex:1 1 45%;margin:0;padding:6px 4px;font-size:17px">${q.icon} ${q.name}</button>`).join('')}</div><div class="sm">${POLICIES[policy()].desc}</div></div>`;
     h += `<div class="card"><div style="font-size:23px">Level ${S.lvl || 1} <span class="sm">· Era ${eraOf().n}: ${eraOf().name} · threat ☠${S.threat}</span></div>`

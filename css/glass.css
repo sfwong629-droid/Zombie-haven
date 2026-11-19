@@ -432,3 +432,21 @@ html.glass #gauge::before { content: ''; position: absolute; inset: -6px -4px; }
 .zooPanel.svt .zc { min-width: 0; padding: 7px 10px; display: flex; align-items: center; gap: 6px; } .zooPanel.svt .zc b { padding-right: 0; white-space: nowrap; } .zooPanel.svt .zc i { position: static; }
 .zooPanel.svt .zinfo { min-height: 0; margin: 1px 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .zooPanel.svt .zact .act { min-height: 40px; }
 #app.svtOn #world > :not(canvas):not(#zooPanel):not(#game):not(#fx), #app.svtOn > :not(#world):not(canvas) { display: none !important; } #app.svtOn .zooPanel.svt { bottom: calc(10px + env(safe-area-inset-bottom)); }
+
+/* 3D.216 (owner, 18 Nov; W113, U21, U39, U40): the "rim light" twist on the Glass style, and the tab rows.
+   Menus get a bright glass rim fading down from the top edge and a soft blue glow in the top-left corner; cards, buttons and tabs
+   are lit from above like raised glass. Tabs: each is its own button; a row with icons fills the menu's width, icon above the word,
+   54 px tall (U25: 44 px or more). The selected tab is plain white, never lime (lime is only for Build / go / recommended).
+   :where() keeps these as light as the base rules, so coloured cards and the lime / coral buttons keep their own look. */
+html.glass .panel { border-color: transparent;
+  background: radial-gradient(120% 60% at 0% 0%, rgba(111, 211, 255, .3), transparent 60%) padding-box, linear-gradient(rgba(16, 22, 28, .55), rgba(16, 22, 28, .55)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, .85), rgba(111, 211, 255, .35) 18%, rgba(255, 255, 255, .05) 45%) border-box;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 -10px 40px rgba(0, 0, 0, .35); }
+html.glass :where(.panel) .card, html.glass :where(.panel) .bcard { background: linear-gradient(180deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .03)); border-color: rgba(255, 255, 255, .15); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 4px 12px rgba(0, 0, 0, .22); }
+html.glass :where(.panel) .act { background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .06)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 3px 8px rgba(0, 0, 0, .2); }
+html.glass .tabs button { border: 1px solid rgba(255, 255, 255, .16); background: linear-gradient(180deg, rgba(255, 255, 255, .19), rgba(255, 255, 255, .05)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 8px rgba(0, 0, 0, .22); color: var(--mu); }
+html.glass .tabs button.on { background: #fff; color: var(--limeInk); border-color: #fff; box-shadow: 0 0 14px rgba(255, 255, 255, .45); }
+html.glass .tabs { gap: 6px; padding: 2px 0 10px; } html.glass .tabs button { flex: 1 1 auto; justify-content: center; min-height: 44px; border-radius: 14px; }   /* rows of words: separate buttons too, sharing the width, 44 px (U25) */
+html.glass .tabs:has(.zi-ti) { display: flex; gap: 6px; overflow: visible; padding: 2px 0 10px; }
+html.glass .tabs:has(.zi-ti) button { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; height: 54px; padding: 5px 2px 4px; border-radius: 14px; font-size: 11.5px; line-height: 1.1; }
+html.glass .tabs:has(.zi-ti) .zi-ti svg { width: 26px; height: 26px; }
