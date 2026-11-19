@@ -890,8 +890,36 @@ async def t_dawn(br, port, t):   # bug B1 (3D.219): the night horde leaves at da
     t.ok(r['h16']['left'] == 0, f"none came back by 16:00 ({r['h16']['left']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_wallemo(br, port, t):   # bug A10 (3D.220): a fighter beside a wall does not flash the angry face at a zombie across it
+    ctx, pg, errs = await open_game(br, port, 'wallemo')
+    await pg.evaluate("()=>{let x=7;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world, Wd = ZH.Wd, B = Wd.BUILD; S.mat = 500; S.wood = 500; S.z.length = 0; S.hour = 12;
+    let spot = null; const Zn = Wd.WALLZONE, free = (x, y) => Wd.walkable(W, x, y, true) && !Wd.wallAt(W, x, y), door = (x, y) => W.buildings.some((bb) => { const q = Wd.approachTile(bb); return q.x === x && q.y === y; });
+    for (let y = Zn.y0 + 1; y <= Zn.y1 - 1 && !spot; y++) for (let x = Zn.x0 + 1; x <= Zn.x1 - 3 && !spot; x++) { let ok = free(x, y) && free(x + 2, y) && free(x + 3, y); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && (Wd.buildingAt(W, x + dx, y + dy) || door(x + dx, y + dy) || !Wd.inWallZone(x + dx, y + dy))) ok = false; if (ok) spot = { x, y }; }
+    if (!spot) { let n = 0, wa = 0; for (let y = B.y0; y <= B.y1; y++) for (let x = B.x0; x <= B.x1; x++) { n++; if (Wd.walkable(W, x, y, true)) wa++; } let wl = 0; for (let y = B.y0; y <= B.y1; y++) for (let x = B.x0; x <= B.x1; x++) if (Wd.wallAt(W, x, y)) wl++; return { err: 'no free spot', wl, ex: JSON.stringify(Wd.wallAt(W, B.x0 + 3, B.y0 + 3)).slice(0, 80), B, n, wa, w2: Wd.walkable(W, B.x0 + 3, B.y0 + 3), sig: String(Wd.walkable).slice(0, 160) }; } const ring = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) ring.push([spot.x + dx, spot.y + dy]);
+    for (const [x, y] of ring) if (!Wd.wallAt(W, x, y)) ZH.tryWall(x, y, 'wood'); const built = ring.filter(([x, y]) => { const w = Wd.wallAt(W, x, y); return w && !w.broken && w.type !== 'gate'; }).length; for (const [x, y] of ring) { const w = Wd.wallAt(W, x, y); if (w) { w.hp = w.max = 1e9; } }
+    S.mat = 0; S.wood = 0; ZH.spawn(spot.x, spot.y, 'walker'); const z = S.z[S.z.length - 1], zw = { x: spot.x + .5, y: spot.y + .5 }; z.w = { ...zw }; z.hp = z.max = 1e9;
+    const g = S.sv.find((q) => q.w) ; g.job = 'Guard'; g.hp = g.max = 999; g.post = null; g.w = { x: spot.x + 1.8 + .5, y: spot.y + .5 }; g.mode = 'free'; g.stateTicks = 0; g.target = null; const home = { ...g.w }; g.path = null; g.emo = null; g.skipZ = null;
+    for (const q of S.sv) if (q !== g) { q.mode = 'away'; q.w = { x: B.x0, y: B.y1 }; }
+    let fresh = 0, chases = 0, happy = 0, last = null, lastMode = g.mode; const seen = [];
+    for (let k = 0; k < 1800; k++) { z.w = { ...zw }; z.mode = 'zchase'; z.target = g; z.path = null; z.stateTicks = 0; ZH.step(1); if (S.z.length > 1) S.z = S.z.filter((q) => q === z);   /* only the test's own walker: the day's usual walkers would draw the Guard away */ if (['free', 'walk', 'wait', 'postCombat', 'fix'].includes(g.mode) && Math.hypot(g.w.x - home.x, g.w.y - home.y) > .6) { g.w = { ...home }; g.mode = 'free'; g.stateTicks = 30; g.path = null; g.dest = null; } for (const q of S.sv) if (q !== g && q.mode !== 'away') q.mode = 'away';
+      const e = g.emo; if (e && e !== last) { if (e.t === '😤') fresh++; if (['😊', '🎶', '😌'].includes(e.t)) happy++; if (seen.length < 12) seen.push(e.t + '@' + k); } last = e;
+      if (g.mode === 'chase' && lastMode !== 'chase') chases++; lastMode = g.mode; }
+    const p1 = { built, dist: +Math.hypot(g.w.x - zw.x, g.w.y - zw.y).toFixed(2), fresh, chases };
+    z.hp = 0; S.z = S.z.filter((q) => q.hp > 0); ZH.spawn(spot.x + 3, spot.y, 'walker'); const z2 = S.z[S.z.length - 1], z2w = { x: spot.x + 3.5, y: spot.y + .5 }; z2.w = { ...z2w }; z2.hp = z2.max = 1e9;
+    g.w = { ...home }; g.mode = 'free'; g.stateTicks = 0; g.target = null; g.path = null; let reached = false;   /* control: a walker in the open, coming for the Guard, that he has never failed to reach: he must turn and fight it */
+    for (let k = 0; k < 240 && !reached; k++) { z2.w = { ...z2w }; z2.mode = 'zchase'; z2.target = g; z2.path = null; ZH.step(1); if (S.z.length > 1) S.z = S.z.filter((q) => q === z2); if (['chase', 'attack', 'recover'].includes(g.mode) && g.target === z2) reached = true; }
+    return { ...p1, reached };
+    }""")
+    print('      wallemo:', r)
+    t.ok(r.get('built') == 8, f"a walker is boxed in by 8 wooden walls next to a Guard ({r})")
+    t.ok(r['chases'] >= 1, f"the Guard does try to get at it ({r['chases']} tries)")
+    t.ok(r['fresh'] <= 5, f"the angry face shows at most 5 times in 30 game seconds ({r['fresh']}; 3D.219 showed it about 300 times)")
+    t.ok(r['reached'], "a walker in the open coming for the Guard still makes him fight (the fix only skips the one across the wall)")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
