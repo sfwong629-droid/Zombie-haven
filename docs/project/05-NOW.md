@@ -68,7 +68,8 @@ UI chat:
 - ~~W56. Does the ✕ on tips work as wanted?~~ Owner, 17 Nov: looks good.
 - ~~W79. Icons on the Town tabs.~~ Owner, 18 Nov: the icons are good, but too much empty space around and inside the tab buttons.
 - ~~W113. The tab bar and a twist for the Glass style.~~ Owner, 18 Nov: B (rim light), with each tab its own button, rim-lit. Built in 3D.217.
-- W116. Play 3D.217 and say whether the rim light and the tabs look right in every menu (Town, Build, People, a survivor). Anything to change: a picture with a circle is enough.
+- ~~W116. Do the rim light and the tabs look right (3D.217)?~~ Owner, 18 Nov: looks good. But when the Build menu is scrolled, the four tabs overlay the text (screenshot): fixed in 3D.218.
+- W118. Scroll the Build menu in 3D.218: is the text gone from behind the tabs?
 - W80. Play 3D.195 or later and say whether the open menus look right: no radio button, the alert button gone where the menu reaches it, "Paused" on the menu's top edge.
 
 Code clean-up chat:
