@@ -36,6 +36,7 @@ Planning chat:
 - ~~W11. When to end the freeze.~~ Decided 16 Nov: everything is unfrozen except full tester rounds.
 - ~~W37. When to build the new features.~~ Decided 16 Nov: after the `game.js` split (so after the test suite is green too). *(W42, 16 Nov: step 1 of the split is done and is enough: they can start now.)*
 - ~~W38. The balance targets page.~~ Done 16 Nov in the Balance chat: the owner answered the target questions and approved the page.
+- W129. **The radio rescue team feels unreal** (owner, 19 Nov). Today (3D.48, `src/game/03-stats-gear.js`, `radioHelp` / `helpTick`): when the last ones standing hide, a pop-up offers to call a group on the radio; an hour later every zombie in town is set dead at once, unseen, and the fallen are moved into care. Options sent in the Planning chat: **A** a real team (about four Greenwater fighters drive in on the highway, fight the zombies in view and can lose, carry the fallen to care, then leave); **B** a lure (their truck drives in with its horn and alarm going and leads the crowd out of town down the highway, using the existing car-alarm lure; nobody is killed by magic; their medics carry the fallen in), Claude's recommendation; **C** remove the call: the last ones keep hiding until the zombies move on. Waiting: A, B or C. Built afterwards in the Features chat.
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
