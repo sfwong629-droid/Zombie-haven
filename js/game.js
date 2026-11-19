@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.232', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.233', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1028,7 +1028,7 @@ function slipOut(q, b) {   /* out the back to the next shelter, away from the zo
   for (const o of world.buildings) { if (o === b || !ENCLOSED(o) || o.burnt || (o.hp != null && o.hp < o.max * .3)) continue; const dp = Wd.doorPoint(o), sc = Math.min(9, ...zs.map((z) => dist(z.w, dp))) - dist(q.w, dp) * .3; if (sc > bs) { bs = sc; best = o; } }
   { const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 }, nz = zs.slice().sort((p, r) => dist(p.w, c) - dist(r.w, c))[0], ap = Wd.approachPoint(b);   /* 3D.64 balance study: out the BACK, away from the zombies (the front door put them in the middle of the mob: 'hiding' was the commonest state just before going down) */
     let w = ap; if (nz) { const dx = c.x - nz.w.x, dy = c.y - nz.w.y, l = Math.hypot(dx, dy) || 1, r = Math.max(b.w, b.h) / 2 + .55, p = { x: c.x + dx / l * r, y: c.y + dy / l * r }; if (Wd.inMap(Math.floor(p.x), Math.floor(p.y)) && Wd.walkable(world, Math.floor(p.x), Math.floor(p.y)) && !Wd.buildingAt(world, Math.floor(p.x), Math.floor(p.y))) w = p; } q.w = { ...w }; }
-  if (best) { q.mode = 'hide'; q.hideAt = best; q.stateTicks = 9999; q.path = null; q.why = `Slipped out of the ${DEFS[b.type].name} → ${DEFS[best.type].name}`; note('critical', `${q.name} slipped out of the ${DEFS[b.type].name} before it fell.`, { at: q.w }); }
+  if (best) { q.mode = 'hide'; q.hideAt = best; q.stateTicks = 9999; q.path = null; q.why = `Slipped out of the ${DEFS[b.type].name} → ${DEFS[best.type].name}`; note('critical', `${q.name} slipped out of the ${DEFS[b.type].name} before it fell.`, { at: () => q.w, live: () => q.hp > 0 && S.sv.includes(q) && q.mode === 'hide' && q.hideAt === best }); }   /* 3D.233 owner (19 Nov): these rows could not be closed and piled up; the row now goes once they reach the other shelter (or anything else happens to them) */
   else { const z = nearestZombie(q); q.hideAt = null; if (z) { hideGuard = true; engage(q, z); hideGuard = false; q.why = 'Nowhere left to hide: fighting'; } else enterFree(q, 30); }
 }
 function wreck(b, by) {
