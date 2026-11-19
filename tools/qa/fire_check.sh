@@ -9,6 +9,7 @@
 #   - it loops: every joint ends within 1 cm of where it started;
 #   - the feet stand where the gun stance (gun_hold_idle) has them (each ankle within 3 cm), so starting to fire does not slide them;
 #   - both hands on the gun: each hand's middle within 6 cm of the gun.
+#   - (3D.226) the long gun's right elbow stands out from the body: at least 10 cm from the spine line (it was 4 to 7 cm in 3D.225).
 set -e; cd "$(dirname "$0")/../.."; T=$(mktemp -d); bad=0
 for m in m3 f3; do
   node tools/art/decomp.mjs assets/characters/ai3d_v2/survivor_$m.glb $T/$m.glb >/dev/null
@@ -31,6 +32,11 @@ for d, c in ((r, 'gun_fire'), (p, 'pistol_fire')):
     say(4 <= kick <= 20, c + ': the recoil lifts the muzzle %.1f degrees (4 to 20)' % kick)
     lp = np.abs(J[0] - J[-1]).max(); say(lp <= .01, c + ': it loops (every joint ends within %.4f of its start, limit 0.010)' % lp)
     fe = max(np.linalg.norm(J[0][B.index('foot.' + s_)][:3] - st[B.index('foot.' + s_)][:3]) for s_ in 'LR'); say(fe <= .03, c + ': the feet where the gun stance has them (%.3f off, limit 0.030)' % fe)
+    if c == 'gun_fire':   # 3D.226 (owner: "move the right elbow away from the body a bit; it looks like it's part of the body")
+        el = []
+        for Jx in J:
+            e = Jx[B.index('forearm.R')][:3]; ch = Jx[B.index('chest')]; a_, b_ = ch[:3], ch[3:]; u = np.clip((e - a_) @ (b_ - a_) / ((b_ - a_) @ (b_ - a_)), 0, 1); v = e - (a_ + u * (b_ - a_)); v[2] = 0; el.append(np.linalg.norm(v))
+        say(min(el) >= .10, c + ': the right elbow stands out from the body (%.3f from the spine line, at least 0.100)' % min(el))
     W = V[:, nb:]; hd = max(np.linalg.norm(W[i] - mid(J[i], 'hand.' + s_), axis=1).min() for i in range(len(J)) for s_ in 'LR'); say(hd <= .06, c + ': both hands on the gun (each hand within %.3f of it, limit 0.060)' % hd)
 sys.exit(1 if bad else 0)
 P

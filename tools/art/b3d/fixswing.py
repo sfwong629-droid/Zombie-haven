@@ -347,8 +347,9 @@ def spear2_at(k):
 # facing the line of the gun), the feet planted where the gun stance has them, and the gun placed: the rifle's butt in the right shoulder, its line
 # just beside the cheek, the front hand under the fore-end; the pistol in both hands in front of the face. Each shot replays the clip, so it starts
 # and ends aiming, with the recoil in between: a quick kick (the muzzle up, the gun back) that settles within a quarter of a second.
-FOREDROP = float(os.environ.get('ZH_FOREDROP', '.025')); YSH = float(os.environ.get('ZH_YSH', '.05')); KICK = float(os.environ.get('ZH_KICK', '6' if TWO == 'aimrifle' else '14'))
+FOREDROP = float(os.environ.get('ZH_FOREDROP', '.025')); RGRIPBACK = float(os.environ.get('ZH_RGRIPBACK', '.17')); YSH = float(os.environ.get('ZH_YSH', '.05')); KICK = float(os.environ.get('ZH_KICK', '6' if TWO == 'aimrifle' else '14'))
 REACH = float(os.environ.get('ZH_REACH', '.95')); PISZ = float(os.environ.get('ZH_PISZ', '.03')); SQUARE = float(os.environ.get('ZH_SQUARE', '.8')); AIMUP = float(os.environ.get('ZH_AIMUP', '0'))
+def A_LOC_R(): return A_LOC
 if AIMM:
     upd(); _HW = ao.matrix_world @ PB['hand.R'].matrix; H2W = _HW.inverted() @ bat.matrix_world; W2H = H2W.inverted()
     _A = AXV - AXV.mean(0); _u, _s, _vt = np.linalg.svd(_A, full_matrices=False); A_LOC = nz(AXV[TIPI] - AXV[GRIPI])
@@ -365,6 +366,7 @@ if AIMM:
         except Exception: pass
         sc.frame_set(int(_gi_.frame_range[0])); upd(); _RW = bat.matrix_world.copy()
         REL_R = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.R'].matrix)); REL_L = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.L'].matrix))   # the hands' grip on the rifle, as the approved gun stance has it
+        _T = np.eye(4); _T[:3, 3] = -A_LOC_R() * RGRIPBACK; REL_R = _T @ REL_R   # (3D.226, owner: "move the right elbow away from the body a bit; it looks like it's part of the body") the right hand a little further back, on the stock's wrist: the arm bends, so the elbow can stand out
         ad.action = _keep[0]
         try: ad.action_slot = _keep[1]
         except Exception: pass
@@ -392,7 +394,7 @@ def set_hand_world(side, HWm):   # the arm to the hand's place, then the hand's 
         aimc = aimc + miss
     return float(np.linalg.norm(want_head - P(PB['hand.' + side].head)))
 AIMERR = []
-RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-.5,.6,-.1').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
+RIFZ = float(os.environ.get('ZH_RIFZ', '.06')); RIFF = float(os.environ.get('ZH_RIFF', '.09')); RPOLE = [float(x) for x in os.environ.get('ZH_RPOLE', '-1,.3,-.2').split(',')]; RIFX = float(os.environ.get('ZH_RIFX', '-.015')); HEADDOWN = float(os.environ.get('ZH_HEADDOWN', '10')); CANT = float(os.environ.get('ZH_CANT', '14')); HEADCLR = float(os.environ.get('ZH_HEADCLR', '1.02'))
 def look_along(d, down, cant):   # turn the neck (half the turn about the vertical) and the head so the face looks along d, a little down, tipped to the right
     U = np.array([0., 0, 1]); hp = P(PB['head'].head)
     Hm = np.array((ao.matrix_world @ PB['head'].matrix).to_3x3()); hf = nz(Hm[:, 2]); hf[2] = 0; dh = d.copy(); dh[2] = 0
