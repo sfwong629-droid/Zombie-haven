@@ -209,6 +209,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: Owner on 3D.225: the long gun's **right elbow stands out from the body** (it looked like part of the body). The right hand holds the rifle further back, on the stock's wrist, so the arm bends and the elbow points out to the side. Built in 3D.226.
 - 19 Nov: Owner on 3D.226 (W140, with a picture of a man aiming a carbine): the left arm is OK; the long gun's **right elbow must not be over the gun or the shoulder: it hangs lower**, under the gun, the forearm nearly upright to the grip. Built in 3D.228.
 - 19 Nov: Owner on 3D.228 (W142, a red circle on the picture): the long gun's **right hand holds the grip in front of the chin**, where the wooden stock meets the metal, not back at the cheek. Built in 3D.234 (the hand at the back edge of that spot: the short arm can reach no further).
+- 19 Nov: Owner on 3D.234 (W148, a drawing): the long gun's **right arm is bent**: from the shoulder the upper arm goes down and forward to a low elbow, and the forearm goes up to the hand on the grip. The rifle sits 4 cm further back into the shoulder so the short arm can fold. Built in 3D.235.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
