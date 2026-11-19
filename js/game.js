@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.218', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.219', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2706,10 +2706,10 @@ function spawnBoss(force) {
   SFX('boss'); showEventPopup({ stage: { scene: 'boss', boss: bk, head: 'Boss!' }, short: K.line, chips: [`☠ ${mob} zombies follow`], title: K.name.toUpperCase() });
   note('critical', `${K.line} ${mob} zombies follow it.`, { key: 'boss', icon: '☠', log: `${K.line} It leads ${mob} zombies against the Haven.`, threats: true, at: () => { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0); return b ? b.w : null; }, live: () => S.z.some((z) => z.type === 'boss' && z.hp > 0), acts: [{ label: () => (S.focusT > tick ? 'Focusing ⚔' : 'Focus the boss ⚔'), ok: () => !(S.focusT > tick), fn: () => focusBoss() }] }); S.alert = 2400;
 }
-function dawnRetreat() {   /* balance study (Nov 8): the night horde used to stay inside the walls for good. At sunrise most of it shambles back out of town;
-  the ones already locked onto someone keep fighting. Days are for repairs and recovery. */
-  const frac = (window.ZH_BAL || {}).dawn ?? .5;   /* 3D.80 spiral fix: half the zombies inside shamble out at dawn */ if (!frac) return 0; let n = 0;
-  for (const z of S.z) { if (z.hp <= 0 || z.human || z.boss || z.zoo || ['zattack', 'zrecover'].includes(z.mode) || rnd() > frac) continue;
+function dawnRetreat() {   /* balance study (Nov 8): the night horde used to stay inside the walls for good. At sunrise it shambles back out of town;
+  the ones already locked onto someone finish that fight, then leave (z.dawn). Days are for repairs and recovery. */
+  const frac = (window.ZH_BAL || {}).dawn ?? 1;   /* 3D.219 bug B1: all of the night horde leaves at dawn (3D.80 sent half; the rest stayed in town all day, rounds 2-4). Studies can still set ZH_BAL.dawn */ if (!frac) return 0; let n = 0;
+  for (const z of S.z) { if (z.hp <= 0 || z.human || z.boss || z.zoo) continue; if (['zattack', 'zrecover'].includes(z.mode)) { if (frac >= 1) z.dawn = true; continue; } if (rnd() > frac) continue;
     const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
   if (n >= 3) note('important', `🌅 Dawn: ${n} zombies shamble back out of town.`); return n;
 }
@@ -2767,6 +2767,7 @@ function zai0(z) {
   if (z.human && !['zchase', 'zattack', 'zrecover', 'appear'].includes(z.mode)) return rai(z);
   const d = zDef(z); if (z.cool > 0) z.cool--; if (z.stateTicks > 0) z.stateTicks--;
   if (z.mode === 'appear') { z.moving = false; if (z.stateTicks <= 0) { z.mode = 'idle'; z.stateTicks = 35 + rnd() * 70; } return; }
+  if (z.dawn && !isNight() && !['zattack', 'zrecover', 'zleave'].includes(z.mode)) { const p = spawnPoint(); if (p) { z.dawn = false; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); } }   /* 3D.219 bug B1: caught mid-fight at dawn, it finishes that blow and then leaves */
   if (z.mode === 'zleave') {   /* V2.37: bored zombies wander back out of the map in daylight */
     if (!z.retreat) for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && dist(s.w, z.w) < d.aggro * .7) { z.target = s; z.mode = 'zchase'; z.path = null; z.bored = 0; return; }
     const r = followPath(z, z.leaveTo, d.chase * (z.retreat ? 1 : .6)); if (r !== 'moving' || dist(z.w, z.leaveTo) < .8) { z.hp = 0; z.escaped = true; } return;

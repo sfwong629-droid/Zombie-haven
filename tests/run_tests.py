@@ -875,8 +875,23 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
     t.ok(r['smash'] and r['smashCd'] and all(h > 0 for h in r['smashHit']), f"the Stalker's hulk smash hurts every survivor close by {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_dawn(br, port, t):   # bug B1 (3D.219): the night horde leaves at dawn, including the ones caught mid-fight
+    ctx, pg, errs = await open_game(br, port, 'dawn')
+    await pg.evaluate("()=>{let x=11;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""()=>{const S=ZH.S,Zn=ZH.Wd.WALLZONE,out={};const inTown=(z)=>z.w.x>=Zn.x0&&z.w.x<=Zn.x1+1&&z.w.y>=Zn.y0&&z.w.y<=Zn.y1+1;
+      S.day=9;while(S.hour!==4)ZH.step(1000);S.z.length=0;
+      for(const q of S.sv){q.job='Civilian';q.hp=q.max=999}   /* people stay up and in sight all morning, as in a busy town */
+      for(let i=0;i<10;i++){ZH.spawn(Zn.x0+2+(i%5)*2,Zn.y0+2+Math.floor(i/5)*3,'walker');const z=S.z[S.z.length-1];z.siege=true;z.mode='zmarch';z.stateTicks=0;z.hp=z.max=1e9}   /* nobody can kill them, so only leaving clears them */
+      const night=S.z.slice(),snap=(k)=>{const l=night.filter(z=>z.hp>0&&!z.escaped&&z.mode!=='zleave');out[k]={left:l.length,inTown:l.filter(inTown).length,modes:[...new Set(l.map(z=>z.mode))].join(','),fighting05:out.f05}};
+      while(S.hour!==5)ZH.step(50);out.f05=night.filter(z=>['zattack','zrecover','zchase'].includes(z.mode)).length;snap('h05');while(S.hour!==10)ZH.step(50);snap('h10');while(S.hour!==16)ZH.step(50);snap('h16');return out}""")
+    print('      dawn:', r)
+    t.ok(r['h05']['left'] == 10 and r['f05'] >= 1, f"before dawn the walkers are in town and some are fighting ({r['h05']['left']} in town, {r['f05']} fighting)")
+    t.ok(r['h10']['left'] == 0, f"by 10:00 none of the night horde is still in town and not leaving ({r['h10']['left']} left, modes {r['h10']['modes']})")
+    t.ok(r['h16']['left'] == 0, f"none came back by 16:00 ({r['h16']['left']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
