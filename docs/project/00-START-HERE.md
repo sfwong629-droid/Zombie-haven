@@ -50,6 +50,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
 - **Music**: the game's music and sound (owner, 18 Nov). Today the music is written by the game itself in `js/sound.js` (12 moods, day tracks chosen in settings, Hearth the default), played on recorded instrument samples; most sound effects are made by code. Files and licences in `06-ASSETS.md`, section 8.
+- **Story**: the game's story (owner, 19 Nov): how the outbreak started, a secret the survivors slowly uncover, told in short cutscenes between play. Today there is one cutscene (the opening run off the highway, 3D.102, `src/game/25-field-notes.js`), Field Notes, the radio DJ and the factions (Helix Biotech, Quarantine Command, The Hollow and others), but no written story. The story is written down before anything is built.
 - **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Can start: step 1 of the `game.js` split is done and the owner said that is enough (16 Nov, W42).
 - **Balance**: the targets in `08-BALANCE.md` and the building list; numbers are tuned against them, one change per build.
 - **Planning**: vision, decisions, what's next. Also the general chat: ideas, questions and anything that has no chat of its own start here.

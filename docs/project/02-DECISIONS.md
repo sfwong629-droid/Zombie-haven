@@ -24,6 +24,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
 - 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the next job in the Planning chat.
 - 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
+- 19 Nov: Add a story: how the zombies started, and a secret the survivors slowly discover, told in short cutscenes between play. It gets its own Story chat; the story is written and approved before any cutscene is built. (Not in the game yet.)
 - 16 Nov (Balance chat): `08-BALANCE.md` is written and approved ("looks good"). It holds the targets in full; the main ones follow. No number in the game was changed.
 - 16 Nov (Balance chat): Pace: level 3 in the first sitting (about 30 minutes); level 15 in about 4 to 6 weeks for a daily player; a check-in takes 5 to 10 minutes; a level waits on the player's work first and the timer second; every level unlocks at least one building and one piece of gear, every era one new big thing to do.
 - 16 Nov (Balance chat): Danger: a handful of deaths on the road to level 15; about 3 in 4 ordinary nights are comfortable wins for a town that keeps up; a lost night or horde is a setback of a day or two, never game over; daytime roamers are safe to deal with when prepared.
