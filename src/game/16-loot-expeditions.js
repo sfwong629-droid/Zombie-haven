@@ -43,10 +43,11 @@ function lootReveal(o) {   // { title, sub, entries, note, best }: cards flip in
 }
 /* 3D.227 (owner, 19 Nov; U42, W128, W131): the Inventory. The backpack chip on the resource bar opens it (it replaces the old Stash
    screen). Tabs: Gear (spare weapons, clothing, hats and extras as an icon grid, six to a row (3D.231), with empty slots so it reads as an
-   inventory), Supplies (the old Stash list). Tapping an item opens its page, Resident Evil style: a big picture that turns (drag or the
-   arrows), the numbers, the joke, then Give to: everyone who could use it, best first, with what they would gain. The Combat, Tools and
+   inventory), Supplies (the old Stash list). Tapping an item opens its page, Resident Evil style: a big still picture (3D.232; it turned in
+   3D.227), the numbers, the joke, then Give to: everyone who could use it, best first, with what they would gain. The Combat, Tools and
    Story tabs come in later builds (one tab per build). Pictures come from each item's own 3D model (ZH3D.snapItem). */
 let invTab = 'gear', invFilt = 'all';
+const ITEM_ART = {};   /* 3D.232 (W139): item id -> picture file in assets/items/art/ (made in ChatGPT, added by the Art chat); empty until the trial pictures arrive */
 const INV_FILT = [['all', 'All'], ['weapon', 'Weapons'], ['armor', 'Clothing'], ['head', 'Hats'], ['acc', 'Extras']];
 const invPic = (id, W, yaw) => { try { return window.ZH3D && ZH3D.snapItem ? ZH3D.snapItem(id, { W, H: W, yaw }) : null; } catch (e) { return null; } };
 function showStash() { showInventory(); }   /* the old name: anything that opened the Stash opens the Inventory */
@@ -84,22 +85,15 @@ function invGain(s, it) {
 function showInvItem(id) {
   const it = ITEMS[id]; if (!it || !(S.inv || {})[id]) { showInventory(); return; } const R = RARITY[itemRar(id)];
   const who = S.sv.filter((q) => q.hp > 0 && !q.dummy && !['down', 'away'].includes(q.mode)).map((q) => ({ q, g: invGain(q, it) })).sort((a, b) => b.g.d - a.g.d);
-  const big = invPic(id, 320, -.6), up = (d) => (d > 0 ? `<span class="up">+${d}</span>` : d < 0 ? `<span class="dn">${d}</span>` : '');
-  $('ib').innerHTML = `<div class="reStage" id="reStage" style="--rc:${R.c}">${big ? `<img id="reImg" src="${big}" alt="" draggable="false">` : `<div class="reIcon">${itemIcon(id)}</div>`}`
-    + (big ? `<button class="reRot" data-rot="-1" aria-label="Turn left">‹</button><button class="reRot r" data-rot="1" aria-label="Turn right">›</button><div class="hint">drag to turn</div>` : '') + `</div>`
+  /* 3D.232 (owner, 19 Nov, W139): the page shows a still picture, no turning. The made picture (ChatGPT, from the Art chat; listed in
+     ITEM_ART) replaces it when there is one; until then it is the item's 3D model, still. */
+  const art = ITEM_ART[id], big = art ? `assets/items/art/${art}` : invPic(id, 320, -.6), up = (d) => (d > 0 ? `<span class="up">+${d}</span>` : d < 0 ? `<span class="dn">${d}</span>` : '');
+  $('ib').innerHTML = `<div class="reStage${art ? ' art' : ''}" id="reStage" style="--rc:${R.c}">${big ? `<img id="reImg" src="${big}" alt="${esc(it.name)}" draggable="false">` : `<div class="reIcon">${itemIcon(id)}</div>`}</div>`
     + `<div class="reName">${esc(it.name)}${S.inv[id] > 1 ? ` <span class="sm">×${S.inv[id]}</span>` : ''}</div><div class="reMeta"><b style="color:${R.c}">${R.n}</b> · ${SLOT_NAME[it.slot]} · ${itemText(it)}</div>`
     + `<div class="reQuip">${iQuip(id).replace(/^<br>/, '')}</div>`
     + `<div class="invSec">GIVE TO · BEST FIRST</div>` + (who.length ? who.map((w, i) => `<div class="card giveR"><div class="sp"><b>${esc(w.q.name)}</b> <span class="sm">${esc(w.q.job)}</span><div class="sm">${w.g.txt} ${up(w.g.d)}</div></div><button class="act${i === 0 && w.g.d > 0 ? ' go' : ''}" data-give="${w.q.id}">Give</button></div>`).join('') : '<p class="sm">Nobody in town can take it right now.</p>');
   $('ib').querySelectorAll('[data-give]').forEach((b) => { b.onclick = () => { const q = S.sv.find((v) => String(v.id) === b.dataset.give); if (q && equip(q, id)) { say(`${q.name} takes the ${it.name}.`); ui(); } if ((S.inv || {})[id]) showInvItem(id); else showInventory(); }; });
   showPanel(it.name, () => showInventory());
-  const img = $('reImg'); if (!img) return; let yaw = -.6, drag = null, still = 0; const STEP = Math.PI * 2 / 48;
-  const turn = (y) => { yaw = y; const q = Math.round(yaw / STEP) * STEP, u = invPic(id, 320, q); if (u && img.isConnected) img.src = u; };
-  $('ib').querySelectorAll('[data-rot]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); still = 40; turn(yaw + (+b.dataset.rot) * Math.PI / 6); }; });
-  const st = $('reStage');
-  st.onpointerdown = (e) => { if (e.target.closest('.reRot')) return; drag = { x: e.clientX, y0: yaw }; st.setPointerCapture && st.setPointerCapture(e.pointerId); };
-  st.onpointermove = (e) => { if (!drag) return; still = 40; turn(drag.y0 + (e.clientX - drag.x) * .02); };
-  st.onpointerup = st.onpointercancel = () => { drag = null; };
-  clearInterval(showInvItem.t); showInvItem.t = setInterval(() => { if (!img.isConnected || !$('infoPanel').classList.contains('show')) { clearInterval(showInvItem.t); return; } if (drag) return; if (still > 0) { still--; return; } turn(yaw + STEP / 2); }, 90);   /* a slow turn of its own while nobody is touching it */
 }
 /* ---------------- expeditions (V2.8): a squad leaves the map for a timed trip in real time ---------------- */
 // Trips run on the real clock (Date.now), so they keep going while the game is closed; the town itself pauses while closed.

@@ -2,7 +2,7 @@
 // At six phone sizes, with spare gear in the stash: taps the backpack on the resource bar and checks the Inventory opens on Gear, with
 // the Gear and Supplies tabs; the grid has six boxes to a row (3D.231) and empty slots after the items (at least 24 boxes in all); every item
 // box shows a picture (its 3D model or its sticker); the filters are 44 px or more and Weapons shows only weapons. Taps an item and
-// checks its page: the big picture, the name, the joke line, the arrows (44 px) turn the picture, and Give to lists people, best first,
+// checks its page: the big picture (still, with no turn controls: 3D.232), the name, the joke line, and Give to lists people, best first,
 // with the lime Give only on the first row and only when it is a gain. Gives the item and checks the survivor now carries it and the stash
 // has one fewer. Then Supplies shows the eight resources. Optional tag: pictures as <tag>_<size>_{grid,item}.png.
 // Exit 0 ok, 1 a check failed, 2 the Inventory could not be opened.
@@ -31,10 +31,10 @@ const TAG = process.argv[3] || '';
     if (TAG) await Q.shot(p, `${TAG}_${nm}_grid.png`);
     const before = await p.evaluate(() => ZH.S.inv.crowbar || 0); await p.evaluate(() => document.querySelector('.invG [data-inv=crowbar]').click()); await p.waitForTimeout(600);
     const it = await p.evaluate(() => { const ib = document.getElementById('ib'), img = document.getElementById('reImg'), rows = [...ib.querySelectorAll('.giveR')], go = rows.map((r) => r.querySelector('.act').classList.contains('go'));
-      const rot = [...ib.querySelectorAll('.reRot')].map((x) => [x.offsetWidth, x.offsetHeight]), src0 = img && img.src; if (ib.querySelector('.reRot.r')) ib.querySelector('.reRot.r').click();
-      return { title: document.getElementById('it').textContent, img: !!img, name: (ib.querySelector('.reName') || {}).textContent, quip: ((ib.querySelector('.reQuip') || {}).textContent || '').trim(), rows: rows.length, go, gains: rows.map((r) => (r.querySelector('.up') ? 1 : 0)), rot, src0, src1: img && img.src, back: getComputedStyle(document.getElementById('pBack')).display !== 'none' }; });
+      const rot = ib.querySelectorAll('.reRot,.hint').length, src0 = img && img.src;
+      return { title: document.getElementById('it').textContent, img: !!img, name: (ib.querySelector('.reName') || {}).textContent, quip: ((ib.querySelector('.reQuip') || {}).textContent || '').trim(), rows: rows.length, go, gains: rows.map((r) => (r.querySelector('.up') ? 1 : 0)), rot, src0, back: getComputedStyle(document.getElementById('pBack')).display !== 'none' }; });
     if (it.title !== 'Crowbar' || !/Crowbar/.test(it.name || '')) out.push('the item page is "' + it.title + '"'); if (!it.img) out.push('no big picture'); if (!it.quip) out.push('no joke line'); if (!it.back) out.push('no back button');
-    if (!it.rot.length || it.rot.some(([a, c]) => a < 44 || c < 44)) out.push('the turn arrows are missing or under 44 px'); if (it.src0 === it.src1) out.push('the arrow did not turn the picture');
+    if (it.rot) out.push('the page still has turn controls'); await p.waitForTimeout(1500); if ((await p.evaluate(() => (document.getElementById('reImg') || {}).src)) !== it.src0) out.push('the picture moves by itself');   /* 3D.232 (W139): a still picture */
     if (!it.rows) out.push('nobody in Give to'); if (it.go.slice(1).some(Boolean)) out.push('more than one lime Give'); if (it.go[0] && !it.gains[0]) out.push('the lime Give is not a gain');
     if (TAG) await Q.shot(p, `${TAG}_${nm}_item.png`);
     const gv = await p.evaluate(() => { const b0 = document.querySelector('.giveR [data-give]'), id = b0.dataset.give; b0.click(); const q = ZH.S.sv.find((v) => String(v.id) === id); return { has: q && q.eq && q.eq.weapon, left: ZH.S.inv.crowbar || 0, title: document.getElementById('it').textContent }; });
