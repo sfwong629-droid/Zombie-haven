@@ -50,6 +50,7 @@ Bugs chat:
 - ~~W34. Bug A2: does the angry face still flash?~~ Owner, 16 Nov: not seen in 3D.180+.
 - ~~W35. Bug A7: does the Stalker look right?~~ Owner, 16 Nov: looks OK in the zombie test.
 - W119. Bug B1 (3D.219): the night horde now leaves town at dawn, all of it (half used to stay all day). Play a morning after a hard night and say whether the town is clear by mid-morning, and whether mornings now feel too easy (the old half-stays rule can come back).
+- W121. Bug A10 (3D.220): the angry face beside a wall. Play 3D.220 and say whether it still flashes. If it does, a short video again, and whether a zombie was nearby.
 - W7. Any other bugs they have seen.
 
 UI chat:
