@@ -154,7 +154,7 @@ ChatGPT chat:
 
 Later:
 - ~~W9. Claude Code setup on the PC.~~ Done 18 Nov (Planning chat): Claude Code installed on the owner's PC, the repo cloned into `Zombie Haven\repo` on the Desktop, and the setup message sent. It uses the same plan limits as the chats; the gain is speed (the PC has a graphics card).
-- W93. Claude Code on the PC: what did it report back (how long the test suite and the browser check took, anything red)? That decides whether checks move to the PC. Before working there, pull the latest `art-direction-b` first: other chats push to it all day. No pushing from the PC until the owner says so.
+- W93. Claude Code on the PC, first report (18 Nov): everything installed (Playwright for Node and Python, Chromium, the `tools/art` packages; not Pillow, numpy or bpy). The repo is at `C:\Users\User\OneDrive\Desktop\Zombie Haven\repo`. **Test suite: 39 of 39 in 106 s** (about 120 s in the cloud: the suite starts its own browser and does not use the graphics card, so it gains little). **Browser check not run:** Claude Code's auto mode refused to start the local web server the check needs. To measure it, the owner types in Claude Code: `! cd "C:\Users\User\OneDrive\Desktop\Zombie Haven\repo"; Start-Process python -ArgumentList "-m","http.server","8765" -WindowStyle Hidden`, then "run ui_check.js with ZH_GPU=1 and time it". On Windows the Node checks need NODE_PATH set to `C:\Users\User\AppData\Roaming\npm\node_modules`. Waiting: measure the browser check (Claude's recommendation: yes, one try), or stop here and keep all checks in the cloud.
 - ~~W10. Batch 5 armour (Tripo models).~~ Started 16 Nov in the Art chat: see W43.
 - (W11 is closed: see the Planning chat list.)
 
