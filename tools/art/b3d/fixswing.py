@@ -347,7 +347,7 @@ def spear2_at(k):
 # facing the line of the gun), the feet planted where the gun stance has them, and the gun placed: the rifle's butt in the right shoulder, its line
 # just beside the cheek, the front hand under the fore-end; the pistol in both hands in front of the face. Each shot replays the clip, so it starts
 # and ends aiming, with the recoil in between: a quick kick (the muzzle up, the gun back) that settles within a quarter of a second.
-FOREDROP = float(os.environ.get('ZH_FOREDROP', '.025')); RGRIPBACK = float(os.environ.get('ZH_RGRIPBACK', '.17')); YSH = float(os.environ.get('ZH_YSH', '.05')); KICK = float(os.environ.get('ZH_KICK', '6' if TWO == 'aimrifle' else '14'))
+FOREDROP = float(os.environ.get('ZH_FOREDROP', '.025')); RGRIPBACK = float(os.environ.get('ZH_RGRIPBACK', '.05')); YSH = float(os.environ.get('ZH_YSH', '.05')); KICK = float(os.environ.get('ZH_KICK', '6' if TWO == 'aimrifle' else '14'))
 REACH = float(os.environ.get('ZH_REACH', '.95')); PISZ = float(os.environ.get('ZH_PISZ', '.03')); SQUARE = float(os.environ.get('ZH_SQUARE', '.8')); AIMUP = float(os.environ.get('ZH_AIMUP', '0'))
 def A_LOC_R(): return A_LOC
 if AIMM:
@@ -367,6 +367,9 @@ if AIMM:
         sc.frame_set(int(_gi_.frame_range[0])); upd(); _RW = bat.matrix_world.copy()
         REL_R = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.R'].matrix)); REL_L = np.array(_RW.inverted() @ (ao.matrix_world @ PB['hand.L'].matrix))   # the hands' grip on the rifle, as the approved gun stance has it
         _T = np.eye(4); _T[:3, 3] = -A_LOC_R() * RGRIPBACK; REL_R = _T @ REL_R   # (3D.226, owner: "move the right elbow away from the body a bit; it looks like it's part of the body") the right hand a little further back, on the stock's wrist: the arm bends, so the elbow can stand out
+        # (3D.234, owner on 3D.228, a red circle on the picture: "the right hand should be here": on the grip in front of the chin, where the wooden stock meets the
+        # metal) 5 cm back, not 17: the hand sits at the back edge of that spot. Nearer (0 to 3 cm) the short arm locks straight: the hand falls 3.5 cm short or the
+        # elbow rises above the shoulder.
         ad.action = _keep[0]
         try: ad.action_slot = _keep[1]
         except Exception: pass
