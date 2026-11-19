@@ -1,6 +1,6 @@
 // tools/qa/inventory_check.js [sizes] [tag] — 3D.227 (owner, 19 Nov; U42, W131): the Inventory, Gear and Supplies tabs.
 // At six phone sizes, with spare gear in the stash: taps the backpack on the resource bar and checks the Inventory opens on Gear, with
-// the Gear and Supplies tabs; the grid has five boxes to a row and empty slots after the items (at least 20 boxes in all); every item
+// the Gear and Supplies tabs; the grid has six boxes to a row (3D.231) and empty slots after the items (at least 24 boxes in all); every item
 // box shows a picture (its 3D model or its sticker); the filters are 44 px or more and Weapons shows only weapons. Taps an item and
 // checks its page: the big picture, the name, the joke line, the arrows (44 px) turn the picture, and Give to lists people, best first,
 // with the lime Give only on the first row and only when it is a gain. Gives the item and checks the survivor now carries it and the stash
@@ -24,7 +24,7 @@ const TAG = process.argv[3] || '';
       const pics = items.filter((x) => x.querySelector('img,.icon svg,.icon img')).length, f = [...ib.querySelectorAll('.invF button')].map((x) => x.offsetHeight);
       return { tabs, on: (on || '').trim(), n: boxes.length, items: items.length, empty: empty.length, cols, order: firstEmpty > lastItem, pics, f, imgs: items.filter((x) => x.querySelector('img')).length }; });
     if (!g.tabs.includes('Gear') || !g.tabs.includes('Supplies')) out.push('tabs are ' + g.tabs.join(', ')); if (g.on !== 'Gear') out.push('opens on ' + g.on);
-    if (g.cols !== 5) out.push(`${g.cols} boxes to a row`); if (g.n < 20 || g.n % 5) out.push(`${g.n} boxes`); if (!g.empty) out.push('no empty slots'); if (!g.order) out.push('empty slots are not after the items');
+    if (g.cols !== 6) out.push(`${g.cols} boxes to a row`); if (g.n < 24 || g.n % 6) out.push(`${g.n} boxes`); if (!g.empty) out.push('no empty slots'); if (!g.order) out.push('empty slots are not after the items');
     if (g.pics < g.items) out.push(`${g.items - g.pics} items without a picture`); if (g.f.some((x) => x < 44)) out.push('a filter is under 44 px');
     const wf = await p.evaluate(() => { document.querySelector('.invF [data-if=weapon]').click(); return [...document.querySelectorAll('.invG [data-inv]')].map((x) => ZH.ITEMS[x.dataset.inv].slot); });
     if (!wf.length || wf.some((s) => s !== 'weapon')) out.push('Weapons shows ' + wf.join(',')); await p.evaluate(() => document.querySelector('.invF [data-if=all]').click()); await p.waitForTimeout(900);

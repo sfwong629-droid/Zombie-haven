@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.230', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.231', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4606,7 +4606,7 @@ function lootReveal(o) {   // { title, sub, entries, note, best }: cards flip in
   el.querySelector('#lrOk').onclick = () => { el.remove(); SFX('reward'); if (o.onClose) o.onClose(); };
 }
 /* 3D.227 (owner, 19 Nov; U42, W128, W131): the Inventory. The backpack chip on the resource bar opens it (it replaces the old Stash
-   screen). Tabs: Gear (spare weapons, clothing, hats and extras as an icon grid, five to a row, with empty slots so it reads as an
+   screen). Tabs: Gear (spare weapons, clothing, hats and extras as an icon grid, six to a row (3D.231), with empty slots so it reads as an
    inventory), Supplies (the old Stash list). Tapping an item opens its page, Resident Evil style: a big picture that turns (drag or the
    arrows), the numbers, the joke, then Give to: everyone who could use it, best first, with what they would gain. The Combat, Tools and
    Story tabs come in later builds (one tab per build). Pictures come from each item's own 3D model (ZH3D.snapItem). */
@@ -4624,7 +4624,7 @@ function showInventory(tab) {
     $('ib').innerHTML = tabs + `<div class="sm" style="margin-bottom:6px">Storage buildings (Supply Crates → Storehouse → Warehouse) hold more of everything.</div>` + ['food', 'water', 'wood', 'stone', 'mat', 'cloth', 'meds', 'fuel'].map(row).join('');
   } else {
     const ids = Object.keys(S.inv || {}).filter((id) => S.inv[id] > 0 && ITEMS[id] && (invFilt === 'all' || ITEMS[id].slot === invFilt)).sort((a, b) => (ITEMS[b].cost || 0) - (ITEMS[a].cost || 0) || ITEMS[a].name.localeCompare(ITEMS[b].name));
-    const slots = Math.max(20, Math.ceil((ids.length + 1) / 5) * 5);
+    const slots = Math.max(24, Math.ceil((ids.length + 1) / 6) * 6);   /* 3D.231 (owner, 19 Nov, W141): six to a row, room for many more items */
     const tile = (id) => `<button class="invT" data-inv="${id}" style="--rc:${RARITY[itemRar(id)].c}" aria-label="${esc(ITEMS[id].name)}">${itemIcon(id)}${S.inv[id] > 1 ? `<span class="n">×${S.inv[id]}</span>` : ''}</button>`;   /* the sticker first; the 3D picture replaces it a moment later (below) */
     $('ib').innerHTML = tabs + `<div class="invF">${INV_FILT.map(([k, l]) => `<button data-if="${k}" class="${k === invFilt ? 'on' : ''}">${l}</button>`).join('')}</div>`
       + `<div class="invG">${ids.map(tile).join('')}${'<div class="invT empty"></div>'.repeat(slots - ids.length)}</div>`
