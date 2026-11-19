@@ -72,6 +72,9 @@ UI chat:
 - ~~W113. The tab bar and a twist for the Glass style.~~ Owner, 18 Nov: B (rim light), with each tab its own button, rim-lit. Built in 3D.217.
 - ~~W116. Do the rim light and the tabs look right (3D.217)?~~ Owner, 18 Nov: looks good. But when the Build menu is scrolled, the four tabs overlay the text (screenshot): fixed in 3D.218.
 - W118. Scroll the Build menu in 3D.218: is the text gone from behind the tabs?
+- ~~W123. Build U22 and U23 (the move-in card and the radio card over open menus)?~~ Owner, 18 Nov: yes, as described. Built in 3D.221. (Called W120 in the UI chat; that number was already the Music chat's.)
+- W124. Play 3D.221 and open a menu while the move-in card or a radio message is showing: are they gone, and back (the radio message from the start) when the menu closes?
+- W125. U38: the "Not yet" button on the move-in card is coral, the colour that means danger, though saying not yet is harmless. Make it a plain glass button ("Accept" stays lime)? Yes or no.
 - W80. Play 3D.195 or later and say whether the open menus look right: no radio button, the alert button gone where the menu reaches it, "Paused" on the menu's top edge.
 
 Code clean-up chat:
