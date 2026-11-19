@@ -55,6 +55,7 @@ Bugs chat:
 - W119. Bug B1 (3D.219): the night horde now leaves town at dawn, all of it (half used to stay all day). Play a morning after a hard night and say whether the town is clear by mid-morning, and whether mornings now feel too easy (the old half-stays rule can come back).
 - W121. Bug A10 (3D.220): the angry face beside a wall. Play 3D.220 and say whether it still flashes. If it does, a short video again, and whether a zombie was nearby.
 - W143. Bug A6 (3D.229): people walk through gates again. Play your town and say whether "Couldn't reach it" is gone or rare.
+- W145. Bug A12 (owner, 19 Nov): zombies walk away or walk past survivors. In the Bugs chat: what time of day (morning around 6:00, or a night fight), was there a wall or fence between them, and a short video if you can.
 - W7. Any other bugs they have seen.
 
 UI chat:
