@@ -115,6 +115,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.
 - 15 Nov: Walkers grow more slowly after day 10, "but not too slow".
+- 19 Nov (Planning chat): The radio rescue no longer kills zombies out of sight. A Greenwater truck drives in with its horn and alarm going and leads the zombies out of town down the highway (like the car-alarm lure); their medics carry the fallen into care; the favour they ask for stays. (Not built yet.)
 
 ## Trips
 - 15 Nov: Three cards of its own per ordinary destination; a trip check before sending (whole-trip odds, no hidden odds).
