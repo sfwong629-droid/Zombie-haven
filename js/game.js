@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.229', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.230', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1157,7 +1157,7 @@ function radioNext() {
   el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}<span class="rcX" role="button" aria-label="Close the radio message">✕</span>`;   /* 3D.224 (owner, 19 Nov, W126): the card stays until it is tapped away: the ✕ closes it, a tap on the card opens the full words */
   const close = () => { clearTimeout(radioNext.t); clearTimeout(radioNext.ty); el.classList.remove('in', 'talk'); radioOn = null; setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
   el.querySelector('.rcX').onclick = (e) => { e.stopPropagation(); close(); };
-  el.onclick = (e) => { e.stopPropagation(); close(); if (c.act) c.act(); else showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text) }); };
+  el.onclick = (e) => { e.stopPropagation(); close(); showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text), buttons: c.act ? [{ label: 'Show me', rec: true, fn: c.act }, { label: 'OK' }] : undefined }); };   /* 3D.228 (owner, 19 Nov, bug): a tap always shows the full message; a message that points somewhere (the morning tip, the trader, a guest) gets a Show me button instead of jumping there unread */
   requestAnimationFrame(() => el.classList.add('in')); SFX('radio');
   /* 3D.147 owner: the words come out in order, as if someone is talking, not all at once. Each line types out word by word, a breath between lines */
   const box = el.querySelector('.rcT b'), lines = c.lines && c.lines.length ? c.lines : [c.text], quiet = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
