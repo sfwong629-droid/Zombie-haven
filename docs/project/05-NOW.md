@@ -13,6 +13,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 ## After that (not started, in this order)
 - Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session, in the Code clean-up chat. Nothing waits for step 2 (owner, 16 Nov, W42).
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
+- **Balance chat, first: bug A12, "zombies never walk away"** (owner, 19 Nov). Built as 3D.233 on branch `a12-never-leave` (not published). Measure it with the balance bot against `08-BALANCE.md` (a lost night should be a setback of a day or two), tune the nights until towns stop collapsing, then publish the change and the tuning together (owner: "rebalance first"). Details in `03-BUGS.md`, A12.
 - The rest of `03-BUGS.md` section B.
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
 - Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
@@ -39,6 +40,7 @@ Planning chat:
 - ~~W38. The balance targets page.~~ Done 16 Nov in the Balance chat: the owner answered the target questions and approved the page.
 - ~~W129. The radio rescue team feels unreal.~~ Decided 19 Nov: **B**. When called, a Greenwater truck drives in with its horn and alarm going and leads the zombies out of town down the highway (the existing car-alarm lure); nobody is killed out of sight; their medics carry the fallen into care; the favour stays. Built in the Features chat.
 - W130. **Healing** (owner, 19 Nov: a guard walks round at half health with no zombie about; medics should heal more actively, or survivors heal themselves). Today: a hurt survivor goes for treatment only below 60% health (below 50% to leave a shift), and only at a medical building where a medic works; medics never go to the hurt; outside care, health comes back only by sleeping (up to 75%), the medic's First Aid skill or regen gear. Claude's recommendation, sent in the Planning chat: (1) **medics do rounds**: when no zombie is near and nobody is waiting at the medical building, a medic walks to the most hurt person in town and patches them on the spot (a short bandaging, a good part of their health back, a little medicine if there is any); (2) **calm-time care**: when no zombie is in town, anyone under 80% goes for treatment in their free time and between jobs (the 60% / 50% bars stay for walking off a shift during danger); (3) **a slow mend**: everyone gets a little health back each hour when no zombie is about. Waiting: yes to all three, or which. Built in the Features chat, checked with the balance bot against the danger targets.
+- W146. **The vision and bug A12.** The owner decided on 19 Nov (Bugs chat) that zombies never walk away, so zombies left over from the night now fight in town by day. `01-VISION.md` still says "no constant daytime attacks on the town" and "days are for repairs and recovery". Update the vision's wording to match, or keep it and say how the two fit?
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
@@ -52,10 +54,10 @@ Bugs chat:
 - ~~W36. Bug A6: a backup of a stuck town.~~ Sent 19 Nov; it showed the cause (fixed in 3D.229).
 - ~~W34. Bug A2: does the angry face still flash?~~ Owner, 16 Nov: not seen in 3D.180+.
 - ~~W35. Bug A7: does the Stalker look right?~~ Owner, 16 Nov: looks OK in the zombie test.
-- W119. Bug B1 (3D.219): the night horde now leaves town at dawn, all of it (half used to stay all day). Play a morning after a hard night and say whether the town is clear by mid-morning, and whether mornings now feel too easy (the old half-stays rule can come back).
+- ~~W119. Bug B1: are mornings too easy now?~~ Overtaken 19 Nov by the owner's A12 decision: zombies never walk away.
 - W121. Bug A10 (3D.220): the angry face beside a wall. Play 3D.220 and say whether it still flashes. If it does, a short video again, and whether a zombie was nearby.
 - W143. Bug A6 (3D.229): people walk through gates again. Play your town and say whether "Couldn't reach it" is gone or rare.
-- W145. Bug A12 (owner, 19 Nov): zombies walk away or walk past survivors. In the Bugs chat: what time of day (morning around 6:00, or a night fight), was there a wall or fence between them, and a short video if you can.
+- ~~W145. Bug A12: when, and was there a wall between?~~ Owner, 19 Nov: in the morning around 06:00. Decided: zombies never walk away (`02-DECISIONS.md`); built on branch `a12-never-leave`, held for the Balance chat's tuning.
 - W7. Any other bugs they have seen.
 
 UI chat:

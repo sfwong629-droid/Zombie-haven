@@ -139,6 +139,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 15 Nov: Civilians form a militia when every fighter is down.
 - 15 Nov: Walkers grow more slowly after day 10, "but not too slow".
 - 19 Nov (Planning chat): The radio rescue no longer kills zombies out of sight. A Greenwater truck drives in with its horn and alarm going and leads the zombies out of town down the highway (like the car-alarm lure); their medics carry the fallen into care; the favour they ask for stays. (Not built yet.)
+- 19 Nov (Bugs chat, bug A12): **Zombies never walk away.** Every zombie stays until killed, day or night: no dawn retreat (this replaces 3D.219, where the whole night horde left at 06:00, and the older half-leaves rule); a boss still alive at dawn stays with its followers; a killed boss's mob fights on (no more new zombies that night); no daylight boredom exit; and no quiet removal of the daytime surplus (V2.18). The owner chose this knowing it makes days harder (leftover zombies fight in town all day). **Rebalance first:** the change is built on branch `a12-never-leave` (3D.233) and is not published until the Balance chat has measured it with its bot and tuned the nights; then both are published together. This overrides the vision's "no constant daytime attacks on the town" for zombies left over from the night (W146).
 
 ## Trips
 - 15 Nov: Three cards of its own per ordinary destination; a trip check before sending (whole-trip odds, no hidden odds).
