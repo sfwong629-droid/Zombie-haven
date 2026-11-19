@@ -99,6 +99,9 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (UI chat): Inventory: the grid icons drawn from each item's 3D model are OK ("the icon is ok"). The Inventory gets the Story chat's fifth tab, **Story** (key items and papers, a Read button that opens a paper full screen; `09-STORY.md`, 10.5). The owner suggests the big pictures on an item's page are made with ChatGPT (not built; how: W139).
 - 19 Nov (UI chat, W131): The Inventory mockups are approved, with **empty slots** so the grid looks like an inventory. Built one tab per build: Gear and Supplies in 3D.227 (the backpack on the resource bar opens it; Supplies is the old Stash list); Combat, Tools and Story next.
 - 19 Nov (UI chat, W139): Yes to a trial of three ChatGPT pictures for item pages (Crowbar, Riot Vest, Farmer Fresh Poster), made with the Art chat. **Item descriptions must be funny** (numbers first, the joke last, as for every item).
+- 19 Nov (UI chat, W141): Inventory: **six boxes to a row** (there will be many items). Built in 3D.231.
+- 19 Nov (UI chat, W139): On an item's page the made picture **replaces** the turning 3D view: a still picture, no turning. Built in 3D.232 (until a made picture exists, a still of the item's 3D model).
+- 19 Nov (UI chat, owner's bug): Tapping a radio message shows the message (in a box, with "Show me" when the message points somewhere); it never opens another menu by itself. Built in 3D.230.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
