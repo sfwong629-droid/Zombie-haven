@@ -146,7 +146,8 @@ Music chat (started 18 Nov; today's music and sound are described in `06-ASSETS.
 - ~~W106 round 1.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W110. Sound review round 2.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
 - ~~W112. Sound review round 3.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound".
-- W114. Sound review **round 4** sent 18 Nov (same page): three new takes of the woman's grunt (C, D, E), radio takes C and D (a steady static with pulses; D with a faint tone in each pulse), Stand Firm with no drums at all. **Waiting: OK or change for each.** Next builds, one at a time: the fade between moods, the day music, the night music, then the effects in groups.
+- ~~W114. Sound review round 4.~~ Owner's answers, 18 Nov: in `02-DECISIONS.md`, "Music and sound" (radio take C approved).
+- W117. Sound review **round 5** sent 18 Nov (same page): four takes of the woman's hurt moan (F, G, H, I; recorded, CC0), and two new Stand Firm takes: A, a small survivors' band (galloping guitar, bass, fiddle tune, accordion, knocks on a crate and a pipe instead of drums) and B, lean and tense (pizzicato strings, muted guitar, tin whistle, cello). **Waiting: OK or change for each.** Next builds, one at a time: the day music, the night music, the fight and horde music, then the effects in groups.
 
 ChatGPT chat:
 (18 Nov: screenshot review of 3D.212 done, 6.5/10; 17 checked problems are U22–U38 in `04-UI.md` (U39 added after W109), for the UI chat. Method: `07-TESTING.md`.)
