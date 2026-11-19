@@ -78,6 +78,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 19 Nov (UI chat, W118): Behind the tabs at the top of a menu there is no dark backing: the tabs sit on the menu's own glass and the list scrolls only below them. Built in 3D.222. (A tab row further down, in survivor details, gets a backing in the menu's tint only while it sticks to the top.)
 - 19 Nov (UI chat, W125): "Not yet" on the move-in card is a plain glass button, not coral (coral means danger); "Accept" stays lime. Built in 3D.223.
 - 19 Nov (UI chat, W124): A move-in card or a radio message held by an open menu comes back when the menu closes.
+- 19 Nov (UI chat): An **Inventory** menu (owner's picks): it holds everything (gear, supplies, ammo and explosives, tools and medicine) in tabs; it opens by tapping the resource bar and replaces today's Stash screen; you can look at an item and give it to a survivor, who is shown how much better or worse it is (no scrapping); items are an icon grid with a count and a rarity-coloured edge. (Not built yet: mockup waiting on W128.)
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.

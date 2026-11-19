@@ -77,6 +77,7 @@ UI chat:
 - ~~W125. U38: make "Not yet" on the move-in card a plain glass button ("Accept" stays lime)?~~ Owner, 19 Nov: yes. Built in 3D.223.
 - W126. The radio message: today it closes by itself a few seconds after it has finished talking (and a message cut off by a menu plays again from the start when the menu closes). Should a radio message instead stay on screen until you tap it away? Yes, or keep it closing by itself.
 - W127. Play 3D.223: (1) open Build and scroll: the four tabs sit on the menu's own glass, no dark bar, and nothing scrolls behind them; (2) the move-in card's "Not yet" is a plain glass button. Right?
+- W128. The Inventory mockup (picture sent 19 Nov): Gear grid with filters (All, Weapons, Clothing, Hats, Extras), an item page with "Give to" (best first, the change in attack or armour shown), Supplies as tiles with have / room (a coral edge when under a quarter). Combat (ammo, pipe bombs, molotovs, grenades) and Tools (axe and pick tiers, bandages) are the same grid. Is it right, or what changes? Then it is built one tab per build.
 - W80. Play 3D.195 or later and say whether the open menus look right. The menus are Build, People, Town and a survivor's details (tap a person). With one open: no round radio button on the right, the alert button gone where the menu covers it, and "Paused" centred on the menu's top edge. (Owner, 19 Nov, asked which menus: explained.)
 
 Code clean-up chat:
