@@ -24,6 +24,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
 - 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the next job in the Planning chat.
 - 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
+- 19 Nov (W146): **The vision is updated for bug A12**: zombies never walk away, so any left over from the night fight in town by day until killed; apart from those, the only daytime attack on the town is the warned daytime horde (replaces "no constant daytime attacks on the town" of 16 Nov).
 - 19 Nov: Add a story: how the zombies started, and a secret the survivors slowly discover, told in short cutscenes between play. It gets its own Story chat; the story is written and approved before any cutscene is built. (Not in the game yet.)
 - 16 Nov (Balance chat): `08-BALANCE.md` is written and approved ("looks good"). It holds the targets in full; the main ones follow. No number in the game was changed.
 - 16 Nov (Balance chat): Pace: level 3 in the first sitting (about 30 minutes); level 15 in about 4 to 6 weeks for a daily player; a check-in takes 5 to 10 minutes; a level waits on the player's work first and the timer second; every level unlocks at least one building and one piece of gear, every era one new big thing to do.
@@ -50,6 +51,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: **Story items in the Inventory** (like Resident Evil): every item has a page with its picture and description; story items and papers (posters, reports) sit in a Story tab and can't be used. Built by the UI chat as part of its Inventory.
 - 19 Nov: **The cure takes three months at most** ("3 month at most"): 12 steps of about one real week each (W133). Shut the Line is three plant strongholds (W134). The Rook choice in C16 stays (W135). Greenwater's brine is called **the Old Brine** (W137).
 - 19 Nov: **DJ Moth's voice:** a man broadcasting to strangers he can't see: "Whoever is out there, I hope you are safe. Here are some tips." and "Some info for the survivors out there, there is a Leaper zombie, they might jump over your gate." (Lines rewritten in `09-STORY.md`, section 12; waiting on W136.)
+- 19 Nov: **DJ Moth's lines, second version, approved** (W136). Built in one build.
 
 ## Hard rules
 - Must work fully offline.
@@ -210,6 +212,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: Owner on 3D.226 (W140, with a picture of a man aiming a carbine): the left arm is OK; the long gun's **right elbow must not be over the gun or the shoulder: it hangs lower**, under the gun, the forearm nearly upright to the grip. Built in 3D.228.
 - 19 Nov: Owner on 3D.228 (W142, a red circle on the picture): the long gun's **right hand holds the grip in front of the chin**, where the wooden stock meets the metal, not back at the cheek. Built in 3D.234 (the hand at the back edge of that spot: the short arm can reach no further).
 - 19 Nov: Owner on 3D.234 (W148, a drawing): the long gun's **right arm is bent**: from the shoulder the upper arm goes down and forward to a low elbow, and the forearm goes up to the hand on the grip. The rifle sits 4 cm further back into the shoulder so the short arm can fold. Built in 3D.235.
+- 19 Nov: Owner on 3D.235 (W149): "it's ok". **Firing is approved** (the long guns as in 3D.235, the pistol as in 3D.225).
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.

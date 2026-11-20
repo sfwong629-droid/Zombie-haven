@@ -1,6 +1,6 @@
 # Zombie Haven: vision (approved by the owner, 16 Nov 2026)
 
-The owner went through the draft line by line on 16 Nov 2026 and approved everything here. Change it only on the owner's say, and log the change in `02-DECISIONS.md`.
+The owner went through the draft line by line on 16 Nov 2026 and approved everything here. Change it only on the owner's say, and log the change in `02-DECISIONS.md`. *(Changed 19 Nov on the owner's say, W146: zombies never walk away, so leftovers from the night fight in town by day.)*
 
 Lines marked **not in the game yet** describe where the game should go; they are not built yet.
 
@@ -15,7 +15,7 @@ Small town → build → gear up → a horde attacks → you win, and it feels g
 - **The town starts small and grows to a decent size.** The pay-off is watching your survivors fight a horde of zombies (owner, 16 Nov).
 - **Building comes first.** Raiding and strongholds are a side activity next to building (owner, 11 Nov), but some things can only be done or won by raiding or doing strongholds (owner, 16 Nov).
 - **You care about people, not units.** Survivors have names, jobs, traits, moods, bonds, couples, babies and pets.
-- **Zombies are a threat day and night.** Nights stay the biggest fights. By day, small groups roam outside the walls and threaten anyone working or travelling there, and every few days a daytime horde comes that the radio warns about hours ahead, so there is time to gear up and repair. No constant daytime attacks on the town. (owner, 16 Nov; **not in the game yet**: today the danger is mostly at night.)
+- **Zombies are a threat day and night.** Nights stay the biggest fights. By day, small groups roam outside the walls and threaten anyone working or travelling there, and every few days a daytime horde comes that the radio warns about hours ahead, so there is time to gear up and repair. Zombies never walk away: any left over from the night stay and fight in town by day until they are killed, so a hard night carries into the morning (owner, 19 Nov, bug A12; built, released once the Balance chat has tuned the nights). Apart from those leftovers, the only daytime attack on the town is the warned daytime horde. (owner, 16 Nov; **not in the game yet**: today the danger is mostly at night.)
 - **Dangerous, but fair.** The game never kills without a warning or a choice: no hidden odds, low risk never kills, every trip card offers turn back.
 - **Funny, not grim.** Facts first, joke last. The radio DJ is the voice that teaches the game.
 - **Calm to play.** Menus pause the game. No forced slow-motion. Being away is never punished: it only adds production.
