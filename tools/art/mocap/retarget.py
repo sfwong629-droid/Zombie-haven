@@ -76,7 +76,7 @@ def solve(i):
         R['foot.'+sd]=frame([hd[0]*math.cos(pit),hd[1]*math.cos(pit),-math.sin(pit)],hh)
         du=nz(J(S+'ForeArm')-J(S+'Arm')); df=nz(J(S+'Hand')-J(S+'ForeArm'))
         if TWIST!=1: du=RZ@du; df=RZ@df
-        if REACH and sd=='R': dd_=nz(du*np.linalg.norm(J(S+'ForeArm')-J(S+'Arm'))+df*np.linalg.norm(J(S+'Hand')-J(S+'ForeArm'))); a_=REACH*sw; du=nz(du*(1-a_)+dd_*a_); df=nz(df*(1-a_)+dd_*a_)
+        if REACH and (sd=='R' or os.environ.get('ZH_REACH2')): dd_=nz(du*np.linalg.norm(J(S+'ForeArm')-J(S+'Arm'))+df*np.linalg.norm(J(S+'Hand')-J(S+'ForeArm'))); a_=REACH*sw; du=nz(du*(1-a_)+dd_*a_); df=nz(df*(1-a_)+dd_*a_)
         nn=np.cross(du,df); ang=math.degrees(math.asin(min(1,np.linalg.norm(nn)))); w=sstep(8,25,ang)
         hh=nz(w*nz(nn)+(1-w)*(-cx)); R['upperarm.'+sd]=frame(du,hh); R['forearm.'+sd]=frame(df,hh)
         if HANDS:   # the recorded wrist, turn and all. In the recording's rest pose (a T) the fingers point out to the side and the palm faces down;
