@@ -940,8 +940,19 @@ async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a ga
     t.ok(r.get('out'), f"she walks out through the gate (3D.228: she stood pressed against it all day) {r.get('ev', [])[:3]}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at once (the first two used to add nothing; owner's Wandering Medic, 19 Nov)
+    ctx, pg, errs = await open_game(br, port, 'beds')
+    r = await pg.evaluate("""()=>{const S=ZH.S,W=ZH.world,out={};S.rank=2;S.terr=0;W.buildings=W.buildings.filter(b=>!['tent','cabin','stonehouse','inn','house'].includes(b.type));
+      const room=()=>({beds:ZH.bedCount(),room:ZH.popCap()});out.none=room();
+      const add=()=>{W.buildings.push({type:'tent',x:0,y:0,w:1,h:1,q:10,a:6,rot:0})};add();out.one=room();add();out.two=room();return out}""")
+    print('      beds:', r)
+    t.ok(r['none']['room'] == 8, f"with no Tents the Camp or Lodge gives room for 8 ({r['none']})")
+    t.ok(r['one']['room'] == 10, f"one Tent adds 2 at once ({r['one']}; 3D.237: no change)")
+    t.ok(r['two']['room'] == 12, f"a second Tent adds 2 more, up to the rank limit of 12 ({r['two']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('gatewalk', t_gatewalk), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()

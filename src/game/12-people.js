@@ -58,7 +58,7 @@ function assignHomes() {
   const want = S.sv.filter((q) => q.hp > 0 && !homeOf(q) && (q.resident || (q.daysHere || 0) >= 3)).sort((a, b) => (b.resident ? 1 : 0) - (a.resident ? 1 : 0) || (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id);
   for (const b of free) { const q = want.shift(); if (!q) break; b.owner = q.id; banner(`🏠 ${q.name} has a home now!`, q); logEvent(`${q.name} moved into a House of their own: they rest faster and get happier there.`, 'routine'); }
 }
-const bedCount = () => 4 + bOf('inn').reduce((a, b) => a + (DEFS[b.type].cap || 2), 0) + 2 * bOf('house').length;
+const bedCount = () => 8 + bOf('inn')   /* 3D.238 bug B11: the Camp or Lodge counts as 8 beds (was 4, under the 8 minimum), so every Tent, Cabin and Stone House adds room at once; the first two Tents used to add nothing */.reduce((a, b) => a + (DEFS[b.type].cap || 2), 0) + 2 * bOf('house').length;
 const cityL = () => Math.max(0, (S.lvl || 1) - 15);
 const rankRoom = () => 8 + 4 * Math.max(0, (S.rank || 1) - 1) + 2 * (S.terr || 0) + 3 * cityL();   /* 3D.113 the City: +3 people a city level */   /* 3D.72: the town's standing limits how many it can take in: 8 at rank 1, +4 a rank, +2 per territory */
 const popCap = () => Math.max(8, Math.min(28 + 3 * cityL(), bedCount(), rankRoom()));   /* V3D.23 beds; 3D.72 capped by rank, so growing the town means upgrading it */   /* V3D.23: beds in Tents / Cabins / Stone Houses */   /* V3D.12: an Inn makes room for 4 */
