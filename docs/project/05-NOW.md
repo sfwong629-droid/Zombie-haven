@@ -14,6 +14,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - Split `js/game.js` by area. **Step 1 done 16 Nov** (Code clean-up chat): the code is kept as 27 area files in `src/game/` and joined into `js/game.js`; the game itself is unchanged. **Step 2, next:** separate the areas for real (today they still share all their variables), one area per session, in the Code clean-up chat. Nothing waits for step 2 (owner, 16 Nov, W42).
 - UI work from `04-UI.md`, one screen at a time, **in its own chat** (owner, 16 Nov).
 - **Balance chat, first: bug A12, "zombies never walk away"** (owner, 19 Nov). Built as 3D.233 on branch `a12-never-leave` (not published; **renumber when merging**: 3D.233 on `art-direction-b` is the UI chat's slip-out fix, live as version 271). Measure it with the balance bot against `08-BALANCE.md` (a lost night should be a setback of a day or two), tune the nights until towns stop collapsing, then publish the change and the tuning together (owner: "rebalance first"). Details in `03-BUGS.md`, A12.
+- **Features chat: the grace period for newcomers** (owner, 19 Nov; `02-DECISIONS.md`, Town, walls, building): "Ask them to stay" and the like are never greyed out for lack of room; a newcomer taken in when full gets 1 game day for a bed to be built, then sleeps rough (mood falls) until one is free. Includes a new trader offer: a person, in a trade. One change per build.
 - The rest of `03-BUGS.md` section B.
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
 - Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
@@ -60,6 +61,7 @@ Bugs chat:
 - W121. Bug A10 (3D.220): the angry face beside a wall. Play 3D.220 and say whether it still flashes. If it does, a short video again, and whether a zombie was nearby.
 - W143. Bug A6 (3D.229): people walk through gates again. Play your town and say whether "Couldn't reach it" is gone or rare.
 - ~~W145. Bug A12: when, and was there a wall between?~~ Owner, 19 Nov: in the morning around 06:00. Decided: zombies never walk away (`02-DECISIONS.md`); built on branch `a12-never-leave`, held for the Balance chat's tuning.
+- W161. Bug B11 (3D.238): every Tent now adds room. Look at the Wandering Medic (or any "no room" card) and the People count: does room go up with each Tent? (In your town: 10 with one Tent, if rank allows.)
 - W7. Any other bugs they have seen.
 
 UI chat:

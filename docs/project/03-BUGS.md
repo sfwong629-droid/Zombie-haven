@@ -43,7 +43,7 @@ Status: **open** · **reproduced** (Claude can make it happen on demand) · **fi
 | B8 | Supplies over the cap are thrown away silently | round 2 | open |
 | B9 | Build sites stall 16–67 h with materials in stock | rounds 3–4 | open (stuck sites say why since 3D.172) |
 | B10 | Repairs and upkeep drain wood and scrap with no ledger | rounds 2–4 | open (design question) |
-| B11 | Tents show beds 8/8 after building | ChatGPT tester, round 3 | open |
+| B11 | Tents show beds 8/8 after building | ChatGPT tester, round 3; owner, 19 Nov (Wandering Medic: "no room (8/8)" with a Tent built) | **fixed in 3D.238** (Bugs chat, 19 Nov), waiting for the owner to confirm. Room for people is the smaller of beds and the rank limit, never under 8 (`popCap`, `src/game/12-people.js`). The Camp or Lodge counted as 4 beds, so with one or two Tents (2 beds each) the town stayed under the minimum of 8 and the Tents added nothing. The Camp or Lodge now counts as 8 beds, so every Tent, Cabin and Stone House adds room at once (owner's pick); the rank limit is unchanged (8 at rank 1, +4 a rank, +2 a territory). Balance: towns with Tents can take people in a little sooner. Check: `python3 tests/run_tests.py beds` (no Tent 8, one 10, two 12; 3D.237: 8, 8, 8). |
 | B12 | "Lena is now a Engineer" | ChatGPT tester | open |
 | B13 | Radio help accepted with nobody down, then a favour is demanded | ChatGPT tester | open |
 | B14 | A 12% health Police Officer keeps attacking under Recover & Heal | ChatGPT tester | open |
@@ -74,6 +74,7 @@ UI problems are listed in `04-UI.md`, not here.
 - **One real bug:** B17, found by `profession`. That test stays failing until B17 is fixed (owner, 16 Nov: fix the bugs first, no "known bug" marking).
 
 ## Fixed (last 10)
+- 3D.238: B11 every Tent adds room at once (the Camp or Lodge counted 4 beds, under the minimum of 8, so the first two Tents added nothing). Check: `tests/run_tests.py beds`.
 - 3D.230: A11 tapping a radio message shows it (it used to run the message's action, opening Upgrade Town). Check: `node tools/qa/radio_open_check.js`.
 - 3D.229: A6 people walk through gates again (since 3D.103 the walking rule treated a gate as a wall, so anyone walled in with only gates got "Couldn't reach it"). Check: `tests/run_tests.py gatewalk`.
 - 3D.220: A10 the angry face no longer flashes on a fighter beside a wall with a zombie across it. Check: `tests/run_tests.py wallemo`.
