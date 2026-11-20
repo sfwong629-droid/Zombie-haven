@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.239', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.240', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1683,7 +1683,7 @@ function dropWood(s) {   // (name kept) drop whatever the survivor carries: into
 function tapTree(x, y) {   // tap a node: mark / unmark it
   const k = nodeKindAt(x, y), st = nodeState(x, y); if (!k || !st) return false; const K = NODE[k], nm = { tree: 'Tree', rock: 'Rock', wreck: 'Wreck', bin: 'Clothes bin' }[k];
   if (st === 'empty') { const n = treeNode(x, y); say(`${k === 'tree' ? 'Stump' : k === 'rock' ? 'Broken rock' : k === 'bin' ? 'Empty bin' : 'Stripped wreck'}: back in about ${Math.max(1, Math.ceil(n.regrow - nowH()))} h.`, true); return true; }
-  if (k === 'wreck' && !tapTree.alarmAsked && alarmCands(x, y).length) { tapTree.alarmAsked = true; showEventPopup({ title: '🚨 CAR ALARM', text: `The dead are close to this wreck. Its alarm still works: set it off and up to ${ALARM.pull} nearby zombies (not bosses) shamble over to it for a while. Once per wreck per day.`, buttons: [{ label: '🚨 Set it off', fn: () => { tapTree.alarmAsked = false; carAlarm(x, y); } }, { label: 'Mark for salvage', fn: () => { tapTree.alarmAsked = false; tapTree(x, y); } }] }); setTimeout(() => { tapTree.alarmAsked = false; }, 400); return true; }   /* 3D.147 */
+  if (k === 'wreck' && !tapTree.alarmAsked && alarmCands(x, y).length) { tapTree.alarmAsked = true; showEventPopup({ x: true, onX: () => { tapTree.alarmAsked = false; }, title: '🚨 CAR ALARM', text: `The dead are close to this wreck. Its alarm still works: set it off and up to ${ALARM.pull} nearby zombies (not bosses) shamble over to it for a while. Once per wreck per day.`, buttons: [{ label: '🚨 Set it off', fn: () => { tapTree.alarmAsked = false; carAlarm(x, y); } }, { label: 'Mark for salvage', fn: () => { tapTree.alarmAsked = false; tapTree(x, y); } }] }); setTimeout(() => { tapTree.alarmAsked = false; }, 400); return true; }   /* 3D.147; 3D.240 (owner, 19 Nov): a ✕ to close it doing nothing */
   const n = treeNode(x, y); n.mark = !n.mark; S.nodeVer = (S.nodeVer || 0) + 1;
   if (n.mark) barkSomeone('mark', {}, { pri: 1 }, tc(x, y));
   say(n.mark ? `${nm} marked: a free survivor will ${K.verb} it next (${n.left} left, ${K.amt} ${RES_NAME[K.res]} each).` : 'Mark removed.', true); saveGame(); return true;
@@ -4272,8 +4272,8 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX(e.stage.scene === 'sad' || e.stage.scene === 'danger' ? 'alarm' : 'event'); return;
   }
-  m.innerHTML = `<div class="evBox frame"><div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
-  m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
+  m.innerHTML = `<div class="evBox frame${e.x ? ' hasX' : ''}">${e.x ? '<button class="evX" aria-label="Close">×</button>' : ''}<div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
+  m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = el.classList.contains('evX') ? null : bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); else if (!b && e.onX) e.onX(); nextEventPopup(); }; });   /* 3D.240: x: true adds a ✕ that closes the card doing nothing (onX runs if given) */
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
 /* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */
