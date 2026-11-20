@@ -145,7 +145,7 @@ These 14 are in the game and can be found and worn, but have no model of their o
 
 In it: Lead Pipe, Kitchen Knife, Crowbar, Nail Bat, Machete, Scrap Spear, Fire Axe, Sledgehammer, Katana, Revolver, Shotgun, SMG, Hunting Bow, Crossbow, Golf Club, Hatchet, Cleaver, Shovel, Road Sign, Spiked Club, Magnum, plus three size references (bat, pistol, rifle).
 
-Four weapons use the models built into the survivor file instead: Baseball Bat, Pistol, Hunting Rifle and Assault Rifle. The survivor file also carries the things people hold at work: hammer, hoe, wrench, plank, bowl, crate.
+Four weapons use the models built into the survivor file instead: Baseball Bat, Pistol, Hunting Rifle and Assault Rifle. The survivor file also carries the things people hold at work: hammer, hoe, wrench, plank, bowl, crate. (3D.241: the hoe's blade was turned to face the ground and its shaft shortened from 0.99 to 0.73, `tools/art/b3d/build_hoe.sh`; check `tools/qa/hoe_check.sh`.)
 
 ## 6. Buildings and town
 | File | What | Status | Source |

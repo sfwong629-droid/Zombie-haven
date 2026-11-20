@@ -225,6 +225,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (W158): ~~the recorded punch and shove~~ are turned down ("not good at all"). **The punch is the old hand-made one, made better; the shove is: the arms come in near the body with the elbows bent down, then straight out as a push, the body leaning forward, one leg stepping in as it happens.** Built in 3D.237. Lesson (the same as for the swings): for fighting moves the owner prefers the old hand-made movement corrected over a plain recording; show a corrected old one next to any recording before replacing it.
 - 19 Nov (W159): **punch and shove approved** as built in 3D.237.
 - 19 Nov (W160): **the hurt group keeps the old hand-made movements with the feet put on the ground** ("looks fine"). Built in 3D.239; a body lying down rests on the ground.
+- 20 Nov (W162): **a tool strikes with its working end.** The digger's hoe has its blade facing the ground and only the blade's edge goes into it (built in 3D.241; the hoe is 0.73 long). Animation sheets sent to the owner show the tool the survivor holds: the first work sheet did not, and Claude misjudged Board up from it.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
