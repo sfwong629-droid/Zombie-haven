@@ -1,4 +1,5 @@
-# fixfist.py -- RAW.glb CLIP OUT.json : the old hand-made punch and shove, kept and corrected (3D.237).
+# fixfist.py -- RAW.glb CLIP OUT.json : the old hand-made punch and shove, kept and corrected (3D.237); since 3D.239 also the hurt group (any other clip: the
+# hips lifted where the feet sank; ZH_GROUND=1: the lowest point of the body kept on the ground both ways, for the clips that end up lying down).
 # Owner, 19 Nov, on the recorded punch and shove of 3D.236: "This punch is not good at all. go back to the old one and just make that better. Shove is not
 # good at all too. it should just be arm come near body elbow bent down and then arm straight as a push, body lean forward. one leg step in as the shove happen."
 #   punch: the old clip as it is, the hips lifted where the feet sank into the ground (up to 12 cm), so the lunge stands on the ground.
@@ -43,10 +44,11 @@ def arms(t):
         if k > .01: swing(hd, nz(nz(cur) * (1 - k) + np.array([0, -.5, .87]) * k))
 def pose(fr, dz):
     goto(fr); t = fr / nf
-    if dz: lift(dz)
+    if abs(dz) > 1e-5: lift(dz)
     if clip == 'shove': lean(14 * sst(.30, .43, t) * (1 - sst(.66, .84, t))); arms(t)
 # pass 1: how far the lowest point of the body is under the ground at each frame; the lift is that, held over its neighbours and smoothed (no jitter)
-sink = np.array([max(0., -(lowest() if not pose(fr, 0) else 0)) for fr in range(nf + 1)])
+DOWN = bool(os.environ.get('ZH_GROUND'))   # (3D.239, knockdown and collapse) also lower the body where it floats: lying down, the old clips hang 6 to 16 cm above the ground
+sink = np.array([(lambda z: -z if DOWN else max(0., -z))(lowest() if not pose(fr, 0) else 0) for fr in range(nf + 1)])
 hold = np.array([sink[max(0, i - 2):i + 3].max() for i in range(nf + 1)]); L = np.array([hold[max(0, i - 2):i + 3].mean() for i in range(nf + 1)]); L = np.maximum(L, sink)
 order = [pb.name for pb in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}; low = []
 for fr in range(nf + 1):
