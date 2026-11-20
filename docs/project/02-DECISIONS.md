@@ -24,6 +24,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov: Confirmed: the player always knows why something is stuck or refused; not pay-to-wait, not an RTS, not an idle game.
 - 16 Nov: Add a balance targets page, `08-BALANCE.md` (targets such as pace, danger, hordes, routes and economy; not numbers). It is the next job in the Planning chat.
 - 16 Nov: The Planning chat is also the general chat. Bugs are reported in the Bugs chat.
+- 19 Nov (W153): **Each chat lists only its own open items; only the Planning chat (planning and vision) lists every chat's.** (Replaces the 16 Nov practice of every chat repeating everything.)
 - 19 Nov (W146): **The vision is updated for bug A12**: zombies never walk away, so any left over from the night fight in town by day until killed; apart from those, the only daytime attack on the town is the warned daytime horde (replaces "no constant daytime attacks on the town" of 16 Nov).
 - 19 Nov: Add a story: how the zombies started, and a secret the survivors slowly discover, told in short cutscenes between play. It gets its own Story chat; the story is written and approved before any cutscene is built. (Not in the game yet.)
 - 16 Nov (Balance chat): `08-BALANCE.md` is written and approved ("looks good"). It holds the targets in full; the main ones follow. No number in the game was changed.
@@ -213,6 +214,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: Owner on 3D.228 (W142, a red circle on the picture): the long gun's **right hand holds the grip in front of the chin**, where the wooden stock meets the metal, not back at the cheek. Built in 3D.234 (the hand at the back edge of that spot: the short arm can reach no further).
 - 19 Nov: Owner on 3D.234 (W148, a drawing): the long gun's **right arm is bent**: from the shoulder the upper arm goes down and forward to a low elbow, and the forearm goes up to the hand on the grip. The rifle sits 4 cm further back into the shoulder so the short arm can fold. Built in 3D.235.
 - 19 Nov: Owner on 3D.235 (W149): "it's ok". **Firing is approved** (the long guns as in 3D.235, the pistol as in 3D.225).
+- 19 Nov: **Finish the rest of the survivor animations, then the zombie animations** (owner). Survivors in four groups (fight, hurt, work, everyday), each with a reference sheet first; the zombies start with a review.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
