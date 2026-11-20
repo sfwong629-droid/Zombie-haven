@@ -18,6 +18,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `08-BALANCE.md` | Balance targets (pace, danger, hordes, Banner routes, economy, town size, buildings), not numbers; what every building does today; the building changes decided | live (written 16 Nov, Balance chat) |
 | `09-STORY.md` | The story (Forever Fresh): the truth, the layers, every faction's part, the cutscene list and storyboards, the cure, story items, DJ Moth's voice | live (approved by the owner, 19 Nov; open items in its section 13) |
 | `10-VIDEO.md` | The story's 15 video clips: the look test, Luma AI against clips made by Claude (cost, quality, match, licences), file sizes on the phone, what's next. The test's source is in `video/v1-test/` | live (written 19 Nov, Video chat; waiting on W150, W151) |
+| `11-CRAFTING.md` | Crafting with parts, like Last Day on Earth: the study, the 15 parts and where they come from, orders at the Workshop that survivors carry out, a recipe for every craftable item | **draft, 20 Nov (Balance chat); waiting for the owner (W163)** |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
