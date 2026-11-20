@@ -215,6 +215,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: Owner on 3D.234 (W148, a drawing): the long gun's **right arm is bent**: from the shoulder the upper arm goes down and forward to a low elbow, and the forearm goes up to the hand on the grip. The rifle sits 4 cm further back into the shoulder so the short arm can fold. Built in 3D.235.
 - 19 Nov: Owner on 3D.235 (W149): "it's ok". **Firing is approved** (the long guns as in 3D.235, the pistol as in 3D.225).
 - 19 Nov: **Finish the rest of the survivor animations, then the zombie animations** (owner). Survivors in four groups (fight, hurt, work, everyday), each with a reference sheet first; the zombies start with a review.
+- 19 Nov (W157): **Punch** = one hard step-in punch (CMU 02_05); **shove** = a step in and a two-handed push at chest height (CMU 81_10); Claude's picks, the owner agreed. Force is added so they read (as decided for the swings). Built in 3D.236.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
