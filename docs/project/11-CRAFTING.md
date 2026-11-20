@@ -159,8 +159,10 @@ From `08-BALANCE.md`:
 Then the balance bot runs three towns to check the "short of one thing" target and that era 1 gear is always reachable.
 
 ## 9. Open questions for the owner
+All five answered 20 Nov: the system is approved as drafted, without the Outfit fighters order and without junk. Built in the Features chat in the order of section 8, one change per build.
+
 1. ~~**How many parts?**~~ Owner, 20 Nov: **15 is fine.** This draft has 15. Fewer (about 8) is simpler to read; more (25 or so, closer to Last Day on Earth) gives more variety but a longer shelf and more icons. Claude's recommendation: 15.
 2. ~~**The orders.**~~ Owner, 20 Nov: **no Outfit fighters order**; only Make and Keep in stock. Make and Keep in stock (recommended). Should there also be an **Outfit fighters** order that keeps every fighter in the best gear the town can make, with no other input?
 3. ~~**Junk.**~~ Owner, 20 Nov: **not for now.** Fallout-style funny junk (a toaster, a car battery) that the Workshop breaks into parts by itself: more flavour and jokes, more items to draw. Claude's recommendation: not now; maybe later as rare finds.
-4. **Parts beyond gear.** Should the new buildings (Watchtower, Forge and so on) and tool upgrades also cost parts? Claude's recommendation: the seven new buildings and the tools yes, today's buildings no (that would change the whole economy at once).
-5. **Salvage.** A Salvage button giving back half the parts (recommended), or none?
+4. ~~**Parts beyond gear.**~~ Owner, 20 Nov: **yes** (the seven new buildings and the tools cost parts; today's buildings don't). Should the new buildings (Watchtower, Forge and so on) and tool upgrades also cost parts? Claude's recommendation: the seven new buildings and the tools yes, today's buildings no (that would change the whole economy at once).
+5. ~~**Salvage.**~~ Owner, 20 Nov: **yes**, half the parts back. A Salvage button giving back half the parts (recommended), or none?
