@@ -275,7 +275,7 @@ What this shows:
 
 **Raiders softened, 18 Nov (3D.204).** Owner: soften it. A town raider's hit is now 5 + 0.2 x its weapon's attack (was 0.3). Era 1: Thief 5.2, Brute 9, Firebug 6; era 4: 11.4, 12.2, 10.4. Bot, three towns, 30 game days: 4, 3 and 3 deaths, never more than 2 on one day (at 0.3: 9 and 12 lost to single raids in two of six towns).
 
-## 13. Research plan (draft, 18 Nov; waiting for the owner's yes or changes)
+## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 
 The draft splits today's four recipe sets by era, so better gear opens with each Banner and the top gear needs the Forge, and adds a few new boosts per era. Every item below is already in the game; only the new boosts are new code. Costs in research points are first guesses (today's projects cost 20 to 40) and get tuned with the bot. A project needs nothing but its era and, where marked, the Forge.
@@ -314,6 +314,8 @@ The draft splits today's four recipe sets by era, so better gear opens with each
 |---|---|---|
 | Masterwork (Forge) | 220 | Craft: Katana, SMG, Military Armor, SWAT Armor |
 | Town Planning (new) | 180 | Building and upgrading 20% faster |
+
+Crafting with parts (`11-CRAFTING.md`, approved 20 Nov) sits on top of this: research decides which recipes can be made, parts are what each one costs.
 
 Not checked yet: whether traders, loot or the Armory already hand out era 3 and City gear early, which would undercut this. A town that already crafted or found an item keeps it.
 
