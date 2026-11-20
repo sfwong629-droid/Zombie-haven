@@ -54,7 +54,8 @@ for fr in range(nf + 1):
     for b in order:
         q = PB[b].rotation_quaternion; KEY[b]['rot'].append([q.x, q.y, q.z, q.w])
         if b in ('pelvis', 'gun'): KEY[b]['loc'].append(list(PB[b].location))
-for b in order:   # the clip ends exactly where it starts
+LOOPS = all(sum(abs(x - y) for x, y in zip(KEY[b]['rot'][0], KEY[b]['rot'][-1])) < .05 for b in order)   # a clip that ends lying down (collapse) keeps its own end
+for b in order if LOOPS else []:   # the clip ends exactly where it starts
     KEY[b]['rot'][-1] = KEY[b]['rot'][0]
     if KEY[b]['loc']: KEY[b]['loc'][-1] = KEY[b]['loc'][0]
 json.dump({'fps': fps * SUB, 'frames': nf, 'stride': 0., 'seconds': nf / (fps * SUB), 'bones': KEY, 'wdir': None}, open(out, 'w'))

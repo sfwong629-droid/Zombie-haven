@@ -217,6 +217,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: **Finish the rest of the survivor animations, then the zombie animations** (owner). Survivors in four groups (fight, hurt, work, everyday), each with a reference sheet first; the zombies start with a review.
 - 19 Nov (W157): **Punch** = one hard step-in punch (CMU 02_05); **shove** = a step in and a two-handed push at chest height (CMU 81_10); Claude's picks, the owner agreed. Force is added so they read (as decided for the swings). Built in 3D.236.
 - 19 Nov (W158): ~~the recorded punch and shove~~ are turned down ("not good at all"). **The punch is the old hand-made one, made better; the shove is: the arms come in near the body with the elbows bent down, then straight out as a push, the body leaning forward, one leg stepping in as it happens.** Built in 3D.237. Lesson (the same as for the swings): for fighting moves the owner prefers the old hand-made movement corrected over a plain recording; show a corrected old one next to any recording before replacing it.
+- 19 Nov (W159): **punch and shove approved** as built in 3D.237.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
