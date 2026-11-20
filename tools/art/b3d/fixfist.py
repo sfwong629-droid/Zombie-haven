@@ -57,6 +57,16 @@ for fr in range(nf + 1):
         q = PB[b].rotation_quaternion; KEY[b]['rot'].append([q.x, q.y, q.z, q.w])
         if b in ('pelvis', 'gun'): KEY[b]['loc'].append(list(PB[b].location))
 LOOPS = all(sum(abs(x - y) for x, y in zip(KEY[b]['rot'][0], KEY[b]['rot'][-1])) < .05 for b in order)   # a clip that ends lying down (collapse) keeps its own end
+if os.environ.get('ZH_LOOP') and not LOOPS:   # (3D.242, work_hammer and work_barricade) the old clip is cut off just before it is back at its start, so every
+    N = 8                                     # repeat jumped 4 to 7 cm: the last 8 keys (0.17 s) are eased onto the first pose
+    for b in order:
+        for kind in ('rot', 'loc'):
+            K = KEY[b][kind]
+            for i in range(len(K) - N, len(K)) if K else []:
+                w = sst(0, 1, (i - (len(K) - 1 - N)) / N); a0 = np.array(K[0], float); v = np.array(K[i], float)
+                if kind == 'rot' and v @ a0 < 0: a0 = -a0
+                v = v * (1 - w) + a0 * w; K[i] = list(v / np.linalg.norm(v)) if kind == 'rot' else list(v)
+    LOOPS = True
 for b in order if LOOPS else []:   # the clip ends exactly where it starts
     KEY[b]['rot'][-1] = KEY[b]['rot'][0]
     if KEY[b]['loc']: KEY[b]['loc'][-1] = KEY[b]['loc'][0]

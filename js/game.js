@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.241', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.242', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7207,7 +7207,7 @@ const SVT_NAME = { idle: 'Stand', walk: 'Walk', jog: 'Jog', run: 'Run', walk_f: 
 const SVT_REAL = new Set(['run', 'carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload', 'idle', 'walk', 'walk_f', 'jog', 'carry_walk', 'melee_hold_walk', 'melee_hold_jog', 'gun_hold_walk', 'gun_hold_jog']);   /* the clips that are already recordings of real people; add to this as they are replaced (W63) */
 const SVT_PART = new Set(['carry_idle', 'talk', 'wave', 'melee_hold_idle', 'gun_hold_idle', 'gun_reload']);   /* recorded body, old arms */
 const SVT_TWO = new Set(['melee2h_swing_a', 'melee2h_swing_b', 'melee2h_swing_c', 'spear_stab']);   /* 3D.207 the body from a recording of a real person, both hands on the weapon; 3D.208: A a baseball swing, B the same swing mirrored (the backhand), C (3D.209) a real overhead chop, arms and weapon both from the recording, the stab a boxer's lunge */
-const SVT_FIST = new Set(['punch', 'shove', 'hurt', 'melee_hold_hurt', 'gun_hold_hurt', 'grabbed', 'knockdown', 'collapse']);   /* 3D.239 the hurt group too */   /* 3D.237 the old hand-made punch and shove, corrected (owner, 19 Nov: the recorded ones of 3D.236 were not good): feet on the ground; the shove's arms come in, then push out straight */
+const SVT_FIST = new Set(['punch', 'shove', 'hurt', 'melee_hold_hurt', 'gun_hold_hurt', 'grabbed', 'knockdown', 'collapse', 'work_chop', 'work_hammer', 'work_dig', 'work_tinker', 'work_barricade']);   /* 3D.242 the work group too */   /* 3D.239 the hurt group too */   /* 3D.237 the old hand-made punch and shove, corrected (owner, 19 Nov: the recorded ones of 3D.236 were not good): feet on the ground; the shove's arms come in, then push out straight */
 const SVT_SWING = new Set(['melee_swing_a', 'melee_swing_b', 'melee_swing_c']);   /* 3D.205: Swing 4 (overhead) taken out of the one-handed set (owner, 18 Nov); its clip stays in the model file, unused, for the two-handed set (W84). Swing 3 is a new rising cut. */   /* 3D.201 the old hand-made swings, corrected by tools/art/b3d/fixswing.py (owner, 18 Nov: the recorded swings of 3D.198 looked weak) */
 let svtClip = 'walk', svtTurn = true, svtFem = false, svtList = [];
 const svtWho = () => S.sv.find((q) => q.svt);
