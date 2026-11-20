@@ -108,6 +108,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (UI chat, W139): On an item's page the made picture **replaces** the turning 3D view: a still picture, no turning. Built in 3D.232 (until a made picture exists, a still of the item's 3D model).
 - 19 Nov (UI chat, owner's bug): Tapping a radio message shows the message (in a box, with "Show me" when the message points somewhere); it never opens another menu by itself. Built in 3D.230.
 - 19 Nov (UI chat, U35): "Slipped out of the X before it fell" rows in the Needs you list disappear by themselves once the person is safe in the other shelter. Built in 3D.233.
+- 19 Nov (UI chat, U43): A choice card the player opened by tapping something on the map (the Car alarm) has an exit: a ✕ that closes it doing nothing. Built in 3D.240.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
