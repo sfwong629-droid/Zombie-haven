@@ -1,8 +1,8 @@
-# Zombie Haven: crafting with parts (draft, 20 Nov 2026; waiting for the owner)
+# Zombie Haven: crafting with parts (approved 20 Nov 2026)
 
 The owner, 20 Nov: crafting should feel like Last Day on Earth, with lots of small parts (wire, leather, branches and so on) that are turned into all the different items. The player should not have to be active in the crafting: they see the loot come in and fill the inventory, and the parts are used by themselves to make the items the player asked for.
 
-This page is the study and the proposed system. Nothing is built. It sits on top of the research plan (`08-BALANCE.md`, section 13): research still decides **which** items can be made; this page decides **what they are made of** and **how they get made**. Numbers are first guesses, tuned later with the balance bot.
+This page is the study and the system, approved by the owner on 20 Nov (section 9). Nothing is built yet. It sits on top of the research plan (`08-BALANCE.md`, section 13): research still decides **which** items can be made; this page decides **what they are made of** and **how they get made**. Numbers are first guesses, tuned later with the balance bot.
 
 ## 1. The study
 
