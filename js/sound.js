@@ -427,10 +427,11 @@
       nextNote = t + writeBar(ctx, layer, t, mood, bar++);
     }
   }
+  const NIGHT_TUNE = 'lantern';   /* Music chat (3D.249): Lanterns is the night music (owner-approved, 18 Nov) */
   const DAY_TRACKS = ['meadow', 'morning', 'fair', 'rain', 'harvest'], SLOW_TRACKS = ['meadow', 'rain']; let dayN = 0, dayPick = 'meadow';   /* Music chat (W106): the Ghibli day tunes replace the 10 old ones (owner-approved, 18 Nov) */
   try { dayPick = localStorage.getItem('zhDayMusic') || 'meadow'; } catch (e) { /* storage blocked */ }   /* Meadow is the default day music */
   if (!DAY_TRACKS.includes(dayPick) && dayPick !== 'mix' && dayPick !== 'slow') dayPick = 'meadow';   /* a saved pick of an old tune moves to Meadow */
-  const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
+  const setWant = () => { want = danger ? 'danger' : night ? NIGHT_TUNE : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
