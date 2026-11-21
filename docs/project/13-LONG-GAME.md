@@ -1,4 +1,4 @@
-# Zombie Haven: the long game (plan, 21 Nov 2026; rules 1, 3, 4 and the top approved; rule 2 and the end game waiting for the owner)
+# Zombie Haven: the long game (plan, approved by the owner 21 Nov 2026)
 
 The owner, 21 Nov, after the long-run test (`12-LONG-RUN.md`): "come up with a plan to properly balance the game to have long term play while still being fun. Feel free to add ideas outside of what I suggested. There are still systems I want to implement later. Make sure the plan has some wiggle room if I make more changes. Or make a workflow for balancing that we can just run when things change."
 
@@ -25,12 +25,12 @@ What this shows:
 
 ## 2. The plan in five rules
 1. **Progress runs on real days. Playing more makes the town better, not faster.**
-2. **A level is a list of tasks, and the player picks which of them to do.** (Not decided: the owner asked what this means; explained again in section 5, W179.)
+2. **A level is a list of deeds, and the player picks which of them to do.**
 3. **Danger follows the level, never the calendar.**
 4. **Every stock always has something worth buying.**
 5. **The top of the game is made of loops, not levels.**
 
-**Owner, 21 Nov: yes to rules 1, 3 and 4 (W175, W176) and to the things to do at the top (W177).** Each rule is its own section below. Rule 1 fixes the pace, rule 3 the deaths, rules 4 and 5 the empty top. Rule 2 is what keeps the balance from breaking each time a new system is added.
+**Owner, 21 Nov: yes to all five rules (W175, W176, W179), to the things to do at the top (W177) and to the end game (W180).** Each rule is its own section below. Rule 1 fixes the pace, rule 3 the deaths, rules 4 and 5 the empty top. Rule 2 is what keeps the balance from breaking each time a new system is added.
 
 ## 3. Rule 1: progress runs on real days
 **The peaceful half of the game keeps going while the player is away. The dangerous half waits for the player.**
@@ -66,14 +66,14 @@ A keen player may be up to a third faster, through renown. Not more.
 
 **The danger budget** the routine checks: a handful of deaths on the road to level 15; at the top, with 40 to 50 people, at most about one death a real week; never more than 2 in one night; no town lost.
 
-## 5. Rule 2: a level is a list of tasks, and the player picks (not decided, W179)
+## 5. Rule 2: a level is a list of deeds, and the player picks (approved 21 Nov, W179: "call it deed")
 **What the game does today.** To go from level 7 to level 8 the Upgrade Town screen asks for three things: 13 people, 21 buildings, and the wait. Every level is the same three things with bigger numbers. Three times it also asks for a Banner.
 
-**The proposal.** The same screen shows a short list of tasks for the level. Two are always there (people and buildings, as today). Below them are four or five more, and the player must finish **any two** of those. Which two is the player's choice.
+**The proposal.** The same screen shows a short list of **deeds** for the level. Two are always there (people and buildings, as today). Below them are four or five more, and the player must finish **any two** of those. Which two is the player's choice.
 
 What the Upgrade Town screen would show for level 8, as an example:
 
-| | Task | |
+| | Deed | |
 |---|---|---|
 | Always | Have 13 people | must |
 | Always | Have 21 buildings | must |
@@ -85,9 +85,7 @@ What the Upgrade Town screen would show for level 8, as an example:
 
 So a player who likes fighting does the horde and the trip; a player who likes building does the gear and the party. Both reach level 8.
 
-**Why it helps the balance.** Every new system you add later (the daytime horde, Take command, the new zombies, crafting, the story) puts one more task on these lists. The list gets longer, but the player still only needs two. So adding a system never makes levels slower or faster, and nothing has to be rebalanced because of it. Without this, each new system either does nothing for levelling or becomes one more thing everybody is forced to do.
-
-(The first version of this page called the tasks "deeds".)
+**Why it helps the balance.** Every new system you add later (the daytime horde, Take command, the new zombies, crafting, the story) puts one more deed on these lists. The list gets longer, but the player still only needs two. So adding a system never makes levels slower or faster, and nothing has to be rebalanced because of it. Without this, each new system either does nothing for levelling or becomes one more thing everybody is forced to do.
 
 ## 6. Rule 4: every stock has something worth buying
 | Stock | Today | Already decided | New ideas |
@@ -109,9 +107,9 @@ Two of the new ideas, in a little more detail:
 The economy target stays: always short of one thing, never of everything. The routine checks which stock is short in each era and that no stock sits at its limit for most of an era.
 
 ## 7. Rule 5 and the end game: from level 15 to the cure
-Owner, 21 Nov (W177): yes to the things to do at the top, "but also on the end game with the cure. Come up with an actual plan for that." This section is that plan. Its first half (7.1) is approved in outline; the rest waits for the owner (W180). The story it follows is `09-STORY.md` (approved 19 Nov); where this plan asks for a change to the story, it says so.
+Owner, 21 Nov (W177): yes to the things to do at the top, "but also on the end game with the cure. Come up with an actual plan for that." This section is that plan. **Owner, 21 Nov (W180): yes.** The story it follows is `09-STORY.md` (approved 19 Nov); where this plan asks for a change to the story, it says so.
 
-### 7.1 The things that repeat (approved in outline)
+### 7.1 The things that repeat
 **Every check-in**
 - Daily goals (in the game), crafting orders, a trip.
 - **The Bell.** Ring it to call a horde now, and pick its size. Bigger pays more. Full rewards once a real day, less after that. It never comes while away, and it is a good home for Take command.
@@ -144,7 +142,7 @@ A daily player who does everything is busy for about six months. A player who st
 ### 7.3 Chapter 2, Shut the Line: three campaigns
 The story gives three strongholds in a row, "the hardest in the game". A stronghold alone is one evening. A **campaign** makes each one a goal of two or three weeks that uses the whole town:
 
-- Each campaign has **three preparations, and any two will do** (the same idea as the level tasks):
+- Each campaign has **three preparations, and any two will do** (the same idea as the deeds):
   1. **An ally.** Bring one faction to "friend" with caravans and favours. (The story already says who helps where: a friendly Quarantine Command opens the Gate without a fight; a friendly Foundry and the Toll Kings fight beside you on the Line.)
   2. **A siege project.** A town project built in stages over a week or two: a ram for the Gate, cutting gear for the Line, pumps for the Tanks. This is where late wood, stone, scrap, parts and Tempered Steel go.
   3. **A veteran squad.** Six Veterans in the best gear the Forge makes.
@@ -163,7 +161,7 @@ The story gives three strongholds in a row, "the hardest in the game". A strongh
 The story has it right already: a Brewery (level 13), twelve steps, each needs one thing brought to it ("the feed") and then about one real week of brewing, which goes on while the game is closed. What this plan adds:
 
 - **The cure takes one year in the valley.** With three-week seasons, twelve weeks is exactly four seasons. The four season feeds (wild cucumber seed, the first Freshlock recipe, old apple stock, ice from the Frozen Depot) come from the four seasonal strongholds, one per season.
-- **A change to the story's list, for the Story chat:** today the season feeds have fixed places (steps 2, 5, 8 and 11: spring, summer, autumn, winter). A player who builds the Brewery in summer would wait nine weeks for spring, and the cure could no longer be done in three months. Proposal: every third step asks for "this season's feed", whichever season it is. Then the cure takes one year whenever it is started.
+- **A change to the story's list (approved with W180; the Story chat updates `09-STORY.md`, section 7):** today the season feeds have fixed places (steps 2, 5, 8 and 11: spring, summer, autumn, winter). A player who builds the Brewery in summer would wait nine weeks for spring, and the cure could no longer be done in three months. Proposal: every third step asks for "this season's feed", whichever season it is. Then the cure takes one year whenever it is started.
 - **A missed week costs nothing.** A step with no feed waits (already the rule). A season feed that was missed can be bought the next season from Greenwater, dear, by caravan, so nobody waits a whole year for one stronghold.
 - **Each step pays something the town can use**, so twelve weeks never feel empty:
 
@@ -189,11 +187,11 @@ The story ends with "nobody's coming any night", and "play goes on". What play i
 
 ## 8. Room for what is still to come
 - **Ranges, not exact numbers.** Every target on the scorecard (section 9) is a range. A new system may move a number inside its range freely.
-- **Level tasks.** New systems add choices, not required steps (section 5; not decided yet).
+- **Deeds.** New systems add choices, not required steps (section 5).
 - **Open-ended tops.** Legend ranks, Studies, collections and the crisis ladder have no last step, so new rewards can be added at any time.
 - **Where the systems already planned plug in:**
 
-| System | Level task it adds | Danger budget | Sink or source |
+| System | Deed it adds | Danger budget | Sink or source |
 |---|---|---|---|
 | Daytime threat | "see off a daytime horde" | counts inside the era's deaths range; nights shrink a little to make room | roamers drop parts |
 | Take command | "win a horde in command" | none: the town must still win alone | |
@@ -254,7 +252,7 @@ The tool for this exists since 21 Nov (`tools/balance/long_study.py`, with a che
 
 ### 9.5 Five questions for every new system, before it is built
 1. What does it give, and what does it cost? (Which stock it fills, which it empties.)
-2. From which level, and which level task does it add?
+2. From which level, and which deed does it add?
 3. What does it do to danger?
 4. What does it do while the player is away?
 5. What must the bot learn so that it uses it? (The bot is taught before the measurement. The lesson of the Clinic: a bot that cannot use a thing measures nothing about it.)
@@ -271,10 +269,10 @@ The bot measures pace, stock, deaths and sizes. It cannot say whether a night wa
 3. **Rule 3:** danger by level.
 4. **Rule 1**, one change per build: away production to a day's worth; newcomers at the gate; building, crafting and research in real time; then the level timers.
 5. **Sinks already approved:** crafting with parts, Salvage, research by era. Then Studies and Banner honours.
-6. **Rule 2:** level tasks (if the owner says yes, W179).
+6. **Rule 2:** deeds.
 7. **The top and the end game** (section 7): the Bell, Legend ranks and town projects first; real-time weeks and seasons; then campaigns and the cure's rewards with the story.
 
 Each step is measured with the routine before the next one starts.
 
 ## 11. Open questions for the owner
-See `05-NOW.md`, Balance chat (W179, W180).
+None on 21 Nov. Everything on this page is approved; nothing is built yet. Numbers stay first guesses until the routine has measured them.
