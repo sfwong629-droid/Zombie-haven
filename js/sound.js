@@ -427,11 +427,12 @@
       nextNote = t + writeBar(ctx, layer, t, mood, bar++);
     }
   }
+  const FIGHT_TUNES = ['stand_a', 'stand_b'], BIG_TUNE = 'tide'; let bigFight = false;   /* Music chat (3D.255): a fight plays Stand Firm, take A and take B in turn from one day to the next; a horde or a boss plays The Tide (owner-approved, 18-19 Nov) */
   const NIGHT_TUNE = 'lantern';   /* Music chat (3D.249): Lanterns is the night music (owner-approved, 18 Nov) */
   const DAY_TRACKS = ['meadow', 'morning', 'fair', 'rain', 'harvest'], SLOW_TRACKS = ['meadow', 'rain']; let dayN = 0, dayPick = 'meadow';   /* Music chat (W106): the Ghibli day tunes replace the 10 old ones (owner-approved, 18 Nov) */
   try { dayPick = localStorage.getItem('zhDayMusic') || 'meadow'; } catch (e) { /* storage blocked */ }   /* Meadow is the default day music */
   if (!DAY_TRACKS.includes(dayPick) && dayPick !== 'mix' && dayPick !== 'slow') dayPick = 'meadow';   /* a saved pick of an old tune moves to Meadow */
-  const setWant = () => { want = danger ? 'danger' : night ? NIGHT_TUNE : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
+  const setWant = () => { want = danger ? (bigFight ? BIG_TUNE : FIGHT_TUNES[dayN % 2]) : night ? NIGHT_TUNE : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
   const SND = {
@@ -447,7 +448,7 @@
     music(isNight, day) { night = !!isNight; if (day != null) dayN = day; setWant(); },
     get dayMusic() { return dayPick; }, setDayMusic(p) { dayPick = p; try { localStorage.setItem('zhDayMusic', p); } catch (e) { /* storage blocked */ } setWant(); },
     tracks: DAY_TRACKS,
-    danger(on) { danger = !!on; setWant(); },   /* 3D.50 a horde or a fight in town */
+    danger(on, big) { danger = !!on; bigFight = !!on && !!big; setWant(); },   /* 3D.50 a horde or a fight in town */
     get mood() { return mood; },
     get mode() { return mode; },
     setMode(m) { mode = m; try { localStorage.setItem('zhSound', m); } catch (e) { /* storage blocked */ } if (m === 'off' && ctx) quiet(ctx.suspend()); else { SND.unlock(); if (ctx && ctx.state === 'suspended') quiet(ctx.resume()); } if (musBus) musBus.gain.value = m === 'all' ? 1.0 : 0; },
