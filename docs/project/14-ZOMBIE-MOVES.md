@@ -32,7 +32,7 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 | Riot zombie | Quarantine Command riot police from the cordon | **Shoulder charge**: three driving steps and a body check | one-arm swipe |
 | Lasher | A volunteer in Helix's first Unlock trial: the limbs kept growing | **Whip**: the long arm cracks out from far away (kept); the trouser fault fixed in 3D.254 | lash |
 | Rot Bomb | A tin that swelled and never burst, in the shape of a man | **Clutch and swell**: both arms hug the belly as it grows (kept), with a hurried waddle | swell |
-| Dog | Guard dogs and pets fed on tin scraps | **Lunge and shake**: jumps at the arm, bites and shakes its head; **the run redone as a real gallop** (owner: "the dog leg run is not natural") | stiff legs |
+| Dog | Guard dogs and pets fed on tin scraps | **Lunge and shake**: jumps at the arm, bites and shakes its head; **the run is a real gallop, one foot landing at a time** (owner: "the dog leg run is not natural"; built in 3D.256) | stiff legs |
 | Stalker (boss) | Helix's first Unlock test subject; it carries the prototype (the vaccine it drops) | **Punch and kick** (kept) | punch and kick |
 | Mutant (boss) | Helix "Phase 2": an overdose of concentrate | **Double smash** (kept) | smash |
 | Butcher (boss) | Foreman of Sunnyside's meat line | **Chopping forearm**: the arm comes down like a cleaver, three times, each lower | the Brute's swing |
@@ -45,7 +45,7 @@ Their tricks were approved on 17 Nov; the move shows the trick.
 | Leaper | A Sunnyside street kid: free school meals from a tin, every day | **Jump**: crouches, springs over a fence or low wall, lands in a crouch; attack: a **pounce** onto the target |
 | Digger | A quarry man who ate his lunch tin underground for ten years | **Dig**: both arms scoop, the body sinks into the ground; **burst**: comes up through the mound with both arms overhead and brings them down |
 | Splitter | A Helix subject given two different doses, one down each side | **Splits in half** when killed: the body tears along the seam and the two halves hop and drag themselves on (needs the model cut into two); alive, the two arms strike out of time with each other |
-| Stag | A deer that dug up the tins people buried | **Charge**: head down, a straight run, a toss of the antlers |
+| Stag | A deer that dug up the tins people buried | **Charge**: head down, a straight run, a toss of the antlers; its run is the Dog's gallop (3D.256) |
 | Bile Spewer | A vat cleaner at the plant, who breathed concentrate for years | **Spray**: bends double, hands on the belly, a stream swept from side to side |
 | Lineman | Kept the plant's lights on; still goes to the power | **Tear down**: grips a cable or a fence with both hands and wrenches it |
 | Listener | A Forever Fresh Radio fan who never switched it off; blind now, it turns to any sound | **Listen**: the head tilts, an ear turns to the noise, the hands feel the air; then a **frantic two-handed flurry** when it finds someone |
@@ -56,7 +56,7 @@ Their tricks were approved on 17 Nov; the move shows the trick.
 | Delivery Driver | A Route 9 driver still on his round (`09-STORY.md`) | **Ram**: runs the trolley into the target |
 
 ## Order (Claude's proposal)
-1. The owner's three faults first: the **Dog's run**, the **Bloated and Bloater Queen** (arms in the walk, the belly slam).
+1. The owner's three faults first: ~~the **Dog's run**~~ (3D.256, the Stag too), the **Bloated and Bloater Queen** (arms in the walk, the belly slam).
 2. The **Walker's grab and bite**: almost every zombie uses the Walker's attack today.
 3. The **Gatling Boss's firing** and the **Screamer's scream** (found weak in the review of 20 Nov).
 4. Then one zombie per build, in the order the owner picks. The new kinds' moves are made when the Features chat builds each kind.
