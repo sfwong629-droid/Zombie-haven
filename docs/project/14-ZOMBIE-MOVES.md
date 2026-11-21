@@ -1,6 +1,6 @@
 # Zombie Haven: zombie moves and backstories
 
-**Draft, 21 Nov 2026 (Art chat). Waiting for the owner (W190, W191). Nothing here is built.**
+**Draft, 21 Nov 2026 (Art chat). The moves wait for the owner's marks (W190). The backstories' direction is approved (W191, 21 Nov: "yes similar to that"); the Story chat settles each one. Nothing here is built.**
 
 Owner, 21 Nov: "Most of the zombie are using one arm hit attack. Can you think of some animation for each one? Like leaper will need a jump animation. Digger will need a dig animation. Splitter need to actually split in half. … We might have to tie some of these zombie to the stories. Think of backstories for them."
 
