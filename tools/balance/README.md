@@ -64,3 +64,7 @@ About 5 to 30 seconds a game day, so 250 days take about 100 minutes; two towns 
 (the old bot could not place the Clinic, and its whole plan waited behind it: no old-bot town ever built the Fort), skips what it cannot
 build yet, sends trips only from a pantry 40% full, goes to the Pharmacy when medicine is under 8, and keeps a roster (one in three a Guard,
 a Farmer per three farms and water buildings, a Medic, a Cook, an Engineer). `AP_LONG=0` runs the old bot. Report: `docs/project/12-LONG-RUN.md`.
+
+A player who checks in (21 Nov): `CHECKIN_MIN=10 AWAY_H=24 python3 tools/balance/long_study.py SEED CHECKINS BUDGET_SECONDS OUT_DIR` plays 10 real
+minutes, then is away 24 real hours (the game's own `awayCredit`), CHECKINS times; one line per check-in with `realDay`. The daily player of
+`docs/project/13-LONG-GAME.md` is 10 and 24, the keen player 20 and 12. About 20 to 60 seconds a check-in.

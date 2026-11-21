@@ -9,14 +9,14 @@ import run_tests as R
 R.ROOT = os.environ.get('ZROOT', R.ROOT)
 from playwright.async_api import async_playwright
 AP = open(os.path.join(R.ROOT, 'tools', 'balance', 'ap.js')).read()
-SETUP = """(sd)=>{let x=sd;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};const b0=Date.now();Date.now=()=>b0+ZH.tick*1000/60;
+SETUP = """(sd)=>{let x=sd;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};const b0=Date.now();window.__awayMs=0;Date.now=()=>b0+ZH.tick*1000/60+__awayMs;
   const q=[];window.setTimeout=(fn,ms,...a)=>{q.push({t:ZH.tick+Math.ceil((ms||0)*60/1000),fn,a});return q.length;};window.clearTimeout=(id)=>{if(q[id-1])q[id-1]=null;};
   window.__terr=[];window.__flushTimers=()=>{for(let i=0;i<q.length;i++){const e=q[i];if(e&&e.t<=ZH.tick){q[i]=null;try{typeof e.fn==='function'&&e.fn(...e.a);}catch(err){if(__terr.length<20)__terr.push(String(err&&err.stack||err).slice(0,300));}}} if(q.length>5000&&q.every(e=>!e))q.length=0;};
   window.__L={seen:new WeakSet(),downs0:0,pos:new WeakMap(),zpos:new WeakMap(),site:new WeakMap(),downAt:new WeakMap(),flags:{}};}"""
-DAY = """()=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day:S.day,spawn:{},night:{},peak:0,peakNight:0,bossNight:false,raid:0,issues:[]};
+DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day:S.day,spawn:{},night:{},peak:0,peakNight:0,bossNight:false,raid:0,issues:[]};
   const flag=(k,v)=>{const key=k+'|'+v;if(L.flags[key])return;L.flags[key]=1;if(day.issues.length<40)day.issues.push(k+': '+v);};
   let stepErr=null;
-  for(let h=0;h<24;h++){for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
+  for(let h=0;h<(H||24);h++){for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
       const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
       for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;if(z.human)day.raid++;}}
     if(stepErr)break; try{AP.hour();}catch(e){stepErr='AP.hour '+String(e&&e.stack||e).slice(0,300);break;}
@@ -35,7 +35,7 @@ DAY = """()=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day:
   for(const j of (S.sites||[])){const d0=L.site.get(j)||(L.site.set(j,S.day),S.day);if(S.day-d0===10)flag('building site unfinished after 10 game days',((j.b&&j.b.type)||j.type||'?')+' day '+S.day);}
   day.zLeft=S.z.filter(z=>z.hp>0&&!z.human).length;day.zAll=S.z.length;
   const snap=AP.snap();Object.assign(day,snap);
-  day.downs=AP.downs.length-L.downs0;L.downs0=AP.downs.length;day.deathsDay=AP.deaths.filter(x=>x.d===day.day).length;
+  day.downs=AP.downs.length-L.downs0;L.downs0=AP.downs.length;L.deaths0=L.deaths0||0;day.deathsDay=AP.deaths.length-L.deaths0;L.deaths0=AP.deaths.length;day.dayEnd=S.day;day.lvLeft=S.lvUp?Math.round(S.lvUp.left||0):null;day.unmet=ZH.rankConds?ZH.rankConds().filter(c=>!c.ok&&c.have<c.need).map(c=>c.name+' '+c.have+'/'+c.need).join('; '):'';
   day.lvl=S.lvl||1;day.banners=(S.banners||[]).map(b=>b.route).join(',');day.cloth=Math.round(S.cloth||0);day.inv=(S.inv||[]).length;
   day.cap=ZH.supplyCap?ZH.supplyCap():null;day.mcap=ZH.matCap?ZH.matCap():null;day.scap=ZH.scrapCap?ZH.scrapCap():null;
   day.fighters=S.sv.filter(q=>['Guard','Police Officer','Soldier'].includes(q.job)).length;day.left=S.left||0;{const st=ZH.supplyStats();day.wIn=+st.wIn.toFixed(1);day.wNet=+st.wNet.toFixed(1);day.fIn=+st.fIn.toFixed(1);day.fNet=+st.fNet.toFixed(1);}day.convoys=S.convoys||0;day.staffed=W.buildings.filter(b=>b.staff).length;day.gear=S.sv.filter(q=>q.armor||(q.gear&&q.gear.armor)).length;day.jobs={};for(const q of S.sv)day.jobs[q.job]=(day.jobs[q.job]||0)+1;
@@ -50,8 +50,13 @@ async def main():
         br = await p.chromium.launch(); ctx, pg, errs = await R.open_game(br, port, 'long%d' % seed)
         await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("(v)=>{AP.exp=true;AP.long=v}", os.environ.get('AP_LONG', '1') == '1')
         f = open(os.path.join(out, 's%d.jsonl' % seed), 'a'); n = 0
+        checkin = float(os.environ.get('CHECKIN_MIN', '0')); away_h = float(os.environ.get('AWAY_H', '24'))   # a player profile: CHECKIN_MIN real minutes of play, then AWAY_H real hours away (the game's own away credit), MAX_DAYS check-ins
         while n < maxd and time.time() - t0 < budget:
-            d = await pg.evaluate(DAY); d['errs'] = errs[:]; errs.clear(); f.write(json.dumps(d) + '\n'); f.flush(); n += 1
+            d = await pg.evaluate(DAY, max(1, round(checkin * 3.6)) if checkin else 24)
+            if checkin:
+                d['checkin'] = n + 1; d['realDay'] = round((n + 1) * (away_h + checkin / 60) / 24, 2)
+                d['away'] = await pg.evaluate("(ms)=>{__awayMs+=ms;let r=null;try{r=ZH.awayCredit(ms);ZH.tripUpdate();}catch(e){r={err:String(e)}}return r&&{hours:r.hours,err:r.err}}", away_h * 3600 * 1000)
+            d['errs'] = errs[:]; errs.clear(); f.write(json.dumps(d) + '\n'); f.flush(); n += 1
             if d.get('stepErr') or d.get('sv', 1) == 0: break
             if n % 10 == 0:
                 try:
