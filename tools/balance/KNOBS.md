@@ -13,7 +13,7 @@ Change one at a time, with a check before and after (`tools/balance/check.sh`). 
 | Storage limits | `11-town.js` `supplyCap`, `matCap`; `14-missions-events.js` `scrapCap` | grow with level and storage buildings | A stock at its limit; the short stock |
 | What buildings make | `js/world.js`, `DEFS[...].out` | per building | The short stock; walk-outs |
 | What a trip costs and brings | `16-loot-expeditions.js`, `EXP_DEFS` | per place | The short stock (water); medicine |
-| How zombies grow | `10-enemies-walls.js`: `hDay`, `HORDE_SLOW`, `HORDE_DAY_CAP`, `hordeCap`, `Z_ARRIVE` | by game day, slower after day 10, a limit by rank that keeps rising after day 60 | Deaths; nights with nobody down; most standing |
+| How zombies grow | `10-enemies-walls.js`: `LVL_THREAT` (read through `hDay()`), `Z_ARRIVE` | by the town's level since 3D.253: one "day strength" per level, 1 at level 1 to 40 at level 20; a kind of zombie comes once that number reaches its `Z_ARRIVE` | Deaths; nights with nobody down; most standing |
 | Ordinary night size | `10-enemies-walls.js`, the `desired` line in the spawner | from `hDay` and territory | Nights with nobody down |
 | The big horde | `10-enemies-walls.js`, `BIG_HORDE` and `bossMob` | 4 times the old mob, a third of the health, half the hit; 30/45/60 standing | Big horde size; most standing; deaths |
 | How often a boss comes | `10-enemies-walls.js`, `bossGap()` | `bossGap()`: every 3 game days, every 5 from level 11 (3D.247) | Deaths; big hordes |

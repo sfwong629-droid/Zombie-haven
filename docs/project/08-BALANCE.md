@@ -289,6 +289,19 @@ What this shows:
 
 One Toll raid was still seen on a boss day at 08:00 (seed 11, day 36). The likely cause is a raid started by an event (a refused Toll Kings demand, a revenge raid); 3D.252 holds those back too. Not yet measured again after 3D.252. Not a full scorecard: 45 game days only, one kind of player.
 
+**Zombies grow by level, 21 Nov (build 3D.253).** Rule 3 of `13-LONG-GAME.md`, first change: the night's size, the kinds of zombie that come, the raiders' numbers and the boss's strength follow the town's level (`LVL_THREAT`, one number per level), not the game day. Quick check before (3D.252) and after, two daily towns for 14 real days and two open towns for 30 game days (scorecards in `runs/check-21nov-3d253/`):
+
+| What | Range wanted | Before | After |
+|---|---|---|---|
+| Ordinary nights with nobody down, daily player | 65 to 85% | 50 to 53% | 73 to 76% |
+| The same, game left open | 65 to 85% | 62 to 76% | 57 to 67% |
+| People who walked out, daily / open | 2 or fewer an era | 1 to 2 / 4 to 6 | 0 / 0 to 1 |
+| Most zombies standing at once | 60 or fewer | 39 to 46 / 32 to 46 | 31 to 45 / 46 |
+| Most deaths in one night | 2 or fewer | 0 / 0 to 1 | 0 / 0 |
+| Usual boss night, era 1 (open) | 45 to 75 | 44 to 45 | 34 to 41 |
+
+Read with care: two towns each, and towns differ a lot from run to run. The daily player's nights moved into the range. **The era 1 boss night got smaller** (a town waiting at level 5 no longer grows its boss's crowd with the days), further under the 45 to 75 wanted: the boss's crowd needs its own size by level (next). The quick check stops at level 5 to 7, so it cannot show the change's main effect, which is on towns played for many game days at a high level; that needs the full check.
+
 **Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
 
 Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).

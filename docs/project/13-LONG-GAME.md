@@ -278,7 +278,7 @@ The bot measures pace, stock, deaths and sizes. It cannot say whether a night wa
 ## 10. The order to do it in
 1. **The routine's tools** (Balance chat; the game is not changed): the scorecard, the three players, the list of numbers. Then a first full scorecard of today's game, as the "before" for everything below.
 2. ~~**Safety**: no raid on or before a boss day; the truck when everyone is down; bosses every 5 days from level 11.~~ Built 21 Nov (3D.245 to 3D.252). Three bot towns, 45 game days: 0, 2 and 0 deaths, none lost (`08-BALANCE.md`, section 12).
-3. **Rule 3:** danger by level.
+3. **Rule 3:** danger by level. Started 21 Nov: 3D.253 (the threat follows the level). Next: the last day-based numbers, the limit of 60 for every attack, the breather.
 4. **Rule 1**, one change per build: away production to a day's worth; newcomers at the gate; building, crafting and research in real time; then the level timers.
 5. **Sinks already approved:** crafting with parts, Salvage, research by era. Then Studies and Banner honours.
 6. **Rule 2:** deeds.
