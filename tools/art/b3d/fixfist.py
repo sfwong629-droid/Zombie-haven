@@ -42,10 +42,17 @@ def arms(t):
         swing(ua, E - S); swing(fa, Wc - np.array(fa.head[:]))
         hd = PB['hand.' + side]; cur = np.array((hd.matrix.to_3x3() @ Vector((0, 1, 0)))[:]); k = w * push   # the palms face forward in the push: the hand tips up, fingers up
         if k > .01: swing(hd, nz(nz(cur) * (1 - k) + np.array([0, -.5, .87]) * k))
+SPREAD = float(os.environ.get('ZH_SPREAD', 0))   # (3D.243, the man's sit and eat; owner: "Men sitting should be a bit manspreading. Open the leg a bit")
+def spread(deg):   # each whole leg is turned outward about the upright line through its hip: the knees part, the feet follow under them and point out too;
+    for side, sg in (('L', 1), ('R', -1)):   # the arm of that side is turned out with it (about the shoulder, ZH_SPREADARM of the angle) so the hand stays on the thigh
+        for bone, k in (('thigh.', 1.), ('upperarm.', float(os.environ.get('ZH_SPREADARM', 0)))):
+            if not k: continue
+            pb = PB[bone + side]; M = pb.matrix.copy(); N = (Matrix.Rotation(math.radians(sg * deg * k), 3, 'Z') @ M.to_3x3()).to_4x4(); N.translation = M.translation; pb.matrix = N; upd()
 def pose(fr, dz):
     goto(fr); t = fr / nf
     if abs(dz) > 1e-5: lift(dz)
     if clip == 'shove': lean(14 * sst(.30, .43, t) * (1 - sst(.66, .84, t))); arms(t)
+    if SPREAD: spread(SPREAD)
 # pass 1: how far the lowest point of the body is under the ground at each frame; the lift is that, held over its neighbours and smoothed (no jitter)
 DOWN = bool(os.environ.get('ZH_GROUND'))   # (3D.239, knockdown and collapse) also lower the body where it floats: lying down, the old clips hang 6 to 16 cm above the ground
 sink = np.array([(lambda z: -z if DOWN else max(0., -z))(lowest() if not pose(fr, 0) else 0) for fr in range(nf + 1)])
