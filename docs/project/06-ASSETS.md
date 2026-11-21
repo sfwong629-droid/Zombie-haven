@@ -230,7 +230,7 @@ Wrong:
 
 Acceptable: run (low, but reads as a run), shove, cheer, work_chop, work_hammer, work_dig, work_tinker, sit, sit_f, eat, sleep, collapse.
 
-## Zombie animation review (20 Nov, nothing changed yet: W168)
+## Zombie animation review (20 Nov, W168; all put on the ground in 3D.244)
 The 30 animations the game plays for zombies, each drawn on the zombie that uses it (`tools/art/b3d/zsheet.sh`, `closeup.py`, measured with `animdump.py`). Each two-legged zombie file has 35 animations; the game plays only these: `zombie_walk` (most), `zombie_run` (Runner), `bloated_walk` and `bloated_attack` (Bloated, Bloater Queen), `creepy_walk`, `naruto_run` and `lash` (Lasher), `heavy_walk`, `heavy_run`, `haymaker_kick` and `smash` (Stalker; `smash` also the Mutant), `walk`, `run` and `gun_fire` (Gatling Boss), `zombie_attack` (most), `brute_attack` (Brute, Alpha, Butcher), `spit`, `spore_combo`, `scream`, `melee_swing_a` (Thrower), `rot_swell` (Rot Bomb), `crawl` and `crawl_attack` (Crawlers), `collapse` (a dead survivor turning). The Dog and the Stag have five each (`idle`, `zombie_walk`, `zombie_run`, `zombie_attack`, `collapse`).
 
 Found:
@@ -238,3 +238,5 @@ Found:
 - **The Crawlers hang in the air**: the lowest point of the body is 17 to 25% of its height above the ground in `crawl` and `crawl_attack` (the legs were cut off in 3D.185; the clips were made for a body with legs).
 - **A jump at every repeat**: `naruto_run` 14%, the Gatling Boss's `walk` 10% and `run` 6%, the Dog's and the Stag's `zombie_walk` 6 to 7% and `zombie_run` 10 to 11%, `heavy_run` 7%, `haymaker_kick` 6%, `creepy_walk` 5%.
 - The Gatling Boss's `gun_fire` is a still pose in a walking stride.
+
+**3D.244 (21 Nov):** every animation listed above, plus `idle` and `collapse`, was corrected in all 35 zombie files by `tools/art/b3d/build_zground.sh <model>` (the same `fixfist.py` as the survivors: hips lifted where the feet were in the ground; `ZH_LOOP` for walks, runs and the crawl; `ZH_GROUND` and `ZH_TILT=14` for the Crawlers). The source of each is the file as it was at commit 44006a1. The files are 10 MB smaller in all (38 to 28 MB): `compress_glb.mjs` packs the animation keys tighter than the tool they were first shrunk with; the meshes and pictures are unchanged. Check: `tools/qa/zombie_ground_check.sh`. The other animations in each file (the game does not play them for that zombie) are as they were. The movements found weak on 20 Nov (the Gatling Boss's `gun_fire`) are not changed yet (W181).
