@@ -259,6 +259,9 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
 /* 3D.245 (owner, 21 Nov, W172): 2 of 10 bot towns lost everyone to raiders by day and a boss night the same evening (docs/project/12-LONG-RUN.md).
    The roaming raiders now keep off a boss day (the whole day: before the boss, while it lives, and the hours after) and the day before it.
    Raids the player provoked (a refused toll, a faction at war) are not held back. */
+/* 3D.247 (owner, 21 Nov, W173): a boss night every 3 game days in eras 1 and 2, every 5 from level 11 (a long town saw about 80 boss
+   nights and lost 24 to 39 people from level 11 on: docs/project/12-LONG-RUN.md). */
+const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
 const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null;
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24; finaleHour(); crisisHour(); comebackConvoy();
@@ -269,7 +272,7 @@ function eventSchedule() {   /* called every game hour */
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
-  if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.bossDay = S.day; S.nextBoss += 3; }
+  if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.bossDay = S.day; S.nextBoss += bossGap(); }
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
