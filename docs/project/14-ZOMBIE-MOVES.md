@@ -55,8 +55,28 @@ Their tricks were approved on 17 Nov; the move shows the trick.
 | Soldier (female) | The squad's medic | **Tend**: drags a wounded zombie back and pats it down; a short shove as attack. No gun |
 | Delivery Driver | A Route 9 driver still on his round (`09-STORY.md`) | **Ram**: runs the trolley into the target |
 
-## Order (Claude's proposal)
-1. The owner's three faults first: ~~the **Dog's run**~~ (3D.256, the Stag too), the **Bloated and Bloater Queen** (arms in the walk, the belly slam).
-2. The **Walker's grab and bite**: almost every zombie uses the Walker's attack today.
-3. The **Gatling Boss's firing** and the **Screamer's scream** (found weak in the review of 20 Nov).
-4. Then one zombie per build, in the order the owner picks. The new kinds' moves are made when the Features chat builds each kind.
+## Order (owner, 21 Nov, W196: "keep the order")
+One zombie per build, each shown as a sheet first. The zombies seen most come first.
+
+**The zombies in the game today**
+1. ~~**Dog and Stag: the run as a real gallop**~~ (3D.256).
+2. **Bloated and Bloater Queen**: arms swinging wide in the walk; the belly slam (the Queen: a wide two-arm sweep, then the slam).
+3. **Walker: grab and bite** (both male and female).
+4. **Gatling Boss: braced fire at long range** (the barrels spin up, feet wide, a long sweeping burst).
+5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings).
+6. **Dog: lunge and shake.**
+7. **Runner: running tackle** (both).
+8. **Crawler: ankle grab** (both).
+9. **Burnt: flailing rush** (both).
+10. **Brute: two-fisted hammer blow.**
+11. **Alpha: roar, then a backhand.**
+12. **Butcher: chopping forearm**, three times, each lower.
+13. **Spitter: hack and spit.**
+14. **Thrower: a real pitch.**
+15. **Riot zombie: shoulder charge.**
+16. **Sporehead (Souphead?): head shake, then claws** (leading with the hat, if W192 renames it).
+17. **Rot Bomb: clutch and swell**, with a hurried waddle.
+18. Kept as they are, checked only: the Lasher's whip, the Stalker's punch and kick, the Mutant's double smash.
+
+**The new kinds**: each move is made when the Features chat builds that kind (the move needs its game rule):
+the Stag's charge, the Leaper's jump and pounce (a hurdle, if W192 says so), the Digger's dig and burst, the Splitter splitting in half (the model cut in two), the Bile Spewer's spray, the Lineman tearing down, the Listener listening and its flurry, the Hazmat's stiff shove, the Nurse raising the fallen, the male Soldier's march and barge, the female Soldier tending, the Delivery Driver's ram (it has no model yet).
