@@ -179,6 +179,7 @@ All 212 sound files are **in game**, loaded by `js/sound.js`. The music itself i
 Every other sound effect (hits, alerts, the radio noise, zombie sounds) is made by code in `js/sound.js`, with no file.
 
 Gunshots (3D.215, Music chat): each of the nine ranged weapons has its own shot, made by code in `js/sound.js` (`GUNS`, `gun()`), no files. Check: `tools/qa/sfx_names_check.js`.
+Day music (3D.248): the five Ghibli day tunes are written as note names in `SONG_DEF` and arranged in `SONGS` (`js/sound.js`), played on recorded instruments in `assets/audio/` (8 more FluidR3 instruments: flu, glk, acc, pz, obo, cel, hrn, tub; CC BY 3.0, in `CREDITS.txt`). The Day music setting is `DAYMUS` in `src/game/15-save.js`. Check: `tools/qa/day_music_check.js`.
 Mood fade (3D.216): `crossfade()` in `js/sound.js`; `SND.renderSeq([[mood, seconds], ...], total)` renders a mood sequence offline to check it.
 
 Waiting (branch `music-chat-wip`, not in the game yet, owner's sound review): eight more FluidR3 instruments (flute, glockenspiel, accordion, pizzicato strings, oboe, celesta, French horn, tubular bells) and CC0 recordings in `sfx/` (rooster, dogs, men's and women's grunts, zombie moans and growls, falling stone); credits in that branch's `assets/audio/CREDITS.txt`.

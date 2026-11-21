@@ -271,6 +271,8 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 18 Nov (review, round 5): **Approved:** Stand Firm take A (a survivors' band: galloping guitar, bass, fiddle, accordion, knocks on a crate and a pipe) and take B (lean and tense: pizzicato strings, muted guitar, tin whistle, cello). **Changes:** the woman's takes G and H are "more of a scream than moan": redo (round 6: softer moans). F and I were not marked.
 - 18 Nov (review, rounds 6 to 8): the woman's survivor-down must be **a young woman's voice** (the man's grunt pitched up did not pass; a YouTube clip the owner sent has no licence, so it can't ship). **Approved:** takes S and T, real hurt grunts from "Female Gruntwork - 1" by PlumpDev (OpenGameArt, CC BY-SA 4.0: credit PlumpDev in the game), cut under half a second, the game plays them in turn. With this, every sound in the review is approved.
 - 19 Nov: **Stand Firm** (ordinary fight music) switches between take A and take B from one fight night to the next.
+- 21 Nov: Zombies get sounds of their own: the **Screamer** screams when it attacks (today it plays the alarm bell), the **Gatling Boss** sounds like a Gatling gun when he attacks, the **Digger** makes digging sounds. Samples in round 9 of the sound review (W184).
+- 21 Nov: The day music (Meadow default plus four tunes) went in as 3D.248.
 
 ## Open questions (not decided)
 - None on 17 Nov.
