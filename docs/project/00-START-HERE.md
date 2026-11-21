@@ -21,7 +21,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `11-CRAFTING.md` | Crafting with parts, like Last Day on Earth: the study, the 15 parts and where they come from, orders at the Workshop that survivors carry out, a recipe for every craftable item | **approved 20 Nov (Balance chat)** |
 | `12-LONG-RUN.md` | The long-run test of 21 Nov: 10 bot towns, about 1,800 game days; findings on balance, combat, logic and UI | report, 21 Nov (Balance chat) |
 | `13-LONG-GAME.md` | The plan for months of play: five rules (one pace for everyone, levels made of deeds, danger by level, something to buy with every stock, loops at the top), the end game with the cure, room for later systems, and **the balance routine** to run whenever the game changes | live (approved by the owner, 21 Nov; nothing built yet) |
-| `14-ZOMBIE-MOVES.md` | A signature move for every kind of zombie in place of the shared one-arm swipe, and a draft backstory for each, tied to the story | **draft, 21 Nov (Art chat); waiting for the owner (W190, W191)** |
+| `14-ZOMBIE-MOVES.md` | A signature move for every kind of zombie in place of the shared one-arm swipe, and a draft backstory for each, tied to the story | live, 21 Nov (Art chat): the moves approved (W190), built one zombie per build (the Dog's and the Stag's gallop: 3D.256); the backstories are settled in the Story chat (`09-STORY.md`, 10.2, W192) |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
