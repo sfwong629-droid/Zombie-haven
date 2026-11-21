@@ -9,7 +9,8 @@ import bpy, sys, os, math, json, numpy as np
 from mathutils import Matrix, Vector, Quaternion
 a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
-ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; ad = ao.animation_data; sc = bpy.context.scene
+ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; ROOT = 'pelvis' if 'pelvis' in PB else 'hips';   # (zombies, W168) the Dog and the Stag: 'hips'
+ad = ao.animation_data; sc = bpy.context.scene
 for tr in ad.nla_tracks: tr.mute = True
 old = bpy.data.actions[clip]; ad.action = old
 try:
@@ -26,7 +27,7 @@ def swing(pb, want):   # turn a bone the shortest way so it points along `want` 
     M = pb.matrix.copy(); R = M.to_3x3(); cur = (R @ Vector((0, 1, 0))).normalized(); q = cur.rotation_difference(Vector(want).normalized())
     N = (q.to_matrix() @ R).to_4x4(); N.translation = M.translation; pb.matrix = N; upd()
 def lift(dz):
-    pb = PB['pelvis']; M = pb.matrix.copy(); M.translation = M.translation + ao.matrix_world.inverted().to_3x3() @ Vector((0, 0, dz)); pb.matrix = M; upd()
+    pb = PB[ROOT]; M = pb.matrix.copy(); M.translation = M.translation + ao.matrix_world.inverted().to_3x3() @ Vector((0, 0, dz)); pb.matrix = M; upd()
 def lean(deg):   # the chest further forward (about the armature's left-right axis, at the chest's own head); rig: +X left, -Y forward, +Z up
     if abs(deg) < .01: return
     pb = PB['chest']; M = pb.matrix.copy(); N = (Matrix.Rotation(math.radians(deg), 3, 'X') @ M.to_3x3()).to_4x4(); N.translation = M.translation; pb.matrix = N; upd()
@@ -48,8 +49,11 @@ def spread(deg):   # each whole leg is turned outward about the upright line thr
         for bone, k in (('thigh.', 1.), ('upperarm.', float(os.environ.get('ZH_SPREADARM', 0)))):
             if not k: continue
             pb = PB[bone + side]; M = pb.matrix.copy(); N = (Matrix.Rotation(math.radians(sg * deg * k), 3, 'Z') @ M.to_3x3()).to_4x4(); N.translation = M.translation; pb.matrix = N; upd()
+TILT = float(os.environ.get('ZH_TILT', 0))
 def pose(fr, dz):
     goto(fr); t = fr / nf
+    if TILT:   # (the legless Crawlers, W168) the whole body turned about the left-right line through the chest, so the cut end comes down to the ground
+        pb = PB[ROOT]; M = pb.matrix.copy(); c = PB['chest'].matrix.translation.copy(); Rm = Matrix.Translation(c) @ Matrix.Rotation(math.radians(TILT), 4, 'X') @ Matrix.Translation(-c); pb.matrix = Rm @ M; upd()
     if abs(dz) > 1e-5: lift(dz)
     if clip == 'shove': lean(14 * sst(.30, .43, t) * (1 - sst(.66, .84, t))); arms(t)
     if SPREAD: spread(SPREAD)
@@ -62,7 +66,7 @@ for fr in range(nf + 1):
     pose(fr, float(L[fr])); low.append(lowest())
     for b in order:
         q = PB[b].rotation_quaternion; KEY[b]['rot'].append([q.x, q.y, q.z, q.w])
-        if b in ('pelvis', 'gun'): KEY[b]['loc'].append(list(PB[b].location))
+        if b in (ROOT, 'gun'): KEY[b]['loc'].append(list(PB[b].location))
 LOOPS = all(sum(abs(x - y) for x, y in zip(KEY[b]['rot'][0], KEY[b]['rot'][-1])) < .05 for b in order)   # a clip that ends lying down (collapse) keeps its own end
 if os.environ.get('ZH_LOOP') and not LOOPS:   # (3D.242, work_hammer and work_barricade) the old clip is cut off just before it is back at its start, so every
     N = 8                                     # repeat jumped 4 to 7 cm: the last 8 keys (0.17 s) are eased onto the first pose
