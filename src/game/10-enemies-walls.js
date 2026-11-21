@@ -256,15 +256,20 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
     const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
   if (n >= 3) note('important', `🌅 Dawn: ${n} zombies shamble back out of town.`); return n;
 }
+/* 3D.245 (owner, 21 Nov, W172): 2 of 10 bot towns lost everyone to raiders by day and a boss night the same evening (docs/project/12-LONG-RUN.md).
+   The roaming raiders now keep off a boss day (the whole day: before the boss, while it lives, and the hours after) and the day before it.
+   Raids the player provoked (a refused toll, a faction at war) are not held back. */
+const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null;
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24; finaleHour(); crisisHour(); comebackConvoy();
   if (!fac('toll').met && facOk('toll') && S.hour === 10 && !guest && !S.finale && (S.day >= 7 || (S.day >= 5 && rnd() < .5))) { S.lastStory = 'toll1'; STORY.toll1.run(); }   /* 3D.173 owner: the Toll Kings find the town by day 5-7 (round 3: first met on day 12-18, nothing to raid) */
   if (S.day >= 4 && now >= S.nextRaid) {   /* 3D.64 balance: raiders from day 4 (was 2) */
-  if (graceOn()) S.nextRaid = now + 1; else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
+  if (graceOn()) S.nextRaid = now + 1; else if (bossNear()) S.nextRaid = Math.floor(now) + 1 + rnd() * .4;   /* 3D.245 (owner, 21 Nov, W172): never a raid on a boss day or the day before; the raiders wait for the first free day */
+  else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
-  if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.nextBoss += 3; }
+  if (S.day === S.nextBoss && S.hour === 21) { spawnBoss(); S.bossDay = S.day; S.nextBoss += 3; }
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
