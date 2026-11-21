@@ -143,7 +143,7 @@
     hearth: { bpm: 70, prog: [[-2, 'M'], [-7, 'M'], [-5, 'm'], [3, 'M'], [-2, 'M'], [-7, 'M'], [3, 'M'], [-7, 'M']] },   /* 3D.55 slow fingerpicking with cello (G major) */
     danger: { bpm: 116, prog: [[-5, 'm'], [-9, 'M'], [-7, 'M'], [2, 'M'], [-5, 'm'], [-9, 'M'], [-7, 'M'], [-3, 'M']] },
   };
-  const Q = { '7M': [0, 4, 7], m: [0, 3, 7], M: [0, 4, 7], M7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '7': [0, 4, 7, 10] };
+  const Q = { '7M': [0, 4, 7], m: [0, 3, 7], M: [0, 4, 7], M7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '7': [0, 4, 7, 10], add9: [0, 4, 7, 14], m6: [0, 3, 7, 9], sus4: [0, 5, 7], dim: [0, 3, 6] };
   const fold = (r) => { while (r > 0) r -= 12; while (r < -12) r += 12; return r; };   // chord roots live in A2..A3
   const ksCache = new Map();
   function ksBuf(c, f, sec = 1.8, bright = .5) {   // Karplus-Strong plucked string, cached per pitch
@@ -182,7 +182,7 @@
   /* 3D.53 real instruments: recorded samples bundled with the game (assets/audio, works offline). Instruments from the FluidR3 GM
      sound font (Frank Wen, CC BY 3.0), percussion from the Versilian Community Sample Library (CC0). Every 3rd semitone is
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
-  const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6] };
+  const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
   const SFXN = ['chop', 'pizzi', ...['woodH', 'woodL', 'woodM', 'metalL'].flatMap((k) => [0, 1, 2].map((i) => k + i))], SFXB = {};   /* 3D.57 recorded effects */
   const rnd3 = () => Math.floor(Math.random() * 3);
@@ -198,7 +198,7 @@
     for (const k of SFXN) jobs.push(get(`sfx/${k}.mp3`).then((buf) => { SFXB[k] = buf; }).catch(() => {}));
     return (bankP = Promise.all(jobs));
   }
-  const LEVEL = { fid: .8, gtr: 1, nyl: 1.1, bass: 1.6, banjo: .9, harp: .7, vibes: 1, tpt: .8, str: .9, mbox: .8, whis: .7, ep: 1, cello: 1.1, brass: .8, timp: 1.2, piano: 1 };
+  const LEVEL = { fid: .8, gtr: 1, nyl: 1.1, bass: 1.6, banjo: .9, harp: .7, vibes: 1, tpt: .8, str: .9, mbox: .8, whis: .7, ep: 1, cello: 1.1, brass: .8, timp: 1.2, piano: 1, flu: .8, glk: .6, acc: .7, pz: 1.2, obo: .8, cel: .8, hrn: .9, tub: .7 };
   function samp(c, out, t, k, f, vol, dur = 1.5, pan = 0, att = .004, rel = .25) {   // play instrument k at frequency f; false if not loaded
     const B = BANK[k]; if (!B || !B.length) return false; const m = 69 + 12 * Math.log2(f / 440); let best = B[0]; for (const x of B) if (Math.abs(x.m - m) < Math.abs(best.m - m)) best = x;
     const s = c.createBufferSource(); s.buffer = best.buf; s.playbackRate.value = Math.pow(2, (m - best.m) / 12); const g = c.createGain(), v = vol * (LEVEL[k] || 1);
@@ -206,7 +206,118 @@
     s.connect(g); if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(out); } else g.connect(out); s.start(t); s.stop(t + dur + .05); return true;
   }
   function kit(c, out, t, k, vol, rate = 1) { const b = KITB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .04); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
-  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45 };   /* 3D.53 even out the moods' loudness */
+  /* ---- Music chat (W106): the Ghibli soundtrack. Original tunes, written out as note names so they can be read:
+     a melody is bars split by '|', each note NAME+OCTAVE:BEATS ('D5:2'; no number = 1 beat; 'r' = rest); chords are names ('Bbmaj7 C Am7'). */
+  const NL = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 };
+  const nt = (n) => { const m = /^([A-G])([#b]?)(\d)$/.exec(n); return NL[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] - 3) * 12; };   // semitones from A3
+  const tune = (str) => str.split('|').map((b) => b.trim().split(/\s+/).map((tk) => { const [n, d] = tk.split(':'); return [n === 'r' ? null : nt(n), d ? +d : 1]; }));
+  const QN = { '': 'M', m: 'm', maj7: 'M7', m7: 'm7', 7: '7', add9: 'add9', m6: 'm6', sus4: 'sus4', dim: 'dim' };
+  const chords = (str) => str.trim().split(/\s+/).map((c) => { const m = /^([A-G])([#b]?)(.*)$/.exec(c); return [NL[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0), QN[m[3]]]; });
+  function line(x, k, bar, vol, o = {}) {   // play one bar of melody on instrument k; o.ring for struck instruments, o.oct to shift, o.from/o.to to play part of it
+    let b = 0; const P = x.P(k);
+    for (const [s2, d] of bar) { if (s2 != null && b >= (o.from || 0) && b < (o.to ?? 99)) { const tt = x.t0 + b * x.beat + (o.loose ? x.j() : 0), dur = o.ring ? Math.max(o.ring, d * x.beat * 1.2) : d * x.beat * .97; P(tt, x.F(s2 + (o.oct || 0)), vol * (b === 0 ? 1.08 : 1), dur, o.pan || 0, o.ring ? .004 : (o.att ?? .05), o.ring ? .3 : (o.rel ?? .15)); } b += d; }
+  }
+  function arp(x, k, notes, idx, step, vol, o = {}) { const P = x.P(k); idx.forEach((n, i) => { if (n == null) return; P(x.t0 + i * step * x.beat + x.j(), x.F(notes[n] + (o.oct || 0)), i === 0 ? vol * 1.5 : vol, o.ring || 1.6, ((n / (notes.length - 1)) - .5) * (o.wide ?? .3)); }); }
+  const SONG_DEF = {
+    meadow: { bpm: 84, beats: 3, prog: 'Bbmaj7 C Am7 Dm7 Gm7 C Fmaj7 Fadd9 Bbmaj7 C Am7 Dm7 Gm7 A7 Bbm6 C7',
+      mel: 'D5:2 C5:.5 D5:.5 | E5:2 G5 | A5:2 E5 | F5:3 | D5 C5 Bb4 | F5:1.5 E5:1.5 | C5 A4 F4 | G4 A4:2 | D5:2 F5 | E5:1.5 G5:.5 A5 | C6:2 A5 | G5 F5 D5 | F5:2 D5 | C#5:2 E5 | F5:1.5 Db5:1.5 | C5:3' },
+    morning: { bpm: 96, beats: 4, prog: 'G D Em7 Cmaj7 G Am7 D7 G Cmaj7 Bm7 Em7 A7 Cmaj7 D D7 G',
+      mel: 'B4 D5 G5:1.5 F#5:.5 | E5 D5 A4:2 | B4 D5 E5 G5 | E5:3 D5 | B4 D5 G5:1.5 A5:.5 | B5 A5 E5:2 | F#5 E5 C5 A4 | G4 B4 D5:2 | E5:1.5 G5:.5 B5:2 | A5 F#5 D5:2 | G5 F#5 E5 B4 | C#5:2 E5 G5 | G5:1.5 E5:.5 B4:2 | A4 D5 F#5 A5 | C6:2 A5 F#5 | G5:4' },
+    fair: { bpm: 112, beats: 4, prog: 'Dm A7 Dm D7 Gm Dm E7 A7 Dm A7 Dm D7 Gm Dm A7 Dm',
+      mel: 'A4:.5 D5:.5 F5:.5 A5:.5 G5 F5 | E5:.5 F5:.5 G5:.5 E5:.5 C#5:2 | D5:.5 F5:.5 A5:.5 D6:.5 C6 A5 | A5 F#5 D5 C5 | Bb4:.5 D5:.5 G5:.5 Bb5:.5 A5 G5 | F5 E5:.5 D5:.5 A4:2 | G#4 B4 D5 E5 | C#5 E5 A5:2 | A5:1.5 F5:.5 D5 A4 | G5:1.5 E5:.5 C#5 A4 | F5:.5 G5:.5 A5 D6:2 | C6 A5 F#5 D5 | D6 Bb5 G5 D5 | F5 A5 D5:2 | E5:.5 F5:.5 E5:.5 D5:.5 C#5 E5 | D5:2 r:2' },
+    rain: { bpm: 66, beats: 4, prog: 'Ebmaj7 Cm7 Abmaj7 Bbsus4 Gm7 Cm7 Fm7 Bb7 Abmaj7 Gm7 Fm7 Eb7 Abmaj7 Abm6 Eb Bbsus4',
+      mel: 'G5:2 F5 D5 | Eb5:3 G4 | C5 Eb5 G5:2 | F5:3 Eb5 | D5:2 Bb4 F5 | Eb5:2 D5 C5 | Ab4 C5 Eb5 Ab5 | G5:3 r | Eb5 G5 C6:2 | Bb5:2 F5:2 | Ab5 G5 F5 C5 | Db5:2 Bb4 G4 | C5 Eb5 G5 Bb5 | B4:2 Eb5 F5 | G5:2 Eb5:2 | F5:4' },
+    harvest: { bpm: 168, beats: 6, prog: 'D G D A Bm G Em7 A7 D F#m G D Em A Bm D',
+      mel: 'A4:2 D5 F#5:2 E5 | D5:2 B4 D5:3 | F#5:2 A5 F#5:2 D5 | E5:3 C#5:3 | D5:2 F#5 B5:2 A5 | G5:2 F#5 D5:3 | E5:2 G5 B5:2 G5 | A5:3 G5:3 | F#5:2 A5 D6:3 | C#6:2 A5 F#5:3 | B5:2 A5 G5:2 D5 | F#5:3 A4:3 | G5:2 F#5 E5:2 B4 | C#5:2 E5 A5:3 | B5:2 A5 F#5:2 E5 | D5:6' },
+    lantern: { bpm: 58, beats: 4, prog: 'Dm Bbmaj7 Gm7 A7 Dm Fmaj7 Gm Asus4 Bbmaj7 C Am7 Dm Gm7 C7 Fmaj7 A7',
+      mel: 'A5:2 F5 D5 | A5:3 G5 | F5:2 D5 Bb4 | C#5:3 E5 | F5:2 A5 D6 | C6:2 A5 E5 | Bb5:2 G5 D5 | D5:2 C#5:2 | D5 F5 A5:2 | G5:2 E5 C5 | E5:2 G5 A5 | F5:4 | Bb5:2 A5 G5 | G5:2 E5 C5 | A5:2 G5 F5 | E5:2 C#5:2' },
+    stand: { bpm: 132, beats: 4, prog: 'Em C D Bm Em C Am B7 C D Bm Em Am D B7 Em',
+      mel: 'E4:1.5 B4:.5 E5:2 | G4:1.5 C5:.5 E5:2 | F#5:1.5 E5:.5 D5:2 | B4:4 | E5:1.5 F#5:.5 G5:2 | E5:2 G5:2 | A4 C5 E5:2 | D#5:2 F#5:2 | E5:2 G5:2 | F#5:2 D5:2 | B4:1.5 D5:.5 F#5:2 | E5:4 | E5:1.5 C5:.5 A4:2 | D5:1.5 E5:.5 F#5:2 | F#5:2 D#5:2 | E5:4' },
+    tide: { bpm: 92, beats: 4, prog: 'Dm Bb Gm A Dm Bb Eb A7 Dm Bb Gm A Dm Bb Eb A7',
+      mel: 'A4:4 | Bb4:2 D5:2 | D5:3 C5 | C#5:4 | F5:2 E5 D5 | D5:2 F5:2 | G5:3 Eb5 | E5:2 C#5:2 | A4:4 | Bb4:2 D5:2 | G5:3 F5 | E5:4 | F5:2 G5 A5 | Bb5:2 F5:2 | G5:3 Bb4 | A4:2 C#5:2' },
+  };
+  SONG_DEF.stand_a = { ...SONG_DEF.stand, bpm: 144 }; SONG_DEF.stand_b = { ...SONG_DEF.stand, bpm: 138 };   /* round 5: survivors fighting, not an army */
+  for (const [k, d] of Object.entries(SONG_DEF)) { MOODS[k] = { bpm: d.bpm, prog: chords(d.prog) }; d.m = tune(d.mel); }
+  const SONGS = {   // each gets x: { c, out, t0, beat, root, ch, i (bar in the tune), pass (0 first time through, 1 second), P, PAD, K, F, j }
+    meadow(x) {   /* storybook waltz: piano alone, then flute over harp and strings, a glockenspiel sparkle */
+      const v = [x.root - 12, x.root - 5, x.ch[1], x.ch[x.ch.length - 1]], m = SONG_DEF.meadow.m[x.i];
+      if (x.pass === 0 && x.i < 8) { arp(x, 'piano', v, [0, 1, 2, 3, 2, 1], .5, .1, { ring: 1.6 }); line(x, 'piano', m, .23, { ring: .9, loose: 1 }); }
+      else { x.P('piano')(x.t0, x.F(x.root - 12), .16, x.beat * 3, -.1); arp(x, 'harp', v, [0, 1, 2, 3, 2, 1], .5, .13, { oct: 12, wide: .4 }); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.ch[1]), x.F(x.ch[x.ch.length - 1])], x.beat * 3 + .25, .03, 900); line(x, 'flu', m, .22, { pan: .1 }); if ([1, 2, 9, 10, 15].includes(x.i)) line(x, 'glk', m, .12, { ring: 1.8, oct: 12, to: 1, pan: .25 }); }
+    },
+    morning(x) {   /* walking tune: nylon guitar picking, flute; second time strings, glockenspiel and a soft shaker */
+      const v = [x.root - 12, x.ch[2] - 12, x.ch[1], x.ch[2], x.root + 12], m = SONG_DEF.morning.m[x.i];
+      arp(x, 'nyl', v, [0, 2, 3, 4, 1, 3, 2, 3], .5, .12, { ring: 1.4 });
+      line(x, 'flu', m, .2, { pan: .1 });
+      if (x.pass) { x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.ch[1]), x.F(x.ch[2])], x.beat * 4 + .3, .025, 1000); if (x.i % 4 === 0) line(x, 'glk', m, .1, { ring: 1.6, oct: 12, to: 1, pan: .3 }); for (let b = 0; b < 8; b++) x.K(x.t0 + b * x.beat / 2, b % 2 ? 'shaker_up' : 'shaker_dn', .045); }
+    },
+    fair(x) {   /* village two-step: accordion tune over pizzicato oom-pah; second time a glockenspiel joins */
+      const m = SONG_DEF.fair.m[x.i], pz = x.P('pz');
+      pz(x.t0, x.F(x.root - 12), .38, .6, -.15); pz(x.t0 + 2 * x.beat, x.F(x.root - 5), .32, .6, -.15);
+      [1, 3].forEach((b) => x.ch.slice(0, 3).forEach((s2, k) => pz(x.t0 + b * x.beat + k * .008, x.F(s2 + 12), .16, .4, .2)));
+      line(x, 'acc', m, .2, { att: .02, rel: .08 });
+      if (x.pass) { if (x.i >= 8) line(x, 'glk', m, .07, { ring: .8, oct: 12, pan: .3 }); [1, 3].forEach((b) => x.K(x.t0 + (b + .5) * x.beat, 'shaker_up', .1)); }
+    },
+    rain(x) {   /* rain on the roof: slow piano; second time a cello line and soft strings underneath */
+      const m = SONG_DEF.rain.m[x.i], c = x.ch, v = [x.root - 12, c[2] - 12, c[1], c[2], x.root];
+      arp(x, 'piano', v, [0, 1, 2, 3, 4, 3, 2, 1], .5, .085, { ring: 2.2, wide: .4 });
+      line(x, 'piano', m, .21, { ring: 1.4, loose: 1 });
+      if (Math.floor(x.j() * 1e4) % 2 === 0) x.P('piano')(x.t0 + (2 + Math.floor((x.j() + .01) * 100) % 4) * x.beat / 2 * 1.5, x.F(c[(x.i) % c.length] + 24), .045, 2, .35);   /* a drop of rain */
+      if (x.pass) { const ce = x.P('cello'); ce(x.t0, x.F(c[1] - 12), .14, x.beat * 2 * .97, -.2, .15, .3); ce(x.t0 + 2 * x.beat, x.F(c[2] - 12), .13, x.beat * 2 * .97, -.2, .15, .3); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(c[1])], x.beat * 4 + .3, .02, 700); }
+    },
+    harvest(x) {   /* 6/8 pastoral: harp and guitar rolling, oboe tune; second time the flute, a held oboe note and strings */
+      const m = SONG_DEF.harvest.m[x.i], c = x.ch, v = [x.root - 12, c[2] - 12, c[1], c[2], x.root + 12];
+      arp(x, 'harp', v, [0, 1, 2, 3, 2, 4], 1, .12, { ring: 1.4 }); x.P('nyl')(x.t0, x.F(x.root - 12), .14, 1.8, -.2);
+      if (!x.pass) line(x, 'obo', m, .2, { pan: .1 });
+      else { line(x, 'flu', m, .21, { pan: .1 }); x.P('obo')(x.t0, x.F(c[1]), .07, x.beat * 6 * .97, -.2, .2, .3); x.PAD('str', x.t0, [x.F(x.root - 12), x.F(c[2] - 12)], x.beat * 6 + .3, .025, 800); }
+      return x.beat * 6;
+    },
+    lantern(x) {   /* night: low strings, a slow harp, a celesta tune; second time the flute carries it and a music box twinkles */
+      const m = SONG_DEF.lantern.m[x.i], c = x.ch;
+      x.PAD('str', x.t0, [x.F(x.root - 12), x.F(x.root - 5)], x.beat * 4 + .3, .04, 450);
+      arp(x, 'harp', [x.root - 12, c[1], c[2], c[1] + 12], [0, 1, 2, 3], 1, .08, { ring: 2.4 });
+      if (!x.pass) line(x, 'cel', m, .2, { ring: 1.6, loose: 1, pan: .15 });
+      else { line(x, 'flu', m, .17, { pan: .1, att: .1 }); line(x, 'cel', m, .06, { ring: 1.6, oct: 12, to: 1, pan: .3 }); if (x.i % 2) x.P('mbox')(x.t0 + 2.5 * x.beat, x.F(c[2] + 24), .07, 2, -.3); }
+    },
+    stand(x) {   /* the fight: danger with no drums at all. Trembling low strings, a cello creeping a half step up and back, high strings rubbing a half step apart, horns carry the tune */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, s32 = x.beat / 8, ce = x.P('cello');
+      for (let k = 0; k < 32; k++) x.P('str')(x.t0 + k * s32, x.F(x.root - 12 + (k >= 16 && x.i % 2 ? 1 : 0)), .026 + (k % 8 === 0 ? .01 : 0), s32 * .95, -.25, .004, .02);
+      for (let k = 0; k < 32; k++) x.P('str')(x.t0 + k * s32 + s32 / 2, x.F(c[1]), .016, s32 * .9, .25, .004, .02);
+      ce(x.t0, x.F(x.root - 12), .16, x.beat * 2 * .98, -.1, .2, .3); ce(x.t0 + 2 * x.beat, x.F(x.root - 11), .15, x.beat * 2 * .98, -.1, .2, .3);
+      x.PAD('str', x.t0, [x.F(c[2] + 12), x.F(c[2] + 13)], x.beat * 4 + .2, .02, 1600);
+      if (x.i % 4 === 0) x.P('piano')(x.t0, x.F(x.root - 24), .1, 3, -.2);
+      line(x, 'hrn', m, .22, { att: .08 });
+      if (x.pass) line(x, 'obo', m, .07, { oct: 12, pan: .2 });
+    },
+    stand_a(x) {   /* round 5, take A: a scrappy survivors' band. Galloping muted guitar, a bass, the fiddle carries the tune, the accordion joins; knocks on a crate and a pipe instead of drums */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, e = x.beat / 2, g = x.P('gtr'), bs = x.P('bass'), lo = [x.root - 12, x.root - 5];
+      [0, 1, 1.5, 2, 3, 3.5].forEach((b, k) => lo.forEach((s2, i) => g(x.t0 + b * x.beat + i * .01, x.F(s2), k % 3 === 0 ? .2 : .12, e * .55, -.2, .003, .04)));
+      [0, 2].forEach((b) => [x.root - 12, x.root - 5, x.root, c[1], c[2]].forEach((s2, i) => g(x.t0 + b * x.beat + .3 * e + i * .012, x.F(s2), .09, e * 1.6, .15)));
+      bs(x.t0, x.F(x.root - 24), .45, e * 1.8); bs(x.t0 + 1.5 * x.beat, x.F(x.root - 17), .35, e * .9); bs(x.t0 + 2 * x.beat, x.F(x.root - 24), .42, e * 1.8); bs(x.t0 + 3 * x.beat, x.F(c[1] - 24), .32, e * 1.6);
+      [0, 2].forEach((b) => sfx(x.c, x.out, x.t0 + b * x.beat, 'woodL' + ((x.i + b) % 3), .35, .9)); [1, 3].forEach((b) => sfx(x.c, x.out, x.t0 + b * x.beat, 'woodH' + ((x.i + b) % 3), .16, 1.1));
+      if (x.i % 4 === 3) sfx(x.c, x.out, x.t0 + 3.5 * x.beat, 'metalL' + (x.i % 3), .12, 1.2);
+      line(x, 'fid', m, .24, { pan: .1, att: .03, rel: .08 });
+      if (x.pass) { line(x, 'acc', m, .09, { oct: -12, pan: -.25, att: .02 }); x.PAD('str', x.t0, [x.F(c[2] + 12)], x.beat * 4 + .2, .012, 1400); }
+    },
+    stand_b(x) {   /* round 5, take B: lean and tense. Pizzicato strings running in eighths, a muted guitar on the off-beats, a tin whistle tune (the fiddle second time), the cello creeping; one soft crate knock */
+      const m = SONG_DEF.stand.m[x.i], c = x.ch, e = x.beat / 2, pz = x.P('pz'), g = x.P('gtr'), ce = x.P('cello');
+      [0, 0, 7, 0, 8, 7, 3, 5].forEach((s2, k) => pz(x.t0 + k * e, x.F(x.root - 12 + (s2 === 8 && c[1] - x.root === 4 ? 9 : s2 === 3 && c[1] - x.root === 4 ? 4 : s2)), k % 2 ? .22 : .3, e * .8, k % 2 ? .2 : -.2));
+      [.5, 1.5, 2.5, 3.5].forEach((b) => [x.root, c[1], c[2]].forEach((s2, i) => g(x.t0 + b * x.beat + i * .008, x.F(s2), .07, e * .4, .25, .002, .03)));
+      ce(x.t0, x.F(x.root - 12), .12, x.beat * 4 * .98, -.1, .3, .4);
+      sfx(x.c, x.out, x.t0, 'woodL' + (x.i % 3), .22, .85);
+      line(x, x.pass ? 'fid' : 'whis', m, x.pass ? .21 : .18, { pan: .1, att: .03, rel: .08 });
+    },
+    tide(x) {   /* a horde or a boss: slower and heavier, great drums, a timpani roll, trembling strings, low brass swelling under the horns */
+      const m = SONG_DEF.tide.m[x.i], c = x.ch, s16 = x.beat / 4;
+      x.K(x.t0, 'kick', .7); [0, 1.5, 2].forEach((b, k) => x.K(x.t0 + b * x.beat, 'tom', k ? .45 : .65, .55));
+      if (x.i % 2) for (let k = 0; k < 8; k++) x.P('timp')(x.t0 + 2 * x.beat + k * s16, x.F(x.root - 12), .08 + k * .03, .5);
+      else x.P('timp')(x.t0, x.F(x.root - 12), .38, 1.4);
+      [x.root - 12, x.root - 5, c[1]].forEach((s2) => x.P('brass')(x.t0, x.F(s2), .1, x.beat * 4 * .97, 0, .5, .4));
+      for (let k = 0; k < 16; k++) x.P('str')(x.t0 + k * s16, x.F((k % 2 ? c[2] : x.root) + 12), .045, s16 * .9, k % 2 ? .3 : -.3, .004, .03);
+      const ce = x.P('cello'); for (let k = 0; k < 8; k++) ce(x.t0 + k * x.beat / 2, x.F(x.root - 12), k % 2 ? .1 : .16, x.beat / 2 * .9, -.1, .004, .05);
+      line(x, 'hrn', m, .28, { att: .08 }); if (x.pass || x.i >= 8) line(x, 'tpt', m, .09, { att: .05, pan: .2 });
+    },
+  };
+  const MVOL = { calm: 2.6, hearth: 2.8, western: 2.3, jig: .75, rag: 4, day: 1.5, travis: 1.6, strum: .8, lounge: .7, porch: .8, night: 1.5, danger: .45, meadow: 4.8, morning: 2.4, fair: 2.25, rain: 6.2, harvest: 3.5, lantern: 5, stand: 4.8, stand_a: 1.3, stand_b: 4.4, tide: 1.05 };   /* 3D.53 even out the moods' loudness */
   function writeBar(c, out0, t0, mood, bar) {   // schedules one bar; returns its length in seconds
     const out = c.createGain(); out.gain.value = MVOL[mood] || 1; out.connect(out0);
     const M = MOODS[mood], beat = 60 / M.bpm, len = beat * 4, [r0, q] = M.prog[bar % M.prog.length], root = fold(r0), ch = Q[q].map((s) => root + s), F = (s) => N(s);
@@ -214,6 +325,7 @@
     const P = (k) => (t, f, vol, dur = 1.4, pan = 0, att, rel) => samp(c, out, t, k, f, vol, dur, pan, att, rel) || pluck(c, out, t, f, vol * .9, Math.min(2, dur), pan);
     const PAD = (k, t, fs, dur, vol, cut) => { if (!fs.every((f) => samp(c, out, t, k, f, vol, dur, 0, .5, .6))) pad(c, out, t, fs, dur, vol * .25, cut, 1.2); };
     const K = (t, k, vol, rate, alt) => kit(c, out, t, k, vol, rate) || (alt && alt());
+    if (SONGS[mood]) { const r = SONGS[mood]({ c, out, t0, beat, root, ch, i: bar % M.prog.length, pass: phrase % 2, bar, P, PAD, K, F, j: () => (mr() - .5) * .018 }); return r || beat * SONG_DEF[mood].beats; }
     if (mood === 'day') {   /* folk: nylon guitar fingerpicking over soft strings, whistle tune */
       const g = P('nyl');
       if (bar % 2 === 0) PAD('str', t0, [F(root - 12), F(ch[1]), F(ch[2])], len * 2, .035, 700);
@@ -315,8 +427,9 @@
       nextNote = t + writeBar(ctx, layer, t, mood, bar++);
     }
   }
-  const DAY_TRACKS = ['strum', 'calm', 'western', 'day', 'jig', 'hearth', 'travis', 'rag', 'lounge', 'porch'], SLOW_TRACKS = ['calm', 'hearth', 'day']; let dayN = 0, dayPick = 'hearth';
-  try { dayPick = localStorage.getItem('zhDayMusic') || 'hearth'; } catch (e) { /* storage blocked */ }   /* 3D.56 owner: Hearth is the default day music */
+  const DAY_TRACKS = ['meadow', 'morning', 'fair', 'rain', 'harvest'], SLOW_TRACKS = ['meadow', 'rain']; let dayN = 0, dayPick = 'meadow';   /* Music chat (W106): the Ghibli day tunes replace the 10 old ones (owner-approved, 18 Nov) */
+  try { dayPick = localStorage.getItem('zhDayMusic') || 'meadow'; } catch (e) { /* storage blocked */ }   /* Meadow is the default day music */
+  if (!DAY_TRACKS.includes(dayPick) && dayPick !== 'mix' && dayPick !== 'slow') dayPick = 'meadow';   /* a saved pick of an old tune moves to Meadow */
   const setWant = () => { want = danger ? 'danger' : night ? 'night' : dayPick === 'mix' ? DAY_TRACKS[dayN % DAY_TRACKS.length] : dayPick === 'slow' ? SLOW_TRACKS[dayN % SLOW_TRACKS.length] : dayPick; };   /* 3D.55 'slow' = only the slow tracks */   /* 3D.51 a different day track each game day */
   // iOS rejects resume()/suspend() when the audio device is busy (a call, another app, silent switch): ignore it
   const quiet = (pr) => { if (pr && pr.catch) pr.catch(() => {}); };
