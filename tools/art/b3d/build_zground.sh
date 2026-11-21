@@ -19,3 +19,5 @@ for c in $U; do e="ZH_X=1"
   A="$A $c=$O/zg_${k}_$c.json"; n=$((n+1)); [ $((n%4)) = 0 ] && wait
 done; wait
 (cd $R && node tools/art/inject_clips.mjs $SRC $O/zg_$k.raw.glb $A | tail -1)
+# 3D.254 the Lasher: 14 points of the left trouser leg followed the left hand (owner: "part of the gray pant is stick to the arm")
+[ $k = lasher ] && python3 $R/tools/art/weightfix.py $O/zg_$k.raw.glb $O/zg_$k.fix.glb && mv $O/zg_$k.fix.glb $O/zg_$k.raw.glb
