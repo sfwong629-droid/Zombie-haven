@@ -346,13 +346,22 @@ function radioHelp() {
   const fast = bOf('radio').length > 0; S.help = { ...(S.help || {}), coming: tick + (fast ? 500 : 1000), next: S.day + (fast ? 2 : 3) };
   note('critical', '📻 Help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: `A rescue team is coming (${fast ? 'about half an hour' : 'about an hour'}). Hold on.` }); banner('📻 HELP IS COMING'); saveGame(); return true;
 }
+/* 3D.246 (owner, 21 Nov, W172): a town is never lost. When every survivor in town is down (nobody left to carry anyone), the neighbours
+   come by themselves, without being called and whatever is owed, at most once every AUTO_HELP_DAYS game days. They ask the same favour.
+   (2 of 10 bot towns bled out to the last person: docs/project/12-LONG-RUN.md. The truck of W129 will replace how they arrive.) */
+const AUTO_HELP_DAYS = 3;
 function helpTick() {
+  { const h0 = S.help || {};
+    if (!h0.coming && (h0.auto || 0) <= S.day && campB() && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
+      S.help = { ...h0, coming: tick + 300, auto: S.day + AUTO_HELP_DAYS, self: true };
+      note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming) { h.coming = 0; let killed = 0;
     for (const z of S.z) if (z.hp > 0 && !z.zoo && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))) { z.hp = 0; killed++; }
     let saved = 0; for (const q of S.sv) if (q.mode === 'down') { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the rescue team'; saved++; }
     h.owe = { day: S.day + 2, ...HELP_COST }; SFX('rescued');
-    showEventPopup({ title: '🚙 THE RESCUE TEAM ARRIVED', text: `They cleared ${killed} zombie${killed === 1 ? '' : 's'} from the town and carried ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
+    const self = h.self; h.self = false;
+    showEventPopup({ title: '🚙 THE RESCUE TEAM ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}They cleared ${killed} zombie${killed === 1 ? '' : 's'} from the town and carried ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
     showEventPopup({ title: '📻 THEY CAME FOR THE FAVOUR', text: `The group that saved your people asks for ${o.food} food and ${o.water} water.`, buttons: [
