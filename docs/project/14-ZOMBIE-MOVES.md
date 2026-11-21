@@ -1,6 +1,6 @@
 # Zombie Haven: zombie moves and backstories
 
-**Draft, 21 Nov 2026 (Art chat). The moves wait for the owner's marks (W190). The backstories' direction is approved (W191, 21 Nov: "yes similar to that"); the Story chat settles each one. Nothing here is built.**
+**Draft, 21 Nov 2026 (Art chat). **The moves are approved** (W190, 21 Nov: "all the other one are good"; the Gatling Boss also gets a long-range gatling shooting animation). The backstories' direction is approved (W191, 21 Nov: "yes similar to that"); the Story chat settles each one. Nothing here is built.**
 
 Owner, 21 Nov: "Most of the zombie are using one arm hit attack. Can you think of some animation for each one? Like leaper will need a jump animation. Digger will need a dig animation. Splitter need to actually split in half. … We might have to tie some of these zombie to the stories. Think of backstories for them."
 
@@ -36,7 +36,7 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 | Stalker (boss) | Helix's first Unlock test subject; it carries the prototype (the vaccine it drops) | **Punch and kick** (kept) | punch and kick |
 | Mutant (boss) | Helix "Phase 2": an overdose of concentrate | **Double smash** (kept) | smash |
 | Butcher (boss) | Foreman of Sunnyside's meat line | **Chopping forearm**: the arm comes down like a cleaver, three times, each lower | the Brute's swing |
-| Gatling Boss | A Quarantine Command heavy gunner on Ration Pack Forever; the gun grew into the arm | **Braced fire**: feet wide, leaning into the kick, the gun sweeping left and right | stands frozen in a walking stride |
+| Gatling Boss | A Quarantine Command heavy gunner on Ration Pack Forever; the gun grew into the arm | **Braced fire, at long range** (owner, 21 Nov): the barrels spin up, feet wide, leaning into the kick, a long burst with the gun sweeping left and right | stands frozen in a walking stride |
 
 ## The eleven new kinds (and the Delivery Driver)
 Their tricks were approved on 17 Nov; the move shows the trick.
