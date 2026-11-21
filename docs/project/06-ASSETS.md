@@ -168,11 +168,12 @@ The icons the player actually sees are not files:
 - **Item icons**: 87 icons, one for every weapon, armour, hat and accessory, hand-written in `js/itemicons.js`.
 
 ## 8. Sound and fonts
-All 212 sound files are **in game**, loaded by `js/sound.js`. The music itself is written by the game; these are the instrument samples it plays. Credits and licences: `assets/audio/CREDITS.txt`.
+All 320 sound files are **in game**, loaded by `js/sound.js`. The music itself is written by the game; these are the instrument samples it plays. Credits and licences: `assets/audio/CREDITS.txt`.
 
 | Folder (`assets/audio/…`) | Files | What | Source |
 |---|---|---|---|
 | `fid`, `gtr`, `nyl`, `bass`, `banjo`, `harp`, `vibes`, `tpt`, `str`, `mbox`, `whis`, `ep`, `cello`, `brass`, `timp`, `piano` | 188 | 16 instruments (fiddle, two guitars, bass, banjo, harp, vibes, trumpet, strings, music box, whistle, electric piano, cello, brass, timpani, piano) | FluidR3 GM sound font by Frank Wen, CC BY 3.0 |
+| `flu`, `glk`, `acc`, `pz`, `obo`, `cel`, `hrn`, `tub` | 108 | 8 more instruments for the Ghibli music (3D.248): flute, glockenspiel, accordion, pizzicato strings, oboe, celesta, French horn, tubular bells | FluidR3 GM sound font by Frank Wen, CC BY 3.0 |
 | `kit` | 10 | Drums: cajon ×2, shaker ×2, clap, snare, hat, kick, tom, ride | Versilian Community Sample Library, CC0 |
 | `sfx` | 14 | Axe chop, wood hits ×9, metal hits ×3, a plucked jingle | Kenney audio packs, CC0 |
 
@@ -182,7 +183,7 @@ Gunshots (3D.215, Music chat): each of the nine ranged weapons has its own shot,
 Day music (3D.248): the five Ghibli day tunes are written as note names in `SONG_DEF` and arranged in `SONGS` (`js/sound.js`), played on recorded instruments in `assets/audio/` (8 more FluidR3 instruments: flu, glk, acc, pz, obo, cel, hrn, tub; CC BY 3.0, in `CREDITS.txt`). The Day music setting is `DAYMUS` in `src/game/15-save.js`. Check: `tools/qa/day_music_check.js`.
 Mood fade (3D.216): `crossfade()` in `js/sound.js`; `SND.renderSeq([[mood, seconds], ...], total)` renders a mood sequence offline to check it.
 
-Waiting (branch `music-chat-wip`, not in the game yet, owner's sound review): eight more FluidR3 instruments (flute, glockenspiel, accordion, pizzicato strings, oboe, celesta, French horn, tubular bells) and CC0 recordings in `sfx/` (rooster, dogs, men's and women's grunts, zombie moans and growls, falling stone); credits in that branch's `assets/audio/CREDITS.txt`.
+Waiting (branch `music-chat-wip`, not in the game yet, owner's sound review): recordings in `sfx/` (rooster, dog, a man's grunt and a young woman's grunts (Female Gruntwork 1, PlumpDev, CC BY-SA 4.0), zombie moans and growls, falling stone; for round 9 creature screeches, gravel digging, a rifle shot, a motor; all others CC0); credits in that branch's `assets/audio/CREDITS.txt`.
 
 Fonts (`assets/fonts/`, 11 files, all loaded by `index.html` or `css/glass.css`): Manrope 600 / 800, Nunito 700 / 800, Fredoka 500 / 600, Lilita One, Bangers, Comic Neue regular / bold, Jersey 15. All under the Open Font Licence (the four `*-OFL.txt` files).
 

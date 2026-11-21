@@ -54,7 +54,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **UI**: all UI work, from `04-UI.md` (owner, 16 Nov: UI gets its own chat).
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
-- **Music**: the game's music and sound (owner, 18 Nov). Today the music is written by the game itself in `js/sound.js` (12 moods, day tracks chosen in settings, Hearth the default), played on recorded instrument samples; most sound effects are made by code. Files and licences in `06-ASSETS.md`, section 8.
+- **Music**: the game's music and sound (owner, 18 Nov). Today the music is written by the game itself in `js/sound.js` (the five Ghibli day tunes from 3D.248, Meadow the default; night and fight music still the old ones until their builds), played on recorded instrument samples; most sound effects are made by code. Files and licences in `06-ASSETS.md`, section 8.
 - **Story**: the game's story, written in `09-STORY.md` (owner, 19 Nov; approved the same day): **Forever Fresh**, Freshlock in the tins, the secret told in layers, 42 cutscenes, the cure, story items, DJ Moth's voice. The Story chat keeps the page and writes the words; scenes are built in the Features chat.
 - **Video**: the story's 15 video clips (owner, 19 Nov): the look, how they are made (Luma AI or from the game's own 3D), prompts, licences, file sizes on the phone. Page: `10-VIDEO.md`. **Started 19 Nov:** V1 test made in three looks; waiting on the owner's pick of look (W150) and way of making them (W151). In that first session the repo could not be attached (W152).
 - **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Can start: step 1 of the `game.js` split is done and the owner said that is enough (16 Nov, W42).
