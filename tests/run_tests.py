@@ -958,6 +958,10 @@ async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
     async with async_playwright() as p:
         br = await p.chromium.launch()
+        _nc = br.new_context
+        async def _ctx(*a, **k):   # 3D.250: the suite drives the sim itself; it does not wait for the 3D world behind the loading screen (bug A13; checked by tools/qa/load_wait_check.js)
+            c = await _nc(*a, **k); await c.add_init_script('window.ZH_NO_LOAD_WAIT = 1'); return c
+        br.new_context = _ctx
         for name, fn in TESTS:
             if want and not any(w in name for w in want): continue
             t = T(); s = time.time()

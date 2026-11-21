@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.249', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.250', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -493,8 +493,8 @@ function draw() {
   if ((!(window.ZH3D && ZH3D.ready))) {   /* 3D.76: say the world is still loading (big model files on a phone connection) instead of an empty screen */
     const t0 = draw.t0 || (draw.t0 = performance.now()), sec = Math.round((performance.now() - t0) / 1000);
     ctx.fillStyle = '#10241f'; ctx.fillRect(0, 0, VW, VH); ctx.textAlign = 'center'; ctx.fillStyle = '#e8f0e0'; ctx.font = '600 20px Fredoka, sans-serif';
-    ctx.fillText('Loading the world…', VW / 2, VH / 2); ctx.font = '500 15px Fredoka, sans-serif'; ctx.fillStyle = '#a9b8a4';
-    ctx.fillText(sec < 40 ? `${sec} s` : 'Still loading: check your connection, or close and reopen the game', VW / 2, VH / 2 + 26); ctx.textAlign = 'start';
+    if (titleOn) { ctx.fillText('Loading the world…', VW / 2, VH / 2); ctx.font = '500 15px Fredoka, sans-serif'; ctx.fillStyle = '#a9b8a4';
+    ctx.fillText(sec < 40 ? `${sec} s` : 'Still loading: check your connection, or close and reopen the game', VW / 2, VH / 2 + 26); } ctx.textAlign = 'start';   /* 3D.250: in a game the loading screen (#worldLoad) says it */
   }
   /* V2.18: the build-zone outline is baked into the ground image (stroking it every frame was ~half the frame time) */
   if (sel && (sel.kind === 'wall' || sel.kind === 'post')) {
@@ -7074,7 +7074,26 @@ function skipDawnTick() {
     b.onclick = (e) => { e.stopPropagation(); if (!nightClear()) return; skipping = { sp: simSpeed }; simSpeed = 30; b.style.display = 'none'; }; }
   if (b) { b.style.display = show ? '' : 'none'; const t = last ? '⏩ Skip to dawn' : '⏩ Fast-forward to the next wave'; if (b.textContent !== t) b.textContent = t; }
 }
-function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
+/* 3D.250 bug A13 (owner, 21 Nov): the game does not start until the graphics have loaded. Until the 3D world (survivors, gear, buildings, the
+   first zombie kinds and the kinds already on the map) is ready, the clock stands still and a loading screen shows how far it has got. */
+let worldOK = false;
+function worldReady() {
+  if (worldOK || window.ZH_NO_LOAD_WAIT) return true; const R = window.ZH3D;   /* ZH_NO_LOAD_WAIT: set by the test suite, which drives the sim itself */
+  const ok = !!(R && R.ready && !(R.zWaitingAny && R.zWaitingAny(S.z)));
+  if (ok || (R && R.failed) || worldReady.skip) { worldOK = true; loadScreen(false); try { if (ok && R.loadProgress) localStorage.setItem('zhLoadN', String(R.loadProgress().started)); } catch (e) { /* ignore */ } if (!ok && R && R.failed) say('The 3D world could not load: close and reopen the game', true); return true; }
+  if (!titleOn) loadScreen(true); return false;
+}
+function loadScreen(on) {
+  let el = $('worldLoad');
+  if (!on) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'worldLoad'; el.innerHTML = '<div class="wlCard frame"><div class="wlName out">ZOMBIE HAVEN</div><div class="wlWhat">Loading the world…</div><div class="wlBar"><i></i></div><div class="wlFig"></div><div class="wlHelp"></div></div>'; document.body.appendChild(el); loadScreen.t0 = performance.now(); loadScreen.k = 0; }
+  const R = window.ZH3D, p = R && R.loadProgress ? R.loadProgress() : { started: 0, done: 0 }; let n = 40; try { n = +localStorage.getItem('zhLoadN') || 40; } catch (e) { /* ignore */ }   /* about 40 files in 3D.250 */
+  const tot = Math.max(p.started, n, 1), k = loadScreen.k = Math.max(loadScreen.k, Math.min(R && R.ready ? .99 : .95, p.done / tot)), sec = Math.round((performance.now() - loadScreen.t0) / 1000);   /* the bar never goes back; the count of files from the last full load (else about 40) is the best guess of the total */
+  el.querySelector('.wlBar i').style.width = Math.round(k * 100) + '%';
+  const fig = R && R.ready ? 'Waking the zombies…' : `${Math.round(k * 100)}% · ${sec} s`; const f = el.querySelector('.wlFig'); if (f.textContent !== fig) f.textContent = fig;
+  const h = el.querySelector('.wlHelp'); if (sec >= 40 && !h.dataset.on) { h.dataset.on = 1; h.innerHTML = '<div>Still loading: check your connection, or close and reopen the game.</div><button class="act out wlGo">Play anyway</button>'; h.querySelector('button').onclick = () => { worldReady.skip = true; }; }
+}
+function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() || !worldReady() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
