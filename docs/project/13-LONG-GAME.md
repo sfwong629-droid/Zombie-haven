@@ -10,14 +10,14 @@ The test bot played three kinds of player, using the game's own rules for the ti
 | Player | Plays | Level 5 | Level 10 | Level 13 | Level 15 |
 |---|---|---|---|---|---|
 | Leaves the game open | all day | after 1.5 hours | after 5 to 7 hours | after 8 to 10 hours | **after 10 to 12 hours** (level 20 after 14 to 16) |
-| Keen | 20 minutes, twice a day | real day 2 | not measured yet | | |
-| Daily | 10 minutes, once a day | real day 7 | real day 14 | real day 29 | **real day 32** |
-| **Target** | a daily player | | | | **4 to 6 weeks** |
+| Keen | 20 minutes, twice a day | real day 2 | real day 8 | real day 12 | not run that far yet |
+| Daily | 10 minutes, once a day | real day 5 to 7 | real day 10 to 20 | real day 21 to 32 | **real day 26, 32 and 34** |
+| **Target** | a daily player | | | | **4 to 6 weeks** (day 28 to 42) |
 
-(The daily player is one town so far; the keen player was only run for 4 real days. Full runs of all three are the first job of the routine, section 9.)
+(Three daily towns, played for 32 to 34 real days; one keen town, played for 12. The full scorecard is in `08-BALANCE.md`, section 12.)
 
 What this shows:
-- **The daily player is close to the target already.** The level timer keeps running while the game is closed, at the slow speed, so he gets about one level a real day at most, and less once the buildings get dear. He lost nobody in 33 real days. His weak spots: a slow first week (level 3 only on real day 5, waiting for people to turn up) and wood, which is at 0 almost every day because time away pays only a third of a day's production.
+- **The daily player is close to the target already.** The level timer keeps running while the game is closed, at the slow speed, so he gets about one level a real day at most, and less once the buildings get dear. Two of the three towns lost nobody in a month; the third lost 8. His weak spots: a slow first week (level 3 on real day 2 to 5 and level 5 on day 5 to 7, waiting for people to turn up) and wood, which is at 0 almost every day because time away pays only a third of a day's production.
 - **Everyone who plays more breaks the pace.** With the game open the game clock runs 36 times faster, and people, farms, buildings and the level timer all run on it. So the open player does in 12 hours what takes the daily player a month.
 - **Zombies get stronger with the count of game days, not with the level.** The player who plays more minutes has seen more game days, so he meets stronger zombies at the same level: the open bot's level 13 town was on game day 75 to 90, the daily player's on game day 45. A town played for months meets hordes of 200 and more.
 - **After level 20 nothing changes any more**, and scrap, renown, research points and spare Banners pile up with nothing to buy.

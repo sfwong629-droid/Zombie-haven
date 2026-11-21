@@ -277,6 +277,48 @@ What this shows:
 
 **Long-run test, 21 Nov (build 3D.243).** Ten bot towns, about 1,800 game days, the longest 260 days. Full report: `12-LONG-RUN.md`. The main numbers: level 20 on game day 119 to 141 (14 to 16 hours of open play); 2 of 10 towns lost everyone (raiders by day, a boss night the same evening); no deaths in era 1, then 24 to 39 from level 11 on; boss nights every 3 days (the usual one brings 36 zombies in era 1, 58 in era 2, 81 to 90 later: still about half the targets or less); wood short for the first 70 to 95 days, medicine at 0 for 24 to 68 days, scrap at its cap from about day 30; nothing to spend on after level 20. The old bot could not place the Clinic and never built the Fort, so every earlier measurement on this page stops being reliable after about level 7; the bot is fixed for long runs (`AP.long`).
 
+**Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
+
+Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).
+
+| What | Range wanted | Daily | Keen | Open | Verdict |
+|---|---|---|---|---|---|
+| Level 3, real day | day 1 (the first sitting) | 2.0 to 5.0 |  |  | **OUT** |
+| Level 5, real day | 2 to 3 | 5.0 to 7.0 |  |  | **OUT** |
+| Level 10, real day | 16 to 22 | 10 to 20 |  |  | **OUT** |
+| Level 15, real day | 28 to 42 | 26 to 34 |  |  | near |
+| Level 20, real day | 55 to 75 | not reached yet |  |  | not measured |
+| Level 15 against the daily player (real day 31) | at most a third faster: day 21 or later |  | not reached yet | 0.4 to 0.5 (3 of 4 towns) (game open day and night) | **OUT** |
+| Deaths before level 15 | 3 to 8 | 0 to 5 | not reached yet | 0 to 20 (3 of 4 towns) | **OUT** |
+| Deaths in 10 game days at levels 16 to 20 (a daily player's week) | at most 1 | not reached yet | not reached yet | 1.7 to 2.3 (3 of 4 towns) | **OUT** |
+| Most deaths in one night | 2 or fewer | 0 to 1 | 0 | 2 to 11 | **OUT** |
+| Town lost | never | 0 | 0 | 0 to 1 | **OUT** |
+| Ordinary nights with nobody down, % | 65 to 85 | 23 to 33 (2 of 3 towns) | 33 | 6.1 to 46 | **OUT** |
+| Big horde, the usual boss night, era 1 | 45 to 75 |  |  | 32 to 39 | **OUT** |
+| Big horde, the usual boss night, era 2 | 90 to 150 |  |  | 46 to 66 | **OUT** |
+| Big horde, the usual boss night, era 3 | 180 to 300 |  |  | 76 to 85 (3 of 4 towns) | **OUT** |
+| Most zombies standing at once | 60 or fewer | 61 to 128 | 62 | 49 to 257 | **OUT** |
+| People at the end of era 1 | 12 to 18 | 10 to 14 | 15 | 10 to 14 | **OUT** |
+| People at the end of era 2 | 24 to 36 | 18 to 20 | 24 | 18 to 22 (3 of 4 towns) | **OUT** |
+| People at the end of era 3 | 40 to 60 | 21 (1 of 3 towns) | not reached yet | 24 to 27 (3 of 4 towns) | **OUT** |
+| Buildings at the end of era 1 | 21 to 29 | 23 to 25 | 25 | 22 to 25 | ok |
+| Buildings at the end of era 2 | 34 to 46 | 29 to 43 | 43 | 29 to 44 (3 of 4 towns) | **OUT** |
+| Buildings at the end of era 3 | 47 to 63 | 49 (1 of 3 towns) | not reached yet | 52 to 56 (3 of 4 towns) | ok |
+| People who walked out, whole run | 2 or fewer an era | 0 to 2 | 2 | 1 to 27 | **OUT** |
+| Logic checks that fired | none | 0 to 1 | 0 | 0 to 18 | **OUT** |
+| A stock at its limit for more than half an era | none | scrap era 3 | scrap era 2 | scrap era 3; scrap era 4; stone era 4; water era 4; wood era 4 | **OUT** |
+| The short stock, era by era (share of days under 15%) | one in each era, never food | wood 100%, wood 100%, wood 86% / wood 100%, wood 100%, wood 100% / stone 100%, wood 100%, wood 100% | wood 100%, wood 100% | wood 100%, wood 100% / wood 100%, wood 97%, wood 74%, wood 21% / wood 100%, wood 100%, wood 91%, none / wood 100%, wood 100%, wood 100%, none | ok |
+| Renown and research points unspent at the end | less than two weeks of income | 2628 renown, 269 points | 3504 renown, 414 points | 15041 renown, 2786 points | not judged: the bot spends neither |
+
+What it says:
+- **The daily player reaches level 15 on real day 26, 32 and 34**: on target. His first week is slow (level 5 on day 5 to 7; wanted day 2 to 3).
+- **The keen player is about twice as fast** (level 13 on day 12; the daily towns on day 21 to 32), and the open player needs half a day for all of it. This is what rule 1 (one pace for everyone) is for.
+- **Nights are rougher than wanted for everyone:** somebody goes down on two nights in three, even in the daily towns (wanted: one night in four at most).
+- **The usual boss night is about half the size wanted in eras 1 and 2 and a third in era 3.**
+- **More than 60 zombies stand at once** in every kind of town (61 to 128 in the daily towns).
+- **Towns have too few people** from era 2 on (18 to 24 at the end of era 2; wanted 24 to 36).
+- **Wood is the short stock in every era** (the target wants it to change from era to era), and scrap sits at its limit from era 2 or 3.
+
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 

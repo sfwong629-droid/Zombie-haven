@@ -1,7 +1,8 @@
 #!/bin/bash
 # The balance check (docs/project/13-LONG-GAME.md, section 9). Run from the repo root.
 #   tools/balance/check.sh quick OUT_DIR   about 30 to 40 minutes: 2 daily towns for 14 real days, 2 open towns for 30 game days
-#   tools/balance/check.sh full OUT_DIR    overnight: 3 towns for each of the three players, to level 20 or 75 real days
+#   tools/balance/check.sh full OUT_DIR    about 8 hours on two cores: 3 towns for each of the three players, to level 20 or 75 real days
+#                                          (a game day takes 20 to 60 seconds to play; three towns at once on two cores)
 # Then: python3 tools/balance/scorecard.py --daily OUT_DIR/daily --keen OUT_DIR/keen --open OUT_DIR/open --md OUT_DIR/scorecard.md
 # PY is the Python that can start the browser (in the cloud workspace: "python3 /home/claude/scratch/wrap.py").
 set -e
@@ -16,8 +17,8 @@ if [ "$MODE" = quick ]; then
   run daily 5 14 1500 & run daily 7 14 1500 & wait
   run open 5 30 900 & run open 7 30 900 & wait
 else
-  for s in 5 7 13; do run daily $s 75 7000 & done; wait
-  for s in 5 7 13; do run keen $s 60 9000 & done; wait
+  for s in 5 7 13; do run daily $s 75 12000 & done; wait
+  for s in 5 7 13; do run keen $s 60 12000 & done; wait
   for s in 5 7 13; do run open $s 260 7000 & done; wait
 fi
 $PY tools/balance/scorecard.py --daily "$OUT/daily" --keen "$OUT/keen" --open "$OUT/open" --md "$OUT/scorecard.md"
