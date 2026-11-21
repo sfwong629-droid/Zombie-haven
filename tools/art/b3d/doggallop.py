@@ -36,12 +36,13 @@ LEGS = [(('bthigh.L', 'bshin.L', 'bpaw.L'), F('bpaw.L'), LAND[0], .10, True), ((
 DUTY = .24; SW = STRIDE * DUTY   # how far a foot slides back under the body while it is down
 def foot(t, land, fwd, hind, rest_p):
     u = (t - land) % 1.
-    if u < DUTY: y = -fwd * S + SW * (u / DUTY); z = 0.; k = u / DUTY; lift = .035 * S * sst(.6, 1, k) if hind else .02 * S * sst(.7, 1, k)   # down: forward is -Y; the heel rises as it pushes off
+    if u < DUTY: y = -fwd * S + SW * (u / DUTY); z = PLANT * S; k = u / DUTY;   # PLANT: the hoof or paw tips forward a little as it lands; set it that much higher so it never goes in the ground
+    if u < DUTY: lift = PLANT * S + (.035 * S * sst(.6, 1, k) if hind else .02 * S * sst(.7, 1, k))   # down: forward is -Y; the heel rises as it pushes off
     else:
         k = (u - DUTY) / (1 - DUTY); y = (-fwd * S + SW) + (-SW) * sst(0, 1, k) + (.10 if hind else .06) * S * math.sin(math.pi * k) * (1 if hind else -.4)   # in the air: trails back, then swings forward
-        z = (.15 if hind else .17) * S * math.sin(math.pi * min(1, k * 1.03)) ** 1.3; lift = z
+        z = (.15 if hind else .17) * S * math.sin(math.pi * min(1, k * 1.03)) ** 1.3 + (PLANT + (.035 if hind else .02)) * S * (1 - sst(0, .3, k)); lift = z   # leaves the ground at the height the push-off lifted it to (no drop back)
     return rest_p + Vector((0, y, lift if u < DUTY else z)), (u < DUTY), (u / DUTY if u < DUTY else (u - DUTY) / (1 - DUTY))
-MISS = {}; ARCH = float(os.environ.get('ZH_ARCH', -9)); ROCK = float(os.environ.get('ZH_ROCK', -5)); BOB = float(os.environ.get('ZH_BOB', .025)); LOW = float(os.environ.get('ZH_LOW', .035))
+MISS = {}; PLANT = float(os.environ.get('ZH_PLANT', .008)); ARCH = float(os.environ.get('ZH_ARCH', -9)); ROCK = float(os.environ.get('ZH_ROCK', -5)); BOB = float(os.environ.get('ZH_BOB', .025)); LOW = float(os.environ.get('ZH_LOW', .035))
 order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}; nf = N * SUB
 for i in range(nf + 1):
     t = (i / nf) % 1.; rest()
@@ -56,9 +57,11 @@ for i in range(nf + 1):
     for (up, lo, paw), rp, land, fwd, hind in LEGS:
         tgt, down, k = foot(t, land, fwd, hind, rp); ank_off = R[paw][0] - rp if False else Vector((0, 0, 0))
         # the ankle (paw bone's head) sits above and behind the toes: flat on the ground when down, toes hanging when in the air
-        pd = (R[paw][1] - R[paw][0]); flat = pd.normalized(); hang = (Vector((0, .25 if hind else .1, -1))).normalized(); w = 0 if down and k < .6 else (sst(.6, 1, k) if down else 1 - .6 * sst(.6, 1, k))
+        pd = (R[paw][1] - R[paw][0]); flat = pd.normalized(); hang = (Vector((0, .25 if hind else .1, -1))).normalized(); w = 0 if down and k < .6 else (sst(.6, 1, k) if down else 1 - sst(.55, .9, k))   # the paw levels out before it touches down (it snapped flat at the landing and its toe went through the ground)
         pawdir = (flat * (1 - w) + hang * w).normalized(); ankle = tgt + Vector((0, 0, R[paw][0].z - rp.z)) * 0 + (R[paw][0] - R[paw][0])
-        ankle = Vector((tgt.x, tgt.y, tgt.z)) ; pole = Vector((0, 1, .25)) if hind else Vector((0, 1, -.1))
+        ankle = Vector((tgt.x, tgt.y, tgt.z)); plen = PB[paw].length * W.to_scale().x
+        if down: ankle.z += max(0., plen * (flat.z - pawdir.z))   # at push-off the toe tips down: the ankle rises with it, so the tip stays out of the ground
+        pole = Vector((0, 1, .25)) if hind else Vector((0, 1, -.1))
         if hind: pole = Vector((0, -1, .3))      # a dog's knee points forward, its hock back: the thigh+shin pair bends forward
         else: pole = Vector((0, 1, .2))          # the elbow points back
         leg(up, lo, paw, ankle, pole, pawdir); MISS[paw] = max(MISS.get(paw, 0), ((W @ PB[paw].matrix).translation - ankle).length if down else 0)
