@@ -96,6 +96,7 @@ UI chat:
 - W144. Play 3D.232: (1) the backpack on the resource bar: six boxes to a row with empty slots; tap an item: a still picture (no turning), its numbers and joke, Give to; (2) tap a radio message: the message opens in a box (with "Show me" when it has a place to show), and the ✕ still closes it. Right?
 - W147. Play 3D.233 through a night where a building falls: the "slipped out of the … before it fell" rows in the Needs you list should go by themselves once each person reaches the other shelter. Right? (Also found: "Out of ammo" and "X left the Haven" rows never go either; fix them the same way?)
 - W164. Play 3D.240: tap a car wreck with zombies near it: the Car alarm card has a ✕ in its top corner that closes it without doing anything. Right? (The wreck looking like a rock is logged for the Art chat, U44.)
+- W189. Bug A13 (3D.250): open the game (best on the phone, after closing it): a loading screen with a bar shows until the world is drawn, and the clock and people only start moving after it goes. Right? Is the screen's look OK?
 - W80. Play 3D.195 or later and say whether the open menus look right. The menus are Build, People, Town and a survivor's details (tap a person). With one open: no round radio button on the right, the alert button gone where the menu covers it, and "Paused" centred on the menu's top edge. (Owner, 19 Nov, asked which menus: explained.)
 
 Code clean-up chat:

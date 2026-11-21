@@ -118,6 +118,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (UI chat, owner's bug): Tapping a radio message shows the message (in a box, with "Show me" when the message points somewhere); it never opens another menu by itself. Built in 3D.230.
 - 19 Nov (UI chat, U35): "Slipped out of the X before it fell" rows in the Needs you list disappear by themselves once the person is safe in the other shelter. Built in 3D.233.
 - 19 Nov (UI chat, U43): A choice card the player opened by tapping something on the map (the Car alarm) has an exit: a ✕ that closes it doing nothing. Built in 3D.240.
+- 21 Nov (bug A13, built in the UI chat): **The game does not start until the graphics have loaded.** A loading screen in the Glass style (name, bar, per cent and seconds) covers the game, and the game clock stands still, until the 3D world is ready; after 40 s it offers "Play anyway". Built in 3D.250.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
