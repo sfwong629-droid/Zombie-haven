@@ -228,6 +228,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (W160): **the hurt group keeps the old hand-made movements with the feet put on the ground** ("looks fine"). Built in 3D.239; a body lying down rests on the ground.
 - 20 Nov (W162): **a tool strikes with its working end.** The digger's hoe has its blade facing the ground and only the blade's edge goes into it (built in 3D.241; the hoe is 0.73 long). Animation sheets sent to the owner show the tool the survivor holds: the first work sheet did not, and Claude misjudged Board up from it.
 - 20 Nov (W165): **the work group keeps the old hand-made movements with the feet on the ground**, Board up included ("they are fine keep them"): the recordings of a man hammering (CMU 62_07, 62_08) are small quick taps at a bench and were not used. Built in 3D.242; a movement that repeats ends in the pose it starts in.
+- 20 Nov (W166): **men sit with their legs open** ("Men sitting should be a bit manspreading. Open the leg a bit"); women sit as before. The everyday group otherwise keeps the old hand-made movements, put on the ground. Built in 3D.243 (the man's sit and eat: each leg turned out 18 degrees).
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
