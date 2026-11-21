@@ -273,7 +273,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov: **Stand Firm** (ordinary fight music) switches between take A and take B from one fight night to the next.
 - 21 Nov: Zombies get sounds of their own: the **Screamer** screams when it attacks (today it plays the alarm bell), the **Gatling Boss** sounds like a Gatling gun when he attacks, the **Digger** makes digging sounds. Samples in round 9 of the sound review (W187).
 - 21 Nov (review, round 9): **Approved:** Screamer take A (recorded creature screech, a lower echo under it; replaces the alarm bell on its shriek), Gatling Boss take B (a recorded rifle shot fired 20 times fast over a motor whir, played with his attack), Digger take B (scoops into gravel; goes in with the Digger).
-- 21 Nov: The day music (Meadow default plus four tunes) went in as 3D.248.
+- 21 Nov: The day music (Meadow default plus four tunes) went in as 3D.248. The night music (Lanterns) went in as 3D.249.
 
 ## Open questions (not decided)
 - None on 17 Nov.

@@ -25,8 +25,8 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 
 ## Where things are
-- Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.248**.
-- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 283 = 3D.248, page cache tag v=3d.280). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
+- Repo `sfwong629-droid/Zombie-haven`, branch **art-direction-b** (never push to main). Build **3D.249**.
+- Live game: https://claude.ai/artifact/PidbC3srwbxmFqhfPkqJmn (version 284 = 3D.249, page cache tag v=3d.281). Never republish the direction-A artifact F8sGocbQgVJxj4ed2fLdzu.
 - Game code: `js/game.js` is kept as 27 area files in `src/game/` (guide: `src/game/README.md`). Edit the area file, run `python3 tools/build/game.py` to join them into `js/game.js`, and commit both. If you edited `js/game.js` directly, run `python3 tools/build/game.py --split` instead. The test suite fails (`parts`) when the two differ. `js/game.js` is still the file that is published.
 - Publishing: full slug `b7f9181b-346a-4ccb-85be-5f1f659593f9`; take the *published* index.html, bump v=3d.N, publish only changed js/css. Never use the repo's index.html. Another chat may have published since: always read the live version first.
 - ChatGPT: project "Zombie Haven testing" in the owner's ChatGPT; details in `claude/zombie-haven-chatgpt-testing.md`.
@@ -54,7 +54,7 @@ Keep chats short and single-purpose, so nothing floats:
 - **UI**: all UI work, from `04-UI.md` (owner, 16 Nov: UI gets its own chat).
 - **Art**: Tripo sheets, armour, icons.
 - **ChatGPT**: reviews and second opinions.
-- **Music**: the game's music and sound (owner, 18 Nov). Today the music is written by the game itself in `js/sound.js` (the five Ghibli day tunes from 3D.248, Meadow the default; night and fight music still the old ones until their builds), played on recorded instrument samples; most sound effects are made by code. Files and licences in `06-ASSETS.md`, section 8.
+- **Music**: the game's music and sound (owner, 18 Nov). Today the music is written by the game itself in `js/sound.js` (the five Ghibli day tunes from 3D.248, Meadow the default; Lanterns at night from 3D.249; the fight music still the old one until its build), played on recorded instrument samples; most sound effects are made by code. Files and licences in `06-ASSETS.md`, section 8.
 - **Story**: the game's story, written in `09-STORY.md` (owner, 19 Nov; approved the same day): **Forever Fresh**, Freshlock in the tins, the secret told in layers, 42 cutscenes, the cure, story items, DJ Moth's voice. The Story chat keeps the page and writes the words; scenes are built in the Features chat.
 - **Video**: the story's 15 video clips (owner, 19 Nov): the look, how they are made (Luma AI or from the game's own 3D), prompts, licences, file sizes on the phone. Page: `10-VIDEO.md`. **Started 19 Nov:** V1 test made in three looks; waiting on the owner's pick of look (W150) and way of making them (W151). In that first session the repo could not be attached (W152).
 - **Features**: new features from `01-VISION.md` (the daytime threat, Take command). Can start: step 1 of the `game.js` split is done and the owner said that is enough (16 Nov, W42).
