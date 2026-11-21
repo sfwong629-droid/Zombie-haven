@@ -174,10 +174,39 @@
       for (let i = 0; i < 4; i++) sweep(t + 2.2 + i * .3, i % 2 ? 950 : 1250, i % 2 ? 950 : 1250, .3);
       swell(c, o, t + .2, 3.2, .015, 1500, 600, .3);
     },
+    /* round 9 (owner, 21 Nov): zombie sounds. The Screamer's shriek, the Gatling Boss's gun, the Digger tunnelling */
+    scream_a: (c, o, t) => { if (!sfx(c, o, t, 'zscream0', .8, .92)) return FX.alarm(c, o, t); sfx(c, o, t + .12, 'zscream0', .25, .7); },   /* a recorded creature screech, a lower echo under it */
+    scream_b: (c, o, t) => { if (!sfx(c, o, t, 'zscream1', .8, .9)) return FX.alarm(c, o, t); sfx(c, o, t + .12, 'zscream1', .25, .68); },
+    scream_c: (c, o, t) => {   /* both screeches together, slowed into one long shriek, a howl underneath, a ringing tail */
+      if (!sfx(c, o, t, 'zscream0', .6, .8)) return FX.alarm(c, o, t); sfx(c, o, t + .04, 'zscream1', .5, .74); sfx(c, o, t + .1, 'zhowl0', .45, .62);
+      [.35, .7].forEach((dt, i) => sfx(c, o, t + dt, 'zscream0', .14 / (i + 1), .78 - i * .04)); swell(c, o, t, 1.6, .03, 3200, 1200, .05);
+    },
+    gatling_a: (c, o, t) => {   /* made like the approved guns: the barrels spin up with a whine, a fast burst of 20 rounds, then spin down */
+      const sp = (t0, f0, f1, d, v) => { const os = c.createOscillator(), g = c.createGain(), bp = c.createBiquadFilter(); os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t0); os.frequency.linearRampToValueAtTime(f1, t0 + d); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 1.2; g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(v, t0 + .1); g.gain.setValueAtTime(v, t0 + d - .12); g.gain.linearRampToValueAtTime(.0001, t0 + d); os.connect(bp); bp.connect(g); g.connect(o); os.start(t0); os.stop(t0 + d + .05); };
+      sp(t, 60, 220, .45, .05); sp(t + .45, 220, 220, 1.3, .04); sp(t + 1.75, 220, 50, .6, .05);
+      const G = { crack: 3000, blast: .03, thump: 120, tail: .12, echo: .06, size: .55 };
+      for (let i = 0; i < 20; i++) gun(c, o, t + .45 + i * .065 + (Math.random() - .5) * .006, { ...G, size: G.size * (.85 + Math.random() * .3) });
+      swell(c, o, t + 1.7, 1.2, .05, 600, 90, .05);   /* the roll of the burst down the valley */
+    },
+    gatling_b: (c, o, t) => {   /* from a recorded small rifle shot, fired 20 times fast over a motor whir, then the barrels run down */
+      if (!SFXB.gunsm0) return NEWFX.gatling_a(c, o, t);
+      sfx(c, o, t, 'motor0', .35, 1.6); sfx(c, o, t + .3, 'motor0', .3, 2.1);
+      for (let i = 0; i < 20; i++) sfx(c, o, t + .4 + i * .065, 'gunsm' + (i % 2), .45 * (.85 + Math.random() * .3), 1.05 + (Math.random() - .5) * .1);
+      sfx(c, o, t + 1.7, 'motor0', .25, 1.2); swell(c, o, t + 1.7, 1.2, .05, 600, 90, .05);
+    },
+    dig_a: (c, o, t) => {   /* under the ground: muffled scrapes and dirt falling, coming closer, then breaking through */
+      if (!SFXB.digg0) return; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(o);
+      for (let i = 0; i < 6; i++) { const tt = t + i * .42 + Math.random() * .05; sfx(c, lp, tt, 'digg' + (i % 2), .5 + i * .1, .75); sfx(c, lp, tt + .16, 'dugg' + (i % 3), .3 + i * .06, .7); }
+      thud(c, o, t + 2.6, 60, .3, .3); sfx(c, o, t + 2.6, 'dugg1', .7, .8);
+    },
+    dig_b: (c, o, t) => {   /* close by: scoops into gravel and the dirt thrown aside */
+      if (!SFXB.digg0) return;
+      for (let i = 0; i < 4; i++) { const tt = t + i * .55 + Math.random() * .05; sfx(c, o, tt, 'digg' + (i % 2), .7, .9); sfx(c, o, tt + .22, 'dugg' + (i % 3), .45, .95); }
+    },
     woof: (c, o, t) => { if (!sfx(c, o, t, 'dog0', .8, 1)) FX.woof(c, o, t); },   /* a real dog barking */
     breach: (c, o, t) => { if (!SFXB.rockb0) return FX.breach(c, o, t); thud(c, o, t, 55, .4, .5); sfx(c, o, t, 'rockb' + rnd3(), .6, .8); sfx(c, o, t + .08, 'woodL' + rnd3(), .3, .5); [.18, .34, .55, .8].forEach((dt, i) => sfx(c, o, t + dt, 'rockf' + rnd3(), .5 - i * .08, .85 + Math.random() * .2)); noise(c, o, t + .1, 1.1, .08, 900, .5, 'lowpass', 120); },   /* a wall crumbling: cracking, then rubble falling */
   };
-  const NFXV = { chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4, radio_c: .6 };   /* level each new sound to sit near the old one */
+  const NFXV = { scream_a: .17, scream_b: .17, scream_c: .15, gatling_a: 1, gatling_b: .17, dig_a: .3, dig_b: .3, chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4, radio_c: .6 };   /* level each new sound to sit near the old one */
   for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t, ...r) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t, ...r); };
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
@@ -239,7 +268,7 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
-  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'oofm0', 'oofm1', 'ooff0', 'ooff1', 'ooff2', 'ooff3', 'ooff4', 'ooff5', 'ooff6', 'ooff7', 'ooff8', 'ooff9', 'ooff10', 'ooff11', 'ooff12', 'ooff13', 'ooff14', 'ooff15', 'ooff16', 'ooff17', 'ooff18', 'ooff19', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
+  const SFXN = ['chop', 'pizzi', 'rooster', ...['woodH', 'woodL', 'woodM', 'metalL', 'rockb', 'rockf'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'dog0', 'dog1', 'downm0', 'downm1', 'downf0', 'downf1', 'zscream0', 'zscream1', 'zhowl0', 'digg0', 'digg1', 'dugg0', 'dugg1', 'dugg2', 'gunsm0', 'gunsm1', 'motor0', 'oofm0', 'oofm1', 'ooff0', 'ooff1', 'ooff2', 'ooff3', 'ooff4', 'ooff5', 'ooff6', 'ooff7', 'ooff8', 'ooff9', 'ooff10', 'ooff11', 'ooff12', 'ooff13', 'ooff14', 'ooff15', 'ooff16', 'ooff17', 'ooff18', 'ooff19', ...[0, 1, 2, 3, 4, 5, 6].map((i) => 'zgroan' + i)], SFXB = {};   /* Music chat: recorded CC0 animals, voices, rock and zombies (assets/audio/CREDITS.txt) */   /* 3D.57 recorded effects */
   const rnd3 = () => Math.floor(Math.random() * 3);
   function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;

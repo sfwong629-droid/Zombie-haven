@@ -35,3 +35,9 @@ Recorded effects in sfx/, all CC0 1.0 (public domain; no credit required, given 
                          (licence shown as CC BY 4.0 on the page itself; treated as BY-SA, the stricter). Hurt takes 3, 4, 5, 20,
                          via the cuts in github.com/Appuxif/forest-chopper (assets/audio/voices/female/hurt); cut to 0.42 s and faded.
                          These four files are shared under CC BY-SA 4.0 too.
+
+Round 9 (21 Nov), zombie sounds, all CC0:
+  zscream0,1.mp3, zhowl0.mp3   "scream_01", "scream_02", "howl" from "80 CC0 creature SFX" (rubberduck, OpenGameArt), via github.com/lavenderdotpet/CC0-Public-Domain-Sounds
+  digg0,1.mp3, dugg0-2.mp3     "node_dig_gravel", "node_dug_gravel" by lolamadeus (freesound), via github.com/AntumLuanti/mod-sounds
+  gunsm0,1.mp3                 "rifle_small_fire" by Tito Lahaye (freesound 319400), via github.com/AntumLuanti/mod-sounds; cut to 0.35 s
+  motor0.mp3                   "compressor_motor_01" by ivolipa (freesound), via github.com/AntumLuanti/mod-sounds; cut to 2.5 s
