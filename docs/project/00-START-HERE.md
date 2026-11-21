@@ -20,7 +20,7 @@ The same pages are kept in the repo under `docs/project/`, so they can be copied
 | `10-VIDEO.md` | The story's 15 video clips: the look test, Luma AI against clips made by Claude (cost, quality, match, licences), file sizes on the phone, what's next. The test's source is in `video/v1-test/` | live (written 19 Nov, Video chat; waiting on W150, W151) |
 | `11-CRAFTING.md` | Crafting with parts, like Last Day on Earth: the study, the 15 parts and where they come from, orders at the Workshop that survivors carry out, a recipe for every craftable item | **approved 20 Nov (Balance chat)** |
 | `12-LONG-RUN.md` | The long-run test of 21 Nov: 10 bot towns, about 1,800 game days; findings on balance, combat, logic and UI | report, 21 Nov (Balance chat) |
-| `13-LONG-GAME.md` | The plan for months of play: five rules (one pace for everyone, levels made of deeds, danger by level, something to buy with every stock, loops at the top), room for later systems, and **the balance routine** to run whenever the game changes | **draft, 21 Nov (Balance chat); waiting for the owner (W175 to W178)** |
+| `13-LONG-GAME.md` | The plan for months of play: five rules (one pace for everyone, levels made of deeds, danger by level, something to buy with every stock, loops at the top), room for later systems, and **the balance routine** to run whenever the game changes | **21 Nov (Balance chat): rules 1, 3, 4, the top and the routine approved; level tasks and the end game wait for the owner (W179, W180)** |
 
 The older docs under `claude/` are an archive in the **Game Development** project (they are not in the repo). Their decisions are already merged into `02-DECISIONS.md`; open the archive only for detail such as exact numbers of an old build.
 

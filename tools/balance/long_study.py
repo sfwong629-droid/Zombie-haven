@@ -20,6 +20,10 @@ DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day
       const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
       for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;if(z.human)day.raid++;}}
     if(stepErr)break; try{AP.hour();}catch(e){stepErr='AP.hour '+String(e&&e.stack||e).slice(0,300);break;}
+    /* a night runs 20:00 to 06:00: who went down, who died, was it a boss night (for the scorecard) */
+    if(S.hour===20)L.night={d:AP.downs.length,k:AP.deaths.length,boss:false,day:S.day};
+    if(L.night&&S.z.some(z=>z.boss&&z.hp>0))L.night.boss=true;
+    if(S.hour===6&&L.night){(day.nights=day.nights||[]).push({day:L.night.day,boss:L.night.boss,downs:AP.downs.length-L.night.d,deaths:AP.deaths.length-L.night.k});L.night=null;}
     /* hourly: who has not moved */
     for(const s of S.sv){if(!s.w||!isFinite(s.w.x)||!isFinite(s.w.y)||!isFinite(s.hp)){flag('survivor has a broken number',(s.name||s.id)+' hp '+s.hp);continue;}
       const p=L.pos.get(s),key=Math.round(s.w.x*4)+','+Math.round(s.w.y*4)+','+s.mode;if(p&&p.key===key)p.n++;else L.pos.set(s,{key,n:0});
@@ -50,9 +54,9 @@ async def main():
         br = await p.chromium.launch(); ctx, pg, errs = await R.open_game(br, port, 'long%d' % seed)
         await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("(v)=>{AP.exp=true;AP.long=v}", os.environ.get('AP_LONG', '1') == '1')
         f = open(os.path.join(out, 's%d.jsonl' % seed), 'a'); n = 0
-        checkin = float(os.environ.get('CHECKIN_MIN', '0')); away_h = float(os.environ.get('AWAY_H', '24'))   # a player profile: CHECKIN_MIN real minutes of play, then AWAY_H real hours away (the game's own away credit), MAX_DAYS check-ins
+        checkin = float(os.environ.get('CHECKIN_MIN', '0')); first = float(os.environ.get('FIRST_MIN', '0')); away_h = float(os.environ.get('AWAY_H', '24'))   # a player profile: CHECKIN_MIN real minutes of play, then AWAY_H real hours away (the game's own away credit), MAX_DAYS check-ins
         while n < maxd and time.time() - t0 < budget:
-            d = await pg.evaluate(DAY, max(1, round(checkin * 3.6)) if checkin else 24)
+            d = await pg.evaluate(DAY, max(1, round((first if n == 0 and first else checkin) * 3.6)) if checkin else 24)
             if checkin:
                 d['checkin'] = n + 1; d['realDay'] = round((n + 1) * (away_h + checkin / 60) / 24, 2)
                 d['away'] = await pg.evaluate("(ms)=>{__awayMs+=ms;let r=null;try{r=ZH.awayCredit(ms);ZH.tripUpdate();}catch(e){r={err:String(e)}}return r&&{hours:r.hours,err:r.err}}", away_h * 3600 * 1000)

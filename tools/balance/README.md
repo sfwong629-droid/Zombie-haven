@@ -68,3 +68,8 @@ a Farmer per three farms and water buildings, a Medic, a Cook, an Engineer). `AP
 A player who checks in (21 Nov): `CHECKIN_MIN=10 AWAY_H=24 python3 tools/balance/long_study.py SEED CHECKINS BUDGET_SECONDS OUT_DIR` plays 10 real
 minutes, then is away 24 real hours (the game's own `awayCredit`), CHECKINS times; one line per check-in with `realDay`. The daily player of
 `docs/project/13-LONG-GAME.md` is 10 and 24, the keen player 20 and 12. About 20 to 60 seconds a check-in.
+
+## The balance check (21 Nov 2026)
+`tools/balance/check.sh quick|full OUT_DIR` plays the three test players and prints the scorecard (`scorecard.py`); `KNOBS.md` lists every balance
+number, where it is and which scorecard line it moves. The routine is in `docs/project/13-LONG-GAME.md`, section 9: check before, change one number, check after.
+`FIRST_MIN=30` gives a player a longer first sitting.
