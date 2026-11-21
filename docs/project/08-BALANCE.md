@@ -277,6 +277,18 @@ What this shows:
 
 **Long-run test, 21 Nov (build 3D.243).** Ten bot towns, about 1,800 game days, the longest 260 days. Full report: `12-LONG-RUN.md`. The main numbers: level 20 on game day 119 to 141 (14 to 16 hours of open play); 2 of 10 towns lost everyone (raiders by day, a boss night the same evening); no deaths in era 1, then 24 to 39 from level 11 on; boss nights every 3 days (the usual one brings 36 zombies in era 1, 58 in era 2, 81 to 90 later: still about half the targets or less); wood short for the first 70 to 95 days, medicine at 0 for 24 to 68 days, scrap at its cap from about day 30; nothing to spend on after level 20. The old bot could not place the Clinic and never built the Fort, so every earlier measurement on this page stops being reliable after about level 7; the bot is fixed for long runs (`AP.long`).
 
+**The safety set, 21 Nov (builds 3D.245 to 3D.252).** Three changes of `13-LONG-GAME.md`: no raid on a boss day or the day before; when nobody is left standing the neighbours come by themselves (at most once every 3 game days); a boss night every 5 game days from level 11. Bot, the game open all the time, seeds 3, 11 and 13, 45 game days each (run on 3D.247 plus the 3D.251 change):
+
+| What | Before (3D.243, same seeds, first 45 days) | After |
+|---|---|---|
+| Deaths | seed 11 lost everyone on day 40 | 0, 2 and 0 |
+| Most deaths in one day | the whole town | 0 to 1 |
+| Towns lost | seed 11 | none |
+| Raids the day before a boss night (longer run on 3D.247) | 11 to 15 | 1 to 2 |
+| The rescue came by itself | - | once (seed 13, about day 43) |
+
+One Toll raid was still seen on a boss day at 08:00 (seed 11, day 36). The likely cause is a raid started by an event (a refused Toll Kings demand, a revenge raid); 3D.252 holds those back too. Not yet measured again after 3D.252. Not a full scorecard: 45 game days only, one kind of player.
+
 **Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
 
 Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).

@@ -71,8 +71,8 @@ Compared with how Fallout Shelter (a lunchbox to open at once, objectives that k
 - **Night size and zombie strength are set by the town's level, and a little by how strong the town is (fighters and walls). Never by the day count.** Today the day count sets how many zombies come each night, which kinds come, how strong a boss and its crowd are, and how many raiders come; and the top limit keeps rising after day 60, for ever.
 - **The limit of 60 zombies standing at once holds for every kind of attack**, the weekly crisis too. The rest wait their turn outside, as in the big horde.
 - **A breather after a bad night:** after a night the town lost, the next two nights are ordinary and a little smaller. (The target already says the next attack is not stronger because the town lost.)
-- **Decided 21 Nov (W172):** never a raid on a boss day or the day before; and when every survivor is down, the Greenwater truck comes by itself, at most once every few days, so a town is never lost.
-- **Decided 21 Nov (W173):** a boss night every 3 game days in eras 1 and 2, every 5 from level 11.
+- **Decided 21 Nov (W172):** never a raid on a boss day or the day before; and when every survivor is down, the Greenwater truck comes by itself, at most once every few days, so a town is never lost. **Built in 3D.245, 246, 251 and 252.**
+- **Decided 21 Nov (W173):** a boss night every 3 game days in eras 1 and 2, every 5 from level 11. **Built in 3D.247.**
 - Already decided and waiting to be built: healing (W130), which should cut the 9 to 10 downs a day of a level 20 town.
 
 **The danger budget** the routine checks: a handful of deaths on the road to level 15; at the top, with 40 to 50 people, at most about one death a real week; never more than 2 in one night; no town lost.
@@ -277,7 +277,7 @@ The bot measures pace, stock, deaths and sizes. It cannot say whether a night wa
 
 ## 10. The order to do it in
 1. **The routine's tools** (Balance chat; the game is not changed): the scorecard, the three players, the list of numbers. Then a first full scorecard of today's game, as the "before" for everything below.
-2. **Safety** (decided): no raid on or before a boss day; the truck when everyone is down; bosses every 5 days from level 11.
+2. ~~**Safety**: no raid on or before a boss day; the truck when everyone is down; bosses every 5 days from level 11.~~ Built 21 Nov (3D.245 to 3D.252). Three bot towns, 45 game days: 0, 2 and 0 deaths, none lost (`08-BALANCE.md`, section 12).
 3. **Rule 3:** danger by level.
 4. **Rule 1**, one change per build: away production to a day's worth; newcomers at the gate; building, crafting and research in real time; then the level timers.
 5. **Sinks already approved:** crafting with parts, Salvage, research by era. Then Studies and Banner honours.
