@@ -13,7 +13,12 @@
     const d = D[t]; if (!ok(t) || busy() >= 2 || (S.sites || []).some((q) => q.type === t) || W.buildings.some((q) => q.upg && q.upg.to === t)) return false;
     if (d.up) {   // upgrade the lowest building of the family that leads here
       const prev = Object.keys(D).find((k) => D[k].next === t); const b = prev && W.buildings.find((q) => q.type === prev && !q.upg && !q.burnt);
-      if (!b || !Z.canPay(Z.bCost(d)) || !Z.upgradeCheck(b).ok) return false; Z.upgradeBuilding(b); AP.built.push('^' + t + '@d' + S.day); return true;
+      if (!b || !Z.canPay(Z.bCost(d)) || !Z.upgradeCheck(b).ok) return false;
+      if (AP.long && d.w * d.h !== b.w * b.h) {   /* AP.long (21 Nov): an upgrade with a bigger footprint (Clinic 2x1, Workshop...) must be placed by the player; the old bot could not, and its whole plan waited behind the Clinic for good */
+        let spot = null; for (let rot = 0; rot < 4 && !spot; rot++) { const rd = Wd.rotDef(d, rot); for (let y = b.y - rd.h + 1; y <= b.y + b.h - 1 && !spot; y++) for (let x = b.x - rd.w + 1; x <= b.x + b.w - 1 && !spot; x++) if (Wd.placementCheck(W, x, y, rd, b).ok) spot = { x, y, rot, w: rd.w, h: rd.h }; }
+        if (!spot) { if (!AP.noRoom) AP.noRoom = {}; if (!AP.noRoom[t]) { AP.noRoom[t] = S.day; AP.events.push('no room to grow into ' + t + '@d' + S.day); } return false; }
+        if (!Z.upgradeBuilding(b, spot)) return false; AP.built.push('^' + t + '@d' + S.day); return true; }
+      Z.upgradeBuilding(b); AP.built.push('^' + t + '@d' + S.day); return true;
     }
     if (!Z.canPay(Z.bCost(d))) return false;
     const B = Wd.BUILD, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2; let best = null, bd = 1e9;
@@ -86,10 +91,10 @@
     // accept move-in requests (a player would)
     let g = 0; while (S.requests.length && document.getElementById('acceptReq') && g++ < 10) document.getElementById('acceptReq').click();
     // expeditions: one squad out at a time
-    if (on('exp') && AP.exp && !S.trip && S.sv.length >= 5 && S.food > 12 && S.water > 12) {
+    if (on('exp') && AP.exp && !S.trip && S.sv.length >= 5 && (AP.long ? S.food > Math.max(20, .4 * Z.supplyCap()) && S.water > Math.max(20, .4 * Z.supplyCap()) : S.food > 12 && S.water > 12)) {   /* AP.long (21 Nov): a trip only from a pantry that is 40% full; at 12 the trips' own supplies kept water near 10 for 100 days */
       const sq = Z.expAutoSquad(3).map((q) => q.id), lvl = S.sv.reduce((a, q) => a + q.l, 0) / S.sv.length;
       const jn = (r) => Z.jobList().some((x) => (x.j.need[r] || 0) > (x.j.got[r] || 0)) && (S[r] || 0) < 3;
-      const dest = jn('meds') && !Z.expLocked('pharmacy') ? 'pharmacy' : jn('fuel') && !Z.expLocked('gasstation') ? 'gasstation' : (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' || dest === 'gasstation' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
+      const dest = (jn('meds') || (AP.long && (S.meds || 0) < 8)) && !Z.expLocked('pharmacy') ? 'pharmacy' : jn('fuel') && !Z.expLocked('gasstation') ? 'gasstation' : (S.wood || 0) < 15 && !Z.expLocked('lumberyard') ? 'lumberyard' : Z.hqTier() >= 2 && (S.stone || 0) < 15 && !Z.expLocked('quarrysite') ? 'quarrysite' : !Z.expLocked('warehouse') ? 'warehouse' : !Z.expLocked('pharmacy') ? 'pharmacy' : 'houses', risk = dest === 'warehouse' || dest === 'quarrysite' || dest === 'gasstation' ? 'medium' : lvl >= 4 && dest === 'pharmacy' ? 'medium' : 'low';
       if (sq.length >= 2) { const r = Z.startExpedition(dest, risk, sq); if (r.ok) AP.events.push('exp ' + dest + '/' + risk + '@d' + S.day); }
     }
     /* 3D.110 the newer systems, as a sensible player uses them */
@@ -110,6 +115,11 @@
     else if (on('jobs') && S.hour === 8 && S.sv.filter((q) => FIGHT.includes(q.job) && q.hp > 0).length < 2) { const c = S.sv.filter((q) => !FIGHT.includes(q.job) && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode)).sort((a, b) => b.l - a.l)[0]; if (c && Z.changeProfession(c, 'Guard')) AP.events.push('guard ' + c.name + '@d' + S.day); }
     // give civilians (grown-up children, newcomers) a useful job
     if (on('jobs') && S.hour === 9 && !AP.lockJobs) for (const c of S.sv.filter((q) => q.job === 'Civilian' && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))) { const fighters = S.sv.filter((q) => FIGHT.includes(q.job)).length; Z.changeProfession(c, fighters < 3 ? 'Guard' : !S.sv.some((q) => q.job === 'Farmer') ? 'Farmer' : !S.sv.some((q) => q.job === 'Engineer') ? 'Engineer' : 'Scavenger'); }
+    /* AP.long (21 Nov): a roster a player would keep in a town that lasts months: one in three a Guard, a Farmer per three farms and water buildings, a Medic, a Cook, an Engineer; one change a day */
+    if (AP.long && on('jobs') && S.hour === 9 && !AP.lockJobs && Z.changeProfession) { const n = (j) => S.sv.filter((q) => q.job === j).length, P = S.sv.length, farms = W.buildings.filter((b) => ['farm', 'food', 'water'].includes(D[b.type].fam)).length;
+      const wantJ = n('Guard') + n('Police Officer') < Math.max(2, Math.round(P / 3)) ? 'Guard' : n('Farmer') < Math.max(1, Math.ceil(farms / 3)) ? 'Farmer' : P >= 6 && !n('Medic') ? 'Medic' : P >= 7 && !n('Cook') ? 'Cook' : !n('Engineer') ? 'Engineer' : null;
+      const spare = wantJ && S.sv.filter((q) => (q.job === 'Civilian' || (q.job === 'Scavenger' && n('Scavenger') > Math.max(1, Math.floor(P / 5))) || (q.job === 'Medic' && n('Medic') > 1 && wantJ !== 'Medic') || (q.job === 'Engineer' && n('Engineer') > 1 && wantJ !== 'Engineer')) && !q.spec && !q.post && q.hp > q.max * .5 && !['down', 'hospital', 'away'].includes(q.mode))[0];
+      if (spare && Z.changeProfession(spare, wantJ)) AP.events.push('job ' + wantJ + '@d' + S.day); }
     // beds: a sensible player makes room before the town is full (newcomers only come with a free bed)
     if (on('plan') && S.hour === 10 && Z.popNow() >= Z.popCap() - 1 && Z.bedCount() <= Z.rankRoom()) { if (!place('cabin')) place('tent'); }
     // research
@@ -130,9 +140,10 @@
     // the building the next town star needs (Upgrade Town "Build X" condition)
     if (on('rank')) { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
     // build plan
-    let next = null; const want = {}; if (on('plan')) for (const t of (AP.plan || PLAN)) { want[t] = (want[t] || 0) + 1; if (have(t) < want[t]) { next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
+    const blocked = (t) => AP.long && D[t] && ['meds', 'cloth', 'fuel'].some((r) => (Z.bCost(D[t])[r] || 0) > (S[r] || 0));   /* AP.long: a player skips a building he has no medicine, cloth or fuel for and builds the next one (the old bot waited for a Clinic's 2 medicine for 80 days) */
+    let next = null; const want = {}; if (on('plan')) for (const t of (AP.plan || PLAN)) { want[t] = (want[t] || 0) + 1; if (blocked(t)) continue; if (have(t) < want[t]) { if (AP.long) { if (S.mat - D[t].mat >= reserve * .5 && place(t)) break; if (ok(t) && !Z.canPay(Z.bCost(D[t])) && !next) next = t; continue; }   /* AP.long: what cannot be built now does not hold up the rest; scrap and wood are saved for the first one that is only short of materials */ next = t; if (S.mat - D[t].mat >= reserve * .5) { place(t); next = null; } break; } }
     AP.saving = next ? D[next].mat + reserve * .5 : 0; AP.saveW = next ? D[next].wood || 0 : 0; AP.core = ['barrel', 'farm', 'tent', 'bench'].every((t) => have(t) > 0);
-    if (on('plan') && PLAN.every((t, i) => !ok(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length)) for (const t of LATE) if (ok(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve) place(t); break; }
+    if (on('plan') && (AP.long || PLAN.every((t, i) => !ok(t) || blocked(t) || have(t) >= PLAN.slice(0, i + 1).filter((q) => q === t).length))) for (const t of LATE) if (ok(t) && !blocked(t) && have(t) < (t === 'tent' ? 5 : t === 'cabin' ? 3 : t === 'scrapyard' ? 2 : 1)) { if (S.mat - D[t].mat >= reserve && place(t)) break; if (!AP.long) break; }
     // walls from day 2
     if (on('walls') && S.day >= 2 && AP.core && Z.hqTier() >= 2 && !AP.nowalls)   /* V3D.26: walls once the Lodge stands (before that, wood goes to buildings) */ walls(Math.max(reserve + 6, AP.saving));   /* V3D.26: walls once the Lodge stands */   /* economy first; walls only from spare parts */
     // territory

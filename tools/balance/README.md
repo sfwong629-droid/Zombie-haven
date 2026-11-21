@@ -51,3 +51,16 @@ about 4-5, a Rain Barrel (about 3 water a day) about 2, and every farm drinks 2 
 - Trips, same 4-person squad (level 4), 2000 trips each, squad decides the cards: someone lost on Houses/low 4.5% → 5.4% (noise), Lumber Yard/medium 18% → 10%, Quarry/high 37% → 25%, Warehouse/high 36% → 24%; hurt and loot unchanged.
 - Bot towns, 6 seeds × 15 days: too noisy to compare wood per day (the opening is unseeded and the bot only sends trips with food and water above 12). Bot towns keep only 19–48 scrap, so a Pallet Yard there mostly waits at its floor; tester towns had 72–480.
 - Toll Kings camp: the Collector dies inside 60 s in every probe (before the first patrol at 70 s), so since 3D.169 no patrols come at all. Level 6 × 4 stubborn: 50% wipe from the starting guards alone; retreating at half strength: no wipes. Level 9 × 8: 80 loot, 0–0.3 downs. Patrol counts left as they are.
+
+## Long runs (21 Nov 2026, Balance chat)
+```
+python3 tools/balance/long_study.py SEED MAX_DAYS BUDGET_SECONDS OUT_DIR    # one town; a line of JSON per game day, a backup every 10 days
+python3 tools/balance/long_summary.py OUT_DIR                               # the tables
+python3 tools/balance/load_probe.py BACKUP.json 'JS arrow function'         # open a backup headless and ask it something
+node tools/qa/old_town_shots.js BACKUP.json OUT_DIR                         # phone screenshots of every main menu in that town
+```
+About 5 to 30 seconds a game day, so 250 days take about 100 minutes; two towns at once on two cores.
+`long_study.py` sets `AP.long` (off everywhere else, so older numbers stay comparable): the bot places upgrades that need more ground
+(the old bot could not place the Clinic, and its whole plan waited behind it: no old-bot town ever built the Fort), skips what it cannot
+build yet, sends trips only from a pantry 40% full, goes to the Pharmacy when medicine is under 8, and keeps a roster (one in three a Guard,
+a Farmer per three farms and water buildings, a Medic, a Cook, an Engineer). `AP_LONG=0` runs the old bot. Report: `docs/project/12-LONG-RUN.md`.
