@@ -60,4 +60,4 @@ Two more new-bot and old-bot towns **lost everyone** (section 3, finding 2).
 22. Everything else held up with 40 people and 61 buildings: People, a survivor's four tabs, Town's four tabs, Upgrade, Build's four tabs, Inventory, Explore, the event log, Workshop, Goals and the Trophy shelf. Nothing else stuck out of the screen.
 
 ## 4. Open questions for the owner
-See `05-NOW.md`, Balance chat (W169 to W172).
+See `05-NOW.md`, Balance chat (W171 to W174).
