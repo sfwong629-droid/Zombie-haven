@@ -99,12 +99,12 @@ function winGame() {
 }
 /* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
 let dangerT = -1, dangerV = 1;
-/* Phase 1 horde ceiling (owner, Nov 8): zombies grow tougher with the days, but only up to a ceiling set by the Haven's rank.
-   A town that hasn't upgraded stops getting harder; pressing Upgrade Town raises the ceiling. At the top rank it keeps creeping up slowly for veterans. */
-const HORDE_DAY_CAP = [0, 9, 14, 20, 28, 38];
-const hordeCap = (r = S.rank || 1) => HORDE_DAY_CAP[Math.min(r, HORDE_DAY_CAP.length - 1)] + (r >= HORDE_DAY_CAP.length - 1 ? Math.max(0, S.day - 60) * .25 : 0);
-const HORDE_SLOW = { after: 10, rate: .6 };   /* 3D.171 owner: walkers grow more slowly after day 10 ("but not too slow"): day 20 hits like day 16 did */
-const hDay = () => { const d = S.day <= HORDE_SLOW.after ? S.day : HORDE_SLOW.after + (S.day - HORDE_SLOW.after) * HORDE_SLOW.rate; return Math.min(d, ((window.ZH_BAL || {}).noCeil ? 1e9 : hordeCap())); };
+/* 3D.253 (owner, 21 Nov, W176; rule 3 of docs/project/13-LONG-GAME.md): zombies grow with the town's LEVEL, never with the count of game days.
+   Before, the night's size, the kinds that come, the raiders' numbers and the boss all followed the game day (slower after day 10, up to a ceiling
+   set by the rank, which kept creeping up after day 60 for ever), so a town played for more minutes met stronger zombies at the same level.
+   LVL_THREAT[level] is the "day strength" a town of that level meets: about the game day a once-a-day player reaches that level on today. */
+const LVL_THREAT = [0, 1, 3, 5, 7, 9, 12, 14, 16, 18, 20, 23, 26, 29, 32, 35, 36, 37, 38, 39, 40];
+const hDay = () => LVL_THREAT[Math.max(1, Math.min(LVL_THREAT.length - 1, S.lvl || 1))];
 function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
   if (tick - dangerT < 300 && dangerT >= 0) return dangerV; dangerT = tick;
   let st = 0; for (const q of S.sv) if (q.hp > 0 && q.mode !== 'away') st += isFighter(q) ? 8 * (q.l || 1) + weaponOf(q).atk : 1.2 * (q.l || 1);

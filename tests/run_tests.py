@@ -841,12 +841,12 @@ async def t_convoy(br, port, t):   # Phase 1 comeback convoy
 async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field Notes
     ctx, pg, errs = await open_game(br, port, 'notes')
     await close_popups(pg)
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const d0=S.day,r0=S.rank;S.day=30;S.rank=1;out.c1=ZH.hDay();S.rank=3;out.c3=ZH.hDay();S.rank=5;S.day=80;out.c5=ZH.hDay();S.day=5;S.rank=4;out.early=ZH.hDay();S.day=d0;S.rank=r0;
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};const d0=S.day,l0=S.lvl;S.lvl=1;S.day=2;out.c1=ZH.hDay();S.day=300;out.c1late=ZH.hDay();S.lvl=8;S.day=5;out.c8=ZH.hDay();S.day=300;out.c8late=ZH.hDay();S.lvl=20;out.c20=ZH.hDay();S.day=d0;S.lvl=l0;
       window.ZH_INTRO=true;S.z=[];S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));for(const b of ZH.world.buildings)S.intro['b:'+b.type]=1;delete S.intro['z:runner'];delete S.intro['z:brute'];ZH.spawn(8,3,'runner');const z=S.z[S.z.length-1];z.mode='idle';ZH.step(61);const m=document.getElementById('eventModal');out.card=m?m.textContent:'';out.seen=!!S.intro['z:runner'];
       const b=[...m.querySelectorAll('button')].find(x=>/No more tips/.test(x.textContent));if(b)b.click();out.off=!!S.introOff;
       ZH.spawn(8,3,'brute');S.z[S.z.length-1].mode='idle';ZH.step(61);out.silent=!!S.intro['z:brute']&&!document.getElementById('eventModal').textContent;
       out.notes=ZH.fieldNotesHtml();return out}""")
-    t.ok(r['c1'] == 9 and r['c3'] == 20 and r['c5'] == 43 and r['early'] == 5, f"the threat stops growing at the rank's ceiling (rank 1: day 9, rank 3: day 20, rank 5: day 38 + a slow creep) {r['c1'], r['c3'], r['c5'], r['early']}")
+    t.ok(r['c1'] == r['c1late'] and r['c8'] == r['c8late'] and r['c1'] < r['c8'] < r['c20'], f"3D.253 the threat follows the town's level, never the day count {r['c1'], r['c1late'], r['c8'], r['c8late'], r['c20']}")
     t.ok('NEW: RUNNER' in r['card'] and 'What to do' in r['card'] and r['seen'], f"a new zombie type gets a Field Notes card {r}")
     t.ok(r['off'] and r['silent'], f"'No more tips' stops the cards but still records the note {r['off'], r['silent']}")
     t.ok('Runner' in r['notes'] and 'Brute' in r['notes'], f"Guide → Field Notes lists what was seen")

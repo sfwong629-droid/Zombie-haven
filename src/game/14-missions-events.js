@@ -435,7 +435,7 @@ function rankUnlocks(r) {   /* V2.39: what reaching star r opens up (buildings, 
   const w = Object.values(Wd.WALL_DEFS).filter((d) => (d.rank || 1) === r).map((d) => d.name), e = Object.values(TOWN_EVENTS).filter((x) => (x.rank || 1) === r).map((x) => x.icon + ' ' + x.name);
   const tr = Object.values(TRAP_DEFS).filter((d) => d.rank === r).map((d) => d.name);
   const out = []; if (b.length) out.push('Buildings: ' + b.join(', ')); if (w.length) out.push('Walls: ' + w.join(', ')); if (tr.length) out.push('Traps: ' + tr.join(', ')); if (e.length) out.push('Events: ' + e.join(', '));
-  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); if (r < HORDE_DAY_CAP.length) out.push(`☠ The zombie threat ceiling rises: hordes can grow to their day-${HORDE_DAY_CAP[r]} strength (was day ${HORDE_DAY_CAP[r - 1] || HORDE_DAY_CAP[1]})`); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
+  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); out.push('☠ Zombies grow with the town\'s level, not with the days: each level brings slightly bigger nights'); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
 }
 
 function rankConds() {

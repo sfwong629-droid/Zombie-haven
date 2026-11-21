@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.252', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.253', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2575,12 +2575,12 @@ function winGame() {
 }
 /* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
 let dangerT = -1, dangerV = 1;
-/* Phase 1 horde ceiling (owner, Nov 8): zombies grow tougher with the days, but only up to a ceiling set by the Haven's rank.
-   A town that hasn't upgraded stops getting harder; pressing Upgrade Town raises the ceiling. At the top rank it keeps creeping up slowly for veterans. */
-const HORDE_DAY_CAP = [0, 9, 14, 20, 28, 38];
-const hordeCap = (r = S.rank || 1) => HORDE_DAY_CAP[Math.min(r, HORDE_DAY_CAP.length - 1)] + (r >= HORDE_DAY_CAP.length - 1 ? Math.max(0, S.day - 60) * .25 : 0);
-const HORDE_SLOW = { after: 10, rate: .6 };   /* 3D.171 owner: walkers grow more slowly after day 10 ("but not too slow"): day 20 hits like day 16 did */
-const hDay = () => { const d = S.day <= HORDE_SLOW.after ? S.day : HORDE_SLOW.after + (S.day - HORDE_SLOW.after) * HORDE_SLOW.rate; return Math.min(d, ((window.ZH_BAL || {}).noCeil ? 1e9 : hordeCap())); };
+/* 3D.253 (owner, 21 Nov, W176; rule 3 of docs/project/13-LONG-GAME.md): zombies grow with the town's LEVEL, never with the count of game days.
+   Before, the night's size, the kinds that come, the raiders' numbers and the boss all followed the game day (slower after day 10, up to a ceiling
+   set by the rank, which kept creeping up after day 60 for ever), so a town played for more minutes met stronger zombies at the same level.
+   LVL_THREAT[level] is the "day strength" a town of that level meets: about the game day a once-a-day player reaches that level on today. */
+const LVL_THREAT = [0, 1, 3, 5, 7, 9, 12, 14, 16, 18, 20, 23, 26, 29, 32, 35, 36, 37, 38, 39, 40];
+const hDay = () => LVL_THREAT[Math.max(1, Math.min(LVL_THREAT.length - 1, S.lvl || 1))];
 function danger() {   /* adaptive: tracks how strong the Haven's people are right now (levels and weapons), plus a slow daily creep; a town that just lost its fighters gets weaker waves, a strong one never gets comfortable */
   if (tick - dangerT < 300 && dangerT >= 0) return dangerV; dangerT = tick;
   let st = 0; for (const q of S.sv) if (q.hp > 0 && q.mode !== 'away') st += isFighter(q) ? 8 * (q.l || 1) + weaponOf(q).atk : 1.2 * (q.l || 1);
@@ -4360,7 +4360,7 @@ function rankUnlocks(r) {   /* V2.39: what reaching star r opens up (buildings, 
   const w = Object.values(Wd.WALL_DEFS).filter((d) => (d.rank || 1) === r).map((d) => d.name), e = Object.values(TOWN_EVENTS).filter((x) => (x.rank || 1) === r).map((x) => x.icon + ' ' + x.name);
   const tr = Object.values(TRAP_DEFS).filter((d) => d.rank === r).map((d) => d.name);
   const out = []; if (b.length) out.push('Buildings: ' + b.join(', ')); if (w.length) out.push('Walls: ' + w.join(', ')); if (tr.length) out.push('Traps: ' + tr.join(', ')); if (e.length) out.push('Events: ' + e.join(', '));
-  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); if (r < HORDE_DAY_CAP.length) out.push(`☠ The zombie threat ceiling rises: hordes can grow to their day-${HORDE_DAY_CAP[r]} strength (was day ${HORDE_DAY_CAP[r - 1] || HORDE_DAY_CAP[1]})`); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
+  out.push(`Room for ${rankRoom() + 4} people (was ${rankRoom()}), and a newcomer hears of the Haven (needs a free bed)`); out.push('☠ Zombies grow with the town\'s level, not with the days: each level brings slightly bigger nights'); out.push(`+2 food, +2 water, everyone heals 25%`); out.push(`+${4 + r} scrap on upgrade`); return out;
 }
 
 function rankConds() {
@@ -6669,7 +6669,7 @@ const INTRO = {
   'f:down': ['🩸', 'Downed survivors', 'A survivor knocked to 0 HP is down: they bleed out unless someone carries them to medical care in time.', 'Tap Send rescue on the alert. A medical building and a Medic give them much longer.'],
   'f:boss': ['☠', 'Boss night', 'Scouts saw a boss gathering a horde. It attacks tonight at 21:00.', 'Re-arm the traps, set a Noise Lure, give the gunners ammo and heal the hurt (a Medical Tent: hurt fighters go there before dark). Anyone downed: tap them, then Bandage or Send rescue.'],
   'f:rank': ['🏡', 'Levelling up the Haven', 'The Haven grows through 20 levels. Each needs enough people and buildings; then press Upgrade and wait (3x faster while you play).', 'Each level unlocks buildings and beds, and lets the zombies get tougher too. Upgrade when you are ready.'],
-  'f:ceiling': ['☠', 'The threat ceiling', 'Zombies grow tougher every day, but only up to a ceiling set by your Haven level.', 'If the nights feel too hard, hold off on the next upgrade and build up first.'],
+  'f:ceiling': ['☠', 'The threat follows your level', 'Zombies grow with your Haven level, never just because days pass.', 'If the nights feel too hard, hold off on the next upgrade and build up first.'],
   'f:explore': ['🧭', 'Expeditions', 'Send a squad out to scavenge places on the map: food, scrap, medicine, fuel, ammo, and sometimes survivors.', 'Higher risk brings more loot and more danger. Always keep a fighter at home.'],
   'f:power': ['⚡', 'Power', 'Generators burn fuel and each gives 4 power. Powered buildings take it in order: water first, the Ammo Factory last.', 'Keep fuel coming (Gas Station trips, wrecks, a Fuel Still). Food and water never depend on power.'],
   'f:ammo': ['🔸', 'Ammo', 'Guns now use rounds from the town stock (the 🔸 count). Out of ammo, a gunner clubs with the empty gun.', 'A Mechanic at an Ammo Bench makes about 16 rounds a day. Crossbows and melee never need ammo.'],
@@ -6832,7 +6832,7 @@ const GUIDE_TXT = [
   ['Gear', 'Tap a survivor → Gear to equip weapons, clothes and accessories from the stash. The Armory, crafting, the trader and expeditions bring new gear. Dress for the apocalypse you want.'],
   ['Explore', 'Send a squad from the Explore button; trips run in real time, even with the game closed. Losses are permanent. The world outside is big and rude.'],
   ['Renown and levels', 'Building, goals and victories earn Renown. The Haven grows through 20 levels in four eras (the City from level 16). A level needs enough people and buildings; then press Upgrade and wait (faster while you play). Levels 5→6 and 10→11 also need a Banner: clear a stronghold, beat or ally with a faction, or finish a civic project. Fame, apocalypse edition.'],
-  ['The threat ceiling', 'The dead get tougher every day, but only up to a ceiling set by your Haven level (levels 1-3: day 9, 4-6: day 14, 7-9: day 20, 10-12: day 28, 13-15: day 38, then slowly beyond). Level up when you are ready for it.'],
+  ['The threat follows your level', 'The dead grow with your Haven level: each level brings slightly bigger nights, and new kinds turn up as you climb. Waiting never makes them stronger. Level up when you are ready for it.'],
   ['Power', 'Generators burn fuel (a Mechanic saves a quarter) for 4 power each. Water gets power first, the Ammo Factory last. Food and water never depend on it: a pump without power works by hand. Electricity: the luxury of kings.'],
   ['Ammo', 'They use rounds from the town stock (🔸); crossbows and melee never do. Out of ammo, a gunner clubs with the empty gun. An Ammo Bench with a Mechanic makes about 16 a day, a powered Ammo Factory about 64. Raiders and the Military Checkpoint drop rounds. Guns are hungry.'],
   ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go on any open ground, best on the zombies\' paths. They wear out: re-arm with scrap before night. Scouts warn you at noon when a boss is coming. Rude surprises, on purpose.'],
