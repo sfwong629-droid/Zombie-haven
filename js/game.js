@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.55.0', BUILD_TAG = '3D.250', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.55.0', BUILD_TAG = '3D.251', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1011,12 +1011,12 @@ function radioHelp() {
   note('critical', '📻 Help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: `A rescue team is coming (${fast ? 'about half an hour' : 'about an hour'}). Hold on.` }); banner('📻 HELP IS COMING'); saveGame(); return true;
 }
 /* 3D.246 (owner, 21 Nov, W172): a town is never lost. When every survivor in town is down (nobody left to carry anyone), the neighbours
-   come by themselves, without being called and whatever is owed, at most once every AUTO_HELP_DAYS game days. They ask the same favour.
+   come by themselves, without being called, whatever is owed and even with the Camp wrecked (3D.251), at most once every AUTO_HELP_DAYS game days. They ask the same favour.
    (2 of 10 bot towns bled out to the last person: docs/project/12-LONG-RUN.md. The truck of W129 will replace how they arrive.) */
 const AUTO_HELP_DAYS = 3;
 function helpTick() {
   { const h0 = S.help || {};
-    if (!h0.coming && (h0.auto || 0) <= S.day && campB() && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
+    if (!h0.coming && (h0.auto || 0) <= S.day && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
       S.help = { ...h0, coming: tick + 300, auto: S.day + AUTO_HELP_DAYS, self: true };
       note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;

@@ -18,7 +18,7 @@ DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day
   let stepErr=null;
   for(let h=0;h<(H||24);h++){for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
       const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
-      for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;if(z.human)day.raid++;}}
+      for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;if(z.human){day.raid++;(day.raidAt=day.raidAt||[]).push((z.fk||'?')+'@'+S.hour+(S.day===S.nextBoss||S.bossOn!=null||S.bossDay===S.day?'!boss':''));}}}
     if(stepErr)break; try{AP.hour();}catch(e){stepErr='AP.hour '+String(e&&e.stack||e).slice(0,300);break;}
     /* a night runs 20:00 to 06:00: who went down, who died, was it a boss night (for the scorecard) */
     if(S.hour===20)L.night={d:AP.downs.length,k:AP.deaths.length,boss:false,day:S.day};
@@ -37,7 +37,7 @@ DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day
   /* daily checks */
   for(const k of ['food','water','wood','stone','mat','fuel','meds','ammo','cloth','ren','rp'])if(S[k]!=null&&(!isFinite(S[k])||S[k]<-0.01))flag('stock is negative or not a number',k+' = '+S[k]+' day '+S.day);
   for(const j of (S.sites||[])){const d0=L.site.get(j)||(L.site.set(j,S.day),S.day);if(S.day-d0===10)flag('building site unfinished after 10 game days',((j.b&&j.b.type)||j.type||'?')+' day '+S.day);}
-  day.zLeft=S.z.filter(z=>z.hp>0&&!z.human).length;day.zAll=S.z.length;
+  day.autoHelp=(S.help&&S.help.auto)||0;if(day.raidAt)day.raidAt=[...new Set(day.raidAt)];day.zLeft=S.z.filter(z=>z.hp>0&&!z.human).length;day.zAll=S.z.length;
   const snap=AP.snap();Object.assign(day,snap);
   day.downs=AP.downs.length-L.downs0;L.downs0=AP.downs.length;L.deaths0=L.deaths0||0;day.deathsDay=AP.deaths.length-L.deaths0;L.deaths0=AP.deaths.length;day.dayEnd=S.day;day.lvLeft=S.lvUp?Math.round(S.lvUp.left||0):null;day.unmet=ZH.rankConds?ZH.rankConds().filter(c=>!c.ok&&c.have<c.need).map(c=>c.name+' '+c.have+'/'+c.need).join('; '):'';
   day.lvl=S.lvl||1;day.banners=(S.banners||[]).map(b=>b.route).join(',');day.cloth=Math.round(S.cloth||0);day.inv=(S.inv||[]).length;
