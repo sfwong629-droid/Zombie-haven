@@ -8,7 +8,7 @@ How to use it: before changing a number, find the target it serves. If a change 
 
 ## 1. Pace
 - **First sitting (about 30 minutes): level 3**, with a first small zombie night won. The first sitting shows the whole loop: build, gear up, fight, win. Level 4 by the end of the first day.
-- **Level 15 in about 4 to 6 weeks** for a daily player, so roughly two weeks per era.
+- ~~**Level 15 in about 4 to 6 weeks** for a daily player, so roughly two weeks per era.~~ **Level 15 in 3 to 4 weeks and the main ending (level 20) in about 6 weeks** for a daily player; the extras after it can take longer (owner, 21 Nov, W182).
 - **A check-in takes 5 to 10 minutes** and that is enough to keep up: collect, queue building, gear up, send a trip, handle one event. Longer play (raids, strongholds, decorating) is always possible and never needed.
 - **Work first, timer second.** A level-up waits mostly on the player's own work (buildings built, people housed, a goal done). The level timer is a floor that is usually over by the time the work is done. The game rarely says "just wait".
 - **Something new every level:** at least one new building and one new piece of gear. **Something big every era:** each Banner opens one new thing to do. No level is only bigger numbers.

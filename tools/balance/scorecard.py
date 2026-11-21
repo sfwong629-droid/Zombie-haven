@@ -109,9 +109,9 @@ def main():
     def add(what, rng, lo, hi, fn, players=('daily', 'keen', 'open'), unit=''): L.append((what, rng, lo, hi, unit, fn, players))
     add('Level 3, real day', 'day 1 (the first sitting)', 0, 1.1, lambda t: first(t, 3, 0), ('daily',))
     add('Level 5, real day', '2 to 3', 2, 3.2, lambda t: first(t, 5, 0), ('daily',))
-    add('Level 10, real day', '16 to 22', 16, 22, lambda t: first(t, 10, 0), ('daily',))
-    add('Level 15, real day', '28 to 42', 28, 42, lambda t: first(t, 15, 0), ('daily',))
-    add('Level 20, real day', '55 to 75', 55, 75, lambda t: first(t, 20, 0), ('daily',))
+    add('Level 10, real day', '10 to 14', 10, 14, lambda t: first(t, 10, 0), ('daily',))
+    add('Level 15, real day', '21 to 28', 21, 28, lambda t: first(t, 15, 0), ('daily',))
+    add('Level 20, real day', '38 to 46', 38, 46, lambda t: first(t, 20, 0), ('daily',))
     if base:
         add('Level 15 against the daily player (real day %d)' % round(base), 'at most a third faster: day %d or later' % round(base * .67), base * .67, None, lambda t: first(t, 15, 0), ('keen', 'open'))
     add('Deaths before level 15', '3 to 8', 0, 8, lambda t: sum(r['deathsDay'] for r in t if r['lvl'] < 15) if any(r['lvl'] >= 15 for r in t) else None)

@@ -47,12 +47,23 @@ What this shows:
 | Level 3 | the first sitting, about 30 minutes |
 | Level 5 | day 2 to 3 |
 | First Banner, level 6 | day 5 to 8 |
-| Level 10 | day 16 to 22 |
-| Level 15 | day 28 to 42 (the 4 to 6 weeks) |
-| Level 20 | day 55 to 75 |
-| The cure (story, optional) | 12 more weeks at most |
+| Level 10 | day 10 to 14 |
+| Level 15 | day 21 to 28 (3 to 4 weeks; about where today's daily player is) |
+| Level 20, the main ending | day 38 to 46 (about 6 weeks, roughly 10 to 20 hours of play) |
+| The extras (Shut the Line, the cure) | may take longer: see section 7 |
 
 A keen player may be up to a third faster, through renown. Not more.
+
+**Owner, 21 Nov (W182):** three months is too long for the main story next to games like Dungeon Village 2 (8 hours for its story, 51 for everything) and Fallout Shelter (about 87 hours for everything). "Get the main story to an appropriate length similar to other games, and then the extras can take longer." The table above is the shorter length; the first version of this page had level 15 on day 28 to 42 and level 20 on day 55 to 75.
+
+## 3a. The first 30 minutes (approved 21 Nov, W183)
+Compared with how Fallout Shelter (a lunchbox to open at once, objectives that keep completing), Clash of Clans (a guided start and a three-day shield) and Dungeon Village 2 (one clear goal) open. In four bot towns our first 30 minutes are: 4 people grow to 6 or 7, 8 to 17 buildings, level 2 or 3, four nights of 10 to 17 zombies with nobody hurt, raiders at about minute 27, the first boss night at about minute 40. Six fixes, one change per build:
+1. **A reward for each of the first goals**, so something pays out every few minutes.
+2. **Wood does not run out on day 1** (it is at 0 from the first day in every town): more to start with, or early trees pay more.
+3. **The sixth person arrives in time for level 2** (today anywhere from game day 1 to 4).
+4. **No raiders in the first sitting.**
+5. **The first small boss night at about minute 20 to 25**, so the first sitting ends on a win.
+6. **A guided first research project and first crafted item** (no bot town finished any research in the first 30 minutes).
 
 ## 4. Rule 3: danger follows the level
 (Rule 3 before rule 2, because it is the most urgent.)
@@ -132,12 +143,12 @@ For a daily player. The weeks are ranges, checked with the routine.
 
 | Chapter | When | What the player is doing | It ends with |
 |---|---|---|---|
-| 1. The City | levels 16 to 20, about weeks 6 to 11 | The main story in Sunnyside: one story stronghold per level or two (Helix Lab 7, the Records Office, the Dusk Radio Mast), the three proofs, the City buildings | **The Loudest Night** and the broadcast: the main ending |
-| 2. Shut the Line | after level 20, about 6 to 8 weeks | Three campaigns against the Sunnyside plant: the Gate, the Line, the Tanks | **The Last Tin**: no new dead will ever rise |
+| 1. The City | levels 16 to 20, about weeks 4 to 6 | The main story in Sunnyside: one story stronghold per level or two (Helix Lab 7, the Records Office, the Dusk Radio Mast), the three proofs, the City buildings | **The Loudest Night** and the broadcast: the main ending |
+| 2. Shut the Line | after level 20, about 4 to 8 weeks | Three campaigns against the Sunnyside plant: the Gate, the Line, the Tanks | **The Last Tin**: no new dead will ever rise |
 | 3. The cure | opens at level 13 and runs beside chapters 1 and 2; twelve weeks | One step a week at the Brewery | **Lie Down**: the dead lie down for good |
 | 4. After | for as long as the player likes | A town at peace, and the next valley | no end |
 
-A daily player who does everything is busy for about six months. A player who stops at the main ending has had about three.
+A player who stops at the main ending has had about six weeks (owner, 21 Nov, W182). The extras may take longer: a daily player who does everything is busy for about four to five months.
 
 ### 7.3 Chapter 2, Shut the Line: three campaigns
 The story gives three strongholds in a row, "the hardest in the game". A stronghold alone is one evening. A **campaign** makes each one a goal of two or three weeks that uses the whole town:
@@ -213,8 +224,9 @@ One table, the same every time. Each line has a range; a result is green inside 
 |---|---|---|
 | Level 3 | first sitting, 20 to 40 minutes | daily player |
 | Level 5 | real day 2 to 3 | daily player |
-| Level 15 | real day 28 to 42 | daily player |
-| Level 20 | real day 55 to 75 | daily player |
+| Level 10 | real day 10 to 14 | daily player |
+| Level 15 | real day 21 to 28 | daily player |
+| Level 20 | real day 38 to 46 | daily player |
 | Keen player against daily player | at most a third faster | keen player |
 | Game left open against daily player | at most a third faster | open bot |
 | Deaths to level 15 | 3 to 8 | all three |
