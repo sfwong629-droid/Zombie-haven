@@ -1,8 +1,8 @@
-# zmove_screamer.py -- RAW.glb MODE OUT.json : the Screamer's moves (14-ZOMBIE-MOVES.md; previews for W216 and W229, made by hand, not in the game).
+# zmove_screamer.py -- RAW.glb MODE OUT.json : the Screamer's moves (14-ZOMBIE-MOVES.md; previews for W216 and W239, made by hand, not in the game).
 # MODE scream (clip screamer_scream, 1.6 s, her attack): she draws in (hunched a little, fists pulled to the chest), then throws the chest forward
 #   and the arms back and out behind her, back arched, head thrown up, the whole body shaking through the scream; then she settles. It starts and
 #   ends on today's scream's first pose (today she folds forward with her face to the ground).
-# MODE cough (clip screamer_cough, 2.2 s, the extra move that is not an attack, W229): one hand to the throat, three hacking coughs that jerk the
+# MODE cough (clip screamer_cough, 2.2 s, the extra move that is not an attack, W239): one hand to the throat, three hacking coughs that jerk the
 #   chest forward, then a short warm-up shriek with the head up; the hand comes down. Starts and ends on her first idle pose.
 # The feet stay planted. Rig: +X her left, -Y forward, +Z up.
 import bpy, sys, os, math, json

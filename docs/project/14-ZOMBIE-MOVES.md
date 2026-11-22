@@ -62,8 +62,8 @@ One zombie per build, each shown as a sheet first. The zombies seen most come fi
 1. ~~**Dog and Stag: the run as a real gallop**~~ (3D.256).
 2. ~~**Bloater Queen**: arms swinging wide in the walk; a wide two-arm sweep, then the belly slam~~ (3D.257). ~~**Bloated**: the same walk and belly slam~~ (3D.267, owner W200: "try b"; his shirt stretches under the arms, which are modelled joined to his belly).
 3. ~~**Walker: grab and bite** (both male and female)~~ (3D.276, W204).
-4. ~~**Gatling Boss: braced fire at long range**~~ preview approved 22 Nov (W216), with a gun club close-up attack, a slow heavy walk and a run with the gun carried level, and the roar (W229). Not built yet.
-5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings). Preview sent 22 Nov, with the cough (W229).
+4. ~~**Gatling Boss: braced fire at long range**~~ preview approved 22 Nov (W216), with a gun club close-up attack, a slow heavy walk and a run with the gun carried level, and the roar (W239). Not built yet.
+5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings). Preview sent 22 Nov, with the cough (W239).
 6. **Dog: lunge and shake.**
 7. **Runner: running tackle** (both).
 8. **Crawler: ankle grab** (both).
@@ -81,7 +81,7 @@ One zombie per build, each shown as a sheet first. The zombies seen most come fi
 **The new kinds**: each move is made when the Features chat builds that kind (the move needs its game rule):
 the Stag's charge, the Leaper's jump and pounce (a hurdle, if W192 says so), the Digger's dig and burst, the Splitter splitting in half (the model cut in two), the Bile Spewer's spray, the Lineman tearing down, the Listener listening and its flurry, the Hazmat's stiff shove, the Nurse raising the fallen, the male Soldier's march and barge, the female Soldier tending, the Delivery Driver's ram (it has no model yet).
 
-## Extra moves (W229, owner, 22 Nov: "Ok to the extra moves")
+## Extra moves (W239, owner, 22 Nov: "Ok to the extra moves")
 One move that is not an attack for every zombie, played every now and then or before an attack (when is a game rule, added when the moves go in). Made with each zombie's preview.
 - Gatling Boss: **roar**, bent forward, both arms flung back (approved).
 - Screamer: clutches its throat, coughs, a short warm-up shriek.

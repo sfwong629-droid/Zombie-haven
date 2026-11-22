@@ -1,5 +1,5 @@
 # zmove_gatling_roar.py -- RAW.glb OUT.json : the Gatling Boss's roar, a move that is not an attack (owner, 22 Nov: "add some additional non attack
-# animation to each zombie. Like the Gatling boss will do a roar every now and then or before an attack"). Preview for W229: made by hand.
+# animation to each zombie. Like the Gatling boss will do a roar every now and then or before an attack"). Preview for W239: made by hand.
 # Clip name gatling_roar, 1.8 s. He draws a breath (chest up, leaning back, head up), then bends the upper body forward and roars, face up and out,
 # both arms flung back behind the body (owner, 22 Nov: "upper body lean front and both arm move behind the body"), shaking; then he settles.
 # The feet stay planted as in idle. Starts and ends exactly on his first idle pose. Rig: +X his left, -Y forward, +Z up. Env: ZH_SECS (1.8).
