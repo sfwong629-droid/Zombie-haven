@@ -291,7 +291,7 @@ Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):
 - ~~W234. Lost parts and friends' jobs.~~ Owner, 22 Nov: yes; and add: **an ally with a herd coming asks the player for help** (`15-STRONGHOLDS.md`, 10.9).
 - ~~W235. Sealed places keep one size.~~ Owner, 22 Nov: "yes ok". Only faction towns grow with the level.
 - ~~W236. Outposts: fixed spots or free placing.~~ Owner, 22 Nov: "I will go with free placing for now". Built like placing in the town, combat pieces only (`15-STRONGHOLDS.md`, 10.9).
-- W238. **Start building the rework?** First build: places remember what was cleared (rooms, doors, Secured). Then story locks, town and keep on one map (the Larder first), and on down `15-STRONGHOLDS.md`, 10.5. One change per build, pushed, not published. (Claude: yes.)
+- ~~W238. Start building the rework.~~ Owner, 22 Nov: "start building". **3D.302: sealed places remember** (the Clinic, the Prison, Lab 7, the Records Office, the Mast, the plant): who was killed stays dead, opened doors stay open, what was worked or taken stays done; each is built at its own size whatever the town's level; a won place is **Secured** and off the fight list. Seasonal places and camps do not remember; practice never touches it. Check `tools/qa/sh_memory_check.js`. Pushed, not published. Next: story locks on rooms, then town and keep on one map (the Larder first).
 - ~~W237. A map of the valley in place of the trip list.~~ Owner, 22 Nov: yes. Next: this chat writes the list of places and where they lie; the UI chat makes a mockup first.
 
 Later:

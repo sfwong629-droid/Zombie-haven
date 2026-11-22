@@ -385,3 +385,29 @@ Object.assign(EXP_DEFS, {
 
 /* 3D.283 conveyor belts (the Line): whoever stands on a running belt is carried along it */
 function shBelts(H, live) { for (const o of [...live, ...H.zs.filter((z) => z.hp > 0 && !z.boss)]) { const z = shZoneAt(H, o.w); if (!z || z.k !== 'belt') continue; const nw = { x: o.w.x + z.dx * .02, y: o.w.y }, c = shCell(nw); if (shOpen(c.x, c.y, 'u') === true) o.w = nw; } }
+
+/* ---- 3D.302 Strongholds chat, the rework (owner, 22 Nov, W232: "the dead are where they died... killed is killed"; W235: sealed places keep one size;
+   15-STRONGHOLDS.md section 10). A sealed place REMEMBERS between visits: who was killed stays dead, opened and broken doors stay open, what was
+   worked or carried out stays done, the locked rooms keep what they held. A lost or abandoned run is not wasted: the next visit carries on.
+   When its main goals are done the place is SECURED and is not a fight any more. Kept in S.shMem[dest]. Seasonal places and faction camps do
+   not remember (the seasons bring the dead back; the living rebuild). Practice runs never touch it. ---- */
+const SH_SIZE = { clinic: 6, prison: 9, lab7: 17, records: 18, mast: 19 };   /* the level each sealed place is built for: its own size, whatever the town's level */
+const shRemembers = (dest) => !!SH_DEFS[dest] && !SH_DEFS[dest].raid && !dest.startsWith('sh_');
+const shMemOf = (dest) => (S.shMem || {})[dest] || null;
+const shSecured = (dest) => !!(shMemOf(dest) || {}).secured;
+const shMemLvl = (dest) => (shRemembers(dest) ? (shMemOf(dest) || {}).lvl || SH_SIZE[dest] || 0 : 0);
+function shMemSave(H, won) { if (!H || H.practice || H.camp || !shRemembers(H.dest)) return; const M = (S.shMem ||= {})[H.dest] ||= { dead: [], visits: 0 };
+  M.lvl = H.lvl; M.doors = H.doors.map((d) => [d.open ? 1 : 0, d.locked ? 1 : 0, d.broken ? 1 : 0]); M.rev = { ...H.rev }; M.myst = JSON.parse(JSON.stringify(H.myst || {})); M.spawnQ = JSON.parse(JSON.stringify(H.spawnQ || []));
+  M.things = H.things.map((t) => { const o = { ...t, prog: 0 }; delete o.carried; if ((o.fx === 'hold' || o.fx === 'seal') && !o.sealed) o.done = false; return o; }); M.zones = JSON.parse(JSON.stringify(H.zones || []));
+  M.dead = [...new Set([...(M.dead || []), ...H.zs.filter((z) => z.key && z.hp <= 0).map((z) => z.key)])]; M.left = H.zs.filter((z) => z.key && z.hp > 0).length;
+  for (const k of ['lit', 'shut', 'shutVat', 'lastOpen', 'bossDown']) if (H[k] != null) M[k] = JSON.parse(JSON.stringify(H[k])); if (H.shredF != null) M.shredF = H.shredF;
+  M.tasks = (H.tasks || []).map((T) => !!T.done); M.day = S.day; if (won) M.secured = S.day; }
+function shMemLoad(H, stage) { const M = !H.practice && shRemembers(H.dest) ? shMemOf(H.dest) : null;
+  if (stage === 0) { if (!M || !M.doors) return; H.again = true;   /* before anyone is put in the rooms: the place as it was left */
+    M.doors.forEach((q, i) => { const d = H.doors[i]; if (d) { d.open = !!q[0]; d.locked = !!q[1]; d.broken = !!q[2]; } }); H.rev = { ...M.rev, [H.plan.startRoom]: 1 }; H.myst = JSON.parse(JSON.stringify(M.myst)); H.spawnQ = JSON.parse(JSON.stringify(M.spawnQ));
+    H.things = JSON.parse(JSON.stringify(M.things)); H.zones = JSON.parse(JSON.stringify(M.zones)); for (const k of ['lit', 'shut', 'shutVat', 'lastOpen', 'bossDown']) if (M[k] != null) H[k] = JSON.parse(JSON.stringify(M[k]));
+    H.tasks.forEach((T, i) => { if (M.tasks && M.tasks[i] && T.k !== 'hold') T.done = true; }); return; }
+  H.zs.forEach((z, i) => { z.key = 'z' + i; });   /* the same plan puts the same dead in the same order, so the order is each one's name */
+  if (!M || !M.doors) return; const gone = new Set(M.dead || []); H.zs = H.zs.filter((z) => !gone.has(z.key)); for (const z of H.zs) z.hid = !H.rev[z.room];
+  if (M.shredF != null && H.shredF != null) { H.shredF = M.shredF; if (H.shredF >= 0) { H.shredAt = H.t + 3600; H.clock = 3600; } else H.clock = 0; }
+  const n = (M.dead || []).length; setTimeout(() => say(`The squad goes back in. What they killed last time is still dead (${n}), and the doors they opened are still open.`, true), 900); }

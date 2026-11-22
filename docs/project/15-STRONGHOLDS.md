@@ -208,3 +208,6 @@ North is up. The Haven sits in the middle, a little south of centre. The north-e
 | Sunnyside (Lab 7, the Records Office, the plant) | faction town with three keeps | top right, end of the highway | level 16 |
 | The weir | story spot (the cure goes into the river, K4) | bottom left | the cure |
 Pins also show: herds moving on a road with the days left, calls for help, an ally's call, trips out.
+
+### 10.11 Built so far
+- **3D.302 (22 Nov): places remember** (step 1). `S.shMem[place]` keeps the dead killed, the doors, the things worked or carried out, the locked rooms' finds, and switches thrown; a visit that ends in a win, a retreat or a wipe all save it, and so does saving the game with a squad inside. Sealed places are built at their own level (Clinic 6, Prison 9, Lab 7 17, Records Office 18, Mast 19) whatever the town's level; the practice page still shows any size. A win marks the place **Secured**: the trip list says so and nobody can be sent in. The recruit on a win is now only the Clinic's and the Prison's. Not yet: the outpost a Secured place becomes (step 9), and a card line showing how much of a place is cleared (with the valley map).

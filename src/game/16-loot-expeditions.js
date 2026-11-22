@@ -182,7 +182,7 @@ function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time)
   (S.leads ||= []).push({ id: 'l' + S.day + '_' + S.hour, dest, risk, text: T[Math.floor(rnd() * T.length)], untilH: nowH() + 10 });
   banner(`🧭 New lead: ${d.name}`); logEvent(`New lead: ${d.name} (${EXP_RISK[risk].label} risk, ${EXP_HOURS[risk]} h trip). Open Explore to send a squad. It's gone in about 10 hours.`, 'important'); ui();
 }
-function expLocked(destId) { return EXP_DEFS[destId].lock(); }
+function expLocked(destId) { if (shSecured(destId)) return 'Secured: the dead there are gone for good';   /* 3D.302 */ return EXP_DEFS[destId].lock(); }
 function startExpedition(destId, riskId, ids) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId]; if (!d || !rk) return { ok: false, why: 'Unknown trip' };
   if (S.cordon > S.day) return { ok: false, why: `Quarantine cordon: nobody leaves until day ${S.cordon}` };

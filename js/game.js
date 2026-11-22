@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.301', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.302', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4610,6 +4610,7 @@ const SKIP = new Set(['fixW', 'fixWAt', 'skipZ', 'noReach', 'fixB', 'order', 'mo
 function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
+  if (S.sh) shMemSave(S.sh);   /* 3D.302 a game saved with a squad inside keeps what they have done there */
   const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
   return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
@@ -4932,7 +4933,7 @@ function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time)
   (S.leads ||= []).push({ id: 'l' + S.day + '_' + S.hour, dest, risk, text: T[Math.floor(rnd() * T.length)], untilH: nowH() + 10 });
   banner(`🧭 New lead: ${d.name}`); logEvent(`New lead: ${d.name} (${EXP_RISK[risk].label} risk, ${EXP_HOURS[risk]} h trip). Open Explore to send a squad. It's gone in about 10 hours.`, 'important'); ui();
 }
-function expLocked(destId) { return EXP_DEFS[destId].lock(); }
+function expLocked(destId) { if (shSecured(destId)) return 'Secured: the dead there are gone for good';   /* 3D.302 */ return EXP_DEFS[destId].lock(); }
 function startExpedition(destId, riskId, ids) {
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId]; if (!d || !rk) return { ok: false, why: 'Unknown trip' };
   if (S.cordon > S.day) return { ok: false, why: `Quarantine cordon: nobody leaves until day ${S.cordon}` };
@@ -5511,7 +5512,8 @@ const SH_STANCE = { attack: { icon: '⚔', name: 'Attack' }, hold: { icon: '✋'
 function startStronghold(destId, ids, opts = {}) {
   const D = SH_DEFS[destId], d = EXP_DEFS[destId] || { name: destId, icon: '⚔' }; if (!D) return { ok: false, why: 'Unknown stronghold' }; if (S.sh) return { ok: false, why: 'A squad is already inside' };
   if (!opts.practice && (S.shTryDay || {})[destId] === S.day) return { ok: false, why: 'The squad was beaten back from there today: try again tomorrow' };   /* 3D.125 the loss cooldown was recorded but never read */
-  const lvl = Math.max(1, Math.min(20, opts.lv || S.lvl || 1)), plan = D.raid ? null : shMakePlan(destId, lvl); if (plan) shSetPlan(plan); else shUseLayout(destId); const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
+  if (!opts.practice && shSecured(destId)) return { ok: false, why: 'That place is secured: nothing is left to fight there' };
+  const lvl = Math.max(1, Math.min(20, opts.lv || (!opts.practice && shMemLvl(destId)) || S.lvl || 1)), plan = D.raid ? null : shMakePlan(destId, lvl); if (plan) shSetPlan(plan); else shUseLayout(destId); const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
   if (!ms.length) return { ok: false, why: 'Pick at least one survivor' };
   { const home = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter((q) => q && !ms.includes(q)); if (home.length && !opts.practice) note('important', `Only ${ms.length} fit through: ${home.map((q) => q.name).join(', ')} stayed home.`); }   /* 3D.169 round 2: the extra person was left out with no word */
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
@@ -5520,7 +5522,7 @@ function startStronghold(destId, ids, opts = {}) {
   units.forEach((s, i) => { if (!opts.practice) s.shHome = { w: s.w, mode: s.mode }; s.w = shWorld((plan ? plan.start.x : 1) + (i % 3) * .9, (plan ? plan.start.y : 8.5) + Math.floor(i / 3) * 1.3); s.use = null; s.carry = null; s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; s.stance = s.stance || 'attack'; s.abT = 0; s.crit = 0; if (opts.practice) { s.hp = s.max; } });
   const camp = !!D.raid; if (camp) units.forEach((s, i) => { s.w = shWorld(12.4 + (i % 4) * .75, 26.2 + Math.floor(i / 4) * .8); });
   S.sh = { camp, akey: camp ? destId + ':' + Math.floor(rnd() * 1e6) : destId, dest: destId, units, zs: [], phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.8, cx: SH_AX + 5, cy: SH_AY + 11, fx: [], kills: 0, power: shPower(units), log: [], loot: {}, sel: [], doors: SH_DOORS.map((q) => ({ open: false, hp: q[6] ? 160 : 120, locked: !!q[6] })), woke: {}, rev: { [plan ? plan.startRoom : 'R0']: 1 }, plan, lvl, things: plan ? JSON.parse(JSON.stringify(plan.things)) : [], tasks: plan ? JSON.parse(JSON.stringify(plan.tasks)) : [], zones: plan ? JSON.parse(JSON.stringify(plan.zones)) : [], spawnQ: [], items: [], goal: D.raid ? (opts.goal || 'loot') : null, practice: !!opts.practice, raid: D.raid || null, night: camp && (opts.night === undefined ? isNight() : !!opts.night) };   /* 3D.128 a raid happens at the hour you set out: at night the guards see less far and the workers sleep */
-  if (camp) { S.sh.cx = SH_AX + 15; S.sh.cy = SH_AY + 24; S.sh.cz = 1.5; S.sh.goal = null; S.sh.doors = []; campBuild(); } else { S.sh.cx = SH_AX + plan.start.x + 4; S.sh.cy = SH_AY + plan.start.y + 2; shMystery(); shSpawnAll(); if (plan.setup) plan.setup(S.sh); if (plan.tip && !opts.quiet) setTimeout(() => say(plan.tip, true), 1200); } if (!opts.practice) { barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); } shPanel(); ui(); return { ok: true, why: '' };
+  if (camp) { S.sh.cx = SH_AX + 15; S.sh.cy = SH_AY + 24; S.sh.cz = 1.5; S.sh.goal = null; S.sh.doors = []; campBuild(); } else { S.sh.cx = SH_AX + plan.start.x + 4; S.sh.cy = SH_AY + plan.start.y + 2; shMystery(); shMemLoad(S.sh, 0); shSpawnAll(); if (plan.setup) plan.setup(S.sh); shMemLoad(S.sh, 1);   /* 3D.302 a sealed place is as the squad left it */ if (plan.tip && !opts.quiet) setTimeout(() => say(plan.tip, true), 1200); } if (!opts.practice) { barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); } shPanel(); ui(); return { ok: true, why: '' };
 }
 function shSpawnAll() {   /* every room gets its enemies up front; they sleep until the squad walks in. 3D.276 the rooms and the boss come from the map's plan */
   const H = S.sh, D = SH_DEFS[H.dest], P = H.plan, TK = (D.tough || 1) * (P.tough || 1), put = (room, list, boss) => { if (!SH_ROOMS[room]) return; const [x0, y0, w, h] = SH_ROOMS[room];   /* 3D.130 balance run: at the recommended power an unled squad won every stronghold 10 times in 10. 'tough' scales enemy health and damage so that is about 7 in 10, and near certain with three medkits */
@@ -5642,6 +5644,7 @@ function shCall(k) { const H = S.sh; if (!H || H.phase === 'done') return;
 function shEnd(won, fled) {
   const H = S.sh; if (!H || H.phase === 'done') return; H.phase = 'done'; const D = SH_DEFS[H.dest], d = EXP_DEFS[H.dest] || { name: H.dest, icon: '⚔', loot: { mat: [3, 5] } };
   if (fled && H.winOnExit) { won = true; fled = false; }
+  shMemSave(H, won);   /* 3D.302 the place remembers, however the visit ended */
   if (H.practice) { S.sh = null; shPanel(); showEventPopup({ title: won ? 'PRACTICE: CLEARED' : 'PRACTICE OVER', text: `${H.kills} enemies down in ${Math.round(H.t / 60)} s of fighting. Nothing was lost or gained.`, buttons: [{ label: 'AGAIN', fn: () => showShPractice() }, { label: 'DONE' }] }); return; }
   const entry = (() => { for (const w of world.walls.values()) if (w.type === 'gate' && w.y < Wd.BUILD.y0) return tc(w.x, w.y + 1); return tc(7 + OFF, 7 + OFF); })();
   const lost = [], hurt = [], loot = { ...H.loot }, lines0 = []; let recruit = null; const items = [];
@@ -5674,12 +5677,12 @@ function shEnd(won, fled) {
     else { if (H.dest.startsWith('sh_')) { S.shSeason = { ...(S.shSeason || {}), [H.dest]: seasonIdx() }; S.trophies = [...(S.trophies || []), { k: H.dest, day: S.day }]; renownGain(15, 'Seasonal trophy'); lines0.push(`🏆 A ${d.name} trophy now hangs in the HQ.`); }
       if (H.dest === 'prison' && !vehOf('van')) setTimeout(() => vehArrive('van', 'In the prison motor pool the squad found'), 2500);
       if (S.sv.length + (S.kids || []).length < popCap()) { const names = H.dest === 'prison' ? ['Dutch', 'Marisol', 'Grant', 'Lou'] : ['Dr. Ines', 'Nurse Pat', 'Callum', 'Ada'], nm = freeFirst(names), jb = H.dest === 'prison' ? 'Guard' : 'Medic';
-        recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); }
+        if (H.dest === 'clinic' || H.dest === 'prison') { recruit = mk(nm, jb, 3, entry.x, entry.y + .6, S.sv.length); recruit.sat = 3; recruit.stateTicks = 80; recruit.src = 'trip'; S.sv.push(recruit); } }
       S.shCleared = S.shCleared || {}; S.shCleared[H.dest] = (S.shCleared[H.dest] || 0) + 1; setTimeout(() => earnBanner('stronghold', `The squad cleared ${d.name}.`), 900); }
     S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); renownGain(H.raid ? 15 : 25, d.name);
   } else { if (H.raid && !unseen) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - 15); } if (H.loot.mat) S.mat += H.loot.mat; if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day }; }
   S.sh = null; shPanel(); autoStaff(); statAdd('exp');
-  const bossName = (H.plan && H.plan.boss ? H.plan.boss.name : (D.areas[2].boss || {}).name) || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : H.plan && H.plan.boss && H.bossDown ? `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is cleared.` : `<b>${esc(d.name)}: done.</b> ${(H.tasks || []).filter((T) => !T.opt).map((T) => esc(T.label)).join('. ')}.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
+  const bossName = (H.plan && H.plan.boss ? H.plan.boss.name : (D.areas[2].boss || {}).name) || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : H.plan && H.plan.boss && H.bossDown ? `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is ${shSecured(H.dest) ? 'secured: the dead will not be back' : 'cleared'}.` : `<b>${esc(d.name)}: ${shSecured(H.dest) ? 'secured' : 'done'}.</b> ${(H.tasks || []).filter((T) => !T.opt).map((T) => esc(T.label)).join('. ')}.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
   if (won && H.plan && H.plan.campaign && !H.practice) { S.plant = { ...(S.plant || {}), [H.plan.campaign]: S.day }; lines0.push({ gate: '🏭 The Gate is taken: Sunnyside\'s guards are gone.', line: '🏭 The Line is stopped: no new tins on the road.', tanks: '🏭 The Tanks are sealed. Nobody new will ever get up.' }[H.plan.campaign]); }
   lines.push(...lines0); if (H.tasks) for (const T of H.tasks) if (T.opt && T.done) lines.push(`✓ ${esc(T.label.replace(/^Side: /, ''))}`); if (won && H.plan && H.plan.keyOnWin && !H.practice) (H.keys ||= []).push(...H.plan.keyOnWin); if ((won || (H.camp && fled)) && (H.keys || []).length) { S.keyItems = S.keyItems || {}; for (const k of H.keys) S.keyItems[k] = (S.keyItems[k] || 0) + 1; lines.push(`🔑 Brought home: ${H.keys.map((k) => esc((SH_KEYS[k] || { name: k }).name)).join(', ')}.`); } if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
   if (H.camp) lines[0] = fled ? `The squad got out of ${esc(d.name)}.` : 'The squad was overrun and dragged itself home.';
@@ -6205,6 +6208,32 @@ Object.assign(EXP_DEFS, {
 
 /* 3D.283 conveyor belts (the Line): whoever stands on a running belt is carried along it */
 function shBelts(H, live) { for (const o of [...live, ...H.zs.filter((z) => z.hp > 0 && !z.boss)]) { const z = shZoneAt(H, o.w); if (!z || z.k !== 'belt') continue; const nw = { x: o.w.x + z.dx * .02, y: o.w.y }, c = shCell(nw); if (shOpen(c.x, c.y, 'u') === true) o.w = nw; } }
+
+/* ---- 3D.302 Strongholds chat, the rework (owner, 22 Nov, W232: "the dead are where they died... killed is killed"; W235: sealed places keep one size;
+   15-STRONGHOLDS.md section 10). A sealed place REMEMBERS between visits: who was killed stays dead, opened and broken doors stay open, what was
+   worked or carried out stays done, the locked rooms keep what they held. A lost or abandoned run is not wasted: the next visit carries on.
+   When its main goals are done the place is SECURED and is not a fight any more. Kept in S.shMem[dest]. Seasonal places and faction camps do
+   not remember (the seasons bring the dead back; the living rebuild). Practice runs never touch it. ---- */
+const SH_SIZE = { clinic: 6, prison: 9, lab7: 17, records: 18, mast: 19 };   /* the level each sealed place is built for: its own size, whatever the town's level */
+const shRemembers = (dest) => !!SH_DEFS[dest] && !SH_DEFS[dest].raid && !dest.startsWith('sh_');
+const shMemOf = (dest) => (S.shMem || {})[dest] || null;
+const shSecured = (dest) => !!(shMemOf(dest) || {}).secured;
+const shMemLvl = (dest) => (shRemembers(dest) ? (shMemOf(dest) || {}).lvl || SH_SIZE[dest] || 0 : 0);
+function shMemSave(H, won) { if (!H || H.practice || H.camp || !shRemembers(H.dest)) return; const M = (S.shMem ||= {})[H.dest] ||= { dead: [], visits: 0 };
+  M.lvl = H.lvl; M.doors = H.doors.map((d) => [d.open ? 1 : 0, d.locked ? 1 : 0, d.broken ? 1 : 0]); M.rev = { ...H.rev }; M.myst = JSON.parse(JSON.stringify(H.myst || {})); M.spawnQ = JSON.parse(JSON.stringify(H.spawnQ || []));
+  M.things = H.things.map((t) => { const o = { ...t, prog: 0 }; delete o.carried; if ((o.fx === 'hold' || o.fx === 'seal') && !o.sealed) o.done = false; return o; }); M.zones = JSON.parse(JSON.stringify(H.zones || []));
+  M.dead = [...new Set([...(M.dead || []), ...H.zs.filter((z) => z.key && z.hp <= 0).map((z) => z.key)])]; M.left = H.zs.filter((z) => z.key && z.hp > 0).length;
+  for (const k of ['lit', 'shut', 'shutVat', 'lastOpen', 'bossDown']) if (H[k] != null) M[k] = JSON.parse(JSON.stringify(H[k])); if (H.shredF != null) M.shredF = H.shredF;
+  M.tasks = (H.tasks || []).map((T) => !!T.done); M.day = S.day; if (won) M.secured = S.day; }
+function shMemLoad(H, stage) { const M = !H.practice && shRemembers(H.dest) ? shMemOf(H.dest) : null;
+  if (stage === 0) { if (!M || !M.doors) return; H.again = true;   /* before anyone is put in the rooms: the place as it was left */
+    M.doors.forEach((q, i) => { const d = H.doors[i]; if (d) { d.open = !!q[0]; d.locked = !!q[1]; d.broken = !!q[2]; } }); H.rev = { ...M.rev, [H.plan.startRoom]: 1 }; H.myst = JSON.parse(JSON.stringify(M.myst)); H.spawnQ = JSON.parse(JSON.stringify(M.spawnQ));
+    H.things = JSON.parse(JSON.stringify(M.things)); H.zones = JSON.parse(JSON.stringify(M.zones)); for (const k of ['lit', 'shut', 'shutVat', 'lastOpen', 'bossDown']) if (M[k] != null) H[k] = JSON.parse(JSON.stringify(M[k]));
+    H.tasks.forEach((T, i) => { if (M.tasks && M.tasks[i] && T.k !== 'hold') T.done = true; }); return; }
+  H.zs.forEach((z, i) => { z.key = 'z' + i; });   /* the same plan puts the same dead in the same order, so the order is each one's name */
+  if (!M || !M.doors) return; const gone = new Set(M.dead || []); H.zs = H.zs.filter((z) => !gone.has(z.key)); for (const z of H.zs) z.hid = !H.rev[z.room];
+  if (M.shredF != null && H.shredF != null) { H.shredF = M.shredF; if (H.shredF >= 0) { H.shredAt = H.t + 3600; H.clock = 3600; } else H.clock = 0; }
+  const n = (M.dead || []).length; setTimeout(() => say(`The squad goes back in. What they killed last time is still dead (${n}), and the doors they opened are still open.`, true), 900); }
 /* ---- 3D.116 owner: a raid is a camp map like the town. Their buildings, their guards and workers. Send the squad at a building,
    bring it down, then decide whether to stop and loot it (a water building gives water, and so on). The good stuff (gear, guns,
    ammo, the leader) sits in the middle, the hardest part to reach. Survivors fight on their own; you tell them where to go. ---- */
