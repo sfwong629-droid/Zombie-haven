@@ -386,6 +386,18 @@ What it says:
 - **Towns have too few people** from era 2 on (18 to 24 at the end of era 2; wanted 24 to 36).
 - **Wood is the short stock in every era** (the target wants it to change from era to era), and scrap sits at its limit from era 2 or 3.
 
+**Herb beds, 22 Nov (build 3D.301, merged 22 Nov; owner: "Herb beds").** A Garden Plot, Fenced Farm or Irrigated Field can grow herbs instead of food: a quarter of its food output as medicine (a Garden Plot about 1 a day, 1.5 with the early food help), the same worker and water; it rests when the medicine store is full. The bot turns one garden to herbs when medicine is under 6 and food is above 30, and back over 15 or when food runs short. Bot, game open, before (the overnight branch without it) and after:
+
+| Start | Days | Days at 0 medicine, before / after | Medicine at the end, before / after | Deaths, before / after |
+|---|---|---|---|---|
+| New town, seed 5 | 20 | 7 / 0 | 4 / 12 | 0 / 0 |
+| New town, seed 7 | 20 | 7 / 0 | 0 / 9 | 0 / 0 |
+| Level 7 town | 15 | 2 / 2 | 1 / 2 | 1 / 0 |
+| Level 8 town with a Clinic | 15 | 0 / 0 | 9 / 9 | 13 / 20 |
+
+- **New towns no longer sit at 0 medicine.** The level 7 town still dipped to 0 late, when its food was too low for the bot to spare a garden.
+- **The level 8 town lost many people both times** (13 and 20, not on boss nights the herbs could touch); it is a backup that loses people in every build, so its deaths are not read as an effect. Food at the end was lower with herbs (63 against 88).
+
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 
