@@ -296,8 +296,18 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
    nights and lost 24 to 39 people from level 11 on: docs/project/12-LONG-RUN.md). */
 const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
 const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null || !!S.vanguard;
+/* 3D.287 (overnight branch; owner, 21 Nov, W176, rule 3 of 13-LONG-GAME: "a breather after a bad night"): when a night costs a life, or
+   everyone went down and the neighbours had to come, the next two nights are a breather: the night's crowd is a quarter smaller, the boss
+   night and raiders wait (the same quiet as the mourning of V2.24, graceOn), and the weekly crisis waits too. The night is watched from
+   20:00 to 06:00. */
+function breatherWatch() {
+  if (S.hour === 20) S.nightWatch = { f: (S.fallen || []).length, auto: (S.help || {}).auto || 0 };
+  else if (S.hour === 6 && S.nightWatch) { const w = S.nightWatch; S.nightWatch = null; const died = (S.fallen || []).length - w.f, overrun = ((S.help || {}).auto || 0) !== w.auto;
+    if (died > 0 || overrun) { S.graceUntil = Math.max(S.graceUntil || 0, S.day + 2 + 6 / 24); S.breathers = (S.breathers || 0) + 1;
+      note('important', '🌄 A BREATHER', { log: `After last night (${died ? died + (died > 1 ? ' people lost' : ' person lost') : 'everyone went down'}), the dead hang back: the next two nights are quieter, with no boss night and no raiders. Rebuild while you can.` }); } }
+}
 function eventSchedule() {   /* called every game hour */
-  const now = S.day + S.hour / 24; finaleHour(); crisisHour(); comebackConvoy();
+  const now = S.day + S.hour / 24; breatherWatch(); finaleHour(); crisisHour(); comebackConvoy();
   if (!fac('toll').met && facOk('toll') && S.hour === 10 && !guest && !S.finale && (S.day >= 7 || (S.day >= 5 && rnd() < .5))) { S.lastStory = 'toll1'; STORY.toll1.run(); }   /* 3D.173 owner: the Toll Kings find the town by day 5-7 (round 3: first met on day 12-18, nothing to raid) */
   if (S.day >= 4 && now >= S.nextRaid) {   /* 3D.64 balance: raiders from day 4 (was 2) */
   if (graceOn()) S.nextRaid = now + 1; else if (bossNear()) S.nextRaid = Math.floor(now) + 1 + rnd() * .4;   /* 3D.245 (owner, 21 Nov, W172): never a raid on a boss day or the day before; the raiders wait for the first free day */

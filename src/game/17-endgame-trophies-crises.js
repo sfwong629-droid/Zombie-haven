@@ -105,6 +105,7 @@ function crisisDaily() {
   /* 3D.273 (owner, 21 Nov, W172: never an attack on a boss day or the day before): a crisis fights on the night after it starts, so it waits
      while that night would be a boss night or the night before one. It starts a day or two later instead; nothing is lost. */
   if (S.day + 1 === S.nextBoss || S.day + 1 === S.nextBoss - 1) return;
+  if (graceOn()) return;   /* 3D.287: not during a breather or a vigil either */
   const pool = Object.keys(CRISES).filter((k) => CRISES[k].fits() && k !== S.crisisLast); const k = QS.get('crisis') && CRISES[QS.get('crisis')] ? QS.get('crisis') : pool[Math.floor(rnd() * pool.length)]; if (!k) return;
   S.crisis = { k, day0: S.day, lost: 0 }; CRISES[k].start(S.crisis); S.crisisLast = k; S.crisisNext = S.day + CRISIS_EVERY;
   const C = CRISES[k]; SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
