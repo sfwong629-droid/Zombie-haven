@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.295', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.296', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2656,11 +2656,11 @@ const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, 
    boss night was replaced within a second, so the fighters wore down until everyone was hiding or down and nobody could reach the downed
    for hours. Now nothing new joins while the boss lives, killing the boss breaks the horde (its followers flee and the rest of the night is
    quiet), and at dawn the followers leave with the boss. */
-function mobScatter() { for (const z of S.z) if (z.hp > 0 && !z.human && (z.mob || z.siege) && z.type !== 'boss') { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } }
+function mobScatter() { for (const z of S.z) if (z.hp > 0 && !z.human && z.mob && z.type !== 'boss') z.mob = false; }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): the boss's mob no longer flees; it stops being the boss's mob and fights on until killed */
 function bossWatch() {
   if (S.bossOn == null || S.z.some((z) => z.type === 'boss' && z.hp > 0 && z.mode !== 'zleave')) return;
   const killed = (S.bossKills || 0) > S.bossOn; S.bossOn = null;
-  if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, the horde scatters into the dark. The rest of the night is quiet.' }); }
+  if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, no more come out of the dark tonight. The ones already here still have to be put down.' }); }
 }
 const NIGHT_WAVES = [1, .25, .25];   /* 3D.70: share of the night's horde in each wave (1.5x the night cap in all) */
 const nightWave = () => (S.hour >= 23 || (S.hour >= 2 && S.hour < 6) ? (S.hour >= 23 ? 1 : 2) : S.hour >= 20 ? 0 : 1);   /* dusk 20:00, 23:00, 02:00 */
@@ -2685,10 +2685,7 @@ function monsterGeneration() {
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, threatNow() * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
-  if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
-    const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
-    if (far.length) { const z = far[Math.floor(rnd() * far.length)]; z.hp = 0; z.escaped = true; }
-  }
+  /* 3D.296 bug A12 (owner, 19 Nov: zombies stay until killed): by day the surplus no longer quietly disappears (V2.18 removed one now and then when nobody was within 4 tiles) */
 }
 /* ---------------- V2.13 raiders: humans who dodge zombies, slip in through the gate, steal, fight, and run ---------------- */
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
@@ -2812,7 +2809,7 @@ function spawnBoss(force, escort, lead) {   /* lead (3D.269): the horde is alrea
 }
 function dawnRetreat() {   /* balance study (Nov 8): the night horde used to stay inside the walls for good. At sunrise it shambles back out of town;
   the ones already locked onto someone finish that fight, then leave (z.dawn). Days are for repairs and recovery. */
-  const frac = (window.ZH_BAL || {}).dawn ?? 1;   /* 3D.219 bug B1: all of the night horde leaves at dawn (3D.80 sent half; the rest stayed in town all day, rounds 2-4). Studies can still set ZH_BAL.dawn */ if (!frac) return 0; let n = 0;
+  const frac = (window.ZH_BAL || {}).dawn ?? 0;   /* 3D.296 bug A12 (owner, 19 Nov): zombies never walk away, so nobody leaves at dawn; balance studies can still set ZH_BAL.dawn */   /* 3D.219 bug B1: all of the night horde leaves at dawn (3D.80 sent half; the rest stayed in town all day, rounds 2-4). Studies can still set ZH_BAL.dawn */ if (!frac) return 0; let n = 0;
   for (const z of S.z) { if (z.hp <= 0 || z.human || z.boss || z.zoo) continue; if (['zattack', 'zrecover'].includes(z.mode)) { if (frac >= 1) z.dawn = true; continue; } if (rnd() > frac) continue;
     const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
   if (n >= 3) note('important', `🌅 Dawn: ${n} zombies shamble back out of town.`); return n;
@@ -2851,7 +2848,7 @@ function eventSchedule() {   /* called every game hour */
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
   if (S.hour === 6) dawnRetreat();
-  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: `The ${zDef(b).name} slunk back into the wasteland. It will return.` }); } if (S.bossOn != null || bs.length) { S.bossOn = null; mobScatter(); for (const z of S.z) if (z.hp > 0 && !z.human && z.type !== 'boss' && z.mode !== 'zleave' && !(z.target && S.sv.includes(z.target) && dist(z.w, z.target.w) < 2.5)) { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } } else S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }   /* 3D.68: its followers leave with it */
+  if (S.hour === 6 && S.bossOn != null) { S.bossOn = null; S.z.forEach((z) => { if (z.mob) z.mob = false; }); }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): at dawn the boss night ends, but a boss still alive and its followers stay and fight until killed (they used to walk back out, past people) */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
@@ -2900,7 +2897,7 @@ function zai0(z) {
   if ((z.mode === 'zmarch' || z.mode === 'idle') && z.type !== 'boss' && tick % 30 === 0) {   // nothing to chase for a long while in daylight → leave
     const seen = S.sv.some((s) => s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && dist(s.w, z.w) < d.aggro * 1.6);
     z.bored = seen ? 0 : (z.bored || 0) + 30;
-    if (!isNight() && z.bored > 1800) { const p = spawnPoint(); if (p) { z.mode = 'zleave'; z.siege = false; z.mob = false; z.leaveTo = tc(p[0], p[1]); z.path = null; z.target = null; return; } }
+    /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): a zombie that sees nobody for a long while in daylight no longer walks off the map (V2.37); it keeps wandering towards the town */
   }
   if (z.mode === 'idle' && z.siege) { z.mode = 'zmarch'; z.goalT = 0; }
   if (z.mode === 'zmarch') {            // mobs head for the nearest survivor or building; elites aim for the weakest wall segment or the gate
