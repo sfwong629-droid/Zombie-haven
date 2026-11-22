@@ -119,6 +119,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (UI chat, U35): "Slipped out of the X before it fell" rows in the Needs you list disappear by themselves once the person is safe in the other shelter. Built in 3D.233.
 - 19 Nov (UI chat, U43): A choice card the player opened by tapping something on the map (the Car alarm) has an exit: a ✕ that closes it doing nothing. Built in 3D.240.
 - 21 Nov (bug A13, built in the UI chat): **The game does not start until the graphics have loaded.** A loading screen in the Glass style (name, bar, per cent and seconds) covers the game, and the game clock stands still, until the 3D world is ready; after 40 s it offers "Play anyway". Built in 3D.250.
+- 21 Nov (Bugs chat, B24; owner: "reduce some of the emoji... set a new rule. come up with something"): **the emoji rule.** One emoji over a person at a time; the same emoji on the same person at most once every 10 seconds; any new emoji on a person at most every 3 seconds; the fight faces (❗ 😤 💪 😎 😱 😰 😵 😖 😣) count as one and show once per 10 seconds; the mood faces that come by themselves at most every 20 seconds; the hurt face only when a hit takes someone past a quarter of their health. Always shown: 🆘 needs rescue, 🙏 thanks, 🔄 reloading, 😢 grief, and a chat's back-and-forth. (Seconds at normal speed.) Built in 3D.265.
 
 ## Town, walls, building
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
@@ -156,6 +157,8 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 
 - 19 Nov (Bugs chat, B11): **Every Tent adds room.** The Camp or Lodge counts as 8 beds (was 4, under the minimum of 8), so each Tent (2), Cabin (3) and Stone House (4) adds room at once. Built in 3D.238.
 - 19 Nov (Bugs chat): **A grace period for newcomers.** When the town is full and someone asks to join (the Wandering Medic, the bunker survivors, a Foundry engineer, and a person the trader offers), they can be taken in anyway. The player has **1 game day** to build a bed; if there is still none, the newcomer stays but **sleeps rough** (their mood falls each day) until a bed is free. Nobody is lost. **The trader offering a person in a trade is new** (the trader sells no people today). Not built: Features chat.
+- 21 Nov (Bugs chat, W203): **People move into a free bed by themselves** (longest-staying first, every hour); the player can still choose who lives where. Built in 3D.263.
+- 21 Nov (Bugs chat, B23; owner: "they should auto try to find another path"): someone whose way is blocked by people finds a way round them before giving up. Built in 3D.264.
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.
