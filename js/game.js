@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.283', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.284', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2378,6 +2378,9 @@ function ai(s) {
   if (s.fleeT > 0) s.fleeT--;
   if (s.sleeping && !(s.mode === 'useFacility' || (s.mode === 'wait' && s.sleeping === 'rough'))) s.sleeping = false;   /* 3D.66 overnight soak: someone woken by a fight, an SOS or a rescue kept the 'asleep' flag (shown asleep at midday, tired never rose) */
   if (hasSkill(s, 'firstAid') && tick % (hasSkill(s, 'miracleWorker') ? 100 : 300) === (s.i * 31) % (hasSkill(s, 'miracleWorker') ? 100 : 300) && s.hp > 0 && s.hp < s.max && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + 1);
+  /* 3D.284 healing, part 1 (owner, 20 Nov, W130): "a slow mend with no zombie about". Once a game hour everyone on their feet in town gets MEND_PCT of
+     their health back while no zombie is inside the town. Not while starving or dying of thirst; a field wound still stops at its limit (below). */
+  if (tick % 1000 === (s.i * 53) % 1000 && s.hp > 0 && s.hp < s.max && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && s.hunger < 100 && s.thirst < 100 && !zInTown()) s.hp = Math.min(s.max, s.hp + Math.max(1, Math.round(s.max * MEND_PCT)));
   if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.stable = false; s.ordered = false; if (s.downD !== S.day) { s.downD = S.day; s.downN = 0; } s.downN = (s.downN || 0) + 1; endAid(s); if (s.aidBy) { const m = s.aidBy; if (m.aidTo === s && m.aidKind === 'patch') { endAid(m); enterFree(m, 30); } } SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; if (tick % 60 === s.i % 60) { const gx = Math.floor(s.w.x), gy = Math.floor(s.w.y); if (!Wd.walkable(world, gx, gy)) { const t = Wd.nearestWalkable(world, gx, gy); if (t) { s.w = { x: t.x + .5, y: t.y + .5 }; s.path = null; } } }   /* 3D.169 round 2 (Lena down for 70 h): someone who went down inside a building that fell, or on a wall tile, lay where no rescuer can walk. They are dragged to the nearest open tile */
     bleedTick(s); return; }
@@ -6445,6 +6448,7 @@ function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.ro
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
    Each treatment uses 1 cloth or 0.1 meds. ---------------- */
 const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+const MEND_PCT = .02;   /* 3D.284: the slow mend: this share of full health each game hour with no zombie in town */
 const zNear = (p, r) => S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, p) < r);
 function patchSupply(dry) { if ((S.cloth || 0) >= 1) { if (!dry) { S.cloth -= 1; flow('cloth', 'Field aid', -1); } return true; } if ((S.meds || 0) >= .1) { if (!dry) { S.meds -= .1; flow('meds', 'Field aid', -.1); } return true; } return false; }
 const injuryTrip = (q) => ['goFacility', 'useFacility'].includes(q.mode) && q.facility && facilityRules[q.facility.type] && facilityRules[q.facility.type].need === 'injury';
