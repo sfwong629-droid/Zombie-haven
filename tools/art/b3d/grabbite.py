@@ -2,7 +2,8 @@
 # Both arms reach out for the target at chest height with the hands open, clamp on (the fingers curl), pull the target in, and the head lunges forward
 # for the bite; then the zombie lets go and settles back. Replaces zombie_attack (same length, 0.92 s). Hand-made, not a recording.
 # The body stands on the first pose of today's attack the whole time (feet planted) and leans into the bite; each arm is solved to a hand target round
-# its shoulder, blended from today's first pose and back to it, so the clip starts and ends exactly where today's does. Rig: +X left, -Y forward, +Z up.
+# its shoulder; each arm bone's turn is blended from today's first pose by a weight (0 at the start and end), so the clip starts and ends exactly
+# where today's does. Rig: +X left, -Y forward, +Z up.
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
 a = sys.argv[sys.argv.index('--') + 1:]; src, out = a[0], a[1]
@@ -61,9 +62,12 @@ for i in range(nf + 1):
     for side, o in (('L', 3), ('R', 7)):
         S = wpos('upperarm.' + side); L = (PB['upperarm.' + side].length + PB['forearm.' + side].length) * SC
         tgt = S + Vector(k[o:o + 3]).normalized() * k[o + 3] * L; sg = 1 if side == 'L' else -1
-        hand = REST[side][0].lerp(tgt, w); pole = REST[side][1].normalized().lerp(Vector((sg * .8, .3, -.5)).normalized(), w)
-        arm_to(side, hand, pole)
+        pole = Vector((sg * .8, .3, -.5))
+        bones = ['upperarm.' + side, 'forearm.' + side, 'hand.' + side]; q0 = [PB[n].rotation_quaternion.copy() for n in bones]
+        arm_to(side, tgt, pole)
         aim('hand.' + side, wpos('hand.' + side) + (wpos('forearm.' + side, True) - wpos('forearm.' + side)).normalized())
+        for n, qa in zip(bones, q0): PB[n].rotation_quaternion = qa.slerp(PB[n].rotation_quaternion.copy(), w)   # weight 0 = today's pose exactly
+        upd()
         fn = 'fingers.' + side
         if fn in PB: PB[fn].rotation_quaternion = REST_ROT[fn] @ Quaternion((1, 0, 0), math.radians(CURL * k[11])); upd()
     lo = lowest()
