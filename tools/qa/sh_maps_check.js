@@ -23,7 +23,7 @@ const only = process.argv.slice(2);
       return { won, st, txt, secs: h ? Math.round(h.t / 60) : null }; }, d);
     console.log(`${d} at level 10: ${res.won ? 'finished' : 'NOT finished'} ${res.txt} ${res.st.join('; ')}`); if (!res.won || !/CLEARED/.test(res.txt)) bad.push(`${d}: the unkillable squad did not finish the map (${res.st.join('; ')})`);
     await p.evaluate(() => { for (const b of document.querySelectorAll('#eventModal button')) if (/done/i.test(b.textContent)) b.click(); });
-    for (const lv of [5, 15]) { await Q.practice(p, d, lv, 6, true); await p.evaluate(() => { const H = ZH.S.sh; H.rev = Object.fromEntries(Object.keys(H.plan.rooms).map((k) => [k, 1])); const W = H.plan.W, Hh = H.plan.H; H.cx = ZH.SH_AX + W / 2; H.cy = ZH.SH_AY + Hh / 2 + 1; H.cz = Math.max(.9, Math.min(1.6, 34 / Math.max(W, Hh * 1.8))); H.free = true; }); await p.waitForTimeout(3500);
+    for (const lv of [5, 15]) { await Q.practice(p, d, lv, 6, true); await p.evaluate(() => { const H = ZH.S.sh; H.rev = Object.fromEntries(Object.keys(H.plan.rooms).map((k) => [k, 1])); const W = H.plan.W, Hh = H.plan.H; H.cx = ZH.SH_AX + W / 2; H.cy = ZH.SH_AY + Hh / 2 + 1; H.cz = Math.max(.55, Math.min(1.6, 26 / Math.max(W, Hh * 1.8))); H.free = true; }); await p.waitForTimeout(3500);
       await Q.shot(p, path.join(OUT, `${d}_lv${lv}.png`)); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(500); } }
   if (p.errs.length) { console.log('page errors:', p.errs.slice(0, 5)); bad.push('page errors'); }
   console.log(bad.length ? 'FAIL:\n  ' + bad.join('\n  ') : 'ok: every stronghold map is sound at every level, and the redone ones can be finished'); await b.close(); process.exit(bad.length ? 1 : 0);

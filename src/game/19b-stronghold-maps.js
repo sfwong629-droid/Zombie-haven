@@ -123,3 +123,27 @@ function shWaveTick(H) { for (const wv of H.plan.waves) { if (wv.sent) continue;
 /* things the squad brings home for the story and the cure (kept in S.keyItems until the Story tab and the Brewery are built, Features chat) */
 const SH_KEYS = { feed_spring: { name: 'Wild cucumber seed (the cure: spring feed)' }, feed_summer: { name: 'The first Freshlock recipe (the cure: summer feed)' }, feed_autumn: { name: 'Old apple stock (the cure: autumn feed)' }, feed_winter: { name: 'Ice from the Frozen Depot (the cure: winter feed)' },
   proof1: { name: 'The army contract (proof 1)' }, proof2: { name: 'The Helix memo (proof 2)' }, proof3: { name: "Sunnyside's files (proof 3)" }, mixtape: { name: "Moth's Mixtape" }, salt: { name: 'Salt from the Larder (the cure, step 3)' }, glass: { name: 'Helix lab glass (the cure, step 4)' }, vat: { name: 'A Foundry steel brewing vat (the cure, step 7)' }, shepherd_tin: { name: "The Shepherd's tin (the cure, step 10)" }, old_brine: { name: 'The Old Brine' }, last_tank: { name: "The plant's last Freshlock tank (the cure, step 12)" }, ledger: { name: 'The Larder ledger (Recall Notice 11)' }, order9: { name: 'The standing order (Recall Notice 9)' }, memo7: { name: 'The Probably Fine Memo (Recall Notice 7)' }, shift5: { name: 'The cannery shift sheet (Recall Notice 5)' }, pell10: { name: "Gideon Pell's contract (Recall Notice 10)" } };
+
+/* ---- 3D.278 Blackgate Prison. The outer yard, a cell block (a corridor with cells both sides), the control room up a stair, the motor pool,
+   and the Warden's yard behind a heavy gate. House rule: the control room's lever opens every cell AND the gate at once: quick, but
+   everything in the cells comes out together. Or leave the cells shut and blow the gate with a bomb. Riot zombies carry their shield
+   to whoever they are fighting: hit them while they are busy with someone else. Size: 3 cells a side at level 3, one more every 3 levels (7 a side). ---- */
+function shPlanPrison(lv) { const n = shLvSize(lv, 3, 7, 3), L = n * 4 - 1, W = 11 + L + 1 + 13, P = shNewPlan(W, 21, { theme: 'prison', wall: '#7d7f84' });
+  shRoom(P, 'yard', 0, 5, 10, 11, 'The Outer Yard', '#a9a395'); shRoom(P, 'control', 1, 0, 8, 4, 'The Control Room', '#9a9a96'); shRoom(P, 'motor', 0, 17, 10, 4, 'The Motor Pool', '#8f8a7e');
+  shRoom(P, 'block', 11, 9, L, 3, 'Cell Block C', '#9a9a96'); shRoom(P, 'warden', 11 + L + 1, 3, 12, 15, "The Warden's Yard", '#a9a395');
+  shLink(P, 'yard', 'control'); shLink(P, 'yard', 'motor', true); shLink(P, 'yard', 'block'); const gate = shLink(P, 'block', 'warden', true); P.doors[gate][7] = 'heavy';
+  for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `cell${up ? 'n' : 's'}${i}`, x = 11 + i * 4; shRoom(P, id, x, up ? 5 : 13, 3, 3, null, '#8f8a7e'); shLink(P, id, 'block', true, x + 1, 1); P.locked.push(id); P.lockName[id] = `cell ${i * 2 + (up ? 1 : 2)}`;
+    P.spawn[id] = [[(i + up + lv) % 3 === 0 ? 'riot' : 'walker', 1 + ((i + up) % 2)]]; }
+  P.spawn.yard = [['walker', 3 + Math.floor(lv / 5)], ['runner', lv > 6 ? 1 : 0]].filter((q) => q[1]); P.spawn.control = [['riot', 1]]; P.spawn.block = [['walker', 2 + Math.floor(n / 3)], ['riot', 1]]; P.spawn.motor = [['walker', 2]];
+  P.spawn.warden = [['riot', 1 + Math.floor(lv / 8)], ['walker', 3], ['brute', lv > 11 ? 1 : 0]].filter((q) => q[1]);
+  P.boss = { room: 'warden', type: 'riot', name: 'The Warden', hp: 860, atk: 14, big: 1.55, spd: .012, pat: 'charge', patGap: 480 };
+  shThing(P, 'desk', 3, 1); shThing(P, 'lever', 6, 1, { use: 4, fast: ['Mechanic', 'Engineer'], label: 'Open every cell', icon: '🔓', sub: "Every cell door and the Warden's gate open at once", fx: 'cells', task: 'cells' });
+  shThing(P, 'van', 6, 18, { use: 6, fast: ['Mechanic'], label: 'Hot-wire the prison van', icon: '🚐', sub: 'Mechanics are quicker', loot: { fuel: 2, ammo: 6 }, task: 'van' });
+  shThing(P, 'sign', 8, 6, { look: '#d9b233' });
+  P.route = ['yard', 'block', 'warden']; P.startRoom = 'yard'; P.bossRoom = 'warden'; P.start = { x: 1, y: 9 }; P.exit = { x: .6, y: 10 }; P.mystT = ['walker', 'riot'];
+  P.tasks = [{ k: 'boss', label: 'Kill the Warden' }, { k: 'use', id: 'van', opt: true, label: 'Side: hot-wire the prison van' }]; P.botOrders = ['cells'];
+  P.tip = "The Warden's gate is too heavy to force. The control room opens it, and every cell with it, or a bomb blows it. Riot zombies hold their shield to whoever they fight: hit them from the side.";
+  return P; }
+SH_PLANS.prison = shPlanPrison;
+SH_FX.cells = (H) => { H.doors.forEach((d, i) => { const D = SH_DOORS[i]; if (D[7] === 'heavy' || /^cell/.test(D[0]) || /^cell/.test(D[1])) { d.open = true; d.locked = false; shReveal(D[0]); shReveal(D[1]); } });
+  for (const z of H.zs) if (z.hp > 0 && /^cell/.test(z.room || '')) { z.mode = 'idle'; z.hid = false; } banner('🔓 EVERY CELL IS OPEN'); say('The cell doors grind open all at once, and the gate with them. Everything inside is coming out.'); SFX('alarm'); };

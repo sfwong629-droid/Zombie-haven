@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.277', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.278', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5358,7 +5358,7 @@ function shPickup(H, live) {   /* walk into a revealed room with nobody hostile 
     const t = Object.entries(m.loot || {}).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n).concat((m.items || []).map((k) => '🎁 ' + ITEMS[k].name)); if (t.length) { shFx(s.w, t.join('  '), '#ffe9b8'); SFX('reward'); } else if (m.kind !== 'survivor') shFx(s.w, 'Nothing here.', '#b4a296'); } }
 function shFx(w, t, col) { if (S.sh) S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
 function shUnitDmg(s, z) { const w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s);
-  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
+  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (z.type === 'riot' && !z.human && z.target === s && S.sh.plan && S.sh.plan.theme === 'prison' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
 /* abilities: one per profession (Specialists get the stronger version) */
 const SH_ABIL = {
   Guard: { k: 'taunt', icon: '🛡', name: 'Taunt', cd: 1200, desc: 'Nearby enemies go for them; they take half damage for 6 s' },
@@ -5634,7 +5634,7 @@ function shActLabel(c) { const H = S.sh, o = c.o;
   if (c.k === 'b') { const ks = Object.entries(o.loot || {}).filter(([, n]) => n > 0).map(([k]) => (RES_NAME[k] || k).toLowerCase()), has = o.pris ? 'Prisoners locked inside' : ks.length || o.items.length ? 'Holds ' + [...(o.items.length ? [o.items.length > 1 ? 'gear' : 'a piece of gear'] : []), ...ks].join(', ') : 'Nothing worth taking';
     return o.dead ? ['📦', `Loot the ${o.name}`, has] : ['🎯', `Attack the ${o.name}`, `${has} · ${Math.ceil(o.hp)}/${o.max}`]; }
   if (c.k === 't') { const t = o.t; return [t.icon || (t.carry ? '📦' : '⚙'), t.carry ? `Pick up the ${t.label}` : t.label, t.need && !shThingReady(t) ? (t.needText || 'Not yet') : t.carry ? 'Then carry it out: slow, and no fighting' : t.sub || `${t.use || 3} s of work`]; }
-  return o.d.locked && !o.d.open ? ['🔒', 'Force the lock', 'Mechanics, Scavengers and Engineers are quicker'] : ['🚪', o.d.open ? 'Shut the door' : 'Open the door', ''];
+  return o.d.locked && !o.d.open && SH_DOORS[o.i][7] === 'heavy' ? ['⛓', 'A heavy gate', 'Too heavy to force: find what opens it, or use a bomb'] : o.d.locked && !o.d.open ? ['🔒', 'Force the lock', 'Mechanics, Scavengers and Engineers are quicker'] : ['🚪', o.d.open ? 'Shut the door' : 'Open the door', ''];
 }
 function shPickClose() { const e = $('shPick'); if (e) e.remove(); }
 function shPickMenu(px, py, c, at) { const H = S.sh, d = document.createElement('div'); d.id = 'shPick'; d.className = 'pick shPick';
@@ -5651,6 +5651,7 @@ function shAct(c) { const H = S.sh; H.coachAct = true; const pool = () => (H.sel
     for (const q of pl) { q.order = b; q.moveTo = null; q.loot = null; q.spotFor = null; } shFx(b.w, b.fence ? '🪓 Break through' : `🎯 ${b.name}`, '#ff6e62'); return; }
   if (c.k === 't') { const t = c.o.t; if (t.need && !shThingReady(t)) { say(t.needText || 'Not yet.'); return; } const who = pool().filter((q) => q.carry == null).sort((a, b) => ((t.fast || []).includes(b.job) - (t.fast || []).includes(a.job)) || dist(a.w, c.o.w) - dist(b.w, c.o.w))[0]; if (!who) return; for (const q of H.units) if (q.use === c.o.i && q !== who) q.use = null; who.use = c.o.i; who.moveTo = null; who.order = null; who.pick = null; shFx(c.o.w, `${t.icon || '⚙'} ${who.name}: on it`, '#ffe9b8'); return; }
   const dn = c.o;
+  if (dn.d.locked && !dn.d.open && !dn.d.broken && SH_DOORS[dn.i][7] === 'heavy') { say('Too heavy to force. Find what opens it, or blow it open with a 💣.'); return; }
   if (dn.d.locked && !dn.d.open && !dn.d.broken) { const [, , dx, dy, dw] = SH_DOORS[dn.i], pl = pool(); const sides = dw > 1 ? [shWorld(dx + .5, dy - 1), shWorld(dx + .5, dy + 1)] : [shWorld(dx - 1, dy + .5), shWorld(dx + 1, dy + .5)];
     const ok = sides.filter((p) => H.rev[shRoomAt(p)]); const who = pl.slice().sort((a, b) => (['Mechanic', 'Scavenger', 'Engineer'].includes(b.job) - ['Mechanic', 'Scavenger', 'Engineer'].includes(a.job)) || dist(a.w, dn.w) - dist(b.w, dn.w))[0]; if (!who || !ok.length) { say('Nobody can get to that door yet.'); return; }
     for (const q of H.units) if (q.pick === dn.i && q !== who) q.pick = null; who.pick = dn.i; who.pickT = 0; who.pickAt = ok.sort((a, b) => dist(a, who.w) - dist(b, who.w))[0]; who.moveTo = null; who.order = null; shFx(dn.w, `🔒 ${who.name}: forcing the lock`, '#ffe9b8'); return; }
@@ -5811,6 +5812,30 @@ function shWaveTick(H) { for (const wv of H.plan.waves) { if (wv.sent) continue;
 /* things the squad brings home for the story and the cure (kept in S.keyItems until the Story tab and the Brewery are built, Features chat) */
 const SH_KEYS = { feed_spring: { name: 'Wild cucumber seed (the cure: spring feed)' }, feed_summer: { name: 'The first Freshlock recipe (the cure: summer feed)' }, feed_autumn: { name: 'Old apple stock (the cure: autumn feed)' }, feed_winter: { name: 'Ice from the Frozen Depot (the cure: winter feed)' },
   proof1: { name: 'The army contract (proof 1)' }, proof2: { name: 'The Helix memo (proof 2)' }, proof3: { name: "Sunnyside's files (proof 3)" }, mixtape: { name: "Moth's Mixtape" }, salt: { name: 'Salt from the Larder (the cure, step 3)' }, glass: { name: 'Helix lab glass (the cure, step 4)' }, vat: { name: 'A Foundry steel brewing vat (the cure, step 7)' }, shepherd_tin: { name: "The Shepherd's tin (the cure, step 10)" }, old_brine: { name: 'The Old Brine' }, last_tank: { name: "The plant's last Freshlock tank (the cure, step 12)" }, ledger: { name: 'The Larder ledger (Recall Notice 11)' }, order9: { name: 'The standing order (Recall Notice 9)' }, memo7: { name: 'The Probably Fine Memo (Recall Notice 7)' }, shift5: { name: 'The cannery shift sheet (Recall Notice 5)' }, pell10: { name: "Gideon Pell's contract (Recall Notice 10)" } };
+
+/* ---- 3D.278 Blackgate Prison. The outer yard, a cell block (a corridor with cells both sides), the control room up a stair, the motor pool,
+   and the Warden's yard behind a heavy gate. House rule: the control room's lever opens every cell AND the gate at once: quick, but
+   everything in the cells comes out together. Or leave the cells shut and blow the gate with a bomb. Riot zombies carry their shield
+   to whoever they are fighting: hit them while they are busy with someone else. Size: 3 cells a side at level 3, one more every 3 levels (7 a side). ---- */
+function shPlanPrison(lv) { const n = shLvSize(lv, 3, 7, 3), L = n * 4 - 1, W = 11 + L + 1 + 13, P = shNewPlan(W, 21, { theme: 'prison', wall: '#7d7f84' });
+  shRoom(P, 'yard', 0, 5, 10, 11, 'The Outer Yard', '#a9a395'); shRoom(P, 'control', 1, 0, 8, 4, 'The Control Room', '#9a9a96'); shRoom(P, 'motor', 0, 17, 10, 4, 'The Motor Pool', '#8f8a7e');
+  shRoom(P, 'block', 11, 9, L, 3, 'Cell Block C', '#9a9a96'); shRoom(P, 'warden', 11 + L + 1, 3, 12, 15, "The Warden's Yard", '#a9a395');
+  shLink(P, 'yard', 'control'); shLink(P, 'yard', 'motor', true); shLink(P, 'yard', 'block'); const gate = shLink(P, 'block', 'warden', true); P.doors[gate][7] = 'heavy';
+  for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `cell${up ? 'n' : 's'}${i}`, x = 11 + i * 4; shRoom(P, id, x, up ? 5 : 13, 3, 3, null, '#8f8a7e'); shLink(P, id, 'block', true, x + 1, 1); P.locked.push(id); P.lockName[id] = `cell ${i * 2 + (up ? 1 : 2)}`;
+    P.spawn[id] = [[(i + up + lv) % 3 === 0 ? 'riot' : 'walker', 1 + ((i + up) % 2)]]; }
+  P.spawn.yard = [['walker', 3 + Math.floor(lv / 5)], ['runner', lv > 6 ? 1 : 0]].filter((q) => q[1]); P.spawn.control = [['riot', 1]]; P.spawn.block = [['walker', 2 + Math.floor(n / 3)], ['riot', 1]]; P.spawn.motor = [['walker', 2]];
+  P.spawn.warden = [['riot', 1 + Math.floor(lv / 8)], ['walker', 3], ['brute', lv > 11 ? 1 : 0]].filter((q) => q[1]);
+  P.boss = { room: 'warden', type: 'riot', name: 'The Warden', hp: 860, atk: 14, big: 1.55, spd: .012, pat: 'charge', patGap: 480 };
+  shThing(P, 'desk', 3, 1); shThing(P, 'lever', 6, 1, { use: 4, fast: ['Mechanic', 'Engineer'], label: 'Open every cell', icon: '🔓', sub: "Every cell door and the Warden's gate open at once", fx: 'cells', task: 'cells' });
+  shThing(P, 'van', 6, 18, { use: 6, fast: ['Mechanic'], label: 'Hot-wire the prison van', icon: '🚐', sub: 'Mechanics are quicker', loot: { fuel: 2, ammo: 6 }, task: 'van' });
+  shThing(P, 'sign', 8, 6, { look: '#d9b233' });
+  P.route = ['yard', 'block', 'warden']; P.startRoom = 'yard'; P.bossRoom = 'warden'; P.start = { x: 1, y: 9 }; P.exit = { x: .6, y: 10 }; P.mystT = ['walker', 'riot'];
+  P.tasks = [{ k: 'boss', label: 'Kill the Warden' }, { k: 'use', id: 'van', opt: true, label: 'Side: hot-wire the prison van' }]; P.botOrders = ['cells'];
+  P.tip = "The Warden's gate is too heavy to force. The control room opens it, and every cell with it, or a bomb blows it. Riot zombies hold their shield to whoever they fight: hit them from the side.";
+  return P; }
+SH_PLANS.prison = shPlanPrison;
+SH_FX.cells = (H) => { H.doors.forEach((d, i) => { const D = SH_DOORS[i]; if (D[7] === 'heavy' || /^cell/.test(D[0]) || /^cell/.test(D[1])) { d.open = true; d.locked = false; shReveal(D[0]); shReveal(D[1]); } });
+  for (const z of H.zs) if (z.hp > 0 && /^cell/.test(z.room || '')) { z.mode = 'idle'; z.hid = false; } banner('🔓 EVERY CELL IS OPEN'); say('The cell doors grind open all at once, and the gate with them. Everything inside is coming out.'); SFX('alarm'); };
 /* ---- 3D.116 owner: a raid is a camp map like the town. Their buildings, their guards and workers. Send the squad at a building,
    bring it down, then decide whether to stop and loot it (a water building gives water, and so on). The good stuff (gear, guns,
    ammo, the leader) sits in the middle, the hardest part to reach. Survivors fight on their own; you tell them where to go. ---- */

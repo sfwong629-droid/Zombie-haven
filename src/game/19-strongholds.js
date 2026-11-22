@@ -107,7 +107,7 @@ function shPickup(H, live) {   /* walk into a revealed room with nobody hostile 
     const t = Object.entries(m.loot || {}).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n).concat((m.items || []).map((k) => '🎁 ' + ITEMS[k].name)); if (t.length) { shFx(s.w, t.join('  '), '#ffe9b8'); SFX('reward'); } else if (m.kind !== 'survivor') shFx(s.w, 'Nothing here.', '#b4a296'); } }
 function shFx(w, t, col) { if (S.sh) S.sh.fx.push({ w: { ...w }, t, col, a: 60 }); }
 function shUnitDmg(s, z) { const w = weaponOf(s), bonus = (professions[s.job]?.combat || 0) + skillDmg(s);
-  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
+  return Math.round((4 + w.atk * .55 + (w.ranged ? stat(s, 'per') : stat(s, 'str')) * .6 + bonus) * (w.ranged && hasSkill(s, 'marksman') ? 1.25 : 1) * (isFighter(s) ? 1 : TUNE.nfDmg) * (z.type === 'riot' && w.kind === 'blade' ? .5 : 1) * (z.type === 'riot' && !z.human && z.target === s && S.sh.plan && S.sh.plan.theme === 'prison' ? .5 : 1) * (s.spec && (hasSpec(s, 'swat') || hasSpec(s, 'marksman')) ? 1.2 : 1) * (z.boss && S.sh.focus ? 1.3 : 1) * (s.rallyT > S.sh.t ? 1.2 : 1)); }
 /* abilities: one per profession (Specialists get the stronger version) */
 const SH_ABIL = {
   Guard: { k: 'taunt', icon: '🛡', name: 'Taunt', cd: 1200, desc: 'Nearby enemies go for them; they take half damage for 6 s' },
@@ -383,7 +383,7 @@ function shActLabel(c) { const H = S.sh, o = c.o;
   if (c.k === 'b') { const ks = Object.entries(o.loot || {}).filter(([, n]) => n > 0).map(([k]) => (RES_NAME[k] || k).toLowerCase()), has = o.pris ? 'Prisoners locked inside' : ks.length || o.items.length ? 'Holds ' + [...(o.items.length ? [o.items.length > 1 ? 'gear' : 'a piece of gear'] : []), ...ks].join(', ') : 'Nothing worth taking';
     return o.dead ? ['📦', `Loot the ${o.name}`, has] : ['🎯', `Attack the ${o.name}`, `${has} · ${Math.ceil(o.hp)}/${o.max}`]; }
   if (c.k === 't') { const t = o.t; return [t.icon || (t.carry ? '📦' : '⚙'), t.carry ? `Pick up the ${t.label}` : t.label, t.need && !shThingReady(t) ? (t.needText || 'Not yet') : t.carry ? 'Then carry it out: slow, and no fighting' : t.sub || `${t.use || 3} s of work`]; }
-  return o.d.locked && !o.d.open ? ['🔒', 'Force the lock', 'Mechanics, Scavengers and Engineers are quicker'] : ['🚪', o.d.open ? 'Shut the door' : 'Open the door', ''];
+  return o.d.locked && !o.d.open && SH_DOORS[o.i][7] === 'heavy' ? ['⛓', 'A heavy gate', 'Too heavy to force: find what opens it, or use a bomb'] : o.d.locked && !o.d.open ? ['🔒', 'Force the lock', 'Mechanics, Scavengers and Engineers are quicker'] : ['🚪', o.d.open ? 'Shut the door' : 'Open the door', ''];
 }
 function shPickClose() { const e = $('shPick'); if (e) e.remove(); }
 function shPickMenu(px, py, c, at) { const H = S.sh, d = document.createElement('div'); d.id = 'shPick'; d.className = 'pick shPick';
@@ -400,6 +400,7 @@ function shAct(c) { const H = S.sh; H.coachAct = true; const pool = () => (H.sel
     for (const q of pl) { q.order = b; q.moveTo = null; q.loot = null; q.spotFor = null; } shFx(b.w, b.fence ? '🪓 Break through' : `🎯 ${b.name}`, '#ff6e62'); return; }
   if (c.k === 't') { const t = c.o.t; if (t.need && !shThingReady(t)) { say(t.needText || 'Not yet.'); return; } const who = pool().filter((q) => q.carry == null).sort((a, b) => ((t.fast || []).includes(b.job) - (t.fast || []).includes(a.job)) || dist(a.w, c.o.w) - dist(b.w, c.o.w))[0]; if (!who) return; for (const q of H.units) if (q.use === c.o.i && q !== who) q.use = null; who.use = c.o.i; who.moveTo = null; who.order = null; who.pick = null; shFx(c.o.w, `${t.icon || '⚙'} ${who.name}: on it`, '#ffe9b8'); return; }
   const dn = c.o;
+  if (dn.d.locked && !dn.d.open && !dn.d.broken && SH_DOORS[dn.i][7] === 'heavy') { say('Too heavy to force. Find what opens it, or blow it open with a 💣.'); return; }
   if (dn.d.locked && !dn.d.open && !dn.d.broken) { const [, , dx, dy, dw] = SH_DOORS[dn.i], pl = pool(); const sides = dw > 1 ? [shWorld(dx + .5, dy - 1), shWorld(dx + .5, dy + 1)] : [shWorld(dx - 1, dy + .5), shWorld(dx + 1, dy + .5)];
     const ok = sides.filter((p) => H.rev[shRoomAt(p)]); const who = pl.slice().sort((a, b) => (['Mechanic', 'Scavenger', 'Engineer'].includes(b.job) - ['Mechanic', 'Scavenger', 'Engineer'].includes(a.job)) || dist(a.w, dn.w) - dist(b.w, dn.w))[0]; if (!who || !ok.length) { say('Nobody can get to that door yet.'); return; }
     for (const q of H.units) if (q.pick === dn.i && q !== who) q.pick = null; who.pick = dn.i; who.pickT = 0; who.pickAt = ok.sort((a, b) => dist(a, who.w) - dist(b, who.w))[0]; who.moveTo = null; who.order = null; shFx(dn.w, `🔒 ${who.name}: forcing the lock`, '#ffe9b8'); return; }
