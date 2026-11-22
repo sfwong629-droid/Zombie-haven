@@ -255,6 +255,8 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 21 Nov (W193): **the Dog and the Stag run as a real gallop, one foot landing at a time** (owner: "a real dog doesn't run with both legs landing at the same time"; "yes give it the same gallop" for the Stag). Made by hand (`tools/art/b3d/doggallop.py`), not from a recording. Built in 3D.256.
 - 21 Nov (W199): **the Bloater Queen swings her arms wide in the walk and attacks with a two-arm sweep, then the belly slam** ("the bloater queen looks good"). Built in 3D.257. The Bloated's arms looked fused ("the bloated arm seem to be fused"): his model has the arms joined to the belly, so he is not changed yet (W200).
 - 21 Nov (W200): **the Bloated gets the same arms in the walk and the belly slam** ("try b"), knowing his shirt stretches under the arms because his arms are modelled joined to his belly (a new model was the other choice). Built in 3D.267.
+- 22 Nov (W204): **the Walker grabs and bites** ("Yes, build it"). Built in 3D.276.
+- 22 Nov (W212): **the rest of the zombie moves are made in one overnight run, as previews only** (sheets from several angles and a video of each animation playing); **nothing goes in the game until the owner has reviewed them**. All of them, the new kinds too; the moves as approved in `14-ZOMBIE-MOVES.md`, not the W192 versions.
 
 ## Zombies
 - 17 Nov (Planning chat): The eleven new kinds of zombie, approved by the owner. For each: trick; how to beat it; strength next to a Walker; first day (game days, Claude's estimate, to be tuned against `08-BALANCE.md`). Not built yet. No Soldier carries a gun.
