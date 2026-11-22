@@ -1962,6 +1962,7 @@ function shThingsGroup(H) { const g = new THREE.Group(), Q = new Parts(), AX = Z
     else if (k === 'pump') { b(1.3, .9, 1.0, on ? '#5a7a5a' : '#5f666e', 0, .45, 0); c(.2, .2, 1.4, '#7c858e', .8, .3, 0, 10, 0, Math.PI / 2); c(.35, .35, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.0, .2, 12, Math.PI / 2); gl(box(.14, .1, .04), -.4, .7, .52); }
     else if (k === 'generator') { b(1.5, .9, .9, '#6a7a5a', 0, .45, 0); c(.1, .1, .7, '#3e4348', .5, 1.1, 0, 6); b(.4, .3, .05, '#2e2a28', -.3, .6, .46); if (on) gl(box(.3, .18, .04), -.3, .6, .49); }
     else if (k === 'speaker') { b(.12, 2.4, .12, '#5f666e', 0, 1.2, 0); Q.put(new THREE.ConeGeometry(.35, .5, 10, 1, true), on ? '#d9b233' : '#8a8f94', M4(cx, 2.3, cz, ry, Math.PI / 2)); }
+    else if (t.lost) { }
     else if (k === 'crate' || k === 'files' || k === 'seed' || k === 'jar' || k === 'box') { const col = { files: '#c9b88a', seed: '#6a8a3a', jar: '#7fb0a0', box: '#8a6038' }[k] || '#a0743c'; if (t.delivered) { b(.6, .45, .5, col, 0, .23, 0); } else { b(.75, .55, .6, col, 0, .28, 0); b(.78, .08, .62, '#5a3b23', 0, .58, 0); gl(box(.2, .2, .2), 0, .9, 0); } }
     else if (k === 'safe') { b(1.0, 1.0, .8, '#3e4348', 0, .5, -.3); c(.16, .16, .06, '#c9c9c9', 0, .55, .12, 10, Math.PI / 2); }
     else if (k === 'cell') { for (let i = 0; i < 7; i++) b(.06, 1.4, .06, '#4a4d52', -1.1 + i * .37, .7, 0); b(2.4, .08, .08, '#4a4d52', 0, 1.4, 0); b(2.4, .08, .08, '#4a4d52', 0, .1, 0); }
@@ -1978,6 +1979,9 @@ function shThingsGroup(H) { const g = new THREE.Group(), Q = new Parts(), AX = Z
     else if (k === 'stage') { b(T * 3, .5, T * 1.6, '#8a5a32', T, .25, 0); b(T * 3, 2.2, .1, '#c94a3a', T, 1.6, -T * .8); b(T * 1.2, .6, .05, '#e8c45a', T, 2.5, -T * .78); }
     else if (k === 'ride') { c(1.6, 1.6, .2, '#6a4a2e', 0, .1, 0, 14); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; b(.1, 1.6, .1, '#c9c0a8', Math.cos(a) * 1.2, .9, Math.sin(a) * 1.2); } Q.put(new THREE.ConeGeometry(1.9, .9, 12), '#c94a3a', M4(cx, 2.1, cz)); }
     else if (k === 'van') { b(2.6, 1.3, 1.3, on ? '#e4e0cc' : '#d9d4c4', 0, .85, 0); b(.9, .9, 1.25, '#9aa3a8', 1.3, .7, 0); b(.5, .4, 1.27, '#3e4f5a', 1.4, 1.0, 0); for (const [dx, dz] of [[-.8, -.6], [.9, -.6], [-.8, .6], [.9, .6]]) c(.28, .28, .16, '#2e2c2a', dx, .28, dz, 10, Math.PI / 2); b(2.0, .25, 1.32, '#3a4a6a', -.2, 1.0, 0); }
+    else if (k === 'sandbags') { for (let r = 0; r < 3; r++) for (let i = 0; i < 5 - r; i++) b(.4, .2, .52, (i + r) % 2 ? '#b5a47a' : '#a89870', -.84 + r * .21 + i * .42, .1 + r * .2, 0); }
+    else if (k === 'listener') { }
+    else if (k === 'hay') { c(.42, .42, .75, '#d2b04e', -.42, .42, 0, 10, Math.PI / 2); c(.42, .42, .75, '#c9a644', .42, .42, 0, 10, Math.PI / 2); }
     else if (k === 'ice') { b(.9, .9, .9, '#cfe8ff', 0, .45, 0, .3); b(.6, 1.2, .6, '#b8dcf5', .5, .6, .3, .7); }
     else if (k === 'sign') { b(.08, 1.6, .08, '#5a3b23', 0, .8, 0); b(1.4, .6, .05, t.look || '#d9c08a', 0, 1.5, 0); }
     else if (k === 'cage') { b(1.6, .08, 1.6, '#4a4f55', 0, .04, 0); b(1.6, .08, 1.6, '#4a4f55', 0, 1.2, 0); if (!on) for (let i = -3; i <= 3; i++) { b(.05, 1.15, .05, '#6f7780', i * .25, .62, -.76); b(.05, 1.15, .05, '#6f7780', i * .25, .62, .76); } }
