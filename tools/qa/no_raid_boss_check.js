@@ -8,7 +8,7 @@ const Q = require('./lib');
     S.day = 10; S.nextBoss = 11; S.grace = 0; S.graceUntil = 0;
     for (let d = 10; d <= 13; d++) for (let h = 0; h < 24; h++) { S.day = d; S.hour = h; S.nextRaid = 0;   /* a raid is always due */
       const before = S.z.filter((z) => z.human).length; ZH.eventSchedule(); const n = S.z.filter((z) => z.human).length - before; if (n > 0) out.raidsByDay[d] = (out.raidsByDay[d] || 0) + 1;
-      if (S.z.some((z) => z.boss)) out.boss = d; if (d === 12 && h === 3) { for (const z of S.z) if (z.boss || z.mob) z.hp = 0; S.z = S.z.filter((z) => z.hp > 0); S.bossOn = null; S.mobLeft = 0; }   /* the boss falls in the small hours of the next day */
+      if (S.vanguard || S.z.some((z) => z.boss)) out.boss = d; if (d === 12 && h === 3) { for (const z of S.z) if (z.boss || z.mob) z.hp = 0; S.z = S.z.filter((z) => z.hp > 0); S.bossOn = null; S.vanguard = null; S.mobLeft = 0; }   /* the boss falls in the small hours of the next day */
       S.z = S.z.filter((z) => !z.human); }
     out.nextBoss = S.nextBoss; out.near = ZH.bossNear(); return out; });
   console.log(JSON.stringify(r)); const bad = [];

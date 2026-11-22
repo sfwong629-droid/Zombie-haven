@@ -18,7 +18,11 @@ DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day
   let stepErr=null;
   for(let h=0;h<(H||24);h++){for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
       const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
-      for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss')day.bossNight=true;if(z.human){day.raid++;(day.raidAt=day.raidAt||[]).push((z.fk||'?')+'@'+S.hour+(S.day===S.nextBoss||S.bossOn!=null||S.bossDay===S.day?'!boss':''));}}}
+      { const on=!!S.vanguard||S.bossOn!=null;   /* one record per boss event: how many of its horde arrived, from the first group until the horde is gone (it may cross midnight and this tool's day line) */
+        if(on&&!L.hd)L.hd={n:0,lvl:S.lvl,day:S.day,h0:S.hour,d0:AP.deaths.length,k0:AP.downs.length,lvlBoss:!!S.vanguard||S.bossDay===S.day,bossH:null,peak:0};
+        if(L.hd){ if(L.hd.bossH==null&&S.z.some(z=>z.type==='boss'&&z.hp>0))L.hd.bossH=S.hour; L.hd.peak=Math.max(L.hd.peak,act);
+          if(!on){(day.hordes=day.hordes||[]).push({...L.hd,h1:S.hour,deaths:AP.deaths.length-L.hd.d0,downs:AP.downs.length-L.hd.k0});L.hd=null;} } }
+      for(const z of S.z){if(L.seen.has(z))continue;L.seen.add(z);if(z.mob&&L.hd)L.hd.n++;const b=(S.hour>=20||S.hour<6)?day.night:day.spawn;b[z.type]=(b[z.type]||0)+1;if(z.type==='boss'){day.bossNight=true;day.bossHour=S.hour;}if(z.mob)day.mobNew=(day.mobNew||0)+1;if(z.human){day.raid++;(day.raidAt=day.raidAt||[]).push((z.fk||'?')+'@'+S.hour+(S.day===S.nextBoss||S.bossOn!=null||S.bossDay===S.day?'!boss':''));}}}
     if(stepErr)break; try{AP.hour();}catch(e){stepErr='AP.hour '+String(e&&e.stack||e).slice(0,300);break;}
     /* a night runs 20:00 to 06:00: who went down, who died, was it a boss night (for the scorecard) */
     if(S.hour===20)L.night={d:AP.downs.length,k:AP.deaths.length,boss:false,day:S.day};

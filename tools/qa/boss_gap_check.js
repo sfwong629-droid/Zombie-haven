@@ -4,7 +4,7 @@
 const Q = require('./lib');
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 }); await Q.newGame(p); await Q.clearCards(p);
   const r = await p.evaluate(() => { const S = ZH.S, out = {}; for (const q of S.sv) { q.max = q.hp = 99999; }
-    for (const lvl of [5, 10, 11, 20]) { S.lvl = lvl; S.z.length = 0; S.bossOn = null; S.mobLeft = 0; S.day = 30; S.nextBoss = 30; S.hour = 21; S.nextRaid = 1e9; ZH.eventSchedule(); out[lvl] = { gap: S.nextBoss - 30, boss: S.z.some((z) => z.boss) }; }
+    for (const lvl of [5, 10, 11, 20]) { S.lvl = lvl; S.z.length = 0; S.bossOn = null; S.vanguard = null; S.mobLeft = 0; S.day = 30; S.nextBoss = 30; S.hour = 21; S.nextRaid = 1e9; ZH.eventSchedule(); out[lvl] = { gap: S.nextBoss - 30, boss: !!S.vanguard || S.z.some((z) => z.boss) }; }
     S.lvl = 1; return out; });
   console.log(JSON.stringify(r)); const bad = [];
   for (const [lvl, want] of [[5, 3], [10, 3], [11, 5], [20, 5]]) { if (!r[lvl].boss) bad.push('no boss came at level ' + lvl); if (r[lvl].gap !== want) bad.push('level ' + lvl + ': the next boss is ' + r[lvl].gap + ' days on, expected ' + want); }
