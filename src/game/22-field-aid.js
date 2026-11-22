@@ -1,8 +1,14 @@
 /* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:
-   a field dressing heals to 60% at most, and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
+   a field dressing heals to 60% at most (3D.286: 75%, see PATCH_CAP; 60% is now only the limit of a field wound), and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
    Each treatment uses 1 cloth or 0.1 meds. ---------------- */
 const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+/* 3D.286 healing, part 3 (owner, 20 Nov, W130): "rounds fill the gaps". A Medic's round patches to PATCH_CAP (75%; it was 60%) and is for the people who
+   cannot go to a medical building: on a shift or a guard post, the building full, or no medical building at all (and anyone at all while a zombie is in
+   town, when nobody sets out for care). Someone who can walk to the Tent is left to do that. A field wound still stops at 60% (FIELD_CAP). */
+const PATCH_CAP = .75;
+const patchCap = (q) => Math.round(q.max * (q.wounded ? FIELD_CAP : PATCH_CAP));
+const cantGoCare = (q) => zInTown() || onShift(q) || postActive(myPost(q)) || !careRoom(q);
 /* 3D.285 healing, part 2 (owner, 20 Nov, W130): "the tent first". With no zombie in town, anyone under TENT_PCT of their health (or with a field wound)
    walks to a medical building that has room, in free time or between jobs, and stays until fully healed. People on a shift or a guard post do not go
    (the Medic's rounds are for them); during danger the old bars for leaving work (60% / 50%) still decide. */
@@ -17,8 +23,8 @@ const injuryTrip = (q) => ['goFacility', 'useFacility'].includes(q.mode) && q.fa
 function medicFindPatient(s) {
   if (s.job !== 'Medic' || s.hp < s.max * .5 || onShift(s) || s.carriedLoot || !patchSupply(true)) return null;
   let best = null, bd = 14;
-  for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= Math.round(q.max * FIELD_CAP) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
-      || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || insideBuilding(q) || q.sleeping) continue;
+  for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= patchCap(q) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
+      || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || (insideBuilding(q) && q.mode !== 'work') || q.sleeping || !cantGoCare(q)) continue;   /* 3D.286: a worker on shift indoors is seen at the door */
     const d = dist(s.w, q.w); if (d < bd && !zNear(q.w, 5)) { bd = d; best = q; } }
   return best;
 }
@@ -28,7 +34,7 @@ function startAid(s, q, kind) { s.mode = 'fieldAid'; s.aidTo = q; s.aidKind = ki
 function endAid(s) { const q = s.aidTo; if (q && q.aidBy === s) q.aidBy = null; s.aidTo = null; s.aidKind = null; s.aidT = 0; if (s.activity === 'Treating') s.activity = null; }
 function fieldAidAI(s) {
   const q = s.aidTo, kind = s.aidKind;
-  if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= Math.round(q.max * FIELD_CAP) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
+  if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= patchCap(q) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
     if (q && kind === 'revive' && q.rescuer === s) { q.rescuer = null; q.stable = false; } s.rescuing = null; endAid(s); enterFree(s, 30); return; }
   if (kind === 'patch' && (zNear(q.w, 5) || threatOf(s))) { endAid(s); enterFree(s, 60); return; }
   if (kind === 'revive' && zNear(q.w, 2.5)) { endAid(s); q.stable = false; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `No time: carrying ${q.name} to safety`; return; }   /* zombies close in: grab them and go */
@@ -44,7 +50,7 @@ function fieldAidAI(s) {
   if (!patchSupply(false)) { floats.push({ w: { ...s.w }, t: 'Needs 🧵 or 💊', col: '#ff8a4b', a: 70 });
     if (kind === 'revive') { endAid(s); q.stable = false; s.carrying = q; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Out of dressings: carrying ${q.name} in`; } else { endAid(s); enterFree(s, 60); } return; }
   gainXp(s, kind === 'revive' ? 4 : 2); addBond(s, q, kind === 'revive' ? 6 : 3);
-  if (kind === 'patch') { const to = Math.round(q.max * FIELD_CAP), h = Math.max(0, to - q.hp); q.hp = Math.max(q.hp, to); q.patchT = tick; floats.push({ w: { ...q.w }, t: '+' + h + ' HP 🩹', col: '#7fd35a', a: 70 }); emote(q, '🙏', 90, true); endAid(s); enterFree(s, 40); return; }
+  if (kind === 'patch') { const to = patchCap(q), h = Math.max(0, to - q.hp); q.hp = Math.max(q.hp, to); q.patchT = tick; floats.push({ w: { ...q.w }, t: '+' + h + ' HP 🩹', col: '#7fd35a', a: 70 }); emote(q, '🙏', 90, true); endAid(s); enterFree(s, 40); return; }
   if ((q.downN || 0) >= 2) {   /* too serious for the field: stabilised, then carried in */
     endAid(s); q.stable = true; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `${q.name} is stable but needs care: carrying them in`;
     note('routine', `${s.name} stabilised ${q.name} (down twice today: needs a medical bed).`); return; }

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.285', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.286', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -6446,10 +6446,16 @@ function bleedMax() { return Math.round(BLEED_TICKS[medTier()] * DF().bleed * ((
 function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.round(CARE_TICKS.medic * 1.5);   /* 3D.46 camp care: half again as long as a Medical Tent */
   const t = b ? b.type : medTier(), m = b || medSite(), st = m && isWorking(m) ? Math.max(.6, 1 - (stat(m.staff, 'int') - 5) * .03) : 1; return Math.round((CARE_TICKS[t] || CARE_TICKS.medic) * st * (m ? 1 - combos(m).care : 1) * (m && m.unpaid ? 1.4 : 1) * (m && !(isWorking(m) && m.staff && m.staff.job === 'Medic') ? 1.3 : 1) * (m && isWorking(m) && gearFx(m.staff, 'medic') ? .8 : 1)); }   /* 3D.69: care without a Medic on staff is 1.3x slower (was 1.6x in 3D.67: made the Medic too essential) */
 /* ---------------- 3D.67 Medic field aid. A Medic patches the hurt where they stand and gets the downed back on their feet, but only so far:
-   a field dressing heals to 60% at most, and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
+   a field dressing heals to 60% at most (3D.286: 75%, see PATCH_CAP; 60% is now only the limit of a field wound), and someone revived in the field gets up at 30% Wounded (no healing past 60% until a medical
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
    Each treatment uses 1 cloth or 0.1 meds. ---------------- */
 const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+/* 3D.286 healing, part 3 (owner, 20 Nov, W130): "rounds fill the gaps". A Medic's round patches to PATCH_CAP (75%; it was 60%) and is for the people who
+   cannot go to a medical building: on a shift or a guard post, the building full, or no medical building at all (and anyone at all while a zombie is in
+   town, when nobody sets out for care). Someone who can walk to the Tent is left to do that. A field wound still stops at 60% (FIELD_CAP). */
+const PATCH_CAP = .75;
+const patchCap = (q) => Math.round(q.max * (q.wounded ? FIELD_CAP : PATCH_CAP));
+const cantGoCare = (q) => zInTown() || onShift(q) || postActive(myPost(q)) || !careRoom(q);
 /* 3D.285 healing, part 2 (owner, 20 Nov, W130): "the tent first". With no zombie in town, anyone under TENT_PCT of their health (or with a field wound)
    walks to a medical building that has room, in free time or between jobs, and stays until fully healed. People on a shift or a guard post do not go
    (the Medic's rounds are for them); during danger the old bars for leaving work (60% / 50%) still decide. */
@@ -6464,8 +6470,8 @@ const injuryTrip = (q) => ['goFacility', 'useFacility'].includes(q.mode) && q.fa
 function medicFindPatient(s) {
   if (s.job !== 'Medic' || s.hp < s.max * .5 || onShift(s) || s.carriedLoot || !patchSupply(true)) return null;
   let best = null, bd = 14;
-  for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= Math.round(q.max * FIELD_CAP) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
-      || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || insideBuilding(q) || q.sleeping) continue;
+  for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= patchCap(q) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
+      || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || (insideBuilding(q) && q.mode !== 'work') || q.sleeping || !cantGoCare(q)) continue;   /* 3D.286: a worker on shift indoors is seen at the door */
     const d = dist(s.w, q.w); if (d < bd && !zNear(q.w, 5)) { bd = d; best = q; } }
   return best;
 }
@@ -6475,7 +6481,7 @@ function startAid(s, q, kind) { s.mode = 'fieldAid'; s.aidTo = q; s.aidKind = ki
 function endAid(s) { const q = s.aidTo; if (q && q.aidBy === s) q.aidBy = null; s.aidTo = null; s.aidKind = null; s.aidT = 0; if (s.activity === 'Treating') s.activity = null; }
 function fieldAidAI(s) {
   const q = s.aidTo, kind = s.aidKind;
-  if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= Math.round(q.max * FIELD_CAP) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
+  if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= patchCap(q) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
     if (q && kind === 'revive' && q.rescuer === s) { q.rescuer = null; q.stable = false; } s.rescuing = null; endAid(s); enterFree(s, 30); return; }
   if (kind === 'patch' && (zNear(q.w, 5) || threatOf(s))) { endAid(s); enterFree(s, 60); return; }
   if (kind === 'revive' && zNear(q.w, 2.5)) { endAid(s); q.stable = false; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `No time: carrying ${q.name} to safety`; return; }   /* zombies close in: grab them and go */
@@ -6491,7 +6497,7 @@ function fieldAidAI(s) {
   if (!patchSupply(false)) { floats.push({ w: { ...s.w }, t: 'Needs 🧵 or 💊', col: '#ff8a4b', a: 70 });
     if (kind === 'revive') { endAid(s); q.stable = false; s.carrying = q; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `Out of dressings: carrying ${q.name} in`; } else { endAid(s); enterFree(s, 60); } return; }
   gainXp(s, kind === 'revive' ? 4 : 2); addBond(s, q, kind === 'revive' ? 6 : 3);
-  if (kind === 'patch') { const to = Math.round(q.max * FIELD_CAP), h = Math.max(0, to - q.hp); q.hp = Math.max(q.hp, to); q.patchT = tick; floats.push({ w: { ...q.w }, t: '+' + h + ' HP 🩹', col: '#7fd35a', a: 70 }); emote(q, '🙏', 90, true); endAid(s); enterFree(s, 40); return; }
+  if (kind === 'patch') { const to = patchCap(q), h = Math.max(0, to - q.hp); q.hp = Math.max(q.hp, to); q.patchT = tick; floats.push({ w: { ...q.w }, t: '+' + h + ' HP 🩹', col: '#7fd35a', a: 70 }); emote(q, '🙏', 90, true); endAid(s); enterFree(s, 40); return; }
   if ((q.downN || 0) >= 2) {   /* too serious for the field: stabilised, then carried in */
     endAid(s); q.stable = true; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `${q.name} is stable but needs care: carrying them in`;
     note('routine', `${s.name} stabilised ${q.name} (down twice today: needs a medical bed).`); return; }
@@ -7388,7 +7394,7 @@ const GUIDE_TXT = [
   ['Walls', 'Build → Defend: Wood Fence, Log Palisade (Lodge), Stone Wall (Fort) or Gate, then tap tiles around the town. Build a stronger wall on a weaker one to upgrade it. Close every gap to SEAL the perimeter. Broken walls turn to rubble; repair them with scrap. Zombies are bad at doors.'],
   ['Fighting', 'Guards, Police and Scavengers fight; everyone else very sensibly runs inside. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
   ['Running the town', 'Beds give people a place to sleep; the Haven\'s level sets how many it can take in, so level up to grow. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store they start leaving. Newcomers come sooner to a town with spare beds, food and water. Someone down? Tap Send rescue. A boss? Tap Focus the boss (+30% damage). More people, more buildings, fewer zombies inside.'],
-  ['Professions', 'Guards hold the line (+20% HP, 20% less damage). Police shoot further and hit raiders harder. Scavengers fetch wood and scrap. Medics patch people up (to 60%). Engineers build fastest. Cooks stretch rations. Farmers grow food and water. Mechanics run the machines. Civilians fill any job and carry twice the load. The wrong job works at 75%. Everyone is good at something.'],
+  ['Professions', 'Guards hold the line (+20% HP, 20% less damage). Police shoot further and hit raiders harder. Scavengers fetch wood and scrap. Medics patch people up (to 75%). Engineers build fastest. Cooks stretch rations. Farmers grow food and water. Mechanics run the machines. Civilians fill any job and carry twice the load. The wrong job works at 75%. Everyone is good at something.'],
   ['Gear', 'Tap a survivor → Gear to equip weapons, clothes and accessories from the stash. The Armory, crafting, the trader and expeditions bring new gear. Dress for the apocalypse you want.'],
   ['Explore', 'Send a squad from the Explore button; trips run in real time, even with the game closed. Losses are permanent. The world outside is big and rude.'],
   ['Renown and levels', 'Building, goals and victories earn Renown. The Haven grows through 20 levels in four eras (the City from level 16). A level needs enough people and buildings; then press Upgrade and wait (faster while you play). Levels 5→6 and 10→11 also need a Banner: clear a stronghold, beat or ally with a faction, or finish a civic project. Fame, apocalypse edition.'],
