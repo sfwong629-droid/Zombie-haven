@@ -1,0 +1,52 @@
+# zmove_gatling_carry.py -- RAW.glb CLIP OUT.json : the Gatling Boss's walk or run with the gun carried level (owner, 22 Nov: "Make a preview with
+# his walk and run"; today the gun arm swings like an empty arm and points at the ground). Preview for W216: made by hand on top of today's clip.
+# Everything but the gun arm is today's clip unchanged (legs, body, the right arm's swing). The gun arm is held as in the braced fire: the elbow
+# tucked at his side, the gun level at hip height, pointing where his chest points, so it bobs and turns with his body. It loops as today's does.
+# Rig: +X his left, -Y forward, +Z up.
+import bpy, sys, math, json
+from mathutils import Matrix, Vector
+a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]
+bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
+ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; W = ao.matrix_world; sc = bpy.context.scene
+ad = ao.animation_data
+for tr in ad.nla_tracks: tr.mute = True
+def use(name):
+    act = bpy.data.actions[name]; ad.action = act
+    try:
+        if act.slots: ad.action_slot = act.slots[0]
+    except Exception: pass
+    return act
+for pb in PB: pb.rotation_mode = 'QUATERNION'
+def upd(): bpy.context.view_layer.update()
+def wpos(n, tail=False): pb = PB[n]; return W @ (pb.tail if tail else pb.head)
+def rot_about(name, q, c):
+    pb = PB[name]; M = W @ pb.matrix; T = Matrix.Translation(c) @ q.to_matrix().to_4x4() @ Matrix.Translation(-c); pb.matrix = W.inverted() @ T @ M; upd()
+def aim(name, to):
+    d0 = (wpos(name, True) - wpos(name)).normalized(); d1 = (to - wpos(name)).normalized(); rot_about(name, d0.rotation_difference(d1), wpos(name))
+use('idle'); sc.frame_set(0); upd()
+import numpy as np   # the gun's own axis in the left forearm's frame (the gun is modelled onto the forearm)
+gi = body.vertex_groups['forearm.L'].index
+dg = bpy.context.evaluated_depsgraph_get(); ev = body.evaluated_get(dg); m = ev.to_mesh()
+P = np.array([tuple(ev.matrix_world @ m.vertices[v.index].co) for v in body.data.vertices if v.groups and max(v.groups, key=lambda g: g.weight).group == gi]); ev.to_mesh_clear()
+ax = np.linalg.svd(P - P.mean(0))[2][0]; ax = ax if ax[1] < 0 else -ax
+GUN_LOCAL = (W @ PB['forearm.L'].matrix).to_3x3().inverted() @ Vector(ax)
+def gun_dir(): return ((W @ PB['forearm.L'].matrix).to_3x3() @ GUN_LOCAL).normalized()
+act = use(clip); f0, f1 = act.frame_range; nf = int(round(f1 - f0)); fps = sc.render.fps
+order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}
+Z = Vector((0, 0, 1))
+for i in range(nf + 1):
+    sc.frame_set(int(f0) + i); upd()
+    x = wpos('upperarm.L') - wpos('upperarm.R'); x.z = 0; x.normalize(); fwd = x.cross(Z).normalized()   # where his chest points, flat
+    S = wpos('upperarm.L')
+    aim('upperarm.L', S + x * .02 + fwd * .07 + Vector((0, 0, -.2)))
+    g = (fwd + Vector((0, 0, .04))).normalized()
+    rot_about('forearm.L', gun_dir().rotation_difference(g), wpos('forearm.L'))
+    for b in order:
+        q = PB[b].rotation_quaternion; KEY[b]['rot'].append([q.x, q.y, q.z, q.w])
+        if b == 'pelvis': KEY[b]['loc'].append(list(PB[b].location))
+for b in order:
+    for i in range(1, len(KEY[b]['rot'])):
+        if sum(x * y for x, y in zip(KEY[b]['rot'][i], KEY[b]['rot'][i - 1])) < 0: KEY[b]['rot'][i] = [-x for x in KEY[b]['rot'][i]]
+KEY = {b: v for b, v in KEY.items() if not b.startswith(('weapon_', 'armor_')) and not b.endswith(('_tip', '_grip1', '_grip2', '_grip_low'))}
+json.dump({'fps': fps, 'frames': nf, 'stride': None, 'seconds': nf / fps, 'bones': KEY, 'wdir': None}, open(out, 'w'))
+print('GATCARRY', clip, 'frames', nf, '->', out)

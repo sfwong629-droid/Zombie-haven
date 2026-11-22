@@ -1,7 +1,7 @@
 # zmove_gatling_roar.py -- RAW.glb OUT.json : the Gatling Boss's roar, a move that is not an attack (owner, 22 Nov: "add some additional non attack
 # animation to each zombie. Like the Gatling boss will do a roar every now and then or before an attack"). Preview for W229: made by hand.
-# Clip name gatling_roar, 1.8 s. He draws a breath (chest up, leaning back, head up), then throws the chest forward and roars with the face thrust
-# out and up, both arms flexed out to the sides (the gun pointing out and up, the right fist up), the whole upper body shaking; then he settles.
+# Clip name gatling_roar, 1.8 s. He draws a breath (chest up, leaning back, head up), then bends the upper body forward and roars, face up and out,
+# both arms flung back behind the body (owner, 22 Nov: "upper body lean front and both arm move behind the body"), shaking; then he settles.
 # The feet stay planted as in idle. Starts and ends exactly on his first idle pose. Rig: +X his left, -Y forward, +Z up. Env: ZH_SECS (1.8).
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
@@ -47,10 +47,10 @@ def gun_dir(): return ((W @ PB['forearm.L'].matrix).to_3x3() @ GUN_LOCAL).normal
 # (t, weight, chest lean (+ forward), neck, head (- = face up), shake, L upper-arm dir, gun dir, R upper-arm dir, R forearm dir) -- body frame
 REST = (0, 0, 0, 0, .25, -.15, -.95, .25, -.85, -.45, -.25, -.15, -.95, -.25, -.85, -.45)
 K = [(0.00, (0,) + REST),
-     (0.22, (1, -9, -10, -6, 0, .55, .05, -.85, .35, -.75, -.1, -.55, .05, -.85, -.3, -.6, .2)),     # the breath: chest up, head up, arms starting out
-     (0.36, (1, 6, 8, -30, 1, .80, .15, -.58, .45, -.55, .70, -.80, .15, -.58, -.35, -.45, .82)),  # the roar: chest forward, face thrust out and up, arms flexed
-     (0.72, (1, 7, 9, -32, 1, .80, .15, -.58, .45, -.55, .70, -.80, .15, -.58, -.35, -.45, .82)),
-     (0.88, (.5, 2, 4, -6, 0, .55, .05, -.85, .35, -.80, -.2, -.55, .05, -.85, -.3, -.7, .0)),
+     (0.22, (1, -8, -8, -6, 0, .45, .10, -.88, .30, -.70, -.65, -.45, .10, -.88, -.30, -.70, -.65)),   # the breath: chest up, head up, arms easing back
+     (0.38, (1, 24, 6, -34, 1, .40, .70, -.60, .25, .45, -.85, -.40, .70, -.60, -.25, .45, -.85)),     # the roar: bent forward over the feet, face up and out, both arms flung back behind the body
+     (0.72, (1, 26, 7, -36, 1, .42, .72, -.56, .25, .50, -.83, -.42, .72, -.56, -.25, .50, -.83)),
+     (0.88, (.5, 10, 2, -12, 0, .35, .30, -.88, .30, -.40, -.85, -.35, .30, -.88, -.30, -.40, -.85)),
      (1.00, (0,) + REST)]
 order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}
 nf = int(round(SECS * FPS))
