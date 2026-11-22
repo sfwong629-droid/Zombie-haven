@@ -109,7 +109,7 @@ Asked in this chat as W211 to W214; those numbers were also taken by other chats
 - **W222.** Review the maps on the practice page (Town → Defense → Stronghold practice): each place at a low and a high town level. What should change? Pictures of every map at level 5 and 15 are in `runs/strongholds/`.
 - **W223.** Publish 3D.280 to 3D.283 after your review? (Claude: after the review, and after the Balance chat has run its stronghold probe on them.)
 
-## 10. Rework (proposed 22 Nov, Strongholds chat; nothing built; W230 to W233)
+## 10. Rework (proposed 22 Nov, Strongholds chat; nothing built; W232 to W235)
 Owner, 22 Nov: locking by story progress; "you just repeat the stronghold non stop and it will be boring"; "it also can't explain how the zombies keep coming back"; "we need to rework the plan for stronghold and faction maps... They must make sense. Like zombie. Some of these strongholds live within a faction map so maybe we need to make a huge stronghold building in the faction map?"
 
 ### 10.1 What does not make sense today
@@ -163,8 +163,8 @@ The Dusk Radio Mast stays a one-time story place (the ring came for years of noi
 Stays: every room map, every house rule, the camps and their growth, goals, things, bosses, allies. New, in this order, one change per build: (1) places remember (cleared rooms, opened doors, Secured, the outpost reward); (2) story locks on rooms; (3) town and keep on one map: the squad walks into the big building (the Larder first); (4) the lost part and the friend's job, one faction per build; (5) the Sunnyside town map with its three buildings; (6) the seasons' "why" and once-a-season limit; (7) calls for help. About 12 to 14 builds. The Story chat checks the new story bits (the lost parts, Fort Harlan's depot); the Balance chat measures each.
 
 ### 10.6 Questions
-- **W230.** The three rules and four kinds of place: yes?
-- **W231.** Town and keep on **one map**, the squad walking into the big building (Claude's pick), or the keep as its own trip that opens after the town?
-- **W232.** Every faction has a part it lost, and friends give jobs there (so a friendly faction's town is playable without betraying it): yes?
-- **W233.** Sealed places keep one size; only faction towns grow with the level: OK? (It changes "strongholds grow with the level" of last night.)
+- **W232.** The three rules and four kinds of place: yes?
+- **W233.** Town and keep on **one map**, the squad walking into the big building (Claude's pick), or the keep as its own trip that opens after the town?
+- **W234.** Every faction has a part it lost, and friends give jobs there (so a friendly faction's town is playable without betraying it): yes?
+- **W235.** Sealed places keep one size; only faction towns grow with the level: OK? (It changes "strongholds grow with the level" of last night.)
 - W222 (review the maps) stays open. **W223 changes:** Claude now advises holding 3D.280 to 3D.283 unpublished until this is decided.
