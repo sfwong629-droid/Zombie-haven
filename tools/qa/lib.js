@@ -1,8 +1,11 @@
 // tools/qa/lib.js — shared start-up for the browser checks (Playwright).
-// Serve the repo first:  python3 -m http.server 8765   (from the repo root)
+// Serve the repo first:  python3 -m http.server 8765   (from the repo root), or set ZH_NOSERVER=1
 // Env: ZH_BASE (default http://localhost:8765)  ZH_GPU=1 to use the real graphics card (much faster on a PC; the cloud has none)
 const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
 const BASE = process.env.ZH_BASE || 'http://localhost:8765';
+// ZH_NOSERVER=1: no web server needed; the pages are read straight from the repo folder (for machines where a local server may not be started)
+const NOSERVER = !!process.env.ZH_NOSERVER, ROOT = path.resolve(__dirname, '..', '..');
+const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.bin': 'application/octet-stream', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 async function launch() {
   return chromium.launch(process.env.ZH_GPU ? { headless: !process.env.ZH_SHOW } : { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 }
@@ -10,7 +13,8 @@ async function launch() {
 async function page(b, { w = 390, h = 844, expose = '' } = {}) {
   const p = await b.newPage({ viewport: { width: w, height: h } }); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
   p.on('console', (m) => { if (m.text().startsWith('[[')) console.log(m.text().slice(2)); });
-  if (expose) await p.route(/js\/game\.js/, async (r) => { const res = await r.fetch(); const t = (await res.text()).replace('window.ZH = { BUILD_TAG,', 'window.ZH = { BUILD_TAG, ' + expose + ','); r.fulfill({ body: t, contentType: 'application/javascript' }); });
+  if (NOSERVER) await p.route(BASE + '/**', (r) => { const f = path.join(ROOT, decodeURIComponent(new URL(r.request().url()).pathname)); if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) return r.fulfill({ status: 404, body: 'not found' }); r.fulfill({ body: fs.readFileSync(f), contentType: MIME[path.extname(f).toLowerCase()] || 'application/octet-stream' }); });
+  if (expose) await p.route(/js\/game\.js/, async (r) => { const t = (NOSERVER ? fs.readFileSync(path.join(ROOT, 'js/game.js'), 'utf8') : await (await r.fetch()).text()).replace('window.ZH = { BUILD_TAG,', 'window.ZH = { BUILD_TAG, ' + expose + ','); r.fulfill({ body: t, contentType: 'application/javascript' }); });
   const local = path.join(__dirname, 'node_modules/three');   // optional: npm i three@0.160.0 here to work offline
   if (fs.existsSync(local)) await p.route('https://cdn.jsdelivr.net/npm/three@0.160.0/**', (r) => { const f = path.join(local, r.request().url().split('three@0.160.0/')[1].split('?')[0]); r.fulfill({ body: fs.readFileSync(f), contentType: 'application/javascript' }); });
   await p.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
