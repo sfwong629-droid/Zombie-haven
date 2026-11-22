@@ -301,7 +301,10 @@ const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
    still full of zombies. At noon of a boss day, if more than half the limit stands (15, 22 or 30 by era), the boss night waits a day, at most
    twice in a row, then it comes anyway. The ordinary night crowd already counts the zombies still standing (the spawner fills only up to the
    night's number). */
-const BOSS_WAIT_MAX = 2, streetsFull = () => activeZ() > mobCap() / 2;
+const BOSS_WAIT_MAX = 2, streetsFull = () => activeZ() > mobCap() / 2 || townHurt();
+/* 3D.300 (A12 tuning): the boss night also waits while the town is badly hurt: the people standing average under 60% health (the level 14
+   bot town went into a boss night at 37% after a day of leftovers and lost 11 people). Same wait, at most twice in a row. */
+const HURT_LINE = .6, townHurt = () => { const up = S.sv.filter((q) => q.hp > 0 && q.mode !== 'away'); return up.length > 0 && up.reduce((a, q) => a + q.hp / q.max, 0) / up.length < HURT_LINE; };
 const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null || !!S.vanguard;
 /* 3D.287 (overnight branch; owner, 21 Nov, W176, rule 3 of 13-LONG-GAME: "a breather after a bad night"): when a night costs a life, or
    everyone went down and the neighbours had to come, the next two nights are a breather: the night's crowd is a quarter smaller, the boss
@@ -324,7 +327,7 @@ function eventSchedule() {   /* called every game hour */
   else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
-  if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
+  if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: townHurt() && activeZ() <= mobCap() / 2 ? 'The town is badly hurt. The boss\'s horde holds back a day: patch people up while you can.' : `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
   else if (S.day === S.nextBoss && S.hour === 12) S.bossWaits = 0;
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { hordeStart(); S.bossDay = S.day; S.nextBoss += bossGap(); }   /* 3D.269: the horde first, its boss behind it */
