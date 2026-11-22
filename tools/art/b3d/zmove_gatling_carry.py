@@ -2,8 +2,11 @@
 # his walk and run"; today the gun arm swings like an empty arm and points at the ground). Preview for W216: made by hand on top of today's clip.
 # Everything but the gun arm is today's clip unchanged (legs, body, the right arm's swing). The gun arm is held as in the braced fire: the elbow
 # tucked at his side, the gun level at hip height, pointing where his chest points, so it bobs and turns with his body. It loops as today's does.
+# ZH_SLOW (walk 1.5): the clip is played that many times slower, and made heavy (owner, 22 Nov: "Walk should be slower since it a big body.
+# Make it seem more like a big person moving"): the hips shift over the foot that carries the weight, sink at each footfall, the chest rolls
+# against the hips and leans forward a little; the feet stay exactly where today's clip puts them (the legs are solved to them).
 # Rig: +X his left, -Y forward, +Z up.
-import bpy, sys, math, json
+import bpy, sys, os, math, json
 from mathutils import Matrix, Vector
 a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
@@ -31,14 +34,34 @@ P = np.array([tuple(ev.matrix_world @ m.vertices[v.index].co) for v in body.data
 ax = np.linalg.svd(P - P.mean(0))[2][0]; ax = ax if ax[1] < 0 else -ax
 GUN_LOCAL = (W @ PB['forearm.L'].matrix).to_3x3().inverted() @ Vector(ax)
 def gun_dir(): return ((W @ PB['forearm.L'].matrix).to_3x3() @ GUN_LOCAL).normalized()
-act = use(clip); f0, f1 = act.frame_range; nf = int(round(f1 - f0)); fps = sc.render.fps
+act = use(clip); f0, f1 = act.frame_range; fps = sc.render.fps
+SLOW = float(os.environ.get('ZH_SLOW', 1.5 if clip == 'walk' else 1.0)); nf = int(round((f1 - f0) * SLOW))
+def sst(a_, b_, x): t = min(1., max(0., (x - a_) / max(1e-6, b_ - a_))); return t * t * (3 - 2 * t)
+SC = W.to_scale().x
+def two_bone(b1, b2, end, pole):
+    h = wpos(b1); l1 = PB[b1].length * SC; l2 = PB[b2].length * SC
+    v = end - h; dd = min(max(v.length, abs(l1 - l2) * 1.05), .995 * (l1 + l2)); n = v.normalized()
+    x_ = (l1 * l1 - l2 * l2 + dd * dd) / (2 * dd); hg = math.sqrt(max(l1 * l1 - x_ * x_, 0)); p = Vector(pole); p = (p - n * p.dot(n)).normalized()
+    aim(b1, h + n * x_ + p * hg); aim(b2, h + n * dd)
+def move_pelvis(d):
+    pb = PB['pelvis']; M = pb.matrix.copy(); M.translation = M.translation + W.inverted().to_3x3() @ d; pb.matrix = M; upd()
 order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}
 Z = Vector((0, 0, 1))
 for i in range(nf + 1):
-    sc.frame_set(int(f0) + i); upd()
+    ft = f0 + i / SLOW; sc.frame_set(int(ft), subframe=ft - int(ft)); upd()
+    if SLOW > 1:   # heavy: weight over the carrying foot, a sink at each footfall, the chest rolling against the hips
+        FT = {sd: (wpos('foot.' + sd), wpos('foot.' + sd, True), wpos('shin.' + sd) - (wpos('thigh.' + sd) + wpos('foot.' + sd)) / 2) for sd in 'LR'}
+        hL, hR = FT['L'][0].z, FT['R'][0].z; wgt = sst(-.04, .04, hR - hL)   # 1: all the weight on the left foot (the right one is higher)
+        side = (wgt - .5) * 2; drop = 1 - abs(side)                           # drop: both feet down, the weight passing from one to the other
+        move_pelvis(Vector((.03 * side, 0, -.018 * drop)))
+        for sd in 'LR':
+            an, to, pole = FT[sd]; two_bone('thigh.' + sd, 'shin.' + sd, an, pole); aim('foot.' + sd, to)
+        c = wpos('chest'); rot_about('chest', Matrix.Rotation(math.radians(-5 * side), 3, 'Y').to_quaternion(), c)
+        rot_about('chest', Matrix.Rotation(math.radians(6), 3, 'X').to_quaternion(), wpos('chest'))
+        rot_about('neck', Matrix.Rotation(math.radians(-4), 3, 'X').to_quaternion(), wpos('neck'))
     x = wpos('upperarm.L') - wpos('upperarm.R'); x.z = 0; x.normalize(); fwd = x.cross(Z).normalized()   # where his chest points, flat
     S = wpos('upperarm.L')
-    aim('upperarm.L', S + x * .02 + fwd * .07 + Vector((0, 0, -.2)))
+    aim('upperarm.L', S + x * .045 + fwd * .07 + Vector((0, 0, -.2)))
     g = (fwd + Vector((0, 0, .04))).normalized()
     rot_about('forearm.L', gun_dir().rotation_difference(g), wpos('forearm.L'))
     for b in order:
