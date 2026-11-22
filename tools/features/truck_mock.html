@@ -1,0 +1,59 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#1d232a;font-family:Arial,sans-serif;color:#eef}#lab{position:absolute;left:0;right:0;top:0;display:flex}#lab div{flex:1;text-align:center;padding-top:14px;font-size:30px;font-weight:bold}#sub{position:absolute;left:0;right:0;bottom:0;display:flex}#sub div{flex:1;text-align:center;padding:0 20px 16px;font-size:19px;color:#c9d3dc}</style></head><body>
+<canvas id="c"></canvas><div id="lab"></div><div id="sub"></div>
+<script type="module">
+import * as THREE from './three.js';
+const W=1800,H=760, mode=location.hash.slice(1)||'sheet';
+const r=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); r.setPixelRatio(1);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(mode==='scene'?'#7d9a5a':'#2a323b');
+scene.add(new THREE.HemisphereLight('#ffffff','#556',1.1)); const sun=new THREE.DirectionalLight('#fff6e0',1.6); sun.position.set(5,9,4); scene.add(sun);
+const M=(c)=>new THREE.MeshLambertMaterial({color:c});
+const box=(g,w,h,d,c,x,y,z,ry=0)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));m.position.set(x,y,z);m.rotation.y=ry;g.add(m);return m;};
+const cyl=(g,r0,h,c,x,y,z,rx=0,rz=0,seg=12)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r0,r0,h,seg),M(c));m.position.set(x,y,z);m.rotation.x=rx;m.rotation.z=rz;g.add(m);return m;};
+const wheel=(g,x,z,rr=.22)=>{cyl(g,rr,.14,'#26262a',x,rr,z,Math.PI/2);cyl(g,rr*.45,.15,'#9aa0a6',x,rr,z,Math.PI/2);};
+const cross=(g,x,y,z,s,c='#ffffff',side=1)=>{box(g,.04,s,s*.34,c,x,y,z);box(g,.04,s*.34,s,c,x,y,z);};
+const lightbar=(g,x,y)=>{box(g,.25,.08,.9,'#d8d8d8',x,y,0);box(g,.2,.1,.3,'#ff9a2a',x,y+.06,-.28);box(g,.2,.1,.3,'#ff9a2a',x,y+.06,.28);};
+const horn=(g,x,y,z)=>{const m=new THREE.Mesh(new THREE.ConeGeometry(.16,.4,10,1,true),M('#c9c9c9'));m.material.side=THREE.DoubleSide;m.rotation.z=-Math.PI/2;m.position.set(x,y,z);g.add(m);cyl(g,.05,.2,'#777',x-.2,y-.1,z);};
+const GW='#5f9a3c', CREAM='#efe6cc', DARK='#2b3a44';
+// A: today's Pickup Truck repainted (same boxes as vehModel('pickup'))
+function truckA(){const g=new THREE.Group(),c=GW;box(g,2.4,.26,1.1,c,0,.42,0);box(g,.95,.55,1.04,CREAM,.38,.82,0);box(g,.5,.3,1.06,DARK,.4,.9,0);box(g,.04,.3,.9,DARK,.86,.88,0);
+ for(const z of[-1,1])box(g,1.15,.22,.06,c,-.68,.66,z*.52);box(g,.06,.22,1.1,c,-1.24,.66,0);box(g,.1,.14,1.12,'#8a8f96',1.25,.4,0);box(g,.1,.14,1.12,'#8a8f96',-1.25,.38,0);
+ for(const z of[-1,1])box(g,.04,.08,.16,'#f2e6a0',1.27,.58,z*.38);
+ // the load: stretchers and a pickle barrel
+ box(g,1.0,.08,.42,'#d9d4c4',-.62,.62,.22);box(g,1.0,.08,.42,'#d9d4c4',-.62,.62,-.24);cyl(g,.2,.42,'#7a5a34',-1.0,.78,0);
+ for(const z of[-1,1])cross(g,.38,.82,z*.53,.32,'#c9412e');lightbar(g,.38,1.14);horn(g,.75,1.2,.3);
+ for(const x of[-.75,.75])for(const z of[-1,1])wheel(g,x,z*.55,.22);return g;}
+// B: a box ambulance, Greenwater cream with green stripe
+function truckB(){const g=new THREE.Group();box(g,1.8,1.1,1.2,CREAM,-.35,.95,0);box(g,1.82,.16,1.22,GW,-.35,.75,0);box(g,.75,.75,1.16,CREAM,.95,.72,0);box(g,.04,.3,1.0,DARK,1.33,.92,0);box(g,.12,.18,1.12,'#8a8f96',1.36,.42,0);
+ for(const z of[-1,1]){cross(g,-.35,1.15,z*.61,.42,'#c9412e');box(g,.4,.28,.04,DARK,.95,.95,z*.59);box(g,.04,.08,.16,'#f2e6a0',1.34,.6,z*.4);}
+ box(g,.3,.1,1.0,'#d8d8d8',.1,1.56,0);box(g,.24,.12,.3,'#ff9a2a',.1,1.63,-.3);box(g,.24,.12,.3,'#ff9a2a',.1,1.63,.3);horn(g,1.15,1.2,.35);horn(g,1.15,1.2,-.35);
+ for(const x of[-.85,.85])for(const z of[-1,1])wheel(g,x,z*.6,.25);return g;}
+// C: an old farm stake truck with barrels of the Old Brine and a big horn on a pole
+function truckC(){const g=new THREE.Group();box(g,2.6,.22,1.2,'#5a4a36',-.1,.48,0);box(g,.85,.7,1.12,GW,.95,.82,0);box(g,.45,.28,1.14,DARK,.98,.95,0);box(g,.38,.35,1.0,GW,1.45,.62,0);box(g,.1,.16,1.04,'#8a8f96',1.66,.45,0);
+ for(const z of[-1,1]){for(let i=0;i<5;i++)box(g,.06,.5,.05,'#8a6a44',-1.3+i*.4,.84,z*.58);box(g,1.7,.06,.05,'#8a6a44',-.5,1.05,z*.58);box(g,.04,.08,.14,'#f2e6a0',1.67,.66,z*.36);}
+ for(const [x,z] of[[-1.0,-.28],[-1.0,.28],[-.45,-.28],[-.45,.28]])cyl(g,.2,.5,'#7a5a34',x,.84,z);box(g,.6,.08,.5,'#d9d4c4',.1,.62,0);
+ cyl(g,.04,.9,'#777',.7,1.6,0);horn(g,.95,2.05,0);box(g,.22,.1,.8,'#ff9a2a',.95,1.22,0);
+ for(const x of[-.9,.95])for(const z of[-1,1])wheel(g,x,z*.6,.26);return g;}
+const zombie=(g,x,z,c)=>{box(g,.3,.55,.22,c,x,.62,z);box(g,.26,.26,.26,'#9db08a',x,1.05,z);box(g,.1,.4,.1,'#4a4a52',x-.08,.2,z);box(g,.1,.4,.1,'#4a4a52',x+.08,.2,z);box(g,.4,.08,.08,'#9db08a',x+.2,.8,z+.08);};
+const cam=new THREE.OrthographicCamera(-W/2,W/2,H/2,-H/2,.1,100);
+if(mode==='sheet'){
+ const opts=[[truckA(),'A  Pickup in Greenwater paint'],[truckB(),'B  Box ambulance'],[truckC(),'C  Farm truck with brine barrels']];
+ const subs=['Today\'s Pickup Truck model, repainted: cream cab, red cross, orange light bar, loudspeaker horn; stretchers in the back. Cheapest: no new model.','A new van shape: cream with a green stripe, red crosses, a light bar and two horns. Reads as "rescue" at once.','Greenwater\'s own: a green stake truck with barrels of the Old Brine, one big horn on a pole. Most "commune", least "ambulance".'];
+ opts.forEach(([g,_],i)=>{g.position.x=(i-1)*4.6;g.rotation.y=-.62;scene.add(g);});
+ const gnd=new THREE.Mesh(new THREE.PlaneGeometry(40,10),M('#39424c'));gnd.rotation.x=-Math.PI/2;scene.add(gnd);
+ cam.zoom=125;cam.position.set(6,6,9);cam.lookAt(0,.7,0);cam.updateProjectionMatrix();
+ document.getElementById('lab').innerHTML=opts.map(o=>`<div>${o[1]}</div>`).join('');document.getElementById('sub').innerHTML=subs.map(s=>`<div>${s}</div>`).join('');
+}else{
+ // the scene: truck A leaving town down the highway, horn blaring, zombies following
+ const road=new THREE.Mesh(new THREE.PlaneGeometry(30,2.4),M('#5c5f63'));road.rotation.x=-Math.PI/2;road.position.y=.01;scene.add(road);
+ for(let i=-14;i<15;i+=2)box(scene,.8,.02,.08,'#e8dfa0',i,.02,0);
+ const t=truckA();t.position.set(3.4,0,-.25);scene.add(t);
+ const zg=new THREE.Group();scene.add(zg);const cs=['#6a5a4a','#4a5a6a','#7a4a3a','#5a6a4a','#6a6a6a'];let k=0;
+ for(let i=0;i<14;i++){const x=1.3-i*.55-Math.random()*.3,z=(Math.random()-.5)*1.8;zombie(zg,x,z,cs[k++%5]);}
+ // the town fence on the left
+ for(let z=-5;z<6;z+=.5){if(Math.abs(z)<1.6)continue;box(scene,.12,.8,.12,'#8a6a44',-7.2,.4,z);}box(scene,.08,.1,4,'#8a6a44',-7.2,.6,-3.3);box(scene,.08,.1,4,'#8a6a44',-7.2,.6,3.3);
+ const txt=(s,x,y,c)=>{const d=document.createElement('div');d.textContent=s;d.style.cssText=`position:absolute;left:${x}px;top:${y}px;font:bold 34px Arial;color:${c};text-shadow:0 2px 4px #000`;document.body.appendChild(d);};
+ cam.zoom=95;cam.position.set(2,7,8);cam.lookAt(-1.5,.5,0);cam.updateProjectionMatrix();
+ txt('HONK  HONK  WEE-OO',1080,120,'#ffd84a');txt('Haven',70,90,'#ffffff');txt('to the highway  →',1420,640,'#ffffff');
+}
+r.render(scene,cam);window.done=true;
+</script></body></html>

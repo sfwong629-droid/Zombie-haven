@@ -2,7 +2,7 @@
 
 The Features chat builds what the other chats decided, one change per build, each with a scripted check. Order: `15-REVIEW.md`, section 6. This page says what is built, how it is checked and what is next.
 
-**Numbers taken by this chat:** builds **3D.284 to 3D.287**; waiting items **W224** (done), **W225**.
+**Numbers taken by this chat:** builds **3D.284 to 3D.287**; waiting items **W226** (done), **W227**, **W228** (first written as W224 and W225, numbers the Story chat had already taken).
 
 ## 1. Where things stand
 
@@ -13,7 +13,7 @@ The Features chat builds what the other chats decided, one change per build, eac
 | The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
 | Take command | 16 Nov | After the daytime threat |
 
-**W224, push access: done.** The first try was refused; the owner asked again and the second try was granted (22 Nov, 08:57). The nine commits went on top of two newer ones from other chats (`d95cbf3`, `80d3026`; docs and an art tool, no game code), so nothing had to be redone.
+**W226, push access: done.** The first try was refused; the owner asked again and the second try was granted (22 Nov, 08:57). The nine commits went on top of two newer ones from other chats (`d95cbf3`, `80d3026`; docs and an art tool, no game code), so nothing had to be redone.
 
 ## 2. Healing as built
 
@@ -69,4 +69,6 @@ Decision: when called, a Greenwater truck drives in with its horn and alarm goin
 - The car-alarm lure is `carAlarm()` in `src/game/23-build-traps.js`: a zombie with a lure point walks to it for a while.
 - A low-detail Pickup Truck model already drives on the road for trips (`js/render3d.js`, vehicles).
 
-Plan, one change per build: (1) the truck drives in along the highway and out again, with horn and alarm, zombies in earshot following it instead of being removed, and leaving the map with it; (2) the medics get out and carry the fallen into care; (3) the card and radio words. Question for the owner before build 1: what the Greenwater truck looks like (today's Pickup Truck model in Greenwater's colours is Claude's suggestion).
+**Mock-ups (22 Nov, W228):** `runs/features/rescue_truck_options.png` shows three looks built from the game's own box shapes: **A** today's Pickup Truck repainted in Greenwater's colours (cream cab, red cross, orange light bar, loudspeaker horn, stretchers in the back; no new model needed), **B** a box ambulance (cream with a green stripe, red crosses, light bar, two horns), **C** Greenwater's farm stake truck with barrels of the Old Brine and one big horn on a pole. `runs/features/rescue_truck_scene.png` shows A leaving town down the highway with the zombies following it. Source: `tools/features/truck_mock.html`. Claude's pick: A (cheapest, and the player already knows the Pickup). Waiting on the owner.
+
+Plan, one change per build: (1) the truck drives in along the highway and out again, with horn and alarm, zombies in earshot following it instead of being removed, and leaving the map with it; (2) the medics get out and carry the fallen into care; (3) the card and radio words. Question for the owner before build 1: which look (W228).
