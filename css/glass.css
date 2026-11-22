@@ -500,3 +500,17 @@ html.glass .evBox.hasX .evTitle { padding-left: 40px; padding-right: 40px; }
 #worldLoad .wlFig { font-size: 13px; color: #C9D1D9; font-variant-numeric: tabular-nums; min-height: 18px; }
 #worldLoad .wlHelp div { margin-top: 12px; font-size: 13px; color: #C9D1D9; }
 #worldLoad .wlHelp button { margin-top: 10px; min-height: 44px; padding: 0 18px; }
+
+/* 3D.268 (owner, 21 Nov, W202; UI audit U46 to U50): every control takes taps over at least 44 px, also on a 320-wide phone, where the
+   HUD and the Needs you list are drawn at about 82% (zoom: var(--u)), so their tap areas are 54 px before that. Drawn sizes stay as
+   they were; an invisible area (::before) round the small ones takes the taps. */
+html.glass #gauge { overflow: visible; } html.glass #gauge::before { display: block; inset: -10px -4px; }   /* U46: the Renown chip's tap area of 3D.186 was switched off (display: none above) and clipped (overflow: hidden); its old wheel, rank and bar are not shown in Glass */
+.alertPop .apX, .alertPop .apA, .alertPop .apM { position: relative; }
+.alertPop .apX::before { content: ''; position: absolute; inset: -14px; }   /* U47: Needs you's close: 28 px drawn */
+.alertPop .apA::before { content: ''; position: absolute; inset: -13px 0 -13px -20px; }   /* U47: Go; the extra is to its left (the tip's words), never over the ✕ beside it */
+.alertPop .apM::before { content: ''; position: absolute; inset: -5px; }   /* U47: the tip's ✕ (44 px, so 36 on a small phone) */
+.tgl::before { content: ''; position: absolute; inset: -12px -2px; }   /* U48, U49: on/off switches, 30 px drawn */
+#uDest { position: relative; } #uDest::before { content: ''; position: absolute; inset: -13px -2px; }   /* U49: "→ the Camp ›" */
+html.glass .statC, html.glass .need { min-height: 44px; cursor: pointer; }   /* U49: a stat's or a need's whole box (were 34 and 33 px) takes the tap that shows its name, not only the icon */
+.pfSeg button, .pfSort { min-height: 44px; }   /* U50: the People filters (were 36 px) */
+#requestBox .act { position: relative; } #requestBox .act::before { content: ''; position: absolute; inset: -5px 0; }   /* found by this build's check: the move-in card's Accept and Not yet (44 px drawn, 37 on a small phone) */

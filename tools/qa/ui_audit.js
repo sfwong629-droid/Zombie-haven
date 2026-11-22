@@ -44,7 +44,8 @@ function audit() {   /* runs in the page */
     const cx = (vis.l + vis.r) / 2, cy = (vis.t + vis.b) / 2, hit = document.elementFromPoint(cx, cy);
     const mine = (x, y) => { const h = document.elementFromPoint(x, y); for (let a = h; a; a = a.parentElement) { if (a === e) return true; if (a.onclick || a.__tap) return false; } return false; };   /* a tap here reaches this control (its own box, a bigger invisible tap area, or a row that does the same) */
     const run = (dx, dy) => { let n = 0; for (let k = 1; k <= 40; k++) if (mine(cx + dx * k, cy + dy * k)) n = k; else break; return n; };
-    if (!dis && mine(cx, cy)) { const tw = run(-1, 0) + run(1, 0) + 1, th = run(0, -1) + run(0, 1) + 1; if (tw < 43.5 || th < 43.5) add('SMALL', e, `tap area ${tw}x${th} px (drawn ${Math.round(r.width)}x${Math.round(r.height)})`); }
+    const whole = vis.b - vis.t >= r.height - 1 && vis.r - vis.l >= r.width - 1;   /* partly scrolled out of its list: its tap area there is cut by the list, not too small */
+    if (!dis && whole && !(r.width >= 100 && r.height >= 100) && mine(cx, cy)) {   /* a big box (a list that takes taps) is not a small target, even where its rows take the taps */ const tw = run(-1, 0) + run(1, 0) + 1, th = run(0, -1) + run(0, 1) + 1; if (tw < 43.5 || th < 43.5) add('SMALL', e, `tap area ${tw}x${th} px (drawn ${Math.round(r.width)}x${Math.round(r.height)})`); }
     if (hit && hit !== e && !e.contains(hit) && !(hit.tagName === 'CANVAS' && hit.id === 'game')) {   /* under the game's own canvas: not drawn on top either, so nobody sees it */ if (hit.contains(e)) { if (getComputedStyle(e).pointerEvents === 'none' || !dis) add('NOTAP', e, `a tap in its middle goes to ${name(hit)}`); } else add('COVERED', e, `its middle is under ${name(hit)}`); }
     const cs = getComputedStyle(e); if ((e.scrollWidth > e.clientWidth + 2 && cs.overflowX !== 'visible') || (cs.textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1)) add('TEXTCUT', e, `${e.scrollWidth} px of words in ${e.clientWidth} px`);
     if (e.tagName === 'BUTTON' && !dis && !e.onclick && !e.__tap && !(e.form && e.type === 'submit')) { let h = false; for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) if (a.onclick || a.__tap) { h = true; break; } if (!h) add('NOHANDLER', e, 'no tap handler found on it or its boxes'); }
@@ -54,7 +55,8 @@ function audit() {   /* runs in the page */
   return out;
 }
 
-(async () => { fs.mkdirSync(OUT, { recursive: true }); const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, expose: 'showInventory, showInvItem, radio, showSettings, showMore' });
+module.exports = { audit, MARK };
+if (require.main === module) (async () => { fs.mkdirSync(OUT, { recursive: true }); const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, expose: 'showInventory, showInvItem, radio, showSettings, showMore' });
   await p.addInitScript(MARK);
   await Q.newGame(p); await Q.clearCards(p);
   await p.evaluate(() => { window._pop = ZH.showEventPopup; ZH.showEventPopup = () => {}; }); await p.evaluate(AP);
