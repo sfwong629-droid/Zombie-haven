@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.262', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.263', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3422,11 +3422,11 @@ const unhoused = () => S.sv.filter((q) => !homeOf(q) && !housingOf(q));
 const campCap = () => { const c = campB(); return c ? CAMP_CAP[c.type] || 10 : 0; };
 function housingTidy() {   // drop residents who left or died; old saves get their beds filled once
   for (const b of world.buildings) if (isHousing(b)) b.res = (b.res || []).filter((id) => S.sv.some((q) => q.id === id) || (S.trip && S.trip.members.some((m) => m.id === id)) || (S.sh && S.sh.units.some((m) => m.id === id))).slice(0, cap(b));
-  if (!S.housingV) { S.housingV = 1; fillBeds(); }
+  S.housingV = 1; fillBeds(null, true);   /* 3D.263 bug B22 (owner, W203): people move into a free bed by themselves, every hour (longest-staying first); the player can still choose who lives where */
 }
-function fillBeds(only) {   // put unhoused survivors into empty beds (longest-staying first)
-  const want = unhoused().sort((a, b) => (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id); let n = 0;
-  for (const b of world.buildings) { if (!isHousing(b) || b.burnt || (only && b !== only)) continue; b.res = b.res || []; while (b.res.length < cap(b) && want.length) { b.res.push(want.shift().id); n++; } }
+function fillBeds(only, auto) {   // put unhoused survivors into empty beds (longest-staying first)
+  const want = unhoused().filter((q) => q.hp > 0).sort((a, b) => (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id); let n = 0;
+  for (const b of world.buildings) { if (!isHousing(b) || b.burnt || (only && b !== only)) continue; b.res = b.res || []; while (b.res.length < cap(b) && want.length) { const q = want.shift(); b.res.push(q.id); n++; if (auto) logEvent(`${q.name} moved into a free bed in the ${DEFS[b.type].name}.`, 'routine'); } }
   return n;
 }
 function bedFor(s) {

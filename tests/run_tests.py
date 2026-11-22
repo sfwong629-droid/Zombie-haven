@@ -983,6 +983,20 @@ async def t_pethp(br, port, t):   # bug B21 (3D.262, found by the bug sweep): a 
     t.ok(r['hp1'] == r['m1'], f"someone at full health stays at full health ({r['hp1']}/{r['m1']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_movein(br, port, t):   # bug B22 (3D.263, owner W203): people move into a free bed by themselves instead of sleeping rough beside an empty Tent
+    ctx, pg, errs = await open_game(br, port, 'movein')
+    for _ in range(2): await pg.evaluate(PLACE, 'tent')
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world; S.z.length = 0; const tents = W.buildings.filter((b) => b.type === 'tent'); for (const b of tents) b.res = []; S.housingV = 1;   /* a town past its first hour (the old game filled beds once, then never) */
+      const before = tents.reduce((a, b) => a + b.res.length, 0); const k0 = ZH.tick; while (ZH.tick - k0 < 1100) ZH.step(10);
+      const after = tents.reduce((a, b) => a + (b.res || []).length, 0), beds = tents.reduce((a, b) => a + (ZH.Wd.DEFS[b.type].cap || 2), 0);
+      const log = (S.log || []).filter((e) => /moved into a free bed/.test(e.t || e.text || e)).length;
+      return { tents: tents.length, before, after, beds, people: S.sv.length, log }; }""")
+    print('      movein:', r)
+    t.ok(r['tents'] == 2 and r['before'] == 0, f"two new Tents, nobody in them yet ({r})")
+    t.ok(r['after'] == min(r['beds'], r['people']), f"within a game hour people have moved into the free beds by themselves ({r['after']} of {r['beds']} beds; 3D.262: 0 until the player chooses)")
+    t.ok(r['log'] == r['after'], f"the event log says who moved in ({r['log']} lines)")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -1017,7 +1031,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()

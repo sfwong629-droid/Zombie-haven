@@ -36,11 +36,11 @@ const unhoused = () => S.sv.filter((q) => !homeOf(q) && !housingOf(q));
 const campCap = () => { const c = campB(); return c ? CAMP_CAP[c.type] || 10 : 0; };
 function housingTidy() {   // drop residents who left or died; old saves get their beds filled once
   for (const b of world.buildings) if (isHousing(b)) b.res = (b.res || []).filter((id) => S.sv.some((q) => q.id === id) || (S.trip && S.trip.members.some((m) => m.id === id)) || (S.sh && S.sh.units.some((m) => m.id === id))).slice(0, cap(b));
-  if (!S.housingV) { S.housingV = 1; fillBeds(); }
+  S.housingV = 1; fillBeds(null, true);   /* 3D.263 bug B22 (owner, W203): people move into a free bed by themselves, every hour (longest-staying first); the player can still choose who lives where */
 }
-function fillBeds(only) {   // put unhoused survivors into empty beds (longest-staying first)
-  const want = unhoused().sort((a, b) => (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id); let n = 0;
-  for (const b of world.buildings) { if (!isHousing(b) || b.burnt || (only && b !== only)) continue; b.res = b.res || []; while (b.res.length < cap(b) && want.length) { b.res.push(want.shift().id); n++; } }
+function fillBeds(only, auto) {   // put unhoused survivors into empty beds (longest-staying first)
+  const want = unhoused().filter((q) => q.hp > 0).sort((a, b) => (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id); let n = 0;
+  for (const b of world.buildings) { if (!isHousing(b) || b.burnt || (only && b !== only)) continue; b.res = b.res || []; while (b.res.length < cap(b) && want.length) { const q = want.shift(); b.res.push(q.id); n++; if (auto) logEvent(`${q.name} moved into a free bed in the ${DEFS[b.type].name}.`, 'routine'); } }
   return n;
 }
 function bedFor(s) {
