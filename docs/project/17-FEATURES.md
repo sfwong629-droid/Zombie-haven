@@ -2,14 +2,14 @@
 
 The Features chat builds what the other chats decided, one change per build, each with a scripted check. Order: `15-REVIEW.md`, section 6. This page says what is built, how it is checked and what is next.
 
-**Numbers taken by this chat:** builds **3D.284 to 3D.287**; waiting items **W226** (done), **W227**, **W228** (first written as W224 and W225, numbers the Story chat had already taken).
+**Numbers taken by this chat:** builds **3D.284 to 3D.288**; waiting items **W226** (done), **W227**, **W228** (first written as W224 and W225, numbers the Story chat had already taken).
 
 ## 1. Where things stand
 
 | Job | Decided | State |
 |---|---|---|
 | Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Pushed 22 Nov; not published** |
-| The radio rescue truck (W129) | 19 Nov | Next. Not started |
+| The radio rescue truck (W129) | 19 Nov; look C (W228, 22 Nov) | **Build 1 of 3 done: 3D.288** (the truck leads the zombies out). Next: the medics carry the fallen in |
 | The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
 | Take command | 16 Nov | After the daytime threat |
 
@@ -62,13 +62,15 @@ For the Balance chat:
 3. **Seen once, cause not found:** in one town with healing two people were reported standing in one building for 48 game hours ("useFacility", days 26 to 30, a town short of water). It did not come back in a second run of the same seed, and no cause was found in the code. If the full check reports it again, it is a bug for this chat.
 4. Both builds showed the old report "one spot for 48 game hours, repairing the wood fence" (with tiredness at 100): not from healing; for the Bugs chat.
 
-## 5. Next: the rescue truck (W129)
+## 5. The rescue truck (W129)
 
-Decision: when called, a Greenwater truck drives in with its horn and alarm going and leads the zombies out of town down the highway; nobody is killed out of sight; their medics carry the fallen into care; the favour stays. Found in the code so far:
-- Today's rescue is `helpTick()` in `src/game/03-stats-gear.js`: when it arrives, every zombie in town is removed at once and everyone lying down is put into care. The rescue that comes by itself (W172) goes through the same code.
-- The car-alarm lure is `carAlarm()` in `src/game/23-build-traps.js`: a zombie with a lure point walks to it for a while.
-- A low-detail Pickup Truck model already drives on the road for trips (`js/render3d.js`, vehicles).
+Decision: when called, a Greenwater truck drives in with its horn and alarm going and leads the zombies out of town down the highway; nobody is killed out of sight; their medics carry the fallen into care; the favour stays. **Look: C** (owner, 22 Nov, W228: "c"), Greenwater's farm stake truck with barrels of the Old Brine and one big horn on a pole. The three mock-ups: `runs/features/rescue_truck_options.png`, `rescue_truck_scene.png` (source `tools/features/truck_mock.html`).
 
-**Mock-ups (22 Nov, W228):** `runs/features/rescue_truck_options.png` shows three looks built from the game's own box shapes: **A** today's Pickup Truck repainted in Greenwater's colours (cream cab, red cross, orange light bar, loudspeaker horn, stretchers in the back; no new model needed), **B** a box ambulance (cream with a green stripe, red crosses, light bar, two horns), **C** Greenwater's farm stake truck with barrels of the Old Brine and one big horn on a pole. `runs/features/rescue_truck_scene.png` shows A leaving town down the highway with the zombies following it. Source: `tools/features/truck_mock.html`. Claude's pick: A (cheapest, and the player already knows the Pickup). Waiting on the owner.
+| Build | What changed | Check |
+|---|---|---|
+| **3D.288** | **The truck leads them out.** When the rescue comes (called, or by itself when nobody is standing), the fallen stop bleeding at once and Greenwater's truck drives in off the highway's east end with its horn and alarm going (one "HONK HONK" over it at a time); zombies in town turn toward the noise. It parks two tiles short of the Camp's door, and the fallen go into care (as before, for now). After about 15 game minutes it drives back out the way it came and every zombie in and near town follows it, walking down the highway and off the map, ignoring people on the way (they are not killed: before, they were removed on the spot). The truck crawls ahead of the nearest follower, at most 3.5 tiles ahead. If no road leads in, the team comes on foot as before. The card says what happened ("they are leading N zombies out of town down the highway") | `truck_check.js` (and `never_lost_check.js`, updated). A picture of it in the game: `runs/features/truck_in_game.png` |
 
-Plan, one change per build: (1) the truck drives in along the highway and out again, with horn and alarm, zombies in earshot following it instead of being removed, and leaving the map with it; (2) the medics get out and carry the fallen into care; (3) the card and radio words. Question for the owner before build 1: which look (W228).
+Numbers (`TRUCK` in `src/game/03-stats-gear.js`): drives in at 0.05 tiles a tick (about 800 ticks, some 50 game minutes, from the highway's end to a level 1 Camp; the fallen do not bleed meanwhile), parks 240 ticks (about 15 game minutes), out at 0.022 tiles a tick, waits for the nearest follower beyond 3.5 tiles. In the check, Walkers reached the map's edge about 6 game hours after it parked; a legless Crawler took about twice that (they ignore people all the way).
+
+Next, one change per build: **(2)** the medics get out and carry the fallen into care (today they are put there when it parks); **(3)** the radio words and the card. Also seen: the truck honks with the car-alarm sound; a horn of its own is for the Music chat.
+
