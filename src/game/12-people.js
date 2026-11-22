@@ -152,7 +152,7 @@ let hiddenAt = 0;
 const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.293 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: time away pays up to about a day's production; was 8 game hours, a third of a day). 24 game hours fill after 4 real hours away. */
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
-  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms / 60000 / AWAY_MIN_PER_H);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();
+  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms / 60000 / AWAY_MIN_PER_H);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick(); const gate = gateAway(hours);
   if (hours < 1) return null; const got = {};
   for (let h = 0; h < hours; h++) for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
@@ -169,7 +169,7 @@ function awayCredit(ms) {
   }
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
   const real = ms >= 36e5 ? Math.round(ms / 36e5 * 10) / 10 + ' h' : Math.round(ms / 6e4) + ' min';
-  const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '');
+  const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '') + (gate ? ` ${gate === 1 ? 'Someone is' : gate + ' people are'} waiting at the gate.` : '');
   note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
   return { hours, got };
 }
@@ -288,8 +288,17 @@ function showNextRequest() {
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
 const ARRIVE = { low: 8000, high: 14000 };   /* 3D.72: growth is the goal, and the rank limit keeps the town from filling too fast */    /* V3D.21 ticks between newcomers at the gate (1000 ticks = 1 game hour): every 12 h below 60% of the room, every 24 h above (was 1.1 h / 2.2 h: the town filled in 2 days) */
+const arriveGap = () => (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1);   /* ticks between newcomers */
+/* 3D.294 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: newcomers keep coming while the player is away and wait at the gate,
+   a few at most). Before, the gate clock only ran with the game open, so a daily player met almost nobody new. awayCredit now runs the gate
+   clock for the time away (up to a day, as production) and puts whoever would have come in a queue at the gate, at most GATE_MAX, as long as
+   there are beds; back in the game they walk in one after another, each with the usual card. */
+const GATE_MAX = 3;
+function gateAway(gameHours) { if (S.finale) return 0; const room = popCap() - popNow() - waitingCouples(); if (room <= 0) return 0;
+  const ticks = (S.arrivalClock || 0) + gameHours * 1000, gap = arriveGap(), n = Math.min(GATE_MAX - (S.gateWait || 0), room, Math.floor(ticks / gap)); if (n <= 0) { S.arrivalClock = Math.min(ticks, gap - 1); return 0; }
+  S.gateWait = (S.gateWait || 0) + n; S.arrivalClock = ticks - n * gap; return n; }
 function visitorArrival() {
-  if (S.finale || guest) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.food < 1 || S.water < 1) return; if (((window.ZH_BAL || {}).gateWait ?? 1) && S.z.some((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) return;   /* spiral fix: newcomers wait outside while zombies are in the town */   /* 3D.71: nobody moves to a starving town */ if (S.arrivalClock < (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) || popNow() >= popCap() - waitingCouples()) return;   /* leave room for couples to start a family */ 
+  if (S.finale || guest) return;   /* V2.46: nobody travels during the final stand */ S.arrivalClock++; if (S.food < 1 || S.water < 1) return; if (((window.ZH_BAL || {}).gateWait ?? 1) && S.z.some((z) => z.hp > 0 && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) return;   /* spiral fix: newcomers wait outside while zombies are in the town */   /* 3D.71: nobody moves to a starving town */ if ((S.arrivalClock < arriveGap() && !(S.gateWait > 0)) || popNow() >= popCap() - waitingCouples()) return; if (S.gateWait > 0) S.gateWait--;   /* leave room for couples to start a family */ 
   const names = ['Noah', 'Maya', 'Eli', 'June', 'Rosa', 'Theo'], jobs = ['Civilian', 'Scavenger', 'Guard', 'Medic', 'Farmer', 'Engineer', 'Cook', ...(hqTier() >= 2 ? ['Mechanic'] : [])];
   const name = freeFirst(names), job = jobs[Math.floor(rnd() * jobs.length)], lv = Math.max(1, Math.min(6, S.rank - 1 + Math.floor(rnd() * 2)));   /* V2.18: newcomers to a bigger Haven are more experienced */
   /* 3D.134 owner: you see them come. They walk in off the highway to the edge of town, stop and wave (the real wave clip, on the real map),
