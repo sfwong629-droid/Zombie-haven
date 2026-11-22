@@ -332,6 +332,7 @@ function eventSchedule() {   /* called every game hour */
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
   if (S.hour === 6) dawnRetreat();
+  if (S.hour === 6) { const n = activeZ(); if (n >= 8) note('important', `☀ DAWN SWEEP: ${n} ZOMBIES LEFT IN TOWN`, { log: `${n} zombies are still about from the night. In daylight they are slow and weak: the fighters go out after them.` }); }   /* 3D.299 A12 tuning */
   if (S.hour === 6 && S.bossOn != null) { S.bossOn = null; S.z.forEach((z) => { if (z.mob) z.mob = false; }); }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): at dawn the boss night ends, but a boss still alive and its followers stay and fight until killed (they used to walk back out, past people) */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
