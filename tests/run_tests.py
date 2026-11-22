@@ -855,7 +855,7 @@ async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field N
 async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls, Rotbomb bursts, dog and riot in waves, spiral fix defaults
     ctx, pg, errs = await open_game(br, port, 'newz')
     await close_popups(pg)
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));S.z=[];
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));S.z=[];S.hour=23;   /* 3D.297: zombies are slow and weak by day; these are night fights */
       const q=S.sv.find(x=>x.job!=='Guard'&&x.hp>0);q.hp=q.max=999;q.eq=q.eq||{};q.eq.weapon='crossbow';q.w.x=8.5;q.w.y=6.5;q.mode='idle';
       ZH.spawn(q.w.x+2.4,q.w.y,'lasher');const z=S.z[S.z.length-1];z.w.x=q.w.x+1.6;z.w.y=q.w.y;z.mode='zchase';z.target=q;z.lashCd=0;z.hp=z.max=9999;
       let pulled=false,d0=Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y),dmin=d0,braced=false;for(let i=0;i<140;i++){ZH.step(1);if(z.pulling)pulled=true;dmin=Math.min(dmin,Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y));}
