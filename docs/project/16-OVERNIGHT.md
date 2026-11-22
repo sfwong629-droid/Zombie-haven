@@ -14,7 +14,7 @@ Each build: one change, a scripted check, the test suite, and a short bot run be
 1b. [x] The Hollow's shepherded horde (3D.285): it adds zombies every hour from 22:00 to 02:00 with no limit (found measuring 3D.284).
 2. [x] The last numbers that still follow the game day (3D.286) (the gentler first two weeks, raider kinds by day, the spawn speed).
 3. [x] A breather after a lost night (3D.287).
-4. [ ] Rule 1, one pace for everyone: (a) time away pays up to a day's production; (b) newcomers wait at the gate; (c) building, crafting and research on real time; (d) the level timers on real time.
+4. Rule 1, one pace for everyone: [x] (a) time away pays up to a day's production (3D.288); [ ] (b) newcomers wait at the gate; (c) building, crafting and research on real time; (d) the level timers on real time.
 5. [ ] If time is left: the six first-30-minute fixes (W183).
 
 ## Builds
@@ -56,3 +56,20 @@ Each build: one change, a scripted check, the test suite, and a short bot run be
 - **Choices to look at:** (1) one death is enough to count as a lost night (the plan says "a night the town lost"; one death is the simplest reading). (2) A quarter smaller is the vigil's existing number. (3) The last stand does not pause for a breather (the convoy is coming; that fight is chosen by the player).
 - **Check:** `tools/qa/breather_check.js`: after a night with a death, and after a night when everyone went down, the breather is on and a boss night due that evening comes two evenings later; after a night with no loss there is no breather and the boss comes on time. The crisis, boss-gap and raid checks still pass. Test suite: all passed.
 - **Bot**, the level 14 to 16 town, 14 game days, before (3D.286) and after: 2 and 1 deaths, so the breather started at most once; this run says nothing about its effect. It needs a town that loses people (the daily player in a full check). Also seen again: one level boss night with 82 standing in the after run (the cause of the few nights above 60 is still not found).
+
+### 3D.288: time away pays up to a day's production
+- **What:** a building's output waiting in its tray while you are away now fills up to a day's worth (24 game hours, reached after 4 real hours away); before, it stopped at 8 game hours, a third of a day. The tray also holds a day now (was 8 hours), so the waiting output is not cut at the tray. Away still has no hunger, raids or deaths.
+- **Choice to look at:** the cap is reached after 4 real hours away (the game counts 10 real minutes as one game hour while away). A player who comes back after a night gets the same as one who comes back after 4 hours.
+- **Check:** `tools/qa/away_day_check.js`: 1 hour away pays 6 game hours, 4 hours pays 24, a whole day pays 24, and the tray holds it all. The suite's away test now expects 18 game hours for 3 real hours away (was 8). Test suite: all passed.
+- **Bot, the daily player** (10 minutes once a real day, 30 on the first day), two towns, 14 real days, before (3D.287) and after:
+
+| | Before | After |
+|---|---|---|
+| Level 5, real day | 6, 3 | 5, 5 |
+| Level 10, real day | not reached, 10 | 12, 12 |
+| Buildings at the end | 25, 28 | 39, 36 |
+| Water / scrap at the end | 36 / 237, 29 / 198 | 126 / 414, 149 / 418 |
+| Wood at the end | 2, 1 | 6, 5 |
+| Deaths | 0, 1 | 5, 2 |
+
+- **Read with care:** the level pace did not change (it waits on the level timer); the towns built about 40% more and stocked far more water and scrap. **Wood is still at 0 every day** in both: a day's production does not fix the wood shortage (it is one of the first-30-minute fixes). Deaths rose from 1 to 7 over the two towns; with two towns that may be chance, but bigger towns with the same zombies is worth watching.
