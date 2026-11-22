@@ -28,7 +28,7 @@ from playwright.async_api import async_playwright
 # the long-run harness (SETUP, DAY, AP) without running its main()
 _src = open(os.path.join(ROOT, 'tools', 'balance', 'long_study.py')).read().replace('asyncio.run(main())', '')
 LS = {'__file__': os.path.join(ROOT, 'tools', 'balance', 'long_study.py')}; exec(compile(_src, 'long_study.py', 'exec'), LS)
-SETUP, DAY, AP = LS['SETUP'], LS['DAY'], LS['AP']
+SETUP, DAY, AP = LS['SETUP'], LS['DAY'].replace('ZH.rankConds?ZH.rankConds().filter', '(ZH.rankConds&&ZH.rankConds())?ZH.rankConds().filter'), LS['AP']   # at level 20 there is no next level (rankConds is null)
 EXPOSE = 'alerts, hubItems, bedFor, facilityUsers,'
 
 BUG = r"""() => {
