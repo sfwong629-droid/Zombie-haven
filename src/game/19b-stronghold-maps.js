@@ -79,6 +79,7 @@ function shTaskTick(H, live) {
   for (const s of H.units) { if (s.carry == null) continue; const t = H.things[s.carry]; if (!t) { s.carry = null; continue; }
     if (s.hp <= 0) { const c = shCell(s.w); t.x = c.x; t.y = c.y; t.carried = null; s.carry = null; shFx(s.w, `📦 ${t.label || 'It'} is dropped`, '#ff8a7a'); continue; }
     if (shRoomAt(s.w) === H.plan.startRoom) { t.delivered = true; t.carried = null; s.carry = null; const c = shCell(s.w); t.x = c.x; t.y = c.y; shFx(s.w, `✅ ${t.label || 'It'} is out`, '#7be08a'); SFX('reward'); shPanel(); } }
+  if (H.plan.tick) H.plan.tick(H, live); if (H.lure && H.t > H.lure.until) { H.lure = null; for (const z of H.zs) z.lured = false; }
   if (H.hold) shHoldTick(H, live); if (H.plan.waves && H.plan.waves.length) shWaveTick(H); if (H.zones && H.zones.length && H.t % 30 === 0) shZoneHurt(H, live);
   if (H.goalDone || H.phase === 'done') return; const main = (H.tasks || []).filter((T) => !T.opt);
   for (const T of H.tasks || []) { const st = shTaskState(H, T); if (st.done && !T.done) { T.done = true; if (T.opt) { banner(`✓ ${T.label.replace(/^Side: /, '')}`); SFX('reward'); } shPanel(); } }
@@ -148,3 +149,94 @@ SH_PLANS.prison = shPlanPrison;
 SH_FX.cells = (H) => { H.doors.forEach((d, i) => { const D = SH_DOORS[i]; if (D[7] === 'heavy' || /^cell/.test(D[0]) || /^cell/.test(D[1])) { d.open = true; d.locked = false; shReveal(D[0]); shReveal(D[1]); } });
   for (const z of H.zs) if (z.hp > 0 && /^cell/.test(z.room || '')) { z.mode = 'idle'; z.hid = false; } banner('🔓 EVERY CELL IS OPEN'); say('The cell doors grind open all at once, and the gate with them. Everything inside is coming out.'); SFX('alarm'); };
 
+/* ---- 3D.281 the four seasonal strongholds (B4 floor hazards, B5 dark), each the home of one of the cure's season feeds (13-LONG-GAME.md, 7.4) ---- */
+/* the Drowned Greenhouse (spring): the great glasshouse, flooded side houses either side, the pump house, the Palm House at the far end.
+   House rule: deep water slows everyone but the Bloated; each pump in the pump house drains one house. Carry the wild cucumber seed out. */
+function shPlanSpring(lv) { const n = shLvSize(lv, 2, 5, 4), L = n * 7 - 1, W = 8 + L + 1 + 12 + 1, P = shNewPlan(W, 23, { theme: 'glass', wall: '#cfe0d6', ground: '#7d9479' });
+  shRoom(P, 'porch', 0, 8, 7, 7, 'The Potting Sheds', '#8fa38a'); shRoom(P, 'pumps', 0, 1, 7, 6, 'The Pump House', '#9a9a96'); shRoom(P, 'great', 8, 7, L, 9, 'The Great Glasshouse', '#9cb39a'); shRoom(P, 'palm', 8 + L + 1, 3, 12, 17, 'The Palm House', '#7d9479');
+  shLink(P, 'porch', 'pumps'); shLink(P, 'porch', 'great'); shLink(P, 'great', 'palm');
+  P.zones.push({ id: 'palm', k: 'water', x: 8 + L + 1, y: 6, w: 12, h: 12 }); P.zones.push({ id: 'great', k: 'water', x: 8, y: 10, w: L, h: 3 });
+  shThing(P, 'pump', 1, 2, { use: 4, fast: ['Mechanic', 'Engineer'], label: 'Pump out the Palm House', icon: '💧', fx: 'drain', drains: 'palm', task: 'pump' });
+  for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `h${up ? 'n' : 's'}${i}`, x = 8 + i * 7, y = up ? 0 : 17; shRoom(P, id, x, y, 6, 6, `The ${['Palm', 'Orchid', 'Fern', 'Cactus', 'Vine', 'Lily', 'Citrus', 'Herb', 'Melon', 'Rose'][i * 2 + up]} House`, '#8fa38a'); shLink(P, id, 'great', i % 3 === 2 && up, x + 2);
+    if (i % 3 === 2 && up) { P.locked.push(id); P.lockName[id] = 'a locked house'; } else { P.zones.push({ id, k: 'water', x, y, w: 6, h: 6 }); shThing(P, 'pump', 1 + ((i * 2 + up) % 6), 3 + Math.floor((i * 2 + up) / 6) * 2, { use: 3, fast: ['Mechanic', 'Engineer'], label: `Pump out ${P.names[id]}`, icon: '💧', fx: 'drain', drains: id, task: 'pump' });
+      shThing(P, 'crate', x + 3, up ? y + 1 : y + 4, { use: 3, label: 'Search the planters', icon: '🌱', loot: { food: 2 + Math.floor(lv / 6), meds: i % 2 }, task: 'planters' }); P.spawn[id] = [[i % 2 ? 'spitter' : 'bloated', 1], ['walker', 1 + (lv > 8 ? 1 : 0)]]; } }
+  P.spawn.porch = [['walker', 3 + Math.floor(lv / 6)]]; P.spawn.great = [['walker', 3 + n], ['bloated', 1 + Math.floor(lv / 8)], ['sporehead', lv > 7 ? 1 : 0]].filter((q) => q[1]); P.spawn.palm = [['bloated', 2], ['walker', 2 + Math.floor(lv / 5)]];
+  P.boss = { room: 'palm', type: 'bloated', name: 'The Mire Mother', hp: 1100, atk: 16, big: 1.9, spd: .009, pat: 'summon', kin: 'bloated', kinN: 1, patGap: 720 };
+  shThing(P, 'seed', 8 + L + 9, 10, { carry: true, use: 3, label: 'wild cucumber seed', task: 'seed', icon: '🌱' });
+  P.route = ['porch', 'great', 'palm']; P.startRoom = 'porch'; P.bossRoom = 'palm'; P.start = { x: 1, y: 10 }; P.exit = { x: .6, y: 11 }; P.mystT = ['bloated', 'spitter'];
+  P.tasks = [{ k: 'carry', id: 'seed', label: 'Carry out the wild cucumber seed' }, { k: 'boss', opt: true, label: 'Side: kill the Mire Mother' }]; P.botOrders = ['seed', 'pump']; P.keyOnWin = ['feed_spring'];
+  P.tip = 'Deep water slows everyone but the Bloated. The pump house drains the flooded houses one at a time. The seed is in the Palm House: whoever carries it walks slowly.'; return P; }
+SH_PLANS.sh_spring = shPlanSpring;
+SH_FX.drain = (H, t) => { const z = (H.zones || []).find((q) => q.id === t.drains); if (z) { z.on = false; say(`The pumps thump into life: ${H.plan.names[t.drains] || 'the house'} drains.`); } };
+
+/* the Burning Refinery (summer): the gate yard, the pipe racks, the control room, the tank farm, the cracking tower.
+   House rule: fire creeps along the fuel lines a section at a time until the line's valve is shut; a clock: the tank farm goes up.
+   Get the first Freshlock recipe from the control room and get out before the clock runs out. */
+function shPlanSummer(lv) { const n = shLvSize(lv, 3, 6, 4), L = n * 5, W = 9 + L + 1 + 11 + 1, P = shNewPlan(W, 21, { theme: 'prison', wall: '#6b5d52', ground: '#8a6f58' });
+  shRoom(P, 'gate', 0, 6, 8, 9, 'The Gate Yard', '#a68f74'); shRoom(P, 'racks', 9, 7, L, 7, 'The Pipe Racks', '#9a8166'); shRoom(P, 'control', 9, 0, 9, 6, 'The Control Room', '#9a9a96');
+  shRoom(P, 'tanks', 9, 15, L, 6, 'The Tank Farm', '#8a6f58'); shRoom(P, 'tower', 9 + L + 1, 3, 11, 15, 'The Cracking Tower', '#8a6f58');
+  shLink(P, 'gate', 'racks'); shLink(P, 'racks', 'control', false, 12); shLink(P, 'racks', 'tanks', false, 10); shLink(P, 'racks', 'tower'); shLink(P, 'tanks', 'tower');
+  for (let i = 0; i < n; i++) shThing(P, 'tank', 10 + i * 5 + 2, 17, { look: i % 2 ? '#c9c9c9' : '#d9b233' });
+  shThing(P, 'desk', 12, 2); shThing(P, 'files', 15, 2, { carry: true, use: 3, label: 'first Freshlock recipe', task: 'recipe', icon: '📜' });
+  /* two fuel lines run down the racks; each burns forward a section every few seconds until its valve is shut */
+  P.lines = [{ y: 8, valve: 'v1' }, { y: 12, valve: 'v2' }]; P.lines.forEach((l, k) => shThing(P, 'valve', 10 + k * 3, 1 + k * 2, { use: 3, fast: ['Mechanic', 'Engineer'], label: `Shut fuel line ${k + 1}`, icon: '🔧', fx: 'valve', line: k, task: 'valves' }));
+  P.clock = 300 - Math.min(90, lv * 4);   /* seconds until the tank farm goes up */
+  P.spawn.gate = [['burnt', 3 + Math.floor(lv / 5)], ['runner', 1]]; P.spawn.racks = [['burnt', 3 + n], ['runner', 1 + Math.floor(lv / 6)]]; P.spawn.control = [['burnt', 2]]; P.spawn.tanks = [['burnt', 2 + n], ['rotbomb', 1 + Math.floor(lv / 7)]]; P.spawn.tower = [['burnt', 3], ['runner', 2]];
+  P.boss = { room: 'tower', type: 'brute', name: 'Cinder', hp: 1100, atk: 17, big: 1.7, spd: .012, pat: 'slam' };
+  P.route = ['gate', 'racks', 'control']; P.startRoom = 'gate'; P.bossRoom = 'tower'; P.start = { x: 1, y: 8.5 }; P.exit = { x: .6, y: 10 }; P.mystT = ['burnt', 'runner'];
+  P.tasks = [{ k: 'carry', id: 'recipe', label: 'Carry out the first Freshlock recipe' }, { k: 'boss', opt: true, label: 'Side: kill Cinder' }]; P.botOrders = ['recipe', 'valves']; P.keyOnWin = ['feed_summer'];
+  P.tip = 'Fire creeps along both fuel lines until their valves in the control room are shut. The clock up top is the tank farm: be out before it goes up.';
+  P.setup = (H) => { H.clock = P.clock * 60; H.fireAt = H.t + 600; H.lineN = [0, 0]; };
+  P.tick = (H, live) => { if (H.clock > 0) { H.clock--; if (H.clock % 1800 === 0 && H.clock) say(`The tank farm: ${H.clock / 60} seconds.`); if (!H.clock) { banner('💥 THE TANK FARM GOES UP'); const [x0, y0, w, h] = H.plan.rooms.tanks; H.zones.push({ k: 'fire', x: x0, y: y0, w, h }, { k: 'fire', x: 9, y: 7, w: H.plan.rooms.racks[2], h: 7 }); for (const s of live) if (shRoomAt(s.w) !== H.plan.startRoom) { const dm = Math.round(s.max * .4); s.hp -= dm; shFx(s.w, '-' + dm, '#ff6e62'); if (s.hp <= 0) { s.hp = 0; s.mode = 'down'; } } (window.ZH_BOOMS ||= []).push({ x: SH_AX + x0 + w / 2, y: SH_AY + y0 + h / 2, r: 6, burn: true, t: performance.now() }); SFX('hit'); } }
+    if (H.t >= H.fireAt) { H.fireAt = H.t + 480; H.plan.lines.forEach((l, k) => { if (l.shut || (H.shut || {})[k]) return; const i = H.lineN[k]++; if (i * 3 >= H.plan.rooms.racks[2]) return; H.zones.push({ k: 'fire', x: 9 + i * 3, y: l.y, w: 3, h: 2, line: k }); }); } };
+  return P; }
+SH_PLANS.sh_summer = shPlanSummer;
+SH_FX.valve = (H, t) => { (H.shut ||= {})[t.line] = true; for (const z of H.zones) if (z.line === t.line) z.on = false; say(`Fuel line ${t.line + 1} is shut: its fire dies down.`); };
+
+/* the Harvest Fair (autumn): the midway (a loop of stalls), the livestock barns, the orchard store, the Haunted Ride (a dark maze), Farmer Fresh's stage.
+   House rule: the stage loudspeaker still plays the old show: switch it on and the dead crowd the stage for half a minute. The Haunted Ride is dark. */
+function shPlanAutumn(lv) { const n = shLvSize(lv, 2, 4, 5), W = 12 + n * 8 + 14, P = shNewPlan(W, 24, { theme: 'camp', wall: '#8a5a32', ground: '#9a7a52', noEdgeProps: true });
+  shRoom(P, 'gate', 0, 9, 7, 7, 'The Fair Gate', '#b39064'); shRoom(P, 'midway', 8, 6, n * 8 + 3, 12, 'The Midway', '#a68458');
+  shRoom(P, 'stage', 8, 0, 12, 5, "Farmer Fresh's Stage", '#b39064'); shRoom(P, 'barns', 8, 19, 12, 5, 'The Livestock Barns', '#9a7a52'); shRoom(P, 'orchard', 21, 19, Math.min(10, n * 8 - 10), 5, 'The Orchard Store', '#8a7a52');
+  shLink(P, 'gate', 'midway', false, null, 3); shLink(P, 'midway', 'stage', false, 12, 3); shLink(P, 'midway', 'barns', false, 12, 3); shLink(P, 'midway', 'orchard', false, 23, 2);
+  const rx = 8 + n * 8 + 4; shRoom(P, 'ride0', rx, 6, 4, 5, 'The Haunted Ride', '#4a3a3a'); shRoom(P, 'ride1', rx, 12, 4, 6, 'The Haunted Ride', '#4a3a3a'); shRoom(P, 'ride2', rx + 5, 6, 4, 12, 'The Haunted Ride', '#4a3a3a'); shRoom(P, 'ride3', rx, 0, 9, 5, 'The Ghost Train Shed', '#4a3a3a');
+  shLink(P, 'midway', 'ride0', false, 8, 1); shLink(P, 'ride0', 'ride1', false, rx + 1, 1); shLink(P, 'ride1', 'ride2', false, 14, 1); shLink(P, 'ride2', 'ride3', false, rx + 6, 1); shLink(P, 'ride0', 'ride3', true, rx + 1, 1);
+  for (const r of ['ride0', 'ride1', 'ride2', 'ride3']) P.dark[r] = 1; P.lockName.ride3 = 'the ghost train shed';
+  for (let i = 0; i < n; i++) { shThing(P, 'stall', 10 + i * 8, 7, { look: ['#c94a3a', '#3a6ac9', '#3aa04a', '#d9a03a'][i % 4] }); shThing(P, 'stall', 14 + i * 8, 16, { look: ['#d9a03a', '#c94a3a', '#3a6ac9', '#3aa04a'][i % 4] }); }
+  shThing(P, 'ride', 10 + n * 4, 11); shThing(P, 'stage', 11, 1); shThing(P, 'speaker', 17, 3, { use: 2, label: 'Switch on the old show', icon: '📢', sub: 'The dead crowd the stage for half a minute', fx: 'lure', again: true, task: 'lure' });
+  shThing(P, 'hay', 10, 21); shThing(P, 'sign', 7 + 4, 17, { look: '#e8c45a' }); for (let i = 0; i < 2; i++) shThing(P, 'jar', 23 + i * 3, 21, { carry: true, use: 2, label: 'crate of old apple stock', task: 'apples', icon: '🍎' });
+  shThing(P, 'crate', 18, 22, { use: 4, label: 'Search the prize booth', icon: '🎁', loot: { cloth: 3, food: 3 }, items: ['raincoat'], task: 'booth' });
+  P.spawn.gate = [['walker', 3]]; P.spawn.midway = [['walker', 5 + n * 2], ['runner', 2 + Math.floor(lv / 5)], ['rotbomb', lv > 8 ? 1 : 0]].filter((q) => q[1]); P.spawn.barns = [['dog', 2 + Math.floor(lv / 6)], ['walker', 2]]; P.spawn.orchard = [['walker', 2]];
+  P.spawn.ride0 = [['walker', 2]]; P.spawn.ride1 = [['lasher', 1], ['walker', 1]]; P.spawn.ride2 = [['walker', 3], ['lasher', lv > 10 ? 1 : 0]].filter((q) => q[1]); P.spawn.stage = [['walker', 2]];
+  P.boss = { room: 'ride3', type: 'lasher', name: 'The Scarecrow', hp: 1050, atk: 16, big: 1.7, spd: .013, pat: 'charge', patGap: 540 };
+  P.route = ['gate', 'midway', 'ride0', 'ride1', 'ride2', 'ride3']; P.startRoom = 'gate'; P.bossRoom = 'ride3'; P.start = { x: 1, y: 11 }; P.exit = { x: .6, y: 12 }; P.mystT = ['walker', 'dog'];
+  P.tasks = [{ k: 'boss', label: 'Kill the Scarecrow' }, { k: 'carry', id: 'apples', need: 1, label: 'Carry out the old apple stock' }]; P.botOrders = ['apples']; P.keyOnWin = ['feed_autumn', 'pell10'];
+  P.tip = "Farmer Fresh's loudspeaker still works: switch on the old show and the dead crowd the stage for half a minute. The Haunted Ride is dark: you see them late.";
+  return P; }
+SH_PLANS.sh_autumn = shPlanAutumn;
+SH_FX.lure = (H, t) => { t.done = false; H.lure = { w: shThingSpot(t), until: H.t + 1800 }; for (const z of H.zs) if (z.hp > 0 && !z.boss && dist(z.w, H.lure.w) < 16) { if (z.mode === 'sleep') z.mode = 'idle'; z.lured = true; } say('🎵 "Fresh for ever, fresh for you…" The old show crackles out of the speaker and the dead turn toward the stage.'); };
+
+/* the Frozen Depot (winter): the snowed yard, the barracks, the motor pool, the cold store, the hangar.
+   House rule: away from the burning barrels the cold slowly hurts; some of the dead are frozen in the ice and thaw when a blast or fire comes near.
+   Boss: the Gatling Boss (W212). Carry out the ice from the cold store. */
+function shPlanWinter(lv) { const n = shLvSize(lv, 2, 5, 4), L = n * 6 - 1, W = 10 + L + 1 + 12 + 1, P = shNewPlan(W, 22, { theme: 'prison', wall: '#9aa6b0', ground: '#dfe6ec' });
+  shRoom(P, 'yard', 0, 4, 9, 14, 'The Snowed Yard', '#e8eef2'); shRoom(P, 'road', 10, 9, L, 4, 'The Depot Road', '#dfe6ec'); shRoom(P, 'cold', 0, 19, 9, 3, 'The Cold Store', '#cfe0ea'); shRoom(P, 'hangar', 10 + L + 1, 2, 12, 18, 'The Hangar', '#cfd8de');
+  shLink(P, 'yard', 'road'); shLink(P, 'yard', 'cold'); shLink(P, 'road', 'hangar');
+  for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `bk${up ? 'n' : 's'}${i}`, x = 10 + i * 6; shRoom(P, id, x, up ? 2 : 14, 5, 6, up ? `Barracks ${i + 1}` : `Motor bay ${i + 1}`, up ? '#cfd8de' : '#d0d4d6'); shLink(P, id, 'road', (i + up) % 3 === 2, x + 1);
+    if ((i + up) % 3 === 2) { P.locked.push(id); P.lockName[id] = up ? 'a locked barracks' : 'a locked motor bay'; } else { P.spawn[id] = [[up ? 'riot' : 'walker', 1 + (i % 2)], ['walker', 1]]; shThing(P, up ? 'bed' : 'crate', x + 1, up ? 4 : 17, up ? {} : { use: 3, label: 'Search the bay', icon: '🔧', loot: { mat: 3, fuel: 1 }, task: 'bays' }); } }
+  P.zones.push({ k: 'cold', x: 0, y: 4, w: 9, h: 14 }, { k: 'cold', x: 10, y: 9, w: L, h: 4 }, { k: 'cold', x: 0, y: 19, w: 9, h: 3 });
+  shThing(P, 'warm', 6, 6, { warm: 2.6 }); shThing(P, 'warm', 2, 15, { warm: 2.6 }); for (let i = 0; i < n; i += 2) shThing(P, 'warm', 12 + i * 6, 11, { warm: 2.4 });
+  for (let i = 0; i < 2 + Math.floor(lv / 6); i++) shThing(P, 'ice', 3 + (i * 5) % 6, 8 + (i * 3) % 7, { frozen: i % 3 === 2 ? 'riot' : 'walker' });
+  shThing(P, 'ice', 6, 20, { carry: true, use: 4, label: 'block of depot ice', task: 'ice', icon: '🧊' });
+  P.spawn.yard = [['walker', 3 + Math.floor(lv / 5)]]; P.spawn.road = [['walker', 2 + n], ['riot', 1 + Math.floor(lv / 7)]]; P.spawn.cold = [['walker', 2]]; P.spawn.hangar = [['riot', 2], ['walker', 3 + Math.floor(lv / 6)], ['brute', lv > 12 ? 1 : 0]].filter((q) => q[1]);
+  P.boss = { room: 'hangar', type: 'gatling', name: 'The Gatling Boss', hp: 1200, atk: 18, big: 1.4, spd: .009, pat: 'gun', patGap: 360 };
+  P.route = ['yard', 'road', 'hangar']; P.startRoom = 'yard'; P.bossRoom = 'hangar'; P.start = { x: 1, y: 9 }; P.exit = { x: .6, y: 10 }; P.mystT = ['walker', 'riot'];
+  P.tasks = [{ k: 'boss', label: 'Kill the Gatling Boss' }, { k: 'carry', id: 'ice', label: 'Carry out the depot ice' }]; P.botOrders = ['ice']; P.keyOnWin = ['feed_winter'];
+  P.tip = 'Away from the burning barrels the cold slowly hurts. Some of the dead are frozen in the ice: a blast near them thaws them out. The Gatling Boss spins up before he fires: get behind cover or out of his line.';
+  return P; }
+SH_PLANS.sh_winter = shPlanWinter;
+
+/* the frozen dead (Frozen Depot): they stand in the ice, can't be hurt, and thaw when a blast comes near */
+function shThaw(H, at, r) { for (const z of H.zs) if (z.frozen && dist(z.w, at) < r + .8) { z.frozen = false; z.mode = 'idle'; z.hid = false; const t = H.things.find((q) => q.frozen && !q.out && Math.abs(q.x - shCell(z.w).x) < 1.5 && Math.abs(q.y - shCell(z.w).y) < 1.5); if (t) t.out = true; shFx(z.w, '💢 Thawed out', '#ff6e62'); } }
+/* the lure (Harvest Fair): the dead walk to the stage while the old show plays, unless someone is right next to them */
+function shLured(z, live) { const H = S.sh; if (!z.lured || !H.lure) return false; if (live.some((s) => dist(s.w, z.w) < 1.3)) return false; if (dist(z.w, H.lure.w) > 1.6) { z.mode = 'zchase'; shGo(z, H.lure.w, z.spd, 'z'); } else { z.moving = false; z.mode = 'idle'; } return true; }
