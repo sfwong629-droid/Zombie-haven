@@ -5,7 +5,35 @@ The owner, 22 Nov, 00:35: "you can run overnight". The Balance chat works throug
 Each build: one change, a scripted check, the test suite, and a short bot run before and after where it matters.
 
 ## Morning summary
-(Written when the night ends.)
+Written 22 Nov, 05:10 New York time. The list is done: **12 builds (3D.284 to 3D.295)**, all on the branch `balance-overnight`. Nothing is in `art-direction-b` or main. Every build has its own scripted check, and the full test suite passed after each one.
+
+**What changed, in one line each:**
+1. 3D.284 The last stand (the three convoy nights) keeps the limit of 60 standing, and its size follows the level, not the game day.
+2. 3D.285 The Hollow's shepherd and alpha keep the limit of 60 too.
+3. 3D.286 The last danger numbers that followed the game day now follow the level (the gentle early boss, raider kinds, spawn speed).
+4. 3D.287 A breather after a lost night: two quieter nights, no boss night, no raiders.
+5. 3D.288 Time away pays up to a day's production (was a third of a day).
+6. 3D.289 Newcomers keep coming while you are away and wait at the gate (3 at most).
+7. 3D.290 Each of the first six goals hands over a gift you can see (a Bat, a Straw Hat, food and water...).
+8. 3D.291 More wood on day 1 (20 to start, +2 a load up to level 3).
+9. 3D.292 Newcomers come four times as often until the town has 6 people.
+10. 3D.293 No roaming raiders before level 3.
+11. 3D.294 The first boss night on game day 4, about minute 24 of play (was day 6, minute 38). Small: 16 to 24 zombies.
+12. 3D.295 A guided first research: the first Workbench's notes cover the cheapest project, and the first project costs no scrap.
+
+**Please look at (choices I made, each easy to change):** the numbers in each build's "Choices to look at" line below. The ones that matter most: one death is enough for a breather (3D.287); the away cap is reached after 4 real hours (3D.288); the boss at level 6 is about twice as tough as at level 5 now that the gentle start ends at level 5, not day 14 (3D.286); raiders wait for level 3 (3D.293); the first boss night on day 4 (3D.294).
+
+**Best checked by playing the first 30 minutes yourself:** 3D.290 to 3D.295 all change the first sitting, and the bot cannot judge gifts, wood waiting or research (it spends all wood at once and only researches with more than 30 scrap).
+
+**Skipped, needs your answer:** Q1 below (what a real hour is worth). Rule 1's last two steps (building, crafting and research on real time; level timers on real time) wait for it. Also not done: a nudge to craft the first item (the second half of first-30-minute fix 6).
+
+**Problems found, not fixed:**
+- A few nights still reach 62 to 82 standing (the night before and of a level boss night); the source is not found.
+- In era 3 the big horde reaches only about 95 of its 230 before the night ends (the towns are too small or the horde too slow). Needs a choice from you later.
+- Two bot towns run side by side from the level 9 backup sometimes have their clock slowed to a quarter, likely the stronghold slowdown; for the Strongholds chat.
+- Deaths swing a lot from run to run of the same build, so two bot towns cannot show small changes in deaths.
+
+**Merging:** when you say yes, the 12 builds are renumbered above the newest number in `art-direction-b` (today 3D.283) and merged there. Branch: https://github.com/sfwong629-droid/Zombie-haven/tree/balance-overnight
 
 **Build numbers:** the other chats keep taking numbers during the night, so this branch's builds are renumbered above theirs each time (last: the Strongholds chat reached 3D.283 at 02:00). They are renumbered again when merged.
 
