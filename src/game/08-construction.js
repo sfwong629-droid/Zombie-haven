@@ -166,6 +166,15 @@ function startHide(s, z) {   // non-fighters run for the nearest enclosed buildi
   s.facility = null; s.activity = null; s.dest = null; s.path = null; s.purpose = null; s.target = null;
   s.mode = 'hide'; s.hideAt = best; s.stateTicks = 9999; s.why = `Hiding from a ${zombieTypes[z.type].name} → ${DEFS[best.type].name}`;
 }
+/* 3D.266 bug B25 (bug sweep): nobody stays inside a wall. A wall can be built, repaired or upgraded on a tile someone is standing on;
+   a zombie left inside one stood there for hours. Twice a second, anyone (person or zombie) on a standing wall tile (not a gate) is put on the nearest open tile. */
+function wallUnstick() {
+  if (!world.walls.size) return; const solidAt = (x, y) => { const wl = Wd.wallAt(world, x, y); return !!wl && !wl.broken && wl.type !== 'gate'; };
+  for (const o of [...S.sv, ...S.z]) { if (!o.w || o.hp <= 0 || o.zoo || (o.job !== undefined && (['away', 'errand', 'hospital'].includes(o.mode) || insideBuilding(o) || beingCarried(o)))) continue;
+    const tx = Math.floor(o.w.x), ty = Math.floor(o.w.y); if (!solidAt(tx, ty)) continue;
+    let best = null, bd = 1e9; for (let r = 1; r <= 3 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = tx + dx, y = ty + dy; if (!Wd.walkable(world, x, y, true)) continue; const d = Math.hypot(x + .5 - o.w.x, y + .5 - o.w.y); if (d < bd) { bd = d; best = { x: x + .5, y: y + .5 }; } }
+    if (best) { o.w = best; o.path = null; o.pathGoal = null; if (o.pv) o.pv = { ...best }; } }
+}
 function spreadOut() {   /* V3D.17: two people never stand in the same spot; a soft push apart (walls and buildings respected) */
   const L = S.sv.filter((s) => s.w && s.hp > 0 && s.mode !== 'away' && s.mode !== 'down' && !insideBuilding(s) && !beingCarried(s)); if (S.trader && S.trader.w) L.push(S.trader);
   for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j], dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, d = Math.hypot(dx, dy), R = (a.chatWith === b || b.chatWith === a) ? .5 : .42;

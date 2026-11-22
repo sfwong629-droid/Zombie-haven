@@ -1031,6 +1031,20 @@ async def t_emorule(br, port, t):   # bug B24 (3D.265, owner: "reduce some of th
     t.ok(r['sos'] >= 4, f"needs-rescue is always shown ({r['sos']} of 5)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_wallstuck(br, port, t):   # bug B25 (3D.266, found by the bug sweep): nobody stays inside a wall (a zombie stood in one for hours)
+    ctx, pg, errs = await open_game(br, port, 'wallstuck')
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world, Wd = ZH.Wd, Zn = Wd.WALLZONE; S.mat = 999; S.wood = 999; S.z.length = 0; S.hour = 12;
+      const x = Math.round((Zn.x0 + Zn.x1) / 2), y = Zn.y0; ZH.spawn(x, y - 3, 'walker'); const z = S.z[S.z.length - 1]; z.hp = z.max = 1e9; z.w = { x: x + .5, y: y + .5 };
+      const s = S.sv.find((q) => q.w); s.w = { x: x + 1.5, y: y + .5 }; s.mode = 'free'; s.stateTicks = 200;
+      for (const xx of [x, x + 1]) { const hp = Wd.WALL_DEFS.wood.hp; W.walls.set(xx + ',' + y, { x: xx, y, type: 'wood', hp, max: hp, broken: false }); } Wd.bump(W);   /* walls finished on the tiles they stand on */ const solid = (o) => { const wl = Wd.wallAt(W, Math.floor(o.w.x), Math.floor(o.w.y)); return !!wl && !wl.broken && wl.type !== 'gate'; };
+      const built = solid(z) && solid(s); for (let k = 0; k < 60; k++) { z.mode = 'idle'; ZH.step(1); }
+      return { built, zIn: solid(z), sIn: solid(s), zAlive: z.hp > 0, zAt: [z.w.x, z.w.y].map((v) => +v.toFixed(2)) }; }""")
+    print('      wallstuck:', r)
+    t.ok(r['built'], f"a wall built on a zombie's tile and on a survivor's tile ({r})")
+    t.ok(not r['zIn'] and not r['sIn'], f"within a second both are put on an open tile next to it ({r}; 3D.265: the zombie stayed in the wall)")
+    t.ok(r['zAlive'], "the zombie is moved, not removed")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -1065,7 +1079,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('reroute', t_reroute), ('emorule', t_emorule), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('reroute', t_reroute), ('emorule', t_emorule), ('wallstuck', t_wallstuck), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
