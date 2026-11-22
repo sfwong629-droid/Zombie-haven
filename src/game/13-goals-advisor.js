@@ -35,9 +35,19 @@ function tutTick() { if (S.cut || S.introOff || S.won) return; S.tut = S.tut || 
   if ((S.stage || 0) === 0 && !S.tut.start && S.day <= 2) { S.tut.start = 1; radio('dj', TUT.start, { key: 'tut', title: 'Getting started', more: 'Build → Rain Barrel, then tap a spot inside the fence. Builders carry the wood and scrap over and put it up.' }); }
   else if (!S.tut.alarm && S.day >= 3 && isNight() && tick % 960 === 120) { const w = nodeList().find((n) => n.k === 'wreck' && nodeState(n.x, n.y) && alarmCands(n.x, n.y).length >= 3); if (w) { S.tut.alarm = 1; radio('dj', ['Got company at the fence? Here is a trick.', 'Tap a wreck near them. Most of those old cars still have a working alarm.', 'Set it off and the dead go and argue with it instead of your walls.'], { key: 'tut', title: 'Car alarms', more: 'Tap a wreck with zombies near it, then Set it off: up to 6 of them (never a boss) walk to the wreck and stay there a while, unless someone comes close. Each wreck works once a day.' }); } }
   else if (S.stage === 1 && !S.tut.fight) { S.tut.fight = 1; radio('dj', TUT.fight, { key: 'tut', title: 'First blood', more: 'Guards, Police and Scavengers fight walkers on their own. Defeat 3 to finish this goal. Everyone else runs inside when zombies come close.' }); } }   /* 3D.135 was a pop-up in the middle of the screen */
+/* 3D.290 (overnight branch; owner, 21 Nov, W183, first-30-minute fix 1 in 13-LONG-GAME 3a: a reward for each of the first goals, so
+   something pays out every few minutes, as Fallout Shelter's lunchboxes do). The first goals already paid a little scrap, wood and renown;
+   now each of the first six also hands over one thing you can see and use: supplies, a weapon, gear. It goes to the stash and is named on
+   the goal banner. */
+const FIRST_GIFTS = { water: { food: 6, water: 6, line: '6 food and 6 water from Dusk Radio' }, walkers: { item: 'bat', line: 'a Baseball Bat for your best fighter' },
+  'Grow Food': { item: 'strawhat', line: 'a Straw Hat for the farmer' }, 'A Second Garden': { food: 10, line: '10 food from Greenwater, to tide you over' },
+  'A Place to Rest': { item: 'jacket', line: 'a Work Jacket' }, 'Scrap Economy': { item: 'gloves', line: 'Lifting Gloves' } };
+function firstGift(k) { const g = FIRST_GIFTS[k]; S.gifts = S.gifts || {}; if (!g || S.gifts[k]) return ''; S.gifts[k] = 1;
+  if (g.item && ITEMS[g.item]) stashAdd(g.item); if (g.food) S.food = (S.food || 0) + g.food; if (g.water) S.water = (S.water || 0) + g.water;
+  note('important', '🎁 ' + g.line.charAt(0).toUpperCase() + g.line.slice(1), { log: 'A gift for the goal: ' + g.line + (g.item ? ' (in the stash).' : '.') }); return g.line; }
 function guideProgress() {
   const g = GUIDE[S.guide || 0]; if (!g || !g.done()) return;
-  S.mat += g.parts; S.wood = Math.min(matCap(), (S.wood || 0) + g.parts * 2); renownGain(g.ren, g.name); SFX('reward'); banner('✔ GOAL COMPLETE · ' + g.name.toUpperCase()); questFlash(); say(`Goal complete: ${g.name} (+${g.parts} scrap).`, true);
+  S.mat += g.parts; S.wood = Math.min(matCap(), (S.wood || 0) + g.parts * 2); renownGain(g.ren, g.name); SFX('reward'); const gift = firstGift(g.name); banner('✔ GOAL COMPLETE · ' + g.name.toUpperCase() + (gift ? ' · 🎁' : '')); questFlash(); say(`Goal complete: ${g.name} (+${g.parts} scrap).`, true);
   S.guide = (S.guide || 0) + 1; if (S.guide < GUIDE.length && !GUIDE[S.guide].done()) guideIntro(); else if (S.guide >= GUIDE.length) { say('All guide goals done — missions from here on.'); beginMission(); }
   ui();
 }
@@ -219,4 +229,4 @@ function showLog() {
   $('logFilt').onclick = () => { logOnlyKey = !logOnlyKey; showLog(); }; $('logSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); showLog(); }; $('logLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); showLog(); }; $('logAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); showLog(); }; $('logBak').onclick = () => showBackup();
   showPanel();
 }
-function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; questFlash(); renownGain(10, 'Goal complete'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
+function stageCheck() { if (S.stage === 1 && S.kills >= 3) { S.stage = 2; S.guide = 0; questFlash(); renownGain(10, 'Goal complete'); firstGift('walkers'); say('Goal complete!'); guideSkipDone(); guideIntro(); } }
