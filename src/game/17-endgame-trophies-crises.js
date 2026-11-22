@@ -92,7 +92,7 @@ const CRISES = {
     start: (c) => { c.until = S.day + 3; c.need = { food: 25, meds: 6 }; }, act: () => { const c = S.crisis; if (S.food < c.need.food || (S.meds || 0) < c.need.meds) { say(`Greenwater needs ${c.need.food} food and ${c.need.meds} medicine.`); return false; } S.food -= c.need.food; S.meds -= c.need.meds; fac('green').att = Math.min(100, fac('green').att + 20); S.seedUntil = S.day + 7; crisisEnd('won'); return true; },
     actLabel: 'Send the aid', day: (c) => { if (S.day >= c.until) { fac('green').att -= 15; crisisEnd('lost'); } } },
   tide: { icon: '🌊', name: 'The Tide', fits: () => true, desc: 'The radio warns of the biggest horde in months. It reaches the walls tomorrow at 21:00, in three waves.',
-    start: (c) => { c.night = S.day + 1; }, hour: (c) => { if (S.day === c.night && [21, 22, 23].includes(S.hour)) { const n = Math.round((14 + 4 * (S.hour - 20) + Math.floor(S.day / 6)) * DF().count); for (let i = 0; i < n; i++) { spawn(null, null, i % 9 === 0 ? 'brute' : i % 4 === 0 ? 'runner' : null); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; } if (S.hour === 23) spawnBoss(null, true); }
+    start: (c) => { c.night = S.day + 1; }, hour: (c) => { if (S.day === c.night && [21, 22, 23].includes(S.hour)) { c.q = (c.q || 0) + Math.round((14 + 4 * (S.hour - 20) + Math.floor(hDay() / 6)) * DF().count); if (S.hour === 23) spawnBoss(null, true); }
       if (S.day === c.night + 1 && S.hour === 7) crisisEnd((c.lost || 0) === 0 ? 'won' : 'held'); } },
   refugees: { icon: '🚌', name: 'A refugee column', fits: () => true, desc: 'Six people from a fallen town are on the highway. Take them in within 2 days: you need the beds and 3 food each.',
     start: (c) => { c.until = S.day + 2; }, act: () => { const room = popCap() - S.sv.length - (S.kids || []).length, n = Math.min(6, room); if (n < 3) { say('Not enough beds: build more housing first (room for at least 3).'); return false; } if (S.food < n * 3) { say(`Taking in ${n} people needs ${n * 3} food.`); return false; } S.food -= n * 3; const e = tc(7 + OFF, 10 + OFF); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Farmer', 'Engineer', 'Guard', 'Medic', 'Cook', 'Scavenger'][i % 6], 2 + (i % 3), e.x + (i % 3) * .3, e.y + (i >> 1) * .3, S.sv.length); q.src = 'event'; q.sat = 2; S.sv.push(q); } crisisEnd('won', `${n} refugees joined the Haven.`); return true; },
@@ -109,6 +109,13 @@ function crisisDaily() {
   S.crisis = { k, day0: S.day, lost: 0 }; CRISES[k].start(S.crisis); S.crisisLast = k; S.crisisNext = S.day + CRISIS_EVERY;
   const C = CRISES[k]; SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
 }
+/* 3D.274 (owner, 21 Nov, W176: the limit of 60 standing holds for every kind of attack; zombies grow with the level, not the days):
+   The Tide's three waves no longer appear all at once. Each wave joins a queue, and its zombies walk in one by one while fewer than
+   TIDE_CAP stand in town; its size follows the level (hDay), not the game day. Before, at level 15 on day 109 about 120 zombies stood up
+   in three bursts, 158 to 161 stood at once, and the town lost a third of its people over that night and the next (08-BALANCE, section 12). */
+const TIDE_CAP = 60;
+function crisisTick() { const c = S.crisis; if (!c || !(c.q > 0) || tick % 20) return; if (activeZ() >= TIDE_CAP) return;
+  c.qi = (c.qi || 0) + 1; spawn(null, null, c.qi % 9 === 0 ? 'brute' : c.qi % 4 === 0 ? 'runner' : null); const z = S.z[S.z.length - 1]; if (z && !z.human) { z.siege = true; z.mob = true; } c.q--; S.nightSpawned = (S.nightSpawned || 0) + 1; }
 function crisisHour() { const c = S.crisis; if (!c) return; const C = CRISES[c.k]; c.lost = (S.fallen || []).length - (c.f0 ?? (c.f0 = (S.fallen || []).length)); if (C.hour) C.hour(c); }
 function crisisEnd(how, extra = '') {
   const c = S.crisis; if (!c) return; const C = CRISES[c.k]; S.crisis = null; S.crisisLog = [...(S.crisisLog || []).slice(-9), { k: c.k, day: S.day, how }];

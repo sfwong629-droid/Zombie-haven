@@ -25,7 +25,7 @@ const Q = require('./lib');
   for (const w of r.rows) { const t = 'level ' + w.lvl + ' day ' + w.day + ': ';
     if (w.mob !== want[w.lvl]) bad.push(t + 'the mob is ' + w.mob + ', wanted ' + want[w.lvl]);
     if (w.first > w.cap) bad.push(t + w.first + ' arrive with the boss; only ' + w.cap + ' may stand at once');
-    if (w.first !== Math.min(w.cap, Math.round(w.mob * .4))) bad.push(t + w.first + ' arrive with the boss, expected ' + Math.min(w.cap, Math.round(w.mob * .4)));
+    if (w.first !== Math.min(w.cap - 1, Math.round(w.mob * .4))) bad.push(t + w.first + ' arrive with the boss, expected ' + Math.min(w.cap - 1, Math.round(w.mob * .4)));   /* 3D.274: the boss counts toward the limit */
     if (w.first + w.left !== w.mob) bad.push(t + 'the first group and the rest do not add up to the mob');
     if (w.leftAfter !== 0 || w.came !== w.mob) bad.push(t + 'the rest of the horde did not all arrive (' + w.came + ' of ' + w.mob + ')');
     if (w.ticks > 5000) bad.push(t + 'the horde took ' + w.ticks + ' ticks to arrive (more than 5 game hours)');
