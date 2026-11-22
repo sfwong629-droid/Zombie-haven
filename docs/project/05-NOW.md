@@ -286,11 +286,11 @@ Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):
 - W222. **Review the maps** on the Stronghold practice page (Town → Defense → Stronghold practice): try each place at a low and a high town level (the level row sets the size). What should change? Pictures of every map at level 5 and 15: `runs/strongholds/` in the repo.
 - W223. **Publish 3D.280 to 3D.283?** (Claude, 22 Nov, later: hold them until the rework below is decided.)
 - ~~W232. The rework's three rules and four kinds of place.~~ Owner, 22 Nov: "yes approved". Also the owner's idea of **outposts** (a combat-only place to build on), in Claude's shape ("Your idea is good"): a Secured stronghold the town holds and defends (`15-STRONGHOLDS.md`, 10.7). Nothing built.
-- W233. Town and keep on one map, the squad walking into the big building (Claude's pick), or the keep as its own trip?
-- W234. Every faction has a part it lost to the dead, and friends give jobs there: yes?
-- W235. Sealed places keep one size, only faction towns grow with the level: OK?
-- W236. Outposts: fixed build spots (Claude's pick: a choice of what to build, no daily upkeep) or free placing?
-- W237. **A map of the valley** in place of the trip list (owner: "it seems like we will need to make a map for the entire game"): a picture with a pin per place showing its state, herds moving on the roads, calls for help; not a map to walk in. Yes? If yes, the UI chat makes a mockup first from this chat's list of places.
+- ~~W233. Town and keep on one map.~~ Owner, 22 Nov: "your pick": one map, the squad walks into the big building.
+- W234. Every faction has a part it lost to the dead, and friends give jobs there: yes? (Owner, 22 Nov: "can you explain this a bit": explained with the Foundry as the example; waiting.)
+- ~~W235. Sealed places keep one size.~~ Owner, 22 Nov: "yes ok". Only faction towns grow with the level.
+- W236. Outposts: fixed build spots or free placing? (Owner, 22 Nov: "expand a bit of the fixed build slot before we commit. What is being placed? How to place?": explained, `15-STRONGHOLDS.md` 10.8; waiting.)
+- ~~W237. A map of the valley in place of the trip list.~~ Owner, 22 Nov: yes. Next: this chat writes the list of places and where they lie; the UI chat makes a mockup first.
 
 Later:
 - ~~W9. Claude Code setup on the PC.~~ Done 18 Nov (Planning chat): Claude Code installed on the owner's PC, the repo cloned into `Zombie Haven\repo` on the Desktop, and the setup message sent. It uses the same plan limits as the chats; the gain is speed (the PC has a graphics card).
