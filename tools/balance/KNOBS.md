@@ -21,7 +21,7 @@ Change one at a time, with a check before and after (`tools/balance/check.sh`). 
 | The rescue that comes by itself | `03-stats-gear.js`, `AUTO_HELP_DAYS` in `helpTick()` | when nobody is left standing, at most once every 3 game days (3D.246, 3D.251) | Town lost; deaths in one night |
 | When the boss walks in | `10-enemies-walls.js`, `BOSS_LAST` | on the level's boss night the horde comes at 21:00 and the boss when two thirds of it have arrived, or 2 game hours later at the latest (3D.269) | Big horde size; deaths |
 | How hard raiders hit | `10-enemies-walls.js`, `RAIDER_HIT` | 5 + 0.2 x the weapon's attack | Deaths |
-| Weekly crisis | `17-endgame-trophies-crises.js`, `CRISIS_LVL`, `CRISIS_EVERY`, `CRISES` | from level 15, every 7 game days; The Tide grows with the game day | Most standing; deaths at the top |
+| Weekly crisis | `17-endgame-trophies-crises.js`, `CRISIS_LVL`, `CRISIS_EVERY`, `CRISES`, `TIDE_CAP` | from level 15, every 7 game days, never with its fight on a boss night or the night before (3D.273); The Tide's waves walk in while fewer than 60 stand and grow with the level (3D.274) | Most standing; deaths at the top |
 | Season length | `11-town.js`, `SEASON_DAYS` | 7 game days | The cure and seasonal strongholds (section 7) |
 | Research | `11-town.js`, `RESEARCH` | 8 projects, 245 points | Research points unspent |
 | Difficulty setting | `DF()` (count, z, raid) | multiplies the above | everything; the bot plays the default |

@@ -1,0 +1,27 @@
+e3b before lvl 14 -> 16 deaths 15 max/day 14 most standing 186
+     level boss lvl 15 day 105 from 21 boss at 23 to 6 | horde arrived 81 | peak 61 | downs 14 deaths 0
+     level boss lvl 15 day 110 from 21 boss at 23 to 1 | horde arrived 89 | peak 61 | downs 3 deaths 0
+     other boss lvl 16 day 113 from 21 boss at 21 to 6 | horde arrived 99 | peak 116 | downs 13 deaths 0
+     other boss lvl 16 day 114 from 21 boss at 21 to 6 | horde arrived 169 | peak 186 | downs 26 deaths 0
+e3b after lvl 14 -> 16 deaths 8 max/day 3 most standing 105
+     level boss lvl 15 day 105 from 21 boss at 23 to 6 | horde arrived 124 | peak 61 | downs 8 deaths 0
+     level boss lvl 15 day 110 from 21 boss at 23 to 6 | horde arrived 73 | peak 64 | downs 11 deaths 2
+     other boss lvl 16 day 113 from 21 boss at 21 to 6 | horde arrived 67 | peak 105 | downs 16 deaths 0
+     other boss lvl 16 day 114 from 21 boss at 21 to 6 | horde arrived 77 | peak 92 | downs 13 deaths 2
+c16 before lvl 16 -> 18 deaths 1 max/day 1 most standing 68
+     level boss lvl 16 day 93 from 21 boss at 23 to 5 | horde arrived 129 | peak 62 | downs 3 deaths 0
+     level boss lvl 17 day 98 from 21 boss at 23 to 6 | horde arrived 175 | peak 61 | downs 7 deaths 0
+     level boss lvl 18 day 103 from 21 boss at 23 to 6 | horde arrived 147 | peak 68 | downs 13 deaths 0
+c16 after lvl 16 -> 18 deaths 7 max/day 2 most standing 62
+     level boss lvl 16 day 93 from 21 boss at 23 to 6 | horde arrived 107 | peak 62 | downs 10 deaths 1
+     other boss lvl 17 day 95 from 23 boss at 23 to 6 | horde arrived 31 | peak 58 | downs 7 deaths 0
+     level boss lvl 17 day 98 from 21 boss at 23 to 6 | horde arrived 134 | peak 61 | downs 6 deaths 0
+     level boss lvl 18 day 103 from 21 boss at 23 to 6 | horde arrived 111 | peak 61 | downs 11 deaths 1
+c17 before lvl 18 -> 19 deaths 1 max/day 1 most standing 153
+     level boss lvl 18 day 105 from 21 boss at 23 to 2 | horde arrived 130 | peak 61 | downs 2 deaths 0
+     other boss lvl 18 day 109 from 23 boss at 23 to 6 | horde arrived 76 | peak 153 | downs 18 deaths 0
+     level boss lvl 19 day 110 from 21 boss at 23 to 6 | horde arrived 100 | peak 61 | downs 15 deaths 0
+c17 after lvl 17 -> 19 deaths 3 max/day 2 most standing 62
+     level boss lvl 18 day 105 from 21 boss at 23 to 6 | horde arrived 100 | peak 62 | downs 2 deaths 0
+     level boss lvl 18 day 110 from 21 boss at 23 to 6 | horde arrived 112 | peak 61 | downs 4 deaths 1
+     other boss lvl 19 day 111 from 23 boss at 23 to 6 | horde arrived 41 | peak 58 | downs 9 deaths 0

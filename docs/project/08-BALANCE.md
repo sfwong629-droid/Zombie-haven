@@ -329,6 +329,21 @@ Read with care: two towns each, and towns differ a lot from run to run. The dail
 - **Era 1** was measured with the old count only (33 to 49 on four boss nights, for hordes of 32 to 48): all of it arrives.
 - **The deaths at level 15 are the weekly crisis next to a boss night, in both versions:** The Tide on day 109 (158 to 161 standing, 17 to 18 downs), a boss night the next day and another boss the day after. One version lost 25 people over those days, the other 26. The Tide needs the limit of 60 and must keep off boss days (the next build).
 
+**The weekly crisis keeps off boss nights, and The Tide keeps the limit of 60, 22 Nov (builds 3D.273 and 3D.274).** The crisis waits a day or two when its fight would fall on a boss night or the night before (the rule of W172). The Tide's waves walk in one by one while fewer than 60 stand, and grow with the level instead of the game day; from 3D.274 a boss's first group and the rest of its horde also count everyone standing, the boss too. Bot, game open, before (3D.269) and after, three towns started from long-run backups at levels 14, 16 and 17, 12 to 14 game days each (`runs/check-22nov-3d274/`):
+
+| | Before | After |
+|---|---|---|
+| The Tide: most standing | 153 (on the night before a boss night) | 58 and 58 |
+| The Tide: people downed that night | 18 | 7 and 9 |
+| The Tide next to a boss night | yes (day 109, boss day 110) | never (it moved to the night after) |
+| Most standing on the level's boss nights | 61 to 68 | 61 to 64 |
+| Most standing in the whole run, per town | 186, 68, 153 | 105, 62, 62 |
+| Deaths per town | 15, 1, 1 | 8, 7, 3 |
+
+- **The Tide is no longer the killer.**
+- **The 105 and 186 are the last stand** (the convoy finale at level 16 and up): its nights still arrive in one burst and grow with the game day. It is the next build.
+- **Deaths did not fall overall** (17 before, 18 after). They come on the level's boss nights (1 or 2 at a time) and the last stand. Three towns is too few to read deaths from.
+
 **Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
 
 Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).
