@@ -918,6 +918,26 @@ async def t_wallemo(br, port, t):   # bug A10 (3D.220): a fighter beside a wall 
     t.ok(r['reached'], "a walker in the open coming for the Guard still makes him fight (the fix only skips the one across the wall)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_leaveflap(br, port, t):   # bug B18 (3D.258, found by the bug sweep): at dawn a Guard flipped between two zombies walking away, standing still with the angry face flashing
+    ctx, pg, errs = await open_game(br, port, 'leaveflap')
+    await pg.evaluate("()=>{let x=9;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""() => { const S = ZH.S, B = ZH.Wd.BUILD; S.z.length = 0; S.hour = 6; ZH.world.walls.clear(); ZH.Wd.bump(ZH.world);   /* no fence to mend, nothing between them */
+    const W = ZH.world, Wd = ZH.Wd; let spot = null; for (let y = B.y0 + 2; y <= B.y1 - 2 && !spot; y++) for (let x = B.x0 + 2; x <= B.x1 - 2 && !spot; x++) { let ok = true; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!Wd.walkable(W, x + dx, y + dy, true) || Wd.buildingAt(W, x + dx, y + dy)) ok = false; if (ok) spot = { x: x + .5, y: y + .5 }; }   /* out in the open, two tiles from any building */
+    const g = S.sv.find((q) => q.w); g.w = { ...spot }; g.job = 'Guard'; g.hp = g.max = 999; g.post = null; g.mode = 'postCombat'; g.stateTicks = 0; g.target = null; g.path = null; g.emo = null; g.skipZ = null;
+    for (const q of S.sv) if (q !== g) { q.mode = 'away'; q.w = { x: B.x0, y: B.y1 }; }
+    const zs = [['walker', -.9, .3], ['lasher', .3, 1.1]].map(([ty, dx, dy]) => { ZH.spawn(Math.floor(g.w.x), Math.floor(g.w.y), ty); const z = S.z[S.z.length - 1]; z.w = { x: g.w.x + dx, y: g.w.y + dy }; z.home = { ...z.w }; z.hp = z.max = 1e9; return z; });
+    let fresh = 0, chases = 0, last = null, lastMode = g.mode;
+    for (let k = 0; k < 600; k++) { for (const z of zs) { z.mode = 'zleave'; z.retreat = true; z.target = null; z.w = { ...z.home }; z.leaveTo = { x: z.home.x + 40, y: z.home.y }; z.path = null; } ZH.step(1);   /* they stay where they are, walking away, so the Guard has them in front of him the whole time */ S.z = S.z.filter((q) => zs.includes(q));
+      const e = g.emo; if (e && e !== last && e.t === '😤') fresh++; last = e; if (g.mode === 'chase' && lastMode !== 'chase') chases++; lastMode = g.mode; }
+    const ctl = (() => { g.mode = 'postCombat'; g.stateTicks = 0; g.path = null; g.skipZ = null; zs.length = 0; for (const ty of ['walker', 'lasher']) { ZH.spawn(Math.floor(g.w.x), Math.floor(g.w.y), ty); const z = S.z[S.z.length - 1]; z.hp = z.max = 1e9; zs.push(z); } let hit = false, modes = []; for (let k = 0; k < 300 && !hit; k++) { zs.forEach((z, n) => { z.mode = 'zchase'; z.retreat = false; z.target = g; z.path = null; z.w = { x: g.w.x + (n ? .6 : -.6), y: g.w.y }; }); ZH.step(1); S.z = S.z.filter((q) => zs.includes(q)); if (modes[modes.length - 1] !== g.mode) modes.push(g.mode); if (['chase', 'attack', 'recover'].includes(g.mode)) hit = true; } return hit ? true : modes.join('>'); })();   /* control: the same two, coming for him a step away (held there): he fights */   /* control: the same two come for him from a step away: he fights */   /* control: the same two, coming for him, a step away */
+    return { fresh, chases, ctl, spot };
+    }""")
+    print('      leaveflap:', r)
+    t.ok(r['chases'] <= 2, f"the Guard does not keep picking zombies that are walking away ({r['chases']} chases in 10 game seconds; 3D.257: about 10)")
+    t.ok(r['fresh'] <= 2, f"the angry face does not flash ({r['fresh']} times; 3D.257: about 10)")
+    t.ok(r['ctl'] is True, f"the same zombies coming for him still make him fight ({r['ctl']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -952,7 +972,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()

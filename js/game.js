@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.257', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.258', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1879,7 +1879,7 @@ const NEEDTXT = { hunger: 'Hungry', thirst: 'Thirsty', fatigue: 'Tired', injury:
 function chooseTownAction(s) { const b = chooseFacility(s); if (b && b !== s.lastFacility) { s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${NEEDTXT[facilityRules[b.type].need]} → ${DEFS[b.type].name}`; return true; } return false; }
 // A zombie that is attacking this survivor (or about to) interrupts whatever they were doing — eating, drinking, working, strolling.
 function threatOf(s) {
-  let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear' || z.zoo) continue; if (s.skipZ && s.skipZ.z === z && s.skipZ.t > tick && !(z.target === s && ['zattack', 'zrecover'].includes(z.mode))) continue;   /* 3D.220 bug A10: one they just found no way to (across a wall) is not a threat unless it is actually hitting them; the angry face flashed every few frames */ const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if (s.fleeT > 0 ? (atkMe && d < 1.3) : ((atkMe && d < 3.2) || d < 1.7)) { if (d < bd) { bd = d; best = z; } } }
+  let best = null, bd = 1e9; for (const z of S.z) { if (z.hp <= 0 || z.mode === 'appear' || z.zoo || z.mode === 'zleave') continue;   /* 3D.258 bug B18 (bug sweep): a zombie walking away is not a threat (acquireEnemy and the chase already let it go); at dawn a Guard flipped between two leaving zombies ten times a second, standing still with the angry face flashing */ if (s.skipZ && s.skipZ.z === z && s.skipZ.t > tick && !(z.target === s && ['zattack', 'zrecover'].includes(z.mode))) continue;   /* 3D.220 bug A10: one they just found no way to (across a wall) is not a threat unless it is actually hitting them; the angry face flashed every few frames */ const d = dist(s.w, z.w), atkMe = z.target === s && ['zchase', 'zattack', 'zrecover'].includes(z.mode); if (s.fleeT > 0 ? (atkMe && d < 1.3) : ((atkMe && d < 3.2) || d < 1.7)) { if (d < bd) { bd = d; best = z; } } }
   return best;
 }
 /* 3D.48 owner: the last ones standing never fight. With only 1-2 people up and someone collapsed, they hide instead (the
