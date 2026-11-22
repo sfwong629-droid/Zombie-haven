@@ -297,6 +297,11 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
 /* 3D.247 (owner, 21 Nov, W173): a boss night every 3 game days in eras 1 and 2, every 5 from level 11 (a long town saw about 80 boss
    nights and lost 24 to 39 people from level 11 on: docs/project/12-LONG-RUN.md). */
 const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
+/* 3D.298 (A12 tuning, owner 22 Nov: "Daylight + clear streets"): zombies never walk away now, so a boss night does not start on top of a town
+   still full of zombies. At noon of a boss day, if more than half the limit stands (15, 22 or 30 by era), the boss night waits a day, at most
+   twice in a row, then it comes anyway. The ordinary night crowd already counts the zombies still standing (the spawner fills only up to the
+   night's number). */
+const BOSS_WAIT_MAX = 2, streetsFull = () => activeZ() > mobCap() / 2;
 const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null || !!S.vanguard;
 /* 3D.287 (overnight branch; owner, 21 Nov, W176, rule 3 of 13-LONG-GAME: "a breather after a bad night"): when a night costs a life, or
    everyone went down and the neighbours had to come, the next two nights are a breather: the night's crowd is a quarter smaller, the boss
@@ -319,6 +324,8 @@ function eventSchedule() {   /* called every game hour */
   else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
+  if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
+  else if (S.day === S.nextBoss && S.hour === 12) S.bossWaits = 0;
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { hordeStart(); S.bossDay = S.day; S.nextBoss += bossGap(); }   /* 3D.269: the horde first, its boss behind it */
   incidentRoll();
