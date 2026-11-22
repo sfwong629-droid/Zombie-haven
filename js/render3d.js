@@ -1991,7 +1991,7 @@ function shThingsGroup(H) { const g = new THREE.Group(), Q = new Parts(), AX = Z
 let arena = null;
 function buildArena() {
   const H = G.S.sh, key = H ? H.akey || H.dest : '';
-  if (arena && arena.key === key && H && H.camp) { let ch = false; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); freeTree(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); freeTree(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
+  if (arena && arena.key === key && H && H.camp) { let ch = false; (H.lights || []).forEach((l, i) => { const m = arena.cones[i]; if (m) { m.visible = l.on; m.rotation.y = -l.a; } }); if (campZoneSync(H)) ch = true; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); freeTree(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); freeTree(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
   if (arena && arena.key === key) { if (H) { arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
   if (arena) { scene.remove(arena.g); freeTree(arena.g); arena = null; }
   if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
@@ -2001,11 +2001,11 @@ function buildArena() {
     /* 3D.119 owner: "copy the same map as our town": the same painted ground material, the same grass tufts, bushes, pebbles,
        yard clutter, pines and leafy trees, rocks, and the town's own fence pieces */
     const GR = SEASON_PAL[season()].grass, SP = SEASON_PAL[season()], DIRT = P.dirt || ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], X0 = -22, Y0 = -16, NX = H.gw + 44, NY = H.gh + 40, tcs = new Float32Array(NX * NY * 3), cc = new THREE.Color();
-    const BX = H.box || [3, 3, 24, 24], ed = (x, y) => Math.max(0, BX[0] - x, x - BX[2], BX[1] - y, y - BX[3]), isPath = (x, y) => x >= 12 && x <= 15 && y > 24, cell = (x, y) => (H.grid[y] && H.grid[y][x]) || '';
-    const street = (x, y) => (x >= 12 && x <= 15) || (y >= 15 && y <= 16) || x === BX[0] + 1 || x === BX[2] - 1 || y === BX[1] + 1 || y === BX[3] - 1;
+    const BX = H.box || [3, 3, 24, 24], CG = H.cg || { gx: 13, sq: 15, y1: 24 }, BV = (x) => x >= CG.gx - 1 && x <= CG.gx + 2, ed = (x, y) => Math.max(0, BX[0] - x, x - BX[2], BX[1] - y, y - BX[3]), isPath = (x, y) => (BV(x) && y > BX[3]) || (CG.east && x > BX[2] && (y === CG.east[1] || y === CG.east[1] + 1)), cell = (x, y) => (H.grid[y] && H.grid[y][x]) || '';   /* 3D.279 the camp's own size: the boulevard, the square and the road out follow it */
+    const street = (x, y) => BV(x) || (y >= CG.sq && y <= CG.sq + 1) || x === BX[0] + 1 || x === BX[2] - 1 || y === BX[1] + 1 || y === BX[3] - 1;
     const grow = (x, y) => { return false; const d = Math.min(x - 4, 23 - x, y - 4, 23 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3); return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55); };
     for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), e = ed(x, y), inB = e === 0 && cell(x, y) !== 'W';
-      cc.set(P.path && ((inB && street(x, y)) || (x >= 12 && x <= 15 && y > 23 && y <= 28 && r < .85)) ? P.path : inB && grow(x, y) && cell(x, y)[0] !== 'K' ? (r < .5 ? '#90a046' : '#97a44a') : inB || isPath(x, y) || (e === 1 && r < .55) ? DIRT[(r * 4) | 0] : e <= 4 && r < .4 ? '#a39150' : GR[(r * 6) | 0]);
+      cc.set(P.path && ((inB && street(x, y)) || (isPath(x, y) && y <= BX[3] + 5 && r < .85)) ? P.path : inB && grow(x, y) && cell(x, y)[0] !== 'K' ? (r < .5 ? '#90a046' : '#97a44a') : inB || isPath(x, y) || (e === 1 && r < .55) ? DIRT[(r * 4) | 0] : e <= 4 && r < .4 ? '#a39150' : GR[(r * 6) | 0]);
       const i = ((y - Y0) * NX + (x - X0)) * 3; tcs[i] = cc.r; tcs[i + 1] = cc.g; tcs[i + 2] = cc.b; }
     const corner = (x, y) => { let r = 0, gg = 0, bb = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tcs[i]; gg += tcs[i + 1]; bb += tcs[i + 2]; n++; } return [r / n, gg / n, bb / n]; };
     const pos = [], col = [], nrm = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, 0, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz)); nrm.push(0, 1, 0); }
@@ -2016,7 +2016,7 @@ function buildArena() {
     const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], pines = [], rounds = [], rocks = [];
     for (let y = Y0 + 1; y < Y0 + NY - 1; y++) for (let x = X0 + 1; x < X0 + NX - 1; x++) { const v = cell(x, y); if (v === 'W' || v === 'G' || v[0] === 'K' || v === 'P') continue;
       const e = ed(x, y), inB = e === 0, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9), rg = inB && grow(x, y);
-      if (e >= 2 && !(x > 10 && x < 17 && y > 24)) { const r = hash(x * 7 + 3, y * 5 + 1); if (r < Math.min(.55, .02 + (e - 1) * .07)) { const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + q * .6) * 1.35, q]); continue; } if (r > .985) { rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; } }
+      if (e >= 2 && !(Math.abs(x - CG.gx - .5) < 3.5 && y > BX[3]) && !isPath(x, y)) { const r = hash(x * 7 + 3, y * 5 + 1); if (r < Math.min(.55, .02 + (e - 1) * .07)) { const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + q * .6) * 1.35, q]); continue; } if (r > .985) { rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; } }
       const nt = inB ? (rg ? (h1 < .7 ? 2 : 1) : h1 < .1 ? 1 : 0) : isPath(x, y) ? 0 : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
       if (inB && !rg && !H.props) { const h4 = hash(x * 41 + 7, y * 23 + 5); if (h4 < .09) planks.push([...at(x, y, .2 + .6 * h2, .2 + .6 * h3), 1.45, h1]); else if (h4 < .14) junk.push([...at(x, y, .25 + .5 * h3, .25 + .5 * h1), 1.45, h2]); else if (h4 < .175) barrels.push([...at(x, y, .3 + .4 * h1, .3 + .4 * h2), (1 + h3 * .15) * 1.45, h3]); else if (h4 < .205) tyres.push([...at(x, y, .3 + .4 * h2, .3 + .4 * h1), 1.45, h1]); else if (h4 < .26) lone.push([...at(x, y, .2 + .6 * h1, .2 + .6 * h3), 1.45, h2]); }
       for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(x, y, .1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
@@ -2034,7 +2034,8 @@ function buildArena() {
     const fg = campFence(H); g.add(fg);
     for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
     if (H.props && H.props.length) g.add(campProps(H, P));
-    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H) }; return true; }
+    const cones = (H.lights || []).map((l) => { const m = new THREE.Mesh(new THREE.CircleGeometry(7 * T, 16, -.3, .6).rotateX(-Math.PI / 2), coneMat); m.position.set((AX + l.x) * T, .1, (AY + l.y) * T); m.userData.noInk = true; g.add(m); return m; });   /* 3D.279 the lookouts' sight on the ground */
+    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H), cones, zg: null, zkey: '' }; campZoneSync(H); return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
   const PL = H.plan || {}, PW = PL.W || 46, PH = PL.H || 19, TH = PL.theme || D.props;   /* 3D.276 each stronghold's own plan: its size, its floors, its theme */
@@ -2067,6 +2068,9 @@ function campFence(H) {   /* 3D.121 the camp fence from the town's own wall piec
   const g = new THREE.Group(), FP = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, F = H.fence || {}, has = (x, y) => { const f = F[(x - AX) + ',' + (y - AY)]; return !!f && !f.dead; };
   for (const f of Object.values(F)) wallPiece(FP, { x: AX + f.x, y: AY + f.y, type: f.type, hp: f.hp, max: f.max, broken: f.dead }, has, (AX + f.x + .5) * T, (AY + f.y + .5) * T);
   FP.build(g, .03); return g; }
+const coneMat = new THREE.MeshBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: .28, depthWrite: false });
+function campZoneSync(H) { const k = (H.zones || []).map((z) => (z.on === false ? 0 : 1) + z.x + ',' + z.y).join('|'); if (k === arena.zkey) return false; arena.zkey = k; if (arena.zg) { arena.g.remove(arena.zg); freeTree(arena.zg); } const g = new THREE.Group(), AX = ZH.SH_AX, AY = ZH.SH_AY;
+  for (const z of H.zones || []) { if (z.on === false) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(z.w * T, z.h * T).rotateX(-Math.PI / 2), shZoneM(z.k)); m.position.set((AX + z.x + z.w / 2) * T, .07, (AY + z.y + z.h / 2) * T); m.userData.noInk = true; g.add(m); } arena.zg = g; arena.g.add(g); return true; }
 /* 3D.139 camp set dressing: every prop of a camp merged into a few meshes (one per colour), with the ink outline, plus one glow mesh */
 const emberMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c });
 function campProps(H, P) {
@@ -2110,6 +2114,7 @@ function campProps(H, P) {
     else if (p.k === 'ragpole') { b(.12, 2.8, .12, '#4a3a2e', 0, 1.4, 0, 0, 0, .06); b(.9, .08, .08, '#4a3a2e', 0, 2.3, 0); for (const [i, col] of ['#7a5aa8', '#8a3a3a', '#c9c0a8'].entries()) b(.26, .6 + i * .12, .03, col, -.3 + i * .3, 1.95 - i * .06, 0); b(.26, .26, .26, '#e8dcc0', 0, 2.9, 0); }
     else if (p.k === 'stakes') { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; Q.put(new THREE.ConeGeometry(.09, 1.3, 5), i % 2 ? '#5a3b23' : '#6a4a2e', M4(cx + Math.cos(a) * .7, .6, cz + Math.sin(a) * .7, 0, Math.sin(a) * .35, -Math.cos(a) * .35)); } }
     else if (p.k === 'bones') { for (const [i, [dx, dz, r]] of [[-.4, -.2, .3], [.3, .1, 1.1], [0, .4, 2], [-.2, .2, .7], [.45, -.35, 1.6], [-.5, .45, 2.4], [.1, -.1, .2]].entries()) b(.6, .08, .1, i % 2 ? '#e0d8c4' : '#d2c8b0', dx, .06 + (i % 3) * .07, dz, r); b(.28, .26, .3, '#e8dcc0', 0, .4, 0); b(.3, .1, .2, '#d2c8b0', 0, .28, .08); }
+    else if (p.k === 'shelf') { b(.9 * T, 1.5, .55 * T, '#7a6248', 0, .75, 0); for (const y of [.35, .8, 1.25]) for (let i = 0; i < 4; i++) b(.38, .3, .42, ['#c9412e', '#d9b233', '#e8e0c8', '#5a7fa8'][(i + ((v * 4) | 0)) % 4], -.75 + i * .5, y + .15, 0); b(.95 * T, .08, .6 * T, '#5a4630', 0, 1.52, 0); }
     else if (p.k === 'lamp') { b(.12, 2.3, .12, '#3e4348', 0, 1.15, 0); b(.5, .08, .1, '#3e4348', .2, 2.3, 0); b(.26, .2, .26, '#2e2a28', .42, 2.2, 0); gl(box(.2, .1, .2), .42, 2.08, 0); c(.2, .26, .2, '#5f5a56', 0, .1, 0, 8); }
   }
   Q.build(g, .03); if (glow.length) { const m = new THREE.Mesh(mergeGeometries(glow), emberMat); g.add(m); }

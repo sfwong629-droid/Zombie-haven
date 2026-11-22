@@ -147,3 +147,4 @@ function shPlanPrison(lv) { const n = shLvSize(lv, 3, 7, 3), L = n * 4 - 1, W = 
 SH_PLANS.prison = shPlanPrison;
 SH_FX.cells = (H) => { H.doors.forEach((d, i) => { const D = SH_DOORS[i]; if (D[7] === 'heavy' || /^cell/.test(D[0]) || /^cell/.test(D[1])) { d.open = true; d.locked = false; shReveal(D[0]); shReveal(D[1]); } });
   for (const z of H.zs) if (z.hp > 0 && /^cell/.test(z.room || '')) { z.mode = 'idle'; z.hid = false; } banner('🔓 EVERY CELL IS OPEN'); say('The cell doors grind open all at once, and the gate with them. Everything inside is coming out.'); SFX('alarm'); };
+
