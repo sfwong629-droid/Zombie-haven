@@ -57,7 +57,7 @@ function sitesTick() {   /* V3D.12/23: work counts down once every material is i
     if (!jobReady(st)) continue; if (--st.cons > 0) continue;
     S.sites.splice(S.sites.indexOf(st), 1); const { cons, dur, need, got, inb, id, hammer, readyMsg, ...nb } = st; nb.staff = null; const d = DEFS[nb.type];
     world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); autoStaff(); S.builtCount++; renownGain(1, 'Construction');
-    if (d.fam === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); }
+    if (d.fam === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); firstGift('water'); }   /* 3D.295 */
     celebrate(nb, d); rpStarter(); ui(); saveGame();
   }
   for (const b of world.buildings) {
