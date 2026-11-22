@@ -108,3 +108,63 @@ Asked in this chat as W211 to W214; those numbers were also taken by other chats
 ## 9. Waiting on the owner
 - **W222.** Review the maps on the practice page (Town → Defense → Stronghold practice): each place at a low and a high town level. What should change? Pictures of every map at level 5 and 15 are in `runs/strongholds/`.
 - **W223.** Publish 3D.280 to 3D.283 after your review? (Claude: after the review, and after the Balance chat has run its stronghold probe on them.)
+
+## 10. Rework (proposed 22 Nov, Strongholds chat; nothing built; W230 to W233)
+Owner, 22 Nov: locking by story progress; "you just repeat the stronghold non stop and it will be boring"; "it also can't explain how the zombies keep coming back"; "we need to rework the plan for stronghold and faction maps... They must make sense. Like zombie. Some of these strongholds live within a faction map so maybe we need to make a huge stronghold building in the faction map?"
+
+### 10.1 What does not make sense today
+1. **Every place refills on every visit.** The story says the dead don't wander into empty buildings: they are stuck where they died ("people died at home and got up indoors", section 15) or they go where something fresh is.
+2. **The dead's places and the living's places are two unconnected lists.** Lab 7, the Records Office and the plant all stand in Sunnyside but are separate trips; the Larder is the Toll Kings' but only a hut in their camp; the seasonal places belong to nobody.
+3. **A faction's town plays the same for a friend and an enemy.** A friend can only raid it, which betrays them.
+4. **Nothing stays changed after a win**, and the rewards repeat.
+
+### 10.2 Three rules
+- **R1. The dead are where they died, or where the fresh is. Killed is killed.** A room that was cleared stays cleared.
+- **R2. Only the living rebuild.** What repeats is faction towns (they rebuild), the seasons (something fresh comes back), and calls for help (the dead follow living people).
+- **R3. Every place gives one thing once, and the valley is different afterwards.**
+
+### 10.3 Four kinds of place
+**A. Sealed places (the dead; done once).** Buildings shut in the first week with everyone inside: the Overrun Clinic (hospitals fell first), Blackgate Prison (locked cells), Helix Lab 7 (the night shift). Progress is kept: cleared rooms stay cleared, opened doors stay open, so a big place takes two or three visits and a lost run is not wasted. When the last room is clear the place is **Secured** and becomes a small outpost of the town (the Clinic: a little medicine a day; the Prison: the van and a safe stop that lowers trip risk on that road). Inner parts are locked by the story (the table of the earlier proposal: the theatre with Dr. Ines, the control room with Command's keys, Lab 7's basement with Voss's plans). Size is the place's own, bigger the later in the story it comes; it does not regrow.
+
+**B. Faction towns (the living; they repeat).** One map per faction with two parts: **the town** outside (today's camp: sneak, loot, patrols; it rebuilds, and it is bigger in each era because they have had time to build) and **the keep** inside it: one huge stronghold building in the middle of the map that the squad walks into (the room maps built in 3D.277 to 3D.283). And every living town draws the dead, so every faction has **a part it lost** and walled off.
+
+| Faction town | The keep (story lock) | The part they lost (who is in it) | Coming as a friend | Coming as an enemy |
+|---|---|---|---|---|
+| Toll Kings' fort | The Larder: tins to the roof, the salt, the ledger (after C16) | The lorry park: the last Route 9 drivers, still by their cabs (Delivery Drivers) | Rook asks you to clear the lorry park; his riders come along; paid in salt | Raid the fort, then the Larder |
+| Checkpoint Bravo | The command bunker: the contract (proof 1), the standing order | The field hospital: the cordon fell from the inside (Soldiers, Nurses) | Okafor asks you to retake it; her soldiers come along | Raid; the bunker last |
+| Helix field lab | The lab: lab glass, the memo | The cage block: the Unlock trials (Lashers, a Splitter, Cage 1) | Voss (after C18) opens the lab; the job is the cage block | Raid; cages can be broken open on the guards (built) |
+| The Hollow | Aisle Seven: the supermarket itself is the keep, their camp is the car park | Nothing: the dead are their flock | Never friends | The car park, then the aisles, with the dead beside them |
+| The Foundry | The furnace hall: the brewing vat, the shift sheet | The old cannery hall (Brutes, the Bloated) | The Forgemaster hires you to retake it; paid with the vat | Raid; furnace heat (built) |
+| Greenwater | The brine cellar (never a fight for a friend) | Nothing inside the brine line; their trouble is outside it (the Greenhouse, below) | They ask for help in spring | The open village (built) |
+| **Sunnyside** (level 16+) | Three big buildings on one town map: Helix Lab 7 at the edge (sealed), the Records Office, and the plant (the Gate, the Line, the Tanks) | The "product issues" the clean-up crews locked in the basements | Never | The street (living staff and security), then one building per story step |
+
+The lost part can also be used by an enemy: break its wall and the dead come out on the guards (the Helix cages, made general).
+
+**C. Wild places (once a season; each is tied to a faction).** Why the dead are back every year:
+| Place | Whose | What brings them back |
+|---|---|---|
+| Drowned Greenhouse (spring) | Greenwater's old seed house, outside the brine line | The new shoots: the first fresh thing of the year |
+| Burning Refinery (summer) | The Freshlock Works (Helix, Sunnyside) | The Burnt smoulder all year; the summer heat flares the fires up and they get up again |
+| Harvest Fair (autumn) | The Hollow's holy ground (Farmer Fresh's stage) | Windfall apples in the orchard, and the Shepherd brings his flock for the old show |
+| Frozen Depot (winter) | Quarantine Command's stores (Fort Harlan's depot, if the Story chat agrees) | The herds on the highway freeze where they stand and pile up there; the Gatling Boss never stood down |
+The Dusk Radio Mast stays a one-time story place (the ring came for years of noise).
+
+**D. Calls for help (small, the everyday repeat).** DJ Moth passes on a caller trapped somewhere: a house, a shop, a cleared place someone moved into. The dead followed the living there. A 2 to 3 minute map; the goal is to get them out; the reward is renown, loot, sometimes a newcomer. About two a real week. Players who only want a fight have the Bell.
+
+### 10.4 Balance
+- **Length:** a visit is 3 to 5 minutes; one outing per check-in is enough for a daily player. Big places are finished over several visits (progress is kept).
+- **Locks:** by level and by story step, shown with the reason; a recommended squad power on the card; turn back at any time; the fallen are carried out if anyone is standing (no hidden deaths).
+- **Rewards:** the unique thing once (a person, a proof, a cure feed, a blueprint); after that only ordinary loot, with limits that have a reason: a town until it has rebuilt, a wild place once a season, calls about twice a week.
+- **Size:** faction towns grow with the era (bigger at level 15 than at 5, as built); sealed places have their own size.
+- **Deeds** (13-LONG-GAME, section 5): secure a place; do a faction's job; answer a call.
+- **Measured** with the stronghold probe: an unled squad at the recommended power wins about 7 in 10; a led one nearly always.
+
+### 10.5 What stays from 3D.277 to 3D.283, and what is new
+Stays: every room map, every house rule, the camps and their growth, goals, things, bosses, allies. New, in this order, one change per build: (1) places remember (cleared rooms, opened doors, Secured, the outpost reward); (2) story locks on rooms; (3) town and keep on one map: the squad walks into the big building (the Larder first); (4) the lost part and the friend's job, one faction per build; (5) the Sunnyside town map with its three buildings; (6) the seasons' "why" and once-a-season limit; (7) calls for help. About 12 to 14 builds. The Story chat checks the new story bits (the lost parts, Fort Harlan's depot); the Balance chat measures each.
+
+### 10.6 Questions
+- **W230.** The three rules and four kinds of place: yes?
+- **W231.** Town and keep on **one map**, the squad walking into the big building (Claude's pick), or the keep as its own trip that opens after the town?
+- **W232.** Every faction has a part it lost, and friends give jobs there (so a friendly faction's town is playable without betraying it): yes?
+- **W233.** Sealed places keep one size; only faction towns grow with the level: OK? (It changes "strongholds grow with the level" of last night.)
+- W222 (review the maps) stays open. **W223 changes:** Claude now advises holding 3D.280 to 3D.283 unpublished until this is decided.
