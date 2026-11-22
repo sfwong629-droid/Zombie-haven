@@ -317,7 +317,7 @@ const PETS = {
 };
 const PET_NAMES = { dog: ['Rex', 'Biscuit', 'Scout', 'Rusty', 'Bandit', 'Pepper', 'Moose'], cat: ['Miso', 'Tabby', 'Ghost', 'Noodle', 'Socks', 'Ash', 'Pip'] };
 const newPet = (kind) => ({ kind, name: PET_NAMES[kind][Math.floor(rnd() * PET_NAMES[kind].length)] });
-function givePet(s, i) { const p = (S.pets || [])[i]; if (!p || s.pet) return false; S.pets.splice(i, 1); s.pet = p; setMaxHp(s); /* 3D.261 bug B21 (bug sweep): a pet's Endurance counts toward top health at once, not after a reload */ say(`${p.name} the ${PETS[p.kind].name} now follows ${s.name}.`); return true; }
+function givePet(s, i) { const p = (S.pets || [])[i]; if (!p || s.pet) return false; S.pets.splice(i, 1); s.pet = p; setMaxHp(s); /* 3D.262 bug B21 (bug sweep): a pet's Endurance counts toward top health at once, not after a reload */ say(`${p.name} the ${PETS[p.kind].name} now follows ${s.name}.`); return true; }
 function takePet(s) { if (!s.pet) return false; (S.pets = S.pets || []).push(s.pet); say(`${s.pet.name} stays in town for now.`); s.pet = null; setMaxHp(s); return true; }
 function petTick() {   /* every 30 ticks: dogs bark at sneaking raiders near their owner */
   for (const s of S.sv) { if (!s.pet || s.pet.kind !== 'dog' || s.hp <= 0 || s.mode === 'away') continue;

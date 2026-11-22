@@ -973,7 +973,7 @@ async def t_reachstale(br, port, t):   # bug B20 (3D.260, found by the bug sweep
     t.ok(all(x['moved'] > .15 for x in r), f"they set off ({[x['moved'] for x in r]})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-async def t_pethp(br, port, t):   # bug B21 (3D.261, found by the bug sweep): a pet's Endurance counts toward top health when it is given, not after a reload
+async def t_pethp(br, port, t):   # bug B21 (3D.262, found by the bug sweep): a pet's Endurance counts toward top health when it is given, not after a reload
     ctx, pg, errs = await open_game(br, port, 'pethp')
     r = await pg.evaluate("""() => { const S = ZH.S, s = S.sv[0]; s.pet = null; s.hp = s.max; const m0 = s.max;
       S.pets = [{ kind: 'dog', name: 'Rex' }]; const ok = ZH.givePet(s, 0); const m1 = s.max, hp1 = s.hp; (S.pets = S.pets || []).push(s.pet); s.pet = null; ZH.givePet(S.sv[1], S.pets.length - 1); S.sv[1].pet = null; const m2 = s.max;
