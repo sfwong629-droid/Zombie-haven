@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.284', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.285', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1866,6 +1866,7 @@ function needScore(s, b) {
   if (s.avoid && (s.avoid[b.type] || 0) > tick) return -999;   /* V3D.15: recently looped here: give it a rest */
   if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s) && !((r.need === 'thirst' && s.thirst >= 95) || (r.need === 'hunger' && s.hunger >= 95))) return -999;   /* 3D.63: desperate enough, they risk it (they went to eat while dying of thirst because zombies were near the only barrel) */   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
   if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
+  if (r.need === 'injury' && s.hp >= s.max * .6 && zInTown()) return -999;   /* 3D.285: with a zombie in town only the badly hurt (under 60%, the old bar) set out for care; the rest wait until it is quiet */
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * (isNight() || s.fatigue >= 70 ? 1.2 : .6) + (isNight() && s.fatigue > 15 ? 45 : 0);   /* 3D.63: by day a nap only wins once they're really tired (a third of the town napped through lunch) */   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1) + (s.wounded ? 45 : 0);   /* 3D.67: a field wound needs a medical building */
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
@@ -2307,6 +2308,7 @@ function chooseLifePurpose(s) {
     if (!u && s.chop === true && rnd() < .3 && tryGather(s)) { s.why = 'Gathering for a while, then back to the ' + DEFS[s.post.type].name; return; }   /* 3D.30: Gather on = part of the shift goes to gathering */
     s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = `Shift at the ${DEFS[s.post.type].name} (until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00)`; return;
   }
+  if (goCare(s)) return;   /* 3D.285: hurt and the town is quiet → the medical building first */
   if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35) - (S.hour >= 22 || S.hour < 5 ? 30 : 0) + (s.id * 7) % 12) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
     { const nd = s.thirst >= 85 && S.water >= 1 ? 'thirst' : s.hunger >= 85 && S.food >= 1 ? 'hunger' : null, fb = nd && chooseFacility(s, false, nd); if (fb) { s.facility = fb; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${nd === 'thirst' ? 'A drink' : 'A bite'} before bed → ${DEFS[fb.type].name}`; return; } }   /* 3D.63: woke up parched → drink first, then back to bed */
     const bed = bedFor(s);
@@ -2365,7 +2367,7 @@ function finishFacility(s) {
   if (!s.resident && s.sat >= 35 && !s.requested) { s.requested = true; queueResidentRequest(s); }
   if (s.sleeping) { s.fatigue = 0; s.sleeping = false; }
   /* V3D.15: one longer stay instead of in-and-out trips: keep resting / being treated while it is still needed (up to 3 extra rounds) */
-  if (!onShift(s) && !threatOf(s) && (s.stays || 0) < 3 && ((r.need === 'fatigue' && s.fatigue > 30) || (r.need === 'injury' && s.hp < s.max * .7 && s.hunger < 100 && s.thirst < 100))) { s.stays = (s.stays || 0) + 1; s.stateTicks = r.use; s.mode = 'useFacility'; s.activity = r.label; return; }
+  if (!onShift(s) && !threatOf(s) && (s.stays || 0) < (r.need === 'injury' && !zInTown() ? TENT_STAYS : 3) && ((r.need === 'fatigue' && s.fatigue > 30) || (r.need === 'injury' && s.hp < s.max * (zInTown() ? .7 : 1) && s.hunger < 100 && s.thirst < 100)))   /* 3D.285: with no zombie in town a patient stays until fully healed */ { s.stays = (s.stays || 0) + 1; s.stateTicks = r.use; s.mode = 'useFacility'; s.activity = r.label; return; }
   s.stays = 0;
   { s.visits = (s.visits || []).filter((v) => tick - v[1] < 1500); s.visits.push([b.type, tick]); if (s.visits.filter((v) => v[0] === b.type).length >= 3) { (s.avoid ||= {})[b.type] = tick + 2500; s.visits = []; emote(s, '😩', 90); } }
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
@@ -6448,6 +6450,13 @@ function careTicks(b) { if (b !== undefined && (!b || isCamp(b))) return Math.ro
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
    Each treatment uses 1 cloth or 0.1 meds. ---------------- */
 const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+/* 3D.285 healing, part 2 (owner, 20 Nov, W130): "the tent first". With no zombie in town, anyone under TENT_PCT of their health (or with a field wound)
+   walks to a medical building that has room, in free time or between jobs, and stays until fully healed. People on a shift or a guard post do not go
+   (the Medic's rounds are for them); during danger the old bars for leaving work (60% / 50%) still decide. */
+const TENT_PCT = .8, TENT_STAYS = 12;
+const wantsCare = (s) => (s.hp < s.max * TENT_PCT || s.wounded) && s.hp > 0 && s.hunger < 100 && s.thirst < 100;
+function careRoom(s) { const b = chooseFacility(s, false, 'injury'); return b && needScore(s, b) > -900 ? b : null; }   /* a medical building this person can use now: standing, room left, a way there */
+function goCare(s) { if (!wantsCare(s) || zInTown()) return false; const b = careRoom(s); if (!b) return false; s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.stays = 0; s.why = `${s.wounded ? 'Wounded' : 'Hurt'} → ${DEFS[b.type].name}`; return true; }
 const MEND_PCT = .02;   /* 3D.284: the slow mend: this share of full health each game hour with no zombie in town */
 const zNear = (p, r) => S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, p) < r);
 function patchSupply(dry) { if ((S.cloth || 0) >= 1) { if (!dry) { S.cloth -= 1; flow('cloth', 'Field aid', -1); } return true; } if ((S.meds || 0) >= .1) { if (!dry) { S.meds -= .1; flow('meds', 'Field aid', -.1); } return true; } return false; }

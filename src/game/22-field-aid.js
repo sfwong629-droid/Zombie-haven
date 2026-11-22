@@ -3,6 +3,13 @@
    building treats them). Being downed twice in a day is too serious for the field: the Medic stabilises them (the bleed stops) and carries them in.
    Each treatment uses 1 cloth or 0.1 meds. ---------------- */
 const FIELD_CAP = .6, PATCH_TICKS = 240, PATCH_CD = 3600;
+/* 3D.285 healing, part 2 (owner, 20 Nov, W130): "the tent first". With no zombie in town, anyone under TENT_PCT of their health (or with a field wound)
+   walks to a medical building that has room, in free time or between jobs, and stays until fully healed. People on a shift or a guard post do not go
+   (the Medic's rounds are for them); during danger the old bars for leaving work (60% / 50%) still decide. */
+const TENT_PCT = .8, TENT_STAYS = 12;
+const wantsCare = (s) => (s.hp < s.max * TENT_PCT || s.wounded) && s.hp > 0 && s.hunger < 100 && s.thirst < 100;
+function careRoom(s) { const b = chooseFacility(s, false, 'injury'); return b && needScore(s, b) > -900 ? b : null; }   /* a medical building this person can use now: standing, room left, a way there */
+function goCare(s) { if (!wantsCare(s) || zInTown()) return false; const b = careRoom(s); if (!b) return false; s.facility = b; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.stays = 0; s.why = `${s.wounded ? 'Wounded' : 'Hurt'} → ${DEFS[b.type].name}`; return true; }
 const MEND_PCT = .02;   /* 3D.284: the slow mend: this share of full health each game hour with no zombie in town */
 const zNear = (p, r) => S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, p) < r);
 function patchSupply(dry) { if ((S.cloth || 0) >= 1) { if (!dry) { S.cloth -= 1; flow('cloth', 'Field aid', -1); } return true; } if ((S.meds || 0) >= .1) { if (!dry) { S.meds -= .1; flow('meds', 'Field aid', -.1); } return true; } return false; }

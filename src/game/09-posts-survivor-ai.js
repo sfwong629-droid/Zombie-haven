@@ -280,6 +280,7 @@ function chooseLifePurpose(s) {
     if (!u && s.chop === true && rnd() < .3 && tryGather(s)) { s.why = 'Gathering for a while, then back to the ' + DEFS[s.post.type].name; return; }   /* 3D.30: Gather on = part of the shift goes to gathering */
     s.mode = 'goWork'; s.dest = null; s.path = null; s.stateTicks = 9999; s.why = `Shift at the ${DEFS[s.post.type].name} (until ${shifts().find(([a, z]) => S.hour >= a && S.hour < z)[1]}:00)`; return;
   }
+  if (goCare(s)) return;   /* 3D.285: hurt and the town is quiet → the medical building first */
   if (isNight() && s.fatigue > (hasT(s, 'owl') ? 60 : 35) - (S.hour >= 22 || S.hour < 5 ? 30 : 0) + (s.id * 7) % 12) {   /* V2.43: Night Owls stay up */   /* V2.36: nights are for sleep: a bed if one is free, otherwise sleep rough (half the rest) */
     { const nd = s.thirst >= 85 && S.water >= 1 ? 'thirst' : s.hunger >= 85 && S.food >= 1 ? 'hunger' : null, fb = nd && chooseFacility(s, false, nd); if (fb) { s.facility = fb; s.mode = 'goFacility'; s.stateTicks = 9999; s.dest = null; s.path = null; s.why = `${nd === 'thirst' ? 'A drink' : 'A bite'} before bed → ${DEFS[fb.type].name}`; return; } }   /* 3D.63: woke up parched → drink first, then back to bed */
     const bed = bedFor(s);
@@ -338,7 +339,7 @@ function finishFacility(s) {
   if (!s.resident && s.sat >= 35 && !s.requested) { s.requested = true; queueResidentRequest(s); }
   if (s.sleeping) { s.fatigue = 0; s.sleeping = false; }
   /* V3D.15: one longer stay instead of in-and-out trips: keep resting / being treated while it is still needed (up to 3 extra rounds) */
-  if (!onShift(s) && !threatOf(s) && (s.stays || 0) < 3 && ((r.need === 'fatigue' && s.fatigue > 30) || (r.need === 'injury' && s.hp < s.max * .7 && s.hunger < 100 && s.thirst < 100))) { s.stays = (s.stays || 0) + 1; s.stateTicks = r.use; s.mode = 'useFacility'; s.activity = r.label; return; }
+  if (!onShift(s) && !threatOf(s) && (s.stays || 0) < (r.need === 'injury' && !zInTown() ? TENT_STAYS : 3) && ((r.need === 'fatigue' && s.fatigue > 30) || (r.need === 'injury' && s.hp < s.max * (zInTown() ? .7 : 1) && s.hunger < 100 && s.thirst < 100)))   /* 3D.285: with no zombie in town a patient stays until fully healed */ { s.stays = (s.stays || 0) + 1; s.stateTicks = r.use; s.mode = 'useFacility'; s.activity = r.label; return; }
   s.stays = 0;
   { s.visits = (s.visits || []).filter((v) => tick - v[1] < 1500); s.visits.push([b.type, tick]); if (s.visits.filter((v) => v[0] === b.type).length >= 3) { (s.avoid ||= {})[b.type] = tick + 2500; s.visits = []; emote(s, '😩', 90); } }
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();

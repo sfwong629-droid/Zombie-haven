@@ -79,6 +79,7 @@ function needScore(s, b) {
   if (s.avoid && (s.avoid[b.type] || 0) > tick) return -999;   /* V3D.15: recently looped here: give it a rest */
   if (zombieNear(Wd.doorPoint(b), (s.wary || 0) > tick ? 7 : 4.5) && !isFighter(s) && !((r.need === 'thirst' && s.thirst >= 95) || (r.need === 'hunger' && s.hunger >= 95))) return -999;   /* 3D.63: desperate enough, they risk it (they went to eat while dying of thirst because zombies were near the only barrel) */   /* V3D.17: don't walk to a door with zombies at it (this was the house ↔ rain collector loop) */
   if (r.need === 'injury' && (s.hunger >= 100 || s.thirst >= 100) && s.hp > s.max * .35) return -999;   /* starving: care can't fix that, food can */
+  if (r.need === 'injury' && s.hp >= s.max * .6 && zInTown()) return -999;   /* 3D.285: with a zombie in town only the badly hurt (under 60%, the old bar) set out for care; the rest wait until it is quiet */
   if (r.need === 'hunger') sc += s.hunger * 1.4; if (r.need === 'thirst') sc += s.thirst * 1.5; if (r.need === 'fatigue') sc += s.fatigue * (isNight() || s.fatigue >= 70 ? 1.2 : .6) + (isNight() && s.fatigue > 15 ? 45 : 0);   /* 3D.63: by day a nap only wins once they're really tired (a third of the town napped through lunch) */   /* V2.36: nights are for sleeping */
   if (r.need === 'injury') sc += (1 - s.hp / s.max) * 140 * (policy() === 'recover' ? 1.5 : 1) + (s.wounded ? 45 : 0);   /* 3D.67: a field wound needs a medical building */
   if (r.need === 'gear') sc += gearUpgrade(s) ? 75 : 0;
