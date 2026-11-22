@@ -1,14 +1,14 @@
 # zmove_gatling.py -- RAW.glb OUT.json : the Gatling Boss's signature move, braced fire at long range (14-ZOMBIE-MOVES.md, approved W190; owner, 21 Nov:
 # "galting gun long range shooting animation"). Preview for W216: made by hand, not a recording. Clip name gatling_fire, 3.0 s.
 # He plants his feet wide (left foot forward, right foot back), sinks a little and leans into the gun; the gun (modelled onto his left forearm, no
-# left hand) comes up level at hip height, pointing ahead, the right hand on top of it near the elbow. The barrels spin up (the gun arm shakes,
+# left hand) comes up level at hip height, pointing ahead; the right arm hangs as in idle. The barrels spin up (the gun arm shakes,
 # harder and harder), then a long burst: the kick shakes the gun, the chest and the head every frame while the upper body sweeps the gun right,
 # left and back to the middle; then the shaking dies away and he settles back. Starts and ends exactly on his first idle pose.
-# Rig: +X his left, -Y forward, +Z up. Env: ZH_SWEEP (degrees each way, 24), ZH_SECS (3.0), ZH_LEAN (14), ZH_TWIST (chest turned towards the gun, 24), ZH_KICK (recoil shake, 1.0).
+# Rig: +X his left, -Y forward, +Z up. Env: ZH_SWEEP (degrees each way, 24), ZH_SECS (3.0), ZH_LEAN (14), ZH_TWIST (chest turned towards the gun, 8), ZH_KICK (recoil shake, 1.0).
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
 a = sys.argv[sys.argv.index('--') + 1:]; src, out = a[0], a[1]
-SWEEP = float(os.environ.get('ZH_SWEEP', 24)); SECS = float(os.environ.get('ZH_SECS', 3.0)); LEAN = float(os.environ.get('ZH_LEAN', 14)); TW = float(os.environ.get('ZH_TWIST', 24)); KICK = float(os.environ.get('ZH_KICK', 1.0))
+SWEEP = float(os.environ.get('ZH_SWEEP', 24)); SECS = float(os.environ.get('ZH_SECS', 3.0)); LEAN = float(os.environ.get('ZH_LEAN', 14)); TW = float(os.environ.get('ZH_TWIST', 8)); KICK = float(os.environ.get('ZH_KICK', 1.0))
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
 ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; W = ao.matrix_world; sc = bpy.context.scene
 ad = ao.animation_data
@@ -75,17 +75,13 @@ for i in range(nf + 1):
     turn('neck', (1, 0, 0), -LEAN * .5 * w + 1.2 * shake * jit(t, 13, .5)); turn('head', (0, 1, 0), 2.5 * shake * jit(t, 5.5, 2))
     # gun arm: elbow tucked at the side, the gun level and pointing where the chest points, shaking with the kick
     fwd = Vector((0, -1, 0)); fwd.rotate(Matrix.Rotation(math.radians(sw * w), 3, 'Z'))   # the gun points where the sweep points
-    q0 = {n: PB[n].rotation_quaternion.copy() for n in ('upperarm.L', 'forearm.L', 'hand.L', 'upperarm.R', 'forearm.R', 'hand.R')}
+    q0 = {n: PB[n].rotation_quaternion.copy() for n in ('upperarm.L', 'forearm.L', 'hand.L')}
     S = wpos('upperarm.L'); side = Vector((1, 0, 0)); side.rotate(Matrix.Rotation(math.radians((sw + TW) * w), 3, 'Z'))
     elbow = S + side * .02 + fwd * .07 + Vector((0, 0, -.2))   # tucked in at the side, a little forward
     aim('upperarm.L', elbow)
     g = (fwd + Vector((0, 0, .04 + .05 * shake * jit(t, 17, 0)))).normalized(); g.rotate(Matrix.Rotation(math.radians(3 * shake * jit(t, 19, 1.3)), 3, 'Z'))
     rot_about('forearm.L', gun_dir().rotation_difference(g), wpos('forearm.L'))
-    # right hand on top of the gun, a little in front of the elbow
-    E = wpos('forearm.L'); grip = E + g * .09 + Vector((0, 0, .07))
-    two_bone('upperarm.R', 'forearm.R', grip, Vector((-.7, .2, -.6)))
-    aim('hand.R', grip + g * .1 + Vector((.02, 0, -.02)))
-    if os.environ.get('ZH_DEBUG') and w > .99 and i % 15 == 0: print('GRIP miss', round((wpos('hand.R') - grip).length, 3))
+    # the right arm is left as it hangs in idle (owner, 22 Nov: "Do not move the non gun hand"; reaching for the gun put it through the body)
     for n, qa in q0.items(): PB[n].rotation_quaternion = qa.slerp(PB[n].rotation_quaternion.copy(), w)
     upd()
     lo = lowest()
