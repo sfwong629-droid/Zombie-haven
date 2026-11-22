@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.292', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.293', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3172,7 +3172,7 @@ const BONUS = .35, BONUS_H = 12, BONUS_RES = { water: '💧', food: '🍖', mat:
 function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus = Math.min(a * BONUS * BONUS_H, (b.bonus || 0) + a * BONUS); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; say('Tap the bubbles over buildings to collect bonus supplies!', true); } }
 /* 3D.30 real Fallout Shelter collecting (glass/cozy UI): what a building makes waits in its tray until you tap the bubble.
    The tray holds TRAY_H hours of output; past that the building stops filling (shown as FULL, and listed in the alert hub). */
-const TAP_COLLECT = true, TRAY_H = 8;
+const TAP_COLLECT = true, TRAY_H = 24;   /* 3D.293: a tray holds a day's output, so a day away fills it (was 8 hours) */
 /* 3D.169 Pallet Yard: wood out of scrap at 1.5 scrap per wood. Staffed 4 wood a day, nobody on it 1.5. It waits while scrap is under the floor (default 15) */
 const PALLET_RATE = 1.5, palletFloor = () => S.palletFloor ?? 15, palletK = (b) => (b.staff ? 1 : .375);
 function palletRun(b, a) { const use = a * PALLET_RATE; if ((S.mat || 0) - use < palletFloor()) { b.palletWait = true; return 0; } b.palletWait = false; S.mat -= use; flow('mat', 'Pallet Yard', -use); return a; }
@@ -3649,7 +3649,7 @@ function focusBoss() { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0);
    the workers kept their shifts; nothing else happens (no hunger, no fights, no days pass). Expeditions already run on real time.
    Goals: three small goals each real day and one bigger goal each real week, with rewards to claim. */
 let hiddenAt = 0;
-const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 8;
+const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.293 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: time away pays up to about a day's production; was 8 game hours, a third of a day). 24 game hours fill after 4 real hours away. */
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
   if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms / 60000 / AWAY_MIN_PER_H);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();

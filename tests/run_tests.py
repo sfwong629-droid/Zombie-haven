@@ -771,7 +771,7 @@ async def t_weeks(br, port, t):   # 3D.73 away production and daily / weekly goa
       ZH.goalsTick();out.done=g.done;const k=Object.keys(d.reward)[0],v0=S[k]||0;out.claim=ZH.claimGoal(g,ZH.GOALS_DAILY);out.got=(S[k]||0)-v0;out.again=ZH.claimGoal(g,ZH.GOALS_DAILY);
       out.html=ZH.goalsHtml().includes('Today');try{ZH.serialize();out.save=true}catch(e){out.save=e.message}return out}""")
     t.ok(r['short'] is None, f"a few minutes away gives nothing {r['short']}")
-    t.ok(r['r'] and r['r']['hours'] == 8 and r['tray'] > 0, f"hours away fill the trays (8 game hours at most) {r}")
+    t.ok(r['r'] and r['r']['hours'] == 18 and r['tray'] > 0, f"hours away fill the trays (3 real hours = 18 game hours; a day at most, 3D.293) {r}")
     t.ok(r['nd'] == 3 and r['nw'] == 1 and r['day'], f"three daily goals and one weekly goal {r}")
     t.ok(r['done'] and r['claim'] and r['got'] > 0 and not r['again'], f"a finished goal pays out once {r}")
     t.ok(r['html'] and r['save'] is True, f"goals show on the Goals screen and save {r}")
