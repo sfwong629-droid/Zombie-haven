@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.284', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.285', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4158,9 +4158,9 @@ function facHour() {
     if (X.stalkAt === S.day && S.hour === 22) { X.stalkAt = 0; if (X.stalk && X.stalk.n === 1) radio('helix', rLine('helixStalk'), { level: 'important' }); spawnBoss('stalker', true); const b = S.z[S.z.findIndex((z) => z.type === 'boss' && z.hp > 0 && !z.helix)]; if (b) { b.helix = true; b.hp = b.max = Math.round(b.max * (.8 + .2 * X.stalk.n)); } } }
   if (H) { if (H.walk && S.hour === 3) { const q = S.sv.find((x) => x.id === H.walk); H.walk = 0; if (q && (q.sat || 0) < 25) hollowWalkOut(q); else if (q) q.hollow = 0; }
     if (H.nightAt === S.day && S.hour === 21) { radio('hollow', rLine('hollowNight'), { level: 'important', title: 'A shepherded horde', more: 'A Hollow shepherd walks in with tonight\'s horde. While he lives, more zombies arrive every hour until 02:00. Kill him and they stop coming.' }); spawnRaid('hollow', true); const L = S.z[S.z.length - 1]; L.shep = true; L.leaderDone = true; for (const z of S.z) if (z.fac === 'hollow' && z !== L) z.hp = 0; S.z = S.z.filter((z) => !(z.fac === 'hollow' && z !== L)); H.shepOn = true; }
-    if (H.shepOn && (S.hour >= 22 || S.hour <= 2)) { if (S.z.some((z) => z.shep && z.hp > 0)) { const n = 3 + Math.floor((S.lvl || 1) / 3); for (let i = 0; i < n; i++) spawn(); } else { H.shepOn = false; H.int = Math.max(0, (H.int || 0) - 25); renownGain(4, 'The Shepherd'); say('The shepherd is down. The flock loses its way.', true); } }
+    if (H.shepOn && (S.hour >= 22 || S.hour <= 2)) { if (S.z.some((z) => z.shep && z.hp > 0)) { const n = Math.min(3 + Math.floor((S.lvl || 1) / 3), mobCap() - activeZ()); for (let i = 0; i < n; i++) spawn(); }   /* 3D.285: only into the room left under the limit of 60 (W176) */ else { H.shepOn = false; H.int = Math.max(0, (H.int || 0) - 25); renownGain(4, 'The Shepherd'); say('The shepherd is down. The flock loses its way.', true); } }
     if (H.shepOn && S.hour === 6) { H.shepOn = false; for (const z of S.z) if (z.shep) z.mode = 'rflee'; }
-    if (H.alphaDay === S.day && S.hour === 21) { radio('hollow', rLine('hollowAlpha'), { level: 'important' }); spawnBoss('butcher', true); const b = S.z.find((z) => z.type === 'boss' && z.hp > 0 && !z.helix && !z.alpha); if (b) { b.alpha = true; b.hp = b.max = Math.round(b.max * 1.5); } for (let i = 0; i < 8 + (S.lvl || 1); i++) spawn(); } }
+    if (H.alphaDay === S.day && S.hour === 21) { radio('hollow', rLine('hollowAlpha'), { level: 'important' }); spawnBoss('butcher', true); const b = S.z.find((z) => z.type === 'boss' && z.hp > 0 && !z.helix && !z.alpha); if (b) { b.alpha = true; b.hp = b.max = Math.round(b.max * 1.5); } for (let i = 0, n = Math.min(8 + (S.lvl || 1), mobCap() - activeZ()); i < n; i++) spawn(); } }   /* 3D.285: the alpha's pack too */
   const X2 = (S.fac || {}).helix; if (X2 && X2.immune && !X2.taken) { const q = S.sv.find((x) => x.immune); if (q && q.mode === 'down' && S.z.some((z) => z.human && z.fac === 'helix' && z.hp > 0 && dist(z.w, q.w) < 6)) helixTake(q); }
 }
 /* story events: one a day at most; some are chains that continue a few days later */
