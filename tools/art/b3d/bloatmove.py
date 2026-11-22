@@ -9,7 +9,7 @@
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector
 a = sys.argv[sys.argv.index('--') + 1:]; src, mode, out = a[0], a[1], a[2]
-KIND = os.environ.get('ZH_KIND', 'bloated'); QSEC = float(os.environ.get('ZH_QSEC', 1.4)); SWING = float(os.environ.get('ZH_SWING', 1.0))
+KIND = os.environ.get('ZH_KIND', 'bloated'); QSEC = float(os.environ.get('ZH_QSEC', 1.4)); SWING = float(os.environ.get('ZH_SWING', 1.0)); OUT = float(os.environ.get('ZH_OUT', .78))
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
 ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; W = ao.matrix_world; sc = bpy.context.scene
 ad = ao.animation_data
@@ -59,7 +59,7 @@ if mode == 'walk':
         u = i / nf; goto_t(u); upd()
         s = FY[i] / m * SWING   # +1: the left foot is forward (-Y), so the right arm swings forward
         for side, sg, sw in (('L', 1, -s), ('R', -1, s)):
-            d = (sg * .78, -.55 * sw, -.80 + .18 * max(sw, 0)); arm(side, d, .90 - .05 * max(sw, 0), (sg * .7, .55, .1))
+            d = (sg * OUT, -.55 * sw, -.80 + .18 * max(sw, 0)); arm(side, d, .90 - .05 * max(sw, 0), (sg * .7, .55, .1))
         lo = lowest()
         if lo < base_low - .002: lift(base_low - lo)
         for b in order:
