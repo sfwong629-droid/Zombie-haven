@@ -105,7 +105,7 @@ const BONUS = .35, BONUS_H = 12, BONUS_RES = { water: '💧', food: '🍖', mat:
 function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus = Math.min(a * BONUS * BONUS_H, (b.bonus || 0) + a * BONUS); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; say('Tap the bubbles over buildings to collect bonus supplies!', true); } }
 /* 3D.30 real Fallout Shelter collecting (glass/cozy UI): what a building makes waits in its tray until you tap the bubble.
    The tray holds TRAY_H hours of output; past that the building stops filling (shown as FULL, and listed in the alert hub). */
-const TAP_COLLECT = true, TRAY_H = 8;
+const TAP_COLLECT = true, TRAY_H = 24;   /* 3D.288: a tray holds a day's output, so a day away fills it (was 8 hours) */
 /* 3D.169 Pallet Yard: wood out of scrap at 1.5 scrap per wood. Staffed 4 wood a day, nobody on it 1.5. It waits while scrap is under the floor (default 15) */
 const PALLET_RATE = 1.5, palletFloor = () => S.palletFloor ?? 15, palletK = (b) => (b.staff ? 1 : .375);
 function palletRun(b, a) { const use = a * PALLET_RATE; if ((S.mat || 0) - use < palletFloor()) { b.palletWait = true; return 0; } b.palletWait = false; S.mat -= use; flow('mat', 'Pallet Yard', -use); return a; }

@@ -149,7 +149,7 @@ function focusBoss() { const b = S.z.find((z) => z.type === 'boss' && z.hp > 0);
    the workers kept their shifts; nothing else happens (no hunger, no fights, no days pass). Expeditions already run on real time.
    Goals: three small goals each real day and one bigger goal each real week, with rewards to claim. */
 let hiddenAt = 0;
-const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 8;
+const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.288 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: time away pays up to about a day's production; was 8 game hours, a third of a day). 24 game hours fill after 4 real hours away. */
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
   if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms / 60000 / AWAY_MIN_PER_H);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick();
