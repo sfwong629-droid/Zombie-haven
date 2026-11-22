@@ -1,0 +1,21 @@
+e2 before lvl 9 -> 11 deaths 0 max/day 0 most standing 62
+     level boss lvl 9 day 42 from 21 boss at 21 to 1 | horde arrived 71 | peak 47 | downs 3 deaths 0
+     level boss lvl 10 day 45 from 21 boss at 21 to 6 | horde arrived 83 | peak 47 | downs 8 deaths 0
+     level boss lvl 10 day 48 from 21 boss at 21 to 6 | horde arrived 69 | peak 46 | downs 10 deaths 0
+     level boss lvl 10 day 51 from 21 boss at 21 to 1 | horde arrived 77 | peak 49 | downs 5 deaths 0
+     level boss lvl 11 day 54 from 21 boss at 21 to 6 | horde arrived 97 | peak 62 | downs 8 deaths 0
+e2 after lvl 9 -> 10 deaths 0 max/day 0 most standing 48
+     level boss lvl 9 day 42 from 21 boss at 23 to 6 | horde arrived 100 | peak 46 | downs 9 deaths 0
+     level boss lvl 10 day 45 from 21 boss at 23 to 6 | horde arrived 112 | peak 46 | downs 7 deaths 0
+     level boss lvl 10 day 48 from 21 boss at 23 to 6 | horde arrived 91 | peak 46 | downs 9 deaths 0
+     level boss lvl 10 day 51 from 21 boss at 23 to 6 | horde arrived 106 | peak 48 | downs 6 deaths 0
+     level boss lvl 10 day 54 from 21 boss at 23 to 6 | horde arrived 112 | peak 46 | downs 8 deaths 0
+e3b before lvl 14 -> 16 deaths 25 max/day 12 most standing 161
+     level boss lvl 15 day 105 from 21 boss at 21 to 6 | horde arrived 98 | peak 62 | downs 7 deaths 0
+     other boss lvl 15 day 109 from 23 boss at 23 to 6 | horde arrived 75 | peak 161 | downs 17 deaths 0
+     other boss lvl 15 day 111 from 21 boss at 21 to 6 | horde arrived 77 | peak 92 | downs 5 deaths 0
+e3b after lvl 14 -> 16 deaths 26 max/day 10 most standing 158
+     level boss lvl 15 day 105 from 21 boss at 23 to 6 | horde arrived 94 | peak 62 | downs 7 deaths 0
+     other boss lvl 15 day 109 from 23 boss at 23 to 6 | horde arrived 75 | peak 158 | downs 18 deaths 0
+     level boss lvl 15 day 110 from 21 boss at 23 to 6 | horde arrived 61 | peak 78 | downs 4 deaths 15
+     other boss lvl 15 day 111 from 21 boss at 21 to 6 | horde arrived 65 | peak 89 | downs 2 deaths 3

@@ -19,6 +19,7 @@ Change one at a time, with a check before and after (`tools/balance/check.sh`). 
 | How often a boss comes | `10-enemies-walls.js`, `bossGap()` | `bossGap()`: every 3 game days, every 5 from level 11 (3D.247) | Deaths; big hordes |
 | How often raiders come | `10-enemies-walls.js`, `S.nextRaid` | from day 4, every 2 to 3.5 game days; `bossNear()` holds every raid back on a boss day and the day before (3D.245, 3D.252; the weekly crisis is not held) | Deaths in one night; town lost |
 | The rescue that comes by itself | `03-stats-gear.js`, `AUTO_HELP_DAYS` in `helpTick()` | when nobody is left standing, at most once every 3 game days (3D.246, 3D.251) | Town lost; deaths in one night |
+| When the boss walks in | `10-enemies-walls.js`, `BOSS_LAST` | on the level's boss night the horde comes at 21:00 and the boss when two thirds of it have arrived, or 2 game hours later at the latest (3D.269) | Big horde size; deaths |
 | How hard raiders hit | `10-enemies-walls.js`, `RAIDER_HIT` | 5 + 0.2 x the weapon's attack | Deaths |
 | Weekly crisis | `17-endgame-trophies-crises.js`, `CRISIS_LVL`, `CRISIS_EVERY`, `CRISES` | from level 15, every 7 game days; The Tide grows with the game day | Most standing; deaths at the top |
 | Season length | `11-town.js`, `SEASON_DAYS` | 7 game days | The cure and seasonal strongholds (section 7) |

@@ -317,6 +317,18 @@ Read with care: two towns each, and towns differ a lot from run to run. The dail
 - **More than 60 stand at once at level 13 too** (101 to 169 on two nights, in both versions), with no crisis running. Cause not found yet.
 - **Not measured:** level 20 (the bot tool fails when started from a level 20 backup), the daily and keen players.
 
+**The boss comes last, 21 Nov (build 3D.269; owner, W201).** On the level's boss night the horde arrives at 21:00 and its boss walks in behind it when two thirds have come, or at 23:00 at the latest (in every measured night it was 23:00). Killing him still breaks the horde. The bot tool now counts each boss night's horde from its first zombie until the horde is gone; the counts in the rows above stopped at the tool's day line and are too low by an unknown amount. Before (3D.262) and after, the same starts:
+
+| Start | Horde arrived, before | Horde arrived, after | Horde sent | Downs a boss night, before / after | Deaths on the level's boss nights |
+|---|---|---|---|---|---|
+| Level 9 to 10, five boss nights | 71, 83, 69, 77, 97 | 100, 112, 91, 106, 112 | 100 at level 9, 112 at level 10 | 3 to 10 / 6 to 9 | 0 / 0 |
+| Level 15, one boss night | 98 | 94 | 230 | 7 / 7 | 0 / 0 |
+
+- **Era 2 now gets its whole horde** (wanted 90 to 150), with no more deaths and never more than 48 standing.
+- **Era 3 does not: about 95 of 230 arrive, before and after.** With 60 standing the town kills about 100 in a night, whoever leads. The bot's level 15 towns have 25 people (wanted: 40 to 60, a third of them fighters), so the era 3 size waits on bigger towns or on a horde that falls faster; not solved here.
+- **Era 1** was measured with the old count only (33 to 49 on four boss nights, for hordes of 32 to 48): all of it arrives.
+- **The deaths at level 15 are the weekly crisis next to a boss night, in both versions:** The Tide on day 109 (158 to 161 standing, 17 to 18 downs), a boss night the next day and another boss the day after. One version lost 25 people over those days, the other 26. The Tide needs the limit of 60 and must keep off boss days (the next build).
+
 **Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
 
 Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).
