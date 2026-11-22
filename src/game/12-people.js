@@ -49,8 +49,11 @@ function bedFor(s) {
   const c = campB(); if (c && !c.fire) { const rank = unhoused().filter((q) => q.hp > 0).sort((a, b) => (b.daysHere || 0) - (a.daysHere || 0) || a.id - b.id).indexOf(s); if (rank < campCap() && facilityUsers(c) < campCap()) return c; }
   return null;
 }
+const RP_STARTER = 20;
 function rpStarter() {   /* V3D.13: the first research is a tutorial: the first Workshop comes with starter notes */
-  if (S.rpGift || !bOf('workshop').length) return; S.rpGift = true; S.rp = (S.rp || 0) + 15; banner('🔬 Starter notes: +15 research'); logEvent('The new Workshop came with a box of old notes: +15 research points to get the first project going.', 'important');
+  if (S.rpGift || !bOf('workshop').length) return; S.rpGift = true; S.rp = (S.rp || 0) + RP_STARTER; banner('🔬 Starter notes: your first research is ready');   /* 3D.300: 20 (was 15), enough for the cheapest project, and the first costs no scrap */
+  const wn = DEFS[bOf('workshop')[0].type].name; radio('dj', `The new ${wn} came with a box of old notes. Your first research project is ready, and the first one costs no scrap.`, { key: 'res1', level: 'important', title: 'First research', more: `Tap the ${wn} → Research and pick a project. Bladesmithing (20 research) unlocks the Machete and Fire Axe to craft; Salvage Methods makes Scrapyards pay more.` });
+  logEvent(`The new ${wn} came with a box of old notes: +${RP_STARTER} research points. The first project costs no scrap.`, 'important');
 }
 function assignHomes() {
   for (const b of world.buildings) if (isT(b, 'house') && b.owner && !S.sv.some((q) => q.id === b.owner)) b.owner = null;

@@ -299,8 +299,8 @@ function showBuildingInfo(b, tab) {
       + (users.length ? `<div class="sm">Using it now: ${users.join(', ')}</div>` : '')
       + (cb.names.length ? `<div class="card"><b>Neighbour bonuses</b><br>★ ${cb.names.join('<br>★ ')}</div>` : '<div class="sm">Tip: related buildings next to each other give bonuses.</div>');
   } else if (bTab === 'research') {
-    const rs = Object.entries(RESEARCH).map(([k, rr]) => { const done = researched(k), lock = !researched(rr.need), ok = !done && !lock && (S.rp || 0) >= rr.rp && S.mat >= rr.mat;
-      return done ? '' : `<div class="card" ${ok ? `data-res="${k}"` : ''} style="${ok ? 'cursor:pointer' : 'opacity:.5'}"><div class="row"><span class="sp">${rr.name}</span><span class="sm">🔬${rr.rp} ⚙${rr.mat}</span></div><div class="sm">${rr.desc}${lock ? ' · needs ' + RESEARCH[rr.need].name : ''}</div></div>`; }).join('');
+    const rs = Object.entries(RESEARCH).map(([k, rr]) => { const done = researched(k), lock = !researched(rr.need), ok = !done && !lock && (S.rp || 0) >= rr.rp && S.mat >= resMat(k);
+      return done ? '' : `<div class="card" ${ok ? `data-res="${k}"` : ''} style="${ok ? 'cursor:pointer' : 'opacity:.5'}"><div class="row"><span class="sp">${rr.name}</span><span class="sm">🔬${rr.rp} ${resMat(k) ? '⚙' + resMat(k) : 'first one free'}</span></div><div class="sm">${rr.desc}${lock ? ' · needs ' + RESEARCH[rr.need].name : ''}</div></div>`; }).join('');
     const doneL = Object.entries(RESEARCH).filter(([k]) => researched(k)).map(([, rr]) => rr.name);
     h += `<div>🔬 <b>${Math.floor(S.rp || 0)}</b> research <span class="sm">(+${((isWorking(b) ? d.out : 4) * prodMult(b)).toFixed(1)}/day)</span></div>${rs || '<div class="sm">Everything is researched.</div>'}${doneL.length ? `<div class="sm">✔ ${doneL.join(', ')}</div>` : ''}`;
   } else if (bTab === 'craft') {
