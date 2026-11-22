@@ -155,7 +155,7 @@ function monsterGeneration() {
   if (night && SP.budget && (S.nightSpawned || 0) >= SP.budget * Math.max(1, S.nightCap || 1)) return;   /* study: a fixed pool per night */
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
-  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, S.threat * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
+  const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, threatNow() * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
   if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
@@ -190,7 +190,7 @@ const raiderWeapon = (kind, lvl = S.lvl || 1) => (RAIDER_WPN[kind] || RAIDER_WPN
    Era I: Thief 5.3, Brute 11, Firebug 6.5 (were 7, 10.5, 6.3). Era IV: 14.6, 15.8, 13.1. The danger level, a faction's factor and a leader's factor still multiply it. */
 const RAIDER_HIT = { base: 5, per: .2 };   /* 3D.204 (owner, 18 Nov, W57): softened from .3; two of six bot towns lost 9 and 12 people to one raid at .3. Era I: Thief 5.2, Brute 9, Firebug 6. Era IV: 11.4, 12.2, 10.4 */ const raiderHit = (id) => (RAIDER_HIT.base + RAIDER_HIT.per * ((ITEMS[id] || {}).atk || 0)) / zombieTypes.raider.atk;
 function rollRaider(z, i) {
-  const r = rnd(), k = i === 0 && S.day >= 4 && r < .45 ? 'brute' : r < (S.day >= 3 ? .22 : 0) ? 'firebug' : r < (S.day >= 6 ? .34 : 0) ? 'brute' : 'thief', K = RAIDER_KINDS[k];
+  const r = rnd(), k = i === 0 && (S.lvl || 1) >= 3 && r < .45 ? 'brute' : r < ((S.lvl || 1) >= 2 ? .22 : 0) ? 'firebug' : r < ((S.lvl || 1) >= 3 ? .34 : 0) ? 'brute' : 'thief'   /* 3D.286: kinds by level (were game day 3, 4 and 6) */, K = RAIDER_KINDS[k];
   z.kind = k; z.hp = z.max = Math.round(z.max * K.hp);   /* 3D.197: the hit no longer comes from the kind (K.atk) but from the weapon: see raiderHit */
 }
 const RK = (z) => RAIDER_KINDS[z.kind] || RAIDER_KINDS.thief;
@@ -264,10 +264,17 @@ function hordeStart() {
   S.vanguard = { mob, left: mob - first, until: nowD() + BOSS_LAST.hours / 24 }; S.mobLeft0 = mob - first; S.mobLeft = 0; lureFire(); SFX('boss'); banner('☠ THE HORDE IS HERE');
   note('critical', `A horde of ${mob} zombies is at the walls. Something big walks behind it.`, { key: 'boss', icon: '☠', log: `A horde of ${mob} zombies reaches the Haven. Its leader walks behind it.`, threats: true, live: () => !!S.vanguard }); S.alert = 2400;
 }
+/* 3D.286 (overnight branch; owner, 21 Nov, W176: zombies grow with the level, never with the count of game days): the last danger numbers
+   that followed the game day now follow the level. The boss's gentler start (a 40% weaker boss with a 25% softer hit) was for game days
+   1 to 14, now levels 1 to 5 (era 1); the first boss is always the Mutant up to level 2 (was day 4); raider kinds come by level (the Firebug
+   from level 2, the Brute from level 3; were days 3, 4 and 6); the spawn speed's "threat" (set to day / 4 at each rank-up, so it kept the day
+   count of that moment) is now a quarter of the level's day strength (hDay). Story timing (when factions are met, raids from day 4) is unchanged. */
+const ERA1_EARLY = (upTo) => (S.lvl || 1) <= upTo;
+const threatNow = () => Math.floor(hDay() / 4);
 function spawnBoss(force, escort, lead) {   /* lead (3D.269): the horde is already here (hordeStart); the boss walks in where it came in and brings no first group */   /* 3D.261: escort = a boss that is not the level's boss night (a crisis, a faction's boss, the last stand): it brings a third of the level's horde, about what it brought before */
-  const a = lead && S.mobAt ? S.mobAt : spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = force || (S.day <= 4 ? 'mutant' : ks[Math.floor(rnd() * ks.length)]), K = BOSS_KINDS[bk]; if (!force) S.lastBoss = bk;
-  const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * hDay()) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
-  S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * hDay()) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
+  const a = lead && S.mobAt ? S.mobAt : spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = force || (ERA1_EARLY(2) ? 'mutant' : ks[Math.floor(rnd() * ks.length)]), K = BOSS_KINDS[bk]; if (!force) S.lastBoss = bk;
+  const L = avgLevel(), early = ERA1_EARLY(5) ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * hDay()) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
+  S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * hDay()) * (ERA1_EARLY(5) ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   { const bz = S.z[S.z.length - 1]; bz.hp = bz.max = Math.round(bz.hp * K.hp); }
   const mob = lead ? lead.mob : escort ? Math.round(bossMob() / 3) : bossMob(), first = lead ? 0 : Math.max(0, Math.min(mobCap() - activeZ(), Math.round(mob * BIG_HORDE.first)));   /* 3D.274: the first group only fills the room left under the limit; the rest stream in */ for (let i = 0; i < first; i++) mobZombie(a); if (lead) S.mobLeft = lead.left; else S.mobLeft = S.mobLeft0 = mob - first; S.mobAt = [a[0], a[1]];   /* 3D.199: the rest follow in monsterGeneration */
   lureFire();   /* 3D.76 */

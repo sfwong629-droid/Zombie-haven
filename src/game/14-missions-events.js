@@ -411,7 +411,7 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   const t = Math.max(S.terr || 0, terrOfLvl(S.lvl)); if (t !== (S.terr || 0)) { S.terr = t; Wd.setTerritory(t); Wd.bump(world); landGrewNote(); }
   const lines = [`Room to store more: food/water ${supplyCap()}, wood/stone ${matCap()}, scrap ${scrapCap()}`]; if (terrOfLvl(S.lvl) > terrOfLvl(from)) lines.unshift('🗺 The Haven claims more land (more zombies, from more directions)');
   if (eraOf(S.lvl) !== eraOf(from)) lines.unshift(`A new era begins: Era ${eraOf(S.lvl).n} · ${eraOf(S.lvl).name}`);
-  if (S.rank > oldRank) { S.threat = Math.floor(S.day / 4); rankReward(); S.mat += 4 + S.rank; for (const x of rankUnlocks(S.rank).filter((x) => !x.startsWith('+'))) lines.push(x); }
+  if (S.rank > oldRank) { S.threat = threatNow(); rankReward(); S.mat += 4 + S.rank; for (const x of rankUnlocks(S.rank).filter((x) => !x.startsWith('+'))) lines.push(x); }
   else { S.food = keepCap(supplyCap(), S.food, 2); S.water = keepCap(supplyCap(), S.water, 2); S.mat += 2; }
   SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl);
   showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
