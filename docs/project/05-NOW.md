@@ -287,9 +287,10 @@ Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):
 - W223. **Publish 3D.280 to 3D.283?** (Claude, 22 Nov, later: hold them until the rework below is decided.)
 - ~~W232. The rework's three rules and four kinds of place.~~ Owner, 22 Nov: "yes approved". Also the owner's idea of **outposts** (a combat-only place to build on), in Claude's shape ("Your idea is good"): a Secured stronghold the town holds and defends (`15-STRONGHOLDS.md`, 10.7). Nothing built.
 - ~~W233. Town and keep on one map.~~ Owner, 22 Nov: "your pick": one map, the squad walks into the big building.
-- W234. Every faction has a part it lost to the dead, and friends give jobs there: yes? (Owner, 22 Nov: "can you explain this a bit": explained with the Foundry as the example; waiting.)
+- ~~W234. Lost parts and friends' jobs.~~ Owner, 22 Nov: yes; and add: **an ally with a herd coming asks the player for help** (`15-STRONGHOLDS.md`, 10.9).
 - ~~W235. Sealed places keep one size.~~ Owner, 22 Nov: "yes ok". Only faction towns grow with the level.
-- W236. Outposts: fixed build spots or free placing? (Owner, 22 Nov: "expand a bit of the fixed build slot before we commit. What is being placed? How to place?": explained, `15-STRONGHOLDS.md` 10.8; waiting.)
+- ~~W236. Outposts: fixed spots or free placing.~~ Owner, 22 Nov: "I will go with free placing for now". Built like placing in the town, combat pieces only (`15-STRONGHOLDS.md`, 10.9).
+- W238. **Start building the rework?** First build: places remember what was cleared (rooms, doors, Secured). Then story locks, town and keep on one map (the Larder first), and on down `15-STRONGHOLDS.md`, 10.5. One change per build, pushed, not published. (Claude: yes.)
 - ~~W237. A map of the valley in place of the trip list.~~ Owner, 22 Nov: yes. Next: this chat writes the list of places and where they lie; the UI chat makes a mockup first.
 
 Later:

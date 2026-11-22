@@ -182,3 +182,29 @@ Stays: every room map, every house rule, the camps and their growth, goals, thin
   - **Post spots** behind the lines: watchtower, then gun nest; floodlight; and one **bunkhouse** (2 people, then 4) that sets the garrison.
 - **Placing:** tap a spot; a small card shows the two or three things that fit, each with its cost and what it does; pick one; a supply cart leaves the Haven and it is built by the next check-in. Tap a built thing to upgrade or swap it. After a fight, one **Repair all** button with its cost.
 - **How many:** about 6 spots at first, up to 10 as the outpost is upgraded with the era. Each outpost has its own ground (the Clinic one narrow gate, the Prison its walls and towers already standing). The pieces are the town's own walls, traps and towers: no new art.
+
+### 10.9 Decided 22 Nov (18:11)
+- **W234: yes.** Every faction but the Hollow has a part it lost; friends give jobs there.
+- **An ally's call** (owner: "when an ally has a herd and requests help from the player"): a friendly faction radios that a herd is on its road. The squad goes to **their** town and defends it beside their guards (their map, the herd coming in waves at the gate). Help: reputation, a gift from their store, and their people come when the Haven calls (Shut the Line's allies). No help: they lose a few buildings for a while and cool a little toward the Haven; never while the player is away (the call waits). About one a real week across all friends. It is the fourth thing a faction town is for: trade, raid, a job, a defence.
+- **W236: free placing for outposts** ("for now"). The outpost's ground is the secured place's front; the player places walls, gates, traps, towers and a bunkhouse tile by tile, as in the town, from a short combat-only Build list (no water, food, beds for living, or production). To keep it sound: a build ring like the town's glowing ring; a line on the card when the wall has a gap ("open on the east side"); a limit on pieces by era in place of land; one Repair all button. Fixed spots stay written above as the fallback if free placing proves fiddly on the phone.
+
+### 10.10 The valley map: the places and where they lie (for the UI chat's mockup, W237)
+North is up. The Haven sits in the middle, a little south of centre. The north-east highway runs from the Haven's north-east corner to Sunnyside in the top right. The river runs down the west side, north to south, with the weir at the bottom. The hills are the top left. The cordon runs along the east edge.
+| Place | Kind | Where | Opens |
+|---|---|---|---|
+| The Haven | home | centre | start |
+| Greenwater (and the Drowned Greenhouse just outside its fence) | faction town; wild place (spring) | west, on the river | level 3; spring |
+| The Overrun Clinic | sealed, then outpost | just south-east of the Haven, on the valley road | level 3 |
+| Blackgate Prison | sealed, then outpost | south | level 7 |
+| The Toll Kings' fort (the Larder inside) | faction town | half way up the north-east highway | day 5 to 7; the Larder after C16 |
+| The Foundry | faction town | south-west, down river | level 5 |
+| The Burning Refinery | wild place (summer) | south-east | summer |
+| Checkpoint Bravo | faction town | east, on the cordon | level 7 |
+| The Frozen Depot | wild place (winter) | north-east, on the cordon | winter |
+| The Helix field lab | faction town | north, at the foot of the hills | level 9 |
+| The Hollow's supermarket (Aisle Seven) | faction town | north-west, on the old ring road | level 11 |
+| The Harvest Fair | wild place (autumn) | west of the Hollow, orchards | autumn |
+| The Dusk Radio Mast | story place | top left, the highest hill | level 19, three proofs |
+| Sunnyside (Lab 7, the Records Office, the plant) | faction town with three keeps | top right, end of the highway | level 16 |
+| The weir | story spot (the cure goes into the river, K4) | bottom left | the cure |
+Pins also show: herds moving on a road with the days left, calls for help, an ally's call, trips out.
