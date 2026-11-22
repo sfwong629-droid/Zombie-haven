@@ -1,6 +1,7 @@
 #!/bin/bash
 # build_bloat.sh MODEL [OUTDIR] : 3D.257 the Bloater Queen's arms in the walk and her sweep and belly slam (owner, 21 Nov, W199: "the bloater queen looks
-# good"); MODEL queen (or bloated, once its arms are settled). bloated_walk and bloated_attack of the game's own model are replaced by bloatmove.py's;
+# good"); MODEL queen or bloated (3D.267, owner W200: "try b": the same moves as on the sheet, his shirt stretching under the arms, since his arms are modelled
+# joined to his belly). bloated_walk and bloated_attack of the game's own model are replaced by bloatmove.py's;
 # every other animation and the body are left as they are. Writes the game file in assets/; check: tools/qa/bloat_check.sh.
 set -eo pipefail; k=$1; O=${2:-/tmp/sw}; D=$(cd "$(dirname "$0")" && pwd); R=$(cd $D/../../.. && pwd); cd $R; A=assets/characters/ai3d_v2/zombie_$k.glb
 node tools/art/decomp.mjs $A $O/cur_$k.raw.glb >/dev/null
