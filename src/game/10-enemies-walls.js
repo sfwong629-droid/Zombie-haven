@@ -40,7 +40,7 @@ let dfC = null, dfK = '';
 const DF = () => { const b = DIFFS[S.diff] || DIFFS.normal, l = modList(); if (!l.length) return b; const k = S.diff + '|' + l.join(); if (k !== dfK) { dfC = { ...b }; for (const id of l) for (const f of ['z', 'count', 'raid', 'upkeep', 'bleed', 'score']) if (MODS[id][f]) dfC[f] *= MODS[id][f]; dfK = k; } return dfC; };
 const recKey = (st = S.start, df = S.diff, m = S.mods) => st + '/' + df + (modList(m).length ? '+' + modList(m).slice().sort().join('+') : '');
 const STARTS = {
-  camp:  { name: 'Roadside Camp', icon: '⛺', desc: 'Four survivors and the camp tent. Everything else you build yourself. The usual start.', food: 14, water: 14, mat: 16, wood: 12,
+  camp:  { name: 'Roadside Camp', icon: '⛺', desc: 'Four survivors and the camp tent. Everything else you build yourself. The usual start.', food: 14, water: 14, mat: 16, wood: 20,   /* 3D.291: was 12 */
     b: [['hq', 8, 11]],   /* 3D.31: just the camp tent */ sv: [['Marcus', 'Guard', 3, 'brave', 7, 12], ['Amy', 'Medic', 2, 'caring', 5, 10], ['Lena', 'Scavenger', 2, 'scrounger', 9, 14], ['Ben', 'Farmer', 1, 'diligent', 6, 11]] },
   farm:  { name: 'Old Farmstead', icon: '🌾', desc: 'Two garden plots and a full pantry, but only three people and few scrap. Strong food, weak defence.', food: 30, water: 22, mat: 10, wood: 16,
     b: [['hq', 8, 11], ['farm', 8, 7], ['farm', 10, 7], ['canteen', 4, 7], ['tent', 11, 11]], sv: [['Ben', 'Farmer', 2, 'diligent'], ['Rosa', 'Farmer', 1, 'eater'], ['Marcus', 'Guard', 2, 'cautious']] },

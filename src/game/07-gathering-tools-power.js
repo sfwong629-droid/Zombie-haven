@@ -31,6 +31,10 @@ const MAPS = {
 };
 const MAP_BASE = { tree: TREE_SPOTS.map((p) => [...p]), rock: ROCK_SPOTS.map((p) => [...p]), car: CAR_SPOTS.map((p) => [...p]), bin: BIN_SPOTS.map((p) => [...p]) };
 let curMap = 'road';
+/* 3D.291 (overnight branch; owner, 21 Nov, W183, first-30-minute fix 2 in 13-LONG-GAME 3a: wood does not run out on day 1). In every bot
+   town wood was at 0 from the end of the first day: the first buildings cost more wood than four people chop. Up to level 3 (about the first
+   sitting) a felled load of wood carries EARLY_WOOD more, and the Roadside Camp starts with 20 wood (was 12). */
+const EARLY_WOOD = 2, earlyWood = () => ((S.lvl || 1) <= 3 ? EARLY_WOOD : 0);
 function setMap(k) { k = MAPS[k] ? k : 'road'; const M = MAPS[k]; S.map = k; curMap = k;
   const L = { tree: TREE_SPOTS, rock: ROCK_SPOTS, car: CAR_SPOTS, bin: BIN_SPOTS }; for (const q in L) { L[q].length = 0; L[q].push(...MAP_BASE[q].map((p) => [...p])); }
   if (k !== 'road') { const keep = (list, f, a, b) => { if (f == null) return; for (let i = list.length - 1; i >= 0; i--) if (hash2(list[i][0] * a + 3, list[i][1] * b + 5) >= f) list.splice(i, 1); };
@@ -95,7 +99,7 @@ function gatherTick(s) {
   const bonus = (K.res === 'wood' ? (s.job === 'Scavenger' || s.job === 'Farmer' ? 1 : 0) : K.res === 'stone' ? (s.job === 'Engineer' ? 1 : 0) : (s.job === 'Scavenger' ? 1 : 0)) + (stat(s, 'str') >= 7 ? 1 : 0);
   if (s.gatherK === 'wreck' && rnd() < .4) {   /* 3D.131 was .22 */ S.fuel = Math.min(rareCap(), (S.fuel || 0) + 1); flow('fuel', 'Siphoned from wrecks', 1); floats.push({ w: { ...s.w }, t: '+1 ⛽', col: '#ffb36b', a: 80, big: true }); bark(s, 'fuel', {}, { pri: 1 }); }   /* V3D.25: a wreck sometimes still has fuel in the tank */
   if (rnd() < .2) bark(s, { tree: 'chop', rock: 'mine', wreck: 'wreck', bin: 'bin' }[s.gatherK || 'tree']);
-  s.carriedLoot = K.res; s.carryAmt = (K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)]) + carryBonus(s);   /* 3D.28 backpacks */ s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
+  s.carriedLoot = K.res; s.carryAmt = (K.res === 'cloth' ? K.amt + (rnd() < .4 ? 1 : 0) : K.amt + bonus + TOOL_AMT[toolLvl(s.gatherK || 'tree', true)] + (K.res === 'wood' ? earlyWood() : 0)) + carryBonus(s);   /* 3D.28 backpacks */ s.gatherAt = null; s.faceW = null; s.activity = null; gainXp(s, 1);
   const jb = jobFor(K.res); s.gjob = null;
   if (jb) { jb.j.inb[K.res] = (jb.j.inb[K.res] || 0) + s.carryAmt; s.gjob = jb.j.id; s.dest = jobPt(jb); s.why = `Bringing ${RES_ICON[K.res]} to the ${jobName(jb)}`; }
   else { s.dest = depotPt(s); s.why = { wood: 'Carrying logs home', stone: 'Carrying stone home', mat: 'Carrying scrap home', cloth: 'Bringing cloth home' }[K.res]; }
