@@ -23,7 +23,7 @@ const Q = require('./lib');
     /* 2: a patient is on the way or inside (kept hurt, so the Tent stays in use) */
     wk.hp = wk.max; S.cloth = 5; let aidBusy = 0, seen = 0;
     pat.hp = Math.round(pat.max * .4); run(400, () => { pat.hp = Math.round(pat.max * .4); });   /* the patient sets out first */
-    wk.hp = Math.round(wk.max * .62); wk.patchT = 0; run(2500, () => { pat.hp = Math.round(pat.max * .4); if (busy()) { seen++; if (aiding(med)) aidBusy++; } });
+    let streak = 0; wk.hp = Math.round(wk.max * .62); wk.patchT = 0; run(2500, () => { pat.hp = Math.round(pat.max * .4); if (busy()) { seen++; if (aiding(med) && med.aidT === 0) { if (++streak > 2) aidBusy++; } else streak = 0; } else streak = 0; });   /* the patient is kept hurt and now and then steps out and sets off again: a dressing the Medic had begun in that gap may be finished, but the Medic may not be walking to a round */
     out.two = { seen, aidBusy, cloth: S.cloth, hp: wk.hp, c75: c75(wk) };
     /* 2b: the Medic is walking to a round when a patient sets out for the Tent: the Medic turns back */
     pat.hp = pat.max; if (['goFacility', 'useFacility'].includes(pat.mode)) { pat.mode = 'free'; pat.facility = null; pat.stateTicks = 0; pat.activity = null; } wk.hp = wk.max; run(600, () => { pat.hp = pat.max; });
@@ -42,7 +42,7 @@ const Q = require('./lib');
     if (r.one.cloth !== 4) bad.push('empty Tent: the round should use 1 cloth, used ' + (5 - r.one.cloth));
     if (!['work', 'goWork'].includes(r.one.back)) bad.push('the Medic did not go back to the Tent after the round: ' + r.one.back);
     if (r.two.seen < 100) bad.push('the patient was not at the Tent for the test (' + r.two.seen + ' samples)');
-    if (r.two.aidBusy) bad.push('the Medic was out on a round while someone was in the Tent or on the way');
+    if (r.two.aidBusy) bad.push('the Medic was walking to a round while someone was in the Tent or on the way');
     if (!r.back.walking || r.back.since < 50) bad.push('turn back: the test did not catch the Medic walking out (' + JSON.stringify(r.back) + ')'); else if (r.back.late) bad.push('the Medic kept walking to a round after a patient set out for the Tent');
     if (r.three.stayed) bad.push('with a second Medic free, the Medic at the Tent still left on a round');
     if (!r.three.second || r.three.hp < r.three.c75) bad.push('the second Medic did not do the round'); }

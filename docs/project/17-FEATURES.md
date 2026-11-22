@@ -13,7 +13,7 @@ The Features chat builds what the other chats decided, one change per build, eac
 | The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
 | Take command | 16 Nov | After the daytime threat |
 
-**W224, push access.** This chat's session could read the repo but was refused push access. The healing builds are eight commits on top of `f0d0d7f` (branch `art-direction-b`) in the session's workspace, and the owner has them as one patch file (`healing-3D.284-287.patch`; apply with `git am`). Until they are pushed, no other chat should use 3D.284 to 3D.287.
+**W224, push access.** This chat's session could read the repo but was refused push access. The healing builds are nine commits on top of `f0d0d7f` (branch `art-direction-b`) in the session's workspace, and the owner has them as one patch file (`healing-3D.284-287.patch`; apply with `git am`). Until they are pushed, no other chat should use 3D.284 to 3D.287.
 
 ## 2. Healing as built
 

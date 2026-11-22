@@ -271,7 +271,7 @@ ChatGPT chat:
 - ~~W109. Lime on selected tabs.~~ Owner, 18 Nov: white. Logged as U39 in `04-UI.md`, built in the UI chat with the Town tab icons (W79).
 
 Features chat (started 22 Nov; page `17-FEATURES.md`):
-- W224. **Push access.** The Features chat's session could read the repo but was refused push access, so healing (3D.284 to 3D.287, eight commits on `art-direction-b` after f0d0d7f) is committed in its workspace only; the owner has the commits as one patch file. Waiting: let the session push, or apply the patch from a chat that can (`git am`). **Build numbers 3D.284 to 3D.287 are taken.**
+- W224. **Push access.** The Features chat's session could read the repo but was refused push access, so healing (3D.284 to 3D.287, nine commits on `art-direction-b` after f0d0d7f) is committed in its workspace only; the owner has the commits as one patch file. Waiting: let the session push, or apply the patch from a chat that can (`git am`). **Build numbers 3D.284 to 3D.287 are taken.**
 - W225. **Healing, to look at after it is pushed and published:** hurt someone and watch: with no zombie in town they walk to the Medical Tent and come out at full health; a Medic patches the people who are at work to 75%; everyone mends slowly by day. Right? Two things for the Balance chat from the first bot runs (`17-FEATURES.md`, section 4): cloth ran out in the towns with healing (rounds use 1 cloth each and patch more people than before), and too few towns were run to judge the danger targets: run the full check.
 
 Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):
