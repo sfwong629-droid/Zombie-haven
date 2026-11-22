@@ -1,6 +1,6 @@
 # Zombie Haven: zombie moves and backstories
 
-**Draft, 21 Nov 2026 (Art chat). **The moves are approved** (W190, 21 Nov: "all the other one are good"; the Gatling Boss also gets a long-range gatling shooting animation). The backstories' direction is approved (W191, 21 Nov: "yes similar to that"); the Story chat settles each one (`09-STORY.md`, 10.2, W192). Built so far: the Dog's and the Stag's gallop (3D.256, W193).**
+**Draft, 21 Nov 2026 (Art chat). **The moves are approved** (W190, 21 Nov: "all the other one are good"; the Gatling Boss also gets a long-range gatling shooting animation). The backstories' direction is approved (W191, 21 Nov: "yes similar to that"); the Story chat settles each one (`09-STORY.md`, 10.2, W192). Built so far: the Dog's and the Stag's gallop (3D.256, W193); the Bloater Queen's arms, sweep and slam (3D.257, W199).**
 
 Owner, 21 Nov: "Most of the zombie are using one arm hit attack. Can you think of some animation for each one? Like leaper will need a jump animation. Digger will need a dig animation. Splitter need to actually split in half. … We might have to tie some of these zombie to the stories. Think of backstories for them."
 
@@ -60,7 +60,7 @@ One zombie per build, each shown as a sheet first. The zombies seen most come fi
 
 **The zombies in the game today**
 1. ~~**Dog and Stag: the run as a real gallop**~~ (3D.256).
-2. **Bloated and Bloater Queen**: arms swinging wide in the walk; the belly slam (the Queen: a wide two-arm sweep, then the slam).
+2. ~~**Bloater Queen**: arms swinging wide in the walk; a wide two-arm sweep, then the belly slam~~ (3D.257). **Bloated**: the same moves stretch his skin, because his arms are modelled joined to his belly; waiting on the owner (W200: a new model, keep them as they are, or leave him).
 3. **Walker: grab and bite** (both male and female).
 4. **Gatling Boss: braced fire at long range** (the barrels spin up, feet wide, a long sweeping burst).
 5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings).
