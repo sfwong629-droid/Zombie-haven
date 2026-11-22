@@ -1,0 +1,10 @@
+e1    before days 15 lvl 1 -> 5 pop 4 -> 9 | boss nights (lvl,total,peak): [(2, 17, 17), (3, 28, 17), (4, 25, 17), (5, 37, 31)] | ordinary median 11 | deaths 0 first-day 0 max/day 0 | peak 6 31 | issues 0
+e1    after  days 15 lvl 1 -> 5 pop 5 -> 14 | boss nights (lvl,total,peak): [(3, 33, 30), (4, 41, 29), (5, 46, 31), (5, 49, 31)] | ordinary median 13 | deaths 0 first-day 0 max/day 0 | peak 6 31 | issues 0
+e2    before days 15 lvl 9 -> 10 pop 16 -> 19 | boss nights (lvl,total,peak): [(10, 73, 38), (10, 73, 39), (10, 79, 40), (10, 62, 35), (10, 78, 46)] | ordinary median 27 | deaths 2 first-day 0 max/day 1 | peak 11 46 | issues 0
+e2    after  days 15 lvl 9 -> 11 pop 17 -> 22 | boss nights (lvl,total,peak): [(10, 78, 46), (10, 65, 46), (10, 72, 46), (11, 88, 61), (11, 76, 61)] | ordinary median 30 | deaths 0 first-day 0 max/day 0 | peak 11 61 | issues 1
+e3a   before days 15 lvl 13 -> 15 pop 25 -> 25 | boss nights (lvl,total,peak): [(13, 103, 108), (13, 146, 148), (14, 66, 50), (15, 81, 61)] | ordinary median 30 | deaths 1 first-day 0 max/day 1 | peak 17 148 | issues 0
+e3a   after  days 15 lvl 13 -> 15 pop 22 -> 29 | boss nights (lvl,total,peak): [(13, 96, 101), (13, 164, 169), (14, 94, 63), (15, 74, 63)] | ordinary median 30 | deaths 4 first-day 0 max/day 2 | peak 18 169 | issues 0
+e3b   before days 15 lvl 14 -> 16 pop 25 -> 16 | boss nights (lvl,total,peak): [(15, 70, 47), (15, 123, 117), (16, 240, 243), (16, 76, 61)] | ordinary median 40 | deaths 13 first-day 0 max/day 9 | peak 13 243 | issues 0
+e3b   after  days 15 lvl 14 -> 16 pop 25 -> 28 | boss nights (lvl,total,peak): [(15, 82, 64), (15, 99, 61), (16, 112, 120), (16, 179, 184), (16, 171, 163)] | ordinary median 33 | deaths 0 first-day 0 max/day 0 | peak 15 184 | issues 0
+city before empty
+city after empty

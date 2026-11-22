@@ -51,7 +51,12 @@ async def main():
     seed, maxd, budget, out = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
     os.makedirs(out, exist_ok=True); t0 = time.time(); srv, port = R.serve()
     async with async_playwright() as p:
-        br = await p.chromium.launch(); ctx, pg, errs = await R.open_game(br, port, 'long%d' % seed)
+        br = await p.chromium.launch(); init = None
+        if os.environ.get('START'):   # START=backup.json: begin from a saved town (a backup this tool wrote), to measure a high level without playing up to it
+            bk = json.load(open(os.environ['START'])); sv = json.dumps({**(bk.get('save') or bk), 'sid': 'import', 'time': int(time.time() * 1000)})
+            init = "try{if(!sessionStorage.getItem('zhPut')){localStorage.setItem('zombieHavenR1'," + json.dumps(sv) + ");localStorage.setItem('zhSlot','1');sessionStorage.setItem('zhPut','1');}}catch(e){}"
+        ctx, pg, errs = await R.open_game(br, port, 'long%d' % seed, init)
+        if init: print('start: day', await pg.evaluate('ZH.S.day'), 'level', await pg.evaluate('ZH.S.lvl'), 'people', await pg.evaluate('ZH.S.sv.length'), flush=True)
         await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("(v)=>{AP.exp=true;AP.long=v}", os.environ.get('AP_LONG', '1') == '1')
         f = open(os.path.join(out, 's%d.jsonl' % seed), 'a'); n = 0
         checkin = float(os.environ.get('CHECKIN_MIN', '0')); first = float(os.environ.get('FIRST_MIN', '0')); away_h = float(os.environ.get('AWAY_H', '24'))   # a player profile: CHECKIN_MIN real minutes of play, then AWAY_H real hours away (the game's own away credit), MAX_DAYS check-ins

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.260', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.261', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2555,7 +2555,7 @@ function finaleHour() {
   const f = S.finale; if (!f || S.won) return;
   if (S.hour === 20) note('important', `📻 FINAL STAND · NIGHT ${f.night + 1} OF ${FINALE_NIGHTS}: THE HORDE COMES AT 21:00`);
   if (S.hour === 21) { f.night++; const n = Math.round((12 + 6 * f.night + Math.floor(S.day / 3)) * DF().count), boost = 1 + .15 * f.night, add = (type) => { spawn(null, null, type); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.hp = z.max = Math.round(z.hp * boost); z.pw *= boost; };
-    for (let i = 0; i < n; i++) add(null); for (let i = 0; i < 2 * f.night; i++) add('brute'); for (let i = 0; i < f.night; i++) add('spitter'); if (f.night >= 2) spawnBoss(); if (f.night >= FINALE_NIGHTS) spawnBoss();
+    for (let i = 0; i < n; i++) add(null); for (let i = 0; i < 2 * f.night; i++) add('brute'); for (let i = 0; i < f.night; i++) add('spitter'); if (f.night >= 2) spawnBoss(null, true); if (f.night >= FINALE_NIGHTS) spawnBoss();
     note('critical', `Final stand: night ${f.night} of ${FINALE_NIGHTS}`, { key: 'finale', icon: '📻', threats: true, live: () => !!S.finale && !S.won && isNight(), dyn: () => `Final stand · night ${S.finale ? S.finale.night : FINALE_NIGHTS} of ${FINALE_NIGHTS} · ${S.z.filter((z) => z.hp > 0 && !z.human).length} zombies` }); }
   const alive = S.sv.length + (S.trip ? S.trip.members.length : 0), need = Math.ceil((f.pop0 || 2) / 2);
   if (f.night && alive < need) { S.finale = null; S.signalAgain = S.day + 5; S.z.forEach((z) => { if (z.mob) z.siege = false; }); saveGame(); showEventPopup({ title: '📻 THE CONVOY TURNED BACK', text: `Too few people were left (${alive} of the ${need} needed) and the convoy would not risk the stop.<br><br>Rebuild: the radio can call again from day ${S.signalAgain}.`, gains: 'The legacy goals you finished still count' }); return; }
@@ -2611,7 +2611,7 @@ function monsterGeneration() {
   const night = isNight(); if (night !== S.wasNight) { S.wasNight = night; S.nightSpawned = 0; S.waveN = 0; S.nightCap = 0; }
   if ((S.mobLeft || 0) > 0) {   /* 3D.199: the rest of the big horde streams in behind the boss */
     if (!night || S.bossOn == null || !S.z.some((z) => z.boss && z.hp > 0)) S.mobLeft = 0;
-    else if (tick % BIG_HORDE.gap === 0 && S.z.filter((z) => z.mob && z.hp > 0).length < mobCap()) { mobZombie(S.mobAt || spawnPoint()); S.mobLeft--; S.nightSpawned = (S.nightSpawned || 0) + 1; } }
+    else if (tick % mobGap() === 0 && S.z.filter((z) => z.mob && z.hp > 0).length < mobCap()) { mobZombie(S.mobAt || spawnPoint()); S.mobLeft--; S.nightSpawned = (S.nightSpawned || 0) + 1; } }
   if (night && (S.bossOn != null || nowD() < (S.calmUntil || 0))) return;   /* 3D.68: no fresh zombies while the boss lives, nor after it falls */
   const SP = window.ZH_SPAWN || {};   /* study knobs (tools/balance/respawn_study.py); the game itself never sets these */
   if (night && !SP.old && S.nightCap) {   /* 3D.70: a fixed horde per night, in three waves: the full horde at dusk, then two smaller pushes. Kill them all and the night goes quiet. Days are unchanged. */
@@ -2712,14 +2712,20 @@ function raiderDown(z) {   /* a beaten raider drops what they carried */
    (The first cut, 60% health, full hit, no cap, killed 6 to 12 people in one night in the bot's towns: tools/balance/shelved/.) */
 const BIG_HORDE = { mult: 4, hp: .33, hit: .5, first: .4, gap: 150, cap: [30, 45, 60, 60] };
 const mobCap = () => BIG_HORDE.cap[Math.min(3, Math.floor(((S.lvl || 1) - 1) / 5))];
-const bossMob = () => Math.round((3 + Math.round(avgLevel() * .8) + 3 * (S.terr || 0) + Math.floor(hDay() / 5)) * (S.day <= 14 ? .7 : 1)) * BIG_HORDE.mult;
+/* 3D.261 (rule 3 of 13-LONG-GAME; targets in 08-BALANCE, section 3): the big horde's size follows the town's level, toward about 60 / 120 / 240
+   zombies on a boss night by era (the night's own crowd adds a few). Before, it came from the survivors' levels, the territory and the day
+   strength, and the usual boss night was half the size wanted in eras 1 and 2 and a third in era 3. The first group is never more than may
+   stand at once, and the rest come faster when there are many, so that a big horde has arrived within about 4.5 game hours. */
+const MOB_LVL = [0, 16, 24, 32, 40, 48, 64, 76, 88, 100, 112, 150, 170, 190, 210, 230, 240, 240, 240, 240, 240];
+const bossMob = () => MOB_LVL[Math.max(1, Math.min(MOB_LVL.length - 1, S.lvl || 1))];
+const mobGap = () => Math.max(20, Math.min(BIG_HORDE.gap, Math.floor(4500 / Math.max(1, S.mobLeft0 || 1))));
 function mobZombie(a) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.hp = z.max = Math.max(1, Math.round(z.max * BIG_HORDE.hp)); z.pw = (z.pw || 1) * BIG_HORDE.hit; return z; }
-function spawnBoss(force) {
+function spawnBoss(force, escort) {   /* 3D.261: escort = a boss that is not the level's boss night (a crisis, a faction's boss, the last stand): it brings a third of the level's horde, about what it brought before */
   const a = spawnPoint(), d = zombieTypes.boss, tr = S.terr || 0, ks = Object.keys(BOSS_KINDS).filter((k) => k !== S.lastBoss), bk = force || (S.day <= 4 ? 'mutant' : ks[Math.floor(rnd() * ks.length)]), K = BOSS_KINDS[bk]; if (!force) S.lastBoss = bk;
   const L = avgLevel(), early = S.day <= 14 ? .6 : 1, bhp = Math.round((300 + 50 * L + 80 * tr) * (1 + .04 * hDay()) * DF().z * early);   /* V3D.13: gentler in the first two weeks */   /* V2.24: scales with the survivors' levels, not the Haven rank */
   S.z.push({ type: 'boss', bk, boss: true, pw: (1.25 + .03 * hDay()) * (S.day <= 14 ? .75 : 1), w: tc(a[0], a[1]), hp: bhp, max: bhp, cool: 40, phase: 0, dest: null, mode: 'appear', stateTicks: 60, target: null, path: null, siege: true, blocked: 0, goal: null, goalT: 0, wallT: null });
   { const bz = S.z[S.z.length - 1]; bz.hp = bz.max = Math.round(bz.hp * K.hp); }
-  const mob = bossMob(), first = Math.max(1, Math.round(mob * BIG_HORDE.first)); for (let i = 0; i < first; i++) mobZombie(a); S.mobLeft = mob - first; S.mobAt = [a[0], a[1]];   /* 3D.199: the rest follow in monsterGeneration */
+  const mob = escort ? Math.round(bossMob() / 3) : bossMob(), first = Math.max(1, Math.min(mobCap(), Math.round(mob * BIG_HORDE.first))); for (let i = 0; i < first; i++) mobZombie(a); S.mobLeft = S.mobLeft0 = mob - first; S.mobAt = [a[0], a[1]];   /* 3D.199: the rest follow in monsterGeneration */
   lureFire();   /* 3D.76 */
   S.bossOn = S.bossKills || 0;   /* 3D.68: the boss night is on (no fresh zombies join while it lives) */
   SFX('boss'); showEventPopup({ stage: { scene: 'boss', boss: bk, head: 'Boss!' }, short: K.line, chips: [`☠ ${mob} zombies follow`], title: K.name.toUpperCase() });
@@ -4084,12 +4090,12 @@ function facHour() {
   if (Q && Q.raidAt === S.day && S.hour === 20) { Q.raidAt = 0; banner('🪖 QUARANTINE COMMAND AT THE GATE'); spawnRaid('quar', Q.warN % 3 === 0); }
   if (X) { if (X.raidAt === S.day && bossNear()) X.raidAt = S.day + 1;
     if (X.raidAt === S.day && S.hour === 21) { X.raidAt = 0; banner('🧬 HELIX RETRIEVAL TEAM'); spawnRaid('helix', X.teams % 3 === 0); }
-    if (X.stalkAt === S.day && S.hour === 22) { X.stalkAt = 0; if (X.stalk && X.stalk.n === 1) radio('helix', rLine('helixStalk'), { level: 'important' }); spawnBoss('stalker'); const b = S.z[S.z.findIndex((z) => z.type === 'boss' && z.hp > 0 && !z.helix)]; if (b) { b.helix = true; b.hp = b.max = Math.round(b.max * (.8 + .2 * X.stalk.n)); } } }
+    if (X.stalkAt === S.day && S.hour === 22) { X.stalkAt = 0; if (X.stalk && X.stalk.n === 1) radio('helix', rLine('helixStalk'), { level: 'important' }); spawnBoss('stalker', true); const b = S.z[S.z.findIndex((z) => z.type === 'boss' && z.hp > 0 && !z.helix)]; if (b) { b.helix = true; b.hp = b.max = Math.round(b.max * (.8 + .2 * X.stalk.n)); } } }
   if (H) { if (H.walk && S.hour === 3) { const q = S.sv.find((x) => x.id === H.walk); H.walk = 0; if (q && (q.sat || 0) < 25) hollowWalkOut(q); else if (q) q.hollow = 0; }
     if (H.nightAt === S.day && S.hour === 21) { radio('hollow', rLine('hollowNight'), { level: 'important', title: 'A shepherded horde', more: 'A Hollow shepherd walks in with tonight\'s horde. While he lives, more zombies arrive every hour until 02:00. Kill him and they stop coming.' }); spawnRaid('hollow', true); const L = S.z[S.z.length - 1]; L.shep = true; L.leaderDone = true; for (const z of S.z) if (z.fac === 'hollow' && z !== L) z.hp = 0; S.z = S.z.filter((z) => !(z.fac === 'hollow' && z !== L)); H.shepOn = true; }
     if (H.shepOn && (S.hour >= 22 || S.hour <= 2)) { if (S.z.some((z) => z.shep && z.hp > 0)) { const n = 3 + Math.floor((S.lvl || 1) / 3); for (let i = 0; i < n; i++) spawn(); } else { H.shepOn = false; H.int = Math.max(0, (H.int || 0) - 25); renownGain(4, 'The Shepherd'); say('The shepherd is down. The flock loses its way.', true); } }
     if (H.shepOn && S.hour === 6) { H.shepOn = false; for (const z of S.z) if (z.shep) z.mode = 'rflee'; }
-    if (H.alphaDay === S.day && S.hour === 21) { radio('hollow', rLine('hollowAlpha'), { level: 'important' }); spawnBoss('butcher'); const b = S.z.find((z) => z.type === 'boss' && z.hp > 0 && !z.helix && !z.alpha); if (b) { b.alpha = true; b.hp = b.max = Math.round(b.max * 1.5); } for (let i = 0; i < 8 + (S.lvl || 1); i++) spawn(); } }
+    if (H.alphaDay === S.day && S.hour === 21) { radio('hollow', rLine('hollowAlpha'), { level: 'important' }); spawnBoss('butcher', true); const b = S.z.find((z) => z.type === 'boss' && z.hp > 0 && !z.helix && !z.alpha); if (b) { b.alpha = true; b.hp = b.max = Math.round(b.max * 1.5); } for (let i = 0; i < 8 + (S.lvl || 1); i++) spawn(); } }
   const X2 = (S.fac || {}).helix; if (X2 && X2.immune && !X2.taken) { const q = S.sv.find((x) => x.immune); if (q && q.mode === 'down' && S.z.some((z) => z.human && z.fac === 'helix' && z.hp > 0 && dist(z.w, q.w) < 6)) helixTake(q); }
 }
 /* story events: one a day at most; some are chains that continue a few days later */
@@ -5114,7 +5120,7 @@ const CRISES = {
     start: (c) => { c.until = S.day + 3; c.need = { food: 25, meds: 6 }; }, act: () => { const c = S.crisis; if (S.food < c.need.food || (S.meds || 0) < c.need.meds) { say(`Greenwater needs ${c.need.food} food and ${c.need.meds} medicine.`); return false; } S.food -= c.need.food; S.meds -= c.need.meds; fac('green').att = Math.min(100, fac('green').att + 20); S.seedUntil = S.day + 7; crisisEnd('won'); return true; },
     actLabel: 'Send the aid', day: (c) => { if (S.day >= c.until) { fac('green').att -= 15; crisisEnd('lost'); } } },
   tide: { icon: '🌊', name: 'The Tide', fits: () => true, desc: 'The radio warns of the biggest horde in months. It reaches the walls tomorrow at 21:00, in three waves.',
-    start: (c) => { c.night = S.day + 1; }, hour: (c) => { if (S.day === c.night && [21, 22, 23].includes(S.hour)) { const n = Math.round((14 + 4 * (S.hour - 20) + Math.floor(S.day / 6)) * DF().count); for (let i = 0; i < n; i++) { spawn(null, null, i % 9 === 0 ? 'brute' : i % 4 === 0 ? 'runner' : null); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; } if (S.hour === 23) spawnBoss(); }
+    start: (c) => { c.night = S.day + 1; }, hour: (c) => { if (S.day === c.night && [21, 22, 23].includes(S.hour)) { const n = Math.round((14 + 4 * (S.hour - 20) + Math.floor(S.day / 6)) * DF().count); for (let i = 0; i < n; i++) { spawn(null, null, i % 9 === 0 ? 'brute' : i % 4 === 0 ? 'runner' : null); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; } if (S.hour === 23) spawnBoss(null, true); }
       if (S.day === c.night + 1 && S.hour === 7) crisisEnd((c.lost || 0) === 0 ? 'won' : 'held'); } },
   refugees: { icon: '🚌', name: 'A refugee column', fits: () => true, desc: 'Six people from a fallen town are on the highway. Take them in within 2 days: you need the beds and 3 food each.',
     start: (c) => { c.until = S.day + 2; }, act: () => { const room = popCap() - S.sv.length - (S.kids || []).length, n = Math.min(6, room); if (n < 3) { say('Not enough beds: build more housing first (room for at least 3).'); return false; } if (S.food < n * 3) { say(`Taking in ${n} people needs ${n * 3} food.`); return false; } S.food -= n * 3; const e = tc(7 + OFF, 10 + OFF); for (let i = 0; i < n; i++) { const q = mk(freeFirst(), ['Farmer', 'Engineer', 'Guard', 'Medic', 'Cook', 'Scavenger'][i % 6], 2 + (i % 3), e.x + (i % 3) * .3, e.y + (i >> 1) * .3, S.sv.length); q.src = 'event'; q.sat = 2; S.sv.push(q); } crisisEnd('won', `${n} refugees joined the Haven.`); return true; },

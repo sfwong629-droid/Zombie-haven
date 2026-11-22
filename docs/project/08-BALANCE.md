@@ -302,6 +302,21 @@ One Toll raid was still seen on a boss day at 08:00 (seed 11, day 36). The likel
 
 Read with care: two towns each, and towns differ a lot from run to run. The daily player's nights moved into the range. **The era 1 boss night got smaller** (a town waiting at level 5 no longer grows its boss's crowd with the days), further under the 45 to 75 wanted: the boss's crowd needs its own size by level (next). The quick check stops at level 5 to 7, so it cannot show the change's main effect, which is on towns played for many game days at a high level; that needs the full check.
 
+**The big horde sized by level, 21 Nov (build 3D.261).** Rule 3, second change: the boss's horde is one number per level (`MOB_LVL`: 16 at level 1, 48 at level 5, 112 at level 10, 230 at level 15, 240 from level 16) and no longer comes from the survivors' levels, the territory and the day strength. The first group is never more than may stand at once (30 / 45 / 60), and a big horde arrives faster so that all of it can be there within about 4.5 game hours. A boss that is not the level's boss night (the weekly crisis, a faction's boss, the last stand) brings a third of that, about what it brought before. Bot, game open, the same starts before (3D.257) and after, 15 game days each; the era 2 and era 3 towns start from backups of the long-run test (`START=` in `long_study.py`):
+
+| Start | Boss nights before | Boss nights after | Wanted | Deaths before / after |
+|---|---|---|---|---|
+| New town, levels 1 to 5 | 17, 28, 25, 37 | 33, 41, 46, 49 | 45 to 75 | 0 / 0 |
+| Level 9 to 11 | 73, 73, 79, 62, 78 | 78, 65, 72, 88, 76 | 90 to 150 | 2 / 0 |
+| Level 13 to 15 | 66, 81 | 94, 74 | 180 to 300 | 1 / 4 (never more than 2 in a day) |
+| Level 14 to 16 | 70, 76 | 82, 99 | 180 to 300 | 13 / 0 |
+
+- **Era 1 is close to the range now; eras 2 and 3 hardly moved.** The horde is big enough on paper, but when the boss falls the game sends the rest of his horde away, and the fighters kill him while most of it is still waiting outside. Size alone cannot fix this: W201.
+- **Deaths are not readable from these runs.** The same town played twice gives very different results (the level 14 town: 13 deaths, 31 and 0 in three runs), and the nights that kill are not the level's boss nights: see the next two points.
+- **The weekly crisis "The Tide" is the killer at level 15 and 16**: 120 to 240 zombies standing at once in both versions (limit wanted: 60), 9 deaths in one day before the change. A first cut of this build gave The Tide's boss the full level horde on top (31 deaths, one person left); that is why other bosses now bring a third. The Tide needs the limit of 60 and a size by level (the next builds).
+- **More than 60 stand at once at level 13 too** (101 to 169 on two nights, in both versions), with no crisis running. Cause not found yet.
+- **Not measured:** level 20 (the bot tool fails when started from a level 20 backup), the daily and keen players.
+
 **Scorecard 1, 21 Nov (build 3D.243): today's game, before any change of the long-game plan.** Made with the balance routine (`13-LONG-GAME.md`, section 9; `tools/balance/check.sh`, `scorecard.py`). Three test players: daily (10 minutes once a real day, 30 on the first day; one of the three towns had a 10-minute first day), keen (20 minutes twice a day), open (the game open all the time; the four new-bot towns of the long-run test). "ok" is inside the range, "near" just outside, "OUT" outside; the verdict is the worst of the players shown. **Not a full check yet:** the daily towns stop at real day 32 to 34 and the one keen town at day 12, because a full check (three towns each, to level 20) needs about 8 hours of running.
 
 Towns: daily 3 (longest 34 real days), keen 1 (longest 12 real days), open 4 (longest 261 game days).
