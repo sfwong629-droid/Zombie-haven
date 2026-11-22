@@ -1045,7 +1045,7 @@ const AUTO_HELP_DAYS = 3;
 /* 3D.288 (owner, 19 Nov, W129 B; look C, W228): the rescue no longer kills zombies out of sight. Greenwater's farm truck drives in off the
    highway with its horn and alarm going; the zombies in town turn toward it; when it drives back out it crawls down the highway at a
    zombie's pace and the zombies follow it off the map (the car-alarm lure, on wheels). S.truck = { path, i, leg: 'in' | 'stop' | 'out', t }. */
-const TRUCK = { inSpd: .05, outSpd: .022, stop: 240, honk: 150, lead: 3.5, wait: 9000 };
+const TRUCK = { inSpd: .05, outSpd: .022, stop: 240, stopMax: 6000, honk: 150, lead: 3.5, wait: 9000 };
 function truckRoute() {   /* from the highway's east end to the Camp (or the middle of town), on the road where it can */
   const end = { x: COLS - 1, y: Wd.HWY_Y }, c = campB(), to = c ? Wd.approachTile(c) : tileOf(townCentre()), p = Wd.findPath(world, end, to);
   if (!p || !p.length) return null; const all = [end, ...p]; return all.slice(0, Math.max(2, all.length - 2)).map((q) => ({ x: q.x + .5, y: q.y + .5 })); }   /* it parks two tiles short of the Camp's door, not on top of it */
@@ -1053,6 +1053,30 @@ function truckStart() {
   for (const q of S.sv) if (q.mode === 'down') { q.stable = true; q.why = 'Help is coming: Greenwater is nearly here'; }   /* the bleed stops: their medic talks the town through it on the radio */
   const path = truckRoute(); if (!path) { (S.help ||= {}).arrived = true; return; }   /* no way in for a truck: the team comes on foot as before */
   S.truck = { path, i: 0, leg: 'in', t: 0 }; SFX('caralarm'); banner('🚚 GREENWATER IS HERE'); }
+function admitRescued(q) { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = Math.max(1, q.hp); q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the Greenwater medics'; }
+/* 3D.303 (W129): "their medics carry the fallen into care". Two Greenwater medics get out of the parked truck, each walks to someone who is
+   down, loads them on a stretcher cart and wheels them to the medical building (or the Camp), then fetches the next; when nobody is left
+   down they walk back and the truck leaves. A medic remembers who they carry by id (the save file keeps no links between people).
+   If it takes longer than TRUCK.stopMax, whoever is still down is taken in at once and the medics climb back in. */
+const MEDIC = { n: 2, spd: .045, load: 50 };
+function truckMedics() { const T = S.truck; if (!T || T.medics) return; const at = truckAt();
+  T.medics = Array.from({ length: MEDIC.n }, (_, i) => ({ id: 90001 + i, medic: true, human: true, name: ['Rosa', 'Abe'][i] || 'Medic', w: { x: at.x + (i ? .6 : -.6), y: at.y + .7 }, mode: 'go', carryId: null, carrying: null, t: 0 })); }
+const downFree = (me) => S.sv.filter((q) => q.mode === 'down' && !(q.rescuer && q.rescuer !== me && (q.rescuer.medic || q.rescuer.mode === 'rescueTo' || q.rescuer.mode === 'rescueCarry')));   /* not one someone else is already fetching */
+function medicsTick(T) {
+  const home = truckAt(); let busy = 0;
+  for (const m of T.medics) {
+    if (m.carryId != null && !m.carrying) { m.carrying = S.sv.find((q) => q.id === m.carryId) || null; if (m.carrying) m.carrying.rescuer = m; else { m.carryId = null; m.mode = 'go'; } }   /* after a load */
+    if (m.mode === 'in') continue;
+    if (m.mode === 'go') { const q = m.target && m.target.mode === 'down' && m.target.rescuer === m ? m.target : downFree(m).sort((a, b) => dist(a.w, m.w) - dist(b.w, m.w))[0];
+      if (!q) { m.target = null; m.mode = 'back'; } else { m.target = q; q.rescuer = m; busy++; m.why = `Fetching ${q.name}`;
+        if (followPath(m, q.w, MEDIC.spd) !== 'moving' || dist(m.w, q.w) < .7) { if ((m.t += 1) >= MEDIC.load) { m.t = 0; m.mode = 'rescueCarry'; m.carrying = q; m.carryId = q.id; m.target = null; q.why = 'On a Greenwater stretcher'; } } } }
+    if (m.mode === 'rescueCarry') { busy++; const q = m.carrying; if (!q || q.mode !== 'down') { m.carrying = null; m.carryId = null; m.mode = 'go'; continue; }
+      q.rescuer = m;   /* the downed person's own tick lets go of a rescuer it does not know; the medic keeps hold */
+      const dest = sitePoint(careDest()), r = followPath(m, dest, MEDIC.spd * .85); q.w = { ...m.w };
+      if (r !== 'moving' || dist(m.w, dest) < .8) { admitRescued(q); m.carrying = null; m.carryId = null; m.mode = 'go'; floats.push({ w: { ...m.w }, t: `🩹 ${q.name} is in care`, col: '#9be37b', a: 90 }); } }
+    if (m.mode === 'back') { if (downFree(m).length) { m.mode = 'go'; continue; } if (followPath(m, home, MEDIC.spd) !== 'moving' || dist(m.w, home) < .9) m.mode = 'in'; else busy++; }
+  }
+  return busy; }
 const truckAt = () => { const T = S.truck; if (!T) return null; const P = T.path, i = Math.min(P.length - 2, Math.floor(T.i)), f = Math.min(1, T.i - i), a = P[i], b = P[i + 1] || a; return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, yaw: Math.atan2(b.y - a.y, b.x - a.x) }; };
 function truckFollowers() { return S.z.filter((z) => z.hp > 0 && !z.zoo && !z.human && (Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)) || nearTown(z.w))); }
 function truckLead() {   /* every zombie in town turns to follow the truck out (they walk down the highway and off the map) */
@@ -1062,9 +1086,12 @@ function truckLead() {   /* every zombie in town turns to follow the truck out (
 function truckTick() {
   const T = S.truck; if (!T) return; const P = T.path, at = truckAt(); T.t++;
   if (T.t % TRUCK.honk === 0) { SFX('caralarm'); if (!floats.some((f) => f.honk)) floats.push({ w: { ...at }, t: '📯 HONK HONK', col: '#ffd84a', a: 90, honk: true }); }   /* one at a time */
-  if (T.leg === 'in') { if (tick % 30 === 0) for (const z of truckFollowers()) if (!z.lure && z.mode !== 'zleave') { z.lure = { x: at.x, y: at.y }; z.lureUntil = tick + 120; }   /* the noise turns heads as it comes */
-    T.i += TRUCK.inSpd; if (T.i >= P.length - 1) { T.i = P.length - 1; T.leg = 'stop'; T.t = 0; (S.help ||= {}).arrived = true; } return; }
-  if (T.leg === 'stop') { if (T.t >= TRUCK.stop) { T.leg = 'out'; T.path = P.slice().reverse(); T.i = 0; truckLead(); } return; }
+  if (T.leg === 'in' || T.leg === 'stop') { if (tick % 30 === 0) for (const z of truckFollowers()) if (!z.lure && z.mode !== 'zleave') { z.lure = { x: at.x, y: at.y }; z.lureUntil = tick + 120; }   /* the noise turns heads as it comes */
+    if (T.leg === 'in') { T.i += TRUCK.inSpd; if (T.i >= P.length - 1) { T.i = P.length - 1; T.leg = 'stop'; T.t = 0; truckMedics(); (S.help ||= {}).arrived = true; } return; } }
+  if (T.leg === 'stop') { const busy = T.medics ? medicsTick(T) : 0;
+    if (T.t >= TRUCK.stopMax) { for (const q of S.sv) if (q.mode === 'down') admitRescued(q); for (const m of T.medics || []) { if (m.carrying) m.carrying.rescuer = null; m.mode = 'in'; } }   /* taking too long: the rest are taken in at once */
+    else if (T.t < TRUCK.stop || busy || (T.medics && T.medics.some((m) => m.mode !== 'in'))) return;
+    T.medics = null; T.leg = 'out'; T.path = P.slice().reverse(); T.i = 0; T.t = 0; truckLead(); return; }
   { const fs = S.z.filter((z) => z.truck && z.hp > 0), near = fs.length ? Math.min(...fs.map((z) => dist(z.w, at))) : 0; if (near > TRUCK.lead && T.t < TRUCK.wait) return; }   /* it leads: it waits for the nearest follower to catch up (at most TRUCK.wait ticks in all) */
   T.i += TRUCK.outSpd; if (T.i >= P.length - 1) { S.truck = null; const left = S.z.filter((z) => z.truck && z.hp > 0).length; note('important', `🚚 The truck is gone down the highway${left ? `; ${left} zombie${left === 1 ? ' is' : 's are'} still shuffling after it` : ' and the town is quiet'}.`); }
 }
@@ -1075,11 +1102,12 @@ function helpTick() {
       note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
-  if (h.arrived) { h.arrived = false; const led = truckLead();
-    let saved = 0; for (const q of S.sv) if (q.mode === 'down') { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the rescue team'; saved++; }
+  if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.303: they follow when it drives off; until then the horn holds them round the truck */
+    let saved = 0; if (S.truck) { saved = S.sv.filter((q) => q.mode === 'down').length; truckMedics(); }   /* 3D.303: their medics get out and carry the fallen in */
+    else for (const q of S.sv) if (q.mode === 'down') { admitRescued(q); saved++; }   /* no truck (no road in): as before */
     h.owe = { day: S.day + 2, ...HELP_COST }; SFX('rescued');
     const self = h.self; h.self = false;
-    showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and they carried ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
+    showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and their medics ${S.truck ? 'are carrying' : 'carried'} ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
     showEventPopup({ title: '📻 THEY CAME FOR THE FAVOUR', text: `The group that saved your people asks for ${o.food} food and ${o.water} water.`, buttons: [
@@ -4618,7 +4646,7 @@ function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   if (S.sh) shMemSave(S.sh);   /* 3D.302 a game saved with a squad inside keeps what they have done there */
-  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
+  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (rest.truck && rest.truck.medics) rest.truck = { ...rest.truck, medics: rest.truck.medics.map(({ carrying, target, path, pathGoal, pathVer, arrG, ...m }) => m) };   /* 3D.303: a medic is saved without its links to people (it finds its patient again by carryId) */ if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
   return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
