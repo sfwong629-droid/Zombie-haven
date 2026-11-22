@@ -515,3 +515,4 @@ html.glass .statC, html.glass .need { min-height: 44px; cursor: pointer; }   /* 
 .pfSeg button, .pfSort { min-height: 44px; }   /* U50: the People filters (were 36 px) */
 #requestBox .act { position: relative; } #requestBox .act::before { content: ''; position: absolute; inset: -5px 0; }   /* found by this build's check: the move-in card's Accept and Not yet (44 px drawn, 37 on a small phone) */
 /* 3D.270 (owner, 21 Nov: "the renown has a oval around it"): the tap area above (3D.268) picked up the rim light's tint and drew a pale ring round the chip; it is invisible again (background, border, shadow off). */
+body:has(#confirmBar[style*="display: block"]) #expBar { display: none !important; }   /* 3D.271 (owner, 21 Nov: "exploration timer overlap when i am building something"): the trip bar (or its small timer) steps aside while a building, wall, road or trap is being placed; it comes back when placing ends */
