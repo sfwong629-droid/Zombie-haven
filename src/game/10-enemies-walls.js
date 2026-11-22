@@ -306,11 +306,14 @@ function breatherWatch() {
     if (died > 0 || overrun) { S.graceUntil = Math.max(S.graceUntil || 0, S.day + 2 + 6 / 24); S.breathers = (S.breathers || 0) + 1;
       note('important', '🌄 A BREATHER', { log: `After last night (${died ? died + (died > 1 ? ' people lost' : ' person lost') : 'everyone went down'}), the dead hang back: the next two nights are quieter, with no boss night and no raiders. Rebuild while you can.` }); } }
 }
+/* 3D.298 (overnight, W183 first-30-minute fix 4): the first sitting (levels 1 and 2) has no roaming raiders. Raids also still wait for game day 4. */
+const FIRST_RAID_LVL = 3, raidsOpen = () => (S.lvl || 1) >= FIRST_RAID_LVL;
 function eventSchedule() {   /* called every game hour */
   const now = S.day + S.hour / 24; breatherWatch(); finaleHour(); crisisHour(); comebackConvoy();
   if (!fac('toll').met && facOk('toll') && S.hour === 10 && !guest && !S.finale && (S.day >= 7 || (S.day >= 5 && rnd() < .5))) { S.lastStory = 'toll1'; STORY.toll1.run(); }   /* 3D.173 owner: the Toll Kings find the town by day 5-7 (round 3: first met on day 12-18, nothing to raid) */
   if (S.day >= 4 && now >= S.nextRaid) {   /* 3D.64 balance: raiders from day 4 (was 2) */
-  if (graceOn()) S.nextRaid = now + 1; else if (bossNear()) S.nextRaid = Math.floor(now) + 1 + rnd() * .4;   /* 3D.245 (owner, 21 Nov, W172): never a raid on a boss day or the day before; the raiders wait for the first free day */
+  if (!raidsOpen()) S.nextRaid = now + 1 + rnd() * .5;   /* 3D.298 (overnight, W183 fix 4): no raiders before level 3, the first sitting; the first comes within 1.5 days of it */
+  else if (graceOn()) S.nextRaid = now + 1; else if (bossNear()) S.nextRaid = Math.floor(now) + 1 + rnd() * .4;   /* 3D.245 (owner, 21 Nov, W172): never a raid on a boss day or the day before; the raiders wait for the first free day */
   else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
