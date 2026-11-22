@@ -1917,6 +1917,12 @@ function vehModel(k) {
   if (k === 'van') { const c = '#7a8556', pl = '#55606b'; P.put(box(2.5, .95, 1.2), c, M4(-.1, .78, 0)); P.put(box(.55, .7, 1.16), c, M4(1.35, .62, 0)); P.put(box(.04, .26, 1.0), '#2b3a44', M4(1.63, .86, 0)); P.put(box(.12, .32, 1.1), pl, M4(1.66, .44, 0));
     for (let i = 0; i < 5; i++) P.put(box(.05, .32, 1.12), '#3a4048', M4(1.73, .44, -.45 + i * .225)); for (const z of [-1, 1]) { P.put(box(2.2, .5, .06), pl, M4(-.15, .72, z * .62)); P.put(box(.5, .1, .065), '#1e2024', M4(.45, 1.02, z * .63)); } P.put(box(2.4, .08, 1.1), pl, M4(-.1, 1.29, 0));
     P.put(box(.6, .12, .5), '#3a4048', M4(-.5, 1.38, 0)); for (const z of [-1, 1]) P.put(box(.04, .08, .16), '#f2e6a0', M4(1.64, .66, z * .42)); for (const x of [-.85, .95]) for (const z of [-1, 1]) wheel(x, z * .6, .25); }
+  if (k === 'gwtruck') {   /* 3D.288 (owner, W228 C): Greenwater's farm stake truck, barrels of the Old Brine, one big horn on a pole, an orange light bar */
+    const gw = '#5f9a3c', wood = '#8a6a44'; P.put(box(2.6, .22, 1.2), '#5a4a36', M4(-.1, .48, 0)); P.put(box(.85, .7, 1.12), gw, M4(.95, .82, 0)); P.put(box(.45, .28, 1.14), '#2b3a44', M4(.98, .95, 0)); P.put(box(.38, .35, 1.0), gw, M4(1.45, .62, 0)); P.put(box(.1, .16, 1.04), '#8a8f96', M4(1.66, .45, 0));
+    for (const z of [-1, 1]) { for (let i = 0; i < 5; i++) P.put(box(.06, .5, .05), wood, M4(-1.3 + i * .4, .84, z * .58)); P.put(box(1.7, .06, .05), wood, M4(-.5, 1.05, z * .58)); P.put(box(.04, .08, .14), '#f2e6a0', M4(1.67, .66, z * .36)); }
+    for (const [x, z] of [[-1.0, -.28], [-1.0, .28], [-.45, -.28], [-.45, .28]]) P.put(cyl(.2, .2, .5, 10), '#7a5a34', M4(x, .84, z)); P.put(box(.6, .08, .5), '#d9d4c4', M4(.1, .62, 0));
+    P.put(cyl(.04, .04, .9, 6), '#777777', M4(.7, 1.6, 0)); P.put(new THREE.ConeGeometry(.16, .4, 10, 1, true), '#c9c9c9', M4(.95, 2.05, 0, 0, 0, -Math.PI / 2)); P.put(box(.22, .1, .8), '#ff9a2a', M4(.95, 1.22, 0));
+    for (const x of [-.9, .95]) for (const z of [-1, 1]) wheel(x, z * .6, .26); }
   P.build(g, .026); VEHM[k] = g; return g.clone();
 }
 const vehShown = new Map();
@@ -1926,6 +1932,7 @@ function syncVehicles() {
   motors.forEach((k, i) => { if (D && D.k === k) return; if (trip && trip.veh === k && !trip.vehBroke) return; if (V[k].broken && trip && trip.veh === k) return; const b = gs[i]; if (b) want.set(k, { b, x: .14, z: 0, tint: V[k].restoring > 0 }); });
   if (V.cart && gs[0] && !(trip && trip.veh === 'cart')) want.set('cart', { b: gs[0], x: -.37, z: .36, cart: true });
   if (D && D.path && D.path.length > 1) { const i = Math.min(D.path.length - 2, Math.floor(D.i)), f = D.i - i, a = D.path[i], c = D.path[i + 1]; want.set(D.k, { drive: true, x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, yaw: Math.atan2(c.y - a.y, c.x - a.x) }); }
+  { const R = G.S.truck; if (R && R.path && R.path.length > 1) { const i = Math.min(R.path.length - 2, Math.floor(R.i)), f = Math.min(1, R.i - i), a = R.path[i], c = R.path[i + 1]; want.set('gwtruck', { drive: true, x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, yaw: Math.atan2(c.y - a.y, c.x - a.x) }); } }   /* 3D.288 the rescue truck */
   for (const [k, m] of vehShown) if (!want.has(k)) { scene.remove(m); vehShown.delete(k); }
   for (const [k, o] of want) { let m = vehShown.get(k); if (!m) { m = vehModel(k); scene.add(m); vehShown.set(k, m); }
     if (o.drive) { m.position.set(o.x * T, 0, o.y * T); m.rotation.y = -o.yaw; continue; }

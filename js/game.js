@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.287', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.288', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1039,18 +1039,44 @@ function radioHelp() {
    come by themselves, without being called, whatever is owed and even with the Camp wrecked (3D.251), at most once every AUTO_HELP_DAYS game days. They ask the same favour.
    (2 of 10 bot towns bled out to the last person: docs/project/12-LONG-RUN.md. The truck of W129 will replace how they arrive.) */
 const AUTO_HELP_DAYS = 3;
+/* 3D.288 (owner, 19 Nov, W129 B; look C, W228): the rescue no longer kills zombies out of sight. Greenwater's farm truck drives in off the
+   highway with its horn and alarm going; the zombies in town turn toward it; when it drives back out it crawls down the highway at a
+   zombie's pace and the zombies follow it off the map (the car-alarm lure, on wheels). S.truck = { path, i, leg: 'in' | 'stop' | 'out', t }. */
+const TRUCK = { inSpd: .05, outSpd: .022, stop: 240, honk: 150, lead: 3.5, wait: 9000 };
+function truckRoute() {   /* from the highway's east end to the Camp (or the middle of town), on the road where it can */
+  const end = { x: COLS - 1, y: Wd.HWY_Y }, c = campB(), to = c ? Wd.approachTile(c) : tileOf(townCentre()), p = Wd.findPath(world, end, to);
+  if (!p || !p.length) return null; const all = [end, ...p]; return all.slice(0, Math.max(2, all.length - 2)).map((q) => ({ x: q.x + .5, y: q.y + .5 })); }   /* it parks two tiles short of the Camp's door, not on top of it */
+function truckStart() {
+  for (const q of S.sv) if (q.mode === 'down') { q.stable = true; q.why = 'Help is coming: Greenwater is nearly here'; }   /* the bleed stops: their medic talks the town through it on the radio */
+  const path = truckRoute(); if (!path) { (S.help ||= {}).arrived = true; return; }   /* no way in for a truck: the team comes on foot as before */
+  S.truck = { path, i: 0, leg: 'in', t: 0 }; SFX('caralarm'); banner('🚚 GREENWATER IS HERE'); }
+const truckAt = () => { const T = S.truck; if (!T) return null; const P = T.path, i = Math.min(P.length - 2, Math.floor(T.i)), f = Math.min(1, T.i - i), a = P[i], b = P[i + 1] || a; return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, yaw: Math.atan2(b.y - a.y, b.x - a.x) }; };
+function truckFollowers() { return S.z.filter((z) => z.hp > 0 && !z.zoo && !z.human && (Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)) || nearTown(z.w))); }
+function truckLead() {   /* every zombie in town turns to follow the truck out (they walk down the highway and off the map) */
+  const exit = { x: COLS - .5, y: Wd.HWY_Y + .5 + (rnd() < .5 ? 1 : 0) }; let n = 0;
+  for (const z of truckFollowers()) { z.mode = 'zleave'; z.retreat = true; z.truck = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.lure = null; z.leaveTo = { ...exit }; n++; }
+  if (S.truck) S.truck.led = n; return n; }
+function truckTick() {
+  const T = S.truck; if (!T) return; const P = T.path, at = truckAt(); T.t++;
+  if (T.t % TRUCK.honk === 0) { SFX('caralarm'); if (!floats.some((f) => f.honk)) floats.push({ w: { ...at }, t: '📯 HONK HONK', col: '#ffd84a', a: 90, honk: true }); }   /* one at a time */
+  if (T.leg === 'in') { if (tick % 30 === 0) for (const z of truckFollowers()) if (!z.lure && z.mode !== 'zleave') { z.lure = { x: at.x, y: at.y }; z.lureUntil = tick + 120; }   /* the noise turns heads as it comes */
+    T.i += TRUCK.inSpd; if (T.i >= P.length - 1) { T.i = P.length - 1; T.leg = 'stop'; T.t = 0; (S.help ||= {}).arrived = true; } return; }
+  if (T.leg === 'stop') { if (T.t >= TRUCK.stop) { T.leg = 'out'; T.path = P.slice().reverse(); T.i = 0; truckLead(); } return; }
+  { const fs = S.z.filter((z) => z.truck && z.hp > 0), near = fs.length ? Math.min(...fs.map((z) => dist(z.w, at))) : 0; if (near > TRUCK.lead && T.t < TRUCK.wait) return; }   /* it leads: it waits for the nearest follower to catch up (at most TRUCK.wait ticks in all) */
+  T.i += TRUCK.outSpd; if (T.i >= P.length - 1) { S.truck = null; const left = S.z.filter((z) => z.truck && z.hp > 0).length; note('important', `🚚 The truck is gone down the highway${left ? `; ${left} zombie${left === 1 ? ' is' : 's are'} still shuffling after it` : ' and the town is quiet'}.`); }
+}
 function helpTick() {
   { const h0 = S.help || {};
     if (!h0.coming && (h0.auto || 0) <= S.day && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
       S.help = { ...h0, coming: tick + 300, auto: S.day + AUTO_HELP_DAYS, self: true };
       note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;
-  if (h.coming && tick >= h.coming) { h.coming = 0; let killed = 0;
-    for (const z of S.z) if (z.hp > 0 && !z.zoo && !z.human && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y))) { z.hp = 0; killed++; }
+  if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
+  if (h.arrived) { h.arrived = false; const led = truckLead();
     let saved = 0; for (const q of S.sv) if (q.mode === 'down') { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = 1; q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the rescue team'; saved++; }
     h.owe = { day: S.day + 2, ...HELP_COST }; SFX('rescued');
     const self = h.self; h.self = false;
-    showEventPopup({ title: '🚙 THE RESCUE TEAM ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}They cleared ${killed} zombie${killed === 1 ? '' : 's'} from the town and carried ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
+    showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and they carried ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
     showEventPopup({ title: '📻 THEY CAME FOR THE FAVOUR', text: `The group that saved your people asks for ${o.food} food and ${o.water} water.`, buttons: [
@@ -7624,7 +7650,7 @@ function simTick() { Wd.touch();
   if (S.cut) { for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y }; tick++; cutTick(); return; }   /* 3D.102 the opening cutscene runs instead of the town */
   if (S.sh) { S.shAcc = (S.shAcc || 0) + (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) / simSpeed; while (S.sh && S.shAcc >= 1) { S.shAcc--; shTick(); } if (S.sh && S.sh.practice) return; S.shSlow = (S.shSlow || 0) + 1; if (S.shSlow % 4) return; }   /* 3D.115 the squad's own pace, not the town speed */   /* practice: the town waits */   /* 3D.108 the town keeps running, slowed right down, while the squad is inside */
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
-  tick++; if (S.alert > 0) S.alert--; driveTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { downWhyTick(); incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(.001); S.sv.forEach(ai); spreadOut(); if (tick % 30 === 0) wallUnstick(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
+  tick++; if (S.alert > 0) S.alert--; driveTick(); truckTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { downWhyTick(); incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(.001); S.sv.forEach(ai); spreadOut(); if (tick % 30 === 0) wallUnstick(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
