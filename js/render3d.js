@@ -1944,6 +1944,48 @@ function freeTree(root) {
   scene.traverse((o) => { if (o.geometry) geos.delete(o.geometry); for (const m of [].concat(o.material || [], o.customDepthMaterial || [])) { mats.delete(m); for (const k in m) { const v = m[k]; if (v && v.isTexture) texs.delete(v); } } });
   for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of texs) t.dispose(); for (const im of insts) if (im.dispose) im.dispose();
 }
+/* 3D.276 Strongholds chat: the things in a stronghold's rooms (B3), its floor hazards (B4) and its dark rooms (B5), drawn from the plan.
+   Static things are merged per colour like the camp props; the group is rebuilt only when one of them changes (a switch worked, a crate picked up). */
+const shZoneMat = {}; const shZoneM = (k) => shZoneMat[k] || (shZoneMat[k] = new THREE.MeshBasicMaterial({ color: { water: 0x3f7fb0, fire: 0xff7a2a, gas: 0x9ad24a, cold: 0xdff2ff, heat: 0xff5a3a, ice: 0xcfe8ff, shred: 0x2a2a2a }[k] || 0xffffff, transparent: true, opacity: { water: .5, fire: .45, gas: .35, cold: .22, heat: .3, ice: .35, shred: .55 }[k] || .35, depthWrite: false }));
+const shDarkMat = new THREE.MeshBasicMaterial({ color: 0x05070c, transparent: true, opacity: .62, depthWrite: false });
+function shThingsKey(H) { return (H.things || []).map((t) => (t.done ? 1 : 0) + (t.carried != null ? 'c' : '') + (t.delivered ? 'd' : '') + (t.out ? 'o' : '') + t.x + ',' + t.y).join('|') + '/' + (H.zones || []).map((z) => (z.on === false ? 0 : 1) + z.x + ',' + z.y + ',' + z.w).join('|') + '/' + (H.lit ? 1 : 0) + Object.keys(H.rev || {}).length; }
+function shThingsGroup(H) { const g = new THREE.Group(), Q = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, PL = H.plan || {}, glow = [];
+  for (const t of H.things || []) { if (t.carried != null) continue; const cx = (AX + t.x + .5) * T, cz = (AY + t.y + .5) * T, ry = (t.r || 0) * Math.PI / 2, on = !!t.done;
+    const b = (w, h, d, col, x, y, z, r = 0, rx = 0, rz = 0) => Q.put(box(w, h, d), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, r, rx, rz)));
+    const c = (r0, r1, h, col, x, y, z, seg = 8, rx = 0, rz = 0) => Q.put(cyl(r0, r1, h, seg), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, 0, rx, rz)));
+    const gl = (geo, x, y, z) => { const q = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(q.attributes)) if (k !== 'position' && k !== 'normal') q.deleteAttribute(k); q.applyMatrix4(M4(cx, 0, cz, ry).multiply(M4(x, y, z))); glow.push(q); };
+    const k = t.k;
+    if (k === 'bed') { b(2.2, .28, 1.0, '#9aa3a8', T / 2, .14, 0); b(2.1, .14, .9, '#f2f2ee', T / 2, .35, 0); b(1.3, .08, .92, '#8fb6c9', T / 2 + .35, .44, 0); b(.4, .12, .6, '#ffffff', T / 2 - .75, .48, 0); b(.08, .6, 1.0, '#7d878c', T / 2 - 1.1, .3, 0); }
+    else if (k === 'locker') { b(1.0, 1.9, .6, on ? '#c9d7de' : '#dfe8ec', 0, .95, -.6); b(.5, .5, .04, '#c9412e', 0, 1.35, -.28); b(.14, .38, .05, '#ffffff', 0, 1.35, -.25); b(.38, .14, .05, '#ffffff', 0, 1.35, -.25); if (on) b(.9, .05, .6, '#b2493f', .5, .1, .1); }
+    else if (k === 'lever') { b(.5, .9, .3, '#5d6066', 0, .45, -.5); b(.08, .6, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.1, -.4, 0, on ? -.8 : .8); c(.09, .09, .1, '#2e2c2a', 0, 1.4, -.4 + (on ? -.4 : .4)); gl(box(.12, .12, .04), 0, .7, -.34); }
+    else if (k === 'valve') { c(.18, .18, 2.2, '#7c858e', 0, .6, 0, 10, 0, Math.PI / 2); c(.12, .12, .9, '#6f7780', 0, .45, 0, 8); c(.42, .42, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.0, 0, 12); b(.8, .05, .05, on ? '#5fbf6a' : '#c9412e', 0, 1.0, 0, on ? .8 : 0); }
+    else if (k === 'pump') { b(1.3, .9, 1.0, on ? '#5a7a5a' : '#5f666e', 0, .45, 0); c(.2, .2, 1.4, '#7c858e', .8, .3, 0, 10, 0, Math.PI / 2); c(.35, .35, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.0, .2, 12, Math.PI / 2); gl(box(.14, .1, .04), -.4, .7, .52); }
+    else if (k === 'generator') { b(1.5, .9, .9, '#6a7a5a', 0, .45, 0); c(.1, .1, .7, '#3e4348', .5, 1.1, 0, 6); b(.4, .3, .05, '#2e2a28', -.3, .6, .46); if (on) gl(box(.3, .18, .04), -.3, .6, .49); }
+    else if (k === 'speaker') { b(.12, 2.4, .12, '#5f666e', 0, 1.2, 0); Q.put(new THREE.ConeGeometry(.35, .5, 10, 1, true), on ? '#d9b233' : '#8a8f94', M4(cx, 2.3, cz, ry, Math.PI / 2)); }
+    else if (k === 'crate' || k === 'files' || k === 'seed' || k === 'jar' || k === 'box') { const col = { files: '#c9b88a', seed: '#6a8a3a', jar: '#7fb0a0', box: '#8a6038' }[k] || '#a0743c'; if (t.delivered) { b(.6, .45, .5, col, 0, .23, 0); } else { b(.75, .55, .6, col, 0, .28, 0); b(.78, .08, .62, '#5a3b23', 0, .58, 0); gl(box(.2, .2, .2), 0, .9, 0); } }
+    else if (k === 'safe') { b(1.0, 1.0, .8, '#3e4348', 0, .5, -.3); c(.16, .16, .06, '#c9c9c9', 0, .55, .12, 10, Math.PI / 2); }
+    else if (k === 'cell') { for (let i = 0; i < 7; i++) b(.06, 1.4, .06, '#4a4d52', -1.1 + i * .37, .7, 0); b(2.4, .08, .08, '#4a4d52', 0, 1.4, 0); b(2.4, .08, .08, '#4a4d52', 0, .1, 0); }
+    else if (k === 'warm') { c(.32, .32, .8, '#6a4a2e', 0, .4, 0, 10); if (!t.out) { Q.put(new THREE.ConeGeometry(.28, .5, 7), '#ff9a3c', M4(cx, 1.0, cz)); gl(new THREE.ConeGeometry(.2, .4, 7), 0, 1.0, 0); } }
+    else if (k === 'desk') { b(1.6, .08, .8, '#8a6a44', 0, .75, 0); for (const [dx, dz] of [[-.7, -.3], [.7, -.3], [-.7, .3], [.7, .3]]) b(.08, .75, .08, '#6a4a2e', dx, .37, dz); b(.5, .35, .05, '#2e2a28', 0, 1.0, -.2); }
+    else if (k === 'shelf') { b(2.2, 1.8, .5, '#7a6248', 0, .9, 0); for (const y of [.5, 1.0, 1.5]) for (let i = 0; i < 5; i++) b(.3, .32, .35, ['#c9b88a', '#d9cba8', '#b5a47a'][i % 3], -.8 + i * .4, y + .17, .02); }
+    else if (k === 'tank') { c(1.0, 1.0, 3.0, t.look || '#c9c9c9', 0, 1.5, 0, 16); c(1.02, 1.02, .12, '#7c858e', 0, 2.2, 0, 16); c(1.02, 1.02, .12, '#7c858e', 0, .8, 0, 16); if (on) b(.6, .3, .05, '#5fbf6a', 0, 1.5, 1.0); }
+    else if (k === 'vat') { c(.9, .8, 1.4, '#9aa0a2', 0, .7, 0, 14); c(.7, .7, .05, t.look || '#c9a644', 0, 1.42, 0, 14); }
+    else if (k === 'belt') { b(T * (t.w || 1), .35, .9, '#3e4348', T * ((t.w || 1) - 1) / 2, .4, 0); for (let i = 0; i < (t.w || 1) * 2; i++) b(.3, .22, .3, '#b0892e', -T / 2 + .4 + i * T / 2, .7, 0); for (let i = 0; i < (t.w || 1); i++) b(.1, .4, .9, '#5f666e', i * T, .2, 0); }
+    else if (k === 'ram') { b(2.6, .5, .5, '#6a4a2e', 0, .6, 0); c(.3, .3, .5, '#4a4f55', 1.4, .6, 0, 10, 0, Math.PI / 2); for (const dx of [-.9, .9]) for (const dz of [-.4, .4]) c(.25, .25, .1, '#2e2c2a', dx, .25, dz, 10, Math.PI / 2); }
+    else if (k === 'mast') { for (const [dx, dz] of [[-.5, -.5], [.5, -.5], [-.5, .5], [.5, .5]]) b(.1, 7, .1, '#8a3a3a', dx * (1 - .0), 3.5, dz); for (let i = 1; i < 7; i++) b(1.1, .06, .06, '#8a3a3a', 0, i, -.5); gl(box(.3, .3, .3), 0, 7.1, 0); }
+    else if (k === 'hold') { Q.put(new THREE.TorusGeometry(T * (t.r || 2), .06, 6, 40).rotateX(Math.PI / 2), H.hold && H.hold.on ? '#ffd56b' : '#9fd8ff', M4(cx, .05, cz)); b(.9, .9, .6, '#5f5a56', 0, .45, -.2); b(.6, .4, .05, '#2e2a28', 0, .7, .1); gl(box(.4, .2, .04), 0, .7, .13); }
+    else if (k === 'stall') { b(2.0, .9, .9, t.look || '#c94a3a', 0, .45, 0); for (let i = 0; i < 5; i++) b(.42, .08, 1.3, i % 2 ? '#f0ece0' : (t.look || '#c94a3a'), -.8 + i * .4, 2.0, 0, 0, .3); for (const dx of [-.95, .95]) b(.08, 2.0, .08, '#6a4a2e', dx, 1.0, .5); }
+    else if (k === 'stage') { b(T * 3, .5, T * 1.6, '#8a5a32', T, .25, 0); b(T * 3, 2.2, .1, '#c94a3a', T, 1.6, -T * .8); b(T * 1.2, .6, .05, '#e8c45a', T, 2.5, -T * .78); }
+    else if (k === 'ride') { c(1.6, 1.6, .2, '#6a4a2e', 0, .1, 0, 14); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; b(.1, 1.6, .1, '#c9c0a8', Math.cos(a) * 1.2, .9, Math.sin(a) * 1.2); } Q.put(new THREE.ConeGeometry(1.9, .9, 12), '#c94a3a', M4(cx, 2.1, cz)); }
+    else if (k === 'ice') { b(.9, .9, .9, '#cfe8ff', 0, .45, 0, .3); b(.6, 1.2, .6, '#b8dcf5', .5, .6, .3, .7); }
+    else if (k === 'sign') { b(.08, 1.6, .08, '#5a3b23', 0, .8, 0); b(1.4, .6, .05, t.look || '#d9c08a', 0, 1.5, 0); }
+    else if (k === 'cage') { b(1.6, .08, 1.6, '#4a4f55', 0, .04, 0); b(1.6, .08, 1.6, '#4a4f55', 0, 1.2, 0); if (!on) for (let i = -3; i <= 3; i++) { b(.05, 1.15, .05, '#6f7780', i * .25, .62, -.76); b(.05, 1.15, .05, '#6f7780', i * .25, .62, .76); } }
+    else { b(.7, .7, .7, '#8a7d62', 0, .35, 0); }
+    if (t.prog > 0) gl(box(.9 * t.prog, .06, .06), 0, 2.0, 0); }
+  Q.build(g, .03); if (glow.length) g.add(new THREE.Mesh(mergeGeometries(glow), emberMat));
+  for (const z of H.zones || []) { if (z.on === false) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(z.w * T, z.h * T).rotateX(-Math.PI / 2), shZoneM(z.k)); m.position.set((AX + z.x + z.w / 2) * T, z.k === 'water' ? .12 : .07, (AY + z.y + z.h / 2) * T); m.userData.noInk = true; g.add(m); }
+  if (!H.lit) for (const r of Object.keys(PL.dark || {})) { const q = PL.rooms[r]; if (!q || !(H.rev || {})[r]) continue; const [x0, y0, w, h] = q, m = new THREE.Mesh(new THREE.PlaneGeometry(w * T, h * T).rotateX(-Math.PI / 2), shDarkMat); m.position.set((AX + x0 + w / 2) * T, .09, (AY + y0 + h / 2) * T); m.userData.noInk = true; g.add(m); }
+  return g; }
 /* 3D.114 the stronghold arena v2: rooms, door gaps with real doors, barricades and snares, built off the town map */
 let arena = null;
 function buildArena() {
@@ -1994,28 +2036,29 @@ function buildArena() {
     scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H) }; return true; }
   const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
   const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
-  const under = new THREE.Mesh(new THREE.PlaneGeometry(90 * T, 60 * T).rotateX(-Math.PI / 2), toon(SEASON_PAL[season()].grass[2]));   /* 3D.128 the building stands on the same grass as the town (was a dark slab) */ under.position.set((AX + 23) * T, -.02, (AY + 9) * T); g.add(under);
+  const PL = H.plan || {}, PW = PL.W || 46, PH = PL.H || 19, TH = PL.theme || D.props;   /* 3D.276 each stronghold's own plan: its size, its floors, its theme */
+  const under = new THREE.Mesh(new THREE.PlaneGeometry((PW + 44) * T, (PH + 41) * T).rotateX(-Math.PI / 2), toon(PL.ground || SEASON_PAL[season()].grass[2]));   /* 3D.128 the building stands on the same grass as the town (was a dark slab) */ under.position.set((AX + PW / 2) * T, -.02, (AY + PH / 2) * T); g.add(under);
   const grid = ZH.shGridOf(), isFloor = (x, y) => !!(grid[y] && grid[y][x]);
-  const fl = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] };
-  for (const [k, [x0, y0, w, h]] of Object.entries(R)) { box(w, .06, h, fl[k], AX + x0 + w / 2, 0, AY + y0 + h / 2); for (let i = 2; i < w; i += 2) box(.04, .065, h, D.props === 'clinic' ? '#bcc4c0' : '#8f8a7e', AX + x0 + i, 0, AY + y0 + h / 2); }
-  DR.forEach(([a, b, x0, y0, w, h], i) => { box(w, .06, h, fl[a], AX + x0 + w / 2, 0, AY + y0 + h / 2); doors.push(box(w > 1 ? w : .25, 1.15, h > 1 ? h : .25, DR[i][6] ? '#7a3b2a' : D.props === 'prison' || D.props === 'camp' ? '#5d6066' : '#8a6a48', AX + x0 + w / 2, .58, AY + y0 + h / 2)); });
+  const fl0 = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] }, fl = new Proxy({}, { get: (o, k) => (PL.floor && PL.floor[k]) || fl0[k] || D.floor[1] });
+  for (const [k, [x0, y0, w, h]] of Object.entries(R)) { box(w, .06, h, fl[k], AX + x0 + w / 2, 0, AY + y0 + h / 2); for (let i = 2; i < w; i += 2) box(.04, .065, h, TH === 'clinic' || TH === 'lab' || TH === 'office' ? '#bcc4c0' : '#8f8a7e', AX + x0 + i, 0, AY + y0 + h / 2); }
+  DR.forEach(([a, b, x0, y0, w, h], i) => { box(w, .06, h, fl[a], AX + x0 + w / 2, 0, AY + y0 + h / 2); doors.push(box(w > 1 ? w : .25, 1.15, h > 1 ? h : .25, DR[i][6] ? '#7a3b2a' : TH === 'prison' || TH === 'camp' || TH === 'plant' || TH === 'lab' ? '#5d6066' : '#8a6a48', AX + x0 + w / 2, .58, AY + y0 + h / 2)); });
   /* walls: every non-floor tile next to a floor tile; low on the south side so the camera sees in */
-  for (let y = -1; y <= 19; y++) for (let x = -1; x <= 46; x++) { if (isFloor(x, y)) continue; let n = false, south = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (isFloor(x + dx, y + dy)) { n = true; if (dy < 0) south = true; }
-    if (n) { const hgt = south && !isFloor(x, y - 1) && isFloor(x, y - 1) === false && !isFloor(x - 1, y) && !isFloor(x + 1, y) ? .32 : south ? .32 : .95; box(1, hgt, 1, D.wall, AX + x + .5, hgt / 2, AY + y + .5); } }
+  for (let y = -1; y <= PH; y++) for (let x = -1; x <= PW; x++) { if (isFloor(x, y)) continue; let n = false, south = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (isFloor(x + dx, y + dy)) { n = true; if (dy < 0) south = true; }
+    if (n) { const hgt = south && !isFloor(x, y - 1) && isFloor(x, y - 1) === false && !isFloor(x - 1, y) && !isFloor(x + 1, y) ? .32 : south ? .32 : .95; box(1, hgt, 1, PL.wall || D.wall, AX + x + .5, hgt / 2, AY + y + .5); } }
   /* props by theme, at room edges */
-  const prop = (k, x, y) => { const X = AX + x, Y = AY + y; if (D.props === 'clinic') { if (k % 3 === 0) { box(1.4, .3, .65, '#f2f2ee', X, .3, Y); box(1.4, .05, .65, '#8fb6c9', X, .48, Y); } else if (k % 3 === 1) box(.5, .9, .4, '#c9d7de', X, .45, Y); else box(.7, .45, .45, '#b2493f', X, .23, Y); }
-    else if (D.props === 'camp') { if (k % 3 === 0) { box(.9, .55, .9, '#8a7d62', X, .28, Y); box(.6, .4, .6, '#a0743c', X + .2, .75, Y); } else if (k % 3 === 1) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, .9, 10), toon('#5f6a5a')); t.position.set(X * T, .45, Y * T); g.add(t); } else box(1.2, .5, .5, '#6b4a2e', X, .25, Y); }
+  const prop = (k, x, y) => { const X = AX + x, Y = AY + y; if (PL.noEdgeProps) return; if (TH === 'clinic' || TH === 'lab' || TH === 'office') { if (k % 3 === 0) { box(1.4, .3, .65, '#f2f2ee', X, .3, Y); box(1.4, .05, .65, '#8fb6c9', X, .48, Y); } else if (k % 3 === 1) box(.5, .9, .4, '#c9d7de', X, .45, Y); else box(.7, .45, .45, '#b2493f', X, .23, Y); }
+    else if (TH === 'camp') { if (k % 3 === 0) { box(.9, .55, .9, '#8a7d62', X, .28, Y); box(.6, .4, .6, '#a0743c', X + .2, .75, Y); } else if (k % 3 === 1) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, .9, 10), toon('#5f6a5a')); t.position.set(X * T, .45, Y * T); g.add(t); } else box(1.2, .5, .5, '#6b4a2e', X, .25, Y); }
     else { if (k % 2) box(.9, .5, .9, '#8a7d62', X, .25, Y); else box(.4, 1.6, .4, '#6b6f75', X, .8, Y); } };
   let k = 0; for (const [rk, [x0, y0, w, h]] of Object.entries(R)) { prop(k++, x0 + 1, y0 + .6); prop(k++, x0 + w - 1.2, y0 + .6); if (rk === 'B' || rk === 'R1') prop(k++, x0 + w / 2, y0 + .6); if (rk === 'A' && D.raid) for (let i = 0; i < 4; i++) box(.7, .5, .6, '#c8a23a', AX + x0 + 2 + i * 1.6, .25, AY + y0 + h - 1);   /* the stockpile */
     if (rk === 'C' && D.raid) for (let i = 0; i <= w * 2; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.2, 5), toon('#4a4d52')); b.position.set((AX + x0 + i / 2) * T, .6, (AY + y0 + 1.2) * T); g.add(b); } }
   /* 3D.128 the town's own yard pieces along the walls of every room: crates, barrels, plank piles, tyres (review step 7: built from town pieces) */
   { const crates = [], barrels = [], planks = [], tyres = [], doorNear = (x, y) => DR.some(([, , dx, dy, dw, dh]) => x >= dx - 1 && x <= dx + dw && y >= dy - 1 && y <= dy + dh);
-    for (const [rk, [x0, y0, w, h]] of Object.entries(R)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const edge = x === x0 || x === x0 + w - 1 || y === y0 || y === y0 + h - 1; if (!edge || doorNear(x, y) || (rk === 'R0' && x < 4 && y > 6 && y < 13)) continue;
+    for (const [rk, [x0, y0, w, h]] of Object.entries(R)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const edge = x === x0 || x === x0 + w - 1 || y === y0 || y === y0 + h - 1; if (!edge || doorNear(x, y) || (rk === (PL.startRoom || 'R0') && Math.abs(x - (PL.start ? PL.start.x : 1)) < 3.5 && Math.abs(y - (PL.start ? PL.start.y + 1 : 9.5)) < 3.5) || (PL.things || []).some((t) => Math.abs(t.x - x) < 2 && Math.abs(t.y - y) < 1.5)) continue;
       const r = hash(x * 17 + 3, y * 29 + 7), q = hash(x * 5 + 1, y * 13 + 9), P = [(AX + x + .3 + .4 * q) * T, (AY + y + .3 + .4 * r) * T, 1.35, q];
-      if (r < .07) crates.push(P); else if (r < .12) barrels.push(P); else if (r < .16) planks.push(P); else if (r < .185 && D.props !== 'clinic') tyres.push(P); }
+      if (r < .07) crates.push(P); else if (r < .12) barrels.push(P); else if (r < .16) planks.push(P); else if (r < .185 && TH !== 'clinic' && TH !== 'lab' && TH !== 'office') tyres.push(P); }
     g.add(instD(smallCrateG, crates, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true)); g.add(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
     g.add(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true)); g.add(instD(tyreG, tyres, () => '#2e2c2a', true)); }
-  const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === 'R0') continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
+  const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === (PL.startRoom || 'R0')) continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .1) * T, 1.25, (h + .1) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, .62, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
   const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
 }
 function campFenceKey(H) { return Object.values(H.fence || {}).map((f) => (f.dead ? 2 : f.hp < f.max * .6 ? 1 : 0)).join(''); }
@@ -2072,11 +2115,12 @@ function campProps(H, P) {
   return g;
 }
 function campB(b) { return makeBuilding({ type: b.type, x: ZH.SH_AX + b.x, y: ZH.SH_AY + b.y, w: b.bw, h: b.bh, rot: b.rot, burnt: b.dead, wrecked: b.dead }); }
-function syncArenaBits(H) {   /* barricades and snares come and go */
-  const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length; if (bk === arena.bitKey) return; arena.bitKey = bk;
+function syncArenaBits(H) {   /* barricades and snares come and go; 3D.276 and the things in the rooms (switches, beds, crates), the floor hazards and the dark */
+  const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length + '/' + shThingsKey(H); if (bk === arena.bitKey) return; arena.bitKey = bk;
   while (arena.bits.children.length) arena.bits.remove(arena.bits.children[0]);
   for (const b of (H.blocks || []).filter((q) => q.hp > 0)) { const w = ZH.shWorldOf(b.x, b.y); for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(T * .9, .12, .14), toon(i % 2 ? '#8a5a32' : '#a0743c')); m.position.set(w.x * T, .2 + i * .22, w.y * T); m.rotation.z = (i - 1) * .12; arena.bits.add(m); } }
   for (const n of (H.snares || []).filter((q) => !q.used)) { const m = new THREE.Mesh(new THREE.TorusGeometry(.22, .04, 6, 12).rotateX(Math.PI / 2), toon('#5a5f66')); m.position.set(n.w.x * T, .04, n.w.y * T); arena.bits.add(m); }
+  if (!H.camp) arena.bits.add(shThingsGroup(H));
 }
 const _shv = new THREE.Vector3();
 /* 3D.129 the building under a tap: a ray from the camera through the finger against the building models (was the outline of the old 2D picture) */

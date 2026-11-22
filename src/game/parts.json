@@ -76,6 +76,10 @@
   "starts": "/* ---- 3D.108 Strongholds as their own map (owner 11 Nov: \"Yes build them\"). The squad of up to 4 leaves the town and fights"
  },
  {
+  "file": "19b-stronghold-maps.js",
+  "starts": "/* ---- 3D.276 Strongholds chat (owner, 22 Nov: \"you will run and make all the maps and rooms and props\"; plan in docs/project/15-STRONGHOLDS.md)."
+ },
+ {
   "file": "20-raid-camps.js",
   "starts": "/* ---- 3D.116 owner: a raid is a camp map like the town. Their buildings, their guards and workers. Send the squad at a building,"
  },

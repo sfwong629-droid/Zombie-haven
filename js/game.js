@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.276', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.277', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5277,7 +5277,7 @@ const SH_LAY = {
 for (const k of ['hall', 'yard', 'glass']) { const l = SH_LAY[k]; SH_LAY[k + 'F'] = { rooms: Object.fromEntries(Object.entries(l.rooms).map(([r, [x, y, w, h]]) => [r, [x, SH_GH - y - h, w, h]])), doors: l.doors.map(([a, b, x, y, w, h, lk]) => [a, b, x, SH_GH - y - h, w, h, lk]) }; }
 const SH_LAYOF = { clinic: 'hall', prison: 'yard', sh_spring: 'glass', sh_summer: 'yardF', sh_autumn: 'glassF', sh_winter: 'hallF' };
 let SH_LKEY = 'hall', SH_ROOMS = SH_LAY.hall.rooms, SH_DOORS = SH_LAY.hall.doors;
-function shUseLayout(dest) { const k = SH_LAYOF[dest] || 'hall'; if (k === SH_LKEY) return; SH_LKEY = k; SH_ROOMS = SH_LAY[k].rooms; SH_DOORS = SH_LAY[k].doors; SHG = null; }
+function shUseLayout(dest) { const P0 = S.sh && S.sh.plan; if (P0) { if (SH_LKEY !== P0) shSetPlan(P0); return; } const k = SH_LAYOF[dest] || 'hall'; if (k === SH_LKEY) return; SH_LKEY = k; SH_ROOMS = SH_LAY[k].rooms; SH_DOORS = SH_LAY[k].doors; SHG = null; }
 /* 3D.115 owner: doors and locked rooms like Zomboid: every door starts shut, you can't see into a room until it is opened, and a locked room may hold good loot, nothing, or a nest */
 const SH_PACE = 1, SH_SLOW = 1;   /* owner: it felt sped up (it was running at the town's 2x/3x). 3D.117 owner: match normal speed, no slow-down: always 1x, whatever the town speed is */
 const SH_LROOM = { S: 'the side room', L1: 'a locked office', L2: 'a locked storeroom', L3: 'a locked closet', L4: 'the back room' };
@@ -5321,8 +5321,8 @@ const shPower = (ms) => Math.round(ms.reduce((a, s) => a + 8 * (s.l || 1) + ((we
 const shCap = (raid) => Math.min(raid ? 8 : 6, 4 + (bOf('barracks').some((b) => !b.unpaid) ? 1 : 0) + ((S.lvl || 1) >= 12 ? 1 : 0) + (raid ? (vehOf('van') && !vehOf('van').broken ? 2 : vehOf('pickup') && !vehOf('pickup').broken ? 1 : vehOf('cart') ? 1 : 0) : 0));
 /* the grid */
 var SHG = null;
-const shW = () => (S.sh && S.sh.camp ? S.sh.gw : SH_GW), shH = () => (S.sh && S.sh.camp ? S.sh.gh : SH_GH);
-function shGrid() { if (S.sh && S.sh.camp) return S.sh.grid; if (S.sh) shUseLayout(S.sh.dest); if (SHG) return SHG; const g = []; for (let y = 0; y < SH_GH; y++) { g.push(new Array(SH_GW).fill(null)); }
+const shW = () => (S.sh && S.sh.camp ? S.sh.gw : S.sh && S.sh.plan ? S.sh.plan.W : SH_GW), shH = () => (S.sh && S.sh.camp ? S.sh.gh : S.sh && S.sh.plan ? S.sh.plan.H : SH_GH);
+function shGrid() { if (S.sh && S.sh.camp) return S.sh.grid; if (S.sh) shUseLayout(S.sh.dest); if (SHG) return SHG; const g = []; for (let y = 0; y < shH(); y++) { g.push(new Array(shW()).fill(null)); }
   for (const [k, [x0, y0, w, h]] of Object.entries(SH_ROOMS)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) g[y][x] = k;
   SH_DOORS.forEach(([a, b, x0, y0, w, h], i) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) g[y][x] = 'D' + i; }); return (SHG = g); }
 const shCell = (w) => ({ x: Math.floor(w.x - SH_AX), y: Math.floor(w.y - SH_AY) });
@@ -5339,15 +5339,15 @@ function shGo(o, to, sp, who) {   /* walk toward a point along the grid; returns
   let n = o.path[0]; while (n && dist(o.w, n) < .12 && o.path.length > 1) { o.path.shift(); n = o.path[0]; } if (!n) return true;
   const c = shCell(n), dr0 = shDoorAt(c.x, c.y); if (who === 'z') { const bl = S.sh.blocks && S.sh.blocks.find((q) => q.x === c.x && q.y === c.y && q.hp > 0), dr = dr0 && !dr0.open && !dr0.broken ? dr0 : null; if (dr || bl) { o.bash = dr || bl; o.moving = false; return false; } }
   else if (dr0 && !dr0.open && !dr0.broken && !dr0.locked && dist(o.w, n) < 1.2) shDoorOpen(dr0);
-  const dx = n.x - o.w.x, dy = n.y - o.w.y, l = Math.hypot(dx, dy) || 1, st = Math.min(l, sp); o.w = { x: o.w.x + dx / l * st, y: o.w.y + dy / l * st }; o.moving = true; o.faceW = null; return false; }
+  if (S.sh.zones && S.sh.zones.length) sp *= shZoneSlow(o, who); if (o.carry != null) sp *= .65; const dx = n.x - o.w.x, dy = n.y - o.w.y, l = Math.hypot(dx, dy) || 1, st = Math.min(l, sp); o.w = { x: o.w.x + dx / l * st, y: o.w.y + dy / l * st }; o.moving = true; o.faceW = null; return false; }
 const shDoorAt = (x, y) => { const v = (shGrid()[y] || [])[x]; return v && v[0] === 'D' ? S.sh.doors[+v.slice(1)] : null; };
 const shDoorW = (i) => { const [, , dx, dy, dw, dh] = SH_DOORS[i]; return shWorld(dx + (dw - 1) / 2, dy + (dh - 1) / 2); };
 function shReveal(r) { const H = S.sh; if (!H || !r || H.rev[r]) return; H.rev[r] = 1; const m = H.myst && H.myst[r]; if (m && !m.told) { m.told = true; const at = shWorld(SH_ROOMS[r][0] + SH_ROOMS[r][2] / 2, SH_ROOMS[r][1] + SH_ROOMS[r][3] / 2); shFx(at, m.kind === 'empty' ? 'Empty…' : m.kind === 'nest' ? '💢 A nest!' : m.kind === 'survivor' ? '🙋 Someone is in here!' : m.kind === 'guarded' ? '📦 Supplies… and company' : '📦 Supplies!', m.kind === 'nest' ? '#ff6e62' : '#ffe9b8'); } }
 function shDoorOpen(d, how) { const H = S.sh, i = H.doors.indexOf(d); if (i < 0) return; if (how === 'break') { d.broken = true; d.locked = false; } d.open = true; if (how === 'pick') d.locked = false; shReveal(SH_DOORS[i][0]); shReveal(SH_DOORS[i][1]); SFX('hit'); }
 function shMystery() {   /* what is behind each closed side door: rolled when the squad goes in, so nobody knows until it opens */
-  const H = S.sh, D = SH_DEFS[H.dest], t0 = D.areas[0].spawn[0][0], t1 = (D.areas[1].spawn[1] || D.areas[1].spawn[0])[0]; H.myst = {};
+  const H = S.sh, D = SH_DEFS[H.dest], [t0, t1] = H.plan.mystT; H.myst = {};
   const cache = (big) => { const l = { meds: 1 + (rnd() < .5 ? 1 : 0), ammo: 4 + Math.floor(rnd() * 5), mat: 3 + Math.floor(rnd() * 4) }; if (rnd() < .5) l.fuel = 1 + (big ? 1 : 0); if (rnd() < .4) l.food = 3; const pool = H.raid === 'toll' ? ['roadsign', 'spikedclub', 'biker', 'rifle'] : H.raid === 'green' ? ['bow', 'crossbow', 'raincoat'] : ['machete', 'crossbow', 'kevlar', 'gasmask', 'medpouch', 'shotgun', 'tactvest']; const items = rnd() < (big ? .9 : .35) ? [pool[Math.floor(rnd() * pool.length)]].filter((k) => ITEMS[k]) : []; return { loot: l, items }; };
-  for (const r of Object.keys(SH_LROOM)) { const x = rnd(), last = r === 'L4';
+  for (const r of H.plan.locked) { const x = rnd(), last = r === 'L4' || (!H.plan.lockName.L4 && r === H.plan.locked[H.plan.locked.length - 1] && H.plan.locked.length > 2);
     const kind = last ? (x < .7 ? 'cache' : 'guarded') : x < .28 ? 'cache' : x < .52 ? 'empty' : x < .76 ? 'nest' : x < .94 ? 'guarded' : 'survivor';
     const m = { kind, ...(kind === 'cache' || kind === 'guarded' ? cache(last) : kind === 'nest' ? { loot: { mat: 2 }, items: [] } : { loot: {}, items: [] }) }; if (kind === 'empty' && rnd() < .5) m.loot = { mat: 1 }; H.myst[r] = m;
     if (kind === 'nest') H.spawnQ.push([r, [[t0, 3 + Math.floor(rnd() * 3)]]]); else if (kind === 'guarded') H.spawnQ.push([r, [[t1, 2]]]); } }
@@ -5377,7 +5377,7 @@ function shUseAbil(s) { const H = S.sh, A = shAbil(s), sp = s.spec ? 1.5 : 1; if
   else if (A.k === 'search') { const r = shRoomAt(s.w) || 'R0'; const got = rnd() < .5 ? { meds: 1 + (rnd() < .4 ? 1 : 0) } : rnd() < .5 ? { mat: 2 + Math.floor(rnd() * 3) } : { cloth: 1, food: 2 }; if (rnd() < .25 * sp) got.ammo = 4; for (const [k, n] of Object.entries(got)) H.loot[k] = (H.loot[k] || 0) + n; shFx(s.w, '🔍 ' + Object.entries(got).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n).join(' '), '#ffe9b8'); if (H.goal && RAID_GOALS[H.goal] && RAID_GOALS[H.goal].room === r && H.goal !== 'leader' && !H.zs.some((z) => z.hp > 0 && z.room === r)) shGoalDone(); }
   else if (A.k === 'breach') { const ds = H.doors.map((d, i) => ({ d, i, r: dist(shDoorW(i), s.w) })).filter((q) => !q.d.broken && q.r < 3 * sp).sort((a, b) => a.r - b.r), lk = ds.find((q) => q.d.locked && !q.d.open);
     if (lk) { shDoorOpen(lk.d, 'pick'); shFx(shDoorW(lk.i), '🔧 Breached!', '#7be08a'); } else { const sh = ds.find((q) => !q.d.open) || ds.find((q) => q.d.open && ![...H.units, ...H.zs].some((o) => o.hp > 0 && shDoorAt(shCell(o.w).x, shCell(o.w).y) === q.d)); if (!sh) { s.abT = 0; say('No door close enough.'); return false; } sh.d.open = false; sh.d.hp = Math.max(sh.d.hp, 120) * 4; shFx(shDoorW(sh.i), '🔧 Braced', '#ffe9b8'); } }
-  else if (A.k === 'peek') { let n = 0; for (const [r, m] of Object.entries(H.myst || {})) { if (H.rev[r] || m.peek) continue; const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) > 8 * sp) continue; m.peek = true; n++; } for (const r of ['R1', 'A', 'C', 'B']) if (!H.rev[r]) { const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) <= 8 * sp) { (H.peekR ||= {})[r] = true; n++; } } shFx(s.w, n ? `🔦 Peeked into ${n} room${n > 1 ? 's' : ''}` : '🔦 Nothing new nearby', '#9fd8ff'); }
+  else if (A.k === 'peek') { let n = 0; for (const [r, m] of Object.entries(H.myst || {})) { if (H.rev[r] || m.peek) continue; const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) > 8 * sp) continue; m.peek = true; n++; } for (const r of Object.keys(SH_ROOMS).filter((q) => !(H.myst || {})[q])) if (!H.rev[r]) { const [x0, y0, w, h] = SH_ROOMS[r]; if (dist(shWorld(x0 + w / 2, y0 + h / 2), s.w) <= 8 * sp) { (H.peekR ||= {})[r] = true; n++; } } shFx(s.w, n ? `🔦 Peeked into ${n} room${n > 1 ? 's' : ''}` : '🔦 Nothing new nearby', '#9fd8ff'); }
   else { for (const q of H.units) q.rallyT = H.t + 360 * sp; shFx(s.w, '📣 RALLY!', '#ffd56b'); }
   SFX('chime'); shPanel(); return true; }
 const SH_STANCE = { attack: { icon: '⚔', name: 'Attack' }, hold: { icon: '✋', name: 'Hold' }, guard: { icon: '🫂', name: 'Guard' }, back: { icon: '↩', name: 'Pull back <30%' } };
@@ -5385,24 +5385,24 @@ const SH_STANCE = { attack: { icon: '⚔', name: 'Attack' }, hold: { icon: '✋'
 function startStronghold(destId, ids, opts = {}) {
   const D = SH_DEFS[destId], d = EXP_DEFS[destId] || { name: destId, icon: '⚔' }; if (!D) return { ok: false, why: 'Unknown stronghold' }; if (S.sh) return { ok: false, why: 'A squad is already inside' };
   if (!opts.practice && (S.shTryDay || {})[destId] === S.day) return { ok: false, why: 'The squad was beaten back from there today: try again tomorrow' };   /* 3D.125 the loss cooldown was recorded but never read */
-  shUseLayout(destId); const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
+  const lvl = Math.max(1, Math.min(20, opts.lv || S.lvl || 1)), plan = D.raid ? null : shMakePlan(destId, lvl); if (plan) shSetPlan(plan); else shUseLayout(destId); const cap = shCap(!!D.raid); const ms = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).slice(0, opts.practice ? 8 : cap);
   if (!ms.length) return { ok: false, why: 'Pick at least one survivor' };
   { const home = (ids || []).map((id) => S.sv.find((q) => q.id === id)).filter((q) => q && !ms.includes(q)); if (home.length && !opts.practice) note('important', `Only ${ms.length} fit through: ${home.map((q) => q.name).join(', ')} stayed home.`); }   /* 3D.169 round 2: the extra person was left out with no word */
   for (const q of ms) { releasePost(q); for (const z of S.z) if (z.target === q) { z.target = null; z.mode = 'idle'; } if (selected && selected.ref === q) { selected = null; closeP(); } }
   if (!opts.practice) S.sv = S.sv.filter((q) => !ms.includes(q));
   const units = opts.practice ? ms.map((q) => ({ ...JSON.parse(JSON.stringify(expPlain(q), (k, v) => (['target', 'post', 'path', 'chatWith', 'aidTo', 'aidBy', 'rescuer', 'facility', 'faceW', 'emo'].includes(k) ? undefined : v))), id: 90000 + q.id, practiceOf: q.id })) : ms;
-  units.forEach((s, i) => { if (!opts.practice) s.shHome = { w: s.w, mode: s.mode }; s.w = shWorld(1 + (i % 3) * .9, 8.5 + Math.floor(i / 3) * 1.3); s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; s.stance = s.stance || 'attack'; s.abT = 0; s.crit = 0; if (opts.practice) { s.hp = s.max; } });
+  units.forEach((s, i) => { if (!opts.practice) s.shHome = { w: s.w, mode: s.mode }; s.w = shWorld((plan ? plan.start.x : 1) + (i % 3) * .9, (plan ? plan.start.y : 8.5) + Math.floor(i / 3) * 1.3); s.use = null; s.carry = null; s.mode = 'free'; s.target = null; s.moving = false; s.path = null; s.stateTicks = 0; s.para = 0; s.carrying = null; s.carriedLoot = null; s.sleeping = false; s.stance = s.stance || 'attack'; s.abT = 0; s.crit = 0; if (opts.practice) { s.hp = s.max; } });
   const camp = !!D.raid; if (camp) units.forEach((s, i) => { s.w = shWorld(12.4 + (i % 4) * .75, 26.2 + Math.floor(i / 4) * .8); });
-  S.sh = { camp, akey: camp ? destId + ':' + Math.floor(rnd() * 1e6) : destId, dest: destId, units, zs: [], phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.8, cx: SH_AX + 5, cy: SH_AY + 11, fx: [], kills: 0, power: shPower(units), log: [], loot: {}, sel: [], doors: SH_DOORS.map((q) => ({ open: false, hp: q[6] ? 160 : 120, locked: !!q[6] })), woke: {}, rev: { R0: 1 }, spawnQ: [], items: [], goal: D.raid ? (opts.goal || 'loot') : null, practice: !!opts.practice, raid: D.raid || null, night: camp && (opts.night === undefined ? isNight() : !!opts.night) };   /* 3D.128 a raid happens at the hour you set out: at night the guards see less far and the workers sleep */
-  if (camp) { S.sh.cx = SH_AX + 15; S.sh.cy = SH_AY + 24; S.sh.cz = 1.5; S.sh.goal = null; S.sh.doors = []; campBuild(); } else { shMystery(); shSpawnAll(); } if (!opts.practice) { barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); } shPanel(); ui(); return { ok: true, why: '' };
+  S.sh = { camp, akey: camp ? destId + ':' + Math.floor(rnd() * 1e6) : destId, dest: destId, units, zs: [], phase: 'fight', t: 0, focus: false, back: false, view: true, cz: 1.8, cx: SH_AX + 5, cy: SH_AY + 11, fx: [], kills: 0, power: shPower(units), log: [], loot: {}, sel: [], doors: SH_DOORS.map((q) => ({ open: false, hp: q[6] ? 160 : 120, locked: !!q[6] })), woke: {}, rev: { [plan ? plan.startRoom : 'R0']: 1 }, plan, lvl, things: plan ? JSON.parse(JSON.stringify(plan.things)) : [], tasks: plan ? JSON.parse(JSON.stringify(plan.tasks)) : [], zones: plan ? JSON.parse(JSON.stringify(plan.zones)) : [], spawnQ: [], items: [], goal: D.raid ? (opts.goal || 'loot') : null, practice: !!opts.practice, raid: D.raid || null, night: camp && (opts.night === undefined ? isNight() : !!opts.night) };   /* 3D.128 a raid happens at the hour you set out: at night the guards see less far and the workers sleep */
+  if (camp) { S.sh.cx = SH_AX + 15; S.sh.cy = SH_AY + 24; S.sh.cz = 1.5; S.sh.goal = null; S.sh.doors = []; campBuild(); } else { S.sh.cx = SH_AX + plan.start.x + 4; S.sh.cy = SH_AY + plan.start.y + 2; shMystery(); shSpawnAll(); if (plan.setup) plan.setup(S.sh); if (plan.tip && !opts.quiet) setTimeout(() => say(plan.tip, true), 1200); } if (!opts.practice) { barkSomeone('farewell', { dest: d.name }, { pri: 1 }); say(`${ms.map((q) => q.name).join(', ')} went into ${d.name}.`, true); } shPanel(); ui(); return { ok: true, why: '' };
 }
-function shSpawnAll() {   /* every room gets its enemies up front; they sleep until the squad walks in */
-  const H = S.sh, D = SH_DEFS[H.dest], A = D.areas, TK = D.tough || 1, put = (room, list, boss) => { const [x0, y0, w, h] = SH_ROOMS[room];   /* 3D.130 balance run: at the recommended power an unled squad won every stronghold 10 times in 10. 'tough' scales enemy health and damage so that is about 7 in 10, and near certain with three medkits */
+function shSpawnAll() {   /* every room gets its enemies up front; they sleep until the squad walks in. 3D.276 the rooms and the boss come from the map's plan */
+  const H = S.sh, D = SH_DEFS[H.dest], P = H.plan, TK = (D.tough || 1) * (P.tough || 1), put = (room, list, boss) => { if (!SH_ROOMS[room]) return; const [x0, y0, w, h] = SH_ROOMS[room];   /* 3D.130 balance run: at the recommended power an unled squad won every stronghold 10 times in 10. 'tough' scales enemy health and damage so that is about 7 in 10, and near certain with three medkits */
     for (const [t, c] of list) for (let i = 0; i < c; i++) { const raider = t.startsWith('raider'), zd = zombieTypes[raider ? 'raider' : t] || zombieTypes.walker, wpn = t === 'raiderG' ? 'rifle' : t === 'raiderB' ? 'bow' : raider ? ['bat', 'crowbar', 'machete'][i % 3] : null;
-      H.zs.push({ type: raider ? 'raider' : t, human: raider, wpn, ranged: !!(wpn === 'rifle' || wpn === 'bow'), room, w: shWorld(x0 + 1 + rnd() * (w - 2), y0 + 1 + rnd() * (h - 2)), hp: Math.round(zd.hp * (raider ? 1.3 : 1) * TK), max: Math.round(zd.hp * (raider ? 1.3 : 1) * TK), atk: zd.atk * (raider ? 1.2 : 1) * TK, spd: (zd.chase || .012) * 1.25, mode: 'sleep', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, fk: H.raid }); }
-    if (boss) { H.zs.push({ type: boss.type, human: boss.type === 'raider', wpn: boss.wpn || null, ranged: boss.wpn === 'bow' || boss.wpn === 'rifle', leader: !!H.raid, boss: true, name: boss.name, room, big: boss.big, w: shWorld(x0 + w - 3, y0 + h / 2), hp: Math.round(boss.hp * TK), max: Math.round(boss.hp * TK), atk: boss.atk * TK, spd: boss.spd, mode: 'sleep', target: null, moving: false, fk: H.raid }); } };
-  const half = (list, k) => list.map(([t, c]) => [t, Math.max(k ? 0 : 1, k ? Math.floor(c / 2) : Math.ceil(c / 2))]).filter(([, c]) => c > 0);
-  put('R0', A[0].spawn); for (const [r, l] of H.spawnQ) put(r, l); put('R1', half(A[1].spawn, 0)); put('A', half(A[1].spawn, 1).concat([[A[1].spawn[0][0], 2]])); put('C', half(A[1].spawn, 1)); put('B', A[2].spawn, A[2].boss);
+      H.zs.push({ type: raider ? 'raider' : t, human: raider, wpn, ranged: !!(wpn === 'rifle' || wpn === 'bow'), room, w: shWorld(x0 + 1 + rnd() * Math.max(.1, w - 2), y0 + 1 + rnd() * Math.max(.1, h - 2)), hp: Math.round(zd.hp * (raider ? 1.3 : 1) * TK), max: Math.round(zd.hp * (raider ? 1.3 : 1) * TK), atk: zd.atk * (raider ? 1.2 : 1) * TK, spd: (zd.chase || .012) * 1.25, mode: 'sleep', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, fk: H.raid }); }
+    if (boss) { H.zs.push({ type: boss.type, human: boss.type === 'raider', wpn: boss.wpn || null, ranged: boss.wpn === 'bow' || boss.wpn === 'rifle', leader: !!H.raid, boss: true, name: boss.name, room, big: boss.big, w: shWorld(x0 + w - 3, y0 + h / 2), hp: Math.round(boss.hp * TK), max: Math.round(boss.hp * TK), atk: boss.atk * TK, spd: boss.spd, mode: 'sleep', target: null, moving: false, fk: H.raid, pat: boss.pat || null, kin: boss.kin, kinN: boss.kinN, patGap: boss.patGap }); } };
+  for (const [r, l] of Object.entries(P.spawn)) put(r, l); for (const [r, l] of H.spawnQ) put(r, l); if (P.boss) put(P.boss.room, [], P.boss);
+  for (const t of H.things) if (t.sleeper) { const zd = zombieTypes[t.sleeper] || zombieTypes.walker; H.zs.push({ type: t.sleeper, room: t.room, w: shWorld(t.x + .5, t.y), hp: Math.round(zd.hp * TK), max: Math.round(zd.hp * TK), atk: zd.atk * TK, spd: (zd.chase || .012) * 1.25, mode: 'sleep', bed: true, stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); }   /* 3D.276 a patient asleep in a bed */
   for (const z of H.zs) z.hid = !H.rev[z.room];
 }
 function shLiveZs() { return S.sh.zs.filter((z) => z.hp > 0); }
@@ -5413,8 +5413,8 @@ function shTick() {
   if (H.phase === 'done') return; if (!live.length) return shEnd(false);
   /* rooms wake when someone walks in */
   if (!H.camp) for (const z of H.zs) z.hid = z.hp > 0 && !H.rev[shRoomAt(z.w) || z.room];   /* behind a shut door: unseen */
-  if (!H.camp) for (const s of live) { const r = shRoomAt(s.w); if ((r === 'A' || r === 'C') && !H.wing) H.wing = r; if (r) shReveal(r); if (r && !H.woke[r]) { H.woke[r] = H.t; if (!H.seen) H.seen = {}; if (!H.seen[r]) { H.seen[r] = 1; const D = SH_DEFS[H.dest], nm = r === 'R0' ? D.areas[0].name : r === 'R1' ? D.areas[1].name : r === 'B' ? D.areas[2].name : r === 'S' ? D.side : r === 'A' ? D.wings[0] : r === 'C' ? D.wings[1] : SH_LROOM[r]; if (r !== 'R0') say(`The squad enters ${nm}.`); } } }
-  if (H.back) { let home = 0; for (const s of live) { s.target = null; s.mode = 'walk'; if (shGo(s, H.camp ? { x: H.exit.x + (H.units.indexOf(s) % 4 - 1.5) * .5, y: H.exit.y } : shWorld(.6, 10.5 + (H.units.indexOf(s) % 3) * .4), .026, 'u')) { home++; s.mode = 'free'; } } if (home === live.length || H.t - H.backT > 1200) return shEnd(false, true); }
+  if (!H.camp) for (const s of live) { const r = shRoomAt(s.w); if ((r === 'A' || r === 'C') && !H.wing) H.wing = r; if (r) shReveal(r); if (r && !H.woke[r]) { H.woke[r] = H.t; if (!H.seen) H.seen = {}; if (!H.seen[r]) { H.seen[r] = 1; const nm = H.plan.names[r] || H.plan.lockName[r] || 'another room'; if (r !== H.plan.startRoom) say(`The squad enters ${nm}.`); } } }
+  if (H.back) { let home = 0; for (const s of live) { s.target = null; s.mode = 'walk'; if (shGo(s, H.camp ? { x: H.exit.x + (H.units.indexOf(s) % 4 - 1.5) * .5, y: H.exit.y } : shWorld(H.plan.exit.x, H.plan.exit.y + (H.units.indexOf(s) % 3) * .4), .026, 'u')) { home++; s.mode = 'free'; } } if (home === live.length || H.t - H.backT > 1200) return shEnd(false, true); }
   const zsLive = shLiveZs();
   if (!H.back) for (const s of H.units) (H.camp ? campUnitAI : shUnitAI)(s, zsLive, live);
   for (const z of zsLive) (H.camp ? campEnemyAI : shZombieAI)(z, live);
@@ -5422,11 +5422,11 @@ function shTick() {
   if (H.camp) for (const f of Object.values(H.fence || {})) if (f.hitT > 0) f.hitT--;
   /* snares, barricades */
   for (const n of H.snares || []) if (!n.used) for (const z of zsLive) if (dist(z.w, n.w) < .55) { n.used = true; z.stuckT = H.t + 240; z.hp -= n.dmg; shFx(z.w, '🪤 -' + Math.round(n.dmg), '#ffb060'); break; }
-  shSep(H.units.filter((s) => s.hp > 0), .5); shSep(zsLive, .48); shPickup(H, live);
+  shSep(H.units.filter((s) => s.hp > 0), .5); shSep(zsLive, .48); shPickup(H, live); if (!H.camp) shTaskTick(H, live);
   /* the camera follows the selected survivors, or everyone */
   const fol = H.free ? [] : (H.sel.length ? H.units.filter((s) => H.sel.includes(s.id) && s.hp > 0) : live); if (fol.length) { const cx = fol.reduce((a, s) => a + s.w.x, 0) / fol.length, cy = fol.reduce((a, s) => a + s.w.y, 0) / fol.length; H.cx += (cx + 1.8 - H.cx) * .05; H.cy += (cy + 1.5 - H.cy) * .05; }   /* keep the fight above the panel */
   if (H.raid && !H.camp && !H.goalDone && H.goal !== 'leader') { const r = RAID_GOALS[H.goal].room; if (!zsLive.some((z) => z.room === r) && live.some((s) => shRoomAt(s.w) === r)) { H.load = (H.load || 0) + 1; if (H.load % 60 === 1) shFx(live.find((s) => shRoomAt(s.w) === r).w, H.goal === 'loot' ? `📦 Loading ${Math.round(H.load / 1.8)}%` : `🔓 Opening ${Math.round(H.load / 1.8)}%`, '#ffe9b8'); if (H.load >= 180) shGoalDone(); } }   /* stand in the cleared goal room for 3 s */
-  const boss = H.zs.find((z) => z.boss); if (boss && boss.hp <= 0 && !H.bossDown) { H.bossDown = true; SFX('reward'); say(`${boss.name} is down!`); if (H.camp) banner(`👑 ${boss.name.toUpperCase()} IS DOWN`); if (H.goal === 'leader' || !H.raid) shGoalDone(); }
+  const boss = H.zs.find((z) => z.boss); if (boss && boss.hp <= 0 && !H.bossDown) { H.bossDown = true; SFX('reward'); say(`${boss.name} is down!`); if (H.camp) banner(`👑 ${boss.name.toUpperCase()} IS DOWN`); if (H.goal === 'leader' || (!H.raid && !(H.tasks || []).length)) shGoalDone(); }
   if (H.t % 20 === 0) shPanelTick();
 }
 function shSep(list, r) { for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) { const a = list[i], b = list[j]; const dx = b.w.x - a.w.x, dy = b.w.y - a.w.y, l = Math.hypot(dx, dy) || .01; if (l < r) { const p = (r - l) / 2 / l, na = { x: a.w.x - dx * p, y: a.w.y - dy * p }, nb = { x: b.w.x + dx * p, y: b.w.y + dy * p }, ca = shCell(na), cb = shCell(nb); if (shOpen(ca.x, ca.y, 'u') === true) a.w = na; if (shOpen(cb.x, cb.y, 'u') === true) b.w = nb; } } }
@@ -5436,7 +5436,7 @@ function shUnitAI(s, zs, live) {
   const w = weaponOf(s), reach = (w.ranged ? Math.min(4.5, rangeOf(s)) : .8) + (s.aimNext ? 1.5 : 0);
   if (s.mode === 'attack') { s.moving = false; if (--s.stateTicks > 0) return; const z = s.target;
     if (z && z.hp > 0 && dist(s.w, z.w) <= reach + .3) { const cr = !!s.critNext || !!s.aimNext, dm = shUnitDmg(s, z) * (cr ? 3 : 1); if (cr) { s.critNext = false; s.aimNext = false; shFx({ x: z.w.x, y: z.w.y - .4 }, 'CRIT!', '#ffd56b'); } else s.crit = Math.min(100, (s.crit || 0) + 14);
-      z.hp -= dm; z.hitT = 9; if (z.mode === 'sleep') z.mode = 'idle'; SFX(hitSfx(w)); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
+      z.hp -= dm; z.hitT = 9; if (z.mode === 'sleep') z.mode = 'idle'; if (w.ranged && usesAmmo(w)) H.noise = { w: { ...s.w }, t: H.t }; SFX(hitSfx(w)); shFx(z.w, '-' + dm, z.boss ? '#ffd56b' : '#ffffff'); if (w.ranged) shots.push({ a: { ...s.w }, b: { ...z.w }, t: 6, bow: w.kind === 'bow' });
       if (w.ranged && usesAmmo(w)) { s.ammo = (s.ammo == null ? w.mag : s.ammo) - 1; if (s.ammo <= 0) s.reloadT = Math.round((w.reload || 2) * 60); }
       if (z.hp <= 0) { H.kills++; if (!H.practice) { S.kills++; gainXp(s, z.boss ? 12 : 2); } if (H.order === z) H.order = null; for (const q of H.units) if (q.order === z) q.order = null; } }
     s.mode = 'recover'; s.stateTicks = s.recDur = Math.round(48 * Math.max(.6, 1 - (stat(s, 'agi') - 5) * .02) * (w.rate || 1)); return; }
@@ -5447,6 +5447,8 @@ function shUnitAI(s, zs, live) {
       s.mode = 'fix'; s.moving = false; s.faceW = dw; s.pickT = (s.pickT || 0) + 1; const need = ['Mechanic', 'Scavenger', 'Engineer'].includes(s.job) ? 150 : 300; d.prog = s.pickT / need;
       if (s.pickT >= need) { shDoorOpen(d, 'pick'); d.prog = 0; shFx(dw, '🔓 Unlocked', '#7be08a'); s.pick = null; s.pickT = 0; s.mode = 'free'; } return; } }
   if (s.moveTo) { s.mode = 'walk'; s.target = null; if (shGo(s, s.moveTo, .024, 'u')) { s.moveTo = null; s.mode = 'free'; s.holdAt = { ...s.w }; } return; }
+  if (shUseAI(s)) return;   /* 3D.276 working a switch or picking something up */
+  if (s.carry != null) { s.mode = 'walk'; s.target = null; shGo(s, shWorld(H.plan.exit.x, H.plan.exit.y), .024, 'u'); return; }   /* a carrier heads for the way out by itself and can't fight */
   if (s.order && (s.order.hp <= 0)) s.order = null;
   const st = s.stance || 'attack', hurt = s.hp < s.max * .3;
   if (st === 'back' && hurt) { const safe = live.filter((q) => q !== s).sort((a, b) => dist(a.w, s.w) - dist(b.w, s.w))[0]; const away = zs.filter((z) => dist(z.w, s.w) < 3); if (away.length) { const e = shWorld(1, 10); s.mode = 'walk'; shGo(s, safe && !away.some((z) => dist(z.w, safe.w) < 2) ? safe.w : e, .026, 'u'); return; } }
@@ -5461,14 +5463,15 @@ function shUnitAI(s, zs, live) {
   s.mode = 'free'; s.moving = false;
 }
 function shNextRoom() {   /* the default route: entrance, hall, the wing for the goal (north for the stockpile, south for the prisoners), boss room */
-  if (S.sh.camp) return null; const H = S.sh, wing = H.wing || (H.goal === 'free' ? 'C' : 'A'), route = ['R0', 'R1', wing, 'B'];
+  if (S.sh.camp) return null; const H = S.sh, wing = H.wing || (H.goal === 'free' ? 'C' : 'A'), route = H.plan.route.map((r) => (r === 'wing' ? wing : r));
   if (H.goalDone && H.raid) return null; if (shLiveZs().some((z) => z.mode !== 'sleep')) return null;
   return route.find((r) => !H.woke[r] || H.zs.some((z) => z.hp > 0 && z.room === r)) || null; }
 function shZombieAI(z, live) {
-  const H = S.sh; if (z.mode === 'sleep') { if (H.woke[z.room] || (H.rev[z.room] && live.some((s) => dist(s.w, z.w) < 5)) || live.some((s) => dist(s.w, z.w) < 2.2)) { z.mode = 'idle'; } else { z.moving = false; return; } }
+  const H = S.sh; if (z.mode === 'sleep') { const wake = z.bed ? live.some((s) => dist(s.w, z.w) < 1.7) || (H.noise && H.t - H.noise.t < 20 && dist(H.noise.w, z.w) < 6) : H.woke[z.room] || (H.rev[z.room] && live.some((s) => dist(s.w, z.w) < 5)) || live.some((s) => dist(s.w, z.w) < 2.2); if (wake) { z.mode = 'idle'; if (z.bed) shFx(z.w, '💢 A patient gets up', '#ff6e62'); } else { z.moving = false; return; } }   /* 3D.276 a patient in a bed gets up only for someone right by it, or a gunshot near it */
   if (z.stuckT > H.t) { z.moving = false; return; }
   let t = z.tauntBy && z.tauntBy.hp > 0 && z.tauntBy.tauntT > H.t ? z.tauntBy : null, bd = 1e9; if (!t) for (const s of live) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = s; } } z.target = t; if (!t) { z.moving = false; return; }
   const reach = z.ranged ? 4 : z.type === 'spitter' ? 2.4 : z.boss ? 1.15 : .75, d0 = dist(z.w, t.w);
+  if (z.pat && z.boss && z.mode !== 'zattack' && z.mode !== 'zrecover' && shBossPat(z, t, d0)) return;   /* 3D.276 the boss's own move (B7) */
   if (z.mode === 'zattack') { z.moving = false; if (--z.stateTicks > 0) return;
     if (z.bash) { const b = z.bash; b.hp -= z.atk * 1.5; shFx(z.w, '💥', '#ffb060'); if (b.hp <= 0) { if (b.x == null) shDoorOpen(b, 'break'); else { b.broken = true; b.open = true; } shFx(z.w, z.bash.x != null ? 'Barricade broken!' : 'Door broken!', '#ff6e62'); } z.bash = null; z.mode = 'zrecover'; z.stateTicks = 50; return; }
     if (dist(z.w, t.w) <= reach + .35 && t.hp > 0) { const dm = Math.max(1, Math.round(z.atk * (t.spec && hasSpec(t, 'swat') ? .8 : 1) * (t.tauntT > H.t ? .5 : 1) * (1 - dmgReduce(t)))); t.hp -= dm; t.hitT = 9; shFx(t.w, '-' + dm, '#ff6e62'); SFX(z.ranged ? 'shot' : 'hurt'); if (z.ranged) shots.push({ a: { ...z.w }, b: { ...t.w }, t: 6, bow: z.wpn === 'bow' }); if (t.hp <= 0) { t.hp = 0; t.mode = 'down'; t.moveTo = null; shFx(t.w, 'DOWN', '#ff6e62'); say(`${t.name} is down!`); } }
@@ -5547,8 +5550,8 @@ function shEnd(won, fled) {
     S.mat += loot.mat || 0; addLoot({ wood: loot.wood, stone: loot.stone, cloth: loot.cloth, meds: loot.meds, fuel: loot.fuel, ammo: loot.ammo, food: loot.food, water: loot.water }, d.name); items.filter(Boolean).forEach((id) => stashAdd(id)); renownGain(H.raid ? 15 : 25, d.name);
   } else { if (H.raid && !unseen) { const F = fac(H.raid); F.att = Math.max(-100, (F.att || 0) - 15); } if (H.loot.mat) S.mat += H.loot.mat; if (!fled) S.shTryDay = { ...(S.shTryDay || {}), [H.dest]: S.day }; }
   S.sh = null; shPanel(); autoStaff(); statAdd('exp');
-  const bossName = (D.areas[2].boss || {}).name || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is cleared.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
-  lines.push(...lines0); if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
+  const bossName = (H.plan && H.plan.boss ? H.plan.boss.name : (D.areas[2].boss || {}).name) || 'the boss', lines = [won ? (H.raid ? `<b>${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}: done.</b>` : H.plan && H.plan.boss && H.bossDown ? `<b>${esc(bossName)} is dead.</b> ${esc(d.name)} is cleared.` : `<b>${esc(d.name)}: done.</b> ${(H.tasks || []).filter((T) => !T.opt).map((T) => esc(T.label)).join('. ')}.`) : fled ? 'The squad fell back and got out.' : 'The squad was overrun and dragged itself home.'];
+  lines.push(...lines0); if (H.tasks) for (const T of H.tasks) if (T.opt && T.done) lines.push(`✓ ${esc(T.label.replace(/^Side: /, ''))}`); if (won && (H.keys || []).length) { S.keyItems = S.keyItems || {}; for (const k of H.keys) S.keyItems[k] = (S.keyItems[k] || 0) + 1; lines.push(`🔑 Brought home: ${H.keys.map((k) => esc((SH_KEYS[k] || { name: k }).name)).join(', ')}.`); } if (hurt.length) lines.push(`<b>Wounded:</b> ${hurt.map(esc).join(', ')}.`); if (lost.length) lines.push(`<b style="color:#ff8a7a">Didn't make it:</b> ${lost.map(esc).join(', ')}.`); if (recruit) lines.push(`${esc(recruit.name)}, a ${recruit.job}, was rescued inside and came home with the squad.`);
   if (H.camp) lines[0] = fled ? `The squad got out of ${esc(d.name)}.` : 'The squad was overrun and dragged itself home.';
   if ((H.camp && fled) && !window.ZH_NO_REVEAL && (Object.keys(loot).length || items.length)) lootReveal({ title: 'RAID DONE', sub: `${d.icon} ${d.name}`, entries: lootEntries(loot, items.filter(Boolean)), note: lines.join('<br>') });
   else if ((won) && !window.ZH_NO_REVEAL) lootReveal({ title: H.raid ? 'RAID DONE' : 'STRONGHOLD CLEARED', sub: `${d.icon} ${d.name}`, entries: lootEntries(loot, items.filter(Boolean)), note: lines.join('<br>') });
@@ -5563,7 +5566,7 @@ function shPanel() {   /* 3D.115 owner: too crowded. Now a slim pill on top (whe
   const d = EXP_DEFS[H.dest] || { name: H.dest, icon: '⚔' };
   if (!el) { el = document.createElement('div'); el.id = 'shPanel'; el.className = 'shPanel'; document.body.appendChild(el); el.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) { e.stopPropagation(); shCall(b.dataset.c); } }); }
   if (!top) { top = document.createElement('div'); top.id = 'shTop'; top.className = 'shTop'; document.body.appendChild(top); }
-  top.innerHTML = `<b>${d.icon} ${esc(d.name)}${H.practice ? ' · practice' : ''}</b>${H.goal ? `<span class="shGoal ${H.goalDone ? 'done' : ''}">${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}${H.goalDone ? ' ✓' : ''}</span>` : ''}<div class="shBoss"></div>`;
+  top.innerHTML = `<b>${d.icon} ${esc(d.name)}${H.practice ? ' · practice' : ''}</b>${H.goal ? `<span class="shGoal ${H.goalDone ? 'done' : ''}">${RAID_GOALS[H.goal].icon} ${RAID_GOALS[H.goal].name}${H.goalDone ? ' ✓' : ''}</span>` : ''}${!H.raid && H.tasks ? H.tasks.map((T) => { const st = shTaskState(H, T); return `<span class="shGoal ${T.done ? 'done' : ''} ${T.opt ? 'opt' : ''}">${esc(T.label)}${st.need > 1 && !T.done ? ` ${st.n}/${st.need}` : ''}${T.done ? ' ✓' : ''}</span>`; }).join('') : ''}<div class="shBoss"></div>`;
   const exN = Object.values(S.ex || {}).reduce((a, b) => a + b, 0), sel = H.units.filter((q) => H.sel.includes(q.id) && q.hp > 0);
   let ctx0 = '';
   if (sel.length === 1) { const s = sel[0], A = shAbil(s), cd = Math.max(0, (s.abT || 0) - H.t), St = SH_STANCE[s.stance || 'attack'];
@@ -5587,9 +5590,9 @@ function shPanelTick(inner) { const el = $('shPanel'), top = $('shTop'), H = S.s
     const ab = row.querySelector('.ab'), cd = Math.max(0, (s.abT || 0) - H.t); if (ab) { ab.disabled = !!cd || s.hp <= 0; const i = ab.querySelector('i'); if (cd) { if (i) i.textContent = Math.ceil(cd / 60); else ab.insertAdjacentHTML('beforeend', `<i>${Math.ceil(cd / 60)}</i>`); } else if (i) i.remove(); }
     const cr = row.querySelector('.crit'); if (cr) cr.hidden = !((s.crit || 0) >= 100 && s.hp > 0); const md = row.querySelector('.med'); if (md) md.disabled = s.hp >= s.max; });
   const nm = el.querySelector('.shSel .nm em b'), s1 = H.sel.length === 1 && H.units.find((q) => q.id === H.sel[0]); if (nm && s1) nm.style.width = Math.max(0, Math.round(s1.hp / s1.max * 100)) + '%';
-  const b = top && top.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.hp > 0 && H.rev.B), left = H.zs.filter((z) => z.hp > 0 && !z.hid).length, hidden = Object.keys(SH_ROOMS).filter((r) => !H.rev[r]).length;
+  const b = top && top.querySelector('.shBoss'), bz = H.zs.find((z) => z.boss && z.hp > 0 && H.rev[(H.plan && H.plan.bossRoom) || 'B']), left = H.zs.filter((z) => z.hp > 0 && !z.hid).length, hidden = Object.keys(SH_ROOMS).filter((r) => !H.rev[r]).length;
   if (b && H.camp) { const gl = H.zs.filter((z) => z.hp > 0 && !z.worker).length, dn = H.blds.filter((q) => q.dead).length; const rs = H.alarm && H.reinAt ? Math.max(0, Math.ceil((H.reinAt - H.t) / 60)) : 0; b.innerHTML = `<span class="sm">${H.night ? '🌙 ' : ''}${H.alarm ? '🔔 Alarm!' + (rs ? ` Patrol ${H.reinN + 1}/${(CAMP_PLAN[H.raid] || {}).reinMax || 3} in ${Math.floor(rs / 60)}:${String(rs % 60).padStart(2, '0')}` : H.reinN ? ' No more patrols' : '') : '🤫 Unseen'} · ${gl} guards · ${dn}/${H.blds.length} buildings down · 🎒 ${campBagLoad(H)}/${campBag(H)}${(H.items || []).length ? ' +' + H.items.length + ' gear' : ''}</span>`; }
-  else if (b) b.innerHTML = bz && H.woke.B ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span class="sm">${left} in sight · ${hidden} room${hidden === 1 ? '' : 's'} unexplored</span>`;
+  else if (b) b.innerHTML = bz && H.woke[(H.plan && H.plan.bossRoom) || 'B'] ? `<span>☠ ${esc(bz.name)}</span><em><b style="width:${Math.max(0, Math.round(bz.hp / bz.max * 100))}%"></b></em>` : `<span class="sm">${left} in sight · ${hidden} room${hidden === 1 ? '' : 's'} unexplored</span>`;
   if (!inner && !H.list && s1 && (((s1.crit || 0) >= 100) !== !!el.querySelector('.crit') || (s1.abT && s1.abT - H.t <= 0 && el.querySelector(`[data-c="ab:${s1.id}"][disabled]`)) || (s1.abT - H.t > 0 && H.t % 60 === 0))) shPanel(); }
 /* the tap layer over the 3D view */
 function shTapLayer() { let el = $('shTap'); const on = !!(S.sh && S.sh.view && S.sh.phase !== 'done');
@@ -5615,14 +5618,14 @@ function shTap(px, py) {   /* 3D.118 owner: when a tap lands on several things, 
   if (H.throwMode) { const at = shUnproject(x, y); if (at) shThrow(at); return; }
   const all = (list, h, r, k) => list.map((o) => { const p = ZH3D.shProject(o.w.x, o.w.y, h); return p ? { k, o, d: Math.hypot(p.x - x, p.y - y) } : null; }).filter((c) => c && c.d < r);
   const c = [...all(H.units.filter((q) => q.hp > 0), .9, 34, 'u'), ...all(H.zs.filter((q) => q.hp > 0 && !q.hid && (q.mode !== 'sleep' || H.woke[q.room] || H.rev[q.room])), 1, 40, 'z'),
-    ...(H.camp ? all(H.blds.filter((b) => !b.looted || !b.dead), .7, 44, 'b') : []), ...(H.camp ? all(Object.values(H.fence || {}).filter((f) => !f.dead), .4, 26, 'b') : []), ...all(H.doors.map((d, i) => ({ d, i, w: shDoorW(i) })).filter((q) => !q.d.broken), .5, 40, 'd')].sort((a, b) => a.d - b.d);
+    ...(H.camp ? all(H.blds.filter((b) => !b.looted || !b.dead), .7, 44, 'b') : []), ...(H.camp ? all(Object.values(H.fence || {}).filter((f) => !f.dead), .4, 26, 'b') : []), ...all(H.doors.map((d, i) => ({ d, i, w: shDoorW(i) })).filter((q) => !q.d.broken), .5, 40, 'd'), ...(H.camp ? [] : all((H.things || []).map((t, i) => ({ t, i, w: shThingSpot(t) })).filter((q) => (q.t.use || q.t.carry) && !q.t.done && q.t.carried == null && !q.t.delivered && H.rev[shRoomAt(q.w)]), .5, 40, 't'))].sort((a, b) => a.d - b.d);
   const at = shUnproject(x, y);
   if (c.length > 1) { shPickMenu(px, py, c, at); return; }
   if (c.length === 1 && (c[0].k !== 'b' || c[0].o.fence)) { shAct(c[0]); return; }
   if (c.length === 1) { shPickMenu(px, py, c, null); return; }
   if (H.sel.length && at) shMoveTo(at);
 }
-function shMoveTo(at) { const H = S.sh; H.coachAct = true; const who = H.units.filter((q) => H.sel.includes(q.id) && q.hp > 0); who.forEach((q, i) => { q.moveTo = { x: at.x + (i % 3 - 1) * .5, y: at.y + Math.floor(i / 3) * .5 }; q.order = null; q.target = null; q.loot = null; q.pick = null; }); shFx(at, '⬤', '#9fd8ff'); }
+function shMoveTo(at) { const H = S.sh; H.coachAct = true; const who = H.units.filter((q) => H.sel.includes(q.id) && q.hp > 0); who.forEach((q, i) => { q.moveTo = { x: at.x + (i % 3 - 1) * .5, y: at.y + Math.floor(i / 3) * .5 }; q.order = null; q.target = null; q.loot = null; q.pick = null; q.use = null; }); shFx(at, '⬤', '#9fd8ff'); }
 const shFoeName = (z) => z.name || (z.worker ? 'Worker' : z.human ? (z.wpn === 'rifle' ? 'Gunman' : z.wpn === 'bow' ? 'Archer' : 'Guard') : (zombieTypes[z.type] || {}).name || 'Zombie');
 function shActLabel(c) { const H = S.sh, o = c.o;
   if (c.k === 'u') return [H.sel.includes(o.id) ? '✋' : '🙂', `${o.name}`, `${o.job} · ${H.sel.includes(o.id) ? 'tap to let go' : 'select'}`];
@@ -5630,6 +5633,7 @@ function shActLabel(c) { const H = S.sh, o = c.o;
   if (c.k === 'b' && o.fence) return ['🪓', 'Break the fence here', `${Math.ceil(o.hp)}/${o.max} · loud: guards close by will hear`];
   if (c.k === 'b') { const ks = Object.entries(o.loot || {}).filter(([, n]) => n > 0).map(([k]) => (RES_NAME[k] || k).toLowerCase()), has = o.pris ? 'Prisoners locked inside' : ks.length || o.items.length ? 'Holds ' + [...(o.items.length ? [o.items.length > 1 ? 'gear' : 'a piece of gear'] : []), ...ks].join(', ') : 'Nothing worth taking';
     return o.dead ? ['📦', `Loot the ${o.name}`, has] : ['🎯', `Attack the ${o.name}`, `${has} · ${Math.ceil(o.hp)}/${o.max}`]; }
+  if (c.k === 't') { const t = o.t; return [t.icon || (t.carry ? '📦' : '⚙'), t.carry ? `Pick up the ${t.label}` : t.label, t.need && !shThingReady(t) ? (t.needText || 'Not yet') : t.carry ? 'Then carry it out: slow, and no fighting' : t.sub || `${t.use || 3} s of work`]; }
   return o.d.locked && !o.d.open ? ['🔒', 'Force the lock', 'Mechanics, Scavengers and Engineers are quicker'] : ['🚪', o.d.open ? 'Shut the door' : 'Open the door', ''];
 }
 function shPickClose() { const e = $('shPick'); if (e) e.remove(); }
@@ -5645,6 +5649,7 @@ function shAct(c) { const H = S.sh; H.coachAct = true; const pool = () => (H.sel
     if (b.dead && !b.looted) { const who = pl.slice().sort((a, q) => dist(a.w, b.w) - dist(q.w, b.w))[0]; if (!who) return; for (const q of H.units) if (q.loot === b.i && q !== who) q.loot = null; who.loot = b.i; who.lootT = 0; who.lootAt = null; who.moveTo = null; who.order = null; shFx(b.w, `📦 ${who.name}: looting`, '#ffe9b8'); return; }
     if (b.dead) { say(`The ${b.name} has been picked clean.`); return; }
     for (const q of pl) { q.order = b; q.moveTo = null; q.loot = null; q.spotFor = null; } shFx(b.w, b.fence ? '🪓 Break through' : `🎯 ${b.name}`, '#ff6e62'); return; }
+  if (c.k === 't') { const t = c.o.t; if (t.need && !shThingReady(t)) { say(t.needText || 'Not yet.'); return; } const who = pool().filter((q) => q.carry == null).sort((a, b) => ((t.fast || []).includes(b.job) - (t.fast || []).includes(a.job)) || dist(a.w, c.o.w) - dist(b.w, c.o.w))[0]; if (!who) return; for (const q of H.units) if (q.use === c.o.i && q !== who) q.use = null; who.use = c.o.i; who.moveTo = null; who.order = null; who.pick = null; shFx(c.o.w, `${t.icon || '⚙'} ${who.name}: on it`, '#ffe9b8'); return; }
   const dn = c.o;
   if (dn.d.locked && !dn.d.open && !dn.d.broken) { const [, , dx, dy, dw] = SH_DOORS[dn.i], pl = pool(); const sides = dw > 1 ? [shWorld(dx + .5, dy - 1), shWorld(dx + .5, dy + 1)] : [shWorld(dx - 1, dy + .5), shWorld(dx + 1, dy + .5)];
     const ok = sides.filter((p) => H.rev[shRoomAt(p)]); const who = pl.slice().sort((a, b) => (['Mechanic', 'Scavenger', 'Engineer'].includes(b.job) - ['Mechanic', 'Scavenger', 'Engineer'].includes(a.job)) || dist(a.w, dn.w) - dist(b.w, dn.w))[0]; if (!who || !ok.length) { say('Nobody can get to that door yet.'); return; }
@@ -5681,6 +5686,131 @@ function shDraw() {   /* the 2D overlay while watching the squad */
   for (const f of H.fx) { const p = ZH3D.shProject(f.w.x, f.w.y, 1.9 + (60 - f.a) / 60 * .8); if (!p) continue; ctx.globalAlpha = Math.min(1, f.a / 25); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(f.t, p.x, p.y); ctx.fillStyle = f.col; ctx.fillText(f.t, p.x, p.y); }
   ctx.restore(); }
 
+/* ---- 3D.276 Strongholds chat (owner, 22 Nov: "you will run and make all the maps and rooms and props"; plan in docs/project/15-STRONGHOLDS.md).
+   Every stronghold gets a plan of its own, made for the town's level (a level 5 town meets a small place, a level 15 town a big one):
+   its own rooms and doors, the names, what sleeps where, the things in it you can use (B3), the floor hazards (B4), dark rooms (B5),
+   waves (B6), the boss's pattern (B7), and its goals (B2). A plan is plain data kept in S.sh.plan; the code reads the plan, not fixed rooms.
+   Rooms are a tile apart; a door fills the gap. Grid units are tiles. ---- */
+function shNewPlan(W, Hh, o = {}) { return { W, H: Hh, rooms: {}, doors: [], names: {}, floor: {}, route: [], locked: [], lockName: {}, spawn: {}, things: [], zones: [], dark: {}, tasks: [], waves: [], spots: {}, start: null, exit: null, startRoom: null, mystT: ['walker', 'walker'], ...o }; }
+function shRoom(P, id, x, y, w, h, name, col) { if (x < 0 || y < 0 || x + w > P.W || y + h > P.H) throw new Error(`room ${id} is off the map`); P.rooms[id] = [x, y, w, h]; if (name) P.names[id] = name; if (col) P.floor[id] = col; return id; }
+/* a door between two rooms one tile apart, centred on the side they share (or at 'at' along it); n tiles wide */
+function shLink(P, a, b, locked, at, n0) { const [ax, ay, aw, ah] = P.rooms[a], [bx, by, bw, bh] = P.rooms[b]; let d = null;
+  if (ax + aw + 1 === bx || bx + bw + 1 === ax) { const x = ax + aw + 1 === bx ? ax + aw : bx + bw, y0 = Math.max(ay, by), y1 = Math.min(ay + ah, by + bh); if (y1 - y0 < 1) throw new Error(`rooms ${a} and ${b} share no side`); const n = Math.min(n0 || 2, y1 - y0), y = at != null ? Math.max(y0, Math.min(y1 - n, at)) : Math.floor((y0 + y1 - n) / 2); d = [a, b, x, y, 1, n]; }
+  else if (ay + ah + 1 === by || by + bh + 1 === ay) { const y = ay + ah + 1 === by ? ay + ah : by + bh, x0 = Math.max(ax, bx), x1 = Math.min(ax + aw, bx + bw); if (x1 - x0 < 1) throw new Error(`rooms ${a} and ${b} share no side`); const n = Math.min(n0 || 2, x1 - x0), x = at != null ? Math.max(x0, Math.min(x1 - n, at)) : Math.floor((x0 + x1 - n) / 2); d = [a, b, x, y, n, 1]; }
+  else throw new Error(`rooms ${a} and ${b} are not one tile apart`);
+  if (locked) d.push(1); P.doors.push(d); return P.doors.length - 1; }
+const shMid = (P, r) => { const [x, y, w, h] = P.rooms[r]; return { x: x + w / 2 - .5, y: y + h / 2 - .5 }; };
+/* a thing in a room: k = what it is (drawn by the 3D view), use = a job a survivor does there (seconds), carry = it is picked up and taken out */
+function shThing(P, k, x, y, o = {}) { const t = { k, x, y, ...o }; t.room = t.room || Object.keys(P.rooms).find((r) => { const [rx, ry, rw, rh] = P.rooms[r]; return x >= rx && x < rx + rw && y >= ry && y < ry + rh; }) || null; P.things.push(t); return t; }
+const shLvSize = (lv, a, b, every) => Math.max(a, Math.min(b, a + Math.floor(Math.max(0, lv - 1) / every)));   /* how big a place is at this level */
+
+/* the plans of the first maps (the Clinic, the Prison) have their own builders below; maps not redone yet use their old layout, made into a plan */
+function shLegacyPlan(dest) { const k = SH_LAYOF[dest] || 'hall', L = SH_LAY[k], D = SH_DEFS[dest], A = D.areas, P = shNewPlan(SH_GW, SH_GH);
+  P.rooms = JSON.parse(JSON.stringify(L.rooms)); P.doors = JSON.parse(JSON.stringify(L.doors));
+  P.names = { R0: A[0].name, R1: A[1].name, B: A[2].name, S: D.side, A: (D.wings || [])[0], C: (D.wings || [])[1] }; P.lockName = { ...SH_LROOM }; P.locked = Object.keys(SH_LROOM);
+  P.floor = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] };
+  P.route = ['R0', 'R1', 'wing', 'B']; P.startRoom = 'R0'; P.bossRoom = 'B'; P.mystT = [A[0].spawn[0][0], (A[1].spawn[1] || A[1].spawn[0])[0]];
+  const half = (list, k2) => list.map(([t, c]) => [t, Math.max(k2 ? 0 : 1, k2 ? Math.floor(c / 2) : Math.ceil(c / 2))]).filter(([, c]) => c > 0);
+  P.spawn = { R0: A[0].spawn, R1: half(A[1].spawn, 0), A: half(A[1].spawn, 1).concat([[A[1].spawn[0][0], 2]]), C: half(A[1].spawn, 1), B: A[2].spawn };
+  P.boss = A[2].boss ? { room: 'B', ...A[2].boss } : null; P.start = { x: 1, y: 8.5 }; P.exit = { x: .6, y: 10.5 };
+  P.tasks = [{ k: 'boss', label: `Kill ${(A[2].boss || {}).name || 'the boss'}` }]; return P; }
+
+/* ---- the Overrun Clinic (the first stronghold, the teaching map). One long corridor with wards off both sides, the operating theatre at the end.
+   House rule: patients asleep in their beds get up when someone walks past them, or when a gun goes off near them. Quiet weapons are safer.
+   Side goal: the pharmacy locker. Size: 2 wards a side at level 3, one more every 4 levels (6 a side at level 20). ---- */
+function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 9 + L + 1 + 11, P = shNewPlan(W, 19, { theme: 'clinic' });
+  shRoom(P, 'lobby', 0, 6, 8, 7, 'The Lobby', '#cfd6d2'); shRoom(P, 'pharm', 1, 0, 6, 5, 'The Pharmacy', '#d9d4c4'); shRoom(P, 'hall', 9, 8, L, 3, 'The Corridor', '#d9d4c4');
+  shRoom(P, 'theatre', 9 + L + 1, 4, 10, 11, 'The Operating Theatre', '#c9d3d6');
+  shLink(P, 'lobby', 'hall'); shLink(P, 'lobby', 'pharm', true); shLink(P, 'hall', 'theatre');
+  P.spawn.lobby = [['walker', 3 + (lv > 6 ? 1 : 0)], ['runner', lv > 8 ? 1 : 0]].filter((q) => q[1]); P.spawn.hall = [['walker', 2 + Math.floor(n / 2)], ['runner', 1 + (lv > 10 ? 1 : 0)]];
+  for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `w${up ? 'n' : 's'}${i}`, x = 9 + i * 7, y = up ? 1 : 12, locked = (i + up) % 3 === 2;
+    shRoom(P, id, x, y, 6, 6, `Ward ${i * 2 + (up ? 1 : 2)}`, i % 2 ? '#d4dcd8' : '#dfe4e0'); shLink(P, id, 'hall', locked, x + 2);
+    if (locked) { P.locked.push(id); P.lockName[id] = `a locked ward (Ward ${i * 2 + (up ? 1 : 2)})`; }
+    /* two rows of beds; about half the beds hold a patient who will get up */
+    for (const by of up ? [y + 1, y + 4] : [y + 1, y + 4]) for (const bx of [x + 1, x + 4]) { const t = shThing(P, 'bed', bx, by, { r: 0 }); if (!locked && ((bx + by + i + lv) % 5 < 2 + (lv > 9 ? 1 : 0))) t.sleeper = lv > 12 && (bx + by) % 3 === 0 ? 'runner' : 'walker'; }
+    if (!locked) P.spawn[id] = [['walker', 1 + (i % 2)], ...(lv > 7 && i % 3 === 1 ? [['spitter', 1]] : []), ...(lv > 5 && i % 4 === 3 ? [['bloated', 1]] : [])]; }
+  shThing(P, 'locker', 2, 1, { use: 6, label: 'Empty the pharmacy locker', icon: '💊', loot: { meds: 3 + Math.floor(lv / 5), cloth: 2 }, task: 'locker' });
+  P.spawn.pharm = [['walker', 1]];
+  P.spawn.theatre = [['walker', 2 + Math.floor(lv / 6)]]; P.boss = { room: 'theatre', type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011, pat: 'slam' };
+  P.route = ['lobby', 'hall', 'theatre']; P.startRoom = 'lobby'; P.bossRoom = 'theatre'; P.start = { x: 1, y: 8.2 }; P.exit = { x: .6, y: 9.5 }; P.mystT = ['walker', 'runner'];
+  P.tasks = [{ k: 'boss', label: 'Kill the Butcher of Ward 3' }, { k: 'use', id: 'locker', opt: true, label: 'Side: empty the pharmacy locker' }];
+  P.tip = 'Patients sleep in some of the beds. They get up when someone walks past, or when a gun goes off near them: quiet weapons are safer.';
+  return P; }
+
+/* which plan a place uses */
+const SH_PLANS = { clinic: shPlanClinic };
+function shMakePlan(dest, lv) { const f = SH_PLANS[dest]; const P = f ? f(lv) : shLegacyPlan(dest); P.dest = dest; P.lv = lv; return P; }
+/* the rooms a squad can open and where it starts and leaves */
+const shPlanOf = () => (S.sh && S.sh.plan) || null;
+function shSetPlan(P) { SH_LKEY = P; SH_ROOMS = P.rooms; SH_DOORS = P.doors; SHG = null; }
+/* a plan is sound if every room can be reached from the start (doors open), the start and exit are on the floor, and the boss room exists */
+function shPlanCheck(P) { const bad = [], g = []; for (let y = 0; y < P.H; y++) g.push(new Array(P.W).fill(null));
+  for (const [k, [x0, y0, w, h]] of Object.entries(P.rooms)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { if (g[y][x]) bad.push(`rooms ${g[y][x]} and ${k} overlap`); g[y][x] = k; }
+  for (const [a, b, x0, y0, w, h] of P.doors) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { if (g[y] && g[y][x] && g[y][x][0] !== 'D') bad.push(`door ${a}-${b} sits on room ${g[y][x]}`); if (g[y]) g[y][x] = 'D'; }
+  const s = P.start, seen = new Set(), q = [[Math.floor(s.x), Math.floor(s.y)]]; if (!g[q[0][1]] || !g[q[0][1]][q[0][0]]) bad.push('the start is not on the floor');
+  while (q.length) { const [x, y] = q.pop(), key = x + ',' + y; if (seen.has(key) || !g[y] || !g[y][x]) continue; seen.add(key); q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]); }
+  for (const [k, [x0, y0]] of Object.entries(P.rooms)) if (!seen.has(x0 + ',' + y0)) bad.push(`room ${k} cannot be reached`);
+  if (P.bossRoom && !P.rooms[P.bossRoom]) bad.push('no boss room'); for (const t of P.things) if (!t.room) bad.push(`a ${t.k} stands outside every room`);
+  for (const r of P.route) if (r !== 'wing' && !P.rooms[r]) bad.push(`the route names a room that is not there: ${r}`);
+  return bad; }
+
+/* ---- B2 goals and B3 things. A task: boss (kill it), use (a thing with that task done), all (every thing with that task done),
+   carry (that many things with that task carried into the room the squad came in by), hold (see B6). Tasks with opt are side goals. ---- */
+function shTaskState(H, T) { const ts = (H.things || []).filter((t) => t.task === T.id);
+  if (T.k === 'boss') return { done: !!H.bossDown, n: H.bossDown ? 1 : 0, need: 1 };
+  if (T.k === 'use' || T.k === 'all') { const n = ts.filter((t) => t.done).length, need = T.need || ts.length || 1; return { done: n >= need, n, need }; }
+  if (T.k === 'carry') { const n = ts.filter((t) => t.delivered).length, need = T.need || ts.length || 1; return { done: n >= need, n, need }; }
+  if (T.k === 'hold') { const h = H.hold || {}, need = T.secs || 60; return { done: (h.p || 0) >= need, n: Math.floor(h.p || 0), need }; }
+  if (T.k === 'clock') return { done: false, n: 0, need: 1 };
+  return { done: false, n: 0, need: 1 }; }
+function shTaskTick(H, live) {
+  for (const s of H.units) { if (s.carry == null) continue; const t = H.things[s.carry]; if (!t) { s.carry = null; continue; }
+    if (s.hp <= 0) { const c = shCell(s.w); t.x = c.x; t.y = c.y; t.carried = null; s.carry = null; shFx(s.w, `📦 ${t.label || 'It'} is dropped`, '#ff8a7a'); continue; }
+    if (shRoomAt(s.w) === H.plan.startRoom) { t.delivered = true; t.carried = null; s.carry = null; const c = shCell(s.w); t.x = c.x; t.y = c.y; shFx(s.w, `✅ ${t.label || 'It'} is out`, '#7be08a'); SFX('reward'); shPanel(); } }
+  if (H.hold) shHoldTick(H, live); if (H.plan.waves && H.plan.waves.length) shWaveTick(H); if (H.zones && H.zones.length && H.t % 30 === 0) shZoneHurt(H, live);
+  if (H.goalDone || H.phase === 'done') return; const main = (H.tasks || []).filter((T) => !T.opt);
+  for (const T of H.tasks || []) { const st = shTaskState(H, T); if (st.done && !T.done) { T.done = true; if (T.opt) { banner(`✓ ${T.label.replace(/^Side: /, '')}`); SFX('reward'); } shPanel(); } }
+  if (main.length && main.every((T) => T.done)) shGoalDone(); }
+function shThingSpot(t) { return shWorld(t.x, t.y); }
+function shUseAI(s) { const H = S.sh; if (s.use == null) return false; const t = H.things[s.use]; if (!t || t.done || t.carried != null || t.delivered || (t.need && !shThingReady(t))) { s.use = null; return false; }
+  const at = shThingSpot(t); if (dist(s.w, at) > .95) { s.mode = 'walk'; s.target = null; if (!shGo(s, at, .024, 'u') && !s.path && dist(s.w, at) > .95) { s.use = null; say(`${s.name} can't get to the ${t.label || t.k}.`); } return true; }
+  const foe = H.zs.find((z) => z.hp > 0 && !z.hid && !z.friend && z.mode !== 'sleep' && dist(z.w, s.w) < 1.4); if (foe) { s.target = foe; s.mode = 'attack'; s.stateTicks = 14; s.moving = false; s.faceW = { ...foe.w }; return true; }
+  s.mode = 'fix'; s.moving = false; s.faceW = at; const fast = t.fast && t.fast.includes(s.job) ? 2 : 1; t.prog = (t.prog || 0) + fast / (60 * (t.use || 3));
+  if (t.prog >= 1) { t.prog = 0; s.use = null; s.mode = 'free'; shThingDone(t, s); } return true; }
+function shThingReady(t) { const H = S.sh; return !t.need || (H.things || []).filter((q) => q.task === t.need).every((q) => q.done); }
+function shThingDone(t, s) { const H = S.sh; SFX('reward');
+  if (t.carry) { s.carry = H.things.indexOf(t); t.carried = s.id; shFx(s.w, `📦 ${s.name} carries the ${t.label}`, '#ffe9b8'); say(`${s.name} has the ${t.label}. Get it back to ${H.plan.names[H.plan.startRoom] || 'the way in'}: they walk slowly and can't fight while they carry it.`); shPanel(); return; }
+  t.done = true; for (const [k, n] of Object.entries(t.loot || {})) H.loot[k] = (H.loot[k] || 0) + n; if (t.items) (H.items ||= []).push(...t.items);
+  const got = Object.entries(t.loot || {}).map(([k, n]) => (RES_ICON[k] || k) + ' +' + n); shFx(s.w, (t.doneText || `✓ ${t.label || t.k}`) + (got.length ? '  ' + got.join(' ') : ''), '#7be08a');
+  if (t.fx) shThingFx(t, s); shPanel(); }
+/* what a switch does when it is worked (each map names its own effects) */
+const SH_FX = {};
+function shThingFx(t, s) { const f = SH_FX[t.fx]; if (f) f(S.sh, t, s); }
+/* the boss's pattern (B7): a tell, then the big move. slam: hits everyone round it. gun: a long burst at range. summon: calls its kind. charge: runs through */
+function shBossPat(z, t, d0) { const H = S.sh; if (z.tellT) { z.moving = false; z.faceW = { ...t.w }; if (H.t < z.tellT) return true; z.tellT = 0; z.patT = H.t + (z.patGap || 420);
+    if (z.pat === 'slam') { for (const s of H.units) if (s.hp > 0 && dist(s.w, z.w) < 1.9) { const dm = Math.max(1, Math.round(z.atk * 1.8 * (1 - dmgReduce(s)))); s.hp -= dm; s.hitT = 9; shFx(s.w, '-' + dm, '#ff6e62'); if (s.hp <= 0) { s.hp = 0; s.mode = 'down'; say(`${s.name} is down!`); } } shFx(z.w, '💥', '#ffb060'); SFX('hit'); (window.ZH_BOOMS ||= []).push({ x: z.w.x, y: z.w.y, r: 1.9, burn: false, t: performance.now() }); }
+    else if (z.pat === 'gun') { z.burst = 6; z.burstT = H.t; }
+    else if (z.pat === 'summon') { const zd = zombieTypes[z.kin || 'bloated'] || zombieTypes.walker; for (let i = 0; i < (z.kinN || 2); i++) { const w = { x: z.w.x + (i ? .8 : -.8), y: z.w.y + .5 }, c = shCell(w); if (shOpen(c.x, c.y, 'u') !== true) continue; H.zs.push({ type: z.kin || 'bloated', room: z.room, w, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: (zd.chase || .012) * 1.25, mode: 'idle', stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); } shFx(z.w, '📣 It calls its own', '#ff6e62'); }
+    else if (z.pat === 'charge') { z.chargeTo = { x: t.w.x + (t.w.x - z.w.x) * .4, y: t.w.y + (t.w.y - z.w.y) * .4 }; z.chargeT = H.t + 90; }
+    return true; }
+  if (z.burst > 0) { if ((H.t - z.burstT) % 12 === 0) { z.burst--; const dm = Math.max(1, Math.round(z.atk * .45 * (1 - dmgReduce(t)))); if (dist(z.w, t.w) < 7) { t.hp -= dm; t.hitT = 9; shFx(t.w, '-' + dm, '#ff6e62'); shots.push({ a: { ...z.w }, b: { ...t.w }, t: 6 }); SFX('shot'); if (t.hp <= 0) { t.hp = 0; t.mode = 'down'; say(`${t.name} is down!`); } } } z.moving = false; z.faceW = { ...t.w }; return true; }
+  if (z.chargeT > H.t) { const done = shGo(z, z.chargeTo, z.spd * 3.2, 'z'); for (const s of H.units) if (s.hp > 0 && dist(s.w, z.w) < .7 && !s.chargedBy) { s.chargedBy = H.t; const dm = Math.round(z.atk * 1.4); s.hp -= dm; shFx(s.w, '-' + dm + ' knocked flat', '#ff6e62'); if (s.hp <= 0) { s.hp = 0; s.mode = 'down'; } } if (done) z.chargeT = 0; return true; } else for (const s of H.units) if (s.chargedBy && H.t - s.chargedBy > 60) s.chargedBy = 0;
+  if (H.t >= (z.patT || 300) && d0 < (z.pat === 'gun' ? 6.5 : z.pat === 'charge' ? 6 : z.pat === 'summon' ? 8 : 2.6) && z.mode !== 'zattack') { z.tellT = H.t + (z.pat === 'gun' ? 70 : 55); shFx({ x: z.w.x, y: z.w.y - .5 }, { slam: '❗ It rears up', gun: '❗ The barrels spin up', summon: '❗ It bellows', charge: '❗ It lowers its head' }[z.pat] || '❗', '#ff6e62'); return true; }
+  return false; }
+/* B4 floor hazards and B6 holds and waves: filled in as the maps that use them arrive (their maps set them up) */
+function shZoneAt(H, w) { const c = shCell(w); return (H.zones || []).find((q) => q.on !== false && c.x >= q.x && c.x < q.x + q.w && c.y >= q.y && c.y < q.y + q.h) || null; }
+function shZoneSlow(o, who) { const H = S.sh; if (!H || !H.zones || !H.zones.length) return 1; const z = shZoneAt(H, o.w); if (!z) return 1; if (z.k === 'water') return who === 'z' && o.type === 'bloated' ? 1 : .55; if (z.k === 'ice') return .8; return 1; }
+function shZoneHurt(H, live) { const warm = (H.things || []).filter((t) => t.warm && !t.out);
+  for (const o of [...live, ...H.zs.filter((z) => z.hp > 0 && !z.human)]) { const z = shZoneAt(H, o.w); if (!z) continue; const isU = live.includes(o);
+    let dm = 0; if (z.k === 'fire' && !(o.type === 'burnt')) dm = isU ? 3 : 4; else if (z.k === 'gas' && isU) dm = 2; else if (z.k === 'heat' && isU) dm = 2; else if (z.k === 'cold' && isU && !warm.some((t) => dist(shThingSpot(t), o.w) < (t.warm || 2.5))) dm = 1;
+    if (!dm) continue; o.hp -= dm; o.hitT = 6; if (H.t % 120 === 0) shFx(o.w, { fire: '🔥', gas: '☁', heat: '♨', cold: '❄' }[z.k] + ' -' + dm, '#ffb060'); if (isU && o.hp <= 0) { o.hp = 0; o.mode = 'down'; say(`${o.name} is down!`); } } }
+function shHoldTick(H, live) { const h = H.hold; if (!h.on) return; const t = H.things[h.thing]; const inside = live.filter((s) => dist(s.w, shThingSpot(t)) < (t.r || 2)); if (inside.length) { h.p = (h.p || 0) + 1 / 60; if (H.t % 60 === 0) shFx(shThingSpot(t), `⏳ ${Math.floor(h.p)} / ${t.secs || 60} s`, '#ffe9b8'); } }
+function shWaveTick(H) { for (const wv of H.plan.waves) { if (wv.sent) continue; const due = wv.at != null ? H.t >= wv.at * 60 : wv.onHold ? H.hold && H.hold.on && (H.hold.p || 0) >= wv.onHold : false; if (!due) continue; wv.sent = true;
+    const sp = H.plan.spots[wv.from] || H.plan.exit, TK = (SH_DEFS[H.dest].tough || 1) * (H.plan.tough || 1); for (const [ty, n] of wv.list) for (let i = 0; i < n; i++) { const zd = zombieTypes[ty] || zombieTypes.walker, w = shWorld(sp.x + (i % 3) * .5 - .5, sp.y + Math.floor(i / 3) * .5); H.zs.push({ type: ty, room: shRoomAt(w) || wv.from, w, hp: Math.round(zd.hp * TK), max: Math.round(zd.hp * TK), atk: zd.atk * TK, spd: (zd.chase || .012) * 1.25, mode: 'idle', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, wave: true }); }
+    shFx(shWorld(sp.x, sp.y), wv.say || `❗ ${wv.list.reduce((a, q) => a + q[1], 0)} more coming`, '#ff6e62'); if (wv.say) say(wv.say); SFX('alarm'); } }
+/* things the squad brings home for the story and the cure (kept in S.keyItems until the Story tab and the Brewery are built, Features chat) */
+const SH_KEYS = { feed_spring: { name: 'Wild cucumber seed (the cure: spring feed)' }, feed_summer: { name: 'The first Freshlock recipe (the cure: summer feed)' }, feed_autumn: { name: 'Old apple stock (the cure: autumn feed)' }, feed_winter: { name: 'Ice from the Frozen Depot (the cure: winter feed)' },
+  proof1: { name: 'The army contract (proof 1)' }, proof2: { name: 'The Helix memo (proof 2)' }, proof3: { name: "Sunnyside's files (proof 3)" }, mixtape: { name: "Moth's Mixtape" }, salt: { name: 'Salt from the Larder (the cure, step 3)' }, glass: { name: 'Helix lab glass (the cure, step 4)' }, vat: { name: 'A Foundry steel brewing vat (the cure, step 7)' }, shepherd_tin: { name: "The Shepherd's tin (the cure, step 10)" }, old_brine: { name: 'The Old Brine' }, last_tank: { name: "The plant's last Freshlock tank (the cure, step 12)" }, ledger: { name: 'The Larder ledger (Recall Notice 11)' }, order9: { name: 'The standing order (Recall Notice 9)' }, memo7: { name: 'The Probably Fine Memo (Recall Notice 7)' }, shift5: { name: 'The cannery shift sheet (Recall Notice 5)' }, pell10: { name: "Gideon Pell's contract (Recall Notice 10)" } };
 /* ---- 3D.116 owner: a raid is a camp map like the town. Their buildings, their guards and workers. Send the squad at a building,
    bring it down, then decide whether to stop and loot it (a water building gives water, and so on). The good stuff (gear, guns,
    ammo, the leader) sits in the middle, the hardest part to reach. Survivors fight on their own; you tell them where to go. ---- */
@@ -5849,7 +5979,7 @@ function showShPractice() {
     <div class="sm">Map</div><div class="row" style="flex-wrap:wrap;gap:6px">${maps.map((k) => `<button class="vehB ${P.map === k ? 'on' : ''}" data-pm="${k}">${(EXP_DEFS[k] || {}).icon || (SH_DEFS[k].raid ? '⚔' : '🏚')} ${esc((EXP_DEFS[k] || {}).name || k)}<small>${SH_DEFS[k].raid ? 'faction camp' : 'rec. ' + SH_DEFS[k].rec}</small></button>`).join('')}</div>
     ${('')}
     <div class="sm">Squad size</div><div class="row" style="gap:6px">${[4, 5, 6, 7, 8].map((n) => `<button class="vehB ${P.n === n ? 'on' : ''}" data-pn="${n}">${n}</button>`).join('')}</div>
-    <div class="sm">Squad level</div><div class="row" style="gap:6px">${[3, 6, 9, 12].map((n) => `<button class="vehB ${P.lv === n ? 'on' : ''}" data-pl="${n}">Lv ${n}</button>`).join('')}</div>
+    <div class="sm">Town level (the map's size and the squad's level)</div><div class="row" style="gap:6px;flex-wrap:wrap">${[3, 5, 8, 10, 12, 15, 18, 20].map((n) => `<button class="vehB ${P.lv === n ? 'on' : ''}" data-pl="${n}">Lv ${n}</button>`).join('')}</div>
     ${SH_DEFS[P.map].raid ? `<div class="sm">Time (faction camps)</div><div class="row" style="gap:6px"><button class="vehB ${P.night ? '' : 'on'}" data-pt="0">☀️ Day</button><button class="vehB ${P.night ? 'on' : ''}" data-pt="1">🌙 Night<small>guards see less, workers sleep</small></button></div>` : ''}
     <button class="act go" id="prGo" style="margin-top:10px">Start practice</button>
     <div class="sm" style="margin-top:8px"><b>Controls:</b> drag to look around, pinch or scroll to zoom. Tap a survivor (or 👥 All) to take control. Then tap the floor to move, an enemy to attack, a door to open or shut it. A 🔒 locked door: tap it and someone forces the lock (Mechanics, Scavengers and Engineers are quicker), or blow it open with a 💣. You can't see into a room until its door opens: it may hold supplies, nothing, or a nest. <b>Faction camps:</b> tap a building to send the squad at it; once it's down, tap it again to loot it. Stay unseen as long as you can: once the alarm goes up, the patrols come for you (the armoury and hall guards stay at their posts), and a bigger patrol arrives at the gate every half minute, so take what you came for and get out. Until they see you the squad holds its fire. At night the guards see and hear less far and the workers sleep. 🏃 Get out leaves through the gate with what you took. The fence can be broken (tap a section, or bomb it) to make your own way in, but guards close by will hear it. The selected survivor's stance, ability and ✦ critical show above the bottom bar.</div>`;
@@ -5857,7 +5987,7 @@ function showShPractice() {
   $('ib').querySelectorAll('[data-pt]').forEach((b) => { b.onclick = () => { P.night = b.dataset.pt === '1'; showShPractice(); }; }); $('ib').querySelectorAll('[data-pn]').forEach((b) => { b.onclick = () => { P.n = +b.dataset.pn; showShPractice(); }; }); $('ib').querySelectorAll('[data-pl]').forEach((b) => { b.onclick = () => { P.lv = +b.dataset.pl; showShPractice(); }; });
   $('prGo').onclick = () => { if (S.sh) { say('A squad is already inside.'); return; } const jobs = ['Guard', 'Police Officer', 'Medic', 'Scavenger', 'Mechanic', 'Engineer', 'Guard', 'Police Officer'], wp = ['machete', 'rifle', 'pistol', 'crossbow', 'sledge', 'shotgun', 'katana', 'rifle'], ar = P.lv >= 9 ? 'kevlar' : P.lv >= 6 ? 'leather' : null;
     const sq = []; for (let i = 0; i < P.n; i++) { const q = mk(FIRST_NAMES[(i * 7 + 3) % FIRST_NAMES.length], jobs[i], P.lv, 0, 0, i); q.eq = { weapon: ITEMS[wp[i]] ? wp[i] : 'bat', armor: ar && ITEMS[ar] ? ar : null, head: null, acc: null }; setMaxHp(q); q.hp = q.max; q.ammo = 99; q.id = 80000 + i; sq.push(q); }
-    S.sv.push(...sq); const r = startStronghold(P.map, sq.map((q) => q.id), { practice: true, goal: P.goal, night: !!P.night }); S.sv = S.sv.filter((q) => !sq.includes(q)); if (!r.ok) { say(r.why); return; } closeP(); };
+    S.sv.push(...sq); const r = startStronghold(P.map, sq.map((q) => q.id), { practice: true, goal: P.goal, night: !!P.night, lv: P.lv }); S.sv = S.sv.filter((q) => !sq.includes(q)); if (!r.ok) { say(r.why); return; } closeP(); };
   showPanel('Stronghold practice');
 }
 /* ---- UI ---- */
