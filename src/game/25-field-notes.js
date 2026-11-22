@@ -238,7 +238,7 @@ function staffNote(b) {   // explicit staffing wording, from the real rule: only
 }
 function bOutput(b) {   // expected per-day output and inputs (same formulas as the simulation, with the worker's measured share of the day)
   const d = DEFS[b.type], m = expectedMult(b), o = { out: [], use: [] };
-  if (d.fam === 'water') o.out.push(['💧', d.out * m, '']); if (d.fam === 'farm') { o.out.push(['🍖', d.out * m, '']); o.use.push(['💧', d.waterUse, '🌱']); }
+  if (d.fam === 'water') o.out.push(['💧', d.out * m, '']); if (d.fam === 'farm') { o.out.push(herbOn(b) ? ['💊', d.out * HERB_RATE * m, ''] : ['🍖', d.out * m, '']); o.use.push(['💧', d.waterUse, '🌱']); }
   if (d.fam === 'pallet') { const v = d.out * m * palletK(b); o.out.push(['🪵', v, '']); o.use.push(['⚙', v * PALLET_RATE, '']); }
   if (d.fam === 'scrap') o.out.push(['⚙', d.out * m * (researched('salvage') ? 1.25 : 1), '']); if (d.fam === 'research') o.out.push(['🔬', (d.out * workShare(b) + 4 * (1 - workShare(b))) * prodMult(b, false), 'research points']);
   const u = upkeepOf(b); if (u > 0) o.use.push(['⚙', u, '🔧']); return o;
@@ -292,6 +292,7 @@ function showBuildingInfo(b, tab) {
       + (worker ? `<div class="card">${worker}${assignBtn}</div>` : '') + status + (['medic', 'clinic', 'hospital'].includes(b.type) ? patientsHtml(b) : '')
       + (nt ? `<div class="sm">Better in this family: <b>${nt[1].name}</b>${nt[1].out ? ` (${nt[1].out} / day base vs ${d.out || 0})` : ''}${buildLock(nt[0]) ? ' · ' + buildLock(nt[0]).replace(/^Needs/, 'needs') : DEFS[nt[0]].up ? ' · upgrade this building' : ' · available in Build'}</div>` : '');
     if (RUSH_FAMS.includes(d.fam) && !b.burnt) { const rc = rushCheck(b); h += `<button class="act" id="bRush" ${rc.ok ? '' : 'disabled'}>⚡ Rush · ${Math.round(rushRisk(b) * 100)}% fire risk</button>${rc.ok ? '' : `<div class="sm">${esc(rc.why)}</div>`}`; }
+    if (d.fam === 'farm' && !b.burnt) h += `<div class="card row"><span class="sp">${herbOn(b) ? '🌿 Growing herbs: medicine instead of food' : '🥕 Growing food'}</span><button class="act" id="bHerbs">${herbOn(b) ? '🥕 Grow food' : `🌿 Grow herbs (💊 +${f1(d.out * HERB_RATE * expectedMult(b))}/day)`}</button></div>`;   /* 3D.301 herb beds */
     h += `<div><button class="act" id="bMove">Move</button></div>`;
   } else if (bTab === 'details') {
     const users = S.sv.filter((q) => q.facility === b && ['goFacility', 'useFacility'].includes(q.mode)).map((q) => esc(q.name));
@@ -312,6 +313,7 @@ function showBuildingInfo(b, tab) {
   $('ib').querySelectorAll('[data-res]').forEach((x) => { x.onclick = () => { if (doResearch(x.dataset.res)) showBuildingInfo(b); }; });
   $('ib').querySelectorAll('[data-craft]').forEach((x) => { x.onclick = () => { if (craft(x.dataset.craft)) showBuildingInfo(b); }; });
   const rb = $('bRush'); if (rb) rb.onclick = () => { if (rush(b)) showBuildingInfo(b); };
+  const hb = $('bHerbs'); if (hb) hb.onclick = () => { setHerbs(b, !herbOn(b)); saveGame(); ui(); showBuildingInfo(b); };
   const rp = $('bRepair'); if (rp) rp.onclick = () => { if (repairBurnt(b)) showBuildingInfo(b); };
   { const fx = $('bFix'); if (fx) fx.onclick = () => { const c = fixCost(b); if (!canPay(c)) return; payCost(c); for (const [k, v] of Object.entries(c)) flow(k, 'Repairs', -v); b.hp = b.max; screenToast('🔨 ' + DEFS[b.type].name.toUpperCase() + ' REPAIRED'); ui(); showBuildingInfo(b); }; }
   $('ib').querySelectorAll('[data-u]').forEach((el) => { const q = S.sv[+el.dataset.u]; if (q) el.onclick = () => unitPanel(q); });

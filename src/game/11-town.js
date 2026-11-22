@@ -104,7 +104,12 @@ function weatherHour() {
 /* 3D.28 tap-to-collect (Fallout Shelter style): producing buildings also fill a small BONUS (35% of what they make, up to
    12 hours' worth). When a whole unit is waiting a bubble pops over the building; tap it to collect. Normal production
    still reaches the stores on its own, so nothing is lost if you never tap. */
-const BONUS = .35, BONUS_H = 12, BONUS_RES = { water: '💧', food: '🍖', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' };
+const BONUS = .35, BONUS_H = 12, BONUS_RES = { water: '💧', food: '🍖', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬', meds: '💊' };
+/* 3D.301 (Balance chat; owner, 22 Nov: "Herb beds"; the review's medicine fix): a Garden Plot, Fenced Farm or Irrigated Field can grow herbs
+   instead of food: a quarter of its food output as medicine (a Garden Plot about 1 medicine a day), the same worker and water. Switched in the
+   building's panel. It rests when the medicine store is full, as a farm rests when the pantry is full. */
+const HERB_RATE = .25, herbOn = (b) => !!b.herbs && DEFS[b.type] && DEFS[b.type].fam === 'farm';
+function setHerbs(b, on) { if (!DEFS[b.type] || DEFS[b.type].fam !== 'farm') return false; if (!!b.herbs === !!on) return true; if ((b.bonus || 0) >= 1) collectBonus(b); b.bonus = 0; b.trayFull = false; b.herbs = !!on; say(on ? `The ${DEFS[b.type].name} now grows herbs: about ${f1(DEFS[b.type].out * HERB_RATE)} medicine a day.` : `The ${DEFS[b.type].name} grows food again.`); return true; }
 function addBonus(b, res, a) { if (!(a > 0)) return; b.bonusRes = res; b.bonus = Math.min(a * BONUS * BONUS_H, (b.bonus || 0) + a * BONUS); if (b.bonus >= 1 && !S.collectHint) { S.collectHint = 1; say('Tap the bubbles over buildings to collect bonus supplies!', true); } }
 /* 3D.30 real Fallout Shelter collecting (glass/cozy UI): what a building makes waits in its tray until you tap the bubble.
    The tray holds TRAY_H hours of output; past that the building stops filling (shown as FULL, and listed in the alert hub). */
@@ -159,6 +164,7 @@ function hourlyProduction() {   // runs every game hour
     if (d.fam === 'research' && TAP_COLLECT) { trayAdd(b, 'rp', (isWorking(b) ? d.out : 6) / 24 * prodMult(b)); continue; }
     if (d.fam === 'research') { const a = (isWorking(b) ? d.out : 6) / 24 * prodMult(b); S.rp = (S.rp || 0) + a; addBonus(b, 'rp', a); outPop(b, a, '🔬', '#c7b6ff'); }
     if (newProduce(b, d, cap)) continue;
+    if (herbOn(b)) { const full = (S.meds || 0) >= rareCap() - .5, need = full ? 0 : d.waterUse / 24, frac = full ? 0 : need > 0 ? Math.min(1, S.water / need) : 1; S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = !full && frac < 1; b.rest = full; const a = d.out * HERB_RATE / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(); if (TAP_COLLECT) { trayAdd(b, 'meds', a); continue; } S.meds = Math.min(rareCap(), (S.meds || 0) + a); flow('meds', nm, a); continue; }   /* 3D.301 herb beds */
     if (d.fam === 'farm') { const full = S.food >= supplyCap() - .5, need = full ? 0 : d.waterUse / 24, frac = full ? 0 : need > 0 ? Math.min(1, S.water / need) : 1;   /* 3D.110 balance run: a full pantry means the farm rests and drinks no water */ S.water -= need * frac; flow('water', 'Irrigation', -need * frac); b.dry = !full && frac < 1; b.rest = full; const a = d.out / 24 * frac * prodMult(b) * helpMult(b) * seasonFarm(); if (TAP_COLLECT) { trayAdd(b, 'food', a); continue; } const room = Math.max(0, cap - S.food), got = Math.min(a, room); S.food = keepCap(cap, S.food, a); fi += got; flow('food', nm, got); addBonus(b, 'food', a); outPop(b, got, '🍖', '#ffe06b'); if (a > got) flow('food', 'Wasted: storage full', -(a - got)); }
   }
   S.produced += fi + wi; dayLog.foodIn += fi; dayLog.waterIn += wi;
@@ -182,7 +188,7 @@ function econ() {   // expected per-day flows for food, water and scrap, with th
     if (d.fam === 'water') R.water.prod.push({ ...who, v: d.out * m });
     if (d.fam === 'scrap') R.mat.prod.push({ ...who, v: d.out * m * (researched('salvage') ? 1.25 : 1) });
     if (d.fam === 'lumber') R.wood.prod.push({ ...who, v: d.out * m }); if (d.fam === 'pallet') { const v = d.out * m * palletK(b); R.wood.prod.push({ ...who, v }); R.mat.use.push({ ...who, name: d.name + ' (scrap into wood)', v: v * PALLET_RATE }); } if (d.fam === 'quarry') R.stone.prod.push({ ...who, v: d.out * m });
-    if (d.fam === 'farm' || d.fam === 'greenhouse') { const frac = S.water > 1 || wAvail > d.waterUse ? 1 : Math.min(1, S.water / (d.waterUse || 1)); R.food.prod.push({ ...who, v: d.out * m * frac * (d.fam === 'greenhouse' && powered(b) ? 1.4 : 1) }); R.water.use.push({ ...who, name: d.name + ' irrigation', v: d.waterUse * frac }); }
+    if (d.fam === 'farm' || d.fam === 'greenhouse') { const frac = S.water > 1 || wAvail > d.waterUse ? 1 : Math.min(1, S.water / (d.waterUse || 1)); if (!herbOn(b)) R.food.prod.push({ ...who, v: d.out * m * frac * (d.fam === 'greenhouse' && powered(b) ? 1.4 : 1) }); R.water.use.push({ ...who, name: d.name + ' irrigation', v: d.waterUse * frac }); }
     if (d.fam === 'pump') R.water.prod.push({ ...who, v: d.out * m * (b.staff ? 1 : .25) * (powered(b) ? 1 : PUMP_HAND) });   /* 3D.77 */
     const u = upkeepOf(b); if (u > 0) R.mat.use.push({ ...who, name: d.name + ' upkeep', v: u, group: 'Upkeep' });
     if (d.slot && !b.staff) issues.push({ b, t: `${d.name}: no ${(STAFF_JOBS[d.fam] || ['worker']).join(' or ')} assigned, base output only`, res: FAMRES(d.fam) });

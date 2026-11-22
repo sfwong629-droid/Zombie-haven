@@ -136,6 +136,10 @@
     const famN = (f) => W.buildings.filter((b) => D[b.type].fam === f).length + (S.sites || []).filter((q) => D[q.type].fam === f).length;
     if (on('supply') && needW) { if (!place('well') && !place('water') && famN('water') < 3 + Math.floor(S.sv.length / 4)) place('barrel'); }   /* 3D.110: water grows with the town, as a player would build it */
     if (on('supply') && needF) { if (!place('irrig') && !place('field') && famN('farm') < 4) place('farm'); }
+    /* 3D.301 herb beds: a player short of medicine with food to spare turns one garden over to herbs, and back when medicine is plentiful or food runs short */
+    if (on('herbs') && Z.setHerbs && S.hour === 10) { const farms = W.buildings.filter((b) => D[b.type].fam === 'farm' && !b.burnt), herb = farms.filter((b) => b.herbs);
+      if (!herb.length && farms.length >= 2 && (S.meds || 0) < 6 && !needF && S.food > 30) Z.setHerbs(farms.sort((a, b) => D[a.type].out - D[b.type].out)[0], true);
+      else if (herb.length && ((S.meds || 0) > 15 || needF)) for (const b of herb) Z.setHerbs(b, false); }
     if (on('supply') && needW && S.water < 8 && S.trader && S.trader.mode === 'stay') Z.traderTrade(3);
     // the building the next town star needs (Upgrade Town "Build X" condition)
     if (on('rank')) { const rq = Z.RANK_REQ && Z.RANK_REQ[S.rank]; if (rq && !have(rq.build) && ok(rq.build) && S.mat - D[rq.build].mat >= reserve * .5) place(rq.build); }
