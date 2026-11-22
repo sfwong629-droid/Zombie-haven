@@ -62,9 +62,15 @@ function roamDest(s) { const o = s ? tileOf(s.w) : { x: 7 + OFF, y: 10 + OFF }; 
    Tracked in docs/AI_BEHAVIOUR.md. */
 const EMO_FACE = { '😊': 'happy', '😂': 'happy', '🥳': 'happy', '😋': 'happy', '❤️': 'happy', '🎶': 'happy', '😌': 'happy', '👍': 'happy', '🙏': 'happy', '😎': 'happy',
   '😤': 'angry', '💪': 'angry', '😠': 'angry', '😣': 'hurt', '😱': 'hurt', '😰': 'hurt', '🆘': 'hurt', '😢': 'hurt', '😟': 'hurt', '🥱': 'ko', '😴': 'ko' };
-function emote(s, icon, f = 110, force = false) {
+/* 3D.265 the emoji rule (owner, bug B24: "reduce some of the emoji"; `02-DECISIONS.md`, UI). Counted in game steps (60 = a second at normal speed):
+   the same emoji on one person at most once every 10 s; a person shows a new emoji at most every 3 s; the fight faces count as one,
+   once per 10 s; the mood faces that come by themselves at most every 20 s (emoTick); the hurt face only when a hit takes someone past
+   a quarter of their health (zombie hits). Always shown: needs rescue, thanks, reloading, grief, and the back-and-forth of a chat. */
+const EMO_ALWAYS = new Set(['🆘', '🙏', '🔄', '😢']), EMO_FIGHT = new Set(['❗', '😤', '💪', '😎', '😱', '😰', '😵', '😖', '😣']);
+function emote(s, icon, f = 110, force = false, chat = false) {
   if ((!s) || !s.w) return; if (!force && s.emo && s.emo.f > 30 && s.emo.pri) return;
-  s.emo = { t: icon, f, f0: f, face: EMO_FACE[icon] || null, pri: force };
+  if (!chat && !EMO_ALWAYS.has(icon)) { const m = s.emoT || (s.emoT = {}); if (tick - (m[icon] ?? -1e9) < 600 || tick - (s.emoAny ?? -1e9) < 180 || (EMO_FIGHT.has(icon) && tick - (s.emoFight ?? -1e9) < 600)) return; m[icon] = tick; if (EMO_FIGHT.has(icon)) s.emoFight = tick; }
+  s.emoAny = tick; s.emo = { t: icon, f, f0: f, face: EMO_FACE[icon] || null, pri: force };
 }
 function emoTick(s) {
   if (tick % 600 === ((s.id || 0) * 13) % 600 && s.hp > 0 && s.hp < s.max && gearFx(s, 'regen') && !['chase', 'attack', 'recover', 'down'].includes(s.mode)) s.hp = Math.min(s.max, s.hp + Math.max(1, Math.round(s.max * .02)));   /* 3D.28 Medic Pouch */
@@ -78,7 +84,7 @@ function emoTick(s) {
   const say = { '😢': 'sad', '😣': 'hurt', '😟': 'hungry', '🍖': 'hungry', '💧': 'thirsty', '🥱': 'tired', '☔': 'rain', '😰': 'scared', '😊': 'happy', '🎶': 'happy', '😌': 'happy', '😞': 'sad' }[pick];
   if (pick && say && rnd() < .35 && bark(s, say)) return;   /* 3D.27: sometimes they say it out loud */
   if (!pick && rnd() < .07 && bark(s, isNight() ? 'scared' : 'idle')) return;
-  if (pick) emote(s, pick, 100);
+  if (pick && tick - (s.emoAny ?? -1e9) >= 1200) emote(s, pick, 100);   /* 3D.265 emoji rule: a mood face by itself at most every 20 s */
 }
 function drawEmote(s, p, y) {   /* cream speech bubble with a tail; pops in, bobs, fades */
   const e = s.emo; if (!e) return; if (p.x < -10 || p.x > VW + 10 || p.y < 0 || p.y > VH + 40) return; const u = hudU() * HUD_SMALL, k = 1 - e.f / e.f0, pop = k < .1 ? .5 + k * 6 : 1, al = e.f < 15 ? e.f / 15 : 1;
@@ -200,7 +206,7 @@ function chatTick(s) {
   const r = followPath(s, s.dest, WALK); if (r === 'moving') return; s.moving = false; s.faceW = q.w;
   if (--s.chatT > 0) return; const L = s.chatLines; if (s.chatStep >= L.length) { endChat(s); return; }
   if (s.chatTxt) { bark(s, null, { other: q.name, b: chatBuilding() }, { line: L[s.chatStep], style: s.chatTxt, pri: 1, f: 170 }); s.chatStep += 2; s.chatT = 150; }
-  else { emote(s, L[s.chatStep], 80, true); s.chatStep += 2; s.chatT = 90; }
+  else { emote(s, L[s.chatStep], 80, true, true); s.chatStep += 2; s.chatT = 90; }
   if (s.chatStep >= L.length && q.chatStep >= L.length) { addBond(s, q, 3); s.sat = Math.min(100, (s.sat || 0) + 1); q.sat = Math.min(100, (q.sat || 0) + 1); moodAdd(s, 1, 'chats'); moodAdd(q, 1, 'chats'); }
 }
 function endChat(s) { const q = s.chatWith; s.chatNext = tick + 1500 + rnd() * 1000; if (q) q.chatNext = s.chatNext; s.chatWith = null; s.faceW = null; enterFree(s, 40 + rnd() * 60); if (q && q.chatWith === s) { q.chatWith = null; q.faceW = null; enterFree(q, 40 + rnd() * 60); } }

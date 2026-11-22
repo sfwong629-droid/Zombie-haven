@@ -1016,6 +1016,21 @@ async def t_reroute(br, port, t):   # bug B23 (3D.264, owner: "they should auto 
     t.ok(r['arrived'], f"she finds a way round them and reaches the Camp ({r['mode']}, {r['why']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_emorule(br, port, t):   # bug B24 (3D.265, owner: "reduce some of the emoji... set a new rule"): how often an emoji may show
+    ctx, pg, errs = await open_game(br, port, 'emorule')
+    r = await pg.evaluate("""() => { const S = ZH.S, s = S.sv[0]; S.z.length = 0; let last = null; const seen = (icon) => { const e = s.emo; const n = e && e !== last && e.t === icon ? 1 : 0; last = e; return n; };
+      const run = (ticks, every, icon) => { let n = 0; for (let k = 0; k < ticks; k++) { if (k % every === 0) ZH.emote(s, icon, 60); n += seen(icon); ZH.step(1); } return n; };
+      s.emo = null; s.emoT = {}; s.emoAny = null; s.emoFight = null;
+      const angry = run(1200, 30, '😤');   /* asked for every half second for 20 s */
+      s.emo = null; const mix = (() => { let n = 0; for (let k = 0; k < 600; k++) { if (k % 30 === 0) ZH.emote(s, k % 60 ? '❗' : '💪', 60); const e = s.emo; if (e && e !== last) n++; last = e; ZH.step(1); } return n; })();
+      s.emo = null; const sos = run(200, 40, '🆘');
+      return { angry, mix, sos }; }""")
+    print('      emorule:', r)
+    t.ok(r['angry'] <= 2, f"the same angry face asked for every half second shows at most once every 10 seconds ({r['angry']} times in 20 s; 3D.264: 40)")
+    t.ok(r['mix'] <= 1, f"fight faces count as one: at most one in 10 seconds ({r['mix']})")
+    t.ok(r['sos'] >= 4, f"needs-rescue is always shown ({r['sos']} of 5)")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -1050,7 +1065,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('reroute', t_reroute), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('reroute', t_reroute), ('emorule', t_emorule), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
