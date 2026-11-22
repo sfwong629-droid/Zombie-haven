@@ -17,6 +17,7 @@ Owner, 16 Nov 2026: the tester rounds found bugs but used far too many resources
 - Don't run the test suite and play-test servers at the same time (out of memory).
 - Before any level-5 round: give the play-test tool a map and reasons for refused orders (bug C4). In rounds 2–4 many "bugs" were gaps in the tool.
 - Tester scores are badly calibrated: use them as a trend, never to rank priorities.
+- **Whole-game bug sweep** (Bugs chat, 21 Nov): `python3 tools/qa/bug_sweep.py SEED DAYS SECONDS OUT` plays a bot town from day 1 to level 20 and on, with bug checks every game hour and a save-and-load comparison every 15 game days (`RESUME=backup.json` carries a town on; `node tools/qa/late_soak.js BACKUP` plays a saved town in 3D). Run it overnight before a milestone or after big changes to how people move or fight. First run: `03-BUGS.md`, "Whole-game bug sweep" (four bugs fixed, B18 to B21).
 
 ## ChatGPT: what it is used for
 Worked on 15 Nov (details in the archive doc `claude/zombie-haven-chatgpt-testing.md`):
