@@ -14,8 +14,11 @@ Each build: one change, a scripted check, the test suite, and a short bot run be
 1b. [x] The Hollow's shepherded horde (3D.285): it adds zombies every hour from 22:00 to 02:00 with no limit (found measuring 3D.284).
 2. [x] The last numbers that still follow the game day (3D.286) (the gentler first two weeks, raider kinds by day, the spawn speed).
 3. [x] A breather after a lost night (3D.287).
-4. Rule 1, one pace for everyone: [x] (a) time away pays up to a day's production (3D.288); [ ] (b) newcomers wait at the gate; (c) building, crafting and research on real time; (d) the level timers on real time.
+4. Rule 1, one pace for everyone: [x] (a) time away pays up to a day's production (3D.288); [x] (b) newcomers wait at the gate (3D.289); [skipped, question Q1] (c) building, crafting and research on real time; [skipped, question Q1] (d) the level timers on real time.
 5. [ ] If time is left: the six first-30-minute fixes (W183).
+
+## Questions for the owner
+- **Q1. Rule 1's last two steps need one number from you: what is a real hour worth?** Today the game has two clocks: with the game open, one game hour passes in 17 seconds; with it closed, in 10 real minutes (36 times slower). The level timers, building, crafting and research all count game hours, so a player who leaves the game open moves 36 times faster through every wait. Rule 1 says one speed for both, but picking that speed changes the first sitting: at the closed speed, level 2's wait (6 game hours) would take an hour and level 3's two hours, and the target is level 3 in the first 30 minutes; at the open speed, a day away would finish every wait in the game. **Claude's proposal:** (a) the level timers become real minutes, the same open or closed, set from the plan's pace table: level 2 after 3 minutes, level 3 after 10, level 4 after 1 hour, level 5 after 6 hours, then about a real day a level up to 10, a day and a half up to 15, and about two and a half days up to 20 (levels also wait on people and buildings, as now); (b) building, crafting and research keep today's quick speed in front of the player and carry on at that same speed while away (so a job queued before closing is done on return), held back by their costs, not by waiting. Yes, or change the numbers?
 
 ## Builds
 
@@ -73,3 +76,19 @@ Each build: one change, a scripted check, the test suite, and a short bot run be
 | Deaths | 0, 1 | 5, 2 |
 
 - **Read with care:** the level pace did not change (it waits on the level timer); the towns built about 40% more and stocked far more water and scrap. **Wood is still at 0 every day** in both: a day's production does not fix the wood shortage (it is one of the first-30-minute fixes). Deaths rose from 1 to 7 over the two towns; with two towns that may be chance, but bigger towns with the same zombies is worth watching.
+
+### 3D.289: newcomers keep coming while you are away and wait at the gate
+- **What:** the gate clock (how often a newcomer turns up) only ran with the game open, so a daily player met almost nobody new between visits. Now time away (up to a day, like production) runs the gate clock too, and whoever would have come waits at the gate: at most 3, never more than the free beds. Back in the game the first one walks up at once with the usual card; the next comes after you answer. The "While you were away" note says how many are waiting. Nobody comes to a full town, or while zombies are inside.
+- **Choice to look at:** at most 3 waiting (the plan says "a few at most").
+- **Check:** `tools/qa/gate_away_check.js`: a day away with 4 free beds leaves 3 at the gate; an hour away leaves fewer; the first walks up at once; a full town gets nobody. Test suite: all passed.
+- **Bot, the daily player**, two towns, 14 real days, before (3D.288) and after:
+
+| | Before | After |
+|---|---|---|
+| People on real day 3 | 9, 8 | 11, 11 |
+| People on real day 7 | 12, 12 | 16, 13 |
+| Most people | 12, 14 | 17, 13 |
+| Level 10, real day | 12, 12 | 10, not reached (level 9 on day 9) |
+| Deaths | 4, 4 | 2, 8 |
+
+- **Read with care:** towns grow faster in the first week (the plan's people targets were short by a third). Deaths swing a lot between runs of the same build (the build before gave 5 and 2 in its own run, 4 and 4 in this one), so two towns cannot show whether deaths changed.
