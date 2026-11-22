@@ -5,6 +5,7 @@
 // checks its page: the big picture (still, with no turn controls: 3D.232), the name, the joke line, and Give to lists people, best first,
 // with the lime Give only on the first row and only when it is a gain. Gives the item and checks the survivor now carries it and the stash
 // has one fewer. Then Supplies shows the eight resources. Optional tag: pictures as <tag>_<size>_{grid,item}.png.
+// 3D.279: the backpack opens the supplies list first; its "Open inventory" button opens the Inventory.
 // Exit 0 ok, 1 a check failed, 2 the Inventory could not be opened.
 const Q = require('./lib');
 const SIZES = (process.argv[2] || 'phone:390x844,phoneS:360x640,phoneM:375x667,phoneXL:430x932,phoneN:320x568,phoneT:412x915').split(',').map((s) => { const [n, d] = s.split(':'); const [w, h] = d.split('x'); return [n, +w, +h]; });
@@ -15,7 +16,7 @@ const TAG = process.argv[3] || '';
     await p.evaluate(() => { const S = ZH.S; S.inv = { crowbar: 2, machete: 1, bat: 1, hoodie: 1, riot: 1, hardhat: 1, goggles: 1 }; for (const k of Object.keys(S.inv)) if (!ZH.ITEMS[k]) delete S.inv[k]; for (const q of S.sv) { q.eq = q.eq || {}; q.eq.weapon = null; }
       const x = document.getElementById('closeInfo'); if (document.getElementById('infoPanel').classList.contains('show')) x.click(); for (const bn of document.querySelectorAll('#eventModal .evBox:not(.liveCard) button')) bn.click(); });
     await p.waitForTimeout(300);
-    const opened = await p.evaluate(() => { const r = document.getElementById('rare'); const sp = r && r.closest('.res > span'); if (!sp) return false; sp.click(); return document.getElementById('infoPanel').classList.contains('show') && document.getElementById('it').textContent; });
+    const opened = await p.evaluate(() => { const r = document.getElementById('rare'); const sp = r && r.closest('.res > span'); if (!sp) return false; sp.click(); const inv = document.querySelector('#supPop .supInv'); if (inv) inv.click(); return document.getElementById('infoPanel').classList.contains('show') && document.getElementById('it').textContent; });
     if (opened !== 'Inventory') { stuck++; console.log(`STUCK ${nm}: the backpack opened "${opened}"`); continue; }
     await p.waitForTimeout(1200);
     const g = await p.evaluate(() => { const ib = document.getElementById('ib'), tabs = [...ib.querySelectorAll('.tabs button')].map((x) => x.textContent.trim()), on = (ib.querySelector('.tabs button.on') || {}).textContent;

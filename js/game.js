@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.278', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.279', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -867,12 +867,37 @@ function dryTick() {   /* every few seconds: gunners with an empty gun go back t
 }
 const gunners = () => S.sv.filter((q) => q.hp > 0 && usesAmmo(itemOf(q, 'weapon')));
 const ammoCap = () => 60 + 30 * storeTiers();
-function ammoChip(rr) {   /* 3D.77: an ammo count next to the stash, once someone carries a gun */
-  const host = rr.parentElement && rr.parentElement.parentElement; if (!host) return; let c = document.getElementById('ammoChip');
-  const show = gunners().length > 0 || (S.ammo || 0) > 24;
-  if (!c) { if (!show) return; c = document.createElement('span'); c.id = 'ammoChip'; c.title = 'Ammo'; c.innerHTML = '<i>🔸</i><b></b>'; host.appendChild(c); }
-  c.style.display = show ? '' : 'none'; host.classList.toggle('tight', show); c.querySelector('b').textContent = Math.floor(S.ammo || 0); c.style.color = (S.ammo || 0) < 8 * Math.max(1, gunners().length) ? '#ff9a7a' : '';
+const SUP_ROWS = [['cloth', 'Cloth', 'cloth'], ['meds', 'Medicine', 'pill'], ['fuel', 'Fuel', 'fuel'], ['ammo', 'Ammo', 'ammo']];
+function supLow(k) {   /* 3D.279: when a supply counts as low (orange in the list, a dot on the bag) */
+  if (k === 'ammo') { const g = gunners().length; return g > 0 && (S.ammo || 0) < 8 * g; }
+  if (k === 'meds') return (S.meds || 0) < 1 && S.sv.some((q) => q.hp > 0 && q.hp < q.max * .6);
+  if (k === 'fuel') { const n = gens().length; return n > 0 && (S.fuel || 0) < 3 * n; }
+  return false;
 }
+function supplyChip(rr) {   /* 3D.279 (owner, 22 Nov, W210: "do C"): the bag shows one total (cloth + medicine + fuel) and a dot when something is low; ammo moved off the bar into the bag's list */
+  const sp = rr.parentElement; if (!sp) return; sp.classList.add('bagChip'); sp.title = 'Supplies';
+  const old = document.getElementById('ammoChip'); if (old) old.remove(); if (sp.parentElement) sp.parentElement.classList.remove('tight');
+  rr.textContent = ['cloth', 'meds', 'fuel'].reduce((a, k) => a + Math.floor(S[k] || 0), 0);
+  let d = sp.querySelector('.supDot'); if (!d) { d = document.createElement('em'); d.className = 'supDot'; sp.appendChild(d); } d.style.display = SUP_ROWS.some(([k]) => supLow(k)) ? '' : 'none';
+  const pop = document.getElementById('supPop'); if (pop) { if (menuOpenNow() || modalOpen || document.documentElement.classList.contains('shView')) supClose(); else supFill(pop); }
+}
+function supFill(pop) {
+  const ic = (n) => (window.ZHIcons ? ZHIcons.svg(n, 24) : '');
+  pop.querySelector('.supRows').innerHTML = SUP_ROWS.map(([k, name, icon]) => { const v = Math.floor(S[k] || 0), cap = k === 'ammo' ? ammoCap() : rareCap(), low = supLow(k);
+    return `<div class="supRow${low ? ' low' : ''}" data-k="${k}"><i>${ic(icon)}</i><span class="supN">${name}<span class="supBar"><span style="width:${Math.min(100, Math.round(100 * v / cap))}%"></span></span></span><b>${v}<small> / ${cap}</small></b></div>`; }).join('');
+}
+function supClose() { const p = document.getElementById('supPop'); if (p) p.remove(); }
+function supPop() {   /* tap the bag: a small list of the supplies with names, caps and a bar each; low ones in orange */
+  if (document.getElementById('supPop')) { supClose(); return; }
+  const chip = document.querySelector('#plaque .bagChip'); if (!chip) { showStash(); return; }
+  const pop = document.createElement('div'); pop.id = 'supPop';
+  pop.innerHTML = '<div class="supH">SUPPLIES</div><div class="supRows"></div><button class="supInv">🎒 Open inventory ›</button>';
+  document.body.appendChild(pop); supFill(pop);
+  const u = parseFloat(getComputedStyle(pop).zoom) || 1, r = chip.getBoundingClientRect();
+  pop.style.top = (r.bottom / u + 8) + 'px'; pop.style.right = Math.max(8, (innerWidth - r.right) / u - 10) + 'px';
+  pop.querySelector('.supInv').onclick = (e) => { e.stopPropagation(); supClose(); showStash(); };
+}
+document.addEventListener('click', (e) => { if (document.getElementById('supPop') && !e.target.closest('#supPop, #plaque .bagChip')) supClose(); }, { capture: true });
 function ammoAlert(dry) {
   const g = gunners().length; if (!g) return;
   if (dry) note('critical', '🔸 Out of ammo: gunners are clubbing with empty guns. Make rounds at an Ammo Bench or loot the Military Checkpoint.', { key: 'dryammo', icon: '🔸' });
@@ -4471,7 +4496,7 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
 let upTab = 'rank';
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
-  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) rr.textContent = ['cloth', 'meds', 'fuel'].map((k) => Math.floor(S[k] || 0)).join('·'); ammoChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = 'Lv ' + (S.lvl || 1); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
+  { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) supplyChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = 'Lv ' + (S.lvl || 1); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
   { const mb = $('mExp'); if (mb) { leadsTidy(); const n = (S.leads || []).length; mb.classList.toggle('dim', !n && !S.trip); mb.dataset.badge = !S.trip && n ? n : ''; } }
   $('clock').textContent = (`${S.weather ? WX_ICON[S.weather.kind] || "🌧" : seasonOf().icon} DAY ${S.day} · ${String(S.hour).padStart(2, '0')}:00`);
   {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
@@ -7242,7 +7267,7 @@ if ((window.ZHIcons)) {
 }
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if ((window.ZHIcons)) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight(), S.day); } }, { capture: true });
-document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { if ((r.querySelector('b') || {}).id === 'rare') { showStash(); return; } const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
+document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { if ((r.querySelector('b') || {}).id === 'rare') { supPop(); return; } const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
 { const g = $('gauge'); if (g && !g.querySelector('.rIco')) { const s = document.createElement('span'); s.className = 'rIco'; s.setAttribute('aria-hidden', 'true'); s.innerHTML = window.ZHIcons ? ZHIcons.svg('star', 22) : '⭐'; g.insertBefore(s, g.querySelector('.glabel')); } }   /* 3D.275: a star beside Renown (owner, 22 Nov, W209: "Do star for renown") */
 $('btnDebug').onclick = () => { debug = !debug; $('btnDebug').classList.toggle('on', debug); };
 
