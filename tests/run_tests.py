@@ -938,6 +938,23 @@ async def t_leaveflap(br, port, t):   # bug B18 (3D.258, found by the bug sweep)
     t.ok(r['ctl'] is True, f"the same zombies coming for him still make him fight ({r['ctl']})")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_skillhp(br, port, t):   # bug B19 (3D.259, found by the bug sweep): a new skill's extra health counts at once; loading a town never gets someone who is down back on their feet
+    ctx, pg, errs = await open_game(br, port, 'skillhp')
+    r = await pg.evaluate("""() => { const S = ZH.S, [a, b] = S.sv;
+      a.job = 'Civilian'; a.l = 4; a.cls = { Civilian: { l: 4, xp: 0 } }; a.skills = []; a.mastery = 0; a.hp = a.max = 60; const m0 = a.max;
+      ZH.gainXp(a, 1e5); const lv = { l: a.l, skills: [...a.skills], max: a.max, gain: a.max - m0 };
+      b.hp = 0; b.mode = 'down'; b.max = b.max - 20;   /* an old save: her top health is 20 short */
+      ZH.saveGame(); return { lv, aId: a.id, aMax: a.max, bId: b.id, save: localStorage.getItem('zombieHavenR1') }; }""")
+    await ctx.close()
+    init = "try{localStorage.setItem('zombieHavenR1'," + json.dumps(r['save']) + ");localStorage.setItem('zhSlot','1');}catch(e){}"
+    ctx, pg, errs2 = await open_game(br, port, 'skillhp2', init=init)
+    q = await pg.evaluate("([ai, bi]) => { const a = ZH.S.sv.find((x) => x.id === ai), b = ZH.S.sv.find((x) => x.id === bi); return { aMax: a.max, bHp: b.hp, bMode: b.mode, day: ZH.S.day }; }", [r['aId'], r['bId']])
+    print('      skillhp:', r['lv'], q)
+    t.ok(r['lv']['l'] == 5 and 'hardy' in r['lv']['skills'], f"a Civilian reaching level 5 learns Hardy ({r['lv']})")
+    t.ok(q['aMax'] == r['aMax'], f"Hardy's +10 health counts at once: loading the town does not add it again ({r['aMax']} before, {q['aMax']} after loading)")
+    t.ok(q['bHp'] == 0 and q['bMode'] == 'down', f"someone down is still down after loading ({q['bHp']} health, {q['bMode']})")
+    t.ok(not errs and not errs2, f'no page errors {(errs + errs2)[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -972,7 +989,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
