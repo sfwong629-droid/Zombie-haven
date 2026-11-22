@@ -13,16 +13,16 @@ const only = process.argv.slice(2);
   for (const [d, lvs] of Object.entries(plans)) { let last = 0; for (const [lv, r] of Object.entries(lvs)) { for (const m of r.bad) bad.push(`${d} lv ${lv}: ${m}`); if (r.area < last) bad.push(`${d}: smaller at level ${lv} than below it`); last = r.area || last; }
     const a = lvs[3], z = lvs[20]; console.log(`${d}${a.redone ? '' : ' (old layout)'}: ${a.rooms} rooms / ${a.area} tiles at level 3, ${z.rooms} rooms / ${z.area} tiles at level 20`); }
   const maps = only.length ? only : Object.entries(plans).filter(([, v]) => v[3].redone).map(([d]) => d);
-  for (const d of maps) { const r = await Q.practice(p, d, 10, 6, true); if (!r.ok) { bad.push(`${d}: could not start (${r.why})`); continue; }
+  for (const d of maps) { await Q.clearCards(p); const r = await Q.practice(p, d, 10, 6, true); if (!r.ok) { bad.push(`${d}: could not start (${r.why})`); continue; }
     const res = await p.evaluate(async (d) => { const H = ZH.S.sh; const orders = H.plan.botOrders || []; let won = false; ZH.S.sh.view = true;
       for (let i = 0; i < 60 * 60 * 9 && ZH.S.sh; i += 60) { ZH.step(60);
         const h = ZH.S.sh; if (!h) { won = true; break; }
         for (const s of h.units) if (s.hp > 0 && s.use == null && s.carry == null && !s.moveTo) { const ti = h.things.findIndex((t) => (t.use || t.carry) && !t.done && t.carried == null && !t.delivered && orders.includes(t.task) && !h.units.some((u) => u.use === h.things.indexOf(t)) && (!t.need || h.things.filter((q) => q.task === t.need).every((q) => q.done))); if (ti >= 0 && (i / 60) % 7 === 0) { s.use = ti; break; } }
         if (h.phase === 'done') { won = true; break; } }
-      const h = ZH.S.sh; const st = h ? h.tasks.map((T) => T.label + ': ' + (T.done ? 'done' : 'not done')) : ['ended']; const pop = document.querySelector('#eventModal'); const txt = pop ? pop.textContent.slice(0, 120) : '';
+      const h = ZH.S.sh; const st = h ? h.tasks.map((T) => T.label + ': ' + (T.done ? 'done' : 'not done')) : ['ended']; const txt = [...document.querySelectorAll('#eventModal .evBox, .evBox')].map((e) => e.textContent).join(' | ').slice(0, 400);
       return { won, st, txt, secs: h ? Math.round(h.t / 60) : null }; }, d);
-    console.log(`${d} at level 10: ${res.won ? 'finished' : 'NOT finished'} ${res.txt} ${res.st.join('; ')}`); if (!res.won || !/CLEARED/.test(res.txt)) bad.push(`${d}: the unkillable squad did not finish the map (${res.st.join('; ')})`);
-    await p.evaluate(() => { for (const b of document.querySelectorAll('#eventModal button')) if (/done/i.test(b.textContent)) b.click(); });
+    console.log(`${d} at level 10: ${res.won ? 'finished' : 'NOT finished'} ${(res.txt.match(/PRACTICE[^|]*/) || [''])[0].slice(0, 90)} ${res.st.join('; ')}`); if (!res.won || !/PRACTICE: CLEARED/.test(res.txt)) bad.push(`${d}: the unkillable squad did not finish the map (${res.st.join('; ')})`);
+    await p.evaluate(() => { for (const b of document.querySelectorAll('#eventModal button')) if (/^done$/i.test(b.textContent.trim())) b.click(); }); await Q.clearCards(p);
     for (const lv of [5, 15]) { await Q.practice(p, d, lv, 6, true); await p.evaluate(() => { const H = ZH.S.sh; H.rev = Object.fromEntries(Object.keys(H.plan.rooms).map((k) => [k, 1])); const W = H.plan.W, Hh = H.plan.H; H.cx = ZH.SH_AX + W / 2; H.cy = ZH.SH_AY + Hh / 2 + 1; H.cz = Math.max(.55, Math.min(1.6, 26 / Math.max(W, Hh * 1.8))); H.free = true; }); await p.waitForTimeout(3500);
       await Q.shot(p, path.join(OUT, `${d}_lv${lv}.png`)); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(500); } }
   if (p.errs.length) { console.log('page errors:', p.errs.slice(0, 5)); bad.push('page errors'); }
