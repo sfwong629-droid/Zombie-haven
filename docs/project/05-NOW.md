@@ -45,6 +45,7 @@ Planning chat:
 - ~~W130. Healing.~~ Owner, 20 Nov: yes to the plan: the tent first (anyone under 80% walks there when no zombie is in town, full healing, wounds treated only there); rounds for those who can't go (on a shift or post, tent full, no tent), patching to 75% with 1 cloth or a little medicine; a medic on shift stays at the tent while someone is in it or on the way, otherwise does rounds; with two or more medics one always stays; a slow mend with no zombie about. Rule in `02-DECISIONS.md`, "Nights and survival". Built in the Features chat, checked with the balance bot against the danger targets.
 - ~~W146. The vision and bug A12.~~ Owner, 19 Nov (in the Art chat): update the vision. Done the same day: `01-VISION.md` now says zombies never walk away, so any left over from the night fight in town by day until killed; apart from those, the only daytime attack on the town is the warned daytime horde.
 - ~~W153. Which open items each chat lists.~~ Owner, 19 Nov (Art chat): "Only planning/vision should have all the chat items." Each chat lists only its own; the Planning chat lists everything. Rule changed in `00-START-HERE.md`.
+- W211. **The big review** (`15-REVIEW.md`, 22 Nov). Yes to the order in its section 6? The first step is to **open the Features chat** (prompt sent in the Planning chat, 22 Nov) and build healing (W130), the rescue truck (W129), the daytime threat and Take command; the Balance chat settles A12 and medicine at the same time. (Claude: yes.)
 
 Bugs chat:
 - ~~W5. Start the Bugs chat.~~ Done 16 Nov.
