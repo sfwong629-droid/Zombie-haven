@@ -997,6 +997,25 @@ async def t_movein(br, port, t):   # bug B22 (3D.263, owner W203): people move i
     t.ok(r['log'] == r['after'], f"the event log says who moved in ({r['log']} lines)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
+async def t_reroute(br, port, t):   # bug B23 (3D.264, owner: "they should auto try to find another path"): someone blocked by people standing in the way finds a way round instead of "Couldn't reach it"
+    ctx, pg, errs = await open_game(br, port, 'reroute')
+    await pg.evaluate("()=>{let x=13;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world, Wd = ZH.Wd, B = Wd.BUILD; S.z.length = 0; S.hour = 12; W.walls.clear(); Wd.bump(W);
+      const b = W.buildings.find((q) => Wd.DEFS[q.type].role === 'hq'), at = Wd.approachTile(b), dp = Wd.doorPoint(b);
+      const [a, c, d] = S.sv; for (const q of S.sv) if (![a, c, d].includes(q)) { q.mode = 'away'; q.w = { x: .5, y: .5 }; }
+      let from = null; for (let r0 = 5; r0 < 9 && !from; r0++) for (let k = 0; k < 24 && !from; k++) { const x = Math.floor(at.x + Math.cos(k / 24 * 6.283) * r0), y = Math.floor(at.y + Math.sin(k / 24 * 6.283) * r0); const p = Wd.walkable(W, x, y, true) && !Wd.buildingAt(W, x, y) && Wd.findPath(W, { x, y }, at); if (p && p.length >= 5) from = { x, y, p }; }
+      const p = from.p, block = [p[0], p[1]].map((q) => ({ x: q.x + .5, y: q.y + .5 }));   /* two people standing on the first steps of the way */
+      a.w = { x: from.x + .5, y: from.y + .5 }; a.mode = 'goFacility'; a.facility = b; a.stateTicks = 9999; a.path = null; a.pathGoal = null; a.prog = null; a.why = ''; a.sleeping = false;
+      const hold = () => { [c, d].forEach((q, i) => { q.w = { ...block[i] }; q.mode = 'wait'; q.stateTicks = 9999; q.moving = false; q.path = null; }); };
+      const start = { ...a.w }; let gaveUp = false, arrived = false;
+      for (let k = 0; k < 900 && !gaveUp && !arrived; k++) { hold(); if (k < 70) { a.w = { ...start }; } ZH.step(1);   /* pushed back for the first second, as by a crowd */
+        if (/Couldn.t reach/.test(a.why || '')) gaveUp = true; if (a.mode === 'useFacility' || a.facility !== b && a.mode !== 'goFacility') arrived = a.mode === 'useFacility'; }
+      return { steps: p.length, gaveUp, arrived, mode: a.mode, why: a.why, reroute: a.reroute || 0 }; }""")
+    print('      reroute:', r)
+    t.ok(not r['gaveUp'], f"held up by two people standing in the way, she does not give up ({r['why']}; 3D.263: \"Couldn't reach it\" after a second)")
+    t.ok(r['arrived'], f"she finds a way round them and reaches the Camp ({r['mode']}, {r['why']})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -1031,7 +1050,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('pethp', t_pethp), ('movein', t_movein), ('reroute', t_reroute), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()

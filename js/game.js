@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.263', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.264', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1491,7 +1491,7 @@ function followPath(o, goal, sp) {
     const fresh = o.pathGoal !== gk + (o.wallCost ? '#w' : '');
     const p = Wd.findPath(world, tileOf(o.w), gt, o.job === undefined && !o.human, o.wallCost || 0); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver;
     if (!p) { o.path = null; return 'fail'; }
-    if (fresh) { o.tripLen = p.length; o.prog = null; }   /* 3D.260 bug B20 (bug sweep): a new trip starts its own progress check; the last trip's checkpoint, taken before they stood still at work or in bed, made over half of all "Couldn't reach it" give up on the first step */   /* 3D.189 how long this trip was when it began: short trips are walked */
+    if (fresh) { o.tripLen = p.length; o.prog = null; o.reroute = 0; }   /* 3D.260 bug B20 (bug sweep): a new trip starts its own progress check; the last trip's checkpoint, taken before they stood still at work or in bed, made over half of all "Couldn't reach it" give up on the first step */   /* 3D.189 how long this trip was when it began: short trips are walked */
     o.path = p.map((q, i) => curvy && i < p.length - 1 ? { x: q.x + .5 + (rnd() - .5) * .44, y: q.y + .5 + (rnd() - .5) * .44 } : tc(q.x, q.y)); o.stuck = 0; o.lastD = 1e9;
     const fb = o.job !== undefined || o.human ? Wd.buildingAt(world, Math.floor(o.w.x), Math.floor(o.w.y)) : null;   /* V2.34: leaving a building = step out through its entrance tile first (the path starts AFTER that tile, so people cut across the footprint) */
     if (fb) { const at = Wd.approachTile(fb); if (!p.length || p[0].x !== at.x || p[0].y !== at.y) o.path.unshift(tc(at.x, at.y)); }
@@ -1514,7 +1514,12 @@ function followPath(o, goal, sp) {
   if (o.stuck > 90) { o.path = null; o.pathGoal = null; o.stuck = 0; return 'fail'; }
   if (!o.prog || tick - o.prog.t > 60) {   /* 3D.59 net progress: stepping forward and being pushed back by someone standing in the way (the anti-overlap push) looked like walking in place forever */
     const net = o.prog ? Math.hypot(o.w.x - o.prog.x, o.w.y - o.prog.y) : 1; o.prog = { x: o.w.x, y: o.w.y, t: tick };
-    if (net < .12) { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y); o.path = null; o.pathGoal = null; o.moving = false; o.prog = null; if (dG < 1.3) { o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } return 'fail'; } }
+    if (net < .12) { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y);
+      if (dG >= 1.3 && o.job !== undefined && (o.reroute || 0) < 3 && S.sv.some((q) => q !== o && q.w && q.hp > 0 && !insideBuilding(q) && Math.hypot(q.w.x - o.w.x, q.w.y - o.w.y) < 1.1)) {   /* 3D.264 bug B23 (owner: "they should auto try to find another path"): someone in the way: find a way round the people standing about (up to 3 tries) instead of giving up */
+        const me = tileOf(o.w), avoid = new Set(); for (const q of S.sv) if (q !== o && q.w && q.hp > 0 && !insideBuilding(q) && Math.hypot(q.w.x - o.w.x, q.w.y - o.w.y) < 6) { const t = tileOf(q.w); if ((t.x !== gt.x || t.y !== gt.y) && (t.x !== me.x || t.y !== me.y)) avoid.add(t.x + ',' + t.y); }
+        const p = Wd.findPath(world, me, gt, false, o.wallCost || 0, avoid);
+        if (p) { o.reroute = (o.reroute || 0) + 1; o.path = p.map((q, i) => curvy && i < p.length - 1 ? { x: q.x + .5 + (rnd() - .5) * .3, y: q.y + .5 + (rnd() - .5) * .3 } : tc(q.x, q.y)); o.pathGoal = gk + (o.wallCost ? '#w' : ''); o.pathVer = world.ver; o.stuck = 0; o.prog = { x: o.w.x, y: o.w.y, t: tick }; return 'moving'; } }
+      o.path = null; o.pathGoal = null; o.moving = false; o.prog = null; o.reroute = 0; if (dG < 1.3) { o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } return 'fail'; } }
   return 'moving';
 }
 function moveSlide(o, t, sp) {                // free movement that cannot enter buildings or walls (zombie roaming)
