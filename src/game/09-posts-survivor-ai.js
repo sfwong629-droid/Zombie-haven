@@ -422,6 +422,7 @@ function ai(s) {
     if (tick % 20 === s.i % 20 && acquireEnemy(s)) { s.activity = null; return; }
     if (tick % 1000 === (s.i * 37) % 1000) gainXp(s, 2);   /* every game hour on shift */
     if (tick % 120 === (s.i * 7) % 120) { const u = urgentNeed(s, true); if (u && chooseFacility(s, true, URGENT_FOR[u])) { s.activity = null; enterFree(s, 5); s.why = `${u}: taking a break`; return; } }   /* 3D.63: only walk off the job when there's somewhere to go (it flickered work ↔ break every 2 s) */   /* V2.36: only urgent needs end a shift early */
+    if (s.job === 'Medic' && tick % 60 === (s.i * 11) % 60) { const q = medicFindPatient(s); if (q) { s.activity = null; startAid(s, q, 'patch'); s.why = `On a round: patching up ${q.name}`; return; } }   /* 3D.287: the building is empty → the Medic on shift does rounds */
     if (s.stateTicks <= 0 || !onShift(s)) { s.activity = null; gainXp(s, 1); enterFree(s, 20); s.why = 'Shift over'; } return;
   }
   if (s.mode === 'goFacility') {

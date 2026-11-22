@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.286', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.287', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2450,6 +2450,7 @@ function ai(s) {
     if (tick % 20 === s.i % 20 && acquireEnemy(s)) { s.activity = null; return; }
     if (tick % 1000 === (s.i * 37) % 1000) gainXp(s, 2);   /* every game hour on shift */
     if (tick % 120 === (s.i * 7) % 120) { const u = urgentNeed(s, true); if (u && chooseFacility(s, true, URGENT_FOR[u])) { s.activity = null; enterFree(s, 5); s.why = `${u}: taking a break`; return; } }   /* 3D.63: only walk off the job when there's somewhere to go (it flickered work ↔ break every 2 s) */   /* V2.36: only urgent needs end a shift early */
+    if (s.job === 'Medic' && tick % 60 === (s.i * 11) % 60) { const q = medicFindPatient(s); if (q) { s.activity = null; startAid(s, q, 'patch'); s.why = `On a round: patching up ${q.name}`; return; } }   /* 3D.287: the building is empty → the Medic on shift does rounds */
     if (s.stateTicks <= 0 || !onShift(s)) { s.activity = null; gainXp(s, 1); enterFree(s, 20); s.why = 'Shift over'; } return;
   }
   if (s.mode === 'goFacility') {
@@ -6467,8 +6468,19 @@ const MEND_PCT = .02;   /* 3D.284: the slow mend: this share of full health each
 const zNear = (p, r) => S.z.some((z) => z.hp > 0 && !z.human && dist(z.w, p) < r);
 function patchSupply(dry) { if ((S.cloth || 0) >= 1) { if (!dry) { S.cloth -= 1; flow('cloth', 'Field aid', -1); } return true; } if ((S.meds || 0) >= .1) { if (!dry) { S.meds -= .1; flow('meds', 'Field aid', -.1); } return true; } return false; }
 const injuryTrip = (q) => ['goFacility', 'useFacility'].includes(q.mode) && q.facility && facilityRules[q.facility.type] && facilityRules[q.facility.type].need === 'injury';
+/* 3D.287 healing, part 4 (owner, 20 Nov, W130): the Medic on shift at a medical building. They stay while someone is in it, in care there, or on the
+   way to it (walking or being carried); when it is empty they do rounds. With two or more Medics one always stays: a Medic with no medical shift does
+   the rounds and the one at the building stays in; if every Medic staffs a medical building, the first of them stays and the others go out when theirs is empty. */
+const medPost = (s) => !!(s.post && s.post.staff === s && facilityRules[s.post.type] && facilityRules[s.post.type].need === 'injury');
+const medBusy = (b) => facilityUsers(b) > 0 || S.sv.some((q) => (q.mode === 'hospital' && (q.careAt === b || (!q.careAt && medSite() === b))) || (q.mode === 'rescueCarry' && q.careTo === b));
+function shiftRounds(s) {
+  if (!medPost(s) || medBusy(s.post)) return false;
+  const others = S.sv.filter((q) => q !== s && q.job === 'Medic' && q.hp > 0 && !['down', 'hospital', 'away', 'errand'].includes(q.mode)); if (!others.length) return true;
+  if (others.some((q) => !(medPost(q) && onShift(q)))) return false;   /* someone else does the rounds */
+  return others.some((q) => q.id < s.id && q.mode === 'work');   /* all at medical buildings: the first stays in */
+}
 function medicFindPatient(s) {
-  if (s.job !== 'Medic' || s.hp < s.max * .5 || onShift(s) || s.carriedLoot || !patchSupply(true)) return null;
+  if (s.job !== 'Medic' || s.hp < s.max * .5 || (onShift(s) && !shiftRounds(s)) || s.carriedLoot || !patchSupply(true)) return null;
   let best = null, bd = 14;
   for (const q of S.sv) { if (q === s || q.hp <= 0 || q.hp >= patchCap(q) || (q.aidBy && q.aidBy.mode === 'fieldAid' && q.aidBy.aidTo === q) || (q.patchT && tick - q.patchT < PATCH_CD) || injuryTrip(q)
       || ['down', 'hospital', 'away', 'errand', 'chase', 'attack', 'recover', 'rescueTo', 'rescueCarry', 'fieldAid', 'hide', 'hiding'].includes(q.mode) || (insideBuilding(q) && q.mode !== 'work') || q.sleeping || !cantGoCare(q)) continue;   /* 3D.286: a worker on shift indoors is seen at the door */
@@ -6484,6 +6496,7 @@ function fieldAidAI(s) {
   if (!q || !S.sv.includes(q) || (kind === 'patch' ? q.mode === 'down' || q.hp >= patchCap(q) || ['hospital', 'away', 'errand'].includes(q.mode) || injuryTrip(q) : q.mode !== 'down')) {
     if (q && kind === 'revive' && q.rescuer === s) { q.rescuer = null; q.stable = false; } s.rescuing = null; endAid(s); enterFree(s, 30); return; }
   if (kind === 'patch' && (zNear(q.w, 5) || threatOf(s))) { endAid(s); enterFree(s, 60); return; }
+  if (kind === 'patch' && s.aidT === 0 && medPost(s) && onShift(s) && medBusy(s.post)) { endAid(s); enterFree(s, 5); s.why = `A patient at the ${DEFS[s.post.type].name}: heading back`; return; }   /* 3D.287: someone set out for the building while the Medic was walking to a round: back to the building (a dressing already begun is finished first) */
   if (kind === 'revive' && zNear(q.w, 2.5)) { endAid(s); q.stable = false; s.carrying = q; q.w = { x: s.w.x, y: s.w.y }; s.mode = 'rescueCarry'; s.path = null; s.careTo = careDest(); s.why = `No time: carrying ${q.name} to safety`; return; }   /* zombies close in: grab them and go */
   const d = dist(s.w, q.w);
   if (d > .95) { s.aidT = 0; s.activity = null;
