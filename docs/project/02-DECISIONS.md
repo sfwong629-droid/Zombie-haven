@@ -191,6 +191,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 12 Nov: Faction camps look like tidy communities: more buildings, straight rows, no scattered barrels and boxes.
 - 16 Nov: The player should be able to steer survivors inside the town too, especially the fighters. (Not in the game yet.)
 - 16 Nov: How: a **Take command** button when the town is attacked; fighters only, same controls as raids. Optional: left alone they fight on their own, civilians stay automatic, and the town must still win a fair fight without the player.
+- 22 Nov (Strongholds chat, W218 to W221): **every stronghold and raid camp gets its own shape, one house rule, a goal that isn't only "kill the boss", something to use and something only it gives** (`15-STRONGHOLDS.md`, approved as is). Real boss models are used in strongholds (the Mutant in Lab 7, the Butcher on the Line, the Bloater Queen at the Tanks, the Gatling Boss in the Frozen Depot); some strongholds have no boss (the Records Office, the Mast). The kit and the Clinic first. **Maps grow with the town's level**, camps and strongholds both (owner: "when you raid a town at level 5 it will be small but when you raid a town at level 15, the town will be much bigger"). The Strongholds chat builds the maps, rooms and props itself ("For this only, you will run and make all the maps and rooms and props"); pushed for review, not published. Built 3D.277 to 3D.283.
 
 ## Factions
 - 12 Nov: More renown must not make you more hated: factions turn hostile only over how they are treated.
