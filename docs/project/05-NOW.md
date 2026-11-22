@@ -18,7 +18,7 @@ New features, balance changes and new art in the game are allowed again. The wor
 - The rest of `03-BUGS.md` section B.
 - ~~Write `08-BALANCE.md`, the balance targets page.~~ Done 16 Nov in the Balance chat; the owner approved it. No number in the game was changed.
 - Building changes decided in the Balance chat (`08-BALANCE.md`, section 10): spread the buildings over levels 1 to 10, move the Stone step to era 3, seven new buildings, School for children only. The plan was approved on 17 Nov; built in the Features chat, one change per build, in the order the owner picks (W53). The seven new buildings need models from the Art chat.
-- ~~Build healing (W130)~~ **Built 22 Nov in the Features chat: 3D.284 to 3D.287** (page `17-FEATURES.md`): the slow mend, the tent first, rounds to 75%, the Medic on shift. Committed in the Features chat's workspace, **not pushed yet** (W224). Next in the Features chat: the radio rescue truck (W129), one change per build.
+- ~~Build healing (W130)~~ **Built 22 Nov in the Features chat: 3D.284 to 3D.287** (page `17-FEATURES.md`): the slow mend, the tent first, rounds to 75%, the Medic on shift. **Pushed** (not published). Next in the Features chat: the radio rescue truck (W129), one change per build.
 - Build the daytime zombie threat and the Take command button for fighters in town (both decided 16 Nov; see `01-VISION.md`), in a Features chat. **Can start now** (owner, 16 Nov, W42: step 1 of the split is enough).
 - Build the story (approved 19 Nov, `09-STORY.md`) in the Features chat: first the scene player and the Story tab (the opening moved onto it unchanged), then the scenes in story order, one per build, each shown to the owner first. New zombie: the Delivery Driver. New places and strongholds need maps from the Art chat.
 - Build the eleven new kinds of zombie (decided 17 Nov; list in `02-DECISIONS.md`, "Zombies"), in the Features chat, one kind per build. The Stag needs the daytime roaming groups first.
@@ -271,7 +271,7 @@ ChatGPT chat:
 - ~~W109. Lime on selected tabs.~~ Owner, 18 Nov: white. Logged as U39 in `04-UI.md`, built in the UI chat with the Town tab icons (W79).
 
 Features chat (started 22 Nov; page `17-FEATURES.md`):
-- W224. **Push access.** The Features chat's session could read the repo but was refused push access, so healing (3D.284 to 3D.287, nine commits on `art-direction-b` after f0d0d7f) is committed in its workspace only; the owner has the commits as one patch file. Waiting: let the session push, or apply the patch from a chat that can (`git am`). **Build numbers 3D.284 to 3D.287 are taken.**
+- ~~W224. Push access.~~ Owner, 22 Nov: "try to push again". Granted on the second try; healing (3D.284 to 3D.287) is pushed to `art-direction-b`, not published.
 - W225. **Healing, to look at after it is pushed and published:** hurt someone and watch: with no zombie in town they walk to the Medical Tent and come out at full health; a Medic patches the people who are at work to 75%; everyone mends slowly by day. Right? Two things for the Balance chat from the first bot runs (`17-FEATURES.md`, section 4): cloth ran out in the towns with healing (rounds use 1 cloth each and patch more people than before), and too few towns were run to judge the danger targets: run the full check.
 
 Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):

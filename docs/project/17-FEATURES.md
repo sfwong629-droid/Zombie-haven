@@ -2,18 +2,18 @@
 
 The Features chat builds what the other chats decided, one change per build, each with a scripted check. Order: `15-REVIEW.md`, section 6. This page says what is built, how it is checked and what is next.
 
-**Numbers taken by this chat:** builds **3D.284 to 3D.287**; waiting items **W224, W225**.
+**Numbers taken by this chat:** builds **3D.284 to 3D.287**; waiting items **W224** (done), **W225**.
 
 ## 1. Where things stand
 
 | Job | Decided | State |
 |---|---|---|
-| Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Not pushed, not published** (W224) |
+| Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Pushed 22 Nov; not published** |
 | The radio rescue truck (W129) | 19 Nov | Next. Not started |
 | The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
 | Take command | 16 Nov | After the daytime threat |
 
-**W224, push access.** This chat's session could read the repo but was refused push access. The healing builds are nine commits on top of `f0d0d7f` (branch `art-direction-b`) in the session's workspace, and the owner has them as one patch file (`healing-3D.284-287.patch`; apply with `git am`). Until they are pushed, no other chat should use 3D.284 to 3D.287.
+**W224, push access: done.** The first try was refused; the owner asked again and the second try was granted (22 Nov, 08:57). The nine commits went on top of two newer ones from other chats (`d95cbf3`, `80d3026`; docs and an art tool, no game code), so nothing had to be redone.
 
 ## 2. Healing as built
 
@@ -40,8 +40,8 @@ Unchanged: the 60% / 50% bars for leaving work; falling back from a fight; sleep
 - The Field Notes line on professions says Medics patch to 75%.
 
 ## 3. Not done
-- The repo is not pushed and nothing is published (W224).
-- The project copies of `05-NOW.md` and `02-DECISIONS.md` are not updated (too large to rewrite from this session). Their repo copies are updated in the same commits: W224 and W225 under a new "Features chat" heading, and the built note under "Nights and survival".
+- Nothing is published: the live game is still 3D.279. Healing goes live with the next publish (any chat that publishes carries it).
+- The project copies of `05-NOW.md` and `02-DECISIONS.md` are now updated from the repo copies.
 - No ChatGPT or tester look. The owner has not seen it in the game.
 
 ## 4. The first balance runs (22 Nov)
