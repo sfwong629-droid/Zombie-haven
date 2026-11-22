@@ -1,0 +1,58 @@
+# Zombie Haven: the overnight balance run (22 Nov 2026)
+
+The owner, 22 Nov, 00:35: "you can run overnight". The Balance chat works through the list below one build at a time, on the branch **`balance-overnight`** only (never `art-direction-b` or main), so nothing goes live before the owner has looked. Build numbers on this branch are renumbered when it is merged into `art-direction-b`.
+
+Each build: one change, a scripted check, the test suite, and a short bot run before and after where it matters.
+
+## Morning summary
+(Written when the night ends.)
+
+**Build numbers:** the other chats keep taking numbers during the night, so this branch's builds are renumbered above theirs each time (last: the Strongholds chat reached 3D.283 at 02:00). They are renumbered again when merged.
+
+## The list
+1. [x] The last stand: the limit of 60 and a size by level (3D.284; first pushed as 3D.277, then 3D.279, 3D.280 and 3D.281; renumbered each time another chat took the number).
+1b. [x] The Hollow's shepherded horde (3D.285): it adds zombies every hour from 22:00 to 02:00 with no limit (found measuring 3D.284).
+2. [x] The last numbers that still follow the game day (3D.286) (the gentler first two weeks, raider kinds by day, the spawn speed).
+3. [x] A breather after a lost night (3D.287).
+4. [ ] Rule 1, one pace for everyone: (a) time away pays up to a day's production; (b) newcomers wait at the gate; (c) building, crafting and research on real time; (d) the level timers on real time.
+5. [ ] If time is left: the six first-30-minute fixes (W183).
+
+## Builds
+
+### 3D.284: the last stand keeps the limit of 60 and grows with the level
+- **What:** the last stand (the three convoy nights after the signal, level 16 and up) no longer drops each night's horde in one burst. The night's zombies join a queue and walk in one by one while fewer than 60 stand; what has not come by 06:00 is dropped. The night's size follows the level, not the game day (before: 40 extra zombies a night on day 120). The night's ordinary crowd makes room for it, as on boss nights.
+- **Check:** `tools/qa/finale_cap_check.js`: on the last night with nobody killing, at most 60 stand (60); with a town that kills, the whole first night arrives (33 of 33); the first night is the same size on day 100 and day 400. Test suite: all passed.
+- **Bot**, the level 14 to 16 town (`s7_d101`), 14 game days, before (3D.276, the branch point) and after:
+
+| | Before | After |
+|---|---|---|
+| Last-stand nights, most standing | 85, 94 | 93, 61, 71 |
+| Deaths in the run | 3 | 16 (6 on one day) |
+
+- **Read with care:** the last stand's own zombies now keep the limit (the scripted check shows it), but those nights still reached 71 to 93 standing, so something else adds zombies on top. One source found: the Hollow's shepherded horde adds 8 zombies every hour from 22:00 to 02:00 at level 16 with no limit (next build, 1b). The deaths went up in this one run; one town is too few to say whether that is the build or chance (the same town gave 3, 8, 15 and 16 deaths in earlier runs of other builds).
+
+### 3D.285: the Hollow's shepherd and alpha keep the limit of 60
+- **What:** on a Hollow night the shepherd adds 3 + level/3 zombies every hour from 22:00 to 02:00 while he lives, and the alpha's night adds 8 + level; both did so whatever already stood. Now they only fill the room left under 60. With room to spare they still bring their full group. Looked at and left alone: the Screamer's call (it already stops at 60), a zombie breaking into a building and the dead rising again (one zombie each, not an attack).
+- **Check:** `tools/qa/hollow_cap_check.js`: with 57 standing, the shepherd's hour and the alpha's night end at 60; with an empty town the shepherd adds his full 8 at level 16. Test suite: all passed.
+- **Bot**, the same level 14 to 16 town, 14 game days, before (3D.284) and after:
+
+| | Before | After |
+|---|---|---|
+| Last-stand nights, most standing | (the signal was not sent in this run) | 42, 57, 60 |
+| Most standing in the whole run | 82 | 69 |
+| Deaths in the run | 23 (6 on one day) | 3 (never more than 1 a day) |
+
+- **Read with care:** one town each way, and the two runs took different paths (the town before never sent the signal). What it does show: this time the last stand stayed at 60 or under. A few nights still reach 62 to 69 standing (the night before and of a level boss night); the source is not found yet. It is small next to the 105 to 186 of before.
+
+### 3D.286: the last danger numbers that followed the game day now follow the level
+- **What:** (1) the boss's gentle start (40% less health, a 25% softer hit) was for game days 1 to 14; now levels 1 to 5 (era 1). (2) The first boss is always the Mutant up to level 2 (was day 4). (3) Raider kinds: the Firebug from level 2, the Brute from level 3 (were game days 3, 4 and 6). (4) The spawn speed's "threat" was set to day / 4 at each rank-up, so it kept the day count of that moment; now it is a quarter of the level's day strength. The Town panel shows the same number. **Left alone on purpose:** story timing (when factions are first met) and raids starting on day 4 (that one belongs to the first-30-minute fix "no raiders in the first sitting", item 5).
+- **Choice to look at:** the gentle boss now ends at level 5 instead of day 14, so the boss at level 6 is about twice as tough as at level 5 (250 → 592 health in the check's town). Before, the step came on day 15, wherever the town was.
+- **Check:** `tools/qa/day_free_check.js`: at levels 1, 3, 6 and 15 the boss's health and hit, the raider kinds and the threat are the same on game day 2 and day 300; level 1 meets only Thieves, level 3 all three kinds. Test suite: all passed.
+- **Bot**, before (3D.285) and after: a new town for 15 game days: 0 and 0 deaths, boss nights 17 to 41 and 41 to 62 (the after town levelled faster, 4 against 6, so its boss nights are bigger; not readable as an effect). A level 9 town for 12 game days: 0 and 0 deaths, boss nights 46 and 42 to 45 standing at most.
+- **Measurement problem found (not from this build):** started from the level 9 backup, two bot towns run side by side sometimes have their town clock slow to a quarter for several game days (12 day lines covered game days 41 to 45), before and after alike. A squad sitting in a stronghold slows the town to a quarter (`simTick`, `S.sh`), so the likely cause is the bot staying in a stronghold; the stronghold maps changed in today's 3D.277 and 3D.278 (Strongholds chat). Not reproduced when one town runs alone (4 tries). Worth a look by the Strongholds chat; until then, short A/B runs from that backup are less reliable.
+
+### 3D.287: a breather after a lost night
+- **What:** a night (20:00 to 06:00) counts as lost when someone dies in it, or when everyone went down and the neighbours had to come (the rescue of 3D.246). Then the next two nights are a breather: the night's crowd is a quarter smaller, the boss night and raiders wait, and the weekly crisis does not start. It reuses the game's existing "vigil" quiet (V2.24, which already did this after 2 deaths in a day) for 2 nights, with its own message: "A breather: the dead hang back, the next two nights are quieter, with no boss night and no raiders."
+- **Choices to look at:** (1) one death is enough to count as a lost night (the plan says "a night the town lost"; one death is the simplest reading). (2) A quarter smaller is the vigil's existing number. (3) The last stand does not pause for a breather (the convoy is coming; that fight is chosen by the player).
+- **Check:** `tools/qa/breather_check.js`: after a night with a death, and after a night when everyone went down, the breather is on and a boss night due that evening comes two evenings later; after a night with no loss there is no breather and the boss comes on time. The crisis, boss-gap and raid checks still pass. Test suite: all passed.
+- **Bot**, the level 14 to 16 town, 14 game days, before (3D.286) and after: 2 and 1 deaths, so the breather started at most once; this run says nothing about its effect. It needs a town that loses people (the daily player in a full check). Also seen again: one level boss night with 82 standing in the after run (the cause of the few nights above 60 is still not found).
