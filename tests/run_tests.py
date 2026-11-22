@@ -685,9 +685,10 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.cloth=5;S.meds=0;
       const m=S.sv.find(q=>q.job!=='Guard');m.job='Medic';m.post=null;for(const b of ZH.world.buildings)if(b.staff===m)b.staff=null;m.hp=m.max;
       const p=S.sv.find(q=>q!==m);p.w={x:m.w.x+2,y:m.w.y};p.hp=Math.round(p.max*.3);p.mode='free';p.stateTicks=999;m.mode='free';m.stateTicks=0;m.patchT=0;
-      const f=ZH.medicFindPatient(m);out.found=f===p;if(f)ZH.startAid(m,p,'patch');
-      for(let k=0;k<1200&&m.aidTo;k++){S.z.length=0;p.mode='free';p.stateTicks=999;ZH.ai(m)}
-      out.patched=Math.abs(p.hp-Math.round(p.max*ZH.FIELD_CAP))<=1;out.cloth=S.cloth;
+      const tent=ZH.world.buildings.find(b=>b.type==='medic');out.walks=ZH.medicFindPatient(m)===null;   /* 3D.286: with a Tent that has room the patient walks there, so no round */
+      tent.burnt=true;const f=ZH.medicFindPatient(m);out.found=f===p;if(f)ZH.startAid(m,p,'patch');
+      for(let k=0;k<1200&&m.aidTo;k++){S.z.length=0;p.mode='free';p.stateTicks=999;ZH.ai(m)}tent.burnt=false;
+      out.patched=Math.abs(p.hp-Math.round(p.max*.75))<=1;out.cloth=S.cloth;   /* 3D.286: a round patches to 75% (a field wound still stops at FIELD_CAP, 60%) */
       // revive: first fall in a day gets up Wounded at 30%
       p.downD=-1;p.hp=0;ZH.ai(p);out.down=p.mode==='down';p.rescuer=m;m.rescuing=p;m.mode='rescueTo';m.w={x:p.w.x+1.5,y:p.w.y};
       for(let k=0;k<1500&&p.mode==='down';k++){S.z.length=0;ZH.ai(m);ZH.ai(p)}
@@ -707,7 +708,8 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
       if(ids.length){c.eq=c.eq||{};c.eq.weapon=ids[0];c.job='Guard';const r0=ZH.rangeOf(c);c.job='Police Officer';out.range=ZH.rangeOf(c)-r0}
       try{ZH.serialize();out.save=true}catch(e){out.save=e.message}
       return out}""")
-    t.ok(r['found'] and r['patched'] and r['cloth'] == 4, f"a Medic off shift patches someone up to 60% for 1 cloth {r}")
+    t.ok(r['walks'], 'with a Medical Tent that has room the Medic leaves a hurt person to walk there (3D.286)')
+    t.ok(r['found'] and r['patched'] and r['cloth'] == 4, f"a Medic off shift patches someone who cannot go to a medical building up to 75% for 1 cloth {r}")
     t.ok(r['down'] and r['up'], f"a first fall: the Medic gets them up at 30%, Wounded {r}")
     t.ok(r['capped'], 'a Wounded survivor heals no further than 60% outside a medical building')
     t.ok(r['carried'], f"a second fall the same day: stabilised and carried to care {r}")
