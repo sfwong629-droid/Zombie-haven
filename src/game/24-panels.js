@@ -327,7 +327,7 @@ function showTown(tab) {
   let h = tabBar([['overview', 'Haven', 'haven'], ['defense', 'Defense', 'defense'], ['people', 'People', 'people'], ['more', 'More', 'more']], tTab);
   if (tTab === 'overview') {
     h += `<div class="card"><b>Town policy</b><div class="row" style="gap:4px;flex-wrap:wrap;margin:4px 0">${Object.entries(POLICIES).map(([k, q]) => `<button class="act${policy() === k ? ' go' : ''}" data-pol="${k}" style="flex:1 1 45%;margin:0;padding:6px 4px;font-size:17px">${q.icon} ${q.name}</button>`).join('')}</div><div class="sm">${POLICIES[policy()].desc}</div></div>`;
-    h += `<div class="card"><div style="font-size:23px">Level ${S.lvl || 1} <span class="sm">· Era ${eraOf().n}: ${eraOf().name} · threat ☠${S.threat}</span></div>`
+    h += `<div class="card"><div style="font-size:23px">Level ${S.lvl || 1} <span class="sm">· Era ${eraOf().n}: ${eraOf().name} · threat ☠${threatNow()}</span></div>`
       + (S.lvUp ? `<div class="sm">🏗 Upgrading to level ${S.lvUp.to}: ${lvLeftText()} left</div><button class="act" id="tUpg">Upgrade progress</button>` : rankConds() ? `<div class="sm">Next level: ${rankConds().filter((r) => r.ok).length}/${rankConds().length} goals met</div><button class="act${S.rankReady ? ' go' : ''}" id="tUpg">🏡 Upgrade the Haven</button>` : '<div>Highest level reached.</div>') + '</div>'
       + `<div class="card"><div class="kv"><div><span>🍖 Food</span><span style="color:${st.fNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.fNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.fDays)}</span></div>
          <div><span>💧 Water</span><span style="color:${st.wNet < 0 ? 'var(--bad)' : 'var(--good)'}">${net(st.wNet)}/day</span></div><div><span class="sm">lasts</span><span>${days(st.wDays)}</span></div>
