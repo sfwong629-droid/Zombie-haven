@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.293', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.294', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -58,7 +58,10 @@ async function loadAll() {   /* 3D.129 only what the 3D game shows on its menus:
 
 /* ---------------- state ---------------- */
 const world = Wd.createWorld();
-const S = { lvl: 1, lvStep: 0, lvUp: null, banners: [], diff: 'normal', start: 'camp', legacy: {}, finale: null, won: null, posts: [], kids: [], guide: 0, log: [], expCount: 0, pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 4.5, nextBoss: 6, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
+/* 3D.294 (overnight, W183 first-30-minute fix 5): the first boss night is game day 4 at 21:00, about minute 24 of open play from day 1 at 08:00
+   (17 s a game hour); it was day 6, about minute 38. It stays small: the level's horde (16 at level 1, 24 at level 2) and the era-1 gentle boss. */
+const FIRST_BOSS_DAY = 4;
+const S = { lvl: 1, lvStep: 0, lvUp: null, banners: [], diff: 'normal', start: 'camp', legacy: {}, finale: null, won: null, posts: [], kids: [], guide: 0, log: [], expCount: 0, pets: [], nextTrader: 2, incidents: 0, inv: {}, rp: 0, res: {}, terr: 0, nextRaid: 4.5, nextBoss: FIRST_BOSS_DAY, produced: 0, food: 14, water: 14, mat: 30, alert: 0, sealed: false, retreat: 35, fallen: [], spare: [], ren: 0, rank: 1, threat: 1, day: 1, hour: 8, kills: 0, stage: 0, sv: [], z: [], spawnClock: 0, eventClock: 0, arrivalClock: 0, requests: [], builtCount: 0, mission: null, missionStart: { kills: 0, produced: 0, built: 0 }, lastSave: 0, seq: 0 };
 const floats = [];
 let sel = null;            // active build tool: {kind:'building',type} | {kind:'road'}
 let preview = null;        // {x,y,w,h,type,ok,why}
