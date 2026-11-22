@@ -143,9 +143,15 @@ async def main():
     seed, maxd, budget, out = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
     os.makedirs(out, exist_ok=True); t0 = time.time(); srv, port = R.serve()
     async with async_playwright() as p:
-        br = await p.chromium.launch(); ctx, pg, errs = await open_game(br, port, 'bug%d' % seed)
-        await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("()=>{AP.exp=true;AP.long=true;AP.expert=true}"); await pg.evaluate(BUG)
-        f = open(os.path.join(out, 's%d.jsonl' % seed), 'w'); n = 0; rts = []
+        br = await p.chromium.launch(); res = os.environ.get('RESUME')   # RESUME=backup.json: carry on a town from one of this tool's backups
+        if res:
+            b = json.load(open(res)); sv = b.get('save') or b; t_ = sv.get('time') or int(time.time() * 1000)
+            ctx, pg, errs = await open_game(br, port, 'bug%d' % seed, json.dumps({**sv, 'sid': 'import', 'time': t_}), t_)
+        else: ctx, pg, errs = await open_game(br, port, 'bug%d' % seed)
+        await pg.evaluate(SETUP, seed)
+        if res: await pg.evaluate("()=>{__awayMs=-ZH.tick*1000/60}")   # keep the clock where the save left it
+        await pg.evaluate("()=>0"); await pg.evaluate(AP); await pg.evaluate("()=>{AP.exp=true;AP.long=true;AP.expert=true}"); await pg.evaluate(BUG)
+        f = open(os.path.join(out, 's%d.jsonl' % seed), 'a' if res else 'w'); n = 0; rts = []
         while n < maxd and time.time() - t0 < budget:
             d = await pg.evaluate(DAY, 24); d['bug'] = await pg.evaluate("()=>BUG.dayOut()")
             d['errs'] = errs[:]; errs.clear()
@@ -168,7 +174,7 @@ async def main():
             if n % 5 == 0 or n < 3:
                 found = await pg.evaluate("()=>BUG.found.length")
                 print('seed', seed, 'day', d['day'], 'level', d.get('hl'), 'pop', d['sv'], 'bld', d['nb'], 'ms', d['ms'], 'findings', found, 'reach', d['bug'].get('reach', 0), flush=True)
-            json.dump({'found': await pg.evaluate("()=>BUG.found"), 'roundTrips': rts, 'days': n}, open(os.path.join(out, 's%d_bugs.json' % seed), 'w'), indent=0)
+            json.dump({'found': await pg.evaluate("()=>BUG.found"), 'roundTrips': rts, 'days': n, 'resumed': res}, open(os.path.join(out, 's%d_bugs%s.json' % (seed, '_r' if res else '')), 'w'), indent=0)
             if d.get('stepErr') or d.get('sv', 1) == 0: break
         await br.close()
     print('done seed', seed, 'days', n, 'in', round(time.time() - t0), 's')

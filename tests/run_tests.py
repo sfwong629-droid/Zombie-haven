@@ -955,6 +955,24 @@ async def t_skillhp(br, port, t):   # bug B19 (3D.259, found by the bug sweep): 
     t.ok(q['bHp'] == 0 and q['bMode'] == 'down', f"someone down is still down after loading ({q['bHp']} health, {q['bMode']})")
     t.ok(not errs and not errs2, f'no page errors {(errs + errs2)[:1]}'); await ctx.close()
 
+async def t_reachstale(br, port, t):   # bug B20 (3D.260, found by the bug sweep): "Couldn't reach it" on the first step of a trip, from the last trip's progress checkpoint
+    ctx, pg, errs = await open_game(br, port, 'reachstale')
+    await pg.evaluate("()=>{let x=11;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
+    r = await pg.evaluate("""() => { const S = ZH.S, W = ZH.world, Wd = ZH.Wd; S.z.length = 0; S.hour = 12; const out = [];
+      const b = W.buildings.find((q) => Wd.DEFS[q.type].role === 'hq'); const dp = Wd.doorPoint(b);
+      for (let n = 0; n < 6; n++) { const s = S.sv[n % S.sv.length]; for (const q of S.sv) if (q !== s) { q.mode = 'away'; q.w = { x: 0.5, y: 0.5 }; }
+        const st = Wd.nearestWalkable ? null : null; let from = null; for (let r0 = 3; r0 < 9 && !from; r0++) for (let a = 0; a < 16 && !from; a++) { const x = Math.floor(dp.x + Math.cos(a + n) * r0), y = Math.floor(dp.y + Math.sin(a + n) * r0); if (Wd.walkable(W, x, y, true) && !Wd.buildingAt(W, x, y) && !Wd.wallAt(W, x, y) && Wd.findPath(W, { x, y }, Wd.approachTile(b))) from = { x: x + .5, y: y + .5 }; }
+        s.w = { ...from }; s.path = null; s.pathGoal = null; s.noReach = null; s.why = '';
+        s.prog = { x: s.w.x, y: s.w.y, t: ZH.tick - 200 };   /* left over from the last trip: taken a while ago, where they have stood since */
+        s.mode = 'goFacility'; s.facility = b; s.stateTicks = 9999;
+        let failed = false; for (let k = 0; k < 40; k++) { ZH.step(1); if (/Couldn.t reach/.test(s.why || '')) { failed = true; break; } }
+        out.push({ failed, moved: +Math.hypot(s.w.x - from.x, s.w.y - from.y).toFixed(2) }); }
+      return out; }""")
+    print('      reachstale:', r)
+    t.ok(not any(x['failed'] for x in r), f"nobody gives up on the first step of a walk to the Camp door ({sum(x['failed'] for x in r)} of {len(r)} did; 3D.259: every one)")
+    t.ok(all(x['moved'] > .15 for x in r), f"they set off ({[x['moved'] for x in r]})")
+    t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
+
 async def t_gatewalk(br, port, t):   # bug A6 (3D.229): people walk through a gate; walled in with only a gate, they still get out
     ctx, pg, errs = await open_game(br, port, 'gatewalk')
     await pg.evaluate("()=>{let x=5;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
@@ -989,7 +1007,7 @@ async def t_beds(br, port, t):   # bug B11 (3D.238): every Tent adds room at onc
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 TESTS = [('parts', t_parts), ('boot', t_boot), ('traps', t_traps), ('powerammo', t_power_ammo), ('convoy', t_convoy), ('notes', t_ceiling_notes), ('newz', t_new_zombies), ('geometry', t_geometry), ('alerts', t_alerts), ('objectives', t_objectives), ('economy', t_economy), ('living', t_living), ('combat', t_combat), ('profession', t_profession), ('skill', t_skill), ('weeks', t_weeks), ('polish', t_polish), ('input', t_input_staff), ('title', t_title), ('menu', t_menu), ('saves', t_saves), ('traits', t_traits), ('expchoices', t_expchoices), ('posts', t_posts), ('replay', t_replay), ('rotate', t_rotate), ('save_load', t_save_load), ('old_save', t_old_save), ('guide', t_guide), ('fire', t_fire), ('rush', t_rush), ('trader', t_trader),
-         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
+         ('walls', t_walls), ('research', t_research), ('bonds', t_bonds), ('story', t_story), ('tabs', t_tabs), ('sound', t_sound), ('dawn', t_dawn), ('wallemo', t_wallemo), ('leaveflap', t_leaveflap), ('skillhp', t_skillhp), ('reachstale', t_reachstale), ('gatewalk', t_gatewalk), ('beds', t_beds), ('sim', t_sim)]
 
 async def main():
     want = sys.argv[1:]; srv, port = serve(); failed = 0; t0 = time.time()
