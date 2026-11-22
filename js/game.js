@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.296', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.297', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3792,7 +3792,11 @@ function showNextRequest() {
   $('declineReq').onclick = () => { s.requested = false; s.sat = Math.max(20, s.sat - 5); S.requests.shift(); box.innerHTML = ''; showNextRequest(); ui(); };
 }
 const ARRIVE = { low: 8000, high: 14000 };   /* 3D.72: growth is the goal, and the rank limit keeps the town from filling too fast */    /* V3D.21 ticks between newcomers at the gate (1000 ticks = 1 game hour): every 12 h below 60% of the room, every 24 h above (was 1.1 h / 2.2 h: the town filled in 2 days) */
-const arriveGap = () => (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1);   /* ticks between newcomers */
+/* 3D.297 (overnight branch; owner, 21 Nov, W183, first-30-minute fix 3: the sixth person arrives in time for level 2). Level 2 needs 6 people
+   and the camp starts with 4; at one newcomer every ~8 game hours the sixth came anywhere from game day 1 to 4. While the town has fewer
+   than FIRST_SIX people, newcomers come EARLY_ARRIVE times as often (about every 2 game hours, half a minute of open play). */
+const FIRST_SIX = 6, EARLY_ARRIVE = 4;
+const arriveGap = () => (popNow() < popCap() * .6 ? ARRIVE.low : ARRIVE.high) / (1 + .25 * townAppeal()) / (anyPowered('radio') ? 1.3 : 1) / (ST().arrive && S.day <= 7 ? ST().arrive : 1) / (popNow() < FIRST_SIX ? EARLY_ARRIVE : 1);   /* ticks between newcomers */
 /* 3D.294 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: newcomers keep coming while the player is away and wait at the gate,
    a few at most). Before, the gate clock only ran with the game open, so a daily player met almost nobody new. awayCredit now runs the gate
    clock for the time away (up to a day, as production) and puts whoever would have come in a queue at the gate, at most GATE_MAX, as long as
