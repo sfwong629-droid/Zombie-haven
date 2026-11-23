@@ -45,6 +45,7 @@ function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 
   P.spawn.pharm = [['walker', 1]];
   P.spawn.theatre = [['walker', 2 + Math.floor(lv / 6)]]; P.boss = { room: 'theatre', type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011, pat: 'slam' };
   P.route = ['lobby', 'hall', 'theatre']; P.startRoom = 'lobby'; P.bossRoom = 'theatre'; P.start = { x: 1, y: 8.2 }; P.exit = { x: .6, y: 9.5 }; P.mystT = ['walker', 'runner'];
+  P.who = { room: P.locked[P.locked.length - 1], by: 'hall', flag: 'doctor', name: 'Dr. Ines', job: 'Medic' };   /* 3D.304 she bolted the theatre herself */
   P.tasks = [{ k: 'boss', label: 'Kill the Butcher of Ward 3' }, { k: 'use', id: 'locker', opt: true, label: 'Side: empty the pharmacy locker' }];
   P.tip = 'Patients sleep in some of the beds. They get up when someone walks past, or when a gun goes off near them: quiet weapons are safer.';
   return P; }
@@ -397,9 +398,9 @@ const shMemOf = (dest) => (S.shMem || {})[dest] || null;
 const shSecured = (dest) => !!(shMemOf(dest) || {}).secured;
 const shMemLvl = (dest) => (shRemembers(dest) ? (shMemOf(dest) || {}).lvl || SH_SIZE[dest] || 0 : 0);
 function shMemSave(H, won) { if (!H || H.practice || H.camp || !shRemembers(H.dest)) return; const M = (S.shMem ||= {})[H.dest] ||= { dead: [], visits: 0 };
-  M.lvl = H.lvl; M.doors = H.doors.map((d) => [d.open ? 1 : 0, d.locked ? 1 : 0, d.broken ? 1 : 0]); M.rev = { ...H.rev }; M.myst = JSON.parse(JSON.stringify(H.myst || {})); M.spawnQ = JSON.parse(JSON.stringify(H.spawnQ || []));
+  M.lvl = H.lvl; M.doors = H.doors.map((d) => d.was || [d.open ? 1 : 0, d.locked ? 1 : 0, d.broken ? 1 : 0]); M.rev = { ...H.rev }; M.myst = JSON.parse(JSON.stringify(H.myst || {})); M.spawnQ = JSON.parse(JSON.stringify(H.spawnQ || []));
   M.things = H.things.map((t) => { const o = { ...t, prog: 0 }; delete o.carried; if ((o.fx === 'hold' || o.fx === 'seal') && !o.sealed) o.done = false; return o; }); M.zones = JSON.parse(JSON.stringify(H.zones || []));
-  M.dead = [...new Set([...(M.dead || []), ...H.zs.filter((z) => z.key && z.hp <= 0).map((z) => z.key)])]; M.left = H.zs.filter((z) => z.key && z.hp > 0).length;
+  M.dead = [...new Set([...(M.dead || []), ...H.zs.filter((z) => z.key && z.hp <= 0).map((z) => z.key)])]; M.left = H.zs.filter((z) => z.key && z.hp > 0).length + (H.shutZs || []).length; if (H.unsealed) M.unsealed = { ...(M.unsealed || {}), ...H.unsealed }; if (H.whoNew) M[H.plan.who.flag] = S.day;
   for (const k of ['lit', 'shut', 'shutVat', 'lastOpen', 'bossDown']) if (H[k] != null) M[k] = JSON.parse(JSON.stringify(H[k])); if (H.shredF != null) M.shredF = H.shredF;
   M.tasks = (H.tasks || []).map((T) => !!T.done); M.day = S.day; if (won) M.secured = S.day; }
 function shMemLoad(H, stage) { const M = !H.practice && shRemembers(H.dest) ? shMemOf(H.dest) : null;
@@ -411,3 +412,42 @@ function shMemLoad(H, stage) { const M = !H.practice && shRemembers(H.dest) ? sh
   if (!M || !M.doors) return; const gone = new Set(M.dead || []); H.zs = H.zs.filter((z) => !gone.has(z.key)); for (const z of H.zs) z.hid = !H.rev[z.room];
   if (M.shredF != null && H.shredF != null) { H.shredF = M.shredF; if (H.shredF >= 0) { H.shredAt = H.t + 3600; H.clock = 3600; } else H.clock = 0; }
   const n = (M.dead || []).length; setTimeout(() => say(`The squad goes back in. What they killed last time is still dead (${n}), and the doors they opened are still open.`, true), 900); }
+
+/* ---- 3D.304 story locks on rooms (the rework, step 2; 15-STRONGHOLDS.md 10.3 and 10.12). A sealed place has inner rooms the story has not opened yet.
+   A shut room cannot be forced or blown open; what is in it is left alone this visit; the squad does what it can, leaves, and comes back when the
+   reason is met. Once a room has been open on a visit it stays open. Practice runs have no story locks. ---- */
+const SH_STORY = {
+  clinic: [{ room: 'theatre', why: () => ((shMemOf('clinic') || {}).doctor ? '' : 'The theatre is bolted from the inside. Somebody who worked here would know the staff way in') }],
+  prison: [{ room: 'control', why: () => { const f = (S.fac || {}).quar; return (S.keyItems || {}).proof1 || (f && f.met && (f.ally || (f.att || 0) >= 20)) ? '' : "The control room has an army seal: Quarantine Command shut the prison in the first week. Get on Command's good side, or take their keys from Checkpoint Bravo"; } }],
+  lab7: [{ room: 'base', why: () => ((S.fac || {}).helix && S.fac.helix.met ? '' : "The basement stair is behind a wall panel: only Voss's plans show which one. Meet Helix first") }],
+};
+const shStoryLocks = (dest) => (SH_STORY[dest] || []).filter((L) => !((shMemOf(dest) || {}).unsealed || {})[L.room]).map((L) => ({ room: L.room, text: L.why() })).filter((L) => L.text);
+function shStoryApply(H) { H.sealed = {}; H.shutZs = []; H.unsealed = {}; if (H.practice || H.camp || !H.plan) return; const shut = shStoryLocks(H.dest);
+  for (const L of SH_STORY[H.dest] || []) if (!shut.some((q) => q.room === L.room)) H.unsealed[L.room] = 1;   /* open on this visit: it stays open */
+  for (const L of shut) { if (!SH_ROOMS[L.room]) continue; H.sealed[L.room] = L.text;
+    SH_DOORS.forEach((D, i) => { if (D[0] !== L.room && D[1] !== L.room) return; const d = H.doors[i]; d.was = [d.open ? 1 : 0, d.locked ? 1 : 0, d.broken ? 1 : 0]; d.open = false; d.broken = false; d.locked = true; d.sealed = L.text; });
+    delete H.rev[L.room]; delete H.woke[L.room]; }
+  if (!Object.keys(H.sealed).length) return;
+  H.shutZs = H.zs.filter((z) => H.sealed[z.room] && z.hp > 0); H.zs = H.zs.filter((z) => !H.sealed[z.room]);   /* whatever is in there stays in there */
+  for (const T of H.tasks) { const r = T.k === 'boss' ? H.plan.boss && H.plan.boss.room : (H.things.find((t) => t.task === T.id && H.sealed[t.room]) || {}).room; if (r && H.sealed[r] && !T.done) { T.shut = r; if (!T.opt) H.stuck = r; } }
+  const nm = Object.keys(H.sealed).map((r) => H.plan.names[r] || r).join(', '); setTimeout(() => say(`🔐 Shut for now: ${nm}. ${Object.values(H.sealed)[0]}.`, true), 2200); }
+/* the room that holds the place's own survivor is never a nest or a cache: rolled over before anyone is put in the rooms */
+function shStoryMyst(H) { const W = H.plan && H.plan.who; if (!W || H.practice || !H.myst || !H.myst[W.room]) return; H.myst[W.room] = { kind: 'survivor', who: 1, loot: { meds: 1 }, items: [] }; H.spawnQ = (H.spawnQ || []).filter((q) => q[0] !== W.room); }
+function shStoryWho(H, at) { const W = H.plan && H.plan.who; if (!W || H.who || H.practice) return; H.who = true; if ((shMemOf(H.dest) || {})[W.flag]) return; H.whoNew = true;
+  shFx(at, `🙋 ${W.name}`, '#7be08a'); SFX('reward'); banner(`🙋 ${W.name.toUpperCase()} IS ALIVE`); say(`A ward door opens from the inside. ${W.name}: "Living people. I bolted the theatre myself, with him in it. Get me home, and I will show you the staff way in."`, true); }
+/* twice a second: the Clinic's doctor comes out when the corridor outside her ward is quiet; and the squad is told when nothing more can be done today */
+function shStoryTick(H, live) { const P = H.plan, W = P.who;
+  if (W && !H.practice && !H.who && !(shMemOf(H.dest) || {})[W.flag] && SH_ROOMS[W.room] && H.woke[W.by] && !H.zs.some((z) => z.hp > 0 && z.mode !== 'sleep' && !z.frozen)) { const di = SH_DOORS.findIndex((D) => D[0] === W.room || D[1] === W.room), at = di >= 0 ? shDoorW(di) : null;
+    if (at && live.some((s) => dist(s.w, at) < 5) && !H.zs.some((z) => z.hp > 0 && z.room === W.by && !z.bed)) { const d = H.doors[di], m = (H.myst || {})[W.room]; if (m) { m.took = true; m.told = true; } if (!d.open) shDoorOpen(d, 'pick'); shStoryWho(H, at); } }
+  if (!H.stuck || H.back || H.goalDone) return; const route = P.route.filter((r) => !H.sealed[r]);
+  const busy = H.zs.some((z) => z.hp > 0 && !z.frozen && !z.post && (z.mode !== 'sleep' || (!z.bed && route.includes(z.room)))) || route.some((r) => !H.woke[r]);
+  if (busy) { H.stuckT = 0; return; } if (!H.stuckT) { H.stuckT = H.t; banner('🔐 NOTHING MORE HERE TODAY'); say(`${H.plan.names[H.stuck] || 'The last room'} stays shut. ${H.sealed[H.stuck]}. What the squad did here stays done: search what is left, then ↩ Fall back.`, true); shPanel(); }
+  else if (!H.coachAct && H.t - H.stuckT > 360) { H.back = true; H.backT = H.t; say('Nothing more to do here today: the squad heads for the way out.'); shPanel(); } }   /* a squad nobody is leading goes home by itself */
+function shStoryEnd(H, won, fled, lines, entry) { if (!H || H.practice || H.camp || !H.plan) return; const W = H.plan.who;
+  if (W && H.whoNew) { if (S.sv.length + (S.kids || []).length < popCap()) { const q = mk(freeFirst([W.name]), W.job, 4, entry.x, entry.y + .6, S.sv.length); q.sat = 3; q.stateTicks = 80; q.src = 'trip'; S.sv.push(q); lines.push(`🙋 ${esc(q.name)}, the Clinic's last doctor, came home with the squad. She will show the next squad the staff way into the theatre.`); }
+    else lines.push(`🙋 ${esc(W.name)} got out with the squad. There was no bed for her at the Haven, so she went on to the river; she left her key and a drawing of the staff way into the theatre.`); }
+  if (!won && H.sealed && Object.keys(H.sealed).length) lines.push(`🔐 Still shut: ${Object.keys(H.sealed).map((r) => esc(H.plan.names[r] || r)).join(', ')}. ${esc(Object.values(H.sealed)[0])}.`); }
+/* the trip card's line for a sealed place: how much is done, and what is still shut */
+function shCardLine(dest) { if (!shRemembers(dest)) return ''; const M = shMemOf(dest), L = shStoryLocks(dest), a = [];
+  if (M && M.doors) a.push(`${(M.dead || []).length} put down, ${M.left || 0} still inside`); if (L.length) a.push(`🔐 ${L.map((q) => esc(q.text)).join('. ')}`);
+  return a.length ? `<div class="etLine"><span class="etK">Inside</span> ${a.join(' · ')}</div>` : ''; }

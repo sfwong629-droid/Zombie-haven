@@ -21,7 +21,7 @@ const only = process.argv.slice(2);
         if (h.phase === 'done') { won = true; break; } }
       const h = ZH.S.sh; const st = h ? h.tasks.map((T) => T.label + ': ' + (T.done ? 'done' : 'not done')) : ['ended']; const txt = [...document.querySelectorAll('#eventModal .evBox, .evBox')].map((e) => e.textContent).join(' | ').slice(0, 400);
       return { won, st, txt, secs: h ? Math.round(h.t / 60) : null }; }, d);
-    console.log(`${d} at level 10: ${res.won ? 'finished' : 'NOT finished'} ${(res.txt.match(/PRACTICE[^|]*/) || [''])[0].slice(0, 90)} ${res.st.join('; ')}`); if (!res.won || !/PRACTICE: CLEARED/.test(res.txt)) bad.push(`${d}: the unkillable squad did not finish the map (${res.st.join('; ')})`);
+    console.log(`${d} at level 10: ${res.won ? 'finished' : 'NOT finished'} ${(res.txt.match(/PRACTICE[^|]*/) || [''])[0].slice(0, 90)} ${res.st.join('; ')}`); if (!res.won || !/PRACTICE: CLEARED/.test(res.txt)) bad.push(`${d}: the unkillable squad did not finish the map (${res.st.join('; ')}; cards: ${res.txt.slice(0, 160) || 'none'})`);
     await p.evaluate(() => { for (const b of document.querySelectorAll('#eventModal button')) if (/^done$/i.test(b.textContent.trim())) b.click(); }); await Q.clearCards(p);
     for (const lv of [5, 15]) { await Q.practice(p, d, lv, 6, true); await p.evaluate(() => { const H = ZH.S.sh; H.rev = Object.fromEntries(Object.keys(H.plan.rooms).map((k) => [k, 1])); const W = H.plan.W, Hh = H.plan.H; H.cx = ZH.SH_AX + W / 2; H.cy = ZH.SH_AY + Hh / 2 + 1; H.cz = Math.max(.55, Math.min(1.6, 26 / Math.max(W, Hh * 1.8))); H.free = true; }); await p.waitForTimeout(3500);
       await Q.shot(p, path.join(OUT, `${d}_lv${lv}.png`)); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(500); } }
