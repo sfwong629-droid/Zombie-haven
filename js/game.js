@@ -2934,7 +2934,8 @@ function eventSchedule() {   /* called every game hour */
   if (S.hour === 6) { const n = activeZ(); if (n >= 8) note('important', `☀ DAWN SWEEP: ${n} ZOMBIES LEFT IN TOWN`, { log: `${n} zombies are still about from the night. In daylight they are slow and weak: the fighters go out after them.` }); }   /* 3D.299 A12 tuning */
   /* A12 tuning 3 (owner, 23 Nov: "Keep tuning"; then "Boss should not lose HP"): while a boss from last night still stands, no new ordinary
      night crowd comes: his leftovers are the night. (A first version also wore him down in daylight; taken out on the owner's word.) */
-  if (S.hour === 6 && S.bossOn != null) { S.bossOn = null; S.z.forEach((z) => { if (z.mob) z.mob = false; }); }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): at dawn the boss night ends, but a boss still alive and its followers stay and fight until killed (they used to walk back out, past people) */
+  if (S.hour === 6) { S.bossOn = null; let n = 0; for (const z of S.z) if (z.hp > 0 && !z.human && (z.type === 'boss' || z.mob)) { const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
+    if (n) note('important', '🌅 THE BOSS FALLS BACK', { log: 'At first light the boss and what is left of his horde turn back into the dark. He will be back. Every other zombie stays until it is killed.' }); }   /* A12 (owner, 23 Nov: "Boss leaves at dawn"; "Boss should not lose HP"): a boss still alive at 06:00 walks off with his own horde, at full health; every other zombie stays until killed */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
