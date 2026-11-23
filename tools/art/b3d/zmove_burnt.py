@@ -3,8 +3,10 @@
 # MODE rush (clip burnt_rush, 1.3 s, its attack): a flailing rush. Both arms beat wildly down at the target, out of step with each other, the body
 #   twisting from side to side and the head thrashing as if it were still on fire, the hips driving forward. Feet planted (the legs are solved to them).
 #   Starts and ends on today's attack's first pose.
-# MODE pat (clip burnt_pat, 2.2 s, the extra move that is not an attack, W239): it pats at its smoking arms: the right hand beats at the left forearm,
-#   then the left at the right, the head bent to look, a shiver between. Feet planted. Starts and ends on its first idle pose.
+# MODE circle (clip burnt_circle, 1.9 s, the extra move that is not an attack, W239): it runs round in a little circle with both hands up in the air,
+#   waving, like a cartoon character on fire (owner, 23 Nov: "do a hand rising running in circle like a cartoon character"; the patting was turned
+#   down). Its own run (zombie_run) for the legs, two strides round a circle that comes back to where it started, leaning in, head thrown back.
+#   Starts and ends on its first idle pose, on the spot it started.
 # Rig: +X its left, -Y forward, +Z up.
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
@@ -19,7 +21,7 @@ try:
 except Exception: pass
 for pb in PB: pb.rotation_mode = 'QUATERNION'
 f0 = base.frame_range[0]; FPS = 30; SC = W.to_scale().x
-SECS = float(os.environ.get('ZH_SECS', 1.3 if MODE == 'rush' else 2.2))
+SECS = float(os.environ.get('ZH_SECS', 1.3 if MODE == 'rush' else 1.9))
 def upd(): bpy.context.view_layer.update()
 def goto(): sc.frame_set(int(f0)); upd()
 def sst(a_, b_, x): t = min(1., max(0., (x - a_) / max(1e-6, b_ - a_))); return t * t * (3 - 2 * t)
@@ -54,6 +56,7 @@ def plant():
 order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}
 nf = int(round(SECS * FPS))
 SHL = {s: wpos('upperarm.' + s) for s in 'LR'}
+RUNSTRIDE = float(os.environ.get('ZH_STRIDE', 1.27))   # zombie_run's stride (js/render3d.js, ZMODEL burnt)
 def arm_to(s, sg, tgt, w_):
     q1 = {n: PB[n].rotation_quaternion.copy() for n in ('upperarm.' + s, 'forearm.' + s, 'hand.' + s)}
     two_bone('upperarm.' + s, 'forearm.' + s, tgt, Vector((sg * .8, .5, -.3)))
@@ -62,6 +65,7 @@ def arm_to(s, sg, tgt, w_):
     upd()
 for i in range(nf + 1):
     t = i / nf; goto(); q0 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
+    if MODE == 'circle': q0 = None
     if MODE == 'rush':
         w = sst(0, .14, t) * (1 - sst(.84, 1, t)); T = t * SECS
         move_pelvis(Vector((0, -.05 * H, -.03 * H)) * w); plant()
@@ -72,23 +76,36 @@ for i in range(nf + 1):
             a_ = 2 * math.pi * 2.9 * T + ph; S = wpos('upperarm.' + s)
             off = Vector((sg * .12, -(.18 + .06 * math.cos(a_)) * H / .95, (.0 + .12 * math.sin(a_)) * H / .95))   # out wide of the head, no higher than it
             arm_to(s, sg, S + R @ off, w)
-    else:
-        w = sst(0, .12, t) * (1 - sst(.88, 1, t)); T = t * SECS
-        plant(); turn('chest', (1, 0, 0), 10 * w, wpos('chest')); turn('neck', (1, 0, 0), 16 * w); turn('head', (1, 0, 0), 10 * w)
-        first = 1 - sst(.45, .55, t)   # first the right hand pats the left arm, then the left the right
-        sh = 4 * math.sin(2 * math.pi * 7 * T) * (sst(.42, .5, t) - sst(.5, .58, t)); turn('chest', (0, 0, 1), sh * w, wpos('chest'))
-        for s, sg, held in (('L', 1, first), ('R', -1, 1 - first)):
-            o = 'R' if s == 'L' else 'L'; og = -sg
-            S = wpos('upperarm.' + s)
-            hold = S + Vector((-sg * .02, -.17 * H / .95, -.09 * H / .95))      # this arm held up in front of the chest to be patted
-            if held > .01: arm_to(s, sg, hold, w * held)
-        for s, sg, pats in (('R', -1, first), ('L', 1, 1 - first)):
-            o = 'L' if s == 'R' else 'R'
-            if pats > .01:
-                fa = (wpos('forearm.' + o) + wpos('forearm.' + o, True)) / 2
-                bounce = abs(math.sin(2 * math.pi * 4.5 * T)); arm_to(s, sg, fa + Vector((0, -.015, .03 + .08 * bounce)), w * pats)
-    wl = min(1., 8 * w)
-    for n in LEGS: PB[n].rotation_quaternion = q0[n].slerp(PB[n].rotation_quaternion.copy(), wl)
+    else:   # circle
+        TIN, TOUT = .25 / SECS, 1 - .25 / SECS; w = sst(0, TIN, t) * (1 - sst(TOUT, 1, t)); u = min(1., max(0., (t - TIN) / (TOUT - TIN)))
+        RUN = bpy.data.actions['zombie_run']; r0, r1 = RUN.frame_range; ph = (u * 2) % 1 if u < 1 else 0
+        base_q = {b.name: b.rotation_quaternion.copy() for b in PB}; base_l = PB['pelvis'].location.copy()
+        ad.action = RUN
+        try: ad.action_slot = RUN.slots[0]
+        except Exception: pass
+        fr = r0 + ph * (r1 - r0); sc.frame_set(int(fr), subframe=fr - int(fr)); upd()
+        for b in PB: b.rotation_quaternion = base_q[b.name].slerp(b.rotation_quaternion.copy(), w)
+        PB['pelvis'].location = base_l.lerp(PB['pelvis'].location.copy(), w); upd()
+        ad.action = base
+        try: ad.action_slot = base.slots[0]
+        except Exception: pass
+        turn('neck', (1, 0, 0), -14 * w); turn('head', (1, 0, 0), -12 * w + 6 * math.sin(2 * math.pi * 3 * t * SECS) * w)
+        for s, sg, ph2 in (('L', 1, 0), ('R', -1, 1.6)):   # both hands up in the air, waving
+            wav = math.sin(2 * math.pi * 3.2 * t * SECS + ph2)
+            q1 = {n: PB[n].rotation_quaternion.copy() for n in ('upperarm.' + s, 'forearm.' + s, 'hand.' + s)}
+            aim('upperarm.' + s, wpos('upperarm.' + s) + Vector((sg * (.45 + .1 * wav), -.1, .88)))
+            aim('forearm.' + s, wpos('forearm.' + s) + Vector((sg * (.15 + .35 * wav), -.05, 1)))
+            aim('hand.' + s, wpos('hand.' + s) + Vector((sg * (.1 + .4 * wav), 0, 1)))
+            for n, qa in q1.items(): PB[n].rotation_quaternion = qa.slerp(PB[n].rotation_quaternion.copy(), w)
+            upd()
+        R = RUNSTRIDE * 2 / (2 * math.pi); th = 2 * math.pi * u                 # two strides round the circle, curving to its right
+        lean = 12 * w * math.sin(math.pi * u)
+        rot_about('pelvis', Quaternion(Vector((0, 1, 0)), math.radians(-lean)), Vector((0, 0, 0)))        # leaning in to the turn
+        rot_about('pelvis', Quaternion(Vector((0, 0, 1)), -th), Vector((0, 0, 0)))
+        move_pelvis(Vector((-R + R * math.cos(th), -R * math.sin(th), 0)))
+    if q0:
+        wl = min(1., 8 * w)
+        for n in LEGS: PB[n].rotation_quaternion = q0[n].slerp(PB[n].rotation_quaternion.copy(), wl)
     upd()
     lo = lowest()
     if lo < base_low - .002: move_pelvis(Vector((0, 0, base_low - lo)))
