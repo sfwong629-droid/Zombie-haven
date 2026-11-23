@@ -1,0 +1,9 @@
+// tools/qa/sh_look.js MAP [LEVEL] [OUT.png] [ZOOM] [CX] [CY] — a wide picture of a stronghold map with every room shown and the screen's buttons hidden,
+// for judging how a place looks (Strongholds chat). ZOOM, CX, CY (tiles from the map's left/top) frame a close-up. No server needed.
+const Q = require('./sh_lib'); const path = require('path');
+(async () => { const [map, lv, out, zoom, cx, cy] = [process.argv[2] || 'clinic', +(process.argv[3] || 6), process.argv[4] || path.join(__dirname, '..', '..', 'runs', 'strongholds', `look_${process.argv[2] || 'clinic'}.png`), +(process.argv[5] || 0), process.argv[6], process.argv[7]];
+  const b = await Q.launch(); const p = await Q.open(b); await p.setViewportSize({ width: 1500, height: 950 }); await Q.newGame(p); const r = await Q.practice(p, map, lv, 4, true); if (!r.ok) { console.log('could not start:', r.why); process.exit(1); }
+  await p.waitForTimeout(800); await Q.clearCards(p); await p.evaluate(() => { for (const e of document.querySelectorAll('#eventModal')) e.style.display = 'none'; });
+  await p.evaluate(([zoom, cx, cy]) => { const H = ZH.S.sh; H.rev = Object.fromEntries(Object.keys(H.plan.rooms).map((k) => [k, 1])); for (const z of H.zs) z.hid = false; const W = H.plan.W, Hh = H.plan.H; H.cx = ZH.SH_AX + (cx != null ? +cx : W / 2); H.cy = ZH.SH_AY + (cy != null ? +cy : Hh / 2 + 1); H.cz = zoom || Math.max(.55, Math.min(1.6, 40 / Math.max(W, Hh * 1.8))); H.free = true; H.view = true;
+    const cv = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0]; for (const e of document.querySelectorAll('body *')) if (e !== cv && !e.contains(cv) && e.tagName !== 'CANVAS') e.style.visibility = 'hidden'; }, [zoom, cx, cy]);
+  await p.waitForTimeout(3500); await Q.shot(p, out); console.log('wrote', out); await b.close(); })();

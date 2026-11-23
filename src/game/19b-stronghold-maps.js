@@ -3,7 +3,7 @@
    its own rooms and doors, the names, what sleeps where, the things in it you can use (B3), the floor hazards (B4), dark rooms (B5),
    waves (B6), the boss's pattern (B7), and its goals (B2). A plan is plain data kept in S.sh.plan; the code reads the plan, not fixed rooms.
    Rooms are a tile apart; a door fills the gap. Grid units are tiles. ---- */
-function shNewPlan(W, Hh, o = {}) { return { W, H: Hh, rooms: {}, doors: [], names: {}, floor: {}, route: [], locked: [], lockName: {}, spawn: {}, things: [], zones: [], dark: {}, tasks: [], waves: [], spots: {}, start: null, exit: null, startRoom: null, mystT: ['walker', 'walker'], ...o }; }
+function shNewPlan(W, Hh, o = {}) { return { deco: [], W, H: Hh, rooms: {}, doors: [], names: {}, floor: {}, route: [], locked: [], lockName: {}, spawn: {}, things: [], zones: [], dark: {}, tasks: [], waves: [], spots: {}, start: null, exit: null, startRoom: null, mystT: ['walker', 'walker'], ...o }; }
 function shRoom(P, id, x, y, w, h, name, col) { if (x < 0 || y < 0 || x + w > P.W || y + h > P.H) throw new Error(`room ${id} is off the map`); P.rooms[id] = [x, y, w, h]; if (name) P.names[id] = name; if (col) P.floor[id] = col; return id; }
 /* a door between two rooms one tile apart, centred on the side they share (or at 'at' along it); n tiles wide */
 function shLink(P, a, b, locked, at, n0) { const [ax, ay, aw, ah] = P.rooms[a], [bx, by, bw, bh] = P.rooms[b]; let d = null;
@@ -14,6 +14,7 @@ function shLink(P, a, b, locked, at, n0) { const [ax, ay, aw, ah] = P.rooms[a], 
 const shMid = (P, r) => { const [x, y, w, h] = P.rooms[r]; return { x: x + w / 2 - .5, y: y + h / 2 - .5 }; };
 /* a thing in a room: k = what it is (drawn by the 3D view), use = a job a survivor does there (seconds), carry = it is picked up and taken out */
 function shThing(P, k, x, y, o = {}) { const t = { k, x, y, ...o }; t.room = t.room || Object.keys(P.rooms).find((r) => { const [rx, ry, rw, rh] = P.rooms[r]; return x >= rx && x < rx + rw && y >= ry && y < ry + rh; }) || null; P.things.push(t); return t; }
+const shDeco = (P, k, x, y, o = {}) => { P.deco.push({ k, x, y, ...o }); };   /* 3D.311 set dressing: drawn, never in the way, nothing to do with the fight */
 const shLvSize = (lv, a, b, every) => Math.max(a, Math.min(b, a + Math.floor(Math.max(0, lv - 1) / every)));   /* how big a place is at this level */
 
 /* the plans of the first maps (the Clinic, the Prison) have their own builders below; maps not redone yet use their old layout, made into a plan */
@@ -38,7 +39,6 @@ function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 
   shRoom(P, 'wait', 0, 14, 8, 7, 'The Waiting Room', '#d6d0c6'); shRoom(P, 'service', 9, 19, L, 2, 'The Service Corridor', '#c4c8c4'); shRoom(P, 'scrub', 9 + L + 1, 16, 10, 5, 'The Scrub Room', '#cdd6d8');
   shLink(P, 'lobby', 'wait'); shLink(P, 'wait', 'service'); shLink(P, 'service', 'scrub'); shLink(P, 'scrub', 'theatre');
   P.spawn.wait = [['walker', 10 + (lv > 8 ? 4 : 0)], ['runner', 2]]; P.spawn.service = [['walker', 2], ['runner', 1]]; P.spawn.scrub = [['walker', 2 + (lv > 10 ? 1 : 0)]];
-  for (const [cx, cy] of [[1, 15], [3, 15], [5, 15], [1, 18], [3, 18], [5, 18]]) shThing(P, 'crate', cx, cy, { r: 0 }); shThing(P, 'desk', 6, 20, { r: 0 }); shThing(P, 'shelf', 9 + L + 2, 17, { r: 0 }); shThing(P, 'shelf', 9 + L + 8, 17, { r: 0 });
   P.weak = [.55, .7];   /* about twice the dead of 3D.277, each with 55% of the health and 70% of the hit (the owner's trade for hordes, W54); the Butcher keeps his */
   P.hear = 7;           /* a gunshot wakes the dead within 7 tiles, through walls: they come to the squad */
   P.spawn.lobby = [['walker', 5 + (lv > 6 ? 1 : 0)], ['runner', lv > 8 ? 1 : 0]].filter((q) => q[1]); P.spawn.hall = [['walker', 4 + n], ['runner', 2 + (lv > 10 ? 1 : 0)]];
@@ -47,6 +47,7 @@ function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 
     if (locked) { P.locked.push(id); P.lockName[id] = `a locked ward (Ward ${i * 2 + (up ? 1 : 2)})`; }
     /* two rows of beds; about half the beds hold a patient who will get up */
     for (const by of up ? [y + 1, y + 4] : [y + 1, y + 4]) for (const bx of [x + 1, x + 4]) { const t = shThing(P, 'bed', bx, by, { r: 0 }); if (!locked && ((bx + by + i + lv) % 5 < 3 + (lv > 9 ? 1 : 0))) t.sleeper = lv > 12 && (bx + by) % 3 === 0 ? 'runner' : 'walker'; }
+    shDeco(P, 'curtain', x + 2.5, y + 1.1); shDeco(P, 'curtain', x + 2.5, y + 4.1, { col: i % 2 ? '#a9c9e0' : '#9fd0bd' }); for (const [ix, iy] of [[x + .45, y + .55], [x + 3.45, y + 3.55]]) shDeco(P, 'iv', ix, iy); shDeco(P, up ? 'cabinet' : 'trolley', x + 5.2, up ? y + .1 : y + 5.4); if ((i + up) % 2) shDeco(P, 'blood', x + 2.6, y + 2.8, { s: .8 });
     if (!locked) P.spawn[id] = [['walker', 2 + (i % 2)], ...(lv > 7 && i % 3 === 1 ? [['spitter', 1]] : []), ...(lv > 5 && i % 4 === 3 ? [['bloated', 1]] : [])]; }
   shThing(P, 'locker', 2, 1, { use: 6, label: 'Empty the pharmacy locker', icon: '💊', loot: { meds: 3 + Math.floor(lv / 5), cloth: 2 }, task: 'locker' });
   P.spawn.pharm = [['walker', 1]];
@@ -54,6 +55,16 @@ function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 
   P.route = ['lobby', 'hall', 'theatre']; P.startRoom = 'lobby'; P.bossRoom = 'theatre'; P.start = { x: 1, y: 8.2 }; P.exit = { x: .6, y: 9.5 }; P.mystT = ['walker', 'runner'];
   P.who = { room: P.locked[P.locked.length - 1], by: 'hall', flag: 'doctor', name: 'Dr. Ines', job: 'Medic' };   /* 3D.304 she bolted the theatre herself */
   P.tasks = [{ k: 'boss', label: 'Kill the Butcher of Ward 3' }, { k: 'use', id: 'locker', opt: true, label: 'Side: empty the pharmacy locker' }];
+  /* 3D.311 it should look like a hospital: tiled floors with the coloured lines to follow, a green band round the walls, a reception, rows of waiting chairs, curtains and drips by the beds, trolleys left in the corridor, an operating table under its lamp, and the ambulance that never left */
+  const tx = 9 + L + 1; P.noEdgeProps = true; P.look = { noYard: 1, dado: '#7fb7a3', dadoH: .3, door: '#9cc7b6', lockDoor: '#b0564a', checker: { lobby: '#bfd0c8', hall: '#c6d6cd', theatre: '#a9c9bd', scrub: '#b5cfd0', wait: '#cdc7b8', pharm: '#cfc9b6', service: '#b4bab6' }, lines: [{ room: 'hall', col: '#c9412e', at: .2 }, { room: 'hall', col: '#3c78c9', at: .8 }, { room: 'service', col: '#e0b23a', at: .5 }] };
+  shDeco(P, 'pad', -5, 9.5, { w: 7, h: 9, bays: 3 }); shDeco(P, 'ambulance', -4.6, 9.2, { r: 0 }); shDeco(P, 'cross', -1.4, 5.2); shDeco(P, 'gurney', -2.2, 11.6, { blood: 1 }); shDeco(P, 'blood', -2.4, 10.4); shDeco(P, 'wheelchair', -1.6, 7.4);
+  shDeco(P, 'reception', 4.6, 6.6); shDeco(P, 'chairs', 2.2, 12.3, { n: 4, r: 2 }); shDeco(P, 'chairs', 5.6, 12.3, { n: 4, r: 2 }); shDeco(P, 'plant', 7.2, 6.2); shDeco(P, 'plant', .1, 6.2); shDeco(P, 'vending', 7.2, 11.2, { r: 3 }); shDeco(P, 'papers', 3.5, 9.5); shDeco(P, 'wheelchair', 6.2, 9.8, { r: 1 }); shDeco(P, 'smear', 5, 10.4, { len: 5 });
+  for (const wy of [15.4, 17.2, 19]) { shDeco(P, 'chairs', 2, wy, { n: 4, col: '#b07a4a' }); shDeco(P, 'chairs', 5.4, wy, { n: 4, col: '#b07a4a' }); } shDeco(P, 'tv', 3.7, 14.05); shDeco(P, 'table', 3.7, 20.2); shDeco(P, 'plant', .1, 14.2); shDeco(P, 'bin', 7.3, 14.3); shDeco(P, 'papers', 4, 16.3); shDeco(P, 'blood', 6, 18.2, { s: .9 });
+  shDeco(P, 'pills', 3.6, .05); shDeco(P, 'pills', 5.6, .05); shDeco(P, 'counter', 3.5, 3.4, { n: 2 }); shDeco(P, 'papers', 5, 2);
+  for (let gx = 12; gx < 9 + L - 2; gx += 6) { shDeco(P, 'gurney', gx, gx % 12 ? 8.1 : 9.9, { blood: gx % 4 === 0 }); shDeco(P, 'chairs', gx + 3, 8.02, { n: 3 }); } shDeco(P, 'wheelchair', 9 + L - 3, 9.6, { r: 2 }); shDeco(P, 'smear', 9 + L - 5, 9, { len: 6 }); shDeco(P, 'bin', 10, 10.2); shDeco(P, 'papers', 14, 9.2);
+  shDeco(P, 'optable', tx + 3.6, 9); shDeco(P, 'trolley', tx + 2.2, 7.6); shDeco(P, 'iv', tx + 5, 8); shDeco(P, 'lightbox', tx + 3, 4.0); shDeco(P, 'lightbox', tx + 6, 4.0); shDeco(P, 'cabinet', tx + 9, 4.2); shDeco(P, 'screen', tx + 1.2, 12.8); shDeco(P, 'blood', tx + 4.4, 10.6, { s: 1.5 }); shDeco(P, 'smear', tx + 6, 11.5, { len: 4, r: 1 }); shDeco(P, 'bin', tx + .3, 4.3, { col: '#c9412e' });
+  for (const sx of [1.6, 4.6, 7.6]) shDeco(P, 'sink', tx + sx, 16.0); shDeco(P, 'cabinet', tx + 9.2, 18, { r: 3 }); shDeco(P, 'trolley', tx + 2, 19.6, { linen: 1 }); shDeco(P, 'bin', tx + 5, 20.2, { col: '#c9412e' });
+  for (let gx = 11; gx < 9 + L - 1; gx += 5) shDeco(P, gx % 2 ? 'trolley' : 'bin', gx, 20.2, { linen: 1, col: '#8a9499' }); shDeco(P, 'gurney', 9 + L - 4, 19.1);
   P.tip = 'Patients sleep in some of the beds. They get up when someone walks past. A gunshot wakes every one of the dead near it, through the walls, and they come: quiet weapons are safer. There are two ways to the theatre: the corridor past the wards, or round the back through the waiting room.';
   return P; }
 
