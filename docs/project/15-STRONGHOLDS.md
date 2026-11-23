@@ -298,6 +298,7 @@ Pins also show: herds moving on a road with the days left, calls for help, an al
   - **Sizes:** the hill path is 2 tiles wide and 18 long (was 3 wide, 26 long), one bend every 3 tiles up the hill; the mast yard 10 x 5 (was 16 x 6); Moth's shed 3 x 3 (was 5 x 4). The map is 20 tiles wide (was 30).
   - **Look:** the path runs between low grassy banks on dirt; the yard is a gravel compound inside wire; a red and white lattice mast about 15 units tall with dishes, aerials and three guy wires stands in it, with a generator, a fuel tank, satellite dishes, a switch cabinet, floodlights and jerry cans; the shed has the broadcast desk, transmitter racks, a bed and a shelf of records. Strings of tin cans hang along the path and across the yard; boulders, a wrecked car and a barrier on the way up.
   - New pieces: lattice, dish, genset, fueltank, cans, boulder. Same rooms, the listeners' rule, the hold and the waves. Not dressed yet: the three plant maps and the six raid camps.
+- **3D.331 (23 Nov; owner on W261: "fix the guy wires"):** the mast's guy wires run slanted from three anchor blocks on the ground up to the mast, two to each anchor (they were drawn standing upright). Drawing only.
 
 ## 11. Teams of two (3D.328, 23 Nov)
 Owner, 23 Nov: "I also want to add squad for the stronghold and faction raid. Like 2 person per squad that you can easily click and move them to different locations."
