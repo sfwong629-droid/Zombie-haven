@@ -279,7 +279,7 @@ ChatGPT chat:
 
 Features chat (started 22 Nov; page `17-FEATURES.md`):
 - ~~W226. Push access.~~ The first try was refused; owner, 22 Nov: "try to push again". Granted on the second try; healing (3D.284 to 3D.287) is pushed to `art-direction-b`, not published. (First written as W224 in the Features chat; the Story chat had taken W224 and W225.)
-- W227. **Healing, to look at once it is published:** hurt someone and watch: with no zombie in town they walk to the Medical Tent and come out at full health; a Medic patches the people who are at work to 75%; everyone mends slowly by day. Right? For the Balance chat from the first bot runs (`17-FEATURES.md`, section 4): cloth ran out in the towns with healing, and too few towns were run to judge the danger targets: run the full check.
+- ~~W227. Healing.~~ Owner, 22 Nov, 23:27: "yes the tent worked" (hurt people walk to the Medical Tent and come out healed). Still for the Balance chat from the first bot runs (`17-FEATURES.md`, section 4): cloth ran out in the towns with healing, and too few towns were run to judge the danger targets: run the full check.
 - ~~W228. The rescue truck's look (W129).~~ Owner, 22 Nov: "c", the farm truck with the Old Brine barrels. Built into 3D.288 (the truck leads the zombies out; `17-FEATURES.md`, section 5).
 - W229. **The rescue truck, once published:** let everyone go down (or call the radio) and watch Greenwater's truck come in off the highway, park by the Camp, two medics wheel the fallen into care on stretcher carts, and it leads the zombies out down the highway. Right?
 

@@ -2,13 +2,13 @@
 
 The Features chat builds what the other chats decided, one change per build, each with a scripted check. Order: `15-REVIEW.md`, section 6. This page says what is built, how it is checked and what is next.
 
-**Numbers taken by this chat:** builds **3D.284 to 3D.288** and **3D.306** (3D.289 to 3D.301, 3D.303 and 3D.305 are the Balance chat's, 3D.302 and 3D.304 the Strongholds chat's; this build was first pushed as a second 3D.303 in the same minute as the Balance chat's, then renumbered past the builds the other chats pushed meanwhile); waiting items **W226** (done), **W227**, **W228** (first written as W224 and W225, numbers the Story chat had already taken).
+**Numbers taken by this chat:** builds **3D.284 to 3D.288** and **3D.306** (3D.289 to 3D.301, 3D.303 and 3D.305 are the Balance chat's, 3D.302 and 3D.304 the Strongholds chat's; this build was first pushed as a second 3D.303 in the same minute as the Balance chat's, then renumbered past the builds the other chats pushed meanwhile); waiting items **W226**, **W227** (both done), **W228** (done), **W229** (first written as W224 and W225, numbers the Story chat had already taken).
 
 ## 1. Where things stand
 
 | Job | Decided | State |
 |---|---|---|
-| Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Pushed 22 Nov; not published** |
+| Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Pushed 22 Nov. Owner, 22 Nov: "yes the tent worked" (W227)** |
 | The radio rescue truck (W129) | 19 Nov; look C (W228, 22 Nov) | **Builds 1 and 2 of 3 done: 3D.288** (the truck leads the zombies out), **3D.306** (the medics carry the fallen in). Next: the words |
 | The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
 | Take command | 16 Nov | After the daytime threat |
