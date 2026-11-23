@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.309', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.310', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2745,11 +2745,68 @@ function monsterGeneration() {
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, threatNow() * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
-  if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
+  if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { if (!night && roamOn()) S.spawnTot = (S.spawnTot || 0) + roamGroup(desired - activeZ()) - 1; else spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
   if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
     const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
     if (far.length) { const z = far[Math.floor(rnd() * far.length)]; z.hp = 0; z.escaped = true; }
   }
+}
+/* ---------------- 3D.310 the daytime threat, part 1: roaming groups (vision, 16 Nov: "by day, small groups roam outside the walls and
+   threaten anyone working or travelling there"). From day 2 and the first goal on, the daytime zombies come as groups of 2 to 4 that wander
+   from wood to wreck outside the walls for a few game hours, then move on. They chase people only outside the town, give up at its edge,
+   never bash a building or a wall, and any still out at dusk join the night as ordinary zombies. The first time a group comes near
+   someone outside, the player is warned. (Part 2, the warned daytime horde, is its own build.) */
+const ROAM = { day: 2, min: 2, max: 4, hours: [3, 5], near: [4, 9], band: 7, warn: 9 };
+const roamOn = () => S.day >= ROAM.day && (S.stage || 0) >= 2 && !S.won;
+const inTownW = (w) => Wd.inWallZone(Math.floor(w.x), Math.floor(w.y));
+const roamGap = (x, y) => { const Z = Wd.WALLZONE; return Math.max(Z.x0 - x, x - Z.x1, Z.y0 - y, y - Z.y1, 0); };
+let roamTownKey = '', roamTown = null;
+function roamAvoid() { const Z = Wd.WALLZONE, k = [Z.x0, Z.y0, Z.x1, Z.y1].join(); if (k !== roamTownKey) { roamTownKey = k; roamTown = new Set(); for (let x = Z.x0; x <= Z.x1; x++) for (let y = Z.y0; y <= Z.y1; y++) roamTown.add(x + ',' + y); } return roamTown; }
+function roamSpot(from) {   /* a walkable spot outside the walls, near a tree, rock or wreck when one is close, ROAM.near tiles from where the group is */
+  const ok = (x, y) => Wd.inMap(x, y) && !Wd.inWallZone(x, y) && roamGap(x, y) <= ROAM.band && Wd.walkable(world, x, y, true) && !Wd.buildingAt(world, x, y);
+  const f = from ? tileOf(from) : null, inR = (x, y) => !f || (Math.hypot(x - f.x, y - f.y) >= ROAM.near[0] && Math.hypot(x - f.x, y - f.y) <= ROAM.near[1]);
+  const nodes = nodeList().filter((n) => !Wd.inWallZone(n.x, n.y) && roamGap(n.x, n.y) <= ROAM.band && inR(n.x, n.y));
+  for (let k = 0; k < 40; k++) { let x, y;
+    if (nodes.length && rnd() < .6) { const n = nodes[Math.floor(rnd() * nodes.length)]; x = n.x + Math.round((rnd() - .5) * 2); y = n.y + Math.round((rnd() - .5) * 2); }
+    else if (f) { const a = rnd() * 6.283, r = ROAM.near[0] + rnd() * (ROAM.near[1] - ROAM.near[0]); x = Math.round(f.x + Math.cos(a) * r); y = Math.round(f.y + Math.sin(a) * r); }
+    else { const Z = Wd.WALLZONE; x = Z.x0 - ROAM.band + Math.floor(rnd() * (Z.x1 - Z.x0 + 1 + 2 * ROAM.band)); y = Z.y0 - ROAM.band + Math.floor(rnd() * (Z.y1 - Z.y0 + 1 + 2 * ROAM.band)); }
+    if (ok(x, y)) return tc(x, y); }
+  return null;
+}
+function roamGroup(room) {   /* one group at one point on the map's edge; returns how many came (none until there is room for a group) */
+  if (room < ROAM.min) return 0;
+  const n = Math.max(1, Math.min(room, ROAM.min + Math.floor(rnd() * (ROAM.max - ROAM.min + 1)))), a = spawnPoint(), pk = (S.roamN = (S.roamN || 0) + 1);
+  const until = nowD() + (ROAM.hours[0] + rnd() * (ROAM.hours[1] - ROAM.hours[0])) / 24, to = roamSpot(tc(a[0], a[1])) || roamSpot(null);
+  for (let i = 0; i < n; i++) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 2)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 2))); const z = S.z[S.z.length - 1]; z.siege = false; z.roam = { pk, until, to: to && { x: to.x + (rnd() - .5) * 1.2, y: to.y + (rnd() - .5) * 1.2 } }; }
+  return n;
+}
+const roamPack = (pk) => S.z.filter((q) => q.hp > 0 && q.roam && q.roam.pk === pk);
+function roamNext(pk, from) { const to = roamSpot(from); for (const q of roamPack(pk)) { q.roam.to = to && { x: to.x + (rnd() - .5) * 1.2, y: to.y + (rnd() - .5) * 1.2 }; q.roam.idle = 0; q.path = null; } }
+function roamWarn(z) {   /* once a group: the player is told where it is */
+  const P = roamPack(z.roam.pk); if (P.some((q) => q.roam.warned)) return; for (const q of P) q.roam.warned = true;
+  const c = townCentre(), dx = z.w.x - c.x, dy = z.w.y - c.y, side = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north');
+  note('important', `🧟 ${P.length} roamers outside the walls, to the ${side}`, { log: `${P.length} zombies are roaming outside the walls to the ${side}. Anyone working out there can get chased; fighters can see them off. They don't try the walls by day.` });
+}
+function roamStep(z, d) {   /* true = handled this tick */
+  const R = z.roam;
+  if (nowD() >= R.until && !['zattack', 'zrecover'].includes(z.mode)) { const p = spawnPoint(); z.roam = null; z.mode = 'zleave'; z.retreat = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; return true; }
+  if (z.mode === 'zchase') {   /* chase only outside the town: someone who reaches it, or gets indoors, is let go */
+    const t = z.target; if (!t || t.hp <= 0 || !t.w || insideBuilding(t) || ['down', 'hospital', 'away'].includes(t.mode) || inTownW(t.w) || inTownW(z.w)) { z.target = null; z.mode = 'idle'; z.path = null; z.stateTicks = 40; return true; }
+    return false; }
+  if (z.mode === 'zattack' || z.mode === 'zrecover' || z.mode === 'zleave' || z.mode === 'appear') return false;
+  if (z.mode !== 'idle') { z.mode = 'idle'; z.path = null; z.bldT = null; z.wallT = null; }   /* never marches, bashes or breaks walls by day */
+  let best = null, bd = d.aggro, seen = false;
+  for (const s of S.sv) { if (s.hp <= 0 || !s.w || ['down', 'hospital', 'away'].includes(s.mode) || insideBuilding(s) || boxHid(s) || inTownW(s.w)) continue; const dd = dist(s.w, z.w); if (dd < ROAM.warn) seen = true; if (dd < bd) { bd = dd; best = s; } }
+  if (seen && !R.warned) roamWarn(z);
+  if (best && !inTownW(z.w)) { z.target = best; z.mode = 'zchase'; z.path = null; alertPack(z, best); SFX('groan'); return true; }
+  if (inTownW(z.w) && (!R.to || inTownW(R.to))) R.to = roamSpot(null);   /* somehow inside (a chase ended there): walk back out */
+  if (!R.to) { roamNext(R.pk, z.w); if (!R.to) { z.moving = false; return true; } }
+  if (dist(z.w, R.to) > 1) {
+    const gt = tileOf(R.to), gk = gt.x + ',' + gt.y;
+    if (z.pathGoal !== gk || z.pathVer !== world.ver || !z.path) { const p = Wd.findPath(world, tileOf(z.w), gt, true, 0, roamAvoid()); if (!p) { roamNext(R.pk, z.w); return true; } z.path = p.map((q) => tc(q.x, q.y)); z.pathGoal = gk; z.pathVer = world.ver; z.stuck = 0; z.lastD = 1e9; z.nearT = 0; z.arrG = null; }
+    if (followPath(z, R.to, d.chase * .35) === 'fail') roamNext(R.pk, z.w);
+  } else { z.moving = false; R.idle = (R.idle || 0) + 1; if (R.idle > 500 + ((z.phase | 0) % 7) * 60) roamNext(R.pk, z.w); }   /* lingers a while, then the group moves on together */
+  return true;
 }
 /* ---------------- V2.13 raiders: humans who dodge zombies, slip in through the gate, steal, fight, and run ---------------- */
 const RAID_TARGETS = ['storage', 'canteen', 'farm', 'field', 'water', 'well', 'armory', 'workshop', 'house'];
@@ -2958,6 +3015,7 @@ function zai0(z) {
     if (!z.retreat) for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && dist(s.w, z.w) < d.aggro * .7) { z.target = s; z.mode = 'zchase'; z.path = null; z.bored = 0; return; }
     const r = followPath(z, z.leaveTo, d.chase * (z.retreat ? 1 : .6)); if (r !== 'moving' || dist(z.w, z.leaveTo) < .8) { z.hp = 0; z.escaped = true; } return;
   }
+  if (z.roam) { if (isNight() || z.boss) z.roam = null; else if (roamStep(z, d)) return; }   /* 3D.310 the daytime threat: a roaming group outside the walls */
   if ((z.mode === 'zmarch' || z.mode === 'idle') && z.type !== 'boss' && tick % 30 === 0) {   // nothing to chase for a long while in daylight → leave
     const seen = S.sv.some((s) => s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && dist(s.w, z.w) < d.aggro * 1.6);
     z.bored = seen ? 0 : (z.bored || 0) + 30;

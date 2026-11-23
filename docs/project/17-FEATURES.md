@@ -2,7 +2,7 @@
 
 The Features chat builds what the other chats decided, one change per build, each with a scripted check. Order: `15-REVIEW.md`, section 6. This page says what is built, how it is checked and what is next.
 
-**Numbers taken by this chat:** builds **3D.284 to 3D.288**, **3D.306** and **3D.308** (3D.289 to 3D.301, 3D.303 and 3D.305 are the Balance chat's, 3D.302 and 3D.304 the Strongholds chat's; this build was first pushed as a second 3D.303 in the same minute as the Balance chat's, then renumbered past the builds the other chats pushed meanwhile); waiting items **W226**, **W227** (both done), **W228** (done), **W229** (first written as W224 and W225, numbers the Story chat had already taken).
+**Numbers taken by this chat:** builds **3D.284 to 3D.288**, **3D.306**, **3D.308** and **3D.310** (3D.289 to 3D.301, 3D.303 and 3D.305 are the Balance chat's, 3D.302 and 3D.304 the Strongholds chat's; this build was first pushed as a second 3D.303 in the same minute as the Balance chat's, then renumbered past the builds the other chats pushed meanwhile); waiting items **W226**, **W227** (both done), **W228** (done), **W229** (first written as W224 and W225, numbers the Story chat had already taken), **W244** (W243 was the Strongholds chat's the same night).
 
 ## 1. Where things stand
 
@@ -10,7 +10,7 @@ The Features chat builds what the other chats decided, one change per build, eac
 |---|---|---|
 | Healing (W130) | 20 Nov, `02-DECISIONS.md`, "Nights and survival" | **Built: 3D.284 to 3D.287. Pushed 22 Nov. Owner, 22 Nov: "yes the tent worked" (W227)** |
 | The radio rescue truck (W129) | 19 Nov; look C (W228, 22 Nov) | **Built: 3D.288** (the truck leads the zombies out), **3D.306** (the medics carry the fallen in), **3D.308** (the words). Waiting on the owner's look (W229) |
-| The daytime threat | 16 Nov, `01-VISION.md` | After the truck |
+| The daytime threat | 16 Nov, `01-VISION.md` | **Part 1 built: 3D.310** (roaming groups outside the walls). Next: part 2, the warned daytime horde |
 | Take command | 16 Nov | After the daytime threat |
 
 **W226, push access: done.** The first try was refused; the owner asked again and the second try was granted (22 Nov, 08:57). The nine commits went on top of two newer ones from other chats (`d95cbf3`, `80d3026`; docs and an art tool, no game code), so nothing had to be redone.
@@ -74,7 +74,28 @@ Decision: when called, a Greenwater truck drives in with its horn and alarm goin
 
 Numbers (`TRUCK` and `MEDIC` in `src/game/03-stats-gear.js`; medics walk at 0.045 tiles a tick, a little slower with the cart; at most 6,000 ticks parked): drives in at 0.05 tiles a tick (about 800 ticks, some 50 game minutes, from the highway's end to a level 1 Camp; the fallen do not bleed meanwhile), parks 240 ticks (about 15 game minutes), out at 0.022 tiles a tick, waits for the nearest follower beyond 3.5 tiles. In the check, Walkers reached the map's edge about 6 game hours after it parked; a legless Crawler took about twice that (they ignore people all the way).
 
-The rescue truck is built (all three parts). Next: the daytime threat, then Take command.
+The rescue truck is built (all three parts).
+
+## 6. The daytime threat
+
+Decision (vision, 16 Nov; W146, 19 Nov): by day, small groups roam outside the walls and threaten anyone working or travelling there; every few days a daytime horde comes that the radio warns about hours ahead; nights stay the biggest fights; apart from zombies left over from the night, the only daytime attack on the town is the warned horde. Targets (`08-BALANCE.md`): an escorted or armed worker outside is safe, an unprotected one is chased home or hurt, a death only after a clear warning was ignored; a daytime horde is about half the level's big horde.
+
+Before this, the daytime zombies came one at a time from the map's edge and many of them marched on the town and bashed buildings, as at night but fewer.
+
+| Build | What changed | Check |
+|---|---|---|
+| **3D.310** | **Roaming groups.** From day 2, once the first goal ("Defeat 3 Walkers") is done, the daytime zombies come as groups of 2 to 4 from one spot on the map's edge. A group walks to a tree, rock or wreck outside the walls, lingers, then moves on together to another spot 4 to 9 tiles away, never more than 7 tiles out. They chase people only outside the town and let go when the person reaches the town or a building (or when they reach its edge themselves); their way between spots goes round the town. They never march on the town, bash a building or break a wall by day. After 3 to 5 game hours a group leaves the map. Any still out at 20:00 become ordinary night zombies. The first time a group comes within 9 tiles of someone outside the walls the player gets one banner, saying how many and on which side ("🧟 3 roamers outside the walls, to the north"). Gatherers already skip any tree or wreck with a zombie within 6 tiles, so the workers keep to the near ones while a group is about. How many zombies by day is unchanged (the day line of the old count) | `roamers_check.js`: a day-4 town from 07:00 to 21:00: groups of 2 to 4, never deep in the town, no marching, bashing or wall-breaking, a person stood next to a group is chased and let go once back in town, the warning, groups leave, none roam after dusk; and on day 1 before the first goal the old daytime zombies still come. Picture: `runs/features/roamers_in_game.png`. The suite passes (`economy` failed once in a full run and passed alone, before and after the change, as noted in `05-NOW.md`) |
+
+**Claude's readings, for the owner to overrule:**
+- Groups of 2 to 4 at every level for now (how big they get later is a balance number).
+- They start on day 2 and after the first goal, so day 1's "Defeat 3 Walkers" still has walkers coming into town to fight.
+- They stay 3 to 5 game hours, then leave; new groups replace them through the day.
+- One warning per group, the first time it comes near someone outside.
+- At dusk the groups still out join the night.
+
+**For the Balance chat:** after the first goal, no fresh daytime zombie walks into town any more, so fewer daytime fights in town (fewer daytime kills and less fighter XP), and the outer trees and wrecks are skipped while a group is near them. Not measured with the bot yet. The A12 builds on `a12-tuned` (the dawn sweep goes after leftovers up to 6 tiles past the town's edge) were made before roamers; the sweep would also go after a group close to the walls.
+
+Next: **part 2, the warned daytime horde** (the radio warns hours ahead; about half the level's big horde), then Take command.
 
 A check to harden: `medic_shift_check.js` (3D.287) sometimes fails to catch the Medic walking out to a round, the moment its "turn back" step needs (1 run in 6 on the medics build, after the overnight builds made newcomers come sooner); the game's behaviour is not at fault, the step only reports that it could not set itself up.
 

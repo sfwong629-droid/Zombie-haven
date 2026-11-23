@@ -17,7 +17,7 @@ Add new decisions at the end of their topic with the date. If a decision replace
 - 16 Nov (vision review): The feeling to aim for: small town → build → gear up → a horde attacks → you win and it feels good; lots of small features; the town visibly grows, with more buildings and gear unlocking.
 - 16 Nov: The town starts small but grows to a decent size; the owner wants to see survivors fighting a horde.
 - 16 Nov: Zombies are a threat day and night, not only at night. (Not in the game yet.)
-- 16 Nov: The daytime threat: small roaming groups outside the walls by day, plus a daytime horde every few days that the radio warns about hours ahead. Nights stay the biggest fights; no constant daytime attacks on the town.
+- 16 Nov: The daytime threat: small roaming groups outside the walls by day, plus a daytime horde every few days that the radio warns about hours ahead. Nights stay the biggest fights; no constant daytime attacks on the town. **Built so far: 3D.310** (Features chat, 23 Nov): the roaming groups (2 to 4, from day 2 and the first goal; outside the walls only; a warning per group; at dusk they join the night). Next: the warned daytime horde.
 - 16 Nov: Building still comes first, but some things can only be done or won by raiding or doing strongholds.
 - 16 Nov: Banner routes must be balanced so the player doesn't always take the easy one.
 - 16 Nov: A little gore is fine; still not a horror game, no despair spirals.
