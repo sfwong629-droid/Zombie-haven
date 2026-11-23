@@ -226,13 +226,13 @@ async def t_combat(br, port, t):   # V2.37: policies, rescue pool, contextual co
       v.hp=0;ZH.simTick();ZH.simTick();out.down=v.mode==='down';out.ok=ZH.assignRescue();out.rescuer=!!v.rescuer;out.wasAsleep=v.rescuer&&v.rescuer.facility===null;return out}""")
     t.ok(r['down'] and r['rescuer'], 'a sleeping survivor is woken to rescue someone who collapsed')
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;for(const q of S.sv){q.mode='free';q.sleeping=false;q.facility=null;q.hp=q.max;q.rescuer=null;q.rescuing=null;q.bleed=null}
-      ZH.spawnBoss();ZH.spawnBoss();out.bosses=S.z.filter(z=>z.type==='boss'&&z.hp>0).length;while(S.hour!==5)ZH.step(100);ZH.step(1100);out.after=S.z.filter(z=>z.type==='boss'&&z.hp>0&&z.mode!=='zleave').length;   /* 3D.58: bosses walk back out at dawn (V3D.13) instead of vanishing */
+      ZH.spawnBoss();ZH.spawnBoss();for(const z of S.z)if(z.type==='boss'){z.hp=z.max=1e9}out.bosses=S.z.filter(z=>z.type==='boss'&&z.hp>0).length;while(S.hour!==5)ZH.step(100);ZH.step(1100);out.after=S.z.filter(z=>z.type==='boss'&&z.hp>0&&z.mode!=='zleave').length;   /* 3D.330 A12 (owner, 23 Nov: "Boss leaves at dawn"): a boss still alive at dawn walks off with his horde */
       S.z.length=0;const v=S.sv.find(q=>q.job!=='Guard');v.hp=0;ZH.simTick();ZH.spawn(v.w.x+.5,v.w.y,'walker');const zz=S.z[S.z.length-1];zz.mode='idle';zz.stateTicks=99999;
       for(const q of S.sv)if(q!==v&&q.job!=='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.stateTicks=9999}
       const civ=S.sv.filter(q=>q!==v&&!['Guard','Police Officer','SWAT','Scavenger'].includes(q.job));out.civRescue=false;ZH.assignRescue();out.civRescue=!!(v.rescuer&&civ.includes(v.rescuer));
       if(!S.sv.some(q=>q!==v&&q.job==='Guard'))S.sv.push(ZH.mk('Gus','Guard',3,v.w.x+1,v.w.y,S.sv.length));for(const q of S.sv)if(q.job==='Guard'){q.mode='hiding';q.hideAt=ZH.world.buildings[0];q.hp=q.max;q.fleeT=0;q.rescuing=null;q.carrying=null}v.rescuer=null;
       out.rally=ZH.rally();return out}""")
-    t.ok(r['bosses'] >= 2 and r['after'] == 0, f"every boss leaves at dawn ({r['bosses']} -> {r['after']})")
+    t.ok(r['bosses'] >= 2 and r['after'] == 0, f"a boss still alive at dawn walks off with his horde ({r['bosses']} -> {r['after']} left in town)")
     t.ok(not r['civRescue'], 'a non-fighter does not walk up to a body with a zombie on it')
     t.ok(r['rally'], 'when someone is down and nobody fights, fighters rally out of shelter')
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
@@ -721,7 +721,7 @@ async def t_profession(br, port, t):   # 3D.67 profession balance: field aid, wr
       const fresh=()=>S.z.filter(z=>z.hp>0&&!z.human&&!z.mob&&!z.boss).length;const n0=fresh();ZH.step(400);out.noRefill=fresh()<=n0;   /* 3D.199: the boss's own horde streams in behind it; only zombies that are not part of it count as fresh */
       b.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(2);out.flee=mob.filter(z=>z.hp>0).every(z=>z.mode==='zleave');const act=()=>S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length;const n1=act();ZH.step(600);out.calm=act()<=n1;out.n=[n1,act()];return out}""")
     t.ok(r['mob'] > 0 and r['noRefill'], f"no fresh zombies join while the boss lives {r}")
-    t.ok(r['flee'] and r['calm'], f"killing the boss breaks its horde and the rest of the night is quiet {r}")
+    t.ok(not r['flee'] and r['calm'], f"killing the boss stops new zombies for the night; its mob stays and fights on (3D.296, A12: zombies never walk away) {r}")
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.z.length=0;S.bossOn=null;S.calmUntil=0;S.nextBoss=99;S.nextRaid=99;S.day=8;S.hour=19;ZH.step(1100);
       const kill=()=>{for(const z of S.z)if(!z.human&&z.hp>0&&z.type!=='boss'){z.hp=0;}};const cap=()=>S.nightCap;
       ZH.step(300);kill();ZH.step(900);out.w1=S.nightSpawned;out.cap=cap();kill();ZH.step(500);out.afterKill=S.nightSpawned;   /* 21:30ish: wave 1 spent, no refill */
@@ -857,7 +857,7 @@ async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field N
 async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls, Rotbomb bursts, dog and riot in waves, spiral fix defaults
     ctx, pg, errs = await open_game(br, port, 'newz')
     await close_popups(pg)
-    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));S.z=[];
+    r = await pg.evaluate("""()=>{const S=ZH.S,out={};S.intro=Object.fromEntries(Object.keys(ZH.INTRO).map(k=>[k,1]));S.z=[];S.hour=23;   /* 3D.297: zombies are slow and weak by day; these are night fights */
       const q=S.sv.find(x=>x.job!=='Guard'&&x.hp>0);q.hp=q.max=999;q.eq=q.eq||{};q.eq.weapon='crossbow';q.w.x=8.5;q.w.y=6.5;q.mode='idle';
       ZH.spawn(q.w.x+2.4,q.w.y,'lasher');const z=S.z[S.z.length-1];z.w.x=q.w.x+1.6;z.w.y=q.w.y;z.mode='zchase';z.target=q;z.lashCd=0;z.hp=z.max=9999;
       let pulled=false,d0=Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y),dmin=d0,braced=false;for(let i=0;i<140;i++){ZH.step(1);if(z.pulling)pulled=true;dmin=Math.min(dmin,Math.hypot(z.w.x-q.w.x,z.w.y-q.w.y));}
@@ -877,19 +877,23 @@ async def t_new_zombies(br, port, t):   # 3D.80 the user's models: Lasher pulls,
     t.ok(r['smash'] and r['smashCd'] and all(h > 0 for h in r['smashHit']), f"the Stalker's hulk smash hurts every survivor close by {r}")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
-async def t_dawn(br, port, t):   # bug B1 (3D.219): the night horde leaves at dawn, including the ones caught mid-fight
+async def t_dawn(br, port, t):   # bug A12 (3D.296, owner 19 Nov: zombies never walk away). Was B1 (3D.219): the whole night horde left at dawn
     ctx, pg, errs = await open_game(br, port, 'dawn')
     await pg.evaluate("()=>{let x=11;Math.random=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648}}")
     r = await pg.evaluate("""()=>{const S=ZH.S,Zn=ZH.Wd.WALLZONE,out={};const inTown=(z)=>z.w.x>=Zn.x0&&z.w.x<=Zn.x1+1&&z.w.y>=Zn.y0&&z.w.y<=Zn.y1+1;
       S.day=9;while(S.hour!==4)ZH.step(1000);S.z.length=0;
       for(const q of S.sv){q.job='Civilian';q.hp=q.max=999}   /* people stay up and in sight all morning, as in a busy town */
-      for(let i=0;i<10;i++){ZH.spawn(Zn.x0+2+(i%5)*2,Zn.y0+2+Math.floor(i/5)*3,'walker');const z=S.z[S.z.length-1];z.siege=true;z.mode='zmarch';z.stateTicks=0;z.hp=z.max=1e9}   /* nobody can kill them, so only leaving clears them */
-      const night=S.z.slice(),snap=(k)=>{const l=night.filter(z=>z.hp>0&&!z.escaped&&z.mode!=='zleave');out[k]={left:l.length,inTown:l.filter(inTown).length,modes:[...new Set(l.map(z=>z.mode))].join(','),fighting05:out.f05}};
-      while(S.hour!==5)ZH.step(50);out.f05=night.filter(z=>['zattack','zrecover','zchase'].includes(z.mode)).length;snap('h05');while(S.hour!==10)ZH.step(50);snap('h10');while(S.hour!==16)ZH.step(50);snap('h16');return out}""")
+      for(let i=0;i<10;i++){ZH.spawn(Zn.x0+2+(i%5)*2,Zn.y0+2+Math.floor(i/5)*3,'walker');const z=S.z[S.z.length-1];z.siege=true;z.mode='zmarch';z.stateTicks=0;z.hp=z.max=1e9}   /* nobody can kill them */
+      const night=S.z.slice(),snap=(k)=>{const l=night.filter(z=>z.hp>0&&!z.escaped);out[k]={alive:l.length,leaving:l.filter(z=>z.mode==='zleave').length,inTown:l.filter(inTown).length,vanished:night.filter(z=>z.escaped).length}};
+      while(S.hour!==5)ZH.step(50);snap('h05');while(S.hour!==10)ZH.step(50);snap('h10');while(S.hour!==16)ZH.step(50);snap('h16');
+      /* a boss night: kill the boss; its mob must stay and fight, not flee */
+      S.z.length=0;S.hour=22;ZH.spawnBoss();const boss=S.z.find(z=>z.type==='boss');const mob=S.z.filter(z=>z!==boss&&z.mob);for(const z of mob){z.hp=z.max=1e9}
+      S.bossOn=S.bossKills||0;boss.hp=0;S.bossKills=(S.bossKills||0)+1;ZH.step(120);out.mob=mob.length;out.mobLeaving=mob.filter(z=>z.mode==='zleave'||z.escaped).length;out.mobLeft=mob.filter(z=>z.hp>0&&!z.escaped).length;return out}""")
     print('      dawn:', r)
-    t.ok(r['h05']['left'] == 10 and r['f05'] >= 1, f"before dawn the walkers are in town and some are fighting ({r['h05']['left']} in town, {r['f05']} fighting)")
-    t.ok(r['h10']['left'] == 0, f"by 10:00 none of the night horde is still in town and not leaving ({r['h10']['left']} left, modes {r['h10']['modes']})")
-    t.ok(r['h16']['left'] == 0, f"none came back by 16:00 ({r['h16']['left']})")
+    t.ok(r['h05']['alive'] == 10, f"before dawn 10 walkers are in town ({r['h05']})")
+    t.ok(r['h10']['leaving'] == 0 and r['h10']['inTown'] == r['h10']['alive'] and r['h10']['alive'] == 10, f"at 10:00 all 10 are still in town and none is walking away ({r['h10']}; 3D.232: 6 had walked off)")
+    t.ok(r['h16']['leaving'] == 0 and r['h16']['inTown'] == r['h16']['alive'] and r['h16']['alive'] == 10, f"at 16:00 likewise, none has quietly vanished either ({r['h16']})")
+    t.ok(r['mob'] >= 3 and r['mobLeaving'] == 0 and r['mobLeft'] == r['mob'], f"when the boss dies its mob stays and fights on ({r['mob']} in the mob, {r['mobLeaving']} leaving)")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 
 async def t_wallemo(br, port, t):   # bug A10 (3D.220): a fighter beside a wall does not flash the angry face at a zombie across it
