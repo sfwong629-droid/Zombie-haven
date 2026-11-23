@@ -64,6 +64,9 @@ def arm_to(s, sg, tgt, w_):
     for n, qa in q1.items(): PB[n].rotation_quaternion = qa.slerp(PB[n].rotation_quaternion.copy(), w_)
     upd()
 for i in range(nf + 1):
+    ad.action = base   # (switching the action back after posing re-applies it and wipes the pose: the circle run's legs were lost that way)
+    try: ad.action_slot = base.slots[0]
+    except Exception: pass
     t = i / nf; goto(); q0 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
     if MODE == 'circle': q0 = None
     if MODE == 'rush':
@@ -86,9 +89,6 @@ for i in range(nf + 1):
         fr = r0 + ph * (r1 - r0); sc.frame_set(int(fr), subframe=fr - int(fr)); upd()
         for b in PB: b.rotation_quaternion = base_q[b.name].slerp(b.rotation_quaternion.copy(), w)
         PB['pelvis'].location = base_l.lerp(PB['pelvis'].location.copy(), w); upd()
-        ad.action = base
-        try: ad.action_slot = base.slots[0]
-        except Exception: pass
         turn('neck', (1, 0, 0), -14 * w); turn('head', (1, 0, 0), -12 * w + 6 * math.sin(2 * math.pi * 3 * t * SECS) * w)
         for s, sg, ph2 in (('L', 1, 0), ('R', -1, 1.6)):   # both hands up in the air, waving
             wav = math.sin(2 * math.pi * 3.2 * t * SECS + ph2)
