@@ -375,7 +375,7 @@ function radioHelp() {
 /* 3D.246 (owner, 21 Nov, W172): a town is never lost. When every survivor in town is down (nobody left to carry anyone), the neighbours
    come by themselves, without being called, whatever is owed and even with the Camp wrecked (3D.251), at most once every AUTO_HELP_DAYS game days. They ask the same favour.
    (2 of 10 bot towns bled out to the last person: docs/project/12-LONG-RUN.md. The truck of W129 will replace how they arrive.) */
-const AUTO_HELP_DAYS = 3;
+const AUTO_HELP_DAYS = 3, BLEED_CALL = 1800;   /* 3D.326: the truck comes by itself when someone has this little bleed time left (the "bleeding out!" warning) with nobody coming for them */
 /* 3D.288 (owner, 19 Nov, W129 B; look C, W228): the rescue no longer kills zombies out of sight. Greenwater's farm truck drives in off the
    highway with its horn and alarm going; the zombies in town turn toward it; when it drives back out it crawls down the highway at a
    zombie's pace and the zombies follow it off the map (the car-alarm lure, on wheels). S.truck = { path, i, leg: 'in' | 'stop' | 'out', t }. */
@@ -431,9 +431,13 @@ function truckTick() {
 }
 function helpTick() {
   { const h0 = S.help || {};
-    if (!h0.coming && (h0.auto || 0) <= S.day && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
+    const allDown = S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital');
+    /* 3D.326 (Balance chat; owner, 23 Nov: "The truck also comes when people are bleeding out and no one can reach them"): someone down is in
+       the last stretch of bleeding out (the "bleeding out!" warning) and nobody is on the way to them. Still at most once every 3 game days. */
+    const unreached = S.sv.filter((q) => q.mode === 'down' && !q.stable && !q.rescuer && q.bleed != null && q.bleed <= BLEED_CALL);
+    if (!h0.coming && (h0.auto || 0) <= S.day && (allDown || unreached.length)) {
       S.help = { ...h0, coming: tick + 300, auto: S.day + AUTO_HELP_DAYS, self: true };
-      note('critical', '📻 Nobody is left standing: Greenwater is coming', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio, so Greenwater is sending the truck without being asked. Medics on board.' }); banner('📻 GREENWATER IS COMING'); } }
+      note('critical', allDown ? '📻 Nobody is left standing: Greenwater is coming' : `📻 ${unreached.length === 1 ? unreached[0].name + ' is' : unreached.length + ' people are'} bleeding out: Greenwater is coming`, { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: allDown ? 'The Haven went quiet on the radio, so Greenwater is sending the truck without being asked. Medics on board.' : 'Someone is bleeding out where nobody can reach them. Greenwater heard it on the radio and is sending the truck. Medics on board.' }); banner('📻 GREENWATER IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
   if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.306: they follow when it drives off; until then the horn holds them round the truck */
