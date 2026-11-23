@@ -4,7 +4,7 @@
 // Usage: node tools/qa/valley_map_mock.js   (needs the game served on :8765, like the other QA tools)
 const Q = require('./lib');
 
-const MOCK = function ({ look, scene, card }) {
+const MOCK = function ({ look, scene, card, mood }) {   /* mood (23 Nov, owner went off the favour bar): 'bar', 'face' or 'word' */
   /* ---------- the places (15-STRONGHOLDS.md 10.10), in a 360 x 500 map, north up ---------- */
   const P = {
     haven:   { x: 180, y: 318, n: 'The Haven', ic: 'home', k: 'home' },
@@ -168,10 +168,12 @@ const MOCK = function ({ look, scene, card }) {
   for (const [id, p] of Object.entries(P)) {
     const s = S[id]; if (!s) continue;
     const big = p.k !== 'search' && s.st !== 'faint', sz = id === 'haven' ? 40 : big ? 32 : 26, dim = ['off', 'locked', 'rumour', 'faint'].includes(s.st), sel = card === id;
-    const icon = s.st === 'rumour' ? 'question' : p.ic, badge = BADGE[s.st];
+    const MOODF = { friend: 'happy', wary: 'sad', rival: 'angry' }, MOODW = { friend: 'Friends', neutral: 'Neutral', wary: 'Wary', rival: 'Rivals' };
+    const fac = s.fav !== undefined, icon = s.st === 'rumour' ? 'question' : p.ic, badge = fac && mood === 'face' ? MOODF[s.st] : BADGE[s.st];
+    if (fac && mood === 'word') s.tag = MOODW[s.st];
     pins += `<div class="vmPin${dim ? ' dim' : ''}${s.st === 'call' ? ' call' : ''}${sel ? ' sel' : ''}${id === 'haven' ? ' home' : ''}" style="${pct(p)};--r:${RING[s.st] || '#fff'};--s:${sz}px">
       <span class="vmDot">${ic(icon, Math.round(sz * .72))}${badge ? `<em class="vmBadge">${ic(badge, 14)}</em>` : ''}</span>
-      ${s.st === 'faint' ? '' : `<span class="vmName">${p.n}</span>`}${s.tag ? `<span class="vmTag t_${s.st}">${s.tag}</span>` : ''}${s.fav !== undefined ? favBar(s.fav, 'vmFav') : ''}</div>`;
+      ${s.st === 'faint' ? '' : `<span class="vmName">${p.n}</span>`}${s.tag ? `<span class="vmTag t_${s.st}">${s.tag}</span>` : ''}${fac && (mood || 'bar') === 'bar' ? favBar(s.fav, 'vmFav') : ''}</div>`;
   }
   if (scene !== 'early') {
     pins += `<div class="vmHerd" style="left:${246 / W * 100}%;top:${228 / H * 100}%">${ic('zombie', 20)}${ic('zombie', 17)}${ic('zombie', 20)}<span class="vmTag t_rival">Herd · 2 days</span></div>`;
@@ -192,7 +194,9 @@ const MOCK = function ({ look, scene, card }) {
       <div class="vmLine">${ic('warn', 18)}<span><b>Dangerous.</b> Bring your best fighters, and a bomb for the Warden's gate.</span></div>
       <div class="vmBtns"><button class="act">Close</button><button class="act go">Plan a trip ›</button></div></div>`;
   if (card === 'toll') cardHtml = `<div class="vmCard"><div class="vmCH"><span class="vmDot" style="--r:#f0a24a;--s:40px">${ic('crown', 28)}</span><div><b>The Toll Kings' fort</b><div class="sm">Faction town on Route 9</div></div></div>
-      <div class="vmFavRow"><div class="vmFavEnds"><span>Hostile</span><b>Wary of you</b><span>Friendly</span></div>${favBar(-.35, 'vmFavBig')}<div class="sm vmFavHint">Trading and helping them moves it right. Raids move it left.</div></div>
+      ${mood === 'face' ? `<div class="vmMood">${[['angry', 'Hostile'], ['sad', 'Wary'], ['', 'Neutral'], ['happy', 'Friendly'], ['heart', 'Allies']].map(([i, w], k) => `<span class="${k === 1 ? 'on' : ''}"><em>${i ? ic(i, k === 1 ? 26 : 18) : '<i class="vmNeu"></i>'}</em><small>${w}</small></span>`).join('')}</div><div class="sm vmFavHint">Trading and helping them makes them warmer. Raids make them colder.</div>`
+        : mood === 'word' ? `<div class="vmWord"><span class="vmTag t_wary">Wary of you</span><span class="sm">Trading and helping them makes them warmer. Raids make them colder.</span></div>`
+        : `<div class="vmFavRow"><div class="vmFavEnds"><span>Hostile</span><b>Wary of you</b><span>Friendly</span></div>${favBar(-.35, 'vmFavBig')}<div class="sm vmFavHint">Trading and helping them moves it right. Raids move it left.</div></div>`}
       <div class="vmLine">${ic('shop', 18)}<span><b>Trade</b> at the gate: tins, salt, bike parts.</span></div>
       <div class="vmLine">${ic('fight', 18)}<span><b>Raid</b> the fort. The Larder inside opens later in the story.</span></div>
       <div class="vmLine">${ic('zombie', 18)}<span><b>A herd</b> is coming down Route 9 past their gate in 2 days.</span></div>
@@ -246,6 +250,13 @@ const MOCK = function ({ look, scene, card }) {
   .vmFavBig { position: relative; display: block; height: 8px; border-radius: 5px; background: rgba(255,255,255,.14); } .vmFavBig::after { background: #fff; top: -3px; bottom: -3px; }
   .vmFavHint { margin-top: 5px; font-size: 11.5px !important; }
   .vm_gmap { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 6px 18px rgba(0,0,0,.35); }
+  .vmMood { display: flex; justify-content: space-between; align-items: flex-end; margin: 4px 2px 2px; }
+  .vmMood span { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 20%; opacity: .38; filter: grayscale(.6); }
+  .vmMood span.on { opacity: 1; filter: none; } .vmMood em { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.08); }
+  .vmMood span.on em { width: 40px; height: 40px; box-shadow: 0 0 0 2.5px #f0a24a; background: rgba(240,162,74,.16); }
+  .vmMood small { font-size: 10.5px; color: #c9d1d9; } .vmMood span.on small { color: #fff; font-weight: 800; font-size: 12px; }
+  .vmNeu { display: block; width: 14px; height: 3px; border-radius: 2px; background: #c9d1d9; }
+  .vmWord { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; margin: 2px 0 8px; } .vmWord .vmTag { font-size: 12px; padding: 3px 10px; }
   .vmBtns { display: flex; gap: 8px; margin-top: 10px; } .vmBtns .act { flex: 1; min-height: 44px; margin: 0; }
   `;
 };
@@ -254,8 +265,8 @@ const MOCK = function ({ look, scene, card }) {
   const fs = require('fs'); const out = require('path').join(__dirname, '../../runs/ui_samples'); fs.mkdirSync(out, { recursive: true });
   const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 }); await Q.newGame(p); await Q.clearCards(p); await p.waitForTimeout(1500); await Q.clearCards(p); await p.waitForTimeout(400); await Q.clearCards(p);
   await p.click('#mExp'); await p.waitForTimeout(500); await Q.clearCards(p);
-  for (const [name, look, scene, card] of (process.env.VM_ALL ? [['A_paper_mid', 'paper', 'mid', ''], ['B_dark_mid', 'dark', 'mid', ''], ['A_paper_prison_card', 'paper', 'mid', 'prison'], ['A_paper_toll_card', 'paper', 'mid', 'toll'], ['A_paper_early', 'paper', 'early', '']] : []).concat([['C_street_mid', 'gmap', 'mid', ''], ['C_street_prison_card', 'gmap', 'mid', 'prison'], ['C_street_toll_card', 'gmap', 'mid', 'toll'], ['C_street_early', 'gmap', 'early', '']])) {
-    await p.evaluate(MOCK, { look, scene, card }); await p.waitForTimeout(400);
+  for (const [name, look, scene, card, mood] of (process.env.VM_ALL ? [['A_paper_mid', 'paper', 'mid', ''], ['B_dark_mid', 'dark', 'mid', ''], ['A_paper_prison_card', 'paper', 'mid', 'prison'], ['A_paper_toll_card', 'paper', 'mid', 'toll'], ['A_paper_early', 'paper', 'early', '']] : []).concat(process.env.VM_C ? [['C_street_mid', 'gmap', 'mid', ''], ['C_street_prison_card', 'gmap', 'mid', 'prison'], ['C_street_toll_card', 'gmap', 'mid', 'toll'], ['C_street_early', 'gmap', 'early', '']] : []).concat([['mood_1_face_map', 'gmap', 'mid', '', 'face'], ['mood_1_face_card', 'gmap', 'mid', 'toll', 'face'], ['mood_2_word_map', 'gmap', 'mid', '', 'word'], ['mood_2_word_card', 'gmap', 'mid', 'toll', 'word']])) {
+    await p.evaluate(MOCK, { look, scene, card, mood }); await p.waitForTimeout(400);
     const f = `${out}/valley_map_${name}.png`; await p.screenshot({ path: f }); console.log('shot', f);
   }
   await b.close();
