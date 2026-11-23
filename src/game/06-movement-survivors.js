@@ -38,7 +38,7 @@ const strolling = (o) => !o.carrying && !zLive() && (STROLL_MODE.has(o.mode) || 
 function followPath(o, goal, sp) {
   { const dG = Math.hypot(goal.x - o.w.x, goal.y - o.w.y), same = o.arrG && Math.abs(o.arrG.x - goal.x) < .01 && Math.abs(o.arrG.y - goal.y) < .01; o.nearT = dG < .5 ? (o.nearT || 0) + 1 : 0;
     if (dG < .03 || o.nearT > 45 || (same && dG < 1.3)) { o.path = null; o.pathGoal = null; o.moving = false; o.arrG = { x: goal.x, y: goal.y }; return 'arrived'; } }   /* 3D.59 owner's tracker log (Maya): someone already on their goal never re-paths, and someone kept off it by another person standing there (the anti-overlap push) stops at arm's length instead of walking in place forever */   /* 3D.59 owner's tracker log: someone already standing on their goal never re-paths (a goal on a building footprint sent them out to the door and back in, forever: the chat moonwalk) */
-  const sp0 = sp; sp *= TUNE.move; if (o.job === undefined && !o.human && litAt(o.w)) sp *= .75;
+  const sp0 = sp; sp *= TUNE.move; if (o.job === undefined && !o.human && litAt(o.w)) sp *= .75; if (o.job === undefined && !o.human && !isNight()) sp *= DAY_SLOW;   /* 3D.297 A12 tuning: zombies are slow in daylight */
   const curvy = o.job !== undefined, go = (p) => curvy ? steer(o, p, sp) : stepToward(o, p, sp);
   if (o.job !== undefined) sp *= Math.max(.8, sMod(o, 'agi', .02)) * (hasSkill(o, 'lightFeet') ? 1.15 : 1) * (o.carrying ? (hasSkill(o, 'steadyHands') ? 1.3 : 1) * (hasSkill(o, 'strongBack') ? 1.2 : 1) : 1);   /* survivor skills */
   const gt = tileOf(goal), gk = gt.x + ',' + gt.y;

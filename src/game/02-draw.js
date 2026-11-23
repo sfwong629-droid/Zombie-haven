@@ -225,7 +225,7 @@ function comboMult(s, z, w) {
   if (rnd() < comboChance(s)) { s.comboQ = 2; s.comboStep = 1; floats.push({ w: { x: z.w.x, y: z.w.y - .45 }, t: 'COMBO!', col: '#C6FF4D', a: 60, big: true }); }
   return 1;
 }
-const zHitDmg = (z, d, t) => Math.max(1, fairRound(d.atk * (z.pw || 1) * (t && t.spec === 'Guard' ? .8 : 1) * (hasSkill(t, 'armored') ? .8 : 1) * (hasSkill(t, 'bulwark') ? .85 : 1) * (atPost(t) ? .8 : 1) * (1 - dmgReduce(t))));
+const zHitDmg = (z, d, t) => Math.max(1, fairRound(d.atk * zPw(z) * (t && t.spec === 'Guard' ? .8 : 1) * (hasSkill(t, 'armored') ? .8 : 1) * (hasSkill(t, 'bulwark') ? .85 : 1) * (atPost(t) ? .8 : 1) * (1 - dmgReduce(t))));
 function impactFx(z, w) {
   if (!w || z.type !== 'screamer') return; const k = 'scream';   /* 3D.39 owner: only the Screamer has a hit effect for now (board style B); the others looked wrong, so none */
   hitFx.push({ k, w: { x: w.x, y: w.y }, t0: tick, big: z.type === 'alpha' || z.type === 'boss' ? 1.4 : 1, a: rnd() * 6.28, bits: Array.from({ length: 9 }, () => ({ a: rnd() * 6.28, v: .5 + rnd(), s: rnd() })) });

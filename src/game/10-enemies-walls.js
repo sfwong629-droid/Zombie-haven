@@ -124,15 +124,20 @@ const nowD = () => S.day + S.hour / 24;
 const graceOn = () => (S.graceUntil || 0) > nowD();   /* V2.24 mourning: the horde pulls back after heavy losses */
 const avgLevel = () => (S.sv.length ? S.sv.reduce((a, q) => a + (q.l || 1), 0) / S.sv.length : 1);
 const isNight = () => S.hour >= 20 || S.hour < 6;   /* V2.12: dangerous nights, quieter days */
+/* 3D.297 (A12 tuning, owner 22 Nov: "Daylight + clear streets"): zombies never walk away now, so in daylight (06:00 to 20:00) they are
+   slow and weak: half speed (06-movement-survivors.js followPath) and half the hit on people, walls and buildings, so the town's fighters
+   can clear the streets and people can mend. Raiders (people) are not affected. */
+const DAY_SLOW = .5, DAY_WEAK = .5;
+const zPw = (z) => (z.pw || 1) * (!z.human && !isNight() ? DAY_WEAK : 1);
 /* 3D.68 boss-night balance. The boss probe showed the boss rarely downs anyone itself: what broke towns was that every zombie killed on a
    boss night was replaced within a second, so the fighters wore down until everyone was hiding or down and nobody could reach the downed
    for hours. Now nothing new joins while the boss lives, killing the boss breaks the horde (its followers flee and the rest of the night is
    quiet), and at dawn the followers leave with the boss. */
-function mobScatter() { for (const z of S.z) if (z.hp > 0 && !z.human && (z.mob || z.siege) && z.type !== 'boss') { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } }
+function mobScatter() { for (const z of S.z) if (z.hp > 0 && !z.human && z.mob && z.type !== 'boss') z.mob = false; }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): the boss's mob no longer flees; it stops being the boss's mob and fights on until killed */
 function bossWatch() {
   if (S.bossOn == null || S.z.some((z) => z.type === 'boss' && z.hp > 0 && z.mode !== 'zleave')) return;
   const killed = (S.bossKills || 0) > S.bossOn; S.bossOn = null;
-  if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, the horde scatters into the dark. The rest of the night is quiet.' }); }
+  if (killed) { mobScatter(); S.calmUntil = S.day + (S.hour >= 6 ? 1 : 0) + 6 / 24; note('important', '☠ THE HORDE BREAKS', { log: 'With its leader dead, no more come out of the dark tonight. The ones already here still have to be put down.' }); }
 }
 const NIGHT_WAVES = [1, .25, .25];   /* 3D.70: share of the night's horde in each wave (1.5x the night cap in all) */
 const nightWave = () => (S.hour >= 23 || (S.hour >= 2 && S.hour < 6) ? (S.hour >= 23 ? 1 : 2) : S.hour >= 20 ? 0 : 1);   /* dusk 20:00, 23:00, 02:00 */
@@ -156,11 +161,8 @@ function monsterGeneration() {
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, threatNow() * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
-  if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { if (!night && roamOn()) S.spawnTot = (S.spawnTot || 0) + roamGroup(desired - activeZ()) - 1; else spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
-  if (!night && S.spawnClock % 90 === 45 && activeZ() > desired + 2) {   /* V2.18: by day the surplus (night spawns, boss hordes) drifts away instead of piling up forever */
-    const far = S.z.filter((z) => z.hp > 0 && !z.human && !z.boss && ['idle', 'zmarch', 'appear'].includes(z.mode) && !S.sv.some((s) => s.hp > 0 && !insideBuilding(s) && dist(s.w, z.w) < 4));   /* survivors sheltering indoors don't hold them */
-    if (far.length) { const z = far[Math.floor(rnd() * far.length)]; z.hp = 0; z.escaped = true; }
-  }
+  if (!leftBoss() && activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { if (!night && roamOn()) S.spawnTot = (S.spawnTot || 0) + roamGroup(desired - activeZ()) - 1; else spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
+  /* 3D.296 bug A12 (owner, 19 Nov: zombies stay until killed): by day the surplus no longer quietly disappears (V2.18 removed one now and then when nobody was within 4 tiles) */
 }
 /* ---------------- 3D.310 the daytime threat, part 1: roaming groups (vision, 16 Nov: "by day, small groups roam outside the walls and
    threaten anyone working or travelling there"). From day 2 and the first goal on, the daytime zombies come as groups of 2 to 4 that wander
@@ -310,7 +312,7 @@ const mobCap = () => BIG_HORDE.cap[Math.min(3, Math.floor(((S.lvl || 1) - 1) / 5
 const MOB_LVL = [0, 16, 24, 32, 40, 48, 64, 76, 88, 100, 112, 150, 170, 190, 210, 230, 240, 240, 240, 240, 240];
 const bossMob = () => MOB_LVL[Math.max(1, Math.min(MOB_LVL.length - 1, S.lvl || 1))];
 const mobGap = () => Math.max(20, Math.min(BIG_HORDE.gap, Math.floor(4500 / Math.max(1, S.mobLeft0 || 1))));
-function mobZombie(a) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.hp = z.max = Math.max(1, Math.round(z.max * BIG_HORDE.hp)); z.pw = (z.pw || 1) * BIG_HORDE.hit; return z; }
+function mobZombie(a) { spawn(Math.max(0, Math.min(COLS - 1, a[0] + (rnd() - .5) * 3)), Math.max(0, Math.min(ROWS - 1, a[1] + (rnd() - .5) * 3))); const z = S.z[S.z.length - 1]; z.siege = true; z.mob = true; z.horde = true; z.hp = z.max = Math.max(1, Math.round(z.max * BIG_HORDE.hp)); z.pw = (z.pw || 1) * BIG_HORDE.hit; return z; }
 /* 3D.269 (owner, 21 Nov, W201 "a"): on the level's boss night the horde arrives first and the boss walks in behind it, when BOSS_LAST.share of
    the horde has come or BOSS_LAST.hours game hours have passed, whichever is first. Before, the boss led: the fighters killed him while most
    of his horde still waited outside, the horde then broke, and a boss night brought half the zombies wanted or fewer (08-BALANCE, section 12).
@@ -341,7 +343,7 @@ function spawnBoss(force, escort, lead) {   /* lead (3D.269): the horde is alrea
 }
 function dawnRetreat() {   /* balance study (Nov 8): the night horde used to stay inside the walls for good. At sunrise it shambles back out of town;
   the ones already locked onto someone finish that fight, then leave (z.dawn). Days are for repairs and recovery. */
-  const frac = (window.ZH_BAL || {}).dawn ?? 1;   /* 3D.219 bug B1: all of the night horde leaves at dawn (3D.80 sent half; the rest stayed in town all day, rounds 2-4). Studies can still set ZH_BAL.dawn */ if (!frac) return 0; let n = 0;
+  const frac = (window.ZH_BAL || {}).dawn ?? 0;   /* 3D.296 bug A12 (owner, 19 Nov): zombies never walk away, so nobody leaves at dawn; balance studies can still set ZH_BAL.dawn */   /* 3D.219 bug B1: all of the night horde leaves at dawn (3D.80 sent half; the rest stayed in town all day, rounds 2-4). Studies can still set ZH_BAL.dawn */ if (!frac) return 0; let n = 0;
   for (const z of S.z) { if (z.hp <= 0 || z.human || z.boss || z.zoo) continue; if (['zattack', 'zrecover'].includes(z.mode)) { if (frac >= 1) z.dawn = true; continue; } if (rnd() > frac) continue;
     const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
   if (n >= 3) note('important', `🌅 Dawn: ${n} zombies shamble back out of town.`); return n;
@@ -352,6 +354,15 @@ function dawnRetreat() {   /* balance study (Nov 8): the night horde used to sta
 /* 3D.247 (owner, 21 Nov, W173): a boss night every 3 game days in eras 1 and 2, every 5 from level 11 (a long town saw about 80 boss
    nights and lost 24 to 39 people from level 11 on: docs/project/12-LONG-RUN.md). */
 const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
+/* 3D.298 (A12 tuning, owner 22 Nov: "Daylight + clear streets"): zombies never walk away now, so a boss night does not start on top of a town
+   still full of zombies. At noon of a boss day, if more than half the limit stands (15, 22 or 30 by era), the boss night waits a day, at most
+   twice in a row, then it comes anyway. The ordinary night crowd already counts the zombies still standing (the spawner fills only up to the
+   night's number). */
+const leftBoss = () => S.bossOn == null && S.z.some((z) => z.type === 'boss' && !z.human && z.hp > 0);   /* A12 tuning 3 */
+const BOSS_WAIT_MAX = 2, streetsFull = () => activeZ() > mobCap() / 2 || townHurt();
+/* 3D.300 (A12 tuning): the boss night also waits while the town is badly hurt: the people standing average under 60% health (the level 14
+   bot town went into a boss night at 37% after a day of leftovers and lost 11 people). Same wait, at most twice in a row. */
+const HURT_LINE = .6, townHurt = () => { const up = S.sv.filter((q) => q.hp > 0 && q.mode !== 'away'); return up.length > 0 && up.reduce((a, q) => a + q.hp / q.max, 0) / up.length < HURT_LINE; };
 const bossNear = () => S.day === S.nextBoss || S.day === S.nextBoss - 1 || S.bossDay === S.day || S.bossOn != null || !!S.vanguard;
 /* 3D.292 (overnight branch; owner, 21 Nov, W176, rule 3 of 13-LONG-GAME: "a breather after a bad night"): when a night costs a life, or
    everyone went down and the neighbours had to come, the next two nights are a breather: the night's crowd is a quarter smaller, the boss
@@ -374,13 +385,19 @@ function eventSchedule() {   /* called every game hour */
   else { spawnRaid(); S.nextRaid = now + (2 + rnd() * 1.5) * DF().raid; } }
   if (S.day === S.nextBoss && S.hour === 17 && graceOn()) { S.nextBoss++;  }
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
+  if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: townHurt() && activeZ() <= mobCap() / 2 ? 'The town is badly hurt. The boss\'s horde holds back a day: patch people up while you can.' : `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
+  else if (S.day === S.nextBoss && S.hour === 12) S.bossWaits = 0;
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { hordeStart(); S.bossDay = S.day; S.nextBoss += bossGap(); }   /* 3D.269: the horde first, its boss behind it */
   incidentRoll();
   if (!S.trader && S.day >= (S.nextTrader || 2) && S.hour === 9) traderArrive();
   if (S.trader && S.hour === 19) traderLeave();
   if (S.hour === 6) dawnRetreat();
-  if (S.hour === 6) { const bs = S.z.filter((z) => z.type === 'boss' && z.hp > 0), b = bs[0]; for (const q of bs) { const p = spawnPoint(); q.mode = 'zleave'; q.retreat = true; q.siege = false; q.target = null; q.path = null; q.leaveTo = p ? tc(p[0], p[1]) : { ...q.w }; }   /* V3D.13: walks back out instead of vanishing */ if (b) {   /* V2.37: every boss leaves at dawn (only the first did) */ note('important', '☀ THE BOSS RETREATS AT DAWN', { log: `The ${zDef(b).name} slunk back into the wasteland. It will return.` }); } if (S.bossOn != null || bs.length) { S.bossOn = null; mobScatter(); for (const z of S.z) if (z.hp > 0 && !z.human && z.type !== 'boss' && z.mode !== 'zleave' && !(z.target && S.sv.includes(z.target) && dist(z.w, z.target.w) < 2.5)) { const p = spawnPoint(); z.mode = 'zleave'; z.retreat = true; z.siege = false; z.target = null; z.path = null; z.leaveTo = p ? tc(p[0], p[1]) : { ...z.w }; } } else S.z.forEach((z) => { if (z.mob) { z.siege = false; z.mob = false; } }); }   /* 3D.68: its followers leave with it */
+  if (S.hour === 6) { const n = activeZ(); if (n >= 8) note('important', `☀ DAWN SWEEP: ${n} ZOMBIES LEFT IN TOWN`, { log: `${n} zombies are still about from the night. In daylight they are slow and weak: the fighters go out after them.` }); }   /* 3D.299 A12 tuning */
+  /* A12 tuning 3 (owner, 23 Nov: "Keep tuning"; then "Boss should not lose HP"): while a boss from last night still stands, no new ordinary
+     night crowd comes: his leftovers are the night. (A first version also wore him down in daylight; taken out on the owner's word.) */
+  if (S.hour === 6) { S.bossOn = null; let n = 0; for (const z of S.z) if (z.hp > 0 && !z.human && (z.type === 'boss' || z.mob || z.horde)) { const p = spawnPoint(); if (!p) continue; z.mode = 'zleave'; z.retreat = true; z.siege = false; z.mob = false; z.target = null; z.path = null; z.wallT = null; z.bldT = null; z.leaveTo = tc(p[0], p[1]); n++; }
+    if (n) note('important', '🌅 THE BOSS FALLS BACK', { log: 'At first light what is left of the boss\'s horde turns back into the dark, and the boss with it if he still stands. Every other zombie stays until it is killed.' }); }   /* A12 (owner, 23 Nov: "Boss leaves at dawn"; "Boss should not lose HP"): a boss still alive at 06:00 walks off with his own horde, at full health, and what is left of a boss's horde walks off even when he fell (z.horde); every other zombie stays until killed */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
   for (const o of S.z) if (o !== z && o.hp > 0 && o.mode === 'idle' && dist(o.w, z.w) < 2.5 && dist(o.w, target.w) < 6) { o.target = target; o.mode = 'zchase'; o.path = null; o.blocked = 0; }
@@ -406,7 +423,7 @@ function lashPick(z) {   /* the nearest survivor holding a gun, bow or crossbow,
 function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors out in the open, walls, and other zombies within ROT_R */
   z.burst = true; z.fuseT = 0; SFX('alarm'); hitFx.push({ k: 'burst', w: { ...z.w }, t0: tick, bits: Array.from({ length: 14 }, () => ({ a: rnd() * 6.28, v: .4 + rnd() * .8, s: rnd() })) });   /* 3D.85 owner: the Rotbomb explodes (the Lasher still draws no effect) */
   let hurt = 0;
-  for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < ROT_R) { const dmg = Math.max(1, fairRound(16 * (z.pw || 1) * (1 - dist(q.w, z.w) / ROT_R * .4) * (gearFx(q, 'gas') ? .5 : 1) * (1 - dmgReduce(q)))); q.hp -= dmg; q.hitT = 9; hurt++; floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#b8d65a', a: 55 }); if (rnd() < .5) emote(q, '🤢', 70); }
+  for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < ROT_R) { const dmg = Math.max(1, fairRound(16 * zPw(z) * (1 - dist(q.w, z.w) / ROT_R * .4) * (gearFx(q, 'gas') ? .5 : 1) * (1 - dmgReduce(q)))); q.hp -= dmg; q.hitT = 9; hurt++; floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#b8d65a', a: 55 }); if (rnd() < .5) emote(q, '🤢', 70); }
   for (const wl of world.walls.values()) if (!wl.broken && dist({ x: wl.x + .5, y: wl.y + .5 }, z.w) < ROT_R) { wl.hp -= 30; wl.hit = 14; if (wl.hp <= 0) wallBroken(wl); }
   for (const o of S.z) if (o !== z && o.hp > 0 && !o.human && dist(o.w, z.w) < ROT_R) { o.hp -= 25; o.hitT = 9; }
   if (hurt) note('important', `💥 A Rotbomb burst and hurt ${hurt} ${hurt === 1 ? 'survivor' : 'survivors'}.`);
@@ -430,7 +447,7 @@ function zai0(z) {
   if ((z.mode === 'zmarch' || z.mode === 'idle') && z.type !== 'boss' && tick % 30 === 0) {   // nothing to chase for a long while in daylight → leave
     const seen = S.sv.some((s) => s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && dist(s.w, z.w) < d.aggro * 1.6);
     z.bored = seen ? 0 : (z.bored || 0) + 30;
-    if (!isNight() && z.bored > 1800) { const p = spawnPoint(); if (p) { z.mode = 'zleave'; z.siege = false; z.mob = false; z.leaveTo = tc(p[0], p[1]); z.path = null; z.target = null; return; } }
+    /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): a zombie that sees nobody for a long while in daylight no longer walks off the map (V2.37); it keeps wandering towards the town */
   }
   if (z.mode === 'idle' && z.siege) { z.mode = 'zmarch'; z.goalT = 0; }
   if (z.mode === 'zmarch') {            // mobs head for the nearest survivor or building; elites aim for the weakest wall segment or the gate
@@ -448,13 +465,13 @@ function zai0(z) {
     if (dist(z.w, z.bpt) > .35) { const r = followPath(z, z.bpt, d.chase); if (r === 'fail') { z.bldT = null; z.mode = 'idle'; z.stateTicks = 60; } return; }
     z.moving = false; z.faceB = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
     if (S.sv.every((q) => insideBuilding(q) !== b || q.mode === 'hiding' || q.mode === 'hospital' || q.sleeping)) { if (!z.bashQuiet) z.bashQuiet = tick; if (tick - z.bashQuiet > 1500 + (z.phase | 0) % 600) { z.bashQuiet = 0; z.bldT = null; z.bored = tick + 6000; z.mode = z.siege ? 'zmarch' : 'idle'; z.stateTicks = 60; return; } } else z.bashQuiet = 0;   /* 3D.48: hiders, patients and sleepers keep quiet; after ~25-35 s it gives up */
-    if (z.stateTicks <= 0) { hitBuilding3(b, d.atk * .8 * (z.pw || 1) * (z.type === 'brute' ? 2.2 : z.type === 'boss' ? 3.5 : z.type === 'bloated' ? 1.4 : 1), 'a ' + d.name.toLowerCase()); if (['brute', 'alpha', 'boss'].includes(z.type)) impactFx(z, { x: z.w.x + (b.x + b.w / 2 - z.w.x) * .4, y: z.w.y + (b.y + b.h / 2 - z.w.y) * .4 }); if (z.type === 'burnt' && rnd() < .35) startFire(b, 30, 'a burnt zombie'); z.stateTicks = z.type === 'brute' ? 64 : z.type === 'runner' ? 36 : 50; z.punchT = tick; }
+    if (z.stateTicks <= 0) { hitBuilding3(b, d.atk * .8 * zPw(z) * (z.type === 'brute' ? 2.2 : z.type === 'boss' ? 3.5 : z.type === 'bloated' ? 1.4 : 1), 'a ' + d.name.toLowerCase()); if (['brute', 'alpha', 'boss'].includes(z.type)) impactFx(z, { x: z.w.x + (b.x + b.w / 2 - z.w.x) * .4, y: z.w.y + (b.y + b.h / 2 - z.w.y) * .4 }); if (z.type === 'burnt' && rnd() < .35) startFire(b, 30, 'a burnt zombie'); z.stateTicks = z.type === 'brute' ? 64 : z.type === 'runner' ? 36 : 50; z.punchT = tick; }
     return;
   }
   if (z.mode === 'zbreak') {
     const wl = z.wallT; z.moving = false;
     if (!wl || wl.broken || world.walls.get(wl.x + ',' + wl.y) !== wl) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
-    if (z.stateTicks <= 0) { const dmg = d.atk * (z.pw || 1) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); if (wl.type === 'efence' && S.power) { z.hp -= 6; z.hitT = 9; floats.push({ w: { ...z.w }, t: '⚡6', col: '#9fd8ff', a: 40 }); }   /* 3D.104 Electric Fence */ const dmg2 = townHyb('fortifier') ? dmg * .8 : dmg; wl.hp -= dmg2 - dmg; wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
+    if (z.stateTicks <= 0) { const dmg = d.atk * zPw(z) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); if (wl.type === 'efence' && S.power) { z.hp -= 6; z.hitT = 9; floats.push({ w: { ...z.w }, t: '⚡6', col: '#9fd8ff', a: 40 }); }   /* 3D.104 Electric Fence */ const dmg2 = townHyb('fortifier') ? dmg * .8 : dmg; wl.hp -= dmg2 - dmg; wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
       if (wl.hp <= 0) wallBroken(wl); }
     let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
@@ -501,7 +518,7 @@ function zai0(z) {
   if (z.mode === 'zattack' && z.type === 'sporehead') { z.moving = false; if ([91, 63, 30].includes(z.stateTicks) && z.target && z.target.hp > 0 && !insideBuilding(z.target) && dist(z.w, z.target.w) < ZREACH + .5) { const dmg = zHitDmg(z, d, z.target); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); callHelp(z.target, z); impactFx(z, z.target.w); floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 70 + rnd() * 20; } return; }   /* 3D.37 three-hit combo, in time with spore_combo */
   if (z.mode === 'zattack') { z.moving = false; if (z.type === 'spitter' && z.stateTicks === 14 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 14, seed: rnd() }); if (z.type === 'thrower' && z.stateTicks === 22 && z.target && z.target.w) spits.push({ a: { ...z.w }, b: { ...z.target.w }, t0: tick, dur: 22, seed: rnd(), rock: true });   /* 3D.35: the glob leaves the mouth, lands when the hit does */
-    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target) && !(z.type === 'thrower' && dist(z.w, z.target.w) > 5.6)) { const popd = gearFx(z.target, 'pop') && tick - (z.target.popAt || -1e9) > 1800 && (z.target.popAt = tick), dmg = popd ? 0 : Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * (z.pw || 1) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (gearFx(z.target, 'bite') ? .8 : 1) * (z.type === 'brute' && gearFx(z.target, 'blunt') ? .7 : 1) * (z.type === 'thrower' && gearFx(z.target, 'rubble') ? .5 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat; 3D.149 Phone Book: bites 20% less; Bubble Wrap: the first hit in 30 s pops a bubble instead */ if (popd) floats.push({ w: { ...z.target.w }, t: 'pop!', col: '#bfe3ff', a: 55 }); const hq0 = Math.floor(4 * z.target.hp / z.target.max); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (Math.floor(4 * z.target.hp / z.target.max) < hq0) emote(z.target, '😣', 60);   /* 3D.265 emoji rule: the hurt face when a hit takes them past a quarter of their health */ floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : z.type === 'thrower' ? 96 : 58) + rnd() * 22 + (z.target && gearFx(z.target, 'clang') && z.type !== 'boss' ? 30 : 0) + (z.target && gearFx(z.target, 'bounce') && z.type !== 'boss' ? 24 : 0) + (z.target && gearFx(z.target, 'wall') && atPost(z.target) && z.type !== 'boss' ? 40 : 0); if (z.target && gearFx(z.target, 'clang')) SFX('hit'); } return; }   /* 3D.148 Cookware Cuirass: a clang stuns the zombie half a second */
+    if (z.stateTicks <= 0) { if (z.target && z.target.hp > 0 && !insideBuilding(z.target) && !(z.type === 'thrower' && dist(z.w, z.target.w) > 5.6)) { const popd = gearFx(z.target, 'pop') && tick - (z.target.popAt || -1e9) > 1800 && (z.target.popAt = tick), dmg = popd ? 0 : Math.max(1, fairRound((d.atk + (z.type === 'brute' ? 2 : 0)) * zPw(z) * (hasSkill(z.target, 'armored') ? .8 : 1) * (hasSkill(z.target, 'bulwark') ? .85 : 1) * (atPost(z.target) ? .8 : 1) * ((z.type === 'spitter' || z.type === 'bloated') && gearFx(z.target, 'gas') ? .4 : 1) * (gearFx(z.target, 'bite') ? .8 : 1) * (z.type === 'brute' && gearFx(z.target, 'blunt') ? .7 : 1) * (z.type === 'thrower' && gearFx(z.target, 'rubble') ? .5 : 1) * (1 - dmgReduce(z.target))));   /* 3D.28 gas mask / hazmat; 3D.149 Phone Book: bites 20% less; Bubble Wrap: the first hit in 30 s pops a bubble instead */ if (popd) floats.push({ w: { ...z.target.w }, t: 'pop!', col: '#bfe3ff', a: 55 }); const hq0 = Math.floor(4 * z.target.hp / z.target.max); z.target.hp -= dmg; z.target.hitT = 9; SFX('hurt'); impactFx(z, z.target.w); callHelp(z.target, z); if (Math.floor(4 * z.target.hp / z.target.max) < hq0) emote(z.target, '😣', 60);   /* 3D.265 emoji rule: the hurt face when a hit takes them past a quarter of their health */ floats.push({ w: { ...z.target.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); } z.mode = 'zrecover'; z.stateTicks = z.recDur = (z.type === 'runner' ? 38 : z.type === 'brute' ? 82 : z.type === 'thrower' ? 96 : 58) + rnd() * 22 + (z.target && gearFx(z.target, 'clang') && z.type !== 'boss' ? 30 : 0) + (z.target && gearFx(z.target, 'bounce') && z.type !== 'boss' ? 24 : 0) + (z.target && gearFx(z.target, 'wall') && atPost(z.target) && z.type !== 'boss' ? 40 : 0); if (z.target && gearFx(z.target, 'clang')) SFX('hit'); } return; }   /* 3D.148 Cookware Cuirass: a clang stuns the zombie half a second */
   if (z.mode === 'zrecover') { if (z.stateTicks <= 0) z.mode = z.target && z.target.hp > 0 ? 'zchase' : (z.siege ? 'zmarch' : 'idle'); }
 }
 /* ---------------- walls: zombies march, break segments, repairs, breach alert ---------------- */
