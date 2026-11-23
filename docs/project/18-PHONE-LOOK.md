@@ -94,6 +94,8 @@ Owner, 23 Nov, 10:33: **"new zoom is good"**; **"no ring, use bar, use bar also 
 
 Owner, 23 Nov, 10:40: **"there is no more thirst/water bar for town or character? other than that its a go"**. Water was missing from the picture by mistake: **a survivor's bars are Health, Food, Water, Rest, Mood; the town's are Food, Water, Beds, Walls.**
 
+Owner, 23 Nov, 12:16: the switch the owner meant is **Survivor pictures** in Settings: on shows each person's picture, off shows the first letter of their name ("M" for Marcus). On by default. Built with the People screen (step 3). The **Phone look** switch is temporary: it keeps converted and unconverted screens apart while the look is being built and is removed when every screen is done ("We are going with the phone look").
+
 ## 7. Build log
 | Build | What | Check | State |
 |---|---|---|---|
