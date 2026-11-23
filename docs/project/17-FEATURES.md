@@ -75,5 +75,7 @@ Numbers (`TRUCK` and `MEDIC` in `src/game/03-stats-gear.js`; medics walk at 0.04
 
 Next: **(3)** the radio words and the card (one build). Then the daytime threat and Take command.
 
+A check to harden: `medic_shift_check.js` (3D.287) sometimes fails to catch the Medic walking out to a round, the moment its "turn back" step needs (1 run in 6 on 3D.303, after the overnight builds made newcomers come sooner); the game's behaviour is not at fault, the step only reports that it could not set itself up.
+
 Seen, not changed: the medics are not attacked (zombies only go for the town's own people), and the blue ring over someone on a stretcher shows their bleed timer standing still, the same as when a survivor carries them. Also seen: the truck honks with the car-alarm sound; a horn of its own is for the Music chat.
 
