@@ -434,6 +434,7 @@ What it says:
 | A12, boss and his horde leave at dawn, with 3D.326 | 0, 1, 4 | 3 |
 
 - The deaths in A12's bad runs were people bleeding out while a few others still stood, so the old truck never came.
+- **The last row is in the game: merged 23 Nov as 3D.332** (owner: "W248, merge"; pushed, not published). Test suite and the four A12 checks pass on top of 3D.331.
 
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
