@@ -1311,6 +1311,10 @@ function renownGain(n, why = '') { if (!isFinite(n)) n = 0; if (!isFinite(S.ren)
  * routine   : event log only (plus floating text in the world when it has a place). */
 const alerts = new Map(); let bannerQ = [], bannerOn = null, lastSlow = -1e9; const lastBanner = new Map();
 const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, advisor: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); if (!OPTS.v313) { OPTS.autoSlow = false; OPTS.v313 = 1; localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } } catch (e) { /* private mode */ }   /* V3D.13: emergencies no longer drop the speed to 1x (owner's request); the Log panel still has the switch */
+/* 3D.316 (owner, 23 Nov, W249): the phone look, built screen by screen behind Settings -> Phone look; off is the Glass look as it was.
+   Its sheet (css/phone.css) is added by the game, so the published page itself does not change. */
+function applyLook() { const on = OPTS.look === 'phone'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
+applyLook();
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
 function note(level, text, o = {}) {
@@ -4733,6 +4737,7 @@ function showSettings(back) {
     + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
     + `<button class="setRow link" id="stLog"><span class="moT"><b>Event log</b></span><span class="moA">›</span></button>`
     + tg('stSwear', OPTS.swear !== false, 'Swearing in chat', 'Off shows it as f**k') + tg('stAdv', OPTS.advisor, 'Advisor tips') + tg('stSlow', OPTS.autoSlow, 'Slow down on emergencies', 'Drops to 1× speed when something bad happens')
+    + tg('stLook', OPTS.look === 'phone', 'Phone look', 'The new look, built screen by screen. So far: the town screen')
     + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
     + (window.ZH3D && ZH3D.trackPanel ? tg('stTrack', !!(ZH3D.track && ZH3D.track.on), 'Animation tracker', 'Shows what each survivor is doing and flags sliding. Tap Copy log and paste it to me') : '')
     + `<button class="setRow link" id="stHow"><span class="moT"><b>How to play</b></span><span class="moA">›</span></button>`
@@ -4746,6 +4751,7 @@ function showSettings(back) {
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
   $('stAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); }; $('stSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); re(); };
+  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.316 */
   if ($('stInk')) $('stInk').onclick = () => { $('btnInk').click(); re(); };
   if ($('stTrack')) $('stTrack').onclick = () => { ZH3D.trackPanel(!ZH3D.track.on); re(); };   /* 3D.58 */
   $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };

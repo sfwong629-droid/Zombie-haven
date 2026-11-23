@@ -1,0 +1,26 @@
+/* css/phone.css — the phone look (look B, owner 23 Nov, W249; plan: docs/project/18-PHONE-LOOK.md).
+   The game adds this sheet itself and switches it with Settings → Phone look (html.phone); with the setting off nothing here applies.
+   Built screen by screen, one change per build. Two glasses: clear glass for what floats over the town, dark glass for menus (sheets).
+   No Apple names, fonts, icons or artwork: the game's Manrope and its own sticker icons.
+   3D.316: the shared clear glass, and the town screen (top capsules, the floating tab bar, the round Build button beside it). */
+html.phone {
+  --pg: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .08));
+  --pgBlur: blur(12px) saturate(170%);
+  --pgEdge: inset 0 1px 0 rgba(255, 255, 255, .65), inset 0 -1px 1px rgba(255, 255, 255, .18), inset 1px 0 0 rgba(255, 255, 255, .2), inset -1px 0 0 rgba(255, 255, 255, .2), 0 8px 24px rgba(0, 0, 0, .28);
+  --pgText: 0 1px 2px rgba(0, 0, 0, .45);
+}
+/* clear glass: the resource bar, the mission, the clock by day, the news line, the tab bar, the side buttons */
+html.glass.phone #plaque .res, html.glass.phone #quest #qt, html.glass.phone #quest b#clock:not([data-ph="dusk"]):not([data-ph="night"]), html.glass.phone #say, html.glass.phone #lmenu, html.glass.phone #bottom {
+  background: var(--pg); -webkit-backdrop-filter: var(--pgBlur); backdrop-filter: var(--pgBlur); border-color: transparent; box-shadow: var(--pgEdge); text-shadow: var(--pgText);
+}
+html.glass.phone #quest b#clock, html.glass.phone #gauge { border-color: transparent; box-shadow: var(--pgEdge); text-shadow: var(--pgText); }
+html.glass.phone #quest #qt { border-radius: 18px; }
+html.glass.phone #quest b#clock, html.glass.phone #say { border-radius: 999px; }
+html.glass.phone #bottom .bb { background: rgba(255, 255, 255, .1); border-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45); text-shadow: var(--pgText); }
+/* the tab bar: a floating capsule with Explore, People, Town, More; Build is a round lime button beside it */
+html.glass.phone #lmenu { right: 88px; height: 62px; border-radius: 999px; padding: 0 6px; justify-content: space-between; }
+html.glass.phone .lm { flex: 1 1 0; width: auto; height: 54px; border-radius: 999px; color: #fff; text-shadow: var(--pgText); }
+html.glass.phone .lm i { height: 32px; } html.glass.phone .lm .zi { width: 32px; height: 32px; }
+html.glass.phone #mBuild { position: absolute; left: calc(100% + 12px); top: 0; flex: none; width: 62px; height: 62px; margin: 0; font-size: 0; text-shadow: none;
+  background: linear-gradient(180deg, #d6ff78, #b0e834) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -2px 4px rgba(80, 110, 0, .35), 0 8px 24px rgba(0, 0, 0, .3); }
+html.glass.phone #mBuild i { height: 40px; } html.glass.phone #mBuild .zi { width: 40px; height: 40px; }
