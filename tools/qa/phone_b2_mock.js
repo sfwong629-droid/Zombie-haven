@@ -27,6 +27,7 @@ const { MOCK: VALLEY } = require('./valley_map_mock');
   await p.evaluate(() => { document.getElementById('closeInfo') && document.getElementById('closeInfo').click(); });
   const shot = async (file, name, opt) => { await p.evaluate(SCREEN, { name, mapHtml, mapCss, pics, opt }); await p.waitForTimeout(350); await p.screenshot({ path: path.join(out, file) }); console.log('shot', file); };
   for (const t of ['sticker', 'tint', 'badge']) await shot(`phoneB2_tabs_${t}.png`, 'town', { tabs: t, faces });   /* owner, 10:26: "use A" (sticker) */
+  if (process.env.PB2_BARS) { await shot('phoneB2_card_bars.png', 'card', { tabs: 'sticker', faces }); await shot('phoneB2_town_bars.png', 'townrings', { tabs: 'sticker', faces }); await b.close(); return; }
   for (const n of ['people', 'card', 'trip', 'item']) await shot(`phoneB2_${n}.png`, n, { tabs: 'sticker', faces });
   await shot('phoneB2_townrings.png', 'townrings', { tabs: 'sticker', faces });
   await b.close();

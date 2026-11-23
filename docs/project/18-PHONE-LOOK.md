@@ -90,4 +90,6 @@ Sent the same morning (`runs/ui_samples/phoneB2_*.png`, `tools/qa/phone_b2_mock.
 
 Owner, 23 Nov, 10:26: **the tab bar is A**, the game's sticker icons ("use A"); **pictures always**, zoomed out "a bit more so you can see the weapon and armor" (sent: `phoneB2_sheet_v2.png`, hips up in the round spots, knees up on the card); **no shaking** ("no need for shake"); the town's rings still not understood ("what is the town's rings?"), explained again.
 
-Still open: is the zoom right; the town's rings yes or no.
+Owner, 23 Nov, 10:33: **"new zoom is good"**; **"no ring, use bar, use bar also for the character hunger and rest type bar"**. **No rings anywhere** (this replaces the rings in sections 2 and 3 and in pictures 09 and `phoneB2_townrings.png`): a survivor's card shows Health (a count), Food, Rest and Mood as bars; the Town tab shows Fed, Beds and Walls as bars, with what would fill each one listed under them (`phoneB2_bars_sheet.png`).
+
+Nothing is open. Next: section 4, step 0 and step 1.
