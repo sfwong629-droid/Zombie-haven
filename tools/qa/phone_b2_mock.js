@@ -28,6 +28,8 @@ const { MOCK: VALLEY } = require('./valley_map_mock');
   const shot = async (file, name, opt) => { await p.evaluate(SCREEN, { name, mapHtml, mapCss, pics, opt }); await p.waitForTimeout(350); await p.screenshot({ path: path.join(out, file) }); console.log('shot', file); };
   for (const t of ['sticker', 'tint', 'badge']) await shot(`phoneB2_tabs_${t}.png`, 'town', { tabs: t, faces });   /* owner, 10:26: "use A" (sticker) */
   if (process.env.PB2_BARS) { await shot('phoneB2_card_bars.png', 'card', { tabs: 'sticker', faces }); await shot('phoneB2_town_bars.png', 'townrings', { tabs: 'sticker', faces }); await b.close(); return; }
+  /* PB2_MENUS (owner, 23 Nov 16:49: the frame-only sheet "doesn't have the iphone UI feel like you had for the previous mock up"): the five menus as full phone screens, with everything decided since: sticker tabs, pictures, bars with water, the Paused pill */
+  if (process.env.PB2_MENUS) { for (const [n, f] of [['people', 'people'], ['card', 'person'], ['build', 'build'], ['townrings', 'town'], ['settings', 'settings']]) await shot(`phoneD_${f}.png`, n, { tabs: 'sticker', faces, paused: true }); await b.close(); return; }
   for (const n of ['people', 'card', 'trip', 'item']) await shot(`phoneB2_${n}.png`, n, { tabs: 'sticker', faces });
   await shot('phoneB2_townrings.png', 'townrings', { tabs: 'sticker', faces });
   await b.close();
