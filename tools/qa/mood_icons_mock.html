@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!-- UI chat, 23 Nov (W247: "i like both but we need to change the icon, please come up with a few sample").
+     MOCKUP ONLY: four sets of icons for how a faction feels about the Haven (Hostile, Wary, Neutral, Friendly, Allies),
+     drawn in the game's sticker style, shown at the size they would have on a place's card on the valley map.
+     Picture: node tools/qa/mood_icons_mock.js -> runs/ui_samples/mood_icon_samples.png -->
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:'Nunito';font-weight:700;src:url('../../assets/fonts/nunito-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Nunito';font-weight:800;src:url('../../assets/fonts/nunito-latin-800-normal.woff2') format('woff2')}
+body { margin: 0; background: #1b2530; font-family: Nunito, sans-serif; color: #fff; width: 390px; }
+.set { padding: 14px 14px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.set h2 { margin: 0 0 2px; font-size: 17px; } .set p { margin: 0 0 10px; color: #b9c3cc; font-size: 12.5px; line-height: 1.35; }
+.card { padding: 12px 10px 10px; border-radius: 18px; background: rgba(16,22,28,.92); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+.card .t { font-weight: 800; font-size: 15px; margin: 0 4px 8px; } .card .t small { display: block; font-weight: 700; color: #c9d1d9; font-size: 12px; }
+.row { display: flex; justify-content: space-between; align-items: flex-end; }
+.row span { width: 20%; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: .42; }
+.row span.on { opacity: 1; } .row svg { width: 34px; height: 34px; } .row span.on svg { width: 46px; height: 46px; filter: drop-shadow(0 0 6px rgba(240,162,74,.55)); }
+.row small { font-size: 11px; color: #c9d1d9; } .row span.on small { color: #fff; font-weight: 800; font-size: 12.5px; }
+.emoji { font-size: 28px; line-height: 34px; } .on .emoji { font-size: 38px; line-height: 46px; }
+.all { margin-top: 10px; } .all span { opacity: 1; } .all svg { width: 44px; height: 44px; } .all .emoji { font-size: 36px; line-height: 44px; }
+.hint { margin: 8px 4px 0; font-size: 11.5px; color: #b9c3cc; }
+</style></head><body><div id="sheet"></div>
+<script>
+const W = '#ffffff', INK = '#2a1d16';
+const st = (fill) => `fill="${fill}" stroke="${W}" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"`;
+const svg = (b) => `<svg viewBox="0 0 48 48">${b}</svg>`;
+/* A: faces, redrawn bigger and clearer than the game's small happy/sad/angry */
+const face = (c, inner) => svg(`<circle cx="24" cy="24" r="19" ${st(c)}/>` + inner);
+const A = [
+  face('#ff6b4a', `<path d="M12 15 L21 19 M36 15 L27 19" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/><circle cx="18" cy="24" r="2.6" fill="${INK}"/><circle cx="30" cy="24" r="2.6" fill="${INK}"/><path d="M15 35 Q24 27 33 35" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/>`),
+  face('#f0a24a', `<path d="M27 15 L35 13" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><path d="M13 22 H21 M27 22 H35" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><circle cx="20" cy="24.5" r="2.2" fill="${INK}"/><circle cx="34" cy="24.5" r="2.2" fill="${INK}"/><path d="M16 33 q4 -3 8 0 t8 0" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`),
+  face('#e8d27a', `<circle cx="18" cy="22" r="2.6" fill="${INK}"/><circle cx="30" cy="22" r="2.6" fill="${INK}"/><path d="M17 32 H31" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`),
+  face('#6fb7ff', `<path d="M13 23 q4 -5 8 0 M27 23 q4 -5 8 0" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><path d="M15 29 Q24 38 33 29" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`),
+  face('#3cc6b0', `<path d="M14 21 q2.5 -3 5 0 q2.5 -3 5 0 l-5 5 z M24 21 q2.5 -3 5 0 q2.5 -3 5 0 l-5 5 z" fill="#ff4f7b" transform="translate(-1 0)"/><path d="M14 28 Q24 41 34 28 Z" fill="${INK}"/><path d="M18 33 Q24 37 30 33" fill="#ff8aa5"/>`),
+];
+/* B: hearts, from broken to two together */
+const H = 'M24 41 C10 31 5 22 9.5 15 C13.5 9 20.5 9.5 24 15.5 C27.5 9.5 34.5 9 38.5 15 C43 22 38 31 24 41 Z';
+const B = [
+  svg(`<defs><clipPath id="hl"><path d="M0 0 H24 L21 14 L26 21 L21 28 L25 34 L24 48 H0 Z"/></clipPath><clipPath id="hr"><path d="M48 0 H24 L21 14 L26 21 L21 28 L25 34 L24 48 H48 Z"/></clipPath></defs><g transform="rotate(-8 20 30) translate(-2 1)" clip-path="url(#hl)"><path d="${H}" ${st('#b8323a')}/></g><g transform="rotate(8 28 30) translate(2 1)" clip-path="url(#hr)"><path d="${H}" ${st('#b8323a')}/></g>`),
+  svg(`<path d="${H}" ${st('#f08a4a')}/><path d="M24 16 L21 23 L26 27 L22 34" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>`),
+  svg(`<path d="${H}" fill="rgba(255,255,255,.12)" stroke="${W}" stroke-width="3.5" stroke-linejoin="round"/>`),
+  svg(`<path d="${H}" ${st('#ff5b7f')}/><path d="M14 17 q3 -4 7 -1" fill="none" stroke="#ffd0dc" stroke-width="2.4" stroke-linecap="round"/>`),
+  svg(`<g transform="translate(-6 4) scale(.78)"><path d="${H}" ${st('#ff5b7f')}/></g><g transform="translate(16 -2) scale(.78)"><path d="${H}" ${st('#6fb7ff')}/></g>`),
+];
+/* C: their gate, as they keep it for you */
+const post = `<rect x="5" y="12" width="6" height="31" rx="1.5" ${st('#7a5a3a')}/><rect x="37" y="12" width="6" height="31" rx="1.5" ${st('#7a5a3a')}/>`;
+const panel = (x, w, c, extra = '') => `<rect x="${x}" y="17" width="${w}" height="24" rx="1.5" ${st(c)}/><path d="M${x + 3} 23 H${x + w - 3} M${x + 3} 30 H${x + w - 3} M${x + 3} 37 H${x + w - 3}" stroke="rgba(0,0,0,.25)" stroke-width="1.6"/>${extra}`;
+const C = [
+  svg(post + panel(11, 13, '#d9483a') + panel(24, 13, '#d9483a') + [12, 17, 22, 27, 32].map((x) => `<path d="M${x} 17 l2.5 -7 l2.5 7 z" ${st('#9aa3ab')}/>`).join('')),
+  svg(post + panel(11, 13, '#f0a24a') + panel(24, 13, '#f0a24a') + `<rect x="9" y="26" width="30" height="5" rx="2" ${st('#6b4a2a')}/>`),
+  svg(post + panel(11, 13, '#e8d27a') + panel(24, 13, '#e8d27a')),
+  svg(post + `<path d="M11 17 L19 13 L19 41 L11 41 Z" ${st('#6fb7ff')}/><path d="M37 17 L29 13 L29 41 L37 41 Z" ${st('#6fb7ff')}/>`),
+  svg(post + `<path d="M11 17 L15 15 L15 43 L11 41 Z" ${st('#3cc6b0')}/><path d="M37 17 L33 15 L33 43 L37 41 Z" ${st('#3cc6b0')}/><path d="M8 9 Q24 15 40 9 L40 15 Q24 21 8 15 Z" ${st('#ffd15c')}/><path d="M21.5 11.5 q1.25 -1.5 2.5 0 q1.25 -1.5 2.5 0 l-2.5 2.6 z" fill="#ff4f7b"/>`),
+];
+/* D: hand signs (the phone's own emoji) */
+const D = ['👊', '✋', '🤷', '👋', '🤝'].map((e) => `<span class="emoji">${e}</span>`);
+const NAMES = ['Hostile', 'Wary', 'Neutral', 'Friendly', 'Allies'];
+const SETS = [
+  ['A · Faces', 'Five faces in the sticker style, bigger and clearer than today\'s small happy, sad and angry; each in the mood\'s colour.', A],
+  ['B · Hearts', 'Broken, cracked, empty, full, two together. Reads at once, but red hearts mean health in most games.', B],
+  ['C · Their gate', 'How they keep their gate for you: spiked shut, barred, shut, opening, wide open with a welcome banner. Fits the walled towns.', C],
+  ['D · Hand signs', 'Fist, stop, shrug, wave, handshake: the phone\'s own emoji, so they do not match the sticker icons exactly.', D],
+];
+document.getElementById('sheet').innerHTML = SETS.map(([t, p, icons]) => `<div class="set"><h2>${t}</h2><p>${p}</p><div class="card"><div class="t">The Toll Kings' fort<small>Faction town on Route 9</small></div><div class="row">${icons.map((ic, k) => `<span class="${k === 1 ? 'on' : ''}">${ic}<small>${NAMES[k]}</small></span>`).join('')}</div><div class="hint">Trading and helping them makes them warmer. Raids make them colder.</div></div><div class="row all">${icons.map((ic, k) => `<span>${ic}<small>${NAMES[k]}</small></span>`).join('')}</div></div>`).join('');
+</script></body></html>
