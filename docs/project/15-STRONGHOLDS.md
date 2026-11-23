@@ -294,6 +294,10 @@ Pins also show: herds moving on a road with the days left, calls for help, an al
   - New pieces: payphone, cctv. The dead placed in a one-tile room now stand in it (they were placed a tile to the side). Same rooms, lever and gate rule, goals and numbers of the dead.
   - `sh_memory_check.js` failed once in three runs on this build ("48 inside, expected 49": one more of the Clinic's dead was killed during the visit than the test counts); it passed the other two. Watch it: the Clinic's dead now stand closer to the way in.
   - **Every dressed map is now at real sizes** (the Clinic, the Prison, the four seasonal places, Lab 7, the Records Office). Not dressed yet: the Mast, the three plant maps and the six raid camps.
+- **3D.330 (23 Nov): the Dusk Radio Mast dressed, at real sizes.** Pushed, not published. No reference search was made for this one: the sizes are from general knowledge of hilltop radio sites (a small fenced compound, an equipment shelter of about 3 x 4 m).
+  - **Sizes:** the hill path is 2 tiles wide and 18 long (was 3 wide, 26 long), one bend every 3 tiles up the hill; the mast yard 10 x 5 (was 16 x 6); Moth's shed 3 x 3 (was 5 x 4). The map is 20 tiles wide (was 30).
+  - **Look:** the path runs between low grassy banks on dirt; the yard is a gravel compound inside wire; a red and white lattice mast about 15 units tall with dishes, aerials and three guy wires stands in it, with a generator, a fuel tank, satellite dishes, a switch cabinet, floodlights and jerry cans; the shed has the broadcast desk, transmitter racks, a bed and a shelf of records. Strings of tin cans hang along the path and across the yard; boulders, a wrecked car and a barrier on the way up.
+  - New pieces: lattice, dish, genset, fueltank, cans, boulder. Same rooms, the listeners' rule, the hold and the waves. Not dressed yet: the three plant maps and the six raid camps.
 
 ## 11. Teams of two (3D.328, 23 Nov)
 Owner, 23 Nov: "I also want to add squad for the stronghold and faction raid. Like 2 person per squad that you can easily click and move them to different locations."
