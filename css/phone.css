@@ -24,3 +24,11 @@ html.glass.phone .lm i { height: 32px; } html.glass.phone .lm .zi { width: 32px;
 html.glass.phone #mBuild { position: absolute; left: calc(100% + 12px); top: 0; flex: none; width: 62px; height: 62px; margin: 0; font-size: 0; text-shadow: none;
   background: linear-gradient(180deg, #d6ff78, #b0e834) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -2px 4px rgba(80, 110, 0, .35), 0 8px 24px rgba(0, 0, 0, .3); }
 html.glass.phone #mBuild i { height: 40px; } html.glass.phone #mBuild .zi { width: 40px; height: 40px; }
+/* 3D.334 (owner, 23 Nov, W217: "make the inventory separate from the other food water bar. So that player know you can click on it"; mockup A):
+   the bag is its own round button beside the resource bar, its count on a badge, the low-supplies dot on its other corner */
+html.glass.phone #plaque .res { transform: translateX(-26px); padding-right: 8px; }
+html.glass.phone #plaque .res .bagChip { position: absolute; left: calc(100% + 8px); top: 50%; margin: 0; transform: translateY(-50%); width: calc(44px / var(--u, 1)); height: calc(44px / var(--u, 1)); border-radius: 50%;   /* 44 px on the smallest phone too, where the HUD is drawn smaller */ padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: var(--pg); -webkit-backdrop-filter: var(--pgBlur); backdrop-filter: var(--pgBlur); box-shadow: var(--pgEdge); }
+html.glass.phone #plaque .res .bagChip i, html.glass.phone #plaque .res .bagChip i svg { width: 28px; height: 28px; }
+html.glass.phone #plaque .res .bagChip b { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #fff; color: #111; font-size: 11px; line-height: 18px; text-align: center; text-shadow: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+html.glass.phone #plaque .res .bagChip .supDot { position: absolute; left: -2px; top: -2px; right: auto; }

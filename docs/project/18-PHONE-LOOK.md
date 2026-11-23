@@ -98,10 +98,13 @@ Owner, 23 Nov, 12:16: the switch the owner meant is **Survivor pictures** in Set
 
 Owner, 23 Nov, 16:31: the town screen "looks good". **From here: a mockup for each step, built and pushed only after the owner approves it** ("Give me mock up for each and approved before we push"). Step 2's mockup (the sheet on the real menus) and the bag as its own button (W217) were sent the same hour: `phoneC_sheet_sheet.png`, `phoneC_bag_sheet.png` (`tools/qa/phone_sheet_mock.js`). The sheet has no drag handle.
 
+Owner, 23 Nov, 16:49: the frame-only sheet "doesn't have the iphone UI feel like you had for the previous mock up". **A menu is not converted by restyling its frame: its inside is rebuilt** as in the concept pictures (large title, search, segmented control, grouped lists with chevrons, folders). Targets sent: `phoneD_menus_sheet.png` (People, a survivor's page, Build, Town, Settings). The handle is back on the sheet (drag down to close is built with it) and the Paused pill sits under the resource bar.
+
 ## 7. Build log
 | Build | What | Check | State |
 |---|---|---|---|
 | 3D.317 | Step 0 and 1: the **Phone look** switch in Settings (off by default; `OPTS.look`, `applyLook()` in `src/game/05-alerts.js`; the game adds `css/phone.css` itself, so the published page does not change) and the town screen: clear glass on the resource bar, mission, clock, news line and side buttons; the four tabs in one floating capsule; Build a round lime button beside it (icon only) | `node tools/qa/phone_look_check.js` (six sizes: off by default and unchanged, on from Settings, nothing overlaps or leaves the screen, taps 44 px+, menus still open, survives a reload, off again) | **live** since version 301 (23 Nov, published as 3D.332 on the owner's "ok time to publish") |
 | 3D.333 | **The phone look is on by default** (owner, 23 Nov, 16:17: "how come the phone type UI wasn't published?"); Settings → Phone look switches it off and the choice is kept. `tools/qa/lib.js`: `Q.page` keeps the older checks on the old look (`look: 'glass'`) until their screens are converted; pass `look: ''` for the game's default | the same check, now starting from the default | **live**, version 302 |
+| 3D.334 | **The bag is its own round button** beside the resource bar (W217, mockup A): count on a badge, the low dot on the other corner, 44 px on the smallest phone; a tap opens the supplies list | the same check: the bag is outside the bar, 44 px+, on screen, opens the list | **live** |
 
 Not in 3D.317, each its own build: the live pill (the most urgent thing, under the resource bar), the weather in the clock. Next: step 2, one sheet for every menu.
