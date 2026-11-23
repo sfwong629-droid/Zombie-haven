@@ -88,4 +88,6 @@ Sent the same morning (`runs/ui_samples/phoneB2_*.png`, `tools/qa/phone_b2_mock.
 - **The tab bar, three ways** (`phoneB2_tabs_sheet.png`): A the game's sticker icons; B coloured line icons (Explore blue, People pink, Town amber, More violet); C coloured round badges with a white sign. Claude's pick: C (reads best over a bright town; the lime Build button stays the only lime thing).
 - **The survivors' own pictures in place of letters** (`phoneB2_sheet.png`): the People page's chest-up shot in every round spot (lists, the squad, Give to), on the person's colour; a half-body shot on the survivor's card. The game already makes both from each person's 3D model, outfit and gear (`ZH3D.portrait`, `ZH3D.snap`), so nothing new has to be drawn.
 
-Still open: A, B or C for the tab bar; pictures always, or a setting to switch back to letters; the town's rings yes or no; the phone shaking yes or no.
+Owner, 23 Nov, 10:26: **the tab bar is A**, the game's sticker icons ("use A"); **pictures always**, zoomed out "a bit more so you can see the weapon and armor" (sent: `phoneB2_sheet_v2.png`, hips up in the round spots, knees up on the card); **no shaking** ("no need for shake"); the town's rings still not understood ("what is the town's rings?"), explained again.
+
+Still open: is the zoom right; the town's rings yes or no.
