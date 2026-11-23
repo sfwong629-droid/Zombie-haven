@@ -63,8 +63,8 @@ One zombie per build, each shown as a sheet first. The zombies seen most come fi
 2. ~~**Bloater Queen**: arms swinging wide in the walk; a wide two-arm sweep, then the belly slam~~ (3D.257). ~~**Bloated**: the same walk and belly slam~~ (3D.267, owner W200: "try b"; his shirt stretches under the arms, which are modelled joined to his belly).
 3. ~~**Walker: grab and bite** (both male and female)~~ (3D.276, W204).
 4. ~~**Gatling Boss: braced fire at long range**~~ preview approved 22 Nov (W216), with a gun club close-up attack, a slow heavy walk and a run with the gun carried level, and the roar (W239). Not built yet.
-5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings). Preview sent 22 Nov, with the cough (W239).
-6. **Dog: lunge and shake.**
+5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings). Preview approved 22 Nov, with the cough (W239). Not built yet.
+6. **Dog: lunge and shake.** Preview sent 22 Nov (v2: front legs bent); the sniff and shake off approved (W239).
 7. **Runner: running tackle** (both).
 8. **Crawler: ankle grab** (both).
 9. **Burnt: flailing rush** (both).
