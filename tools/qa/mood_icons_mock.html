@@ -14,7 +14,7 @@ body { margin: 0; background: #1b2530; font-family: Nunito, sans-serif; color: #
 .card .t { font-weight: 800; font-size: 15px; margin: 0 4px 8px; } .card .t small { display: block; font-weight: 700; color: #c9d1d9; font-size: 12px; }
 .row { display: flex; justify-content: space-between; align-items: flex-end; }
 .row span { width: 20%; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: .42; }
-.row span.on { opacity: 1; } .row svg { width: 34px; height: 34px; } .row span.on svg { width: 46px; height: 46px; filter: drop-shadow(0 0 6px rgba(240,162,74,.55)); }
+.row span.on { opacity: 1; } .row svg { width: 34px; height: 34px; } .row span.on svg { width: 46px; height: 46px; filter: drop-shadow(0 0 6px rgba(240,162,74,.55)); } #sheet .set .row span.on:last-child svg { filter: drop-shadow(0 0 6px rgba(60,198,176,.6)); }
 .row small { font-size: 11px; color: #c9d1d9; } .row span.on small { color: #fff; font-weight: 800; font-size: 12.5px; }
 .emoji { font-size: 28px; line-height: 34px; } .on .emoji { font-size: 38px; line-height: 46px; }
 .all { margin-top: 10px; } .all span { opacity: 1; } .all svg { width: 44px; height: 44px; } .all .emoji { font-size: 36px; line-height: 44px; }
@@ -62,4 +62,15 @@ const SETS = [
   ['D · Hand signs', 'Fist, stop, shrug, wave, handshake: the phone\'s own emoji, so they do not match the sticker icons exactly.', D],
 ];
 document.getElementById('sheet').innerHTML = SETS.map(([t, p, icons]) => `<div class="set"><h2>${t}</h2><p>${p}</p><div class="card"><div class="t">The Toll Kings' fort<small>Faction town on Route 9</small></div><div class="row">${icons.map((ic, k) => `<span class="${k === 1 ? 'on' : ''}">${ic}<small>${NAMES[k]}</small></span>`).join('')}</div><div class="hint">Trading and helping them makes them warmer. Raids make them colder.</div></div><div class="row all">${icons.map((ic, k) => `<span>${ic}<small>${NAMES[k]}</small></span>`).join('')}</div></div>`).join('');
+
+/* 23 Nov, owner: "A is good but not the allies face. i dont lke the hear eye": four other Allies faces */
+const ALLY = [
+  ['1 · Big grin', face('#3cc6b0', `<circle cx="18" cy="20" r="2.8" fill="${INK}"/><circle cx="30" cy="20" r="2.8" fill="${INK}"/><path d="M12 26 Q24 42 36 26 Z" fill="${INK}"/><path d="M14.5 27.5 H33.5 L32 30 H16 Z" fill="#fff"/>`)],
+  ['2 · Wink', face('#3cc6b0', `<circle cx="18" cy="21" r="2.8" fill="${INK}"/><path d="M26 21 q4 -4 8 0" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M14 28 Q24 40 34 28 Z" fill="${INK}"/><path d="M19 33 Q24 37 29 33" fill="#ff8aa5"/>`)],
+  ['3 · Warm smile', face('#3cc6b0', `<path d="M13 22 q4 -5 8 0 M27 22 q4 -5 8 0" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/><ellipse cx="13" cy="28" rx="3.4" ry="2.2" fill="#ff8aa5"/><ellipse cx="35" cy="28" rx="3.4" ry="2.2" fill="#ff8aa5"/><path d="M16 29 Q24 39 32 29 Z" fill="${INK}"/>`)],
+  ['4 · Two together', svg(`<circle cx="17" cy="27" r="13" ${st('#6fb7ff')}/><circle cx="32" cy="23" r="13" ${st('#3cc6b0')}/><circle cx="13" cy="26" r="1.9" fill="${INK}"/><circle cx="20" cy="26" r="1.9" fill="${INK}"/><path d="M12 31 Q16.5 35 21 31" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/><circle cx="28" cy="21" r="1.9" fill="${INK}"/><circle cx="35" cy="21" r="1.9" fill="${INK}"/><path d="M27 26 Q31.5 30 36 26" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>`)],
+];
+if (location.hash === '#ally') {
+  document.getElementById('sheet').innerHTML = `<div class="set"><h2>A · Faces: a new Allies face</h2><p>The four other moods stay as they are. Four Allies faces to pick from, each shown on the card (lit) and next to Friendly.</p></div>` + ALLY.map(([t, ic]) => `<div class="set"><h2>${t}</h2><div class="card"><div class="t">Greenwater<small>Faction town on the river</small></div><div class="row">${A.slice(0, 4).concat([ic]).map((x, k) => `<span class="${k === 4 ? 'on' : ''}">${x}<small>${NAMES[k]}</small></span>`).join('')}</div></div><div class="row all">${A.slice(0, 4).concat([ic]).map((x, k) => `<span>${x}<small>${NAMES[k]}</small></span>`).join('')}</div></div>`).join('');
+}
 </script></body></html>
