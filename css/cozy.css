@@ -330,3 +330,11 @@ html.shView #lmenu, html.shView #bottom, html.shView #dock { display: none !impo
 .shList .ctl button.crit { background: #ffe08a; border-color: #c98a1e; } .shList .ctl button.med { background: #e3f4dc; }
 @media (max-width: 520px) { .shList .shU { grid-template-columns: minmax(0, 70px) 1fr auto; gap: 4px; } .shList .ctl button { width: 29px; height: 28px; font-size: 14px; } }
 .shPick { position: fixed; z-index: 46; }
+
+/* 3D.328 teams of two: a chip for each pair above the stronghold's bar */
+.shTeams { display: flex; gap: 5px; margin-bottom: 5px; } .shPanel.town .shTeams { display: none; }
+.shT { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 12px; border: 2px solid var(--cocoa, #5a3f31); background: #fff8ec; color: #4a3428; cursor: pointer; box-shadow: 0 2px 0 rgba(90, 63, 49, .3); font: 700 12px Fredoka, sans-serif; min-height: 44px; }
+.shT > b { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--tc, #c9b9a4); color: #2e2018; display: grid; place-items: center; font-size: 15px; }
+.shT > span { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; } .shT i { display: flex; flex-direction: column; gap: 1px; font-style: normal; } .shT i u { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; text-align: left; font-size: 10.5px; line-height: 1.05; }
+.shT i em { height: 4px; background: #e8dccb; border-radius: 4px; overflow: hidden; display: block; } .shT i s { display: block; height: 100%; background: #5fae61; } .shT i.down u { color: #b04a3a; text-decoration: line-through; } .shT i.down s { width: 0 !important; }
+.shT.on { background: #e6f1fb; border-color: #5aa0d8; box-shadow: 0 0 0 2px #9fd8ff; } .shT.down { opacity: .5; } .shT.all { flex: 0 0 52px; justify-content: center; } .shT.all > b { background: #ffe9b8; width: 34px; flex-basis: 34px; border-radius: 10px; font-size: 13px; }

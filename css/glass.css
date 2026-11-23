@@ -527,3 +527,9 @@ html.glass .evBox.liveCard { top: 50%; bottom: auto; transform: translate(-50%, 
 #supPop .supRow b { font-size: 15px; min-width: 56px; text-align: right; } #supPop .supRow b small { font-weight: 400; opacity: .55; }
 #supPop .supRow.low b { color: #ff8a6a; } #supPop .supRow.low .supBar span { background: #ff8a6a; }
 #supPop .supInv { display: block; width: 100%; min-height: calc(44px / var(--u, 1)); margin-top: 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .06); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* 3D.328 teams of two: the chips in glass */
+html.glass .shT { background: var(--gl2); border: 1px solid var(--edge); color: var(--tx); font-family: var(--f); font-weight: 800; border-radius: 16px; box-shadow: none; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html.glass .shT i em { background: rgba(255, 255, 255, .18); } html.glass .shT i s { background: #7BD389; } html.glass .shT i.down u { color: #ff8a7a; }
+html.glass .shT.on { background: rgba(198, 255, 77, .16); border-color: rgba(198, 255, 77, .8); box-shadow: 0 0 0 2px rgba(198, 255, 77, .35); } html.glass .shT.all > b { background: rgba(255, 255, 255, .14); color: var(--tx); }
+html.glass .shT:active { transform: scale(.96); filter: brightness(1.15); }

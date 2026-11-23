@@ -1,0 +1,22 @@
+// tools/qa/sh_teams_check.js — 3D.328 (Strongholds chat): teams of two. The squad is split in pairs; a chip for each pair sits above the bar; one tap on a chip
+// picks both people, a second tap lets them go; a tap on the ground then sends the pair there side by side; an odd one out is a team of one; a team that is
+// down cannot be picked; the same in a raid camp. No server needed.
+const Q = require('./sh_lib');
+(async () => { const b = await Q.launch(); const p = await Q.open(b); await Q.newGame(p); const bad = [], ok = (c, m) => { if (!c) bad.push(m); };
+  for (const [map, n] of [['clinic', 4], ['prison', 5], ['raid_toll', 6]]) { await Q.clearCards(p); const r = await Q.practice(p, map, 9, n, true); if (!r.ok) { bad.push(`${map}: could not start`); continue; } await p.waitForTimeout(800);
+    const v = await p.evaluate((n) => { const H = ZH.S.sh, out = {}; H.view = true; ZH.shCall('clear'); const chips = [...document.querySelectorAll('#shPanel .shT[data-c^="team:"]')]; out.chips = chips.length; out.letters = chips.map((c) => c.querySelector('b').textContent).join('');
+      chips[0].click(); out.selA = H.sel.slice(); out.onA = document.querySelector('#shPanel .shT[data-c="team:0"]').classList.contains('on');
+      const at = { x: H.units[0].w.x + 1.5, y: H.units[0].w.y + .5 }; ZH.shMoveTo(at); out.moved = H.units.filter((u) => u.moveTo).map((u) => u.id); out.apart = H.units[0].moveTo && H.units[1].moveTo ? Math.abs(H.units[0].moveTo.x - H.units[1].moveTo.x) : -1;
+      document.querySelector('#shPanel .shT[data-c="team:1"]').click(); out.selB = H.sel.slice(); document.querySelector('#shPanel .shT[data-c="team:1"]').click(); out.selNone = H.sel.length;
+      const last = document.querySelectorAll('#shPanel .shT[data-c^="team:"]'); last[last.length - 1].click(); out.selLast = H.sel.length; ZH.shCall('clear');
+      H.units[0].hp = 0; H.units[1].hp = 0; ZH.shCall('team:0'); out.selDown = H.sel.length; H.units[0].hp = H.units[0].max; ZH.shCall('team:0'); out.selHalf = H.sel.slice(); H.units[1].hp = H.units[1].max;
+      document.querySelector('#shPanel .shT.all').click(); out.selAll = H.sel.length; out.ids = H.units.map((u) => u.id); const r0 = document.querySelector('#shPanel .shT').getBoundingClientRect(); out.h = Math.round(r0.height); return out; }, n);
+    const want = Math.ceil(n / 2); ok(v.chips === want && v.letters === 'ABCD'.slice(0, want), `${map}: ${v.chips} team chips (${v.letters}), expected ${want}`);
+    ok(v.selA.length === 2 && v.selA[0] === v.ids[0] && v.selA[1] === v.ids[1] && v.onA, `${map}: a tap on A did not pick the first two (${v.selA})`);
+    ok(v.moved.length === 2 && v.moved[0] === v.ids[0] && v.moved[1] === v.ids[1], `${map}: the ground tap did not send exactly team A (${v.moved})`); ok(v.apart > .3 && v.apart < .9, `${map}: the pair does not walk side by side (${v.apart})`);
+    ok(v.selB.length === 2 && v.selB[0] === v.ids[2] && v.selB[1] === v.ids[3], `${map}: a tap on B did not pick the next two (${v.selB})`); ok(v.selNone === 0, `${map}: a second tap did not let the team go`);
+    ok(v.selLast === (n % 2 ? 1 : 2), `${map}: the last team picked ${v.selLast}`); ok(v.selDown === 0, `${map}: a team that is down was picked`); ok(v.selHalf.length === 1 && v.selHalf[0] === v.ids[0], `${map}: with one of the pair down, the other was not picked alone (${v.selHalf})`);
+    ok(v.selAll === n, `${map}: All picked ${v.selAll} of ${n}`); ok(v.h >= 40, `${map}: the chip is ${v.h}px high: too small to tap`);
+    console.log(`${map} with ${n}: ${v.chips} teams (${v.letters}), chip ${v.h}px high`); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(300); }
+  if (p.errs.length) { console.log('page errors:', p.errs.slice(0, 5)); bad.push('page errors'); }
+  console.log(bad.length ? 'FAIL:\n  ' + bad.join('\n  ') : 'ok: teams of two: one tap picks a pair, the next tap on the ground sends them, in strongholds and raid camps'); await b.close(); process.exit(bad.length ? 1 : 0); })();

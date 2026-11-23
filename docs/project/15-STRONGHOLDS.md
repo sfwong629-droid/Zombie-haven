@@ -294,3 +294,14 @@ Pins also show: herds moving on a road with the days left, calls for help, an al
   - New pieces: payphone, cctv. The dead placed in a one-tile room now stand in it (they were placed a tile to the side). Same rooms, lever and gate rule, goals and numbers of the dead.
   - `sh_memory_check.js` failed once in three runs on this build ("48 inside, expected 49": one more of the Clinic's dead was killed during the visit than the test counts); it passed the other two. Watch it: the Clinic's dead now stand closer to the way in.
   - **Every dressed map is now at real sizes** (the Clinic, the Prison, the four seasonal places, Lab 7, the Records Office). Not dressed yet: the Mast, the three plant maps and the six raid camps.
+
+## 11. Teams of two (3D.328, 23 Nov)
+Owner, 23 Nov: "I also want to add squad for the stronghold and faction raid. Like 2 person per squad that you can easily click and move them to different locations."
+- **The squad is split in pairs** in the order it was picked on the trip card: team A is the first two, B the next two, and so on (up to four teams); an odd one out is a team of one.
+- **A chip for each team** sits just above the bottom bar, in strongholds and raid camps: the team's letter in its colour (A blue, B orange, C green, D pink), both names, a health bar for each. **One tap picks both people; the next tap on the ground sends them there side by side**; a tap on an enemy, a door or a thing gives the pair that order (as for any selection). A second tap on the chip lets them go. **All** picks everyone.
+- A team nobody has picked carries on by itself as before (it moves on to the next room and fights).
+- Each survivor's team letter is drawn by their health bar, in the team's colour.
+- With one of a pair down, the chip picks the one still standing; a team that is all down cannot be picked.
+- Tapping one survivor, the Squad list and the stance, medkit and bomb buttons work as before.
+- Check: `tools/qa/sh_teams_check.js` (the Clinic with 4, the Prison with 5, the Toll Kings' camp with 6). Styled for the Cozy and Glass looks; the Phone look (UI chat) has not styled the chips yet.
+- Not built: choosing who is paired with whom (today it is the order they were picked), and separate standing orders for a team (hold here, guard this door).
