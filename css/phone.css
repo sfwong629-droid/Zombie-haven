@@ -32,3 +32,30 @@ html.glass.phone #plaque .res .bagChip { position: absolute; left: calc(100% + 8
 html.glass.phone #plaque .res .bagChip i, html.glass.phone #plaque .res .bagChip i svg { width: 28px; height: 28px; }
 html.glass.phone #plaque .res .bagChip b { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #fff; color: #111; font-size: 11px; line-height: 18px; text-align: center; text-shadow: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
 html.glass.phone #plaque .res .bagChip .supDot { position: absolute; left: -2px; top: -2px; right: auto; }
+/* 3D.335: the sheet every menu opens in (dark glass, floating, very round, a handle to drag down, a big title, a round close button) */
+html.glass.phone #infoPanel { left: 8px; right: 8px; bottom: 8px; width: auto; border: none; border-radius: 34px; background: linear-gradient(180deg, rgba(36, 42, 50, .86), rgba(20, 24, 30, .93)); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), inset 0 0 0 1px rgba(255, 255, 255, .1), 0 18px 50px rgba(0, 0, 0, .5); touch-action: pan-y; }
+html.glass.phone #infoPanel::before { width: 38px; height: 5px; margin: 7px auto 0; background: rgba(255, 255, 255, .42); }
+html.glass.phone #infoPanel .ph { height: 52px; padding: 0 60px 0 20px; background: none; border: none; touch-action: none; }
+html.glass.phone #infoPanel .ph h3 { font-size: 28px; font-weight: 800; letter-spacing: -.4px; text-shadow: none; }
+html.glass.phone #infoPanel #closeInfo, html.glass.phone #infoPanel #pBack { border-radius: 50%; border: none; background: rgba(255, 255, 255, .14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+/* Paused sits on the sheet's top edge at the left, clear of the handle */
+html.glass.phone #infoPanel.show::after { left: 26px; translate: 0 -50%; border-radius: 999px; }
+/* 3D.335: People as a contact list */
+html.phone .phList { padding: 0 2px 10px; }
+html.phone .phSearch { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: 14px; background: rgba(255, 255, 255, .1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+html.phone .phMag { width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, .6); border-radius: 50%; position: relative; flex: none; } html.phone .phMag::after { content: ''; position: absolute; right: -6px; bottom: -5px; width: 7px; height: 2px; background: rgba(255, 255, 255, .6); border-radius: 2px; transform: rotate(45deg); }
+html.phone .phSearch input { flex: 1; min-width: 0; height: 44px; background: none; border: 0; outline: 0; color: #fff; font: 600 16px Manrope, system-ui, sans-serif; -webkit-appearance: none; appearance: none; } html.phone .phSearch input::placeholder { color: rgba(255, 255, 255, .5); } html.phone .phSearch input::-webkit-search-cancel-button { -webkit-appearance: none; }
+html.phone .phSeg { display: flex; gap: 2px; margin: 10px 0 4px; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+html.phone .phSeg button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: none; color: rgba(255, 255, 255, .78); font: 700 14px Manrope, system-ui, sans-serif; cursor: pointer; }
+html.phone .phSeg button.on { background: rgba(255, 255, 255, .92); color: #14181e; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+html.phone .phSec { margin: 14px 12px 6px; font: 800 11px Manrope, system-ui, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+html.phone .phCard { border-radius: 20px; background: rgba(255, 255, 255, .075); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); overflow: hidden; }
+html.phone .phRow { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 12px; cursor: pointer; position: relative; } html.phone .phRow:active { background: rgba(255, 255, 255, .08); }
+html.phone .phRow + .phRow::before { content: ''; position: absolute; left: 68px; right: 0; top: 0; height: 1px; background: rgba(255, 255, 255, .09); }
+html.phone .phFace { flex: none; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 85%, #fff), color-mix(in srgb, var(--c) 70%, #000)); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .5), 0 2px 6px rgba(0, 0, 0, .3); }
+html.phone .phFace img { width: 100%; height: 100%; object-fit: cover; } html.phone .phFace b { font: 800 19px Manrope, system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+html.phone .phTx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; } html.phone .phTx b { font: 800 16px Manrope, system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } html.phone .phTx small { font: 600 12.5px Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.phone .phHp { flex: none; width: 34px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .16); } html.phone .phHp i { display: block; height: 5px; border-radius: 3px; background: #7fd6a8; } html.phone .phHp.mid i { background: #ffb347; } html.phone .phHp.low i { background: #ff5b6b; }
+html.phone .phCh { flex: none; color: rgba(255, 255, 255, .4); font-size: 20px; font-weight: 700; }
+html.phone .phFoot { margin: 12px 12px 0; text-align: center; opacity: .6; }

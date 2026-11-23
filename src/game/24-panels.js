@@ -263,7 +263,30 @@ function pfList(L) {
   return o.sort(by);
 }
 function pfWire(root, again) { root.querySelectorAll('[data-pff]').forEach((b) => { b.onclick = () => { PF.f = b.dataset.pff; again(); }; }); const sb = root.querySelector('[data-pfs]'); if (sb) sb.onclick = () => { PF.s = PF_S[(PF_S.findIndex(([k]) => k === PF.s) + 1) % PF_S.length][0]; again(); }; }
+/* 3D.335 (owner, 23 Nov, W249: "yes those looks right"): People in the phone look is a contact list: a search field, All / Fighters / Workers
+   with counts, and the people grouped by what they are doing; each row a round picture (or the first letter, Settings -> Survivor pictures),
+   the name, job and what they are doing, a small health bar and a chevron. The Glass look keeps the old list below. */
+const PPL_GROUPS = [['help', 'Needs help'], ['fight', 'In a fight'], ['duty', 'On duty'], ['trip', 'Out on a trip'], ['rest', 'Resting']];
+function pplGroup(s) { if (s.mode === 'down' || s.mode === 'hospital' || s.hp < s.max * .5) return 'help'; if (s.mode === 'away') return 'trip'; const pr = unitNow(s).prio; return pr === 'emergency' || pr === 'care' ? 'help' : pr === 'fight' ? 'fight' : pr === 'sleep' || pr === 'free' ? 'rest' : pr === 'away' ? 'trip' : 'duty'; }
+const PPL_COL = ['#f0a24a', '#ff8fb8', '#b79bff', '#7fd6a8', '#4cc3ff', '#ff7a59', '#e6d36a'];
+function pplFace(s, cls) {   /* the person's picture, or their first letter when Survivor pictures is off (owner, 23 Nov: "just have the 'M' for marcus") */
+  const c = PPL_COL[(s.id || 0) % PPL_COL.length], u3 = OPTS.pics !== false && window.ZH3D && ZH3D.portrait && ZH3D.portrait(s);
+  return `<span class="phFace ${cls || ''}" style="--c:${c}">${u3 ? `<img src="${u3}" alt="">` : `<b>${esc((s.name || '?')[0].toUpperCase())}</b>`}</span>`; }
+function showPeoplePhone() {
+  endBuildMode(true); closeP(); if (PF.f === 'hurt') PF.f = 'all';
+  const all = S.sv.slice(), nF = all.filter(isFighter).length, L = all.filter((q) => PF.f === 'all' || (PF.f === 'fight') === isFighter(q)).sort((a, b) => (b.l || 1) - (a.l || 1) || a.name.localeCompare(b.name));
+  const row = (s) => { const hp = Math.max(0, Math.min(1, s.hp / s.max)); return `<div class="phRow" data-sv="${s.id}" data-n="${esc(fullName(s).toLowerCase())}">${pplFace(s)}<div class="phTx"><b>${esc(fullName(s))}</b><small>${esc(s.job)} · ${esc(activityText(s))}</small></div><span class="phHp${hp < .35 ? ' low' : hp < .7 ? ' mid' : ''}"><i style="width:${Math.round(hp * 100)}%"></i></span><span class="phCh">›</span></div>`; };
+  const groups = PPL_GROUPS.map(([k, t]) => { const g = L.filter((s) => pplGroup(s) === k); return g.length ? `<div class="phGrp" data-g="${k}"><div class="phSec">${t}</div><div class="phCard">${g.map(row).join('')}</div></div>` : ''; }).join('');
+  $('ib').innerHTML = `<div class="phList"><label class="phSearch"><span class="phMag"></span><input id="pplQ" type="search" placeholder="Search" autocomplete="off" value="${esc(PF.q || '')}"></label>`
+    + `<div class="phSeg">${[['all', 'All', all.length], ['fight', 'Fighters', nF], ['work', 'Workers', all.length - nF]].map(([k, t, n]) => `<button data-pff="${k}" class="${PF.f === k ? 'on' : ''}">${t} ${n}</button>`).join('')}</div>`
+    + (groups || '<p class="sm">Nobody fits this filter.</p>') + `<p class="phNone sm" style="display:none">Nobody by that name.</p><div class="sm phFoot">${S.sv.length} of ${popCap()} people · ${bedCount()} beds</div></div>`;
+  showPanel('People'); pfWire($('ib'), showSurvivors);
+  const q = $('pplQ'), filt = () => { const v = (PF.q = q.value).trim().toLowerCase(); let any = false; $('ib').querySelectorAll('.phGrp').forEach((g) => { let n = 0; g.querySelectorAll('.phRow').forEach((r) => { const ok = !v || r.dataset.n.includes(v); r.style.display = ok ? '' : 'none'; if (ok) n++; }); g.style.display = n ? '' : 'none'; if (n) any = true; }); const no = $('ib').querySelector('.phNone'); if (no) no.style.display = any || !groups ? 'none' : ''; };
+  q.oninput = filt; if (PF.q) filt();
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((x) => x.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
+}
 function showSurvivors() {
+  if (phoneOn()) return showPeoplePhone();
   endBuildMode(true); closeP(); const L = pfList(S.sv.slice());
   $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">👥 ${S.sv.length}/${popCap()} · 🛏 ${bedCount()}</div>` + pfBar() + '<div class="lst">' + (L.map((s) => `<div class="card" data-sv="${s.id}">${portrait(s)}<div class="sp" style="min-width:0"><div>${esc(fullName(s))} <span title="${TRAITS[s.trait] ? TRAITS[s.trait].name : ''}">${traitIcon(s)}</span> <span class="sm">${s.job} Lv.${s.l}</span></div>${meter(s.hp / s.max * 100, 'hp')}<div class="sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${(s.sat || 0) < 25 ? 'var(--bad)' : '#ff9fbd'}">♥${Math.round(s.sat || 0)}</span> · ${esc(activityText(s))}</div></div><span class="sm">›</span></div>`).join('') || '<p class="sm">Nobody fits this filter.</p>') + '</div>';
   showPanel('People'); pfWire($('ib'), showSurvivors);

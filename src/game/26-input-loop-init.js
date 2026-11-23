@@ -62,7 +62,14 @@ $('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { endBuildMode(true); say(sel ? '' : 'Done.'); };
 $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = () => (HUD_B ? showMore() : showGuide()); $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
-$('closeInfo').onclick = closeP; $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
+$('closeInfo').onclick = closeP;
+/* 3D.335: in the phone look a menu is a sheet with a handle: drag its top (the handle and title row) down to close it */
+{ const pn = $('infoPanel'); let y0 = null, dy = 0;
+  pn.addEventListener('pointerdown', (e) => { if (!phoneOn() || !pn.classList.contains('show') || e.target.closest('button, input, #ib')) return; const r = pn.getBoundingClientRect(); if (e.clientY - r.top > 64) return; y0 = e.clientY; dy = 0; pn.style.transition = 'none'; try { pn.setPointerCapture(e.pointerId); } catch (x) {} });
+  pn.addEventListener('pointermove', (e) => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); pn.style.translate = '0 ' + dy + 'px'; });
+  const end = () => { if (y0 === null) return; y0 = null; pn.style.transition = ''; pn.style.translate = ''; if (dy > 90) { endBuildMode(true); closeP(); } dy = 0; };
+  pn.addEventListener('pointerup', end); pn.addEventListener('pointercancel', end); }
+ $('pBack').onclick = () => { const f = panelBack; if (f) f(); };
 $('btnCenter').onclick = () => centerOn(7.5 + OFF, 10 + OFF, .9 * ((1.25)));   /* V3D.3: 3D tiles are bigger, zoom in a bit so people stay readable */
 $('btnSpeed').onclick = () => { simSpeed = simSpeed === 1 ? 2 : simSpeed === 2 ? 3 : 1; $('btnSpeed').textContent = simSpeed + '×'; try { localStorage.setItem('zhSpeed', simSpeed); } catch (e) { /* private mode */ } };
 try { const sp = +localStorage.getItem('zhSpeed'); if (sp >= 1 && sp <= 3) { simSpeed = sp; $('btnSpeed').textContent = sp + '×'; } } catch (e) { /* private mode */ }   /* V3D.13: the chosen speed sticks */

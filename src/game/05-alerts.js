@@ -11,6 +11,7 @@ const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, 
 /* 3D.333 (owner, 23 Nov: "We are going with the phone look"; "how come the phone type UI wasn't published?"): the phone look is ON unless the player switched it off (OPTS.look === 'glass'). */
 function applyLook() { const on = OPTS.look !== 'glass'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
 applyLook();
+const phoneOn = () => OPTS.look !== 'glass';   /* 3D.335: menus ask this to draw their phone-look inside */
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
 function note(level, text, o = {}) {
