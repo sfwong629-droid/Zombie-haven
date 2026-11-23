@@ -321,14 +321,14 @@ html.shView #lmenu, html.shView #bottom, html.shView #dock { display: none !impo
 .shList { background: #fff8ec; border: 2px solid var(--cocoa, #5a3f31); border-radius: 14px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; max-height: 42vh; overflow-y: auto; box-shadow: 0 2px 0 rgba(90, 63, 49, .3); }
 .shLHead { display: flex; align-items: center; gap: 6px; } .shLHead b { flex: 1; font-size: 14px; }
 .shLHead button { font: 700 12px Fredoka, sans-serif; padding: 4px 9px; border-radius: 9px; border: 1.5px solid rgba(90, 63, 49, .45); background: #ffe9b8; color: #4a3428; cursor: pointer; } .shLHead button.x { background: #fff8ec; }
-.shList .shU { display: grid; grid-template-columns: minmax(0, 92px) 1fr auto; gap: 6px; align-items: center; padding: 3px 5px; border-radius: 9px; border: 2px solid transparent; cursor: pointer; }
+.shList .shU { display: grid; grid-template-columns: 30px minmax(0, 84px) 1fr auto; gap: 6px; align-items: center; padding: 3px 5px; border-radius: 9px; border: 2px solid transparent; cursor: pointer; }
 .shList .shU.sel { border-color: #5aa0d8; background: #e6f1fb; } .shList .shU.down .nm { color: #b04a3a; text-decoration: line-through; }
 .shList .shU .nm { display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; line-height: 1.1; } .shList .shU .nm small { font: 600 10.5px Nunito, sans-serif; color: #8a7666; }
 .shList .shU em { height: 8px; background: #e8dccb; border-radius: 5px; overflow: hidden; display: block; } .shList .shU em b { display: block; height: 100%; background: #5fae61; }
 .shList .ctl { display: flex; gap: 4px; } .shList .ctl button { position: relative; width: 32px; height: 30px; padding: 0; border-radius: 9px; border: 1.5px solid rgba(90, 63, 49, .4); background: #fff8ec; font-size: 15px; cursor: pointer; }
 .shList .ctl button:disabled { opacity: .45; } .shList .ctl button i { position: absolute; right: -3px; bottom: -4px; font: 700 10px Fredoka, sans-serif; font-style: normal; background: #4a3428; color: #fff; border-radius: 6px; padding: 0 3px; }
 .shList .ctl button.crit { background: #ffe08a; border-color: #c98a1e; } .shList .ctl button.med { background: #e3f4dc; }
-@media (max-width: 520px) { .shList .shU { grid-template-columns: minmax(0, 70px) 1fr auto; gap: 4px; } .shList .ctl button { width: 29px; height: 28px; font-size: 14px; } }
+@media (max-width: 520px) { .shList .shU { grid-template-columns: 28px minmax(0, 64px) 1fr auto; gap: 4px; } .shPair { width: 28px; height: 28px; } .shList .ctl button { width: 29px; height: 28px; font-size: 14px; } }
 .shPick { position: fixed; z-index: 46; }
 
 /* 3D.328 teams of two: a chip for each pair above the stronghold's bar */
@@ -338,3 +338,7 @@ html.shView #lmenu, html.shView #bottom, html.shView #dock { display: none !impo
 .shT > span { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; } .shT i { display: flex; flex-direction: column; gap: 1px; font-style: normal; } .shT i u { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; text-align: left; font-size: 10.5px; line-height: 1.05; }
 .shT i em { height: 4px; background: #e8dccb; border-radius: 4px; overflow: hidden; display: block; } .shT i s { display: block; height: 100%; background: #5fae61; } .shT i.down u { color: #b04a3a; text-decoration: line-through; } .shT i.down s { width: 0 !important; }
 .shT.on { background: #e6f1fb; border-color: #5aa0d8; box-shadow: 0 0 0 2px #9fd8ff; } .shT.down { opacity: .5; } .shT.all { flex: 0 0 52px; justify-content: center; } .shT.all > b { background: #ffe9b8; width: 34px; flex-basis: 34px; border-radius: 10px; font-size: 13px; }
+/* 3D.329 choose the pairs: the team letter on each row of the Squad list; tap two to swap */
+.shPair { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--cocoa, #5a3f31); background: var(--tc, #c9b9a4); color: #2e2018; font: 700 14px Fredoka, sans-serif; cursor: pointer; padding: 0; } .shPair.on { box-shadow: 0 0 0 3px #5aa0d8; transform: scale(1.1); }
+.shPairTip { flex: 1 1 auto; font: 600 11px Nunito, sans-serif; color: #8a7666; margin-left: 6px; }
+html.glass .shPair { border: 1px solid var(--edge); } html.glass .shPair.on { box-shadow: 0 0 0 3px rgba(198, 255, 77, .8); } html.glass .shPairTip { color: var(--mu); font-family: var(--f); }

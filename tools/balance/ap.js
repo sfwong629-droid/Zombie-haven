@@ -103,7 +103,7 @@
     if (on('class') && Z.promoteSpec && S.hour === 11) { for (const q of S.sv) if (!q.spec && !Z.specWhy(q)) Z.promoteSpec(q); if (Z.hybOptions) for (const q of S.sv) if (q.spec && !q.hyb) { const o = Z.hybOptions(q)[0]; if (o) Z.promoteHyb(q, o.k); } }
     if (on('stronghold') && Z.startStronghold && !S.sh && !S.trip && S.hour === 10 && Z.needsBanner() && !(S.banners || []).some((b) => !b.used)) {
       const dest = (S.lvl || 1) >= 10 ? 'prison' : 'clinic', sq = Z.expAutoSquad(4); if (sq.length >= 3 && S.sv.length - sq.length >= 2 && !Z.expLocked(dest) && (S.shTryDay || {})[dest] !== S.day - 1) { const pw = Z.shPower(sq), rec = Z.SH_DEFS[dest].rec;
-        if (pw >= rec * .9 || S.day > (AP.shWait || 0) + 6) { const r = Z.startStronghold(dest, sq.map((q) => q.id)); if (r.ok) { AP.events.push('stronghold ' + dest + ' p' + pw + '@d' + S.day); AP.shWait = S.day; } } } }
+        if (pw >= rec * .9 || S.day > (AP.shWait || 0) + 6) { const r = Z.startStronghold(dest, sq.map((q) => q.id), { auto: true }); if (r.ok) { AP.events.push('stronghold ' + dest + ' p' + pw + '@d' + S.day); AP.shWait = S.day; } } } }
     // bandage the downed
     if (on('bandage')) for (const s of S.sv) if (s.mode === 'down' && ((S.cloth || 0) >= 1 || S.mat >= Z.BANDAGE() * 2) && s.bleed < 900 && !s.bandaged) { if (Z.useBandage(s)) s.bandaged = 1; }
     for (const s of S.sv) if (s.mode !== 'down') s.bandaged = 0;

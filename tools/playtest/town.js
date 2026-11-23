@@ -126,7 +126,7 @@
     levelup: () => ({ ok: Z.upgradeTown() !== false, upgrading: !!S.lvUp }),
     rushlevel: (a) => ({ ok: !!(Z.lvRushX && Z.lvRushX(a[0] === 'all')), level: S.lvl, left: S.lvUp ? Math.ceil(S.lvUp.left) + ' game h' : 'done', renown: Math.round(S.ren) }),   /* 3D.166 spend renown: 12 game hours off, or `rushlevel all` to finish now */
     expedition: (a) => { const ids = a[2] ? a[2].split(',').map((n) => who(n)).filter(Boolean).map((q) => q.id) : Z.expAutoSquad(3).map((q) => q.id); return Z.startExpedition(a[0], a[1] || 'low', ids); },
-    stronghold: (a) => { const ids = a[1] ? a[1].split(',').map((n) => who(n)).filter(Boolean).map((q) => q.id) : Z.expAutoSquad(4).map((q) => q.id); return Z.startStronghold(a[0], ids); },
+    stronghold: (a) => { const ids = a[1] ? a[1].split(',').map((n) => who(n)).filter(Boolean).map((q) => q.id) : Z.expAutoSquad(4).map((q) => q.id); return Z.startStronghold(a[0], ids, { auto: true }); },
     answer: (a) => { const bs = [...document.querySelectorAll('#eventModal button')]; const b = bs[+a[0]]; if (!b) return { ok: false, why: 'no such button' }; const t = b.innerText.trim(); b.click(); return { ok: true, pressed: t, next: popup() }; },
     accept: () => { const b = document.getElementById('acceptReq'); if (b) b.click(); return { ok: !!b }; },
     decline: () => { const b = document.getElementById('declineReq'); if (b) b.click(); return { ok: !!b }; },

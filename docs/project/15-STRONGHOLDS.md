@@ -305,3 +305,11 @@ Owner, 23 Nov: "I also want to add squad for the stronghold and faction raid. Li
 - Tapping one survivor, the Squad list and the stance, medkit and bomb buttons work as before.
 - Check: `tools/qa/sh_teams_check.js` (the Clinic with 4, the Prison with 5, the Toll Kings' camp with 6). Styled for the Cozy and Glass looks; the Phone look (UI chat) has not styled the chips yet.
 - Not built: choosing who is paired with whom (today it is the order they were picked), and separate standing orders for a team (hold here, guard this door).
+
+### 11.1 The player leads, and chooses the pairs (3D.329, 23 Nov)
+Owner, 23 Nov: "yea i should be able to choose who to pair for sure. Also make the stronghold unled. The player has to control the characters."
+- **The squad waits for orders.** Nobody walks on to the next room, gathers at a hold, or runs across the map after the dead by themselves. Left alone, each person fights what comes to them: a gun fires at anything in its range; someone with a melee weapon steps up to anything within about two tiles. Everything else is the player's order: where to go, what to attack, which door, which thing to work. This holds in strongholds and raid camps, in practice too. A line says so when the squad goes in, and the first coach card.
+- Unchanged: the stances (Hold still means "only what is in reach"), someone carrying a thing out, a squad told "nothing more here today" at a story lock, and the fall back button.
+- **Choosing the pairs:** open 👥 Squad: every row has its team letter in the team's colour. Tap one person's letter, then another's: the two swap places, so the pairs change. The chips above the bar follow at once. The order is remembered for the next trip (not from practice runs).
+- **For the other chats:** the checks, the balance bot and the playtest tool still drive the old self-led squad (`startStronghold(dest, ids, { auto: true })`, or `window.ZH_SH_AUTO`); every number measured so far ("an unled squad wins about 7 in 10") is for that squad, not for a player. **With the Town button the squad can still be left alone, and now it just stands and defends itself.**
+- Check: `tools/qa/sh_teams_check.js` (swapping, and that a squad left alone for 25 seconds stays in the room it came in by).

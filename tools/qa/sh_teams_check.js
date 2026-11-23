@@ -3,7 +3,7 @@
 // down cannot be picked; the same in a raid camp. No server needed.
 const Q = require('./sh_lib');
 (async () => { const b = await Q.launch(); const p = await Q.open(b); await Q.newGame(p); const bad = [], ok = (c, m) => { if (!c) bad.push(m); };
-  for (const [map, n] of [['clinic', 4], ['prison', 5], ['raid_toll', 6]]) { await Q.clearCards(p); const r = await Q.practice(p, map, 9, n, true); if (!r.ok) { bad.push(`${map}: could not start`); continue; } await p.waitForTimeout(800);
+  for (const [map, n] of [['clinic', 4], ['prison', 5], ['raid_toll', 6]]) { await Q.clearCards(p); const r = await Q.practice(p, map, 9, n, true, { auto: false }); if (!r.ok) { bad.push(`${map}: could not start`); continue; } await p.waitForTimeout(800);
     const v = await p.evaluate((n) => { const H = ZH.S.sh, out = {}; H.view = true; ZH.shCall('clear'); const chips = [...document.querySelectorAll('#shPanel .shT[data-c^="team:"]')]; out.chips = chips.length; out.letters = chips.map((c) => c.querySelector('b').textContent).join('');
       chips[0].click(); out.selA = H.sel.slice(); out.onA = document.querySelector('#shPanel .shT[data-c="team:0"]').classList.contains('on');
       const at = { x: H.units[0].w.x + 1.5, y: H.units[0].w.y + .5 }; ZH.shMoveTo(at); out.moved = H.units.filter((u) => u.moveTo).map((u) => u.id); out.apart = H.units[0].moveTo && H.units[1].moveTo ? Math.abs(H.units[0].moveTo.x - H.units[1].moveTo.x) : -1;
@@ -17,6 +17,13 @@ const Q = require('./sh_lib');
     ok(v.selB.length === 2 && v.selB[0] === v.ids[2] && v.selB[1] === v.ids[3], `${map}: a tap on B did not pick the next two (${v.selB})`); ok(v.selNone === 0, `${map}: a second tap did not let the team go`);
     ok(v.selLast === (n % 2 ? 1 : 2), `${map}: the last team picked ${v.selLast}`); ok(v.selDown === 0, `${map}: a team that is down was picked`); ok(v.selHalf.length === 1 && v.selHalf[0] === v.ids[0], `${map}: with one of the pair down, the other was not picked alone (${v.selHalf})`);
     ok(v.selAll === n, `${map}: All picked ${v.selAll} of ${n}`); ok(v.h >= 40, `${map}: the chip is ${v.h}px high: too small to tap`);
-    console.log(`${map} with ${n}: ${v.chips} teams (${v.letters}), chip ${v.h}px high`); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(300); }
+    /* 3D.329 choose the pairs: in the Squad list, a tap on one person's letter and then on another's swaps them */
+    const sw = await p.evaluate(() => { const H = ZH.S.sh; ZH.shCall('clear'); ZH.shCall('list'); const before = H.units.map((u) => u.id), btn = [...document.querySelectorAll('#shPanel .shPair')]; const n0 = btn.length; btn[1].click(); const tip = document.querySelector('#shPanel .shPairTip').textContent; [...document.querySelectorAll('#shPanel .shPair')][2].click(); const after = H.units.map((u) => u.id); ZH.shCall('list'); document.querySelector('#shPanel .shT[data-c="team:0"]').click(); const selA = H.sel.slice(); ZH.shCall('clear'); return { n0, before, after, tip, selA }; });
+    ok(sw.n0 === n, `${map}: ${sw.n0} team letters in the Squad list, expected ${n}`); ok(sw.after[1] === sw.before[2] && sw.after[2] === sw.before[1] && sw.after[0] === sw.before[0], `${map}: the two did not swap (${sw.before} -> ${sw.after})`); ok(/swap with/.test(sw.tip), `${map}: no hint after the first tap`);
+    ok(sw.selA.length === 2 && sw.selA[0] === sw.before[0] && sw.selA[1] === sw.before[2], `${map}: after the swap team A is not the new pair (${sw.selA})`);
+    /* 3D.329 the player leads: left alone for 25 seconds nobody leaves the room the squad came in by, and nobody has orders */
+    if (map !== 'raid_toll') { const led = await p.evaluate(() => { const H = ZH.S.sh; for (const u of H.units) { u.max = u.hp = 99999; } ZH.step(60 * 25); const h = ZH.S.sh; return h ? { auto: h.auto, rooms: h.units.map((u) => ZH.shRoomAt(u.w)), start: h.plan.startRoom, orders: h.units.filter((u) => u.moveTo || u.order).length } : null; });
+      ok(led && led.auto === false && led.rooms.every((r) => r === led.start) && led.orders === 0, `${map}: left alone, the squad went off by itself (${JSON.stringify(led)})`); }
+    console.log(`${map} with ${n}: ${v.chips} teams (${v.letters}), chip ${v.h}px high; pairs can be swapped; the squad waits for orders`); await p.evaluate(() => { ZH.S.sh = null; }); await p.waitForTimeout(300); }
   if (p.errs.length) { console.log('page errors:', p.errs.slice(0, 5)); bad.push('page errors'); }
-  console.log(bad.length ? 'FAIL:\n  ' + bad.join('\n  ') : 'ok: teams of two: one tap picks a pair, the next tap on the ground sends them, in strongholds and raid camps'); await b.close(); process.exit(bad.length ? 1 : 0); })();
+  console.log(bad.length ? 'FAIL:\n  ' + bad.join('\n  ') : 'ok: teams of two: one tap picks a pair, the next tap on the ground sends them; pairs can be swapped; the squad waits for the player; in strongholds and raid camps'); await b.close(); process.exit(bad.length ? 1 : 0); })();
