@@ -78,8 +78,11 @@ for i in range(nf + 1):
         fpl = {n: PB[n].rotation_quaternion.copy() for n in FRONT}
         for n in FRONT: PB[n].rotation_quaternion = fr0[n]
         upd()
-        for s in 'LR':   # in the air: front legs reach forward and up from the shoulder, the lower leg folded a little
-            turn('fupper.' + s, (1, 0, 0), -reach, wpos('fupper.' + s)); turn('flower.' + s, (1, 0, 0), reach * .5, wpos('flower.' + s))
+        for s, ph in (('L', 0), ('R', 1.4)):   # in the air: the upper leg swings forward and up, the elbow bends so the lower leg hangs down,
+            pad = 8 * shake * jit(t, 4.5, ph)          # the paw curls under (owner, 22 Nov: "it looks so stiff, should it not bent?"); a little paddling in the shake
+            turn('fupper.' + s, (1, 0, 0), -reach * 1.45 - pad, wpos('fupper.' + s))
+            turn('flower.' + s, (1, 0, 0), reach * 1.6 + pad, wpos('flower.' + s))
+            turn('fpaw.' + s, (1, 0, 0), reach * .9, wpos('fpaw.' + s))
         up = sst(2, 10, rear)
         for n in FRONT: PB[n].rotation_quaternion = fpl[n].slerp(PB[n].rotation_quaternion.copy(), up)
         upd()
