@@ -398,6 +398,17 @@ What it says:
 - **New towns no longer sit at 0 medicine.** The level 7 town still dipped to 0 late, when its food was too low for the bot to spare a garden.
 - **The level 8 town lost many people both times** (13 and 20, not on boss nights the herbs could touch); it is a backup that loses people in every build, so its deaths are not read as an effect. Food at the end was lower with herbs (63 against 88).
 
+**Rule 1, one pace for everyone, 22 Nov (builds 3D.303 and 3D.305; owner: yes to Q1).** The level timers count real minutes, the same with the game open or closed (level 2 after 3 minutes, 3 after 10, 4 after an hour, 5 after 6 hours, then a day a level to 10, a day and a half to 15, two and a half days to 20); building sites and upgrades carry on while away at the open-game pace. Daily player (10 minutes a real day, 30 the first), seed 5, before (3D.302) and after 3D.303 (the second town was stopped to save time):
+
+| Real day | 1 | 2 | 3 | 4 | 5 | 10 | 11 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|
+| Level, before | 3 | 3 | 4 | 5 | 5 | 10 | 11 | 14 | 14 |
+| Level, after | 3 | 4 | 5 | 6 | 7 | 9 | 10 | 10 | 11 |
+
+- **Level 5 on real day 3** (wanted 2 to 3; was day 4) and **level 10 on real day 11** (wanted 10 to 14; was day 10, then level 14 by day 14, far ahead of the 3 to 4 weeks wanted for level 15).
+- Deaths in 15 real days: 2 after, 10 before (one town each; read with care).
+- The game left open is now no faster through the levels than the daily player (the timer is real time); it only gets more fights and loot. Not yet measured with the open bot.
+
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 
