@@ -409,6 +409,20 @@ What it says:
 - Deaths in 15 real days: 2 after, 10 before (one town each; read with care).
 - The game left open is now no faster through the levels than the daily player (the timer is real time); it only gets more fights and loot. Not yet measured with the open bot.
 
+**A12, zombies never walk away, measured with healing and the truck, 23 Nov (branch `a12-v2`, not merged).** Bot, game open, before (3D.309, the dawn walk-away) and after (A12 with its tuning rules), 10 to 14 game days:
+
+| Start | Deaths without A12 | A12 with tuning 1 and 2 | A12 with tuning 3 too |
+|---|---|---|---|
+| New town, seed 5 (14 days) | 0 | 0 | not run again |
+| New town, seed 7 (14 days) | 0 | 0 | not run again |
+| Level 14 town, seed 7 | 9 to 11 | 17 | 4 |
+| Level 14 town, seed 3 | 1 to 2 | 15 (10 in one day) | 3 |
+| Level 17 town | 2 to 3 | 2 | 0 |
+
+- Tuning 1 and 2 (22 Nov): zombies slow and weak by day, the boss night waits for clear streets and a healthy town, the dawn sweep. Tuning 3 (23 Nov): a boss left from the night wears down by day to 15%, and no new night crowd comes while he stands.
+- The deaths without tuning 3 came the night after a boss night, with that boss still in town. With it, never more than 3 deaths in a day.
+- Runs of the same town differ (the town without A12 gave 9 and 11 deaths in two runs): three towns per side is a first read, not a full check.
+
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 
