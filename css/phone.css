@@ -33,8 +33,9 @@ html.glass.phone #plaque .res .bagChip i, html.glass.phone #plaque .res .bagChip
 html.glass.phone #plaque .res .bagChip b { position: absolute; right: -4px; top: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #fff; color: #111; font-size: 11px; line-height: 18px; text-align: center; text-shadow: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
 html.glass.phone #plaque .res .bagChip .supDot { position: absolute; left: -2px; top: -2px; right: auto; }
 /* 3D.335: the sheet every menu opens in (dark glass, floating, very round, a handle to drag down, a big title, a round close button) */
-html.glass.phone #infoPanel { left: 8px; right: 8px; bottom: 8px; width: auto; border: none; border-radius: 34px; background: linear-gradient(180deg, rgba(36, 42, 50, .86), rgba(20, 24, 30, .93)); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), inset 0 0 0 1px rgba(255, 255, 255, .1), 0 18px 50px rgba(0, 0, 0, .5); touch-action: pan-y; }
+html.glass.phone #infoPanel { left: 8px; right: 8px; bottom: 8px; width: auto; border: none; border-radius: 34px; background: linear-gradient(180deg, rgba(40, 48, 58, .5), rgba(18, 22, 28, .62)); -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 -1px 1px rgba(255, 255, 255, .16), inset 1px 0 0 rgba(255, 255, 255, .2), inset -1px 0 0 rgba(255, 255, 255, .2), 0 18px 50px rgba(0, 0, 0, .45); touch-action: pan-y; }
+/* 3D.336 (owner, 23 Nov: "can we do glass?", then "use A"): the sheet is frosted glass: a dark tint the town shows through, bright edges all round (it was a near-solid dark panel) */
 html.glass.phone #infoPanel::before { width: 38px; height: 5px; margin: 7px auto 0; background: rgba(255, 255, 255, .42); }
 html.glass.phone #infoPanel .ph { height: 52px; padding: 0 60px 0 20px; background: none; border: none; touch-action: none; }
 html.glass.phone #infoPanel .ph h3 { font-size: 28px; font-weight: 800; letter-spacing: -.4px; text-shadow: none; }
