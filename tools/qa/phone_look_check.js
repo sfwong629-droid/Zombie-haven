@@ -1,13 +1,13 @@
-// tools/qa/phone_look_check.js [sizes] [tag] — 3D.316 (owner, 23 Nov, W249): the phone look, step 1: the setting and the town screen.
+// tools/qa/phone_look_check.js [sizes] [tag] — 3D.317 (owner, 23 Nov, W249): the phone look, step 1: the setting and the town screen.
 // At six phone sizes:
 //  - with the setting off (the default) the page has no phone sheet and the Build button sits in the middle of the tab bar, as before;
 //  - More → Settings → "Phone look" switches it on: the four tabs sit in one capsule, Build is a round button to its right, nothing
 //    overlaps, nothing is off the screen, every one takes taps of 44 px or more, and the resource bar is clear glass;
 //  - Build, People and Town still open their menus; the setting survives a reload; switching it off puts the old bar back.
-// Pictures (first size): runs/ui_samples/phone_look_316_{off,on}.png. Usage: node tools/qa/phone_look_check.js  (game served on :8765)
+// Pictures (first size): runs/ui_samples/phone_look_317_{off,on}.png. Usage: node tools/qa/phone_look_check.js  (game served on :8765)
 const Q = require('./lib'); const path = require('path');
 const SIZES = (process.argv[2] || 'phone:390x844,phoneS:360x640,phoneM:375x667,phoneXL:430x932,phoneN:320x568,phoneT:412x915').split(',').map((s) => { const [n, d] = s.split(':'); const [w, h] = d.split('x').map(Number); return { n, w, h }; });
-const TAG = process.argv[3] || '3D.316';
+const TAG = process.argv[3] || '3D.317';
 const box = (p) => p.evaluate(() => { const o = {}; for (const id of ['mExp', 'mSurv', 'mTown', 'mGuide', 'mBuild', 'lmenu']) { const r = document.getElementById(id).getBoundingClientRect(); o[id] = { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom }; }
   o.phone = document.documentElement.classList.contains('phone'); o.sheet = !!document.getElementById('phoneCss'); o.resBg = getComputedStyle(document.querySelector('#plaque .res')).backgroundImage; o.vw = innerWidth; o.vh = innerHeight; return o; });
 const setLook = async (p) => { await p.click('#mGuide'); await p.waitForTimeout(300); await p.evaluate(() => { [...document.querySelectorAll('#ib .setRow, #ib button, #ib .card')].find((e) => /^Settings/.test(e.innerText.trim())).click(); }); await p.waitForTimeout(300); await p.click('#stLook'); await p.waitForTimeout(500); await p.evaluate(() => ZH.closeP()); await p.waitForTimeout(300); };
@@ -18,10 +18,10 @@ const setLook = async (p) => { await p.click('#mGuide'); await p.waitForTimeout(
     const p = await Q.page(b, { w: S.w, h: S.h, expose: 'BUILD_TAG, closeP, endBuildMode, OPTS, saveOpts, applyLook' }); await p.evaluate(() => { try { const o = JSON.parse(localStorage.getItem('zombieHavenOpts') || '{}'); delete o.look; localStorage.setItem('zombieHavenOpts', JSON.stringify(o)); } catch (e) {} });
     await Q.newGame(p); await Q.clearCards(p); await p.waitForTimeout(1500); await Q.clearCards(p);
     const tag = await p.evaluate(() => ZH.BUILD_TAG); if (tag !== TAG) fail(`build ${tag}, wanted ${TAG}`);
-    const off = await box(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_316_off.png') });
+    const off = await box(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_317_off.png') });
     if (off.phone || off.sheet) fail(`${S.n}: the phone look is on by default`);
     if (!(off.mBuild.x > off.mSurv.x && off.mBuild.x < off.mTown.x)) fail(`${S.n}: look off: Build is not in the middle of the bar`);
-    await setLook(p); await Q.clearCards(p); await p.waitForTimeout(300); await Q.clearCards(p); const on = await box(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_316_on.png') });
+    await setLook(p); await Q.clearCards(p); await p.waitForTimeout(300); await Q.clearCards(p); const on = await box(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_317_on.png') });
     if (!on.phone || !on.sheet) fail(`${S.n}: the setting did not switch the phone look on`);
     if (!/gradient/.test(on.resBg)) fail(`${S.n}: the resource bar is not clear glass (${on.resBg})`);
     const order = ['mExp', 'mSurv', 'mTown', 'mGuide', 'mBuild'];

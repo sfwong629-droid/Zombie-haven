@@ -2,7 +2,7 @@
    The game adds this sheet itself and switches it with Settings → Phone look (html.phone); with the setting off nothing here applies.
    Built screen by screen, one change per build. Two glasses: clear glass for what floats over the town, dark glass for menus (sheets).
    No Apple names, fonts, icons or artwork: the game's Manrope and its own sticker icons.
-   3D.316: the shared clear glass, and the town screen (top capsules, the floating tab bar, the round Build button beside it). */
+   3D.317: the shared clear glass, and the town screen (top capsules, the floating tab bar, the round Build button beside it). */
 html.phone {
   --pg: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .08));
   --pgBlur: blur(12px) saturate(170%);

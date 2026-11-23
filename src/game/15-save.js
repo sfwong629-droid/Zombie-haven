@@ -46,7 +46,7 @@ function showSettings(back) {
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
   $('stAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); }; $('stSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); re(); };
-  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.316 */
+  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.317 */
   if ($('stInk')) $('stInk').onclick = () => { $('btnInk').click(); re(); };
   if ($('stTrack')) $('stTrack').onclick = () => { ZH3D.trackPanel(!ZH3D.track.on); re(); };   /* 3D.58 */
   $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };

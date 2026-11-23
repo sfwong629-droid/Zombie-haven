@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.316', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.317', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1311,7 +1311,7 @@ function renownGain(n, why = '') { if (!isFinite(n)) n = 0; if (!isFinite(S.ren)
  * routine   : event log only (plus floating text in the world when it has a place). */
 const alerts = new Map(); let bannerQ = [], bannerOn = null, lastSlow = -1e9; const lastBanner = new Map();
 const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, advisor: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); if (!OPTS.v313) { OPTS.autoSlow = false; OPTS.v313 = 1; localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } } catch (e) { /* private mode */ }   /* V3D.13: emergencies no longer drop the speed to 1x (owner's request); the Log panel still has the switch */
-/* 3D.316 (owner, 23 Nov, W249): the phone look, built screen by screen behind Settings -> Phone look; off is the Glass look as it was.
+/* 3D.317 (owner, 23 Nov, W249): the phone look, built screen by screen behind Settings -> Phone look; off is the Glass look as it was.
    Its sheet (css/phone.css) is added by the game, so the published page itself does not change. */
 function applyLook() { const on = OPTS.look === 'phone'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
 applyLook();
@@ -4751,7 +4751,7 @@ function showSettings(back) {
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
   $('stAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); }; $('stSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); re(); };
-  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.316 */
+  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.317 */
   if ($('stInk')) $('stInk').onclick = () => { $('btnInk').click(); re(); };
   if ($('stTrack')) $('stTrack').onclick = () => { ZH3D.trackPanel(!ZH3D.track.on); re(); };   /* 3D.58 */
   $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };

@@ -97,6 +97,6 @@ Owner, 23 Nov, 10:40: **"there is no more thirst/water bar for town or character
 ## 7. Build log
 | Build | What | Check | State |
 |---|---|---|---|
-| 3D.316 | Step 0 and 1: the **Phone look** switch in Settings (off by default; `OPTS.look`, `applyLook()` in `src/game/05-alerts.js`; the game adds `css/phone.css` itself, so the published page does not change) and the town screen: clear glass on the resource bar, mission, clock, news line and side buttons; the four tabs in one floating capsule; Build a round lime button beside it (icon only) | `node tools/qa/phone_look_check.js` (six sizes: off by default and unchanged, on from Settings, nothing overlaps or leaves the screen, taps 44 px+, menus still open, survives a reload, off again) | pushed, not published |
+| 3D.317 | Step 0 and 1: the **Phone look** switch in Settings (off by default; `OPTS.look`, `applyLook()` in `src/game/05-alerts.js`; the game adds `css/phone.css` itself, so the published page does not change) and the town screen: clear glass on the resource bar, mission, clock, news line and side buttons; the four tabs in one floating capsule; Build a round lime button beside it (icon only) | `node tools/qa/phone_look_check.js` (six sizes: off by default and unchanged, on from Settings, nothing overlaps or leaves the screen, taps 44 px+, menus still open, survives a reload, off again) | pushed, not published |
 
-Not in 3D.316, each its own build: the live pill (the most urgent thing, under the resource bar), the weather in the clock. Next: step 2, one sheet for every menu.
+Not in 3D.317, each its own build: the live pill (the most urgent thing, under the resource bar), the weather in the clock. Next: step 2, one sheet for every menu.
