@@ -3,7 +3,7 @@
 const Q = require('./lib');
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 }); await Q.newGame(p); await Q.clearCards(p);
   const r = await p.evaluate(() => { const S = ZH.S; S.nextBoss = 99; S.nextRaid = 99; S.day = 30; S.lvl = 9;
-    const boss = { type: 'boss', hp: 900, max: 1000, w: { x: 1, y: 1 }, mode: 'zmarch' }, mob = { type: 'walker', hp: 10, max: 10, mob: true, w: { x: 2, y: 1 }, mode: 'zmarch' }, plain = { type: 'walker', hp: 10, max: 10, w: { x: 3, y: 1 }, mode: 'zmarch' };
+    const boss = { type: 'boss', hp: 900, max: 1000, w: { x: 1, y: 1 }, mode: 'zmarch' }, mob = { type: 'walker', hp: 10, max: 10, horde: true, w: { x: 2, y: 1 }, mode: 'zmarch' }, plain = { type: 'walker', hp: 10, max: 10, w: { x: 3, y: 1 }, mode: 'zmarch' };
     S.z = [boss, mob, plain]; S.bossOn = 30; for (let h = 3; h <= 12; h++) { S.hour = h; ZH.eventSchedule(); }
     return { boss: boss.mode, bossHp: boss.hp, mob: mob.mode, plain: plain.mode }; });
   console.log(JSON.stringify(r)); const bad = [];
