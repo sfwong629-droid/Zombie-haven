@@ -10,8 +10,11 @@ async function launch() {
   return chromium.launch(process.env.ZH_GPU ? { headless: !process.env.ZH_SHOW } : { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 }
 // expose: extra names from inside game.js to put on window.ZH for the test (e.g. 'radio, say, banner')
-async function page(b, { w = 390, h = 844, expose = '' } = {}) {
-  const p = await b.newPage({ viewport: { width: w, height: h } }); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
+// look: 'glass' (the default here) keeps the older checks on the Glass look they were written for, although the game itself starts in the phone look from 3D.333;
+//       pass look: 'phone', or look: '' to leave the game's own default
+async function page(b, { w = 390, h = 844, expose = '', look = 'glass' } = {}) {
+  const p = await b.newPage({ viewport: { width: w, height: h } });
+  if (look) await p.addInitScript((lk) => { try { if (!sessionStorage.getItem('zhLookSet')) { sessionStorage.setItem('zhLookSet', '1'); const o = JSON.parse(localStorage.getItem('zombieHavenOpts') || '{}'); o.look = lk; localStorage.setItem('zombieHavenOpts', JSON.stringify(o)); } } catch (e) {} }, look); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
   p.on('console', (m) => { if (m.text().startsWith('[[')) console.log(m.text().slice(2)); });
   if (NOSERVER) await p.route(BASE + '/**', (r) => { const f = path.join(ROOT, decodeURIComponent(new URL(r.request().url()).pathname)); if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) return r.fulfill({ status: 404, body: 'not found' }); r.fulfill({ body: fs.readFileSync(f), contentType: MIME[path.extname(f).toLowerCase()] || 'application/octet-stream' }); });
   if (expose) await p.route(/js\/game\.js/, async (r) => { const t = (NOSERVER ? fs.readFileSync(path.join(ROOT, 'js/game.js'), 'utf8') : await (await r.fetch()).text()).replace('window.ZH = { BUILD_TAG,', 'window.ZH = { BUILD_TAG, ' + expose + ','); r.fulfill({ body: t, contentType: 'application/javascript' }); });

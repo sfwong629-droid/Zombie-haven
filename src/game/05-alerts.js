@@ -8,7 +8,8 @@ const alerts = new Map(); let bannerQ = [], bannerOn = null, lastSlow = -1e9; co
 const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, advisor: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); if (!OPTS.v313) { OPTS.autoSlow = false; OPTS.v313 = 1; localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } } catch (e) { /* private mode */ }   /* V3D.13: emergencies no longer drop the speed to 1x (owner's request); the Log panel still has the switch */
 /* 3D.317 (owner, 23 Nov, W249): the phone look, built screen by screen behind Settings -> Phone look; off is the Glass look as it was.
    Its sheet (css/phone.css) is added by the game, so the published page itself does not change. */
-function applyLook() { const on = OPTS.look === 'phone'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
+/* 3D.333 (owner, 23 Nov: "We are going with the phone look"; "how come the phone type UI wasn't published?"): the phone look is ON unless the player switched it off (OPTS.look === 'glass'). */
+function applyLook() { const on = OPTS.look !== 'glass'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
 applyLook();
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };

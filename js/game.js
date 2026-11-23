@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.332', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.333', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1317,7 +1317,8 @@ const alerts = new Map(); let bannerQ = [], bannerOn = null, lastSlow = -1e9; co
 const OPT_KEY = 'zombieHavenOpts', OPTS = { autoSlow: false, nightLights: true, advisor: true }; try { Object.assign(OPTS, JSON.parse(localStorage.getItem(OPT_KEY) || '{}')); if (!OPTS.v313) { OPTS.autoSlow = false; OPTS.v313 = 1; localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } } catch (e) { /* private mode */ }   /* V3D.13: emergencies no longer drop the speed to 1x (owner's request); the Log panel still has the switch */
 /* 3D.317 (owner, 23 Nov, W249): the phone look, built screen by screen behind Settings -> Phone look; off is the Glass look as it was.
    Its sheet (css/phone.css) is added by the game, so the published page itself does not change. */
-function applyLook() { const on = OPTS.look === 'phone'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
+/* 3D.333 (owner, 23 Nov: "We are going with the phone look"; "how come the phone type UI wasn't published?"): the phone look is ON unless the player switched it off (OPTS.look === 'glass'). */
+function applyLook() { const on = OPTS.look !== 'glass'; if (on && !document.getElementById('phoneCss')) { const l = document.createElement('link'); l.id = 'phoneCss'; l.rel = 'stylesheet'; l.href = 'css/phone.css?v=' + BUILD_TAG.toLowerCase(); document.head.appendChild(l); } document.documentElement.classList.toggle('phone', on); }
 applyLook();
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPTS)); } catch (e) { /* ignore */ } }
 const atOf = (a) => { const v = typeof a.at === 'function' ? a.at() : a.at; return v && isFinite(v.x) ? v : null; };
@@ -4764,7 +4765,7 @@ function showSettings(back) {
     + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
     + `<button class="setRow link" id="stLog"><span class="moT"><b>Event log</b></span><span class="moA">›</span></button>`
     + tg('stSwear', OPTS.swear !== false, 'Swearing in chat', 'Off shows it as f**k') + tg('stAdv', OPTS.advisor, 'Advisor tips') + tg('stSlow', OPTS.autoSlow, 'Slow down on emergencies', 'Drops to 1× speed when something bad happens')
-    + tg('stLook', OPTS.look === 'phone', 'Phone look', 'The new look, built screen by screen. So far: the town screen')
+    + tg('stLook', OPTS.look !== 'glass', 'Phone look', 'The new look, built screen by screen. So far: the town screen. Off shows the old look')
     + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
     + (window.ZH3D && ZH3D.trackPanel ? tg('stTrack', !!(ZH3D.track && ZH3D.track.on), 'Animation tracker', 'Shows what each survivor is doing and flags sliding. Tap Copy log and paste it to me') : '')
     + `<button class="setRow link" id="stHow"><span class="moT"><b>How to play</b></span><span class="moA">›</span></button>`
@@ -4778,7 +4779,7 @@ function showSettings(back) {
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
   $('stAdv').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); }; $('stSlow').onclick = () => { OPTS.autoSlow = !OPTS.autoSlow; saveOpts(); re(); };
-  $('stLook').onclick = () => { OPTS.look = OPTS.look === 'phone' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.317 */
+  $('stLook').onclick = () => { OPTS.look = OPTS.look !== 'glass' ? 'glass' : 'phone'; saveOpts(); applyLook(); re(); };   /* 3D.317; on by default from 3D.333 */
   if ($('stInk')) $('stInk').onclick = () => { $('btnInk').click(); re(); };
   if ($('stTrack')) $('stTrack').onclick = () => { ZH3D.trackPanel(!ZH3D.track.on); re(); };   /* 3D.58 */
   $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };
