@@ -3,7 +3,7 @@
 const Q = require('./lib'); const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..'), HOST = 'http://zh.test';
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-const EXPOSE = 'shStoryLocks, shCardLine, shThrow, shDoorW, shAct, shEnd, expLocked, shMemSave, shSecured, shMakePlan, shPlanCheck, SH_PLANS, shTaskState, shThingSpot, shRoomAt, shWorld, shUseAI, campBuild, CAMP_PLAN, campSize, campCheck, campFall, campAlarm';
+const EXPOSE = 'shSolidPush, SH_SOLID, shOpen, shStoryLocks, shCardLine, shThrow, shDoorW, shAct, shEnd, expLocked, shMemSave, shSecured, shMakePlan, shPlanCheck, SH_PLANS, shTaskState, shThingSpot, shRoomAt, shWorld, shUseAI, campBuild, CAMP_PLAN, campSize, campCheck, campFall, campAlarm';
 async function open(b, { w = 390, h = 844, expose = '' } = {}) {
   const p = await Q.page(b, { w, h });
   await p.route(HOST + '/**', (r) => { const u = new URL(r.request().url()); let f = path.join(ROOT, decodeURIComponent(u.pathname)); if (f.endsWith('/')) f += 'index.html';

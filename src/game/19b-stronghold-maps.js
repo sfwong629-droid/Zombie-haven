@@ -14,7 +14,7 @@ function shLink(P, a, b, locked, at, n0) { const [ax, ay, aw, ah] = P.rooms[a], 
 const shMid = (P, r) => { const [x, y, w, h] = P.rooms[r]; return { x: x + w / 2 - .5, y: y + h / 2 - .5 }; };
 /* a thing in a room: k = what it is (drawn by the 3D view), use = a job a survivor does there (seconds), carry = it is picked up and taken out */
 function shThing(P, k, x, y, o = {}) { const t = { k, x, y, ...o }; t.room = t.room || Object.keys(P.rooms).find((r) => { const [rx, ry, rw, rh] = P.rooms[r]; return x >= rx && x < rx + rw && y >= ry && y < ry + rh; }) || null; P.things.push(t); return t; }
-const shDeco = (P, k, x, y, o = {}) => { P.deco.push({ k, x, y, ...o }); };   /* 3D.311 set dressing: drawn, never in the way, nothing to do with the fight */
+const shDeco = (P, k, x, y, o = {}) => { P.deco.push({ k, x, y, ...o }); };   /* 3D.311 set dressing; 3D.321 the solid kinds stand in the way (shSolids) */
 const shLvSize = (lv, a, b, every) => Math.max(a, Math.min(b, a + Math.floor(Math.max(0, lv - 1) / every)));   /* how big a place is at this level */
 
 /* the plans of the first maps (the Clinic, the Prison) have their own builders below; maps not redone yet use their old layout, made into a plan */
@@ -80,7 +80,25 @@ function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 
 
 /* which plan a place uses */
 const SH_PLANS = { clinic: shPlanClinic };
-function shMakePlan(dest, lv) { const f = SH_PLANS[dest]; const P = f ? f(lv) : shLegacyPlan(dest); P.dest = dest; P.lv = lv; return P; }
+/* 3D.321 set dressing stands in the way (owner: "they should not be able to walk through a bench or cubicle"). Each kind's footprint, in world units
+   (width along the piece, depth across it). A piece is solid unless that would cut off part of the map, a thing to use, a door, the start or the way out. */
+const SH_SOLID = { labbench: (t) => [(t.n || 1) * 1.2, .62], fumehood: [1.3, .72], tube: [.92, .92], serverrack: (t) => [(t.n || 1) * .72, .8], frontdesk: [3.2, .75], sofa: [1.7, .72], cubicle: [1.6, 1.5], filecab: (t) => [(t.n || 1) * .56, .62],
+  shelves: (t) => [(t.n || 1) * 1.2, .5], shredder: [.6, .5], copier: [.85, .62], watercooler: [.4, .4], boardtable: (t) => [(t.n || 1) * 1.2, 2.5], stairs: [3.6, 1.8], vaultdoor: [1.9, .3], bookcase: (t) => [(t.n || 1) * 1.1, .36],
+  locker: (t) => [(t.n || 1) * .62, .45], gurney: [1.9, .72], reception: [3.6, .9], vending: [.9, .7], console: (t) => [(t.n || 1) * 2.2, .8], car: [3.4, 1.6], ambulance: [3.6, 1.9], bus: [5.6, 2], barrier: (t) => [(t.n || 1) * 2.1, .6], drums: [.9, .9],
+  acrates: [1.4, 1.2], optable: [2, .9], bunk: [2, .9], mtable: [1.8, 1.6], cabinet: [.9, .45], trolley: [.8, .5], plant: [.45, .45], table: [1, .6], chairs: (t) => [(t.n || 1) * .6, .5], atruck: [4.5, 2], jeep: [3, 1.6], iceblocks: [1.6, 1.2],
+  forklift: [2, 1.2], column: [1.6, 1.6], booth: [1.6, 1.2], planter: (t) => [(t.n || 1) * 2.2, .8], potbench: [1.6, .6], sink: [.8, .5], bin: [.4, .4], screen: [1.6, .3], weights: [1.6, .8], whiteboard: [1.7, .12] };
+function shSolids(P) { const g = {}, key = (x, y) => x + ',' + y; for (const [x0, y0, w, h] of Object.values(P.rooms)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) g[key(x, y)] = 1; const doorT = []; for (const [, , x0, y0, w, h] of P.doors) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { g[key(x, y)] = 1; doorT.push([x, y]); }
+  const floorN = Object.keys(g).length, blocked = {}, must = [...doorT, ...P.things.map((t) => [Math.floor(t.x), Math.floor(t.y)])]; if (P.start) must.push([Math.floor(P.start.x), Math.floor(P.start.y)]); if (P.exit) must.push([Math.floor(P.exit.x), Math.floor(P.exit.y)]);
+  for (const [dx, dy] of doorT) for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (g[key(dx + ax, dy + ay)]) must.push([dx + ax, dy + ay]);   /* the tile each side of a door stays clear */
+  const sound = () => { const s0 = P.start ? [Math.floor(P.start.x), Math.floor(P.start.y)] : must[0]; if (!s0 || blocked[key(s0[0], s0[1])]) return false; const seen = { [key(s0[0], s0[1])]: 1 }, q = [s0]; let n = 1; for (let i = 0; i < q.length; i++) for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = key(q[i][0] + ax, q[i][1] + ay); if (!g[k] || blocked[k] || seen[k]) continue; seen[k] = 1; n++; q.push([q[i][0] + ax, q[i][1] + ay]); }
+    return n === floorN - Object.keys(blocked).length && must.every(([x, y]) => seen[key(x, y)]); };
+  P.solids = []; for (const t of P.deco) { let f = SH_SOLID[t.k]; if (!f) continue; if (typeof f === 'function') f = f(t); let w = f[0] / 2.4, d = f[1] / 2.4; if (Math.abs(Math.round(t.r || 0)) % 2) [w, d] = [d, w]; const cx = t.x + .5, cy = t.y + .5, R = [cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2];
+    if (!g[key(Math.floor(cx), Math.floor(cy))]) continue;   /* outside the rooms: nobody walks there */
+    if (must.some(([x, y]) => x + .5 > R[0] - .2 && x + .5 < R[2] + .2 && y + .5 > R[1] - .2 && y + .5 < R[3] + .2)) continue;
+    const add = []; for (let y = Math.floor(R[1]); y <= Math.floor(R[3]); y++) for (let x = Math.floor(R[0]); x <= Math.floor(R[2]); x++) if (g[key(x, y)] && !blocked[key(x, y)] && x + .5 > R[0] - .12 && x + .5 < R[2] + .12 && y + .5 > R[1] - .12 && y + .5 < R[3] + .12) add.push(key(x, y));
+    for (const k of add) blocked[k] = 1; if (add.length && !sound()) { for (const k of add) delete blocked[k]; continue; } P.solids.push(R); }
+  P.solidT = blocked; return P; }
+function shMakePlan(dest, lv) { const f = SH_PLANS[dest]; const P = f ? f(lv) : shLegacyPlan(dest); P.dest = dest; P.lv = lv; if (P.deco && P.deco.length) shSolids(P); return P; }
 /* the rooms a squad can open and where it starts and leaves */
 const shPlanOf = () => (S.sh && S.sh.plan) || null;
 function shSetPlan(P) { SH_LKEY = P; SH_ROOMS = P.rooms; SH_DOORS = P.doors; SHG = null; }
