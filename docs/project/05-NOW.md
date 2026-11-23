@@ -296,7 +296,8 @@ Strongholds chat (started 22 Nov; page `15-STRONGHOLDS.md`):
 - ~~W237. A map of the valley in place of the trip list.~~ Owner, 22 Nov: yes. Next: this chat writes the list of places and where they lie; the UI chat makes a mockup first.
 - **Built since, pushed, not published:** 3D.304 **story locks on rooms** (the rework, step 2): the Clinic's theatre waits for Dr. Ines (found in a ward on the first visit, so the Clinic takes two visits), the Prison's control room for Quarantine Command's keys, Lab 7's basement for Helix. A shut room cannot be forced or blown; the trip card says what is shut and why (`15-STRONGHOLDS.md`, 10.11). Next: town and keep on one map (the Larder first).
 - ~~W240. The Clinic takes two visits?~~ Owner, 22 Nov: "one visit". **3D.307:** finding Dr. Ines opens the theatre on the same visit.
-- W242. **The maps feel too linear and have too few zombies** (owner, 22 Nov, on W222). Which maps did you look at (the Clinic and Prison in the game, or the pictures of the others)? Claude's proposal for the fix is in the chat, waiting for a yes.
+- ~~W242. The maps feel too linear and have too few zombies.~~ Owner, 22 Nov: it was the Clinic. **3D.309:** the Clinic has a second way round (waiting room, service corridor, scrub room, the theatre's back door), a gunshot brings the dead within 7 tiles through the doors, and about 60 dead (was 25), each weaker (`15-STRONGHOLDS.md`, 10.11). Pushed, not published.
+- W243. **The new Clinic (3D.309), once you can play it:** is it less linear and full enough? If yes, the same three changes go into the other maps, one map per build. (It needs publishing to be played: W223.)
 
 Later:
 - ~~W9. Claude Code setup on the PC.~~ Done 18 Nov (Planning chat): Claude Code installed on the owner's PC, the repo cloned into `Zombie Haven\repo` on the Desktop, and the setup message sent. It uses the same plan limits as the chats; the gain is speed (the PC has a graphics card).

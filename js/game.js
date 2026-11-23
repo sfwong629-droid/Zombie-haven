@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.308', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.309', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5568,6 +5568,7 @@ function shSpawnAll() {   /* every room gets its enemies up front; they sleep un
   for (const [r, l] of Object.entries(P.spawn)) put(r, l); for (const [r, l] of Object.entries(P.posts || {})) { const n0 = H.zs.length; put(r, l); for (const z of H.zs.slice(n0)) { z.post = true; z.mode = 'idle'; } } for (const [r, l] of H.spawnQ) put(r, l); if (P.boss) put(P.boss.room, [], P.boss);
   for (const t of H.things) if (t.sleeper) { const zd = zombieTypes[t.sleeper] || zombieTypes.walker; H.zs.push({ type: t.sleeper, room: t.room, w: shWorld(t.x + .5, t.y), hp: Math.round(zd.hp * TK), max: Math.round(zd.hp * TK), atk: zd.atk * TK, spd: (zd.chase || .012) * 1.25, mode: 'sleep', bed: true, deaf: !!t.deaf, stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); }   /* 3D.276 a patient asleep in a bed; 3D.282 or one of the blind ring on the Mast's hill, listening */
   for (const t of H.things) if (t.frozen) { const zd = zombieTypes[t.frozen] || zombieTypes.walker; H.zs.push({ type: t.frozen, room: t.room, w: shWorld(t.x, t.y), hp: Math.round(zd.hp * TK), max: Math.round(zd.hp * TK), atk: zd.atk * TK, spd: (zd.chase || .012) * 1.25, mode: 'sleep', frozen: true, stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); }   /* 3D.281 frozen in the ice */
+  if (P.weak) for (const z of H.zs) if (!z.boss) { z.hp = z.max = Math.max(1, Math.round(z.max * P.weak[0])); z.atk *= P.weak[1]; }   /* 3D.309 more of them, each weaker */
   for (const z of H.zs) z.hid = !H.rev[z.room];
 }
 function shLiveZs() { return S.sh.zs.filter((z) => z.hp > 0); }
@@ -5633,7 +5634,7 @@ function shNextRoom() {   /* the default route: entrance, hall, the wing for the
   if (H.goalDone && H.raid) return null; if (shLiveZs().some((z) => z.mode !== 'sleep' && !z.post && !z.frozen && !z.lured)) return null;
   return route.find((r) => !H.woke[r] || H.zs.some((z) => z.hp > 0 && z.room === r && !z.frozen && !z.bed && !z.post)) || null; }   /* 3D.281 the frozen and the sleepers in beds don't hold the squad up */
 function shZombieAI(z, live) {
-  const H = S.sh; if (z.frozen) { z.moving = false; return; } if (z.mode !== 'sleep' && shLured(z, live)) return; if (z.mode === 'sleep') { const wake = z.bed ? live.some((s) => dist(s.w, z.w) < 1.7) || (H.noise && H.t - H.noise.t < 20 && dist(H.noise.w, z.w) < 6) : H.woke[z.room] || (H.rev[z.room] && live.some((s) => dist(s.w, z.w) < 5)) || live.some((s) => dist(s.w, z.w) < 2.2); if (wake) { z.mode = 'idle'; if (z.bed) shFx(z.w, z.deaf ? '💢 It heard you' : '💢 A patient gets up', '#ff6e62'); } else { z.moving = false; return; } }   /* 3D.276 a patient in a bed gets up only for someone right by it, or a gunshot near it */
+  const H = S.sh; if (z.frozen) { z.moving = false; return; } if (z.mode !== 'sleep' && shLured(z, live)) return; if (z.mode === 'sleep') { const wake = z.bed ? live.some((s) => dist(s.w, z.w) < 1.7) || (H.noise && H.t - H.noise.t < 20 && dist(H.noise.w, z.w) < 6) : H.woke[z.room] || (H.rev[z.room] && live.some((s) => dist(s.w, z.w) < 5)) || live.some((s) => dist(s.w, z.w) < 2.2) || (H.plan.hear && !z.boss && !z.post && H.noise && H.t - H.noise.t < 20 && dist(H.noise.w, z.w) < H.plan.hear && (z.heard = true)); if (wake) { z.mode = 'idle'; if (z.heard && !H.heardT) { H.heardT = H.t; say('💢 They heard that. The dead are coming through the doors.'); } if (z.bed) shFx(z.w, z.deaf ? '💢 It heard you' : '💢 A patient gets up', '#ff6e62'); } else { z.moving = false; return; } }   /* 3D.276 a patient in a bed gets up only for someone right by it, or a gunshot near it */
   if (z.stuckT > H.t) { z.moving = false; return; }
   let t = z.tauntBy && z.tauntBy.hp > 0 && z.tauntBy.tauntT > H.t ? z.tauntBy : null, bd = 1e9; if (!t) for (const s of live) { const d0 = dist(s.w, z.w); if (d0 < bd) { bd = d0; t = s; } } z.target = t; if (!t) { z.moving = false; return; }
   const reach = z.ranged ? 4 : z.type === 'spitter' ? 2.4 : z.boss ? 1.15 : .75, d0 = dist(z.w, t.w);
@@ -5891,24 +5892,31 @@ function shLegacyPlan(dest) { const k = SH_LAYOF[dest] || 'hall', L = SH_LAY[k],
 /* ---- the Overrun Clinic (the first stronghold, the teaching map). One long corridor with wards off both sides, the operating theatre at the end.
    House rule: patients asleep in their beds get up when someone walks past them, or when a gun goes off near them. Quiet weapons are safer.
    Side goal: the pharmacy locker. Size: 2 wards a side at level 3, one more every 4 levels (6 a side at level 20). ---- */
-function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 9 + L + 1 + 11, P = shNewPlan(W, 19, { theme: 'clinic' });
+function shPlanClinic(lv) { const n = shLvSize(lv, 2, 6, 4), L = n * 7 - 1, W = 9 + L + 1 + 11, P = shNewPlan(W, 22, { theme: 'clinic' });
   shRoom(P, 'lobby', 0, 6, 8, 7, 'The Lobby', '#cfd6d2'); shRoom(P, 'pharm', 1, 0, 6, 5, 'The Pharmacy', '#d9d4c4'); shRoom(P, 'hall', 9, 8, L, 3, 'The Corridor', '#d9d4c4');
   shRoom(P, 'theatre', 9 + L + 1, 4, 10, 11, 'The Operating Theatre', '#c9d3d6');
   shLink(P, 'lobby', 'hall'); shLink(P, 'lobby', 'pharm', true); shLink(P, 'hall', 'theatre');
-  P.spawn.lobby = [['walker', 3 + (lv > 6 ? 1 : 0)], ['runner', lv > 8 ? 1 : 0]].filter((q) => q[1]); P.spawn.hall = [['walker', 2 + Math.floor(n / 2)], ['runner', 1 + (lv > 10 ? 1 : 0)]];
+  /* 3D.309 (owner, 22 Nov: "too linear, too few zombies"): a second way round, behind the south wards: the waiting room (a crowd), the service corridor, the scrub room, the theatre's back door */
+  shRoom(P, 'wait', 0, 14, 8, 7, 'The Waiting Room', '#d6d0c6'); shRoom(P, 'service', 9, 19, L, 2, 'The Service Corridor', '#c4c8c4'); shRoom(P, 'scrub', 9 + L + 1, 16, 10, 5, 'The Scrub Room', '#cdd6d8');
+  shLink(P, 'lobby', 'wait'); shLink(P, 'wait', 'service'); shLink(P, 'service', 'scrub'); shLink(P, 'scrub', 'theatre');
+  P.spawn.wait = [['walker', 10 + (lv > 8 ? 4 : 0)], ['runner', 2]]; P.spawn.service = [['walker', 2], ['runner', 1]]; P.spawn.scrub = [['walker', 2 + (lv > 10 ? 1 : 0)]];
+  for (const [cx, cy] of [[1, 15], [3, 15], [5, 15], [1, 18], [3, 18], [5, 18]]) shThing(P, 'crate', cx, cy, { r: 0 }); shThing(P, 'desk', 6, 20, { r: 0 }); shThing(P, 'shelf', 9 + L + 2, 17, { r: 0 }); shThing(P, 'shelf', 9 + L + 8, 17, { r: 0 });
+  P.weak = [.55, .7];   /* about twice the dead of 3D.277, each with 55% of the health and 70% of the hit (the owner's trade for hordes, W54); the Butcher keeps his */
+  P.hear = 7;           /* a gunshot wakes the dead within 7 tiles, through walls: they come to the squad */
+  P.spawn.lobby = [['walker', 5 + (lv > 6 ? 1 : 0)], ['runner', lv > 8 ? 1 : 0]].filter((q) => q[1]); P.spawn.hall = [['walker', 4 + n], ['runner', 2 + (lv > 10 ? 1 : 0)]];
   for (let i = 0; i < n; i++) for (const up of [1, 0]) { const id = `w${up ? 'n' : 's'}${i}`, x = 9 + i * 7, y = up ? 1 : 12, locked = (i + up) % 3 === 2;
-    shRoom(P, id, x, y, 6, 6, `Ward ${i * 2 + (up ? 1 : 2)}`, i % 2 ? '#d4dcd8' : '#dfe4e0'); shLink(P, id, 'hall', locked, x + 2);
+    shRoom(P, id, x, y, 6, 6, `Ward ${i * 2 + (up ? 1 : 2)}`, i % 2 ? '#d4dcd8' : '#dfe4e0'); shLink(P, id, 'hall', locked, x + 2); if (!up && !locked && i % 2 === 0) shLink(P, id, 'service', false, x + 2);   /* 3D.309 some south wards open onto the service corridor */
     if (locked) { P.locked.push(id); P.lockName[id] = `a locked ward (Ward ${i * 2 + (up ? 1 : 2)})`; }
     /* two rows of beds; about half the beds hold a patient who will get up */
-    for (const by of up ? [y + 1, y + 4] : [y + 1, y + 4]) for (const bx of [x + 1, x + 4]) { const t = shThing(P, 'bed', bx, by, { r: 0 }); if (!locked && ((bx + by + i + lv) % 5 < 2 + (lv > 9 ? 1 : 0))) t.sleeper = lv > 12 && (bx + by) % 3 === 0 ? 'runner' : 'walker'; }
-    if (!locked) P.spawn[id] = [['walker', 1 + (i % 2)], ...(lv > 7 && i % 3 === 1 ? [['spitter', 1]] : []), ...(lv > 5 && i % 4 === 3 ? [['bloated', 1]] : [])]; }
+    for (const by of up ? [y + 1, y + 4] : [y + 1, y + 4]) for (const bx of [x + 1, x + 4]) { const t = shThing(P, 'bed', bx, by, { r: 0 }); if (!locked && ((bx + by + i + lv) % 5 < 3 + (lv > 9 ? 1 : 0))) t.sleeper = lv > 12 && (bx + by) % 3 === 0 ? 'runner' : 'walker'; }
+    if (!locked) P.spawn[id] = [['walker', 2 + (i % 2)], ...(lv > 7 && i % 3 === 1 ? [['spitter', 1]] : []), ...(lv > 5 && i % 4 === 3 ? [['bloated', 1]] : [])]; }
   shThing(P, 'locker', 2, 1, { use: 6, label: 'Empty the pharmacy locker', icon: '💊', loot: { meds: 3 + Math.floor(lv / 5), cloth: 2 }, task: 'locker' });
   P.spawn.pharm = [['walker', 1]];
-  P.spawn.theatre = [['walker', 2 + Math.floor(lv / 6)]]; P.boss = { room: 'theatre', type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011, pat: 'slam' };
+  P.spawn.theatre = [['walker', 4 + Math.floor(lv / 6)]]; P.boss = { room: 'theatre', type: 'brute', name: 'The Butcher of Ward 3', hp: 680, atk: 12, big: 1.6, spd: .011, pat: 'slam' };
   P.route = ['lobby', 'hall', 'theatre']; P.startRoom = 'lobby'; P.bossRoom = 'theatre'; P.start = { x: 1, y: 8.2 }; P.exit = { x: .6, y: 9.5 }; P.mystT = ['walker', 'runner'];
   P.who = { room: P.locked[P.locked.length - 1], by: 'hall', flag: 'doctor', name: 'Dr. Ines', job: 'Medic' };   /* 3D.304 she bolted the theatre herself */
   P.tasks = [{ k: 'boss', label: 'Kill the Butcher of Ward 3' }, { k: 'use', id: 'locker', opt: true, label: 'Side: empty the pharmacy locker' }];
-  P.tip = 'Patients sleep in some of the beds. They get up when someone walks past, or when a gun goes off near them: quiet weapons are safer.';
+  P.tip = 'Patients sleep in some of the beds. They get up when someone walks past. A gunshot wakes every one of the dead near it, through the walls, and they come: quiet weapons are safer. There are two ways to the theatre: the corridor past the wards, or round the back through the waiting room.';
   return P; }
 
 /* which plan a place uses */
