@@ -2756,7 +2756,7 @@ function monsterGeneration() {
   if (night && SP.wave && S.hour % SP.wave !== 0 && activeZ() > 0) { S.spawnClock++; return; }   /* study: refill only at the top of every Nth hour */
   S.spawnClock++; const tr = S.terr || 0, hd = hDay(), base = 6 + tr + Math.floor(hd / 2.2);   /* horde ceiling: the threat grows with the days, up to a ceiling set by the town's rank */   /* 3D.71 skill study: the horde grows with the days, not with town upgrades (upgrading used to make staying small the safest play) */
   const desired = Math.round((night ? Math.min(Math.round(base * 1.35), 14 + 2 * tr, 6 + hd) : Math.max(3, Math.min(Math.round(base * .65 * ((window.ZH_BAL || {}).day || 1)), 9 + 2 * tr, 2 + hd))) * (graceOn() ? .75 : 1) * DF().count), gap = (110 - Math.min(50, threatNow() * 6)) * (night ? .5 * (SP.gap || 1) : 1.6); if (night) S.nightCap = desired;
-  if (activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
+  if (!leftBoss() && activeZ() < desired - (S.bossOn != null || S.vanguard || (S.day === S.nextBoss && S.hour >= 18) || (S.crisis && S.crisis.k === 'tide' && S.day === S.crisis.night && S.hour >= 18) || (S.finale && S.finale.night && (S.hour >= 20 || S.hour < 6)) ? mobCap() : 0) && S.spawnClock > gap) { spawn(); S.spawnClock = 0; S.spawnTot = (S.spawnTot || 0) + 1; if (night) S.nightSpawned = (S.nightSpawned || 0) + 1; }   /* 3D.199: the night's usual crowd makes room for the boss's horde, as 3D.68 had it: with the horde capped, the cap is the whole crowd */
   /* 3D.296 bug A12 (owner, 19 Nov: zombies stay until killed): by day the surplus no longer quietly disappears (V2.18 removed one now and then when nobody was within 4 tiles) */
 }
 /* ---------------- V2.13 raiders: humans who dodge zombies, slip in through the gate, steal, fight, and run ---------------- */
@@ -2896,6 +2896,7 @@ const bossGap = () => ((S.lvl || 1) >= 11 ? 5 : 3);
    still full of zombies. At noon of a boss day, if more than half the limit stands (15, 22 or 30 by era), the boss night waits a day, at most
    twice in a row, then it comes anyway. The ordinary night crowd already counts the zombies still standing (the spawner fills only up to the
    night's number). */
+const leftBoss = () => S.bossOn == null && S.z.some((z) => z.type === 'boss' && !z.human && z.hp > 0);   /* A12 tuning 3 */
 const BOSS_WAIT_MAX = 2, streetsFull = () => activeZ() > mobCap() / 2 || townHurt();
 /* 3D.300 (A12 tuning): the boss night also waits while the town is badly hurt: the people standing average under 60% health (the level 14
    bot town went into a boss night at 37% after a day of leftovers and lost 11 people). Same wait, at most twice in a row. */
@@ -2931,6 +2932,10 @@ function eventSchedule() {   /* called every game hour */
   if (S.trader && S.hour === 19) traderLeave();
   if (S.hour === 6) dawnRetreat();
   if (S.hour === 6) { const n = activeZ(); if (n >= 8) note('important', `☀ DAWN SWEEP: ${n} ZOMBIES LEFT IN TOWN`, { log: `${n} zombies are still about from the night. In daylight they are slow and weak: the fighters go out after them.` }); }   /* 3D.299 A12 tuning */
+  /* A12 tuning 3 (owner, 23 Nov: "Keep tuning"): a boss still standing after his night wears down in daylight: a tenth of his health each hour
+     from 07:00 to 19:00, never below 15%, so the fighters can finish him (nobody is killed out of sight). And while such a boss stands,
+     no new ordinary night crowd comes: his leftovers are the night. */
+  if (S.hour >= 7 && S.hour <= 19 && S.bossOn == null) for (const z of S.z) if (z.type === 'boss' && !z.human && z.hp > 0) { const was = z.hp; z.hp = Math.max(Math.min(z.hp, z.max * .15), z.hp - z.max * .1); if (was === z.max * 1 || S.hour === 7) note('important', '☀ THE BOSS IS WEARING DOWN', { log: 'The boss from last night is still in town. Daylight wears him down hour by hour: finish him before dark.' }); }
   if (S.hour === 6 && S.bossOn != null) { S.bossOn = null; S.z.forEach((z) => { if (z.mob) z.mob = false; }); }   /* 3D.296 bug A12 (owner, 19 Nov: zombies never walk away): at dawn the boss night ends, but a boss still alive and its followers stay and fight until killed (they used to walk back out, past people) */
 }
 function alertPack(z, target) {   /* V2.12: zombies near one that spots a survivor join the chase */
