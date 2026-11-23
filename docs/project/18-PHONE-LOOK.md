@@ -96,6 +96,8 @@ Owner, 23 Nov, 10:40: **"there is no more thirst/water bar for town or character
 
 Owner, 23 Nov, 12:16: the switch the owner meant is **Survivor pictures** in Settings: on shows each person's picture, off shows the first letter of their name ("M" for Marcus). On by default. Built with the People screen (step 3). The **Phone look** switch is temporary: it keeps converted and unconverted screens apart while the look is being built and is removed when every screen is done ("We are going with the phone look").
 
+Owner, 23 Nov, 16:31: the town screen "looks good". **From here: a mockup for each step, built and pushed only after the owner approves it** ("Give me mock up for each and approved before we push"). Step 2's mockup (the sheet on the real menus) and the bag as its own button (W217) were sent the same hour: `phoneC_sheet_sheet.png`, `phoneC_bag_sheet.png` (`tools/qa/phone_sheet_mock.js`). The sheet has no drag handle.
+
 ## 7. Build log
 | Build | What | Check | State |
 |---|---|---|---|
