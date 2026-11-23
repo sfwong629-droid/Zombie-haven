@@ -423,6 +423,18 @@ What it says:
 - The deaths without tuning 3 came the night after a boss night, with that boss still in town. With it, never more than 3 deaths in a day.
 - Runs of the same town differ (the town without A12 gave 9 and 11 deaths in two runs): three towns per side is a first read, not a full check.
 
+**The truck for someone bleeding out (3D.326), and A12 again, 23 Nov.** The same level 14 town (backup `s7_d101`), game open, 10 game days, seeds 11, 13 and 17:
+
+| Version | Deaths | Most in one day |
+|---|---|---|
+| 3D.325 (the truck only when everyone is down) | 4, 4, 1 | 2 |
+| 3D.326 (the truck also for someone bleeding out with nobody coming) | 2, 1, 0 | 3 |
+| A12, boss keeps his health, no truck change | 25, 30, 29 | 23 |
+| A12, boss and his horde leave at dawn, no truck change | 9, 22, 3 | 10 |
+| A12, boss and his horde leave at dawn, with 3D.326 | 0, 1, 4 | 3 |
+
+- The deaths in A12's bad runs were people bleeding out while a few others still stood, so the old truck never came.
+
 ## 13. Research plan (approved 20 Nov: "I like the research")
 Owner, 18 Nov: no building is locked behind research, and research should last the whole game. Today the 8 projects cost 245 points and the bot finishes them by game day 25 to 30, and the best gear (katana, SWAT armour, magnum) can be crafted from then on.
 
