@@ -64,11 +64,11 @@ One zombie per build, each shown as a sheet first. The zombies seen most come fi
 3. ~~**Walker: grab and bite** (both male and female)~~ (3D.276, W204).
 4. ~~**Gatling Boss: braced fire at long range**~~ preview approved 22 Nov (W216), with a gun club close-up attack, a slow heavy walk and a run with the gun carried level, and the roar (W239). Not built yet.
 5. **Screamer: a full scream** (or a song, if the Story chat's W192 says it sings). Preview approved 22 Nov, with the cough (W239). Not built yet.
-6. **Dog: lunge and shake.** Preview sent 22 Nov (v2: front legs bent); the sniff and shake off approved (W239).
-7. **Runner: running tackle** (both).
-8. **Crawler: ankle grab** (both).
-9. **Burnt: flailing rush** (both).
-10. **Brute: two-fisted hammer blow.**
+6. **Dog: lunge and shake.** Preview approved 23 Nov (v2: front legs bent), with the sniff and shake off (W239). Not built yet.
+7. **Runner: running tackle** (both). Preview approved 23 Nov, with the bounce (W239).
+8. **Crawler: ankle grab** (both). Preview approved 23 Nov, with the drag and look (W239).
+9. **Burnt: flailing rush** (both). Preview approved 23 Nov; its extra move is running round in a circle, hands up (W239).
+10. **Brute: two-fisted hammer blow.** Preview approved 23 Nov, with the chest pounding (W239).
 11. **Alpha: roar, then a backhand.**
 12. **Butcher: chopping forearm**, three times, each lower.
 13. **Spitter: hack and spit.**
@@ -88,7 +88,7 @@ One move that is not an attack for every zombie, played every now and then or be
 - Dog: sniffs the ground, then shakes itself off.
 - Runner: bounces on the spot, head twitching.
 - Crawler: drags itself a little, lifts its head and looks round.
-- Burnt: pats at its smoking arms.
+- Burnt: ~~pats at its smoking arms~~ runs round in a little circle, hands up, like a cartoon character (owner, 23 Nov).
 - Brute: pounds its chest with both fists.
 - Alpha: waves the others on with a big arm sweep.
 - Butcher: wipes its cleaver arm on its apron.
