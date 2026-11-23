@@ -38,6 +38,16 @@ function confirmPreview() {
   if (!moving) { SFX('build'); payCost(bCost(d)); S.builtCount++; renownGain(1, 'Construction'); banner('🔨 ' + d.name.toUpperCase() + ' BUILT'); if (DEFS[sel.type].fam === 'water' && S.stage === 0) { S.stage = 1; renownGain(5, 'Water secured'); questFlash(); } }
   world.buildings.push(nb); Wd.bump(world); pushUnitsOut(nb); if (nb.staff) nb.staff.post = nb; autoStaff(); say(moving ? d.name + ' moved.' : d.name + ' constructed!', true); moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; selected = null; saveGame(); ui();
 }
+/* 3D.305 (Balance chat; owner, 22 Nov, Q1: building keeps today's quick speed and carries on at that same speed while away; rule 1 of
+   13-LONG-GAME): while the player is away, every building site and upgrade is fed from the stock (what people would have carried, as far as the
+   stock goes) and its work counts down by the real time away, at the same pace as with the game open (60 ticks a real second). A job queued
+   before closing is done on return, if the stock held its materials. Crafting and research were already instant (they cost scrap and points). */
+function sitesAway(ms) {
+  const ticks = Math.floor(ms * 60 / 1000); if (!(ticks > 0)) return 0; let done = 0;
+  for (const { j } of jobList()) { j.got ||= {}; for (const [k, v] of Object.entries(j.need || {})) { const miss = Math.max(0, v - (j.got[k] || 0)), give = Math.min(miss, Math.floor(S[k] || 0)); if (give > 0) { S[k] -= give; j.got[k] = (j.got[k] || 0) + give; } }
+    if (jobReady(j)) { j.readyMsg = true; if (j.cons - ticks <= 1) { j.cons = 1; done++; } else j.cons -= ticks; } }
+  if (done) sitesTick(); return done;
+}
 function sitesTick() {   /* V3D.12/23: work counts down once every material is in; finished sites become buildings, finished upgrades swap the type */
   world.sites = S.sites ||= [];
   if (tick % 60 === 0) for (const { j } of jobList()) {   /* recount what is on its way (self-healing after loads and interruptions) */

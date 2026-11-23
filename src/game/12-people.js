@@ -155,8 +155,8 @@ let hiddenAt = 0;
 const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.293 (overnight branch; owner, 21 Nov, W175, rule 1 of 13-LONG-GAME: time away pays up to about a day's production; was 8 game hours, a third of a day). 24 game hours fill after 4 real hours away. */
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
-  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms);   /* 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick(); const gate = gateAway(hours);
-  if (hours < 1) return null; const got = {};
+  if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms); const built = sitesAway(ms);   /* 3D.305 building carries on while away. 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick(); const gate = gateAway(hours);
+  if (hours < 1) return built ? (note('important', '🌅 WHILE YOU WERE AWAY', { log: `${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` }), { hours: 0, got: {}, built }) : null; const got = {};
   for (let h = 0; h < hours; h++) for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
     const pm = prodMult(b, sh >= .5) * (d.slot && !b.staff ? 1 : 1); let res = null, a = 0;
@@ -172,9 +172,9 @@ function awayCredit(ms) {
   }
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
   const real = ms >= 36e5 ? Math.round(ms / 36e5 * 10) / 10 + ' h' : Math.round(ms / 6e4) + ' min';
-  const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '') + (gate ? ` ${gate === 1 ? 'Someone is' : gate + ' people are'} waiting at the gate.` : '');
+  const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '') + (gate ? ` ${gate === 1 ? 'Someone is' : gate + ' people are'} waiting at the gate.` : '') + (built ? ` ${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` : '');
   note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
-  return { hours, got };
+  return { hours, got, built };
 }
 const dayKey = (t = Date.now()) => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 const weekKey = (t = Date.now()) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dayKey(d.getTime()); };   /* weeks start on Monday */
