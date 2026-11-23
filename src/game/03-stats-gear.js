@@ -356,20 +356,21 @@ function hitBuilding3(b, dmg, by) {
   if (b.hp <= 0) wreck(b, by);
 }
 /* 3D.48 Radio for help: the Camp's radio (a Radio Tower answers faster) calls a neighbouring group. Their team arrives in an
-   hour, clears the zombies in town and brings the fallen into care; two days later they ask for a favour. Once every 3 days
+   hour; since 3D.288 Greenwater's truck drives in, honks the zombies out after it down the highway and its two medics carry the fallen
+   into care (W129). Two days later Greenwater comes back for a favour. Once every 3 days
    (2 with a Radio Tower); refuse the favour and they won't answer again for a week. */
 const HELP_COST = { food: 15, water: 10 };
 function helpReady() { const h = S.help || {}; return !h.coming && !(h.owe) && (h.next || 0) <= S.day && !!campB(); }
 function lastStandNote() {
   if ((S.help || {}).offered === S.day + ':' + Math.floor(S.hour)) return; (S.help = S.help || {}).offered = S.day + ':' + Math.floor(S.hour);
   const downN = S.sv.filter((q) => q.mode === 'down').length; note('critical', '🫣 The last ones standing are hiding', { key: 'laststand', live: () => lastStand(), log: `${downN} down, too few left to fight. They hide until the zombies move on, then go for the fallen.` });
-  if (helpReady() && !modalOpen) showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. A group on the radio says they can send a team in ${bOf('radio').length ? 'half an hour' : 'an hour'}. In two days they'll ask for a favour (${HELP_COST.food} food and ${HELP_COST.water} water).`,
+  if (helpReady() && !modalOpen) showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. Greenwater is on the radio: "We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}. Two medics in the back, a horn on the roof that the dead can't resist. In two days we'll ask a favour: ${HELP_COST.food} food and ${HELP_COST.water} water."`,
     buttons: [{ label: '📻 Call them', fn: () => radioHelp() }, { label: 'We can manage', fn: () => {} }] });
 }
 function radioHelp() {
-  if (!helpReady()) { say((S.help || {}).owe ? 'You still owe them a favour.' : 'Nobody answers. Try again in a day or two.'); return false; }
+  if (!helpReady()) { say((S.help || {}).owe ? 'Greenwater says you still owe them a favour.' : 'Only static: Greenwater\'s truck is out. Try again in a day or two.'); return false; }
   const fast = bOf('radio').length > 0; S.help = { ...(S.help || {}), coming: tick + (fast ? 500 : 1000), next: S.day + (fast ? 2 : 3) };
-  note('critical', '📻 Help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: `A rescue team is coming (${fast ? 'about half an hour' : 'about an hour'}). Hold on.` }); banner('📻 HELP IS COMING'); saveGame(); return true;
+  note('critical', '📻 Greenwater\'s truck is on its way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: `Greenwater's truck is coming down the highway (${fast ? 'about half an hour' : 'about an hour'}), medics on board. Stay hidden until you hear the horn.` }); banner('📻 GREENWATER IS COMING'); saveGame(); return true;
 }
 /* 3D.246 (owner, 21 Nov, W172): a town is never lost. When every survivor in town is down (nobody left to carry anyone), the neighbours
    come by themselves, without being called, whatever is owed and even with the Camp wrecked (3D.251), at most once every AUTO_HELP_DAYS game days. They ask the same favour.
@@ -426,13 +427,13 @@ function truckTick() {
     else if (T.t < TRUCK.stop || busy || (T.medics && T.medics.some((m) => m.mode !== 'in'))) return;
     T.medics = null; T.leg = 'out'; T.path = P.slice().reverse(); T.i = 0; T.t = 0; truckLead(); return; }
   { const fs = S.z.filter((z) => z.truck && z.hp > 0), near = fs.length ? Math.min(...fs.map((z) => dist(z.w, at))) : 0; if (near > TRUCK.lead && T.t < TRUCK.wait) return; }   /* it leads: it waits for the nearest follower to catch up (at most TRUCK.wait ticks in all) */
-  T.i += TRUCK.outSpd; if (T.i >= P.length - 1) { S.truck = null; const left = S.z.filter((z) => z.truck && z.hp > 0).length; note('important', `🚚 The truck is gone down the highway${left ? `; ${left} zombie${left === 1 ? ' is' : 's are'} still shuffling after it` : ' and the town is quiet'}.`); }
+  T.i += TRUCK.outSpd; if (T.i >= P.length - 1) { S.truck = null; const left = S.z.filter((z) => z.truck && z.hp > 0).length; note('important', `🚚 Greenwater's truck is gone down the highway${left ? `; ${left} zombie${left === 1 ? ' is' : 's are'} still shuffling after it` : ' and the town is quiet'}.`); }
 }
 function helpTick() {
   { const h0 = S.help || {};
     if (!h0.coming && (h0.auto || 0) <= S.day && S.sv.some((q) => q.mode === 'down') && S.sv.every((q) => q.mode === 'down' || q.mode === 'hospital')) {
       S.help = { ...h0, coming: tick + 300, auto: S.day + AUTO_HELP_DAYS, self: true };
-      note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
+      note('critical', '📻 Nobody is left standing: Greenwater is coming', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio, so Greenwater is sending the truck without being asked. Medics on board.' }); banner('📻 GREENWATER IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
   if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.306: they follow when it drives off; until then the horn holds them round the truck */
@@ -443,9 +444,9 @@ function helpTick() {
     showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and their medics ${S.truck ? 'are carrying' : 'carried'} ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
-    showEventPopup({ title: '📻 THEY CAME FOR THE FAVOUR', text: `The group that saved your people asks for ${o.food} food and ${o.water} water.`, buttons: [
-      { label: `Pay (${o.food} 🍖 ${o.water} 💧)`, disabled: !canPay({ food: o.food, water: o.water }), fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They nod. "Call us if you need us."'); } },
-      { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "They won't answer the radio for a week. Your people feel bad about it."); } }] }); }
+    showEventPopup({ title: '🚚 GREENWATER CAME FOR THE FAVOUR', text: `Greenwater's truck is back, horn off this time. The people who carried your fallen into care ask for ${o.food} food and ${o.water} water.`, buttons: [
+      { label: `Pay (${o.food} 🍖 ${o.water} 💧)`, disabled: !canPay({ food: o.food, water: o.water }), fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They load the truck and nod. "Call us if you need us. We\'ll bring the horn."'); } },
+      { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "Greenwater won't answer the radio for a week. Your people feel bad about it."); } }] }); }
 }
 function slipOut(q, b) {   /* out the back to the next shelter, away from the zombies; nowhere left = cornered */
   const zs = S.z.filter((z) => z.hp > 0 && !z.zoo); let best = null, bs = -1e9;
