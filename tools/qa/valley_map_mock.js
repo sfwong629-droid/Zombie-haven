@@ -261,7 +261,8 @@ const MOCK = function ({ look, scene, card, mood }) {   /* mood (23 Nov, owner w
   `;
 };
 
-(async () => {
+module.exports = { MOCK };   /* used by tools/qa/phone_b_mock.js for the map screens */
+if (require.main === module) (async () => {
   const fs = require('fs'); const out = require('path').join(__dirname, '../../runs/ui_samples'); fs.mkdirSync(out, { recursive: true });
   const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844 }); await Q.newGame(p); await Q.clearCards(p); await p.waitForTimeout(1500); await Q.clearCards(p); await p.waitForTimeout(400); await Q.clearCards(p);
   await p.click('#mExp'); await p.waitForTimeout(500); await Q.clearCards(p);
