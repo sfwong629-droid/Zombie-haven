@@ -1,4 +1,4 @@
-// tools/qa/truck_save_check.js — 3D.303: save and reload while a Greenwater medic is carrying someone (the medic and the person point at
+// tools/qa/truck_save_check.js — 3D.306: save and reload while a Greenwater medic is carrying someone (the medic and the person point at
 // each other, which once made the save fail). The save must work, the medic must pick the same person up again, and everyone must end in care.
 // Serve the repo first (python3 -m http.server 8765) or set ZH_NOSERVER=1. Exit 0 ok, 1 a check failed.
 const Q = require('./lib');

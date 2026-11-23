@@ -1569,7 +1569,7 @@ function syncPeople(dt, vis) {
   const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
   if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
     a.show(true); a.place(T.w.x, T.w.y, null, dt); a.play(T.moving ? (a.acts.jog && a.spd > (a.name === 'jog' ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1) ? 'jog' : 'walk') : 'idle'); tickMixer(a, dt, vis); }
-  for (const m of (G.S.truck && G.S.truck.medics) || []) {   /* 3D.303 Greenwater's medics: a Medic figure in Greenwater green, pushing a stretcher cart when carrying someone */
+  for (const m of (G.S.truck && G.S.truck.medics) || []) {   /* 3D.306 Greenwater's medics: a Medic figure in Greenwater green, pushing a stretcher cart when carrying someone */
     if (m.mode === 'in' || !m.w) continue; seen.add(m); let a = people.get(m);
     if (!a) { a = newPerson({ job: 'Medic', id: m.id, name: m.name }); addHat(a, 'Medic'); a.setWeapon(null); a.setArmor(false); people.set(m, a); }
     a.show(true); a.place(m.w.x, m.w.y, null, dt); a.play(m.moving ? (m.mode === 'rescueCarry' && a.acts.rescue ? 'rescue' : 'jog') : m.mode === 'go' && a.acts.pick_up ? 'pick_up' : 'idle'); tickMixer(a, dt, vis);

@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.305', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.306', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1054,7 +1054,7 @@ function truckStart() {
   const path = truckRoute(); if (!path) { (S.help ||= {}).arrived = true; return; }   /* no way in for a truck: the team comes on foot as before */
   S.truck = { path, i: 0, leg: 'in', t: 0 }; SFX('caralarm'); banner('🚚 GREENWATER IS HERE'); }
 function admitRescued(q) { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = Math.max(1, q.hp); q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the Greenwater medics'; }
-/* 3D.303 (W129): "their medics carry the fallen into care". Two Greenwater medics get out of the parked truck, each walks to someone who is
+/* 3D.306 (W129): "their medics carry the fallen into care". Two Greenwater medics get out of the parked truck, each walks to someone who is
    down, loads them on a stretcher cart and wheels them to the medical building (or the Camp), then fetches the next; when nobody is left
    down they walk back and the truck leaves. A medic remembers who they carry by id (the save file keeps no links between people).
    If it takes longer than TRUCK.stopMax, whoever is still down is taken in at once and the medics climb back in. */
@@ -1102,8 +1102,8 @@ function helpTick() {
       note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
-  if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.303: they follow when it drives off; until then the horn holds them round the truck */
-    let saved = 0; if (S.truck) { saved = S.sv.filter((q) => q.mode === 'down').length; truckMedics(); }   /* 3D.303: their medics get out and carry the fallen in */
+  if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.306: they follow when it drives off; until then the horn holds them round the truck */
+    let saved = 0; if (S.truck) { saved = S.sv.filter((q) => q.mode === 'down').length; truckMedics(); }   /* 3D.306: their medics get out and carry the fallen in */
     else for (const q of S.sv) if (q.mode === 'down') { admitRescued(q); saved++; }   /* no truck (no road in): as before */
     h.owe = { day: S.day + 2, ...HELP_COST }; SFX('rescued');
     const self = h.self; h.self = false;
@@ -1646,7 +1646,7 @@ const isCamp = (b) => !!b && DEFS[b.type] && DEFS[b.type].role === 'hq';
 function careDest() { const m = medSite(), c = campB();
   if (m && careLoad(m) < cap(m)) return m; if (c && careLoad(c) < (CAMP_CARE[c.type] || 1)) return c; return m || c || null; }   // all full: the medical building takes them anyway, crowded
 function sitePoint(b) { b = b === undefined ? careDest() : b; return b ? Wd.doorPoint(b) : tc(3 + OFF, 10 + OFF); }
-const downedUnassigned = () => S.sv.filter((q) => { if (q.mode !== 'down') return false; const r = q.rescuer; if (r && (r.rescuing !== q || r.hp <= 0 || !['rescueTo', 'rescueCarry'].includes(r.mode))) { if (r.rescuing === q) r.rescuing = null; q.rescuer = null; } return !q.rescuer; });   // a rescuer who got distracted releases the casualty
+const downedUnassigned = () => S.sv.filter((q) => { if (q.mode !== 'down') return false; const r = q.rescuer; if (r && !r.medic && (r.rescuing !== q || r.hp <= 0 || !['rescueTo', 'rescueCarry'].includes(r.mode))) {   /* 3D.306: a Greenwater medic is not one of ours: it keeps its patient */ if (r.rescuing === q) r.rescuing = null; q.rescuer = null; } return !q.rescuer; });   // a rescuer who got distracted releases the casualty
 function facilityUsers(b) { return S.sv.filter((s) => s.facility === b && ['goFacility', 'useFacility'].includes(s.mode)).length; }   // reservation: heading there counts
 const cap = (b) => (DEFS[b.type] ? (DEFS[b.type].role === 'hq' ? CAMP_CAP[b.type] || 10 : DEFS[b.type].cap) : 1);
 /* ---------------- V3D.22/23 gathering: trees (wood), rock outcrops (stone) and wrecks (scrap) are resource nodes ----------------
@@ -4646,7 +4646,7 @@ function serialize() {
   S.mapOff = OFF;   /* 3D.101: this save uses the 40x42 map */
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   if (S.sh) shMemSave(S.sh);   /* 3D.302 a game saved with a squad inside keeps what they have done there */
-  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (rest.truck && rest.truck.medics) rest.truck = { ...rest.truck, medics: rest.truck.medics.map(({ carrying, target, path, pathGoal, pathVer, arrG, ...m }) => m) };   /* 3D.303: a medic is saved without its links to people (it finds its patient again by carryId) */ if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
+  const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (rest.truck && rest.truck.medics) rest.truck = { ...rest.truck, medics: rest.truck.medics.map(({ carrying, target, path, pathGoal, pathVer, arrG, ...m }) => m) };   /* 3D.306: a medic is saved without its links to people (it finds its patient again by carryId) */ if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
   return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }

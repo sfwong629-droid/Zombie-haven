@@ -387,7 +387,7 @@ function truckStart() {
   const path = truckRoute(); if (!path) { (S.help ||= {}).arrived = true; return; }   /* no way in for a truck: the team comes on foot as before */
   S.truck = { path, i: 0, leg: 'in', t: 0 }; SFX('caralarm'); banner('🚚 GREENWATER IS HERE'); }
 function admitRescued(q) { const b = careDest(); q.careAt = b; q.w = { ...sitePoint(b) }; q.mode = 'hospital'; q.hp = Math.max(1, q.hp); q.bleed = null; q.rescuer = null; q.stateTicks = careTicks(b); q.careTotal = q.stateTicks; q.why = 'Brought in by the Greenwater medics'; }
-/* 3D.303 (W129): "their medics carry the fallen into care". Two Greenwater medics get out of the parked truck, each walks to someone who is
+/* 3D.306 (W129): "their medics carry the fallen into care". Two Greenwater medics get out of the parked truck, each walks to someone who is
    down, loads them on a stretcher cart and wheels them to the medical building (or the Camp), then fetches the next; when nobody is left
    down they walk back and the truck leaves. A medic remembers who they carry by id (the save file keeps no links between people).
    If it takes longer than TRUCK.stopMax, whoever is still down is taken in at once and the medics climb back in. */
@@ -435,8 +435,8 @@ function helpTick() {
       note('critical', '📻 Nobody is left standing: help is on the way', { key: 'helpcoming', live: () => !!(S.help && S.help.coming), log: 'The Haven went quiet on the radio. The neighbours are coming without being asked.' }); banner('📻 HELP IS COMING'); } }
   const h = S.help; if (!h) return;
   if (h.coming && tick >= h.coming && !S.truck) { h.coming = 0; truckStart(); }
-  if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.303: they follow when it drives off; until then the horn holds them round the truck */
-    let saved = 0; if (S.truck) { saved = S.sv.filter((q) => q.mode === 'down').length; truckMedics(); }   /* 3D.303: their medics get out and carry the fallen in */
+  if (h.arrived) { h.arrived = false; const led = S.truck ? truckFollowers().length : truckLead();   /* 3D.306: they follow when it drives off; until then the horn holds them round the truck */
+    let saved = 0; if (S.truck) { saved = S.sv.filter((q) => q.mode === 'down').length; truckMedics(); }   /* 3D.306: their medics get out and carry the fallen in */
     else for (const q of S.sv) if (q.mode === 'down') { admitRescued(q); saved++; }   /* no truck (no road in): as before */
     h.owe = { day: S.day + 2, ...HELP_COST }; SFX('rescued');
     const self = h.self; h.self = false;
