@@ -1,6 +1,6 @@
 # Zombie Haven: the phone look (look B), plan (UI chat, 23 Nov 2026)
 
-**Proposed, nothing built. Waiting on W249.** Owner, 23 Nov: "Can we come up with some sample to make the UI like an iphone"; then, on look B: "how would we implement that for all the function and interface? Maybe SOS will be like an incoming call from the ally? Warning is like amber alert? etc? Give me mock up of all interface with B style. Show me what inventory looks like, exploration looks like etc with this interface. Show me what fun things can we do with this?"
+**Look B is decided for the whole game (owner, 23 Nov, 10:08: "For the whole game."). Nothing built yet. Open points: section 6.** Owner, 23 Nov: "Can we come up with some sample to make the UI like an iphone"; then, on look B: "how would we implement that for all the function and interface? Maybe SOS will be like an incoming call from the ally? Warning is like amber alert? etc? Give me mock up of all interface with B style. Show me what inventory looks like, exploration looks like etc with this interface. Show me what fun things can we do with this?"
 
 Pictures: `runs/ui_samples/phoneB_01_town.png` to `phoneB_15_settings.png` (three sheets: `phoneB_sheet_1.png` to `_3.png`), made by `tools/qa/phone_b_mock.js` over the real game scene, with the game's own item pictures and the valley map of W247. The first three looks are `ios_*.png` (`tools/qa/ios_ui_mock.js`).
 
@@ -78,7 +78,14 @@ About 18 builds, the map's four included. The other chats' screens (strongholds,
 - **It is a web page, not an app.** Calls, alerts and notifications happen inside the game, not on the phone's lock screen. Real ones would need the game made into an app.
 - **Inspired by, not copied.** No Apple names (no "FaceTime", "AirDrop", "Siri"), no Apple fonts, icons or artwork; the game's own words: radio call, emergency alert, Needs you, Moth FM, Give to.
 
-## 6. Questions (W249)
-1. Go with B for the whole game, built as above behind a Look setting?
-2. Which of the fun things in section 3 go in, which stay out?
-3. Anything in the fifteen pictures to change before building?
+## 6. Owner's answers and what is still open (W249)
+Owner, 23 Nov, 10:08:
+1. **"For the whole game."** Look B is decided, built as in section 4.
+2. **"I like 1 to 6, i dont understand 7"**, on the list in the chat. In section 3's numbers, approved: 1 (calls, missed calls and voicemail), 5 (factions text you, with a history), 4 (Moth FM, old broadcasts and tapes as episodes), 9 (Yesterday at the Haven and While you were away), 10 (Update ready), 11 (Memories). Not understood: 7, the town's rings; drawn for the owner on the Town tab (`phoneB2_townrings.png`): three rings, Fed, Beds, Walls, each full when that is fine, and under them what would close each ring. Not answered: 12, the phone shaking.
+3. **"i think these circle should be colored"** (the tab bar's icons, circled on the town picture) and **"we should have the option be able to see the character half body shot for each character instead of the letter"**.
+
+Sent the same morning (`runs/ui_samples/phoneB2_*.png`, `tools/qa/phone_b2_mock.js`):
+- **The tab bar, three ways** (`phoneB2_tabs_sheet.png`): A the game's sticker icons; B coloured line icons (Explore blue, People pink, Town amber, More violet); C coloured round badges with a white sign. Claude's pick: C (reads best over a bright town; the lime Build button stays the only lime thing).
+- **The survivors' own pictures in place of letters** (`phoneB2_sheet.png`): the People page's chest-up shot in every round spot (lists, the squad, Give to), on the person's colour; a half-body shot on the survivor's card. The game already makes both from each person's 3D model, outfit and gear (`ZH3D.portrait`, `ZH3D.snap`), so nothing new has to be drawn.
+
+Still open: A, B or C for the tab bar; pictures always, or a setting to switch back to letters; the town's rings yes or no; the phone shaking yes or no.

@@ -8,7 +8,8 @@
 const Q = require('./lib');
 const { MOCK: VALLEY } = require('./valley_map_mock');
 
-const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
+const SCREEN = function ({ name, mapHtml, mapCss, pics, opt }) {
+  opt = opt || {}; const faces = opt.faces || {};   /* opt.tabs: '' line icons (first mockup) | 'sticker' | 'tint' | 'badge'; opt.faces: { name: { bust, half } } the game's own pictures of the survivors */
   const ic = (n, s) => ZHIcons.svg(n, s);
   const L = {
     explore: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 L13 13 L8.5 15.5 L11 11 Z" fill="currentColor"/>',
@@ -29,7 +30,9 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
   const li = (n, s = 24, w = 1.9) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${L[n]}</svg>`;
   const RES = [['food', 14], ['water', 14], ['wood', 20], ['parts', 16], ['stash', 4]];
   const AV = { Marcus: '#e8734a', Amy: '#d95f8f', Ben: '#7fae4e', Rosa: '#d9a441', Lena: '#4f8fd9', Theo: '#8a6fd1', Ada: '#3cb0a0' };
-  const av = (n, s = 40) => `<span class="av" style="width:${s}px;height:${s}px;font-size:${s * .42}px;background:${AV[n]}">${n[0]}</span>`;
+  const av = (n, s = 40) => faces[n] ? `<span class="av pic" style="width:${s}px;height:${s}px;--c:${AV[n]}"><img src="${faces[n].bust}"></span>` : `<span class="av" style="width:${s}px;height:${s}px;font-size:${s * .42}px;background:${AV[n]}">${n[0]}</span>`;
+  const TABC = { explore: '#5db4ff', people: '#ff8fb8', town: '#ffc24a', more: '#b79bff' }, TABI = { explore: 'explore', people: 'people', town: 'town', more: 'menu' };
+  const tabIcon = (k) => opt.tabs === 'sticker' ? ic(TABI[k], 30) : opt.tabs === 'tint' ? `<span style="color:${TABC[k]};display:flex;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))">${li(k, 26, 2.3)}</span>` : opt.tabs === 'badge' ? `<span class="tbadge" style="background:${TABC[k]}">${li(k, 20, 2.4)}</span>` : li(k, 24);
   /* the mood faces chosen in W247 (set A; Allies = two faces together) */
   const INK = '#2a1d16', W = '#fff', stk = (f) => `fill="${f}" stroke="${W}" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"`;
   const face = (c, inner) => `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" ${stk(c)}/>${inner}</svg>`;
@@ -52,7 +55,7 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
     ${o.live === false ? '' : `<div class="g cap live"><span class="lz">${ic('zombie', 18)}</span><b>Herd on Route 9</b><em>2 days</em></div>`}
     <div class="g mission"><small>MISSION</small><b>Build a Rain Barrel</b><i>${li('chev', 16, 2.4)}</i></div>
     <div class="g cap clock">${ic('sun', 18)}<b>Day 38 · 14:20</b></div><div class="g cap renown">${ic('star', 18)}<b>Renown</b><span>40</span></div>`;
-  const tabs = (sel) => `<div class="g tabcap">${[['explore', 'Explore'], ['people', 'People'], ['town', 'Town'], ['more', 'More']].map(([k, t]) => `<div class="tab${k === sel ? ' on' : ''}"><span>${li(k, 24)}</span><small>${t}</small></div>`).join('')}</div><div class="buildBtn${sel === 'build' ? ' on' : ''}">${li('build', 28, 2.2)}</div>`;
+  const tabs = (sel) => `<div class="g tabcap">${[['explore', 'Explore'], ['people', 'People'], ['town', 'Town'], ['more', 'More']].map(([k, t]) => `<div class="tab${k === sel ? ' on' : ''}"><span>${tabIcon(k)}</span><small>${t}</small></div>`).join('')}</div><div class="buildBtn${sel === 'build' ? ' on' : ''}">${li('build', 28, 2.2)}</div>`;
   const sheet = (top, inner, cls = '') => `<div class="gd sheet ${cls}" style="top:${top}px"><i class="grab"></i>${inner}</div>`;
   const head = (t, right = li('x', 18, 2.4)) => `<div class="sh"><h1>${t}</h1><button class="g round">${right}</button></div>`;
   const people = [['On duty', [['Marcus', 'Guard', 'North wall post', 1], ['Amy', 'Medic', 'At the Medical Tent', .82], ['Ben', 'Farmer', 'Garden Plot', .95], ['Rosa', 'Builder', 'Building a Rain Barrel', .6]]], ['Out on a trip', [['Lena', 'Scavenger', 'Lumber Yard · back soon', .74]]], ['Resting', [['Theo', 'Fighter', 'Asleep in the Tent', .35], ['Ada', 'Mechanic', 'Free time · campfire', 1]]]];
@@ -95,7 +98,7 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
     people: () => hud({ live: false }) + sheet(64, head('People') + `<div class="g cap searchf">${li('search', 17, 2.2)}<span>Search</span></div><div class="g cap seg"><span class="on">All 7</span><span>Fighters 2</span><span>Workers 5</span></div>`
       + people.map(([t, rows]) => `<div class="sec">${t.toUpperCase()}</div><div class="grp">${rows.map(([n, j, w, hp], k) => `<div class="prow${t === 'On duty' && k === 3 ? ' swiped' : ''}">${av(n)}<div class="nm"><b>${n}</b><small>${j} · ${w}</small></div><span class="hp"><i style="width:${hp * 100}%;background:${hpc(hp)}"></i></span><i class="ch">${li('chev', 15, 2.4)}</i>${t === 'On duty' && k === 3 ? `<div class="swact"><span style="background:#4f8fd9">${li('gear', 18)}<small>Job</small></span><span style="background:#d95f8f">${ic('medic', 18)}<small>Heal</small></span></div>` : ''}</div>`).join('')}</div>`).join('')),
     /* 9. a survivor: the contact card, with rings */
-    card: () => sheet(30, `<div class="sh" style="justify-content:flex-end"><button class="g round">${li('x', 18, 2.4)}</button></div><div class="cc">${av('Amy', 96)}<h2>Amy</h2><small class="mut">Medic · Level 4 · founder</small></div>
+    card: () => sheet(30, `<div class="sh" style="justify-content:flex-end"><button class="g round">${li('x', 18, 2.4)}</button></div><div class="cc">${faces.Amy ? `<span class="half" style="--c:${AV.Amy}"><img src="${faces.Amy.half}"></span>` : av('Amy', 96)}<h2>Amy</h2><small class="mut">Medic · Level 4 · founder</small></div>
       <div class="acts">${[['msg', 'Talk'], ['gear', 'Job'], ['target', 'Follow']].map(([i, t]) => `<span><span class="g round big">${li(i, 22)}</span><small>${t}</small></span>`).join('')}<span><span class="g round big">${ic('crowbar', 26)}</span><small>Gear</small></span></div>
       <div class="grp rings"><svg viewBox="0 0 120 120" width="112" height="112">${[[50, '#ff5b6b', .82], [38, '#f0a24a', .55], [26, '#4cc3ff', .7]].map(([r, c, v]) => `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${c}" stroke-opacity=".22" stroke-width="10"/><circle cx="60" cy="60" r="${r}" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * r * v} 999" transform="rotate(-90 60 60)"/>`).join('')}</svg>
       <div class="rl"><p><i style="background:#ff5b6b"></i><b>Health</b><span>Fine</span></p><p><i style="background:#f0a24a"></i><b>Food</b><span>Getting hungry</span></p><p><i style="background:#4cc3ff"></i><b>Rest</b><span>Rested</span></p><p>${ic('happy', 16)}<b>Mood</b><span>Content</span></p></div></div>
@@ -127,6 +130,11 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
     /* 15. Settings */
     settings: () => sheet(40, head('Settings') + [['GAME', [['music', 'Music', 1, '#d95f8f'], ['sound', 'Sound effects', 1, '#e8734a'], ['chat', 'Swearing', 0, '#8a6fd1'], ['guide', 'Advisor tips', 1, '#f0b33a'], ['speed', 'Slow down in emergencies', 0, '#4f8fd9']]], ['LOOK', [['star', 'Glass highlights', 1, '#3cb0a0'], ['eye', 'Ink outlines', 0, '#7fae4e']]], ['TOWN', [['save', 'Backup this town', -1, '#6b7480'], ['log', 'Event log', -1, '#6b7480']]]]
       .map(([t, rows]) => `<div class="sec">${t}</div><div class="grp">${rows.map(([i, n, on, c]) => `<div class="prow set"><span class="sqi" style="background:${c}">${ic(i, 20)}</span><b>${n}</b>${on < 0 ? `<i class="ch">${li('chev', 15, 2.4)}</i>` : `<span class="tg${on ? ' on' : ''}"><i></i></span>`}</div>`).join('')}</div>`).join('')),
+    /* 16. idea 7: the town's own rings, on the Town tab */
+    townrings: () => hud({ live: false }) + tabs('town') + sheet(200, head('Town') + `<div class="g cap seg"><span class="on">Haven</span><span>Defense</span><span>People</span><span>More</span></div>
+      <div class="grp rings" style="margin-top:12px"><svg viewBox="0 0 120 120" width="128" height="128">${[[50, '#f0a24a', .6], [38, '#4cc3ff', .86], [26, '#b79bff', .45]].map(([r, c, v]) => `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${c}" stroke-opacity=".22" stroke-width="10"/><circle cx="60" cy="60" r="${r}" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * r * v} 999" transform="rotate(-90 60 60)"/>`).join('')}</svg>
+      <div class="rl wide"><p><i style="background:#f0a24a"></i><b>Fed</b><span>Food for 3 days</span></p><p><i style="background:#4cc3ff"></i><b>Beds</b><span>6 of 7 people have one</span></p><p><i style="background:#b79bff"></i><b>Walls</b><span>North side is damaged</span></p></div></div>
+      <div class="sec">WHAT WOULD CLOSE THE RINGS</div><div class="grp">${[['sprout', 'Plant a second Garden Plot', '#f0a24a'], ['bed', 'Build one more Tent', '#4cc3ff'], ['wall', 'Repair the north wall', '#b79bff']].map(([i, t, c]) => `<div class="prow set"><span class="sqi" style="background:${c}">${ic(i, 20)}</span><b>${t}</b><i class="ch">${li('chev', 15, 2.4)}</i></div>`).join('')}</div>`),
   };
   h = S[name]();
   if (!['call', 'needs'].includes(name)) h += '<i class="homebar"></i>';
@@ -162,6 +170,10 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
   .pb .nm { flex: 1; min-width: 0; } .pb .nm b { display: block; font-size: 16px; } .pb .nm small { display: block; color: rgba(255,255,255,.6); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pb .hp { width: 38px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.14); flex: none; } .pb .hp i { display: block; height: 6px; border-radius: 3px; } .pb .ch { display: flex; opacity: .35; }
   .pb .prow.swiped { transform: translateX(-128px); } .pb .swact { position: absolute; right: -128px; top: 0; bottom: 0; display: flex; } .pb .swact span { width: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 800; }
+  .pb .av.pic { background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 85%, #fff), color-mix(in srgb, var(--c) 70%, #000)); overflow: hidden; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55), 0 2px 6px rgba(0,0,0,.3); } .pb .av.pic img { width: 128%; height: 128%; margin-top: 16%; object-fit: cover; }
+  .pb .half { width: 132px; height: 150px; border-radius: 30px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 80%, #fff), color-mix(in srgb, var(--c) 60%, #000)); box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), inset 0 1px 0 rgba(255,255,255,.7), 0 10px 24px rgba(0,0,0,.35); } .pb .half img { height: 100%; }
+  .pb .tbadge { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 3px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.3); }
+  .pb .rl.wide b { width: 46px; } .pb .rl.wide p { margin: 8px 0; }
   /* call */
   .pb .callbg { position: absolute; inset: 0; background: rgba(10,16,14,.55); -webkit-backdrop-filter: blur(28px) saturate(140%); backdrop-filter: blur(28px) saturate(140%); }
   .pb .call { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 90px; text-align: center; } .pb .ct { opacity: .75; font-size: 15px; font-weight: 700; }
@@ -236,7 +248,8 @@ const SCREEN = function ({ name, mapHtml, mapCss, pics }) {
   `;
 };
 
-(async () => {
+module.exports = { SCREEN };
+if (require.main === module) (async () => {
   const fs = require('fs'); const path = require('path'); const out = path.join(__dirname, '../../runs/ui_samples'); fs.mkdirSync(out, { recursive: true });
   const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, expose: 'ITEMS, invPic, itemRar, RARITY' }); await Q.newGame(p); await Q.clearCards(p); await p.waitForTimeout(2500); await Q.clearCards(p); await p.waitForTimeout(500); await Q.clearCards(p);
   /* the game's own item pictures (before anything else: invPic needs the town's 3D view idle) */
