@@ -35,9 +35,10 @@ secs = (f1 - f0) / fps0; n = max(2, int(round(secs * FPS)))
 tmp = tempfile.mkdtemp(); from PIL import Image, ImageDraw, ImageFont
 try: FNT = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 15)
 except Exception: FNT = None
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import propfx; PROPO = propfx.make()
 frames = []
 for i in range(n):
-    t = f0 + (f1 - f0) * i / n; sc.frame_set(int(t), subframe=t - int(t)); bpy.context.view_layer.update(); ims = []
+    t = f0 + (f1 - f0) * i / n; sc.frame_set(int(t), subframe=t - int(t)); propfx.place(PROPO, i / n); bpy.context.view_layer.update(); ims = []
     for k, (dx, dy, dz) in enumerate(views):
         d = Vector((dx, dy, dz)).normalized(); co.location = hc + d * DIST; co.rotation_euler = (hc - co.location).to_track_quat('-Z', 'Y').to_euler()
         sc.render.filepath = os.path.join(tmp, 'v.png'); bpy.ops.render.render(write_still=True); ims.append(Image.open(sc.render.filepath).convert('RGB'))

@@ -25,6 +25,7 @@ act=bpy.data.actions[clip]; ao.animation_data.action=act
 try: ao.animation_data.action_slot=act.slots[0]
 except Exception: pass
 f0,f1=act.frame_range; f=f0+(f1-f0)*fr; bpy.context.scene.frame_set(int(f),subframe=f-int(f)); bpy.context.view_layer.update()
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import propfx; propfx.place(propfx.make(), fr); bpy.context.view_layer.update()
 if sp: sp.matrix_world=bat.matrix_world@R
 sc=bpy.context.scene; sc.render.engine='BLENDER_WORKBENCH'; sc.display.shading.light='STUDIO'; sc.display.shading.color_type='TEXTURE'; sc.render.resolution_x=360; sc.render.resolution_y=360
 sc.render.film_transparent=False; sc.world=bpy.data.worlds.new('w'); sc.world.color=(0.95,0.95,0.95)
