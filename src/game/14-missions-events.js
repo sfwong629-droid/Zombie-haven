@@ -505,6 +505,32 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
     h += Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, why = lk ? '' : evLock(e), can = !lk && !why && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
       return `<div class="card"><div class="row"><span style="font-size:30px">${e.icon}</span><span class="sp"><b>${e.name}</b> <span class="sm">+${e.ren}★ · ${e.hours} h</span><br><small>${e.desc}</small>${e.gain ? `<br><small style="color:var(--good)">You get: ${costText(e.gain)}</small>` : ''}${why ? `<br><small style="color:var(--bad)">${why}</small>` : ''}</span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? '🔒 Rank ' + e.rank : costText(e.cost)}</button></div></div>`; }).join('');
   }
+  /* 3D.346 (owner, 24 Nov, W249: "Next"): the Upgrade screen in the phone look: the town's name and level over a row of level steps, then grouped lists
+     (Upgrading with a bar; To reach level N with a tick or a cross per row; What it brings) and one wide lime button; Events as one list. Same ids. */
+  if (phoneOn()) { const sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`, L = S.lvl || 1, er = eraOf();
+    const tick = (ok) => `<span class="phOk ${ok ? 'y' : 'n'}">${ok ? '✓' : '✕'}</span>`;
+    h = `<div class="phSeg">${[['rank', 'Upgrade'], ['events', 'Events']].map(([k, l]) => `<button data-tab="${k}" class="${k === upTab ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    if (upTab === 'rank') {
+      h += `<div class="phLvHead"><small>${esc(S.townName || 'Zombie Haven')}</small><b>Level ${L}</b><span>Era ${er.n}: ${esc(er.name)}</span><div class="phLvSteps">${Array.from({ length: LV_MAX }, (_, i) => `<i class="${i < L ? 'on' : ''}${[4, 9, 14].includes(i) ? ' gap' : ''}"></i>`).join('')}</div></div>`
+        + grp(`<div class="phR"><span class="k">Banners</span><span class="v">${(S.banners || []).length ? S.banners.map((b) => BANNER_ROUTES[b.route].icon + (b.used ? ' raised' : ' ready')).join('  ') : 'None yet'}</span></div>`);
+      if (S.lvUp) { const f = 1 - S.lvUp.left / S.lvUp.total;
+        h += sec('Upgrading to level ' + S.lvUp.to) + grp(`<div class="phR phBar"><b class="w">Done</b><span class="phBarT"><i style="width:${Math.round(f * 100)}%;background:#c6ff4d"></i></span><em>${lvLeftText()} left</em></div>`)
+          + `<div class="phFootN">In real time: it keeps going while the game is closed.</div>`
+          + (S.lvUp.left > LV_RUSH_MS ? `<button class="act phWide" id="uRush" ${(S.ren || 0) >= lvRushCost(LV_RUSH_MS) ? '' : 'disabled'}>2 h sooner · ${lvRushCost(LV_RUSH_MS)} renown</button>` : '')
+          + `<button class="act go phWide" id="uRushAll" ${(S.ren || 0) >= lvRushCost(S.lvUp.left) ? '' : 'disabled'}>Finish now · ${lvRushCost(S.lvUp.left)} renown</button>`; }
+      if (!c) h += grp('<div class="phR"><span class="k">The Haven is at the highest level.</span></div>');
+      else { const nl = L + 1;
+        if (!S.lvUp) { const n = c.filter((r) => r.ok).length;
+          h += sec(`To reach level ${nl} · step ${Math.min(3, S.lvStep || 0)} of 3`) + grp(c.map((r) => `<div class="phR tall"><span class="phCi">${uiIcon(r.ic)}</span><span class="tx"><b>${r.name}</b>${r.sub ? `<small>${r.sub}</small>` : ''}</span><span class="v${r.ok ? '' : ' short'}">${r.wide ? r.have : `${r.have} of ${r.need}`}</span>${tick(r.ok)}</div>`).join(''))
+            + `<div class="phFootN">${n} of ${c.length} done.</div>`; }
+        { const nr = rankOfLvl(nl), un = nr > (S.rank || 1) ? rankUnlocks(nr) : ['+2 scrap, +2 food, +2 water']; if (terrOfLvl(nl) > terrOfLvl(L)) un.unshift('More land for the Haven');
+          h += sec(`Level ${nl} brings`) + grp(un.map((x) => `<div class="phR"><span class="k">${esc(x)}</span></div>`).join('') + `<div class="phR"><span class="k">Upgrade time</span><span class="v">${rtText(lvMs(nl))}</span></div>`); }
+        if (!S.lvUp) h += `<button class="act go phWide phPin" id="uDo" ${c.every((r) => r.ok) ? '' : 'disabled'}>Start upgrading to level ${nl}</button>`; }
+    } else { const done = (S.lastEventDay ?? -1) >= S.day, on = S.eventOn && nowH() < S.eventOn.until;
+      h += `<div class="phFootN" style="margin:10px 4px 0">One event a day. Events give Renown and cheer everyone up.${on ? ` <b>${TOWN_EVENTS[S.eventOn.k].name}</b> is on now.` : done ? ' Today\'s is done.' : ''} Held so far: ${S.eventsHeld || 0}.</div>`
+        + sec('Events') + grp(Object.entries(TOWN_EVENTS).map(([k, e]) => { const lk = (e.rank || 1) > S.rank, why = lk ? 'Opens at rank ' + e.rank : evLock(e), can = !lk && !why && !done && Object.entries(e.cost).every(([r, v]) => S[r] >= v);
+          return `<div class="phR tall phEv${can ? '' : ' off'}"><span class="phEvI">${e.icon}</span><span class="tx"><b>${e.name}</b><small>${e.desc}</small><small class="m">+${e.ren} renown · ${e.hours} h${e.gain ? ' · you get ' + costText(e.gain) : ''}</small>${why ? `<small class="bad">${why}</small>` : ''}</span><button class="act${can ? ' go' : ''}" data-ev="${k}" ${can ? '' : 'disabled'}>${lk ? 'Locked' : costText(e.cost)}</button></div>`; }).join('')); }
+    h = `<div class="phUp">${h}</div>`; }
   $('ib').innerHTML = h; showPanel('Upgrade Town');
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showUpgrade(b.dataset.tab); });
   const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); }; for (const [id, all] of [['uRush', false], ['uRushAll', true]]) { const b = $(id); if (b) b.onclick = () => { lvRush(all); showUpgrade('rank'); }; }
