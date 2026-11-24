@@ -30,7 +30,7 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 | Sporehead | Worked in the plant's powder room; dried Freshlock dust puffs from the cracked skull. (**For the Story chat:** the story has no fungus; rename it "Dusthead"?) | **Head shake, then claws**: shakes a cloud loose, then two quick claws | close to this already |
 | Screamer | Sunnyside's shift-siren operator | **A full scream**: arms thrown back, chest forward, head up, the whole body shaking | only bends forward |
 | Riot zombie | Quarantine Command riot police from the cordon | **Shoulder charge**: three driving steps and a body check | one-arm swipe |
-| Lasher | A volunteer in Helix's first Unlock trial: the limbs kept growing | **Claw swipe** (owner, 24 Nov: "just do a regular attack"; today's whip, the lasso and the fishing cast turned down): the long arm drawn back, swept across at full reach, the clawed hand pulled in; the trouser fault fixed in 3D.254 | lash |
+| Lasher | A volunteer in Helix's first Unlock trial: the limbs kept growing | **Claw swipe** (owner, 24 Nov: "just do a regular attack", then "Yes it's ok for lasher"; today's whip, the lasso and the fishing cast turned down): the long arm drawn back, swept across at full reach, the clawed hand pulled in; the trouser fault fixed in 3D.254 | lash |
 | Rot Bomb | A tin that swelled and never burst, in the shape of a man | **Clutch and swell**: both arms hug the belly as it grows (kept), with a hurried waddle | swell |
 | Dog | Guard dogs and pets fed on tin scraps | **Lunge and shake**: jumps at the arm, bites and shakes its head; **the run is a real gallop, one foot landing at a time** (owner: "the dog leg run is not natural"; built in 3D.256) | stiff legs |
 | Stalker (boss) | Helix's first Unlock test subject; it carries the prototype (the vaccine it drops) | **Punch and kick** (kept) | punch and kick |
@@ -98,7 +98,8 @@ One move that is not an attack for every zombie, played every now and then or be
 - Souphead: shakes its big mushroom hat like a dog shaking off water.
 - Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats; approved). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
 - Lasher: ~~a long, slow stretch~~ (turned down 24 Nov) a back scratch: over the shoulder to the shoulder blades, then down behind to the back of the knee (owner, 24 Nov: "1", then "the scratch is good"; `zmove_lasher.py scratch`; approved).
-- Stalker, Mutant: a crouch and sniff; an arm crack.
+- Stalker: a crouch and sniff: down low, hands on the knees, nose sweeping the ground, a look round, one more sniff (preview `zmove_stalker.py sniff`, 24 Nov).
+- Mutant: an arm crack.
 
 ## The Alpha's blade (23 Nov, W265 to W267)
 The Alpha is the second zombie allowed a weapon: a big rusted blade (`tools/art/b3d/alpha_blade.py`, approved W266). He stands with it hanging, tip on the ground; walks and runs dragging it behind, the left arm swinging at his side; his attack lifts it slowly from the drag and swings it quickly across; he waves the others on with it. Previews in `tools/art/b3d/zmove_alpha.py`; **approved 23 Nov** (owner: "Looks good").
