@@ -105,7 +105,7 @@ function simTick() { Wd.touch();
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
+window.ZHG = { fpsCap: () => FPS_CAP, get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];
@@ -146,7 +146,11 @@ function loadScreen(on) {
   const fig = R && R.ready ? 'Waking the zombies…' : `${Math.round(k * 100)}% · ${sec} s`; const f = el.querySelector('.wlFig'); if (f.textContent !== fig) f.textContent = fig;
   const h = el.querySelector('.wlHelp'); if (sec >= 40 && !h.dataset.on) { h.dataset.on = 1; h.innerHTML = '<div>Still loading: check your connection, or close and reopen the game.</div><button class="act out wlGo">Play anyway</button>'; h.querySelector('button').onclick = () => { worldReady.skip = true; }; }
 }
-function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() || !worldReady() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); requestAnimationFrame(frame); }
+/* 3D.347 bug A14 (owner: the phone gets hot): draw at most 30 frames a second. The phone's screen asks 60 times a second (120 on some),
+   and every frame was drawn, three passes each with the ink outlines. The game itself still runs every screen tick; only the drawing is
+   skipped in between. ?fps=60 lifts the cap (for a before/after). */
+const FPS_CAP = Math.max(10, Math.min(120, +QS.get('fps') || 30)); let lastDraw = -1e9;
+function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() || !worldReady() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); if (t - lastDraw >= 1000 / FPS_CAP - 2) { lastDraw = t; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); } requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
