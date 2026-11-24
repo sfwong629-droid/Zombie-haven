@@ -96,7 +96,7 @@ One move that is not an attack for every zombie, played every now and then or be
 - Thrower: picks up a rock and tosses it from hand to hand.
 - Riot zombie: a stiff police "halt".
 - Souphead: shakes its big mushroom hat like a dog shaking off water.
-- Fizzbomb: pats its swollen belly.
+- Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
 - Lasher, Stalker, Mutant: a stretch of the long arm; a crouch and sniff; an arm crack.
 
 ## The Alpha's blade (23 Nov, W265 to W267)

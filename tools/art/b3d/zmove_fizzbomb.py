@@ -5,7 +5,12 @@
 #   (A clip moves bones only, so the belly does not really grow here: if the swelling should show, the game scales it up as it clutches.)
 #   Starts and ends on today's attack's first pose.
 # MODE pat (clip fizzbomb_pat, 2.2 s, the extra move that is not an attack, W239): it looks down and pats its swollen belly, hands in turn,
-#   four pats, then one big pleased pat with both. Feet planted. Starts and ends on its first idle pose.
+#   four pats, then one big pleased pat with both. Feet planted. Starts and ends on its first idle pose. (Replaced by balloon, owner 23 Nov.)
+# MODE balloon (clip fizzbomb_balloon, 3.4 s, the extra move, owner 23 Nov: "maybe it bring out a ballon and blow it up?", "make it as extra move"):
+#   the right hand pulls a limp balloon from the costume's front, brings it to the mouth, four big puffs (breathe in leaning back, blow leaning in),
+#   the balloon growing with each; the fourth is one too many: it pops in its face, it flinches back with both hands up, then settles.
+#   Feet planted. Starts and ends on its first idle pose. Also writes OUT minus .json plus .prop.json: the balloon's knot, direction and size
+#   in each frame, for the preview renders (propfx.py, kind "balloon"). In the game the balloon would be a small model that grows the same way.
 # Rig: +X its left, -Y forward, +Z up.
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
@@ -20,7 +25,7 @@ try:
 except Exception: pass
 for pb in PB: pb.rotation_mode = 'QUATERNION'
 f0 = base.frame_range[0]; FPS = 30; SC = W.to_scale().x
-SECS = float(os.environ.get('ZH_SECS', 1.6 if MODE == 'swell' else 2.2))
+SECS = float(os.environ.get('ZH_SECS', {'swell': 1.6, 'pat': 2.2, 'balloon': 3.4}[MODE]))
 def upd(): bpy.context.view_layer.update()
 def goto(): sc.frame_set(int(f0)); upd()
 def sst(a_, b_, x): t = min(1., max(0., (x - a_) / max(1e-6, b_ - a_))); return t * t * (3 - 2 * t)
@@ -88,6 +93,14 @@ if MODE == 'swell':
     # (t, weight, hug (0..1), waddle (0..1), puff (chest back), lurch)
     K = [(0.00, (0, 0, 0, 0, 0)), (0.10, (1, 1, 0, 0, 0)), (0.16, (1, 1, 1, .2, 0)), (0.62, (1, 1, 1, 1, 0)),
          (0.74, (1, 1, 0, .4, 1)), (0.84, (1, 1, 0, .4, 1)), (1.00, (0, 0, 0, 0, 0))]
+elif MODE == 'balloon':
+    # (t, weight, hand at the pocket, hand at the mouth, flinch)
+    K = [(0.00, (0, 0, 0, 0)), (0.10, (1, 1, 0, 0)), (0.17, (1, 1, 0, 0)), (0.26, (1, 0, 1, 0)), (0.83, (1, 0, 1, 0)),
+         (0.875, (1, 0, 0, 1)), (0.91, (1, 0, 0, 1)), (1.00, (0, 0, 0, 0))]
+    P0, P1, NP = .28, .83, 4          # the four puffs; each: breathe in (first 40%), blow (the rest)
+    BR = .12; BAX = Vector((-.2, -1, .45)).normalized()   # full balloon radius; its direction out of the mouth (forward, up, a little to its right)
+    goto(); hm = W @ PB['head'].matrix; zm = wpos('head').z - .02; MOUTH = hm.inverted() @ Vector((0, front_y(zm, .02) + .012, zm))
+    BAL = []
 else:
     # (t, weight, look down)
     K = [(0.00, (0, 0)), (0.12, (1, 1)), (0.86, (1, 1)), (1.00, (0, 0))]
@@ -110,6 +123,26 @@ for i in range(nf + 1):
         hug = k[1] * w
         for s_, sg in (('L', 1), ('R', -1)):
             arm_to(s_, sg, belly(sg * .35, .78), hug, Vector((sg * .9, .4, -.2))); 
+    elif MODE == 'balloon':
+        pk, mo, fl = k[1] * w, k[2] * w, k[3] * w
+        u = (t - P0) / (P1 - P0) * NP if P0 <= t <= P1 else (-1 if t < P0 else NP); j = int(min(NP - 1, max(0, u))); f = u - j if 0 <= u <= NP else 0
+        inh = math.sin(math.pi * min(1, f / .4)) if 0 <= u < NP and f < .4 else 0        # breathe in: lean back
+        blw = math.sin(math.pi * (f - .4) / .6) if 0 <= u < NP and f >= .4 else 0       # blow: lean in
+        move_pelvis(Vector((0, .03 * H * fl, 0))); plant()      # hips back in the flinch, feet stay put
+        turn('chest', (1, 0, 0), (-7 * inh + 9 * blw) * mo - 16 * fl + 4 * pk, wpos('chest'))
+        turn('neck', (1, 0, 0), (6 - 5 * inh + 5 * blw) * mo - 12 * fl + 10 * pk); turn('head', (1, 0, 0), (4 * mo) - 16 * fl + 6 * pk)
+        turn('head', (0, 0, 1), -8 * fl)
+        mouth = (W @ PB['head'].matrix) @ MOUTH
+        for s_, sg in (('L', 1), ('R', -1)):
+            if s_ == 'R':
+                pocket = belly(-.45, .62); atm = mouth + Vector((-.03, -.035, -.075))
+                tg = pocket * (pk / max(1e-6, pk + mo)) + atm * (mo / max(1e-6, pk + mo)) if pk + mo > 1e-6 else pocket
+                arm_to('R', -1, tg, min(1., pk + mo), Vector((-.9, .2, -.4)))
+                if mo > .01:      # the hand turned up to hold the balloon's neck at the lips
+                    q = PB['hand.R'].rotation_quaternion.copy(); aim('hand.R', mouth + Vector((-.01, -.03, .0)))
+                    PB['hand.R'].rotation_quaternion = q.slerp(PB['hand.R'].rotation_quaternion.copy(), mo); upd()
+            if fl > .01:      # both hands up in front of the face
+                arm_to(s_, sg, mouth + Vector((sg * .07, -.06, -.02)), fl, Vector((sg * .9, .3, -.4)))
     else:
         plant(); lk = k[1] * w
         turn('neck', (1, 0, 0), 18 * lk); turn('head', (1, 0, 0), 14 * lk); turn('chest', (1, 0, 0), 5 * lk, wpos('chest'))
@@ -124,6 +157,16 @@ for i in range(nf + 1):
     upd()
     lo = lowest()
     if lo < base_low - .002: move_pelvis(Vector((0, 0, base_low - lo)))
+    if MODE == 'balloon':     # where the balloon is: its knot, its direction and its size (null: not out, or popped)
+        if .16 <= t < P1 + .002:
+            mouth = (W @ PB['head'].matrix) @ MOUTH; ht = wpos('fingers.R')
+            a_ = k[2] if t > .17 else 0; knot = ht.lerp(mouth + Vector((-.006, -.022, -.004)), a_)
+            ax = Vector((0, -.2, -1)).normalized().lerp(BAX, a_).normalized()
+            bl = max(0., (f - .4) / .6) if 0 <= u < NP else (1. if u >= NP else 0.)   # how far through this puff's blow
+            g = .14 if u < 0 else (.14 + .86 * (j + bl) / (NP - 1) if j < NP - 1 else 1 + .28 * bl)   # three puffs to full, the fourth too many
+            g *= 1 + .03 * math.sin(2 * math.pi * 9 * t * SECS / 3.2)
+            BAL.append({'knot': list(knot), 'ax': list(ax), 's': BR * g})
+        else: BAL.append(None)
     for b in order:
         q = PB[b].rotation_quaternion; KEY[b]['rot'].append([q.x, q.y, q.z, q.w])
         if b == 'pelvis': KEY[b]['loc'].append(list(PB[b].location))
@@ -132,4 +175,5 @@ for b in order:
         if sum(x * y for x, y in zip(KEY[b]['rot'][i], KEY[b]['rot'][i - 1])) < 0: KEY[b]['rot'][i] = [-x for x in KEY[b]['rot'][i]]
 KEY = {b: v for b, v in KEY.items() if not b.startswith(('weapon_', 'armor_')) and not b.endswith(('_tip', '_grip1', '_grip2', '_grip_low'))}
 json.dump({'fps': FPS, 'frames': nf, 'stride': None, 'seconds': SECS, 'bones': KEY, 'wdir': None}, open(out, 'w'))
+if MODE == 'balloon': json.dump({'kind': 'balloon', 'pos': BAL}, open(out[:-5] + '.prop.json', 'w'))
 print('FIZZBOMB', MODE, 'frames', nf, 'seconds', SECS, '->', out)
