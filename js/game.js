@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.342', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.343', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4749,7 +4749,19 @@ let savedAtMs = 0;
 /* 3D.39 HUD layout B (owner pick): the side column is gone. Speed + find sit in one slim dock on the right; the 5th tab is "More",
    which holds the Guide and a Settings sheet (save, music, sound effects, event log, advisor tips, slow down on emergencies, how to play, main menu). */
 const HUD_B = typeof document !== 'undefined' && document.documentElement.classList.contains('glass');
+/* 3D.343 (owner, 24 Nov, W249: "ok next"): More and Settings in the phone look: grouped lists, a small coloured square with a plain white sign on each row,
+   switches on the right, chevrons on rows that open something. Same ids as the old lists, so the same wiring serves both looks. */
+const PH_SG = { music: '<path d="M9 18V6l10-2v12"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="16" r="2.500"/>', tune: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>', sfx: '<path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.500 6.500a7.500 7.500 0 0 1 0 11"/>', chat: '<path d="M5 6h14v10H10l-4 3v-3H5z"/>', tips: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900V15h7v-1.100A6 6 0 0 0 12 3z"/>', slow: '<path d="M5 6l6 6-6 6zM13 6l6 6-6 6z"/>', face: '<circle cx="12" cy="9" r="3.500"/><path d="M5 20a7 7 0 0 1 14 0"/>', phone: '<rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 18h2"/>', ink: '<path d="M4 20l4-1 10-10-3-3L5 16z"/>', track: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>', log: '<path d="M7 3h10v18H7zM10 8h4M10 12h4M10 16h2"/>', help: '<circle cx="12" cy="12" r="8.500"/><path d="M9.700 9.500a2.400 2.400 0 1 1 3.400 2.200c-.800.400-1.100.900-1.100 1.800M12 16.800v.1"/>', home: '<path d="M4 11l8-7 8 7M6 10v10h12V10"/>', guide: '<path d="M5 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H5zM19 5h-4a2 2 0 0 0-2 2"/><path d="M19 5v12h-4a2 2 0 0 0-2 2"/>', jobs: '<rect x="3.500" y="7.500" width="17" height="12" rx="2.500"/><path d="M9 7.500V5.500a1.500 1.500 0 0 1 1.500-1.500h3A1.500 1.500 0 0 1 15 5.500v2"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100"/>' };
+const phSI = (k, col) => `<span class="phIc" style="background:${col}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PH_SG[k]}</svg></span>`;
+function showMorePhone() {
+  endBuildMode(true); closeP(); const ch = `<i class="phChv">${phG('ch', 14)}</i>`, e = slotBs().filter((b) => !b.staff).length;
+  const row = (id, ic, col, t, sub) => `<div class="phR tall" id="${id}" role="button">${phSI(ic, col)}<span class="tx"><b>${t}</b><small>${sub}</small></span>${ch}</div>`;
+  $('ib').innerHTML = `<div class="phSet"><div class="phCard">${row('moGuide', 'guide', '#3d8fe0', 'Guide', 'Goals, how things work, the story so far')}${row('moJobs', 'jobs', '#e08a2e', 'Jobs', e ? e + ' empty workplace' + (e > 1 ? 's' : '') + ' · promotions' : 'Who works where, promotions')}${row('moLog', 'log', '#6b7686', 'Event log', 'Every message, news line and radio call')}${row('moSet', 'gear', '#8d6fe0', 'Settings', 'Save, sound, look, main menu')}</div></div>`;
+  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore); $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; };
+  showPanel('More');
+}
 function showMore() {
+  if (phoneOn()) return showMorePhone();
   endBuildMode(true); closeP(); const I = (n) => (window.ZHIcons ? ZHIcons.svg(n, 30) : '');
   $('ib').innerHTML = `<button class="moreRow" id="moGuide"><span class="moI">${I('guide')}</span><span class="moT"><b>Guide</b><small>Goals, how things work, the story so far</small></span><span class="moA">›</span></button>`
     + `<button class="moreRow" id="moJobs"><span class="moI">${I('worker')}</span><span class="moT"><b>Jobs</b><small>${(() => { const e = slotBs().filter((b) => !b.staff).length; return e ? e + ' empty workplace' + (e > 1 ? 's' : '') + ' · promotions' : 'Who works where, promotions'; })()}</small></span><span class="moA">›</span></button>`
@@ -4762,6 +4774,19 @@ const DAYMUS = { meadow: ['Meadow', 'A storybook waltz: flute over harp and stri
 function showSettings(back) {
   endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
   const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;
+  if (phoneOn()) {
+    const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`;
+    const sw = (id, on, ic, col, label, sub) => `<div class="phR${sub ? ' tall' : ''}">${phSI(ic, col)}<span class="tx"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;
+    const go = (id, ic, col, label, val) => `<div class="phR" id="${id}" role="button">${phSI(ic, col)}<span class="k">${label}</span><span class="v">${val || ''}</span>${ch}</div>`;
+    $('ib').innerHTML = `<div class="phSet">`
+      + grp(`<div class="phR tall">${phSI('save', '#3fae7c')}<span class="tx"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go phMini" id="stSave">Save</button></div>`)
+      + sec('Sound') + grp(sw('stMusic', m === 'all', 'music', '#e0457b', 'Music') + (window.SND && SND.setDayMusic ? `<div class="phR tall" id="stDayMus" role="button">${phSI('tune', '#b0508f')}<span class="tx"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><span class="v">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</span>${ch}</div>` : '') + sw('stSfx', m !== 'off', 'sfx', '#e0683a', 'Sound effects'))
+      + sec('Game') + grp(sw('stSwear', OPTS.swear !== false, 'chat', '#8d6fe0', 'Swearing in chat', 'Off shows it as f**k') + sw('stAdv', OPTS.advisor, 'tips', '#e0a52e', 'Advisor tips') + sw('stSlow', OPTS.autoSlow, 'slow', '#3d8fe0', 'Slow down on emergencies', 'Drops to 1× speed when something bad happens'))
+      + sec('Look') + grp(sw('stPics', OPTS.pics !== false, 'face', '#2fa5a0', 'Survivor pictures', 'Off shows the first letter of their name') + sw('stLook', true, 'phone', '#6b7686', 'Phone look', 'Off shows the old look')
+        + ($('btnInk') ? sw('stInk', $('btnInk').style.opacity !== '.45', 'ink', '#5a6a3a', 'Ink outlines', 'Dark outlines around people and zombies') : '') + (window.ZH3D && ZH3D.trackPanel ? sw('stTrack', !!(ZH3D.track && ZH3D.track.on), 'track', '#a0564a', 'Animation tracker', 'Shows what each survivor is doing and flags sliding') : ''))
+      + sec('Help') + grp(go('stLog', 'log', '#6b7686', 'Event log') + go('stHow', 'help', '#3d8fe0', 'How to play') + go('stMenu', 'home', '#6b7686', 'Main menu'))
+      + `<div class="phFootN">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0).</div><button class="act go phWide" id="stResume">Resume</button></div>`;
+  } else
   $('ib').innerHTML = `<div class="setRow"><span class="moT"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go" id="stSave">Save</button></div>`
     + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
     + `<button class="setRow link" id="stLog"><span class="moT"><b>Event log</b></span><span class="moA">›</span></button>`
@@ -4776,7 +4801,7 @@ function showSettings(back) {
   const re = () => showSettings(back), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
   $('stSave').onclick = () => { if (saveGame()) { banner('💾 SAVED'); re(); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); };
   if ($('stDayMus')) $('stDayMus').onclick = () => { const k = Object.keys(DAYMUS), n = k[(k.indexOf(SND.dayMusic) + 1) % k.length]; SND.setDayMusic(n); SND.unlock(); re(); };
-  $('ib').querySelectorAll('.setRow').forEach((r) => { const t = r.querySelector('.tgl'); if (t) { r.style.cursor = 'pointer'; r.onclick = (e) => { if (!e.target.closest('.tgl')) t.click(); }; } });   /* 3D.268 (W202, U48): tapping a setting's words flips its switch */
+  $('ib').querySelectorAll('.setRow, .phSet .phR').forEach((r) => { const t = r.querySelector('.tgl'); if (t) { r.style.cursor = 'pointer'; r.onclick = (e) => { if (!e.target.closest('.tgl')) t.click(); }; } });   /* 3D.268 (W202, U48): tapping a setting's words flips its switch */
   $('stMusic').onclick = () => snd(m === 'all' ? 'sfx' : 'all'); $('stSfx').onclick = () => snd(m === 'off' ? 'sfx' : 'off');
   $('stLog').onclick = () => { showLog(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stSwear').onclick = () => { OPTS.swear = OPTS.swear === false; saveOpts(); re(); };
@@ -4787,7 +4812,7 @@ function showSettings(back) {
   if ($('stTrack')) $('stTrack').onclick = () => { ZH3D.trackPanel(!ZH3D.track.on); re(); };   /* 3D.58 */
   $('stHow').onclick = () => { showGuide(); panelBack = re; $('pBack').style.display = 'block'; };
   $('stMenu').onclick = () => { closeP(); if (!titleOn) backToTitle(); }; $('stResume').onclick = closeP;
-  showPanel('SETTINGS', back);
+  showPanel(phoneOn() ? 'Settings' : 'SETTINGS', back);
 }
 function saveGame() {
   if (ZOO) return;   /* 3D.32 the test page never touches your saves */

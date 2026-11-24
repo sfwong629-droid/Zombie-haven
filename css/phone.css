@@ -120,3 +120,8 @@ html.phone .phTick { flex: none; width: 12px; height: 7px; margin: 0 4px 4px 0; 
 html.phone .phTown .phR .k { white-space: nowrap; } html.phone .phTown .phR.tall .tx small { white-space: normal; }
 html.phone .phOld > .card { border-radius: 14px; margin: 0 0 10px; }
 html.phone .phTown .phBar .phBarT { min-width: 44px; } @media (max-width: 360px) { html.phone .phTown .phBar em { width: 112px; font-size: 13px; white-space: normal; line-height: 1.15; } html.phone .phTown .phBar b { width: 46px; } }
+/* 3D.343: More and Settings: grouped lists with a coloured square sign, switches, chevrons */
+html.phone .phSet { padding: 0 2px 10px; font-family: Manrope, system-ui, sans-serif; } html.phone .phSet .phCard { border-radius: 14px; background: rgba(255, 255, 255, .08); } html.phone .phSet .phSec { margin: 16px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); }
+html.phone .phSet .phR { cursor: pointer; } html.phone .phSet .phR.tall { min-height: 56px; } html.phone .phSet .phR .tx small { white-space: normal; } html.phone .phSet .phR + .phR::before, html.phone .phSet .phR.tall + .phR.tall::before { left: 54px; }
+html.phone .phSet .tgl { flex: none; } html.phone .phSet .phR .v { flex: 1; font-size: 14px; } html.phone .phSet .phR.tall .v { flex: none; max-width: 40%; }
+html.phone .phMini { flex: none; width: auto; min-width: 72px; min-height: 44px; margin: 0; padding: 0 16px; border-radius: 22px; font-size: 15px; } html.phone .phWide { width: 100%; min-height: 48px; margin: 14px 0 0; border-radius: 14px; }
