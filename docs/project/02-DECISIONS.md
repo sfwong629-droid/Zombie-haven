@@ -139,7 +139,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 12 Nov: Walls are repaired by a worker (no self-healing). Buildings can't be placed on walls or fences.
 - 12 Nov: Banner gates left as they are.
 - 12 Nov: Newcomers walk in, wave, and are guests until welcomed.
-- 11 Nov: Ignore "Gym XP that lasts" and "walls that don't use building land".
+- 11 Nov: Ignore "Gym XP that lasts" and "walls that don't use building land". *(The walls part is reversed on 24 Nov, W269: see below.)*
 - 10 Nov: Map about 40×42, at least 8 open tiles round the biggest town; the north-east highway is a working route with wrecks.
 - 15 Nov: Scrap → wood through the **Pallet Yard** building.
 - 15 Nov: "Sealed" means the HQ and at least 3 in 4 buildings are inside the wall.
@@ -173,6 +173,16 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 19 Nov (Bugs chat): **A grace period for newcomers.** When the town is full and someone asks to join (the Wandering Medic, the bunker survivors, a Foundry engineer, and a person the trader offers), they can be taken in anyway. The player has **1 game day** to build a bed; if there is still none, the newcomer stays but **sleeps rough** (their mood falls each day) until a bed is free. Nobody is lost. **The trader offering a person in a trade is new** (the trader sells no people today). Not built: Features chat.
 - 21 Nov (Bugs chat, W203): **People move into a free bed by themselves** (longest-staying first, every hour); the player can still choose who lives where. Built in 3D.263.
 - 21 Nov (Bugs chat, B23; owner: "they should auto try to find another path"): someone whose way is blocked by people finds a way round them before giving up. Built in 3D.264.
+- 24 Nov (Planning chat, W269; owner: "do B"): **Town walls stand on the lines between tiles**, not on tiles. A wall takes no land: the tiles on both sides stay free for buildings, roads and people. The grid itself stays as it is (40 × 42 tiles of about 3.5 m; splitting every tile in four was weighed and turned down as too big a change for now). How it works:
+  - a wall piece is one tile long, laid along a tile's edge; cost and health per piece stay as today (a piece is the same length as today's wall tile);
+  - a gate is an edge piece survivors walk through and zombies must break, one tile wide as today;
+  - walking from one tile to the next is blocked when a wall stands on the line between them, and nobody cuts diagonally past a wall's end;
+  - zombies break a wall piece from the tile next to it, on either side; workers repair it the same way;
+  - walls are placed by tapping or dragging along the tile lines; nothing can be built on the line itself;
+  - old towns are converted: each wall tile becomes a wall on that tile's outer edge (the side away from the town), so the wall stays where it was and its tile becomes free land; nothing is lost or refunded;
+  - "Sealed" (the HQ and 3 in 4 buildings inside the wall) and the land-growth rule (walls don't move out for free) are unchanged;
+  - town walls only for now; stronghold and camp maps keep their own walls (the Strongholds chat can follow later).
+  Built in the Features chat, one change per build, each shown to the owner as a picture before it is pushed; the Balance chat checks zombies breaking in and the danger targets afterwards.
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.
