@@ -72,6 +72,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - Must work fully offline.
 - No Claude (or any AI service) for character AI.
 - No chibi. No weapons on zombies (confirmed 16 Nov). The one exception: the Gatling Boss keeps the gun on his arm, no change to him (16 Nov).
+- 23 Nov (Art chat, W265): **the Alpha is the second exception: he carries a big rusted blade** (owner: "yes make it as exception"). The blade is made in code with some detail, not flat colours ("Make it a little details don't be too flat colour"); his attack becomes a roar with the blade raised, then a wide sweeping cut; he drags the blade behind him when he walks or runs. Shown as a picture first (W266), then the moves as previews. No other zombie carries a weapon.
 - Never push to main. Never republish the direction-A artifact.
 - Never paste API keys in chat. Don't delete scheduled tasks without permission.
 - Report the repo link and commit links after every push.
