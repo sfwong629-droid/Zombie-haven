@@ -8,6 +8,10 @@
 #   over the shoulder like a rod, the body winding back; a fast cast over the top and out low in front, the body following through; a hold with
 #   the fist closed (the hook lands at about 0.83 s, t .46; today's 'lash' at about 0.54 s: the game's timing moves); then a hard jerk back with
 #   the whole body, the arm pulled in to the hip, and the left hand reels twice beside it. Feet planted as in today's 'lash'.
+# MODE swipe (clip lasher_swipe, 1.3 s, its attack; owner, 24 Nov: "just do a regular attack, the fishing animation is not working"): a plain
+#   claw swipe with the long right arm: drawn up and back to its right side, the chest winding back; swept across the front from high right to
+#   low left at full reach, the chest turning into it (the hit at about 0.6 s, t .46); the clawed hand pulled in toward the chest (the drag);
+#   back to the start. Feet planted as in today's 'lash'.
 # MODE scratch (clip lasher_scratch, 2.8 s, the extra move; owner, 24 Nov: "1"): the right arm goes up and over the shoulder and scratches
 #   between the shoulder blades, then slides all the way down behind to the back of the right knee (the heel lifted, leaning over to that
 #   side) and scratches there, the head rolled back in relief; back to the idle. Starts and ends on its first idle pose.
@@ -22,13 +26,13 @@ bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(file
 ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; W = ao.matrix_world; sc = bpy.context.scene
 ad = ao.animation_data
 for tr in ad.nla_tracks: tr.mute = True
-base = bpy.data.actions['lash' if MODE in ('lasso', 'cast') else 'idle']; ad.action = base
+base = bpy.data.actions['lash' if MODE in ('lasso', 'cast', 'swipe') else 'idle']; ad.action = base
 try:
     if base.slots: ad.action_slot = base.slots[0]
 except Exception: pass
 for pb in PB: pb.rotation_mode = 'QUATERNION'
 f0 = base.frame_range[0]; FPS = 30; SC = W.to_scale().x
-SECS = float(os.environ.get('ZH_SECS', {'lasso': 2.0, 'cast': 1.8}.get(MODE, 2.8)))
+SECS = float(os.environ.get('ZH_SECS', {'lasso': 2.0, 'cast': 1.8, 'swipe': 1.3}.get(MODE, 2.8)))
 def upd(): bpy.context.view_layer.update()
 def goto(): sc.frame_set(int(f0)); upd()
 def sst(a_, b_, x): t = min(1., max(0., (x - a_) / max(1e-6, b_ - a_))); return t * t * (3 - 2 * t)
@@ -77,6 +81,8 @@ def arm_to(s, sg, tgt, w_, pole=None):
     upd()
 def fist(s, w_):   # curl the fingers into a fist about the hand's own side axis
     hx = (W @ PB['hand.' + s].matrix).to_3x3().col[0].normalized(); rot_about('fingers.' + s, Quaternion(hx, math.radians(75 * w_)), wpos('fingers.' + s))
+def claw(s, w_):   # fingers splayed and hooked
+    hx = (W @ PB['hand.' + s].matrix).to_3x3().col[0].normalized(); rot_about('fingers.' + s, Quaternion(hx, math.radians(35 * w_)), wpos('fingers.' + s))
 order = [b.name for b in PB]; KEY = {b: {'rot': [], 'loc': []} for b in order}
 nf = int(round(SECS * FPS))
 L = (PB['upperarm.R'].length + PB['forearm.R'].length) * SC
@@ -101,10 +107,14 @@ elif MODE == 'cast':
     # (t, weight, cock back, over the top, out low, jerk back)
     K = [(0.00, (0, 0, 0, 0, 0)), (0.10, (1, .6, 0, 0, 0)), (0.32, (1, 1, 0, 0, 0)), (0.39, (1, 0, 1, 0, 0)), (0.46, (1, 0, 0, 1, 0)),
          (0.56, (1, 0, 0, 1, 0)), (0.63, (1, 0, 0, 0, 1)), (0.90, (1, 0, 0, 0, 1)), (1.00, (0, 0, 0, 0, 0))]
+elif MODE == 'swipe':
+    # (t, weight, drawn back, swept across, pulled in)
+    K = [(0.00, (0, 0, 0, 0)), (0.12, (1, .5, 0, 0)), (0.36, (1, 1, 0, 0)), (0.46, (1, 0, 1, 0)), (0.54, (1, 0, 1, 0)),
+         (0.66, (1, 0, 0, 1)), (0.76, (1, 0, 0, 1)), (1.00, (0, 0, 0, 0))]
 elif MODE == 'scratch':
     # (t, weight, hand at the shoulder blades, hand at the back of the knee)
     K = [(0.00, (0, 0, 0)), (0.16, (1, 1, 0)), (0.44, (1, 1, 0)), (0.58, (1, 0, 1)), (0.86, (1, 0, 1)), (1.00, (0, 0, 0))]
-if MODE in ('lasso', 'cast', 'scratch'):
+if MODE in ('lasso', 'cast', 'swipe', 'scratch'):
   for i in range(nf + 1):
     t = i / nf; goto(); q0 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
     k = keys(K, t); w = k[0]
@@ -130,6 +140,22 @@ if MODE in ('lasso', 'cast', 'scratch'):
             arm_to('R', -1, tg, min(1, sp + fg), Vector((-.6, .6, .3)))
             if fg > .01: fist('R', fg)
             arm_to('L', 1, shL + Vector((.55, -.1, -.6)).normalized() * L * .95, sp * .8 + fg * .3, Vector((.4, .8, -.2)))   # out to the side for balance
+    elif MODE == 'swipe':
+        db, sw, pi = k[1] * w, k[2] * w, k[3] * w
+        move_pelvis(Vector((0, .02 * H * db - .03 * H * sw, -.01 * H * sw))); plant()
+        turn('chest', (0, 0, 1), -18 * db + 22 * sw + 8 * pi, wpos('chest'))
+        turn('chest', (1, 0, 0), -6 * db + 14 * sw + 8 * pi, wpos('chest'))
+        turn('head', (1, 0, 0), 4 * db - 6 * sw)
+        shR = wpos('upperarm.R')
+        D = {'db': Vector((-.75, .35, .55)), 'sw': Vector((.45, -1, -.35)), 'pi': Vector((.05, -.7, -.45))}
+        R_ = {'db': .9, 'sw': .99, 'pi': .62}
+        ws = {'db': db, 'sw': sw, 'pi': pi}; tot = sum(ws.values())
+        if tot > 1e-6:
+            d = sum((D[n].normalized() * ws[n] for n in D), Vector()) / tot; r = sum(R_[n] * ws[n] for n in D) / tot
+            arm_to('R', -1, shR + d.normalized() * L * r, min(1, tot), Vector((-.6, .5, -.2)))
+            claw('R', min(1, tot))
+        shL = wpos('upperarm.L')
+        arm_to('L', 1, shL + Vector((.45, .2, -.85)).normalized() * L * .95, .5 * (db + sw), Vector((.4, .8, -.2)))
     elif MODE == 'cast':
         cb, ot, lo_, jk = k[1] * w, k[2] * w, k[3] * w, k[4] * w
         move_pelvis(Vector((0, .04 * H * cb - .04 * H * lo_ + .05 * H * jk, -.01 * H * (lo_ + jk)))); plant()
