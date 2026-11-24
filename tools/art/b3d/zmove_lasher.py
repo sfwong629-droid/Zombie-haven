@@ -4,6 +4,10 @@
 #   out at chest height (the hook lands at about 1.0 s, t .50; today's 'lash' lands at .38 of 1.42 s, about 0.54 s: the game's timing moves),
 #   held a moment with the fist closed, then three hauls hand over hand, leaning back; back to the start. Feet planted as in today's 'lash'.
 #   Starts and ends on today's 'lash' first pose.
+# MODE cast (clip lasher_cast, 1.8 s, its attack; owner, 24 Nov: the lasso "not good", then "Try B: fishing cast"): the right arm cocks back
+#   over the shoulder like a rod, the body winding back; a fast cast over the top and out low in front, the body following through; a hold with
+#   the fist closed (the hook lands at about 0.83 s, t .46; today's 'lash' at about 0.54 s: the game's timing moves); then a hard jerk back with
+#   the whole body, the arm pulled in to the hip, and the left hand reels twice beside it. Feet planted as in today's 'lash'.
 # MODE scratch (clip lasher_scratch, 2.8 s, the extra move; owner, 24 Nov: "1"): the right arm goes up and over the shoulder and scratches
 #   between the shoulder blades, then slides all the way down behind to the back of the right knee (the heel lifted, leaning over to that
 #   side) and scratches there, the head rolled back in relief; back to the idle. Starts and ends on its first idle pose.
@@ -18,13 +22,13 @@ bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(file
 ao = next(o for o in bpy.data.objects if o.type == 'ARMATURE'); body = bpy.data.objects['body']; PB = ao.pose.bones; W = ao.matrix_world; sc = bpy.context.scene
 ad = ao.animation_data
 for tr in ad.nla_tracks: tr.mute = True
-base = bpy.data.actions['lash' if MODE == 'lasso' else 'idle']; ad.action = base
+base = bpy.data.actions['lash' if MODE in ('lasso', 'cast') else 'idle']; ad.action = base
 try:
     if base.slots: ad.action_slot = base.slots[0]
 except Exception: pass
 for pb in PB: pb.rotation_mode = 'QUATERNION'
 f0 = base.frame_range[0]; FPS = 30; SC = W.to_scale().x
-SECS = float(os.environ.get('ZH_SECS', 2.0 if MODE == 'lasso' else 2.8))
+SECS = float(os.environ.get('ZH_SECS', {'lasso': 2.0, 'cast': 1.8}.get(MODE, 2.8)))
 def upd(): bpy.context.view_layer.update()
 def goto(): sc.frame_set(int(f0)); upd()
 def sst(a_, b_, x): t = min(1., max(0., (x - a_) / max(1e-6, b_ - a_))); return t * t * (3 - 2 * t)
@@ -93,10 +97,14 @@ if MODE == 'lasso':
     # (t, weight, spin (arm overhead), fling (arm out), haul (leaning back))
     K = [(0.00, (0, 0, 0, 0)), (0.08, (1, 1, 0, 0)), (0.42, (1, 1, 0, 0)), (0.50, (1, 0, 1, 0)), (0.60, (1, 0, 1, 0)),
          (0.66, (1, 0, 0, 1)), (0.90, (1, 0, 0, 1)), (1.00, (0, 0, 0, 0))]
+elif MODE == 'cast':
+    # (t, weight, cock back, over the top, out low, jerk back)
+    K = [(0.00, (0, 0, 0, 0, 0)), (0.10, (1, .6, 0, 0, 0)), (0.32, (1, 1, 0, 0, 0)), (0.39, (1, 0, 1, 0, 0)), (0.46, (1, 0, 0, 1, 0)),
+         (0.56, (1, 0, 0, 1, 0)), (0.63, (1, 0, 0, 0, 1)), (0.90, (1, 0, 0, 0, 1)), (1.00, (0, 0, 0, 0, 0))]
 elif MODE == 'scratch':
     # (t, weight, hand at the shoulder blades, hand at the back of the knee)
     K = [(0.00, (0, 0, 0)), (0.16, (1, 1, 0)), (0.44, (1, 1, 0)), (0.58, (1, 0, 1)), (0.86, (1, 0, 1)), (1.00, (0, 0, 0))]
-if MODE in ('lasso', 'scratch'):
+if MODE in ('lasso', 'cast', 'scratch'):
   for i in range(nf + 1):
     t = i / nf; goto(); q0 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
     k = keys(K, t); w = k[0]
@@ -122,6 +130,25 @@ if MODE in ('lasso', 'scratch'):
             arm_to('R', -1, tg, min(1, sp + fg), Vector((-.6, .6, .3)))
             if fg > .01: fist('R', fg)
             arm_to('L', 1, shL + Vector((.55, -.1, -.6)).normalized() * L * .95, sp * .8 + fg * .3, Vector((.4, .8, -.2)))   # out to the side for balance
+    elif MODE == 'cast':
+        cb, ot, lo_, jk = k[1] * w, k[2] * w, k[3] * w, k[4] * w
+        move_pelvis(Vector((0, .04 * H * cb - .04 * H * lo_ + .05 * H * jk, -.01 * H * (lo_ + jk)))); plant()
+        turn('chest', (0, 0, 1), -20 * cb + 18 * lo_ - 10 * jk, wpos('chest'))
+        turn('chest', (1, 0, 0), -8 * cb + 4 * ot + 20 * lo_ - 16 * jk, wpos('chest'))
+        turn('head', (1, 0, 0), 6 * cb - 8 * lo_ + 6 * jk)
+        shR = wpos('upperarm.R'); shL = wpos('upperarm.L')
+        D = {'cb': Vector((-.15, .55, .8)), 'ot': Vector((-.05, -.35, 1)), 'lo': Vector((.1, -1, -.42)), 'jk': Vector((-.1, -.45, -.85))}
+        R_ = {'cb': .85, 'ot': .97, 'lo': .99, 'jk': .62}
+        ws = {'cb': cb, 'ot': ot, 'lo': lo_, 'jk': jk}; tot = sum(ws.values())
+        if tot > 1e-6:
+            d = sum((D[n].normalized() * ws[n] for n in D), Vector()) / tot; r = sum(R_[n] * ws[n] for n in D) / tot
+            arm_to('R', -1, shR + d.normalized() * L * r, min(1, tot), Vector((-.7, .3, -.3)))
+            if lo_ + jk > .01: fist('R', min(1, lo_ + jk))
+        crank = 2 * math.pi * 2 * min(1, max(0, (t - .66) / (.88 - .66)))      # the left hand reels twice
+        reel = shR + Vector((.06, -.28, -.55)) * L + Vector((.06, 0, 0)) + Vector((0, math.cos(crank), math.sin(crank))) * .07 * L
+        arm_to('L', 1, reel, jk, Vector((.8, .3, -.4)))
+        if jk > .01: fist('L', jk)
+        arm_to('L', 1, shL + Vector((.5, .3, -.8)).normalized() * L * .95, .5 * cb, Vector((.4, .8, -.2))) if cb > .01 and jk < .01 else None
     else:
         sb, kn = k[1] * w, k[2] * w
         jit_ = math.sin(2 * math.pi * 7 * t * SECS) * .025 * (1 if (.20 < t < .42 or .62 < t < .84) else 0)
