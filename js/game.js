@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.340', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.341', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7506,7 +7506,52 @@ function buildLock(k) { const d = DEFS[k]; if (d.lvl && (S.lvl || 1) < d.lvl) re
 function propPic(k, fb) {   /* 3D.103 Build menu: the real 3D look of walls, gates, roads, posts and traps (falls back to the flat icon) */
   const u = (window.ZH3D) && ZH3D.ready && ZH3D.pthumb && ZH3D.pthumb(k, 208, 156); return u ? `<img src="${u}" style="width:104px;height:78px;object-fit:contain" alt="">` : fb; }
 function wallIcon(t) { if (GLASS && window.ZHIcons) return ZHIcons.svg(t === 'gate' ? 'door' : t === 'metal' ? 'wall' : 'wood', 64); return t === 'gate' ? '🚪' : t === 'metal' ? '🧱' : '🪵'; }
+/* 3D.341 (owner, 23 Nov, W249: the five menu targets, then "Yes for the same pattern"): Build in the phone look. A search field, a row of chips (For your mission, then six
+   categories), a grid of big pictures with the name and the cost (locked ones last, with what they need), and a Manage list (the base, Demolish, Re-arm).
+   The Glass look keeps the tabbed grid. */
+const BFOLD = [['shelter', 'Shelter', ['tent', 'bonfire', 'medic', 'crates', 'townhall']], ['food', 'Food & water', ['barrel', 'farm', 'canteen', 'watertower', 'pump', 'greenhouse', 'coldstore']],
+  ['defend', 'Defence', ['wall:wood', 'wall:palisade', 'wall:metal', 'wall:efence', 'wall:gate', 'post', 'floodlight', 'trap:spikes', 'trap:wire', 'trap:lure', 'trap:trench', 'trap:mine', 'armory', 'ammobench', 'ammofactory', 'barracks']],
+  ['work', 'Work', ['bench', 'scrapyard', 'lumber', 'pallet', 'quarry', 'road', 'tradepost', 'market', 'garage']], ['power', 'Power', ['generator', 'turbine', 'solar', 'pole', 'fuelstill', 'radio']],
+  ['fun', 'Fun & training', ['lounge', 'kennel', 'gym', 'library', 'school', 'range', 'track', 'sparring']]];
+function bItem(k) {   /* one thing the Build menu offers, whatever its kind: name, picture, cost, what locks it, how many the town has, and the attribute its tap is wired by */
+  const pp = (key, fb) => { const u = window.ZH3D && ZH3D.ready && ZH3D.pthumb && ZH3D.pthumb(key, 208, 156); return u ? `<img src="${u}" alt="">` : fb; }, ic = (n) => (window.ZHIcons ? ZHIcons.svg(n, 30) : '');
+  if (k === 'road') return { k, name: 'Road', pic: pp('road', ic('road')), cost: '⚙ ' + Wd.ROAD_COST, lock: '', have: 0, attr: 'data-tool="road"' };
+  if (k === 'post') return { k, name: 'Guard Post', pic: pp('post', ic('post')), cost: '⚙ ' + POST_COST, lock: '', have: (S.posts || []).length, max: postMax(), attr: 'data-tool="post"' };
+  if (k.startsWith('trap:')) { const t = k.slice(5), td = TRAP_DEFS[t]; return { k, name: td.name, pic: pp(k, td.icon), cost: costShort(bCost(td)), lock: S.rank < td.rank ? 'Level ' + lvlOfRank(td.rank) : '', have: 0, attr: `data-trap="${t}"` }; }
+  if (k.startsWith('wall:')) { const t = k.slice(5), wd = Wd.WALL_DEFS[t]; return { k, name: wd.name, pic: pp(k, ic(t === 'gate' ? 'door' : t === 'metal' ? 'wall' : 'wood')), cost: costShort(bCost(wd)), lock: (wd.tier || 1) > hqTier() ? hqName(wd.tier) : S.rank < wd.rank ? 'Level ' + lvlOfRank(wd.rank) : '', have: 0, attr: `data-wall="${t}"` }; }
+  const d = DEFS[k]; if (!d || d.hidden) return null; const u = window.ZH3D && ZH3D.ready && ZH3D.bthumb && ZH3D.bthumb(k, 208, 156);
+  return { k, name: d.name, pic: u ? `<img src="${u}" alt="">` : '', cost: costShort(bCost(d)), lock: buildLock(k).replace('Research: ', '').replace(/^Needs /, ''), have: bOf(k).length, attr: `data-b="${k}"`, b: true };
+}
+function bSuggest() {   /* up to six: the building the current goal names (ringed), then open buildings the town has none of */
+  const o = currentObjective(), all = BFOLD.flatMap((f) => f[2]).map(bItem).filter((x) => x && x.b && !x.lock), txt = o ? (o.desc || '') + ' ' + (o.name || '') : '';
+  const m = all.filter((x) => txt.includes(x.name)).sort((a, b) => b.name.length - a.name.length)[0], rest = all.filter((x) => x !== m && !x.have);
+  return { mission: m || null, list: (m ? [m] : []).concat(rest).slice(0, 6) };
+}
+let bChip = 'sug';
+function showBuildPhone(chip) {   /* layout B (owner, 23 Nov, 21:53: "go with B"): category chips that wrap so all show (owner: "2 is ok"), then a grid of big pictures: every building one tap away */
+  endBuildMode(true); closeP(); if (chip) bChip = chip; const ch = `<i class="phChv">${phG('ch', 14)}</i>`, here = () => showBuildPhone();
+  const rows = (ks) => ks.map(bItem).filter(Boolean), sg = bSuggest(), F = BFOLD.find((f) => f[0] === bChip); if (!F && (bChip !== 'sug' || !sg.list.length)) bChip = sg.list.length ? 'sug' : BFOLD[0][0];
+  const tile = (x, rec) => `<button class="phTile${x.lock ? ' lock' : ''}${rec ? ' rec' : ''}" ${x.attr}><span class="phApp">${x.pic}${x.have ? `<i>${x.max ? x.have + '/' + x.max : '×' + x.have}</i>` : ''}</span><b>${esc(x.name)}</b><small>${x.lock ? '🔒 ' + esc(x.lock) : x.cost}</small></button>`;
+  const grid = (xs, rec) => `<div class="phGrid">${xs.filter((x) => !x.lock).concat(xs.filter((x) => x.lock)).map((x) => tile(x, x === rec)).join('')}</div>`;
+  const cur = bChip === 'sug' ? grid(sg.list, sg.mission) : grid(rows((BFOLD.find((f) => f[0] === bChip) || BFOLD[0])[2])), hb = hqB(), hn = hb && DEFS[DEFS[hb.type].next], sp = trapsSpent().length;
+  $('ib').innerHTML = `<div class="phBuild"><label class="phSearch"><span class="phMag"></span><input id="bQ" type="search" placeholder="Build something" autocomplete="off"></label><div id="bRes" style="display:none"></div><div id="bMain">`
+    + `<div class="phChips" id="bChips">${(sg.list.length ? [['sug', sg.mission ? 'For your mission' : 'For you']] : []).concat(BFOLD.map((f) => [f[0], f[1]])).map(([k, t]) => `<button data-chip="${k}" class="${k === bChip ? 'on' : ''}"><span>${t}</span></button>`).join('')}</div>${cur}`
+    + `<div class="phSec">Manage</div><div class="phCard">${hb ? `<div class="phR tall" id="bHQ" role="button"><span class="tx"><b>${esc(DEFS[hb.type].name)}</b><small>${hb.upg ? 'Upgrading to ' + esc(DEFS[hb.upg.to].name) : hn ? `Next: ${esc(hn.name)} · ${costShort(bCost(hn))}` : 'Top tier'}</small></span>${ch}</div>` : ''}`
+    + `<div class="phR" id="bDemo" role="button"><span class="k">Demolish</span><span class="v">Buildings, roads, walls, posts</span>${ch}</div>${sp ? `<div class="phR" id="bRearm" role="button"><span class="k">Re-arm ${sp} spent trap${sp > 1 ? 's' : ''}</span><span class="v">⚙ ${rearmCost()}</span>${ch}</div>` : ''}</div></div></div>`;
+  showPanel('Build');
+  const wire = (root) => {
+    root.querySelectorAll('[data-b]').forEach((b) => { b.onclick = () => buildDetail(b.dataset.b, here); });
+    root.querySelectorAll('[data-wall]').forEach((b) => { b.onclick = () => { const t = b.dataset.wall; if (S.rank < Wd.WALL_DEFS[t].rank) { say(`${Wd.WALL_DEFS[t].name} needs Haven level ${lvlOfRank(Wd.WALL_DEFS[t].rank)}.`); return; } if ((Wd.WALL_DEFS[t].tier || 1) > hqTier()) { say(`${Wd.WALL_DEFS[t].name} needs the ${hqName(Wd.WALL_DEFS[t].tier)}.`); return; } startTool({ kind: 'wall', wtype: t }); }; });
+    root.querySelectorAll('[data-trap]').forEach((b) => { b.onclick = () => { const t = b.dataset.trap; if (S.rank < TRAP_DEFS[t].rank) { say(`${TRAP_DEFS[t].name} needs Haven level ${lvlOfRank(TRAP_DEFS[t].rank)}.`); return; } startTool({ kind: 'trap', ttype: t }); }; });
+    root.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => startTool({ kind: b.dataset.tool === 'post' ? 'post' : 'road' }); });
+  };
+  wire($('ib')); $('ib').querySelectorAll('[data-chip]').forEach((b) => { b.onclick = () => showBuildPhone(b.dataset.chip); });
+  { const h = $('bHQ'); if (h && hb) h.onclick = () => showBuildingInfo(hb); const dm = $('bDemo'); if (dm) dm.onclick = () => startTool({ kind: 'demolish' }); const rb = $('bRearm'); if (rb) rb.onclick = () => { const n = rearmAll(); say(n ? `Re-armed ${n} trap${n > 1 ? 's' : ''}.` : 'Not enough scrap to re-arm.'); showBuildPhone(); }; }
+  const q = $('bQ'); q.oninput = () => { const v = q.value.trim().toLowerCase(), res = $('bRes'), xs = v ? rows(BFOLD.flatMap((f) => f[2])).filter((x) => x.name.toLowerCase().includes(v)) : [];
+    $('bMain').style.display = v ? 'none' : ''; res.style.display = v ? '' : 'none'; res.innerHTML = v ? (xs.length ? grid(xs) : '<p class="sm phFoot">Nothing by that name.</p>') : ''; wire(res); };
+}
 function showBuild() {
+  if (phoneOn()) return showBuildPhone();
   endBuildMode(true); closeP(); const cat = BCAT.find((c) => c[0] === bCat) || BCAT[0];
   const cards = cat[2].map((k) => {
     if (k === 'road') return `<button class="bcard" data-tool="road"><div class="im" style="font-size:46px">${propPic('road', GLASS && window.ZHIcons ? ZHIcons.svg('road', 64) : '🛣️')}</div><div class="nm">Road</div><div class="co">⚙ ${Wd.ROAD_COST}</div></button>`;
@@ -7527,7 +7572,7 @@ function showBuild() {
   $('ib').querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => startTool({ kind: b.dataset.tool === 'post' ? 'post' : 'road' }); });
   $('bDemo').onclick = () => startTool({ kind: 'demolish' });
 }
-function buildDetail(k) {
+function buildDetail(k, back) {
   const d = DEFS[k], lk = buildLock(k), have = bOf(k).length, afford = canPay(bCost(d)), size = d.w === 1 && d.h === 1 ? 'Small 1×1' : d.w * d.h === 4 ? 'Large 2×2' : 'Medium 2×1';
   const fx = [];
   /* 3D.133 owner: "+4 food / day · -2" read as one muddle, and nobody knew what upkeep was. One small table: what it makes a day, what it uses a day
@@ -7542,7 +7587,7 @@ function buildDetail(k) {
     <p class="desc">${BDESC[k] || ''}</p>${perDay}<div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
     ${have ? `<div class="desc sm" style="margin-top:6px">You have ${have}</div>` : ''}
     ${lk ? `<p style="color:var(--bad)">🔒 Needs ${lk}</p>` : `<button class="act go" id="bdGo" style="width:70%;margin-top:10px">${afford ? 'Build' : 'Place site · still need ' + missText(bCost(d))}</button>`}</div>`;
-  showPanel(d.name, showBuild);
+  showPanel(d.name, back || showBuild);
   const g = $('bdGo'); if (g) g.onclick = () => startTool({ kind: 'building', type: k });
 }
 const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
