@@ -125,3 +125,5 @@ Owner, 23 Nov, 20:30: **"yes that is a good direction. Yes for the same pattern"
 Owner, 23 Nov, 21:53: of four Build layouts (`phoneJ_build_choices.png`: A folders, B grid with chips, C one long list, D shelves) **"go with B"**. Build on the branch is now B (`showBuildPhone(chip)`, `bChip`; `BFOLD` are the chips' categories; picture `phoneK_build_B_built.png`).
 
 **Town (owner, 23 Nov, 23:52: "yes its good"; live as 3D.342):** `townPhoneHtml(st)` and `townBars(st)` in `src/game/24-panels.js` (showTown wires both looks: same ids), check `tools/qa/phone_town_check.js`, picture `phoneM_town_built.png`. The bars: Food and Water fill with days left (5 days is full; Stable when the net is not negative), Beds with the share of people who have one, Walls with the walls' health; the words turn orange when short.
+
+**More and Settings, waiting for the owner's yes (24 Nov, 00:20).** Local branch `phone-settings-wip`, to be 3D.343: `showMorePhone()` and the phone branch of `showSettings()` in `src/game/15-save.js` (same ids, same wiring), the row signs `PH_SG` / `phSI(k, colour)`, check `tools/qa/phone_settings_check.js`, picture `phoneN_settings_built.png`.
