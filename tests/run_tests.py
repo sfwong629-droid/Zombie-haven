@@ -656,10 +656,10 @@ async def t_tabs(br, port, t):
     ctx, pg, errs = await open_game(br, port, 'tabs')
     await pg.evaluate(PLACE, 'workshop')
     await pg.evaluate("()=>{const b=ZH.world.buildings.find(q=>q.type==='workshop');ZH.centerOn(b.x+1,b.y+1,1.2);ZH.draw();const c=ZH.project(b.x+b.w/2,b.y+b.h/2);ZH.tapAt(c.x,c.y)}")
-    tabs = await pg.evaluate("()=>[...document.querySelectorAll('#ib .tabs button')].map(b=>b.dataset.tab)")
+    tabs = await pg.evaluate("()=>[...document.querySelectorAll('#ib .tabs button, #ib .phSeg button')].map(b=>b.dataset.tab)")
     t.ok(tabs == ['overview', 'details', 'research', 'craft'], f'workshop tabs {tabs}')
     for k in tabs:
-        await pg.click(f'#ib [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#ib .tabs button.on').dataset.tab"); t.ok(on == k, f'building tab {k} opens')
+        await pg.click(f'#ib [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#ib .tabs button.on, #ib .phSeg button.on').dataset.tab"); t.ok(on == k, f'building tab {k} opens')
     await pg.evaluate("()=>ZH.unitPanel(ZH.S.sv[0])")
     for k in ['stats', 'gear', 'skills', 'about']:   # the Bonds tab became About (personality and bonds)
         await pg.click(f'#unitExtra [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#unitExtra .tabs button.on, #unitExtra .phActs button.on').dataset.tab"); t.ok(on == k, f'survivor tab {k} opens')
