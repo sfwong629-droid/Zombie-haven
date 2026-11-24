@@ -247,7 +247,7 @@ async def t_polish(br, port, t):   # V2.38: pacing, night lights, safe removal, 
       S.rank=2;S.food=S.water=40;S.lastEventDay=-1;out.lock=ZH.holdEvent('caravan');S.rank=3;const m0=S.mat,f0=S.food;out.ok=ZH.holdEvent('caravan');out.parts=S.mat-m0;out.food=f0-S.food;
       S.rank=4;S.res={};ZH.showUpgrade('rank');out.path=document.getElementById('ib').textContent;
       S.hour=22;ZH.OPTS.nightLights=true;ZH.draw();ZH.OPTS.nightLights=false;ZH.draw();ZH.OPTS.nightLights=true;out.opt=JSON.parse(localStorage.getItem('zombieHavenOpts')||'{}');
-      ZH.showTown('overview');const c=document.getElementById('closeInfo').getBoundingClientRect(),tb=document.querySelector('.tabs button').getBoundingClientRect();out.close=[c.width,c.height];out.tab=tb.height;return out}""")
+      ZH.showTown('overview');const c=document.getElementById('closeInfo').getBoundingClientRect(),tb=document.querySelector('.tabs button, .phSeg button').getBoundingClientRect();out.close=[c.width,c.height];out.tab=tb.height;return out}""")
     t.ok(r['after1'] and not r['after2'], 'a wall needs a second tap to be removed')
     t.ok(r['road1'] and not r['road2'], 'a road needs a second tap to be removed')
     t.ok(not r['lock'] and r['ok'] and r['parts'] == 10 and r['food'] == 12, f"Trade Caravan: locked before rank 3, then 12 food + 10 water -> 10 parts {r['parts']},{r['food']}")

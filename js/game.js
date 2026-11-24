@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.341', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.342', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7883,13 +7883,62 @@ function expandTerritory() {   /* V2.13: more land to build on, more zombies to 
   const e = expandInfo(); if (!e || !e.ok) return false; payCost(bCost(e.n)); S.terr = (S.terr || 0) + 1; Wd.setTerritory(S.terr); Wd.bump(world); landGrewNote();   /* 3D.100: traps inside the new walls stay (they go anywhere now) */
   banner('🗺 TERRITORY EXPANDED'); say(`The Haven claimed more land (tier ${S.terr}). More zombies will come, from more directions.`, true); renownGain(3, 'Territory expanded'); saveGame(); ui(); return true;
 }
+/* 3D.342 (owner, 23 Nov, W249: the five menu targets, "Yes for the same pattern", "next"): Town in the phone look. The four parts stay (Haven, Defense, People, More)
+   as a segmented control. Haven opens on the town's four bars, Food, Water, Beds, Walls (owner: "no ring, use bar"), each with a few words, then what would
+   fill them as rows that open the right building; everything else is grouped lists. Same ids as the old panel, so showTown wires both. */
+function townBars(st) {
+  const n = S.sv.length, hl = Math.min(n, Math.max(0, unhoused().length - campCap()));   /* a bed is a home, a place in housing, or room at the Camp (bedFor) */ let hp = 0, mx = 0, broken = 0; for (const w of world.walls.values()) { hp += Math.max(0, w.hp); mx += w.max; if (w.broken) broken++; }
+  const p = Wd.perimeter(world), dw = (d, net) => (d === Infinity || net >= 0 ? 'Stable' : d < 1 ? 'Under a day left' : `Enough for ${Math.floor(d)} day${Math.floor(d) === 1 ? '' : 's'}`), dv = (d, net) => (d === Infinity || net >= 0 ? 100 : Math.min(100, d / 5 * 100));
+  return { food: { v: dv(st.fDays, st.fNet), w: dw(st.fDays, st.fNet), low: st.fNet < 0 && st.fDays < 2 }, water: { v: dv(st.wDays, st.wNet), w: dw(st.wDays, st.wNet), low: st.wNet < 0 && st.wDays < 2 },
+    beds: { v: n ? (n - hl) / n * 100 : 100, w: hl ? `${n - hl} of ${n} have one` : 'Everyone has one', low: hl > 0 },
+    walls: { v: mx ? hp / mx * 100 : 0, w: !p.walls ? 'No walls yet' : broken ? `${broken} broken` : !p.sealed ? 'Open: gaps in the ring' : hp / mx < .7 ? 'Damaged' : 'Sealed', low: !p.walls || broken > 0 || !p.sealed, none: !p.walls, gaps: !!p.walls && !p.sealed } };
+}
+function townPhoneHtml(st) {
+  const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`, note = (t) => (t ? `<div class="phFootN">${t}</div>` : ''), I = (n, z = 20) => (window.ZHIcons ? ZHIcons.svg(n, z) : '');
+  const row = (k, v, id, attr) => `<div class="phR"${id ? ` id="${id}"` : ''}${id || attr ? ' role="button"' : ''} ${attr || ''}><span class="k">${k}</span><span class="v">${v}</span>${id || attr ? ch : ''}</div>`;
+  const tall = (t, sub, id, right) => `<div class="phR tall"${id ? ` id="${id}" role="button"` : ''}><span class="tx"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span>${right || ''}${id ? ch : ''}</div>`;
+  const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1) + ' a day';
+  let h = `<div class="phTown"><div class="phSeg">${[['overview', 'Haven'], ['defense', 'Defense'], ['people', 'People'], ['more', 'More']].map(([k, t]) => `<button data-tab="${k}" class="${k === tTab ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  if (tTab === 'overview') {
+    const b = townBars(st), bar = (ic, t, x, col) => `<div class="phR phBar"><span class="ic">${I(ic)}</span><b>${t}</b><span class="phBarT"><i style="width:${Math.max(0, Math.min(100, Math.round(x.v)))}%;background:${col}"></i></span><em class="${x.low ? 'low' : ''}">${x.w}</em></div>`;
+    const fill = (k, ic, col, t) => `<div class="phR" data-fill="${k}" role="button"><span class="phIc" style="background:${col}">${I(ic, 18)}</span><span class="k">${t}</span><span class="v"></span>${ch}</div>`;
+    const fills = (b.water.low ? fill('barrel', 'water', '#3d8fe0', 'Build a Rain Barrel') : '') + (b.food.low ? fill('farm', 'food', '#e08a2e', 'Plant a Garden Plot') : '') + (b.beds.low ? fill('tent', 'bed', '#3fae7c', 'Build one more Tent') : '') + (b.walls.none ? fill('wall', 'wall', '#8d6fe0', 'Build a Wood Fence') : b.walls.gaps ? fill('gaps', 'wall', '#8d6fe0', 'Close the gaps in the wall') : '');
+    const rc = rankConds(), pol = POLICIES[policy()];
+    h += grp(bar('food', 'Food', b.food, '#f0a24a') + bar('water', 'Water', b.water, '#5db4ff') + bar('bed', 'Beds', b.beds, '#7fd6a8') + bar('wall', 'Walls', b.walls, '#b79bff'))
+      + sec('What would fill the bars') + (fills ? grp(fills) : note('Nothing needed right now.'))
+      + sec('Level') + grp(tall(`Level ${S.lvl || 1}`, `Era ${eraOf().n}: ${esc(eraOf().name)} · threat ${threatNow()}`) + (S.lvUp ? row('Upgrading to level ' + S.lvUp.to, lvLeftText() + ' left', 'tUpg') : rc ? row('Upgrade the Haven', S.rankReady ? '<b class="go">Ready</b>' : `${rc.filter((r) => r.ok).length} of ${rc.length} goals met`, 'tUpg') : row('Highest level reached', '')))
+      + (S.mission ? sec('Mission') + grp(tall(esc(S.mission.name), esc(S.mission.desc)) + `<div class="phR phBar"><b class="w">Progress</b><span class="phBarT"><i style="width:${Math.round(Math.min(1, S.mission.progress / Math.max(1, S.mission.goal)) * 100)}%;background:#e6d36a"></i></span><em>${Math.floor(S.mission.progress)}/${S.mission.goal}</em></div>`) : '')
+      + sec('Town policy') + grp(Object.entries(POLICIES).map(([k, q]) => `<div class="phR" data-pol="${k}" role="button"><span class="k">${q.icon} ${q.name}</span><span class="v"></span>${policy() === k ? '<i class="phTick"></i>' : ''}</div>`).join('')) + note(esc(pol.desc))
+      + sec('Each day') + grp(row('Food', `<span class="${st.fNet < 0 ? 'bad' : ''}">${net(st.fNet)}</span>`) + row('Water', `<span class="${st.wNet < 0 ? 'bad' : ''}">${net(st.wNet)}</span>`) + row('Upkeep', `−${upkeepTotal().toFixed(1)} scrap a day`) + row('Storage', `${supplyCap()} of each`))
+      + (world.buildings.some((x) => x.unpaid) ? note(`<span class="bad">${world.buildings.filter((x) => x.unpaid).length} building(s) unpaid: half output</span>`) : '');
+  } else if (tTab === 'defense') {
+    h += sec('Walls') + `<div class="phCard phPad">${perimText()}</div>`
+      + sec('Explosives') + grp(Object.entries(EX_DEFS).map(([k, e]) => row(`${e.icon} ${e.name}`, `${(S.ex || {})[k] || 0} of ${exCap()}`)).join('') + `<div class="phR gTog"><span class="k">Throw them by themselves</span><span class="v"></span><button class="tgl${S.exAuto === false ? '' : ' on'}" id="tExAuto" aria-pressed="${S.exAuto !== false}" aria-label="Auto-throw"><i></i></button></div>`)
+      + note('Pipe bombs come from a staffed Ammo Bench, molotovs from a staffed Fuel Still (one a day each), grenades from traders and the Military Checkpoint. Fighters throw them at a crowd of 4 or more or a boss, never near our own people.')
+      + sec('Retreat') + `<div class="phCard phPad"><div class="row"><span class="sm">Fighters fall back at</span><input class="sp" type="range" id="retreatR" min="15" max="60" step="5" value="${S.retreat}"><span id="retreatV">${S.retreat}%</span></div></div>`
+      + sec('Land and raids') + grp(row('Territory', `Tier ${S.terr || 0} of ${Wd.TERRITORY.length - 1}`) + row('Raiders', raidsOpen() ? 'Next raid about day ' + Math.ceil(S.nextRaid || 0) : 'None before level ' + FIRST_RAID_LVL)) + note('The Haven claims more land as it levels up: levels 4, 7, 11 and 16 (the City).')
+      + sec('Out there') + `<div class="phOld">${factionsHtml()}</div>`;
+  } else if (tTab === 'people') {
+    const pets = S.sv.filter((q) => q.pet);
+    h += grp(row('People', `${popNow()} of ${popCap()}`) + row('Residents', residents()) + row('Couples', S.sv.filter((q) => q.partner).length / 2 | 0) + row('Children', (S.kids || []).length)) + note('More Houses means more room.')
+      + sec('Pets') + (pets.length || (S.pets || []).length ? grp(pets.map((q) => row(esc(q.pet.name), 'with ' + esc(q.name))).join('') + ((S.pets || []).length ? row('Waiting for someone', S.pets.length) : '')) : note('None yet.'))
+      + sec('Memorial') + (S.fallen.length ? grp(S.fallen.map((f) => row(esc(f.name), `${f.job}, day ${f.day}`)).join('')) : note('No one lost yet.'));
+  } else {
+    h += grp(tall('Research', `${Math.floor(S.rp || 0)} RP · ${Object.keys(S.res || {}).length} of ${Object.keys(RESEARCH).length} done · ${bOf('workshop').length ? 'tap a Workshop to research' : 'build a Workshop to research'}`)
+        + tall('Weekly review', (S.lastReview ? `Week ${S.lastReview.week}: grade ${S.lastReview.grade}` : 'First review on day 8') + ((S.titles || []).length ? ' · Titles: ' + S.titles.join(', ') : ''))
+        + (S.trader ? row('Trader', 'In town until 19:00', 'tTrade') : row('Trader', `Next visit about day ${S.nextTrader || 2}`)))
+      + sec('Game') + grp(row('Save now', '', 'tSave') + row('Event log', '', 'tLog') + row('Title screen', 'Saves first', 'tTitle'));
+  }
+  return h + '</div>';
+}
 let tTab = 'overview';
 const progRow = (label, have, need) => `<div class="row"><span style="width:96px">${label}</span><div class="sp">${meter(have / Math.max(1, need) * 100, have >= need ? '' : 'xp')}</div><span class="sm" style="width:74px;text-align:right">${Math.floor(have)}/${need}</span></div>`;
 function showTown(tab) {
   endBuildMode(true); closeP(); if (tab) tTab = tab; const nx = rankRules[S.rank], st = supplyStats();
   const net = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1), days = (d) => (d === Infinity ? 'stable' : `${d.toFixed(1)} days`);
-  let h = tabBar([['overview', 'Haven', 'haven'], ['defense', 'Defense', 'defense'], ['people', 'People', 'people'], ['more', 'More', 'more']], tTab);
-  if (tTab === 'overview') {
+  let h = phoneOn() ? '' : tabBar([['overview', 'Haven', 'haven'], ['defense', 'Defense', 'defense'], ['people', 'People', 'people'], ['more', 'More', 'more']], tTab);
+  if (phoneOn()) h = townPhoneHtml(st);
+  else if (tTab === 'overview') {
     h += `<div class="card"><b>Town policy</b><div class="row" style="gap:4px;flex-wrap:wrap;margin:4px 0">${Object.entries(POLICIES).map(([k, q]) => `<button class="act${policy() === k ? ' go' : ''}" data-pol="${k}" style="flex:1 1 45%;margin:0;padding:6px 4px;font-size:17px">${q.icon} ${q.name}</button>`).join('')}</div><div class="sm">${POLICIES[policy()].desc}</div></div>`;
     h += `<div class="card"><div style="font-size:23px">Level ${S.lvl || 1} <span class="sm">· Era ${eraOf().n}: ${eraOf().name} · threat ☠${threatNow()}</span></div>`
       + (S.lvUp ? `<div class="sm">🏗 Upgrading to level ${S.lvUp.to}: ${lvLeftText()} left</div><button class="act" id="tUpg">Upgrade progress</button>` : rankConds() ? `<div class="sm">Next level: ${rankConds().filter((r) => r.ok).length}/${rankConds().length} goals met</div><button class="act${S.rankReady ? ' go' : ''}" id="tUpg">🏡 Upgrade the Haven</button>` : '<div>Highest level reached.</div>') + '</div>'
@@ -7918,6 +7967,8 @@ function showTown(tab) {
       <button class="act" id="tSave">Save now</button><button class="act" id="tLog">📜 Event log</button><button class="act" id="tTitle">🏠 Title screen (saves first)</button>`;
   }
   $('ib').innerHTML = h; showPanel('Town');
+  $('ib').querySelectorAll('[data-fill]').forEach((b) => { b.onclick = () => { const k = b.dataset.fill; if (k === 'gaps') { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); showObjMarks(findGaps()); } else if (k === 'wall') { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); } else buildDetail(k, () => showTown()); }; });
+  { const tm = $('tMission'); if (tm) tm.onclick = () => { closeP(); if ($('objBox')) $('objBox').click(); }; }
   $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showTown(b.dataset.tab); });
   $('ib').querySelectorAll('[data-pol]').forEach((b) => { b.onclick = () => { setPolicy(b.dataset.pol); showTown('overview'); }; });
   const rr = $('retreatR'); if (rr) rr.oninput = (e) => { S.retreat = +e.target.value; $('retreatV').textContent = S.retreat + '%'; };
