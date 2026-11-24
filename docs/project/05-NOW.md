@@ -68,6 +68,7 @@ Bugs chat:
 - ~~W145. Bug A12: when, and was there a wall between?~~ Owner, 19 Nov: in the morning around 06:00. Decided: zombies never walk away (`02-DECISIONS.md`); built on branch `a12-never-leave`, held for the Balance chat's tuning.
 - W161. Bug B11 (3D.238): every Tent now adds room. Look at the Wandering Medic (or any "no room" card) and the People count: does room go up with each Tent? (In your town: 10 with one Tent, if rank allows.)
 - ~~W203. Empty Tents, people sleeping rough.~~ Owner, 21 Nov: "yes they move into free beds themselves". Built in 3D.263. Same message: B23 "they should auto try to find another path" (3D.264), B24 "set a new rule for emoji" (3D.265, the rule in `02-DECISIONS.md`, UI), B25 "so what to do?" (3D.266: anyone in a wall is put on the nearest open tile).
+- W271. **Bug A14, the hot phone (3D.348, version 313).** The game now draws at most 30 frames a second (it drew 60, or 120 on some phones), and only 5 while a menu or a card is open. Play as you did when it got hot, for the same time (15 to 20 minutes): (1) does the phone get less hot? (2) does moving the camera and watching a fight still look smooth enough? (3) does the battery go down less? To compare with before, play once with `&fps=60` on the end of the game's address (the old rate). If it still gets hot, the next steps are a lower top resolution, lighter ink or a Battery saver switch, and lighter glass.
 - W7. Any other bugs they have seen.
 
 UI chat:
