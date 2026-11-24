@@ -1,11 +1,13 @@
 # zmove_alpha.py -- RAW.glb MODE OUT.json : the Alpha's moves (14-ZOMBIE-MOVES.md; previews for W216 and W239, made by hand, not in the game).
 # The Alpha carries a big rusted blade in his right hand (owner, 23 Nov, W265; the blade is alpha_blade.py, W266). The blade's place in the hand
 #   is BLADE_M (blade local -> the hand's weapon_bat frame, the frame the game's one-handed weapons hang from); animvid's ATTACH shows it.
-# MODE attack (clip alpha_attack, 1.9 s, its attack): a roar with the blade raised high, chest out, head up, the free hand clawed out wide; then
-#   the blade is drawn across to its left shoulder and swept round in a wide flat cut to its right, the chest turning with it. Feet planted.
-#   Starts and ends on today's attack's (brute_attack) first pose.
+# MODE attack (clip alpha_attack, 1.8 s, its attack; owner, 23 Nov: "from the drag blade position, slowly lift and then quick swing across"):
+#   it starts with the blade dragged behind, as in the walk; the arm slowly lifts it up behind the right shoulder, the chest winding back;
+#   then a quick swing across the front, from its right to its left and down, the chest turning through; a beat, then it lets the blade
+#   drop back behind into the drag. Feet planted. Starts and ends in the drag.
 # MODE walk / run (clips alpha_walk, alpha_run, the length of zombie_walk / zombie_run): today's walk and run with the blade dragged behind:
-#   the right arm hangs back and the blade trails from it, its tip on the ground. Legs, hips and the left arm are today's.
+#   the right arm hangs back and the blade trails from it, its tip on the ground. The left arm hangs at its side and swings with the step
+#   (owner: "the left hand ... should move normally on the side of the body"). Legs and hips are today's.
 # MODE idle (clip alpha_idle, the length of idle): today's stand, the blade hanging from the hand, its tip resting on the ground in front.
 #   The attack and the wave-on start and end with the blade held like this.
 # MODE rally (clip alpha_rally, 2.2 s, the extra move, W239): it looks back over its right shoulder, then swings the blade up from behind to
@@ -25,7 +27,7 @@ except Exception: pass
 for pb in PB: pb.rotation_mode = 'QUATERNION'
 f0 = base.frame_range[0]; FPS = 30; SC = W.to_scale().x
 f1 = base.frame_range[1]
-SECS = float(os.environ.get('ZH_SECS', {'attack': 1.9, 'rally': 2.2}.get(MODE, (f1 - f0) / FPS)))
+SECS = float(os.environ.get('ZH_SECS', {'attack': 1.8, 'rally': 2.2}.get(MODE, (f1 - f0) / FPS)))
 def upd(): bpy.context.view_layer.update()
 def goto(f=None):
     f = f0 if f is None else f; sc.frame_set(int(math.floor(f)), subframe=f - math.floor(f)); upd()
@@ -99,16 +101,19 @@ def settle(hdir, edge, lift=.012):   # turn the blade along hdir (horizontal par
         err = (blade_w() @ TIP).z - GROUND - lift; dz = max(-.98, min(-.1, dz - err / LT)); hz = math.sqrt(1 - dz * dz)
     return R
 def rest_blade(): grip(); return settle(Vector((-.12, -1, 0)), Vector((0, -1, 0)), .03)   # standing: the blade hangs from the hand, tip forward on the ground
+DRAG = Vector((-.28, .36, -.82))                                        # the hand's place in the drag, from the right shoulder, in arm lengths
+def drag_blade(): return settle(Vector((-.45, .89, 0)), Vector((0, 0, -1)))
 if MODE == 'attack':
-    # (t, weight, rear (chest pitch, - = back), hips down, chest yaw (+ = to its left), head up, roar (0..1), cut (0..1), psi (deg, + = across to its left))
-    K = [(0.00, (0, 0, 0, 0, 0, 0, 0, 0)),
-         (0.14, (1, -12, .03, -6, 14, 1, 0, 0)),    # roar: chest out, head up, the blade raised high, the free hand clawed out
-         (0.40, (1, -14, .03, -6, 16, 1, 0, 0)),
-         (0.56, (1, 4, .05, 32, 0, 0, 1, 75)),      # the blade drawn across to its left shoulder, chest turned left
-         (0.63, (1, 6, .05, 34, 0, 0, 1, 78)),
-         (0.73, (1, 10, .06, -36, -4, 0, 1, -90)),  # the cut sweeps round, flat, out wide to its right
-         (0.85, (1, 9, .06, -37, -4, 0, 1, -94)),
-         (1.00, (0, 0, 0, 0, 0, 0, 0, -94))]
+    # (t, swing weight (0 the drag, 1 on the swing path), psi (deg round the right shoulder: 0 in front, + to its left, -180 behind),
+    #  reach (horizontal, arm lengths), height (arm lengths), blade tilt up, chest yaw (+ to its left), chest pitch (+ forward), hips down,
+    #  left hand: 0 at its side .. 1 reaching forward .. -1 pulled back)
+    K = [(0.00, (0, -142, .46, -.82, -.5, 0, 0, 0, 0)),
+         (0.50, (1, -118, .82, .04, .55, -30, -4, .02, 1)),    # slowly lifted up behind the right shoulder, winding back
+         (0.58, (1, -120, .83, .07, .60, -33, -5, .02, 1)),
+         (0.69, (1, 62, .70, -.30, -.22, 34, 11, .06, -1)),    # the quick swing across, to its left and down
+         (0.80, (1, 70, .68, -.34, -.25, 36, 12, .06, -1)),
+         (0.90, (.7, -60, .66, -.50, -.45, 8, 5, .03, -.3)),   # brought back round its right side, clear of the legs
+         (1.00, (0, -142, .46, -.82, -.5, 0, 0, 0, 0))]
 elif MODE == 'rally':
     K = [(0.00, (0, 0, 0, 0, 0)),
          (0.14, (1, -22, -4, -28, -40)),            # look back over the right shoulder, the blade hanging back
@@ -131,6 +136,10 @@ for i in range(nf + 1):
         S = wpos('upperarm.R'); ph = 2 * math.pi * t
         tgt = S + Vector((-.28 * L, (.36 + .04 * math.sin(ph)) * L, -.82 * L))     # the arm hangs back, the blade's weight pulling it
         arm_to('R', -1, tgt, 1., Vector((-.6, .5, -.4))); grip()
+        fy = lambda f_: wpos(f_).y
+        sw_ = max(-1., min(1., (fy('foot.L') - fy('foot.R')) / (.45 * L)))     # + when the right foot is forward: the left arm goes forward with it
+        Sl = wpos('upperarm.L')
+        arm_to('L', 1, Sl + Vector((.10 * L, -.30 * L * sw_, -.92 * L + .06 * L * abs(sw_))), 1., Vector((.5, .6, -.3)))
         g = blade_w() @ GRIP; dz = max(-.98, min(-.2, -(g.z - GROUND - .012) / LT)); hz = math.sqrt(1 - dz * dz)
         for _ in range(4):                                                         # settle the tip onto the ground
             d = Vector((-.45 * hz, .89 * hz, dz)); edge = Vector((0, 0, -1))     # trailing back and a little out, the edge to the ground
@@ -140,25 +149,23 @@ for i in range(nf + 1):
         q0 = None
     else:
         goto(); q0 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
-        k = keys(K, t); w = k[0]; qb = rest_blade()
+        if MODE == 'rally': k = keys(K, t); w = k[0]; qb = rest_blade()   # rest_blade() closes the hand on the grip
+        else: grip()
     if MODE == 'attack':
-        move_pelvis(Vector((0, 0, -k[2] * H)) * w); plant()
-        turn('chest', (0, 0, 1), k[3] * w, wpos('chest')); turn('chest', (1, 0, 0), k[1] * w, wpos('chest'))
-        turn('neck', (1, 0, 0), -k[4] * .5 * w); turn('head', (1, 0, 0), -k[4] * .7 * w); turn('neck', (0, 0, 1), -k[3] * .3 * w)
-        roar, cut, ps = k[5], k[6], math.radians(k[7])
-        S = wpos('upperarm.R'); low = S + (wpos('hand.R') - S)
-        up = S + Vector((-.45 * L, .10 * L, .70 * L))                                     # the blade arm raised high, out to its side clear of the head
-        r = L * (.92 - .38 * max(0., math.sin(ps)))
-        swp = S + Vector((r * math.sin(ps), -r * math.cos(ps), (-.10 - .22 * max(0., math.sin(ps))) * L))
-        arm_to('R', -1, low.lerp(up, roar).lerp(swp, cut), w, Vector((-.6, .5, -.5)) if cut > .5 else Vector((-.8, .3, -.3)))
-        Rr = blade_frame(Vector((-.35, .45, .82)), Vector((0, -1, .4)))                    # raised: pointing up and back, edge forward
-        rad = Vector((math.sin(ps), -math.cos(ps), 0)); til = .45 * max(0., math.sin(ps)) - .12
-        Rs = blade_frame(rad + Vector((0, 0, til)), -Vector((math.cos(ps), math.sin(ps), 0)))   # out from the swing, edge leading the cut
-        qa = qb.to_quaternion().slerp(Rr.to_quaternion() if roar > .01 else qb.to_quaternion(), roar).slerp(Rs.to_quaternion(), cut)
-        set_blade(qa.to_matrix(), 1.)
-        Sl = wpos('upperarm.L'); lowl = Sl + (wpos('hand.L') - Sl)
-        wide = Sl + Vector((.42 * L, -.38 * L, .02 * L))
-        arm_to('L', 1, lowl.lerp(wide, roar).lerp(Sl + Vector((.12 * L, .05 * L, -.85 * L)), cut), w, Vector((.5, .2, -.9))); claw('L', roar * w)
+        k = keys(K, t); sw = k[0]; w = 1.
+        move_pelvis(Vector((0, 0, -k[7] * H))); plant()
+        turn('chest', (0, 0, 1), k[5], wpos('chest')); turn('chest', (1, 0, 0), k[6], wpos('chest'))
+        turn('neck', (0, 0, 1), -k[5] * .35); turn('head', (1, 0, 0), -k[6] * .3)
+        S = wpos('upperarm.R'); ps = math.radians(k[1])
+        hand = S + Vector((k[2] * math.sin(ps) * L, -k[2] * math.cos(ps) * L, k[3] * L))
+        arm_to('R', -1, hand, 1., Vector((-.6, .3, -.8)) if k[3] > -.2 else Vector((-.6, .5, -.5)))
+        Rd = drag_blade()                                                   # the drag at this hand place
+        rad = Vector((math.sin(ps), -math.cos(ps), 0)); edge = Vector((math.cos(ps), math.sin(ps), 0))   # edge leads the swing (psi growing)
+        Rs = blade_frame(rad + Vector((0, 0, k[4])), edge)
+        set_blade(Rd.to_quaternion().slerp(Rs.to_quaternion(), sw).to_matrix(), 1.)
+        Sl = wpos('upperarm.L'); lh = k[8]
+        tl = Sl + Vector((.12 * L, 0, -.9 * L)) + (Vector((.12 * L, -.45 * L, .40 * L)) * lh if lh > 0 else Vector((.06 * L, .28 * L, .12 * L)) * -lh)
+        arm_to('L', 1, tl, 1., Vector((.6, .4, -.6)))
     elif MODE == 'rally':
         plant()
         turn('chest', (0, 0, 1), k[1] * w, wpos('chest')); turn('chest', (1, 0, 0), k[2] * w, wpos('chest'))
