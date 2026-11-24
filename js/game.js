@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.338', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.339', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -6732,6 +6732,18 @@ function campBuild() {   /* lay out the camp: a fenced compound, the gate south,
     if (d.role === 'hq' && !H.blds.some((b) => DEFS[b.type].role === 'hq')) { putB(t, G.gx, G.sq); continue; }
     if (d.h > 1) { if (!back) { back = true; putB(t, G.gx, FY0 + 3); } continue; }
     for (const row of rows) { const x = lot(row, d.w, t); if (x >= 0) { if (g[row.y].slice(x, x + d.w).every((v) => v === 'y')) putB(t, x, row.y); break; } } }
+  /* 3D.339 (Strongholds chat, owner 23 Nov: "next: the six raid camps", dressed like the strongholds, at real sizes from references):
+     each camp gets the set pieces of the real place it is (a toll plaza, an army checkpoint, a field lab, a supermarket and its car park,
+     an iron works, a farm). H.deco are stronghold set pieces (drawn by the strongholds' own kit), H.gnd hard ground by tile.
+     A piece that fills tiles makes them solid ('P'); it is only put down if every building can still be reached. */
+  H.deco = []; H.gnd = [];
+  const BVs = (x) => x >= G.gx - 1 && x <= G.gx + 2, strt = (x, y) => BVs(x) || y === G.sq || y === G.sq + 1 || x <= FX0 + 1 || x >= FX1 - 1 || y <= FY0 + 1 || y >= F1 - 1;
+  const fits = (x, y, tw, th, out) => { for (let yy = y; yy < y + th; yy++) for (let xx = x; xx < x + tw; xx++) { const v = g[yy] && g[yy][xx]; if (out) { if (v !== 'o' || (BVs(xx) && yy > F1) || (G.east && xx > FX1 && (yy === G.east[1] || yy === G.east[1] + 1)) || (xx >= FX0 - 1 && xx <= FX1 + 1 && yy >= FY0 - 1 && yy <= F1 + 1)) return false; } else if (v !== 'y' || strt(xx, yy)) return false; } return true; };
+  const putD = (k, x, y, tw, th, o, out) => { if (!fits(x, y, tw, th, out)) return null; const cells = []; for (let yy = y; yy < y + th; yy++) for (let xx = x; xx < x + tw; xx++) { cells.push([xx, yy, g[yy][xx]]); g[yy][xx] = 'P'; }
+    if (campCheck().length) { for (const [xx, yy, v] of cells) g[yy][xx] = v; return null; } const d = { k, x: x + tw / 2 - .5, y: y + th / 2 - .5, ...(o || {}), cells, out: out ? 1 : 0 }; H.deco.push(d); return d; };
+  const nearD = (k, ax, ay, tw, th, o, out, R = 6) => { ax = Math.round(ax); ay = Math.round(ay); for (let r = 0; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const d = putD(k, ax + dx, ay + dy, tw, th, o, out); if (d) return d; } return null; };
+  const flat = (k, x, y, o) => { H.deco.push({ k, x, y, ...(o || {}) }); }, gnd = (x, y, w, h, k) => { H.gnd.push({ x, y, w, h, k }); };
+  campDress(H, G, { nearD, putD, flat, gnd, W, Ht });
   if (H.raid === 'hollow') { /* the old supermarket: long aisles of shelves on the rows between the buildings, with a gap every few shelves */ for (let y = FY0 + 2; y <= F1 - 2; y++) { if (rys.includes(y) || y === G.sq || y === G.sq + 1) continue; for (let x = FX0 + 2; x <= FX1 - 2; x++) { if (x >= G.gx - 1 && x <= G.gx + 2) continue; if ((x - FX0) % 6 === 0) continue; if ([g[y - 1][x], g[y + 1][x], g[y - 1][x - 1], g[y + 1][x + 1], g[y - 1][x + 1], g[y + 1][x - 1]].some((v) => v && v[0] === 'K')) continue; putP('shelf', x, y, 0); } } }   /* never against a building: every door stays reachable */
   /* what is left of the rows: the faction's own things, two of a kind side by side */
   if (H.raid !== 'hollow') for (const row of rows) for (let k = kitNext(), x = lot(row, 1, k); x >= 0; k = kitNext(), x = lot(row, 1, k)) { putP(k, x, row.y, 0); kn++; }
@@ -6742,6 +6754,8 @@ function campBuild() {   /* lay out the camp: a fenced compound, the gate south,
   H.towers = []; for (const [x, y] of [[FX0 + 1, FY0 + 1], [FX1 - 1, FY0 + 1], [FX0 + 1, F1 - 1], [FX1 - 1, F1 - 1], [G.gx - 3, F1 - 1], [G.gx + 4, F1 - 1]]) { putP(K.tower || 'tower', x, y, 0); if (g[y][x] === 'P') H.towers.push({ x, y }); }
   for (const [x, y] of [[G.gx - 1, G.sq + 2], [G.gx + 2, G.sq + 2], [G.gx - 1, G.sq - 1], [G.gx + 2, G.sq - 1]]) putP(K.street, x, y, x < G.gx ? 0 : 2);
   putP('banner', G.gx - 2, F1 - 1, 0); putP('banner', G.gx + 3, F1 - 1, 2);
+  while (campCheck().length && H.deco.some((d) => d.cells)) { const i = H.deco.map((d) => !!d.cells).lastIndexOf(true), d = H.deco[i]; for (const [xx, yy, v] of d.cells) g[yy][xx] = v; H.deco.splice(i, 1); }   /* 3D.339 */
+  for (const d of H.deco) delete d.cells;
   if (!H.practice) for (const r of ((S.fac || {})[H.raid] || {}).ruins || []) { if (S.day - r.d >= 10) continue; const b = H.blds.find((q) => q.type === r.t && !q.dead); if (b) { b.dead = true; b.looted = true; b.hp = 0; b.wasRuin = true; } }   /* still in ruins from the last raid */
   /* the people: guards on posts and patrols, workers going about their jobs, the leader by the hall */
   const yard = () => { for (let k = 0; k < 200; k++) { const x = rint(FX0 + 1, FX1 - 1), y = rint(FY0 + 1, F1 - 4); if (g[y][x] === 'y') return shWorld(x, y); } return shWorld(G.gx, G.sq + 2); };
@@ -6765,10 +6779,68 @@ function campBuild() {   /* lay out the camp: a fenced compound, the gate south,
   if (H.raid === 'hollow') { const nz = 3 + Math.floor(lv / 3); for (let i = 0; i < nz; i++) { const w = yard(), zd = zombieTypes.walker; H.zs.push({ type: i % 4 === 3 ? 'runner' : 'walker', human: false, tame: true, room: 'y', w, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: (zd.chase || .012) * 1.1, mode: 'patrol', stateTicks: 0, target: null, moving: false, phase: rnd() * 100, home: { ...w } }); } }
   if (H.raid === 'foundry') { const fur = H.props.filter((p) => p.k === 'furnace' || p.k === 'chimney'); for (const p of fur.slice(0, 6)) H.zones.push({ k: 'heat', x: p.x - 1, y: p.y - 1, w: 3, h: 3, on: true });
     const ws = H.blds.find((b) => b.type === 'workshop'); if (ws) H.zones.push({ k: 'heat', x: ws.x - 1, y: ws.y - 1, w: ws.bw + 2, h: ws.bh + 2, on: true }); }
+  for (const z of H.zs) { const c = shCell(z.w); if ((g[c.y] || [])[c.x] !== 'P') continue; let done = false; for (let r = 1; r <= 3 && !done; r++) for (let dy = -r; dy <= r && !done; dy++) for (let dx = -r; dx <= r && !done; dx++) if ((g[c.y + dy] || [])[c.x + dx] === 'y') { z.w = shWorld(c.x + dx, c.y + dy); if (z.home) z.home = { ...z.w }; done = true; } }   /* 3D.339 nobody is posted inside a set piece */
   /* where the squad starts: on the road outside the gate */
   H.units.forEach((s, i) => { s.w = shWorld(G.gx - .6 + (i % 4) * .75, F1 + 2.2 + Math.floor(i / 4) * .8); });
   S.sh.cx = SH_AX + G.gx + 2; S.sh.cy = SH_AY + F1; S.sh.cz = G.n > 20 ? 1.3 : 1.5;
 }
+/* 3D.339 each camp's set pieces. Sizes: a tile is about 3.5 m, so a road lane is one tile, a car 1.4 x 0.7, a 20-foot container 1.7 x 0.7,
+   a toll island half a tile wide, an army tent 1.4 x 2.3, a barn 3 x 2. Anchors are given from the gate, the square and the fence, so the
+   same camp is dressed the same way at every level. */
+function campDress(H, G, K) { const { nearD, flat, gnd, W, Ht } = K, x0 = G.x0, x1 = G.x1, y0 = G.y0, y1 = G.y1, gx = G.gx, sq = G.sq, r = H.raid, bOf = (t) => H.blds.find((b) => b.type === t), near = (b, dx, dy) => b ? [b.x + (dx || 0), b.y + (dy || 0)] : null;
+  const CAR = ['#7a8fa3', '#a34a3a', '#d8d4c6', '#4a6a52', '#3d4a5c', '#c9a23a'];
+  gnd(gx - 1, y1 + 1, 4, 44, 'asphalt');   /* the road to the gate */
+  if (r === 'toll') {   /* a fort built across the highway: the toll plaza is their east gate */
+    gnd(0, sq, W, 2, 'asphalt'); gnd(gx - 1, sq + 2, 4, y1 - sq - 1, 'asphalt'); flat('road', W / 2 - .5, sq + .5, { len: W + 16, w: 2, nokerb: 1 });
+    if (G.east) { nearD('tollbooth', x1 + 2, sq - 1, 2, 1, { arm: 1 }, 1, 0); nearD('tollbooth', x1 + 2, sq + 2, 2, 1, { arm: -1 }, 1, 0); flat('tollroof', x1 + 2.5, sq + .5, { lanes: 4 }); flat('gantry', x1 + 4.6, sq + .5, { lanes: 4 }); }
+    for (const [i, [dx, dy, k]] of [[1, 0, 'car'], [1, 1, 'bus'], [3, 0, 'car']].entries()) nearD(k, dx, sq + dy, 2, 1, k === 'car' ? { wreck: 1, col: CAR[i] } : {}, 1, 1);   /* the pile-up on the far side of the west wall */
+    nearD('mbike', x1 - 3, sq - 1, 1, 1, { n: 3 }); nearD('mbike', x1 - 3, sq + 2, 1, 1, { n: 2 }); nearD('mbike', gx + 4, sq + 2, 1, 1, { n: 3 });
+    for (const [i, [ax, ay]] of [[x0 + 3, y0 + 2], [x1 - 4, y0 + 2], [x0 + 3, y1 - 2], [x1 - 5, y1 - 2]].entries()) nearD('isocont', ax, ay, 2, 1, { col: ['#a34a3a', '#3d5a78', '#c9772e', '#4a6a52'][i], stack: i % 2 }, 0, 4);
+    const wh = bOf('warehouse'); if (wh) nearD('lorry', wh.x + 2, wh.y, 2, 1, { col: '#b83a2e' }, 0, 4);
+    nearD('car', gx - 5, sq + 2, 2, 1, { wreck: 1, col: CAR[1] }, 0, 3); nearD('fueltank', gx + 5, sq - 1, 1, 1, { col: '#8a4a2c' }, 0, 3);
+    nearD('barrier', gx - 3, y1 + 2, 1, 1, {}, 1, 1); nearD('barrier', gx + 4, y1 + 2, 1, 1, {}, 1, 1); nearD('sign', gx + 4, y1 + 3, 1, 1, { col: '#b83a2e', dot: '#e0b23a' }, 1, 1);
+  } else if (r === 'quar') {   /* an army checkpoint: an entry lane between blast walls, wire round the fence, a tent line, a motor pool, a helipad */
+    gnd(gx - 1, sq + 2, 4, y1 - sq - 1, 'gravel'); gnd(x0 + 1, sq, x1 - x0 - 1, 2, 'gravel');
+    for (const x of [gx - 2, gx + 3]) nearD('hesco', x, y1 + 2, 1, 2, { n: 2, r: 1 }, 1, 0);
+    nearD('guardbooth', gx - 3, y1 + 2, 1, 1, { up: 1, r: 3 }, 1, 1); nearD('sign', gx + 4, y1 + 2, 1, 1, { col: '#5f6b45', dot: '#c9412e' }, 1, 1);
+    for (let x = x0; x < x1; x += 3) { if (x + 3 < gx - 1 || x > gx + 2) flat('razor', x + 1, y1 + .62, { n: 3 }); flat('razor', x + 1, y0 - .62, { n: 3 }); } for (let y = y0; y < y1; y += 3) { flat('razor', x0 - .62, y + 1, { n: 3, r: 1 }); flat('razor', x1 + .62, y + 1, { n: 3, r: 1 }); }
+    gnd(x1 + 2, sq - 2, 4, 5, 'concrete'); flat('helipad', x1 + 3.5, sq, {}); nearD('heli', x1 + 3, sq, 2, 1, {}, 1, 1);
+    for (const [ax, ay] of [[x0 + 2, y0 + 2], [x0 + 5, y0 + 2], [x1 - 3, y0 + 2], [x1 - 6, y0 + 2]]) nearD('gptent', ax, ay, 2, 3, {}, 0, 4) || nearD('gptent', ax, ay, 2, 2, { short: 1 }, 0, 5);
+    if (!H.deco.some((d) => d.k === 'gptent')) { nearD('gptent', x0 + 2, 2, 2, 3, {}, 1, 3); nearD('gptent', x0 + 5, 2, 2, 3, {}, 1, 3); }   /* a small camp: the tent line stands outside the north wire */
+    nearD('atruck', x0 + 3, y1 - 2, 2, 1, {}, 0, 4); nearD('jeep', x0 + 6, y1 - 2, 2, 1, {}, 0, 4); nearD('jeep', x1 - 4, y1 - 2, 2, 1, {}, 0, 4);
+    nearD('sandbags', gx - 2, y1 - 3, 1, 1, { n: 1 }, 0, 2); nearD('sandbags', gx + 3, y1 - 3, 1, 1, { n: 1 }, 0, 2);
+    const rd = bOf('radio'); nearD('radar', rd ? rd.x + 1 : gx + 5, rd ? rd.y : sq - 2, 1, 1, {}, 0, 4); nearD('fueltank', x1 - 3, sq + 2, 1, 1, {}, 0, 4); nearD('acrates', gx - 5, sq - 1, 1, 1, {}, 0, 3); nearD('genset', x0 + 4, y1 - 4, 1, 1, { col: '#5f6b45' }, 0, 3);
+  } else if (r === 'helix') {   /* a field laboratory: white lab tents and lab containers on hard standing, a wash line at the gate, warning signs on the wire */
+    gnd(gx - 1, sq + 2, 4, y1 - sq - 1, 'concrete'); gnd(x0 + 1, sq, x1 - x0 - 1, 2, 'concrete'); gnd(gx - 1, y0 + 1, 4, sq - y0 - 1, 'concrete');
+    for (const [i, [ax, ay]] of [[gx - 4, sq + 3], [gx - 7, sq + 3], [gx + 4, sq + 3]].entries()) nearD('labtent', ax, ay, 2, 1, { col: '#eef2f2', band: '#3f8fb5' }, 0, 4);
+    for (const [i, [ax, ay]] of [[gx + 4, sq - 2], [gx + 7, sq - 2], [gx - 5, sq - 2], [x0 + 3, y0 + 2]].entries()) nearD('isocont', ax, ay, 2, 1, { col: '#e4e8ea', band: '#3f8fb5', lab: 1 }, 0, 4);
+    nearD('shower', gx - 2, y1 - 3, 1, 1, { r: 1 }, 0, 2); nearD('shower', gx + 3, y1 - 3, 1, 1, { r: 3 }, 0, 2);
+    nearD('genset', x1 - 3, y1 - 3, 1, 1, { col: '#e4e8ea' }, 0, 4); nearD('fueltank', x1 - 5, y1 - 3, 1, 1, { col: '#e4e8ea' }, 0, 4); nearD('gascyl', x0 + 3, y1 - 3, 1, 1, { n: 4 }, 0, 4); nearD('tube', gx + 5, sq + 5, 1, 1, {}, 0, 4); nearD('spot', x0 + 2, sq - 1, 1, 1, {}, 0, 3); nearD('spot', x1 - 2, sq + 2, 1, 1, { r: 2 }, 0, 3);
+    for (let x = x0 + 2; x < x1; x += 4) if (x < gx - 2 || x > gx + 3) flat('hazsign', x, y1 + .7, {}); for (let y = y0 + 2; y < y1; y += 4) { flat('hazsign', x0 - .7, y, { r: 1 }); flat('hazsign', x1 + .7, y, { r: 1 }); }
+    nearD('ambulance', gx + 4, y1 + 2, 2, 1, {}, 1, 1); nearD('barrier', gx - 3, y1 + 2, 1, 1, {}, 1, 1); nearD('biosign', gx - 3, y1 + 3, 1, 1, {}, 1, 1);
+  } else if (r === 'hollow') {   /* the old supermarket: its car park outside, the tills by the doors, trolleys everywhere, a lorry still at the loading bay */
+    gnd(x0 - 4, y1 + 1, x1 - x0 + 9, 6, 'asphalt'); gnd(gx - 1, sq + 2, 4, y1 - sq - 1, 'paving'); gnd(x0 + 1, sq, x1 - x0 - 1, 2, 'paving');
+    let ci = 0; for (let x = x0 + 1; x <= x1 - 1; x++) { if (x >= gx - 2 && x <= gx + 3) continue; flat('bayline', x - .5, y1 + 2.5, {}); if ((x * 7 + 3) % 5 < 2) nearD('car', x, y1 + 2, 1, 2, { r: 1, col: CAR[ci++ % 6], wreck: ci % 3 === 0 ? 1 : 0 }, 1, 0); else if ((x * 7 + 3) % 5 === 3) nearD('trolleys', x, y1 + 2, 1, 1, { n: 3, r: 1 }, 1, 0); }
+    nearD('trolleybay', gx - 4, y1 + 2, 1, 2, { r: 1 }, 1, 1); nearD('sign', gx + 4, y1 + 2, 1, 1, { col: '#3f7a4a', dot: '#c9412e', w: 2.2 }, 1, 1);
+    for (const dx of [-3, -5, -7]) nearD('checkout', gx + dx, y1 - 2, 1, 1, { r: 1 }, 0, 1); for (const dx of [4, 6, 8]) nearD('checkout', gx + dx, y1 - 2, 1, 1, { r: 1 }, 0, 1);
+    nearD('trolleys', gx - 2, y1 - 3, 1, 1, { n: 4 }, 0, 2); nearD('trolleys', gx + 3, sq + 2, 1, 1, { n: 2, r: 1 }, 0, 2);
+    const st = bOf('storage'); if (st) { nearD('canstack', st.x + 1, st.y, 1, 1, { h: 3 }, 0, 3); nearD('pallet', st.x - 1, st.y, 1, 1, { tarp: 1 }, 0, 3); }
+    gnd(gx + 2, y0 - 4, 6, 3, 'asphalt'); nearD('lorry', gx + 3, y0 - 3, 2, 1, { col: '#3f7a4a' }, 1, 2); nearD('pallet', gx + 6, y0 - 3, 1, 1, {}, 1, 2); nearD('canstack', gx + 7, y0 - 3, 1, 1, { h: 2 }, 1, 2);
+  } else if (r === 'foundry') {   /* an iron works: the cupola furnace and its charging stage, a gantry crane over the casting floor, scrap heaps, ingots, a rail spur */
+    gnd(x0 + 1, sq, x1 - x0 - 1, 2, 'ash'); gnd(gx - 1, sq + 2, 4, y1 - sq - 1, 'ash'); gnd(gx - 1, y0 + 1, 4, sq - y0 - 1, 'ash');
+    const ws = bOf('workshop'); nearD('cupola', ws ? ws.x - 2 : gx - 5, ws ? ws.y - 2 : sq - 3, 2, 2, {}, 0, 5); if (!H.deco.some((d) => d.k === 'cupola')) nearD('cupola', gx + 4, y0 - 6, 2, 2, {}, 1, 3);   /* a small works: the furnace stands by the rail spur */ nearD('gcrane', gx + 4, sq + 3, 3, 2, {}, 0, 5) || nearD('gcrane', gx - 6, sq + 3, 3, 2, {}, 0, 5);
+    const sy = bOf('scrapyard'); nearD('scrapheap', sy ? sy.x + 1 : x1 - 4, sy ? sy.y : y1 - 3, 2, 1, {}, 0, 4); nearD('scrapheap', x0 + 3, y1 - 3, 2, 1, { v: 1 }, 0, 4);
+    for (const [ax, ay] of [[gx + 4, sq - 1], [gx - 4, sq + 2]]) nearD('ladle', ax, ay, 1, 1, {}, 0, 3); for (const [ax, ay] of [[gx + 6, sq + 2], [gx - 6, sq - 1], [x1 - 3, sq - 1]]) nearD('ingots', ax, ay, 1, 1, {}, 0, 3);
+    nearD('forklift', gx + 3, y1 - 3, 1, 1, { r: 1 }, 0, 3); nearD('scaffold', x1 - 3, y0 + 3, 1, 1, { h: 2 }, 0, 3); nearD('isocont', x0 + 3, y0 + 2, 2, 1, { col: '#8a4a2c' }, 0, 4);
+    gnd(x0 - 1, y0 - 4, x1 - x0 + 3, 2, 'gravel'); flat('track', (x0 + x1) / 2, y0 - 3, { n: x1 - x0 + 4 }); nearD('orecar', x0 + 3, y0 - 3, 1, 1, {}, 1, 0); nearD('orecar', x0 + 4, y0 - 3, 1, 1, { v: 1 }, 1, 0); nearD('orecar', x1 - 3, y0 - 3, 1, 1, {}, 1, 0);
+    nearD('lorry', gx + 4, y1 + 2, 2, 1, { col: '#6f7780' }, 1, 1); nearD('scrapheap', gx - 4, y1 + 2, 2, 1, {}, 1, 1);
+  } else if (r === 'green') {   /* a farm: a barn with its silo, a wind pump, hens, hives, a tractor, and fields all round the hedge */
+    const st = bOf('storage'); nearD('barn', st ? st.x + 2 : gx + 4, st ? st.y - 1 : sq - 3, 3, 2, {}, 0, 6); const bn = H.deco.find((d) => d.k === 'barn'); nearD('silo', bn ? bn.x + 2.5 : gx + 7, bn ? bn.y - .5 : sq - 3, 1, 1, {}, 0, 3);
+    const wl = bOf('well'); nearD('windpump', wl ? wl.x + 1 : gx - 4, wl ? wl.y : sq + 2, 1, 1, {}, 0, 4); nearD('coop', x0 + 3, y1 - 3, 2, 1, {}, 0, 5); nearD('hives', x1 - 3, y0 + 3, 1, 1, { n: 3 }, 0, 4); nearD('hives', x1 - 3, y0 + 5, 1, 1, { n: 2 }, 0, 4);
+    nearD('tractor', gx + 4, y1 - 3, 2, 1, {}, 0, 4); nearD('pen', x0 + 3, y0 + 2, 2, 2, { w: 2, h: 2 }, 0, 4); nearD('watertank', gx - 4, y0 + 3, 1, 1, {}, 0, 4);
+    for (const [fx, fy, fw, fh, c] of [[0, y0 + 1, 4, y1 - y0 - 1, 0], [x1 + 2, y0 + 1, 4, sq - y0 - 2, 1], [x1 + 2, sq + 2, 4, y1 - sq - 2, 2], [x0 + 1, 1, gx - x0 - 3, 4, 1], [gx + 4, 1, x1 - gx - 5, 4, 0]]) { if (fw < 2 || fh < 2) continue; gnd(fx, fy, fw, fh, 'soil'); flat('field', fx + fw / 2 - .5, fy + fh / 2 - .5, { w: fw, h: fh, crop: c }); }
+    nearD('haybale', gx - 3, y1 + 2, 1, 1, { n: 3 }, 1, 1); nearD('applecrate', gx + 4, y1 + 2, 1, 1, {}, 1, 1); nearD('barrow', gx + 5, y1 + 3, 1, 1, {}, 1, 1);
+  } }
 /* a camp is sound if every building and the gate can be reached from the road outside, and nothing stands on the boulevard */
 function campCheck() { const H = S.sh, G = H.cg, g = H.grid, seen = new Set(), q = [[G.gx, G.y1 + 2]], bad = [];
   while (q.length) { const [x, y] = q.pop(), k = x + ',' + y; if (seen.has(k) || !g[y] || !g[y][x]) continue; const v = g[y][x]; if (v === 'W' || v === 'P' || v[0] === 'K') { seen.add(k); continue; } seen.add(k); q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]); }
