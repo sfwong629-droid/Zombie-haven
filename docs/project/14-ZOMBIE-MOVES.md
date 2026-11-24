@@ -96,8 +96,9 @@ One move that is not an attack for every zombie, played every now and then or be
 - Thrower: picks up a rock and tosses it from hand to hand.
 - Riot zombie: a stiff police "halt".
 - Souphead: shakes its big mushroom hat like a dog shaking off water.
-- Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
-- Lasher, Stalker, Mutant: a stretch of the long arm; a crouch and sniff; an arm crack.
+- Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats; approved). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
+- Lasher: a long, slow stretch: both arms straight up, a lean to each side, a neck crack (preview `zmove_lasher.py`, 23 Nov).
+- Stalker, Mutant: a crouch and sniff; an arm crack.
 
 ## The Alpha's blade (23 Nov, W265 to W267)
 The Alpha is the second zombie allowed a weapon: a big rusted blade (`tools/art/b3d/alpha_blade.py`, approved W266). He stands with it hanging, tip on the ground; walks and runs dragging it behind, the left arm swinging at his side; his attack lifts it slowly from the drag and swings it quickly across; he waves the others on with it. Previews in `tools/art/b3d/zmove_alpha.py`; **approved 23 Nov** (owner: "Looks good").
