@@ -1,6 +1,6 @@
 /* ---------------- build / move / demolish ---------------- */
 let moving = null;   // building being moved (removed from world while placing)
-function closeP() { $('infoPanel').classList.remove('show'); expOpen = false; panelBack = null; if (selected && selected.kind === 'post') selected = null; }
+function closeP() { $('infoPanel').classList.remove('show'); $('infoPanel').classList.remove('phPerson', 'scr'); expOpen = false; panelBack = null; if (selected && selected.kind === 'post') selected = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
   moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */

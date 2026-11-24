@@ -1,7 +1,7 @@
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
 let panelBack = null;
 function showPanel(title, back) {
-  $('say').style.opacity = 0; if (title) $('it').textContent = title; panelBack = back || null; $('pBack').style.display = panelBack ? 'block' : 'none';
+  $('infoPanel').classList.remove('phPerson', 'scr'); $('ib').onscroll = null; $('pBack').dataset.t = 'Back'; $('say').style.opacity = 0; if (title) $('it').textContent = title; panelBack = back || null; $('pBack').style.display = panelBack ? 'block' : 'none';
   $('infoPanel').classList.add('show'); $('ib').scrollTop = 0; tabTop();
 }
 /* 3D.222 (owner, 19 Nov; W118): a tab row at the top of a menu sits outside the scrolling list, on the menu's own glass, so nothing
@@ -154,7 +154,16 @@ function refreshNow() {   // keep the open survivor's "Now" card live
 function traitCard(u) { const t = TRAITS[u.trait], vn = voiceName(u); return (`<div class="card traitCard"><b>Age ${ageOf(u)}</b>${vn ? ` · ${vn} voice` : ''}</div>`) + (t ? `<div class="card traitCard"><b>${t.icon} ${t.name}</b><div class="sm">✔ ${traitGood(u)}</div><div class="sm">✖ ${t.bad}</div></div>` : ''); }
 function unitPanel(u) {   /* 3D.134 owner: the panel was a wall of cards. Now: who they are and what they are doing, then the tabs right under it
      (Status, Gear, Job, About). The class path moved into Job (short) and the full list of everybody's job is under More > Jobs. */
+  const keepBack = phoneOn() && selected && selected.kind === 'unit' && selected.ref === u && $('infoPanel').classList.contains('show') && panelBack ? [panelBack, $('pBack').dataset.t] : null;   /* 3D.340: a switch or a gear change redraws the page: the back link stays */
   selected = { kind: 'unit', ref: u }; closeP();
+  if (phoneOn()) {   /* 3D.340 (owner, 23 Nov, W249: "how to make it more like iPhone?", then "yes that is a good direction"): a poster header: the person's colour edge to edge,
+       the half-body picture standing in it, the name large over it; the back link and the close button float over it (css/phone.css); the parts and lists come from unitExtra */
+    const c = PPL_COL[(u.id || 0) % PPL_COL.length], pic = OPTS.pics !== false && window.ZH3D && ZH3D.snap && ZH3D.snap(u, { key: 'kneesup', W: 208, H: 256, half: .54, dy: .67 });
+    $('ib').innerHTML = `<div class="phPoster" style="--c:${c}">${pic ? `<img src="${pic}" alt="">` : `<b>${esc((u.name || '?')[0].toUpperCase())}</b>`}<div class="phPn"><h2>${esc(fullName(u))}${u.immune ? ' 🧬' : ''}${u.resident ? ' 🏠' : ''}${u.partner ? ' 💑' : ''}</h2><small>${esc(u.job)} · Level ${u.l}${u.spec && SPECS[u.spec] ? ' · ' + SPECS[u.spec].name : ''}</small></div></div>`
+      + (u.mode === 'down' ? `<div class="phDown"><b>Bleeding out: ${Math.ceil((u.bleed ?? 0) / 60)} s left</b><button class="act go" id="bandage">Bandage +60 s (${(S.cloth || 0) >= 1 ? '🧵 1' : '⚙ ' + BANDAGE_COST * 2})</button></div>` : '');
+    showPanel(u.name.toUpperCase()); $('infoPanel').classList.add('phPerson'); $('ib').onscroll = () => $('infoPanel').classList.toggle('scr', $('ib').scrollTop > 150); if (keepBack) { panelBack = keepBack[0]; $('pBack').style.display = 'block'; $('pBack').dataset.t = keepBack[1]; }
+    const bd = $('bandage'); if (bd) bd.onclick = () => { if (useBandage(u)) unitPanel(u); }; unitExtra(u); return;
+  }
   $('ib').innerHTML = `<div class="card row">${portrait(u)}<div class="sp"><div style="font-size:24px;line-height:22px">${esc(fullName(u))} ${u.immune ? '🧬' : ''}${u.resident ? '🏠' : ''}${u.partner ? '💑' : ''}</div><div class="sm">${u.job} · Lv.${u.l}${u.spec && SPECS[u.spec] ? ' · ' + SPECS[u.spec].name : ''}</div>
     <div class="row"><span class="sm">HP</span><div class="sp">${meter(u.hp / u.max * 100, 'hp')}</div><span class="sm">${Math.ceil(u.hp)}/${u.max}</span></div></div></div>
     <div style="margin:-2px 0 6px">${esc(activityText(u))}</div>`
@@ -220,6 +229,43 @@ function gearHtml(u, picking) {
   }
   return '<div class="lst">' + SLOTS.map((sl) => { const it = itemOf(u, sl), id = u.eq && u.eq[sl]; return `<div class="card" data-slot="${sl}">${it ? itemIcon(id, sl) : itemIcon(null, sl)}<div class="sp"><span class="sm">${SLOT_NAME[sl]}</span><div>${it ? it.name : 'Empty'}</div><div class="sm">${it ? itemText(it) : 'Tap to equip'}</div></div><span class="sm">›</span></div>`; }).join('') + '</div>';
 }
+/* 3D.340: a survivor's page in the phone look. Plain one-colour line signs for the four parts (the game's stickers stay for things: food, water, items);
+   every part is grouped lists: a small grey title, rows 44 px high, the label left, the value right in grey, a chevron only when the row opens something. */
+const PH_G = { stats: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/>', gear: '<path d="M12 3l7 3v6c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6z"/>', skills: '<rect x="3.500" y="7.500" width="17" height="12" rx="2.500"/><path d="M9 7.500V5.500a1.500 1.500 0 0 1 1.500-1.500h3A1.500 1.500 0 0 1 15 5.500v2M3.500 13h17"/>', about: '<circle cx="12" cy="12" r="8.500"/><path d="M12 11v5.500M12 7.700v.1"/>', ch: '<path d="M9 5l7 7-7 7"/>' };
+const phG = (k, z = 22) => `<svg viewBox="0 0 24 24" width="${z}" height="${z}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PH_G[k]}</svg>`;
+function phUnitBody(u, picking, gearPick, busy) {
+  const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (h) => `<div class="phCard phGrp2">${h}</div>`, note = (t) => t ? `<div class="phFootN">${t}</div>` : '';
+  const row = (k, v, id) => `<div class="phR"${id ? ` id="${id}" role="button"` : ''}><span class="k">${k}</span><span class="v">${v}</span>${id ? ch : ''}</div>`;
+  const tall = (icon, t, sub, attr, right) => `<div class="phR tall" ${attr || ''}>${icon ? `<span class="th">${icon}</span>` : ''}<span class="tx"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span>${right || ''}</div>`;
+  if (uTab === 'stats') {   /* bars, never rings (owner: "no ring, use bar"); health stays a count; food, water, rest and mood say it in words */
+    const I = (n) => (window.ZHIcons ? ZHIcons.svg(n, 20) : ''), bar = (ic, t, v, col, w) => `<div class="phR phBar"><span class="ic">${I(ic)}</span><b>${t}</b><span class="phBarT"><i style="width:${Math.max(0, Math.min(100, Math.round(v)))}%;background:${col}"></i></span><em>${w}</em></div>`;
+    const hu = u.hunger || 0, th = u.thirst || 0, fa = u.fatigue || 0, sa = u.sat || 0, n = unitNow(u), home = homeOf(u), post = u.post && world.buildings.includes(u.post) ? u.post : null, doing = u.why || activityText(u);
+    return sec('Needs') + grp(bar('heart', 'Health', u.hp / u.max * 100, '#ff5b6b', Math.ceil(u.hp) + '/' + u.max) + bar('food', 'Food', 100 - hu, '#f0a24a', hu >= 75 ? 'Starving' : hu >= 50 ? 'Getting hungry' : 'Fed') + bar('water', 'Water', 100 - th, '#5db4ff', th >= 75 ? 'Parched' : th >= 50 ? 'Thirsty' : 'Fine') + bar('bed', 'Rest', 100 - fa, '#7fd6a8', fa >= 75 ? 'Exhausted' : fa >= 50 ? 'Tired' : 'Rested') + bar('happy', 'Mood', sa, '#b79bff', sa < 25 ? 'Unhappy' : sa < 50 ? 'Low' : sa < 75 ? 'Content' : 'Happy'))
+      + note(esc(moodLine(u))) + '<div id="phNow">' + careLine(u)
+      + sec('Today') + grp(row('Now', esc(PRIO[n.prio][0] + (doing ? ' · ' + doing : ''))) + (n.dest ? row('Going to', esc(n.dest), n.destB ? 'uDest' : '') : '') + row('Works at', post ? esc('the ' + DEFS[post.type].name) + (onShift(u) ? ' · on shift' : '') : 'No workplace', post ? 'uPost' : '') + row('Lives in', home ? esc('the ' + DEFS[home.type].name) : 'No home of their own')) + '</div>'
+      + sec('Orders') + grp(`<div class="phR gTog"><span class="k on">Gather when free</span><span class="v"></span><button class="tgl${chopOn(u) ? ' on' : ''}" id="uChop" aria-pressed="${chopOn(u)}" aria-label="Gather when free"><i></i></button></div>`);
+  }
+  if (uTab === 'gear') {
+    if (gearPick) {
+      const ids = Object.keys(S.inv || {}).filter((id) => ITEMS[id] && ITEMS[id].slot === gearPick);
+      return sec(SLOT_NAME[gearPick] + ': in the stash') + (ids.length ? grp(ids.map((id) => tall(itemIcon(id), esc(ITEMS[id].name) + ` <span class="n">×${S.inv[id]}</span>`, itemText(ITEMS[id]) + iQuip(id), `data-equip="${id}" role="button"`)).join('')) : note('Nothing for this slot in the stash. The Armory sells basics; expeditions and crafting find more.'))
+        + `${itemOf(u, gearPick) && u.eq[gearPick] !== 'pipe' ? '<button class="act" data-unequip="1">Take off</button>' : ''}<button class="act" data-gearcancel="1">Back</button>`;
+    }
+    const slot = (sl) => { const it = itemOf(u, sl), id = u.eq && u.eq[sl]; return tall(itemIcon(it ? id : null, sl), SLOT_NAME[sl], it ? esc(it.name) + (itemText(it) ? ' · ' + itemText(it) : '') : 'Empty', `data-slot="${sl}" role="button"`, ch); };
+    return sec('Wearing') + grp(['armor', 'head', 'acc'].map(slot).join('')) + sec('Carrying') + grp(slot('weapon'))
+      + sec('Pet') + (u.pet ? grp(tall('', esc(u.pet.name) + ' the ' + PETS[u.pet.kind].name, PETS[u.pet.kind].desc)) + '<button class="act" data-petoff="1">Leave in town</button>'
+        : (S.pets || []).length ? grp((S.pets || []).map((p, i) => tall('', 'Adopt ' + esc(p.name), PETS[p.kind].name + ' · ' + PETS[p.kind].desc, `data-pet="${i}" role="button"`, ch)).join('')) : grp(tall('', 'No pet', 'The trader sometimes brings dogs and cats')));
+  }
+  if (uTab === 'about') { const t = TRAITS[u.trait], vn = voiceName(u);
+    return sec('Stats') + `<div class="phCard phPad">${statsHtml(u)}</div>` + sec('About') + grp(row('Age', ageOf(u)) + (vn ? row('Voice', esc(vn)) : '') + (t ? tall('', t.icon + ' ' + t.name, '✔ ' + traitGood(u) + '<br>✖ ' + t.bad) : '')) + sec('Family and friends') + `<div class="phCard phPad phBonds">${bondsHtml(u)}</div>`; }
+  if (picking) return sec('Change job') + grp(CLASS_LIST.map((j) => { const c = u.cls[j]; return tall('', j, isFighter({ job: j }) ? 'Fights zombies' : 'Hides from zombies', `data-job="${j}" role="button"${j === u.job ? ' style="opacity:.45"' : ''}`, `<span class="v">${j === u.job ? 'Now · ' : ''}Level ${c ? c.l : 1}</span>`); }).join('')) + note('Levels and skills are kept when switching.') + '<button class="act" id="chgCancel">Back</button>';
+  const sk = (u.skills || []).map((k) => tall('', SKILLS[k].name, esc(SKILLS[k].desc))).join(''), xp = u.l >= LEVEL_CAP ? 100 : u.mastery / xpNeed(u) * 100, other = CLASS_LIST.filter((j) => u.cls[j] && j !== u.job);
+  return sec('Job') + grp(`<div class="phR"${busy ? '' : ' id="chgJob" role="button"'}><span class="k">Job</span><span class="v">${esc(u.job)}${busy ? ' · can\'t change while hurt' : ''}</span>${busy ? '' : ch}</div>`
+      + `<div class="phR phBar"><b class="w">Level ${u.l}${u.l >= LEVEL_CAP ? ' (max)' : ''}</b><span class="phBarT"><i style="width:${Math.round(xp)}%;background:#e6d36a"></i></span></div>`) + note(esc(nextSkillText(u, u.job)))
+    + sec('Path') + classHtml(u)
+    + sec('Skills') + (sk ? grp(sk) : note('No skills yet: reach level 3 in any job.'))
+    + (other.length ? sec('Other jobs') + grp(other.map((j) => row(j, 'Level ' + u.cls[j].l)).join('')) : '');
+}
 let uTab = 'stats';
 function unitExtra(u, picking = false, gearPick = null, tab = null) {
   syncClass(u); const box = document.createElement('div'); box.id = 'unitExtra';
@@ -227,6 +273,9 @@ function unitExtra(u, picking = false, gearPick = null, tab = null) {
   const busy = ['down', 'hospital'].includes(u.mode) || u.hp <= 0, xpNeedU = xpNeed(u);
   let body = '';
   if (uTab === 'bonds') uTab = 'about';
+  const ph = phoneOn();
+  if (ph) body = phUnitBody(u, picking, gearPick, busy);
+  else
   if (uTab === 'stats') body = statsHtml(u) + nowCard(u) + `<div class="card row gTog"><span class="sp"><b>${window.ZHIcons ? ZHIcons.svg('wood', 20) : '🪵'} Gather</b><div class="sm">${chopOn(u) ? 'Chops and gathers when free' : 'Never gathers'}</div></span><button class="tgl${chopOn(u) ? ' on' : ''}" id="uChop" aria-pressed="${chopOn(u)}"><i></i></button></div>`;
   else if (uTab === 'about') body = traitCard(u) + bondsHtml(u);
   else if (uTab === 'gear') {
@@ -238,7 +287,7 @@ function unitExtra(u, picking = false, gearPick = null, tab = null) {
       <div style="margin-top:6px">${sk}</div><button class="act" id="chgJob" ${busy ? 'disabled' : ''}>Change job${busy ? ' (not while hurt)' : ''}</button>
       <div class="sm" style="margin-top:6px">Other jobs: ${CLASS_LIST.filter((j) => u.cls[j] && j !== u.job).map((j) => `${j} Lv.${u.cls[j].l}`).join(' · ') || 'none yet'}</div>`;
   } else body = '<div class="sm">Levels and skills are kept when switching.</div><div class="lst">' + CLASS_LIST.map((j) => { const c = u.cls[j]; return `<div class="card" data-job="${j}" style="${j === u.job ? 'opacity:.45' : ''}"><div class="sp">${j} <span class="sm">Lv.${c ? c.l : 1}</span><div class="sm">${isFighter({ job: j }) ? '⚔ fights zombies' : '🏃 hides from zombies'}</div></div></div>`; }).join('') + '</div><button class="act" id="chgCancel">Back</button>';
-  box.innerHTML = tabBar([['stats', 'Status'], ['gear', 'Gear'], ['skills', 'Job'], ['about', 'About']], uTab) + body;
+  box.innerHTML = (ph ? `<div class="phActs">${[['stats', 'Status'], ['gear', 'Gear'], ['skills', 'Job'], ['about', 'About']].map(([k, t]) => `<button data-tab="${k}" class="${k === uTab ? 'on' : ''}">${phG(k)}<span>${t}</span></button>`).join('')}</div>` : tabBar([['stats', 'Status'], ['gear', 'Gear'], ['skills', 'Job'], ['about', 'About']], uTab)) + body;
   const old = $('unitExtra'); if (old) old.remove(); $('ib').appendChild(box); wireSI(box); wireSI($('ib'));
   { const us = $('uSpec'); if (us) us.onclick = () => { if (promoteSpec(u)) unitPanel(u); }; box.querySelectorAll('[data-hyb]').forEach((b) => { b.onclick = () => { if (promoteHyb(u, b.dataset.hyb)) unitPanel(u); }; }); const uj = $('uJobs'); if (uj) uj.onclick = () => showJobs(() => unitPanel(u));
     const cb = $('uChop'); if (cb) cb.onclick = () => { u.chop = !chopOn(u); if (!u.chop && (u.purpose === 'gath-out' || u.mode === 'gather')) { u.gatherAt = null; enterFree(u, 10); } saveGame(); unitPanel(u); }; const nd = unitNow(u), dd = $('uDest'), pp = $('uPost'); if (dd && nd.destB) dd.onclick = () => showBuildingInfo(nd.destB); if (pp) pp.onclick = () => showBuildingInfo(u.post); }
@@ -283,14 +332,14 @@ function showPeoplePhone() {
   showPanel('People'); pfWire($('ib'), showSurvivors);
   const q = $('pplQ'), filt = () => { const v = (PF.q = q.value).trim().toLowerCase(); let any = false; $('ib').querySelectorAll('.phGrp').forEach((g) => { let n = 0; g.querySelectorAll('.phRow').forEach((r) => { const ok = !v || r.dataset.n.includes(v); r.style.display = ok ? '' : 'none'; if (ok) n++; }); g.style.display = n ? '' : 'none'; if (n) any = true; }); const no = $('ib').querySelector('.phNone'); if (no) no.style.display = any || !groups ? 'none' : ''; };
   q.oninput = filt; if (PF.q) filt();
-  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((x) => x.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((x) => x.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'People'; } }; });
 }
 function showSurvivors() {
   if (phoneOn()) return showPeoplePhone();
   endBuildMode(true); closeP(); const L = pfList(S.sv.slice());
   $('ib').innerHTML = `<div class="sm" style="margin-bottom:6px">👥 ${S.sv.length}/${popCap()} · 🛏 ${bedCount()}</div>` + pfBar() + '<div class="lst">' + (L.map((s) => `<div class="card" data-sv="${s.id}">${portrait(s)}<div class="sp" style="min-width:0"><div>${esc(fullName(s))} <span title="${TRAITS[s.trait] ? TRAITS[s.trait].name : ''}">${traitIcon(s)}</span> <span class="sm">${s.job} Lv.${s.l}</span></div>${meter(s.hp / s.max * 100, 'hp')}<div class="sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${(s.sat || 0) < 25 ? 'var(--bad)' : '#ff9fbd'}">♥${Math.round(s.sat || 0)}</span> · ${esc(activityText(s))}</div></div><span class="sm">›</span></div>`).join('') || '<p class="sm">Nobody fits this filter.</p>') + '</div>';
   showPanel('People'); pfWire($('ib'), showSurvivors);
-  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((q) => q.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; } }; });
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((q) => q.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'People'; } }; });
 }
 /* 3D.169 (play-test round 1, Builder): a staffing view. Which job works each building, who is there, and one button to fill the empty slots */
 const slotBs = () => world.buildings.filter((b) => DEFS[b.type] && DEFS[b.type].slot && !b.burnt);
@@ -331,7 +380,7 @@ function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promo
     + `<details class="card"><summary><b>Specialists</b> <span class="sm">Haven level 4 · job level 5 · ${costShort(SPEC_COST)}</span></summary>${Object.entries(SPECS).map(([j, sp]) => `<div class="sm" style="margin-top:4px">${sp.icon} <b>${sp.name}</b> (${j}): ${sp.desc}</div>`).join('')}</details>`
     + `<details class="card"><summary><b>Hybrids</b> <span class="sm">Haven level 9 · level 10 in two jobs · ${costShort(HYB_COST)}</span></summary>${HYBRIDS.map((h) => `<div class="sm" style="margin-top:4px">${h.icon} <b>${h.name}</b> (${h.a} + ${h.b}): ${h.desc}</div>`).join('')}</details>`;
   } showPanel('Jobs', bk); pfWire($('ib'), () => showJobs(back)); $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showJobs(back, x.dataset.tab); });
-  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const q = S.sv.find((x) => x.id === +el.dataset.sv); if (q) { uTab = 'skills'; unitPanel(q); panelBack = () => showJobs(back); $('pBack').style.display = 'block'; } }; });
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const q = S.sv.find((x) => x.id === +el.dataset.sv); if (q) { uTab = 'skills'; unitPanel(q); panelBack = () => showJobs(back); $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Jobs'; } }; });
 }
 function perimText() {
   const p = Wd.perimeter(world); if (!p.walls) return 'No walls yet: zombies walk straight in.';

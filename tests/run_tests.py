@@ -195,14 +195,15 @@ async def t_living(br, port, t):   # V2.36: task commitment, sleep, survivor pan
         if(t%500===0){try{ZH.serialize()}catch(e){saveFail++;out.saveErr=out.saveErr||(e.message+' '+(e.stack||'').split(String.fromCharCode(10))[1])}}
         if(t%250===0&&S.hour>=23){night++;for(const q of S.sv){if(q.job==='Guard'||['chase','attack','recover','hide','hiding','postCombat','down','hospital','rescueTo','rescueCarry'].includes(q.mode))continue;sleepN++;   /* 3D.58: the night watch and anyone in a fight are not counted */if(q.sleeping||(q.mode==='goFacility'&&q.facility&&['house','hq','hq2','hq3','tent','cabin','stonehouse'].includes(q.facility.type)))sleep++}}}
       out.shift=on/tot;out.saveFail=saveFail;out.sleep=sleep/sleepN;
-      const w=S.sv.find(q=>q.post&&['farm','water','scrapyard'].includes(q.post.type))||S.sv.find(q=>q.post);while(!(S.hour>=8&&S.hour<11))ZH.step(100);w.hunger=w.thirst=w.fatigue=0;w.hp=w.max;for(let k=0;k<3000&&!['work','goWork'].includes(w.mode);k++){S.z.length=0;w.hunger=w.thirst=w.fatigue=0;w.hp=w.max;ZH.simTick();}ZH.unitPanel(w);out.now=document.getElementById('uNow').textContent;out.prio=w.mode;out.post=ZH.DEFS[w.post.type].name;
+      const w=S.sv.find(q=>q.post&&['farm','water','scrapyard'].includes(q.post.type))||S.sv.find(q=>q.post);while(!(S.hour>=8&&S.hour<11))ZH.step(100);w.hunger=w.thirst=w.fatigue=0;w.hp=w.max;for(let k=0;k<3000&&!['work','goWork'].includes(w.mode);k++){S.z.length=0;w.hunger=w.thirst=w.fatigue=0;w.hp=w.max;ZH.simTick();}ZH.unitPanel(w);out.now=(document.getElementById('uNow')||document.getElementById('phNow')).textContent;out.prio=w.mode;out.post=ZH.DEFS[w.post.type].name;
       return out}""")
     t.ok(r['shift'] >= .45, f"staffed workers are at (or heading to) work {r['shift']:.0%} of shift hours (zombie-free town)")
     t.ok(r['saveFail'] == 0, f"autosave never fails over 2 days of play ({r['saveFail']} failures {r.get('saveErr')})")
     t.ok(r['sleep'] >= .6, f"at 23:00 most survivors are asleep or going to bed ({r['sleep']:.0%})")
-    t.ok('Shift work' in r['now'] and r['post'] + ' ›' in r['now'], f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
+    t.ok('Shift work' in r['now'] and r['post'] in r['now'],   # 3D.340: the phone page shows the workplace as a row with a chevron drawn, not typed
+          f"survivor panel shows priority, destination and workplace ({r['now'][:90]})")
     r = await pg.evaluate("""()=>{const S=ZH.S,out={};const q=S.sv[2];q.downD=S.day;q.downN=1;q.hp=0;let k=0;   /* 3D.67: a second fall in a day goes to care (a first one may be treated in the field) */while(q.mode!=='hospital'&&k<20000){ZH.simTick();k++}out.inCare=q.mode==='hospital';out.total=!!q.careTotal;
-      ZH.unitPanel(q);out.line=document.getElementById('uNow').textContent;const m=ZH.world.buildings.find(b=>['medic','clinic','hospital'].includes(b.type));ZH.showBuildingInfo(m);const tx=document.getElementById('ib').textContent;out.patients=/Patients [(][0-9]+[)]/.test(tx)&&tx.includes(q.name);
+      ZH.unitPanel(q);out.line=(document.getElementById('uNow')||document.getElementById('phNow')).textContent;const m=ZH.world.buildings.find(b=>['medic','clinic','hospital'].includes(b.type));ZH.showBuildingInfo(m);const tx=document.getElementById('ib').textContent;out.patients=/Patients [(][0-9]+[)]/.test(tx)&&tx.includes(q.name);
       const b=ZH.world.buildings.find(b=>b.type==='water');const f0=ZH.S.sv.length;return out}""")
     t.ok(r['inCare'] and r['total'], 'a rescued survivor is in care with a known treatment time')
     t.ok('Recovering' in r['line'] and '%' in r['line'], f"their panel shows treatment progress ({r['line'][:80]})")
@@ -419,7 +420,7 @@ async def t_traits(br, port, t):   # V2.43: survivor personalities change existi
       for(const q of S.sv)if(q!==v){q.mode=['Guard','Scavenger','Police Officer'].includes(q.job)?'hiding':'free';q.rescuing=null;q.carrying=null;q.hp=q.max;q.trait='scrounger'}
       const m=S.sv.find(q=>q.job==='Medic');v.rescuer=null;ZH.assignRescue();const plain=v.rescuer===m;if(v.rescuer){v.rescuer.rescuing=null;v.rescuer.mode='free'}v.rescuer=null;m.trait='caring';ZH.assignRescue();return {plain,caring:v.rescuer===m,why:m.why}}""")
     t.ok(not r['plain'] and r['caring'] and 'Caring' in r['why'], f'only a Caring non-fighter runs to the downed past a zombie, and says why {r}')
-    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);document.querySelector('#unitExtra [data-tab=about]').click();const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard'),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
+    r = await pg.evaluate("""()=>{const S=ZH.S,q=S.sv.find(x=>x.job==='Medic');ZH.unitPanel(q);document.querySelector('#unitExtra [data-tab=about]').click();const h=document.getElementById('ib').innerHTML;ZH.closeP();return {card:h.includes('traitCard')||(h.includes('✔')&&h.includes('✖')),name:h.includes(ZH.TRAITS[q.trait].name)}}""")
     t.ok(r['card'] and r['name'], 'the survivor panel explains the personality (upside and cost) on its About tab')
     r = await pg.evaluate("""()=>{const S=ZH.S;S.sv.forEach(q=>q.trait='loner');const q=S.sv[0];q.trait='eater';ZH.saveGame();const d=JSON.parse(ZH.serialize());return d.sv.map(x=>x.trait)}""")
     t.ok(r[0] == 'eater' and all(x == 'loner' for x in r[1:]), 'personalities are saved')
@@ -547,7 +548,7 @@ async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entra
     t.ok(r == 1 and r2 == [['armory', 1, 2]], f"turned buildings are saved and load turned {r} {r2}")   # 3D.58: the turned building here is the armory placed above
     r = await pg.evaluate("""()=>{const b=ZH.world.buildings.find(q=>q.rot);ZH.moveBuilding(b);const rot=ZH.sel.rot;ZH.endBuildMode(true);return rot}""")
     t.ok(r == 1, 'moving a turned building keeps its direction')
-    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);const ib=document.getElementById('ib'),n=ib.querySelectorAll('[data-si]').length,t=ib.innerText;ZH.closeP();return {n,why:(t.match(/Why:/g)||[]).length,hunger:(t.match(/Hunger/g)||[]).length}}")
+    r = await pg.evaluate("()=>{ZH.unitPanel(ZH.S.sv[0]);const ib=document.getElementById('ib'),t=ib.innerText;let n=ib.querySelectorAll('[data-si]').length;if(ib.querySelector('.phBar')){n=ib.querySelectorAll('.phBar').length;document.querySelector('#unitExtra [data-tab=about]').click();n+=ib.querySelectorAll('[data-si]').length;document.querySelector('#unitExtra [data-tab=stats]').click()}ZH.closeP();return {n,why:(t.match(/Why:/g)||[]).length,hunger:(t.match(/Hunger/g)||[]).length}}")
     t.ok(r['n'] >= 9 and r['why'] == 0 and r['hunger'] <= 1, f"the survivor panel shows needs and stats once, as icons, without a repeated Why line {r}")
     t.ok(not errs and not errs2, f'no page errors {(errs + errs2)[:1]}'); await ctx.close()
 
@@ -661,7 +662,7 @@ async def t_tabs(br, port, t):
         await pg.click(f'#ib [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#ib .tabs button.on').dataset.tab"); t.ok(on == k, f'building tab {k} opens')
     await pg.evaluate("()=>ZH.unitPanel(ZH.S.sv[0])")
     for k in ['stats', 'gear', 'skills', 'about']:   # the Bonds tab became About (personality and bonds)
-        await pg.click(f'#unitExtra [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#unitExtra .tabs button.on').dataset.tab"); t.ok(on == k, f'survivor tab {k} opens')
+        await pg.click(f'#unitExtra [data-tab={k}]'); on = await pg.evaluate("()=>document.querySelector('#unitExtra .tabs button.on, #unitExtra .phActs button.on').dataset.tab"); t.ok(on == k, f'survivor tab {k} opens')
     t.ok(not errs, 'no page errors'); await ctx.close()
 
 async def t_sound(br, port, t):
