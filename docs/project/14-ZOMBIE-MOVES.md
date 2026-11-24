@@ -30,7 +30,7 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 | Sporehead | Worked in the plant's powder room; dried Freshlock dust puffs from the cracked skull. (**For the Story chat:** the story has no fungus; rename it "Dusthead"?) | **Head shake, then claws**: shakes a cloud loose, then two quick claws | close to this already |
 | Screamer | Sunnyside's shift-siren operator | **A full scream**: arms thrown back, chest forward, head up, the whole body shaking | only bends forward |
 | Riot zombie | Quarantine Command riot police from the cordon | **Shoulder charge**: three driving steps and a body check | one-arm swipe |
-| Lasher | A volunteer in Helix's first Unlock trial: the limbs kept growing | **Whip**: the long arm cracks out from far away (kept); the trouser fault fixed in 3D.254 | lash |
+| Lasher | A volunteer in Helix's first Unlock trial: the limbs kept growing | **Lasso** (owner, 24 Nov, "A"; today's whip turned down): the long arm whirls overhead like a rope, is flung out, hooks, and hauls the survivor in hand over hand; the trouser fault fixed in 3D.254 | lash |
 | Rot Bomb | A tin that swelled and never burst, in the shape of a man | **Clutch and swell**: both arms hug the belly as it grows (kept), with a hurried waddle | swell |
 | Dog | Guard dogs and pets fed on tin scraps | **Lunge and shake**: jumps at the arm, bites and shakes its head; **the run is a real gallop, one foot landing at a time** (owner: "the dog leg run is not natural"; built in 3D.256) | stiff legs |
 | Stalker (boss) | Helix's first Unlock test subject; it carries the prototype (the vaccine it drops) | **Punch and kick** (kept) | punch and kick |
@@ -97,7 +97,7 @@ One move that is not an attack for every zombie, played every now and then or be
 - Riot zombie: a stiff police "halt".
 - Souphead: shakes its big mushroom hat like a dog shaking off water.
 - Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats; approved). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
-- Lasher: a long, slow stretch: both arms straight up, a lean to each side, a neck crack (preview `zmove_lasher.py`, 23 Nov).
+- Lasher: ~~a long, slow stretch~~ (turned down 24 Nov) a back scratch: over the shoulder to the shoulder blades, then down behind to the back of the knee (owner, 24 Nov: "1"; `zmove_lasher.py scratch`).
 - Stalker, Mutant: a crouch and sniff; an arm crack.
 
 ## The Alpha's blade (23 Nov, W265 to W267)
