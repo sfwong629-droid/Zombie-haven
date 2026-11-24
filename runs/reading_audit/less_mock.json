@@ -1,0 +1,62 @@
+[
+ {
+  "nm": "A_before",
+  "spots": 9,
+  "sentences": 1,
+  "words": 32
+ },
+ {
+  "nm": "A_after",
+  "spots": 7,
+  "sentences": 0,
+  "words": 11
+ },
+ {
+  "nm": "B_before",
+  "spots": 21,
+  "sentences": 7,
+  "words": 86
+ },
+ {
+  "nm": "B_after",
+  "spots": 15,
+  "sentences": 0,
+  "words": 34
+ },
+ {
+  "nm": "C_before",
+  "spots": 24,
+  "sentences": 5,
+  "words": 77
+ },
+ {
+  "nm": "C_after",
+  "spots": 24,
+  "sentences": 0,
+  "words": 40
+ },
+ {
+  "nm": "D_before",
+  "spots": 24,
+  "sentences": 3,
+  "words": 101
+ },
+ {
+  "nm": "D_after",
+  "spots": 26,
+  "sentences": 1,
+  "words": 59
+ },
+ {
+  "nm": "E_before",
+  "spots": 23,
+  "sentences": 6,
+  "words": 101
+ },
+ {
+  "nm": "E_after",
+  "spots": 25,
+  "sentences": 2,
+  "words": 70
+ }
+]
