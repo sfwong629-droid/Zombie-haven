@@ -100,6 +100,8 @@ Owner, 23 Nov, 16:31: the town screen "looks good". **From here: a mockup for ea
 
 Owner, 23 Nov, 16:49: the frame-only sheet "doesn't have the iphone UI feel like you had for the previous mock up". **A menu is not converted by restyling its frame: its inside is rebuilt** as in the concept pictures (large title, search, segmented control, grouped lists with chevrons, folders). Targets sent: `phoneD_menus_sheet.png` (People, a survivor's page, Build, Town, Settings). The handle is back on the sheet (drag down to close is built with it) and the Paused pill sits under the resource bar.
 
+Owner, 23 Nov, 19:43: **"show me mock up before all push"**. Each remaining screen is built locally, shown as a picture from the real build, and pushed only after a yes. Waiting for a yes: a survivor's page (branch `phone-person-wip`, local only; `phoneF_person_built.png`). Then Build, Town, Settings.
+
 ## 7. Build log
 | Build | What | Check | State |
 |---|---|---|---|
