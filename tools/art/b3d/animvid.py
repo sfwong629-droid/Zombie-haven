@@ -9,6 +9,11 @@ from mathutils import Vector
 a = sys.argv[sys.argv.index('--') + 1:]; src, clip, out = a[0], a[1], a[2]
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
 ao = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
+if os.environ.get('ATTACH'):   # optional: a held prop for previews, ATTACH = JSON {"glb": path, "parent": object name, "M": 4x4 rows (prop local -> parent local)}
+    import json as _j; from mathutils import Matrix as _M
+    _a = _j.loads(os.environ['ATTACH']); _before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=_a['glb'])
+    for _o in set(bpy.data.objects) - _before:
+        if _o.type == 'MESH': _o.parent = bpy.data.objects[_a['parent']]; _o.matrix_parent_inverse = _M.Identity(4); _o.matrix_basis = _M(_a['M'])
 for o in bpy.data.objects:
     if (o.name.startswith('weapon_') and o.name not in ['weapon_' + w for w in os.environ.get('WEAP', '').split(',') if w]) or (o.type == 'MESH' and o.name.startswith('armor')): o.hide_render = True
 for tr in ao.animation_data.nla_tracks: tr.mute = True

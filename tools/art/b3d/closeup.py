@@ -3,6 +3,12 @@ import bpy,sys,math,os,numpy as np
 from mathutils import Vector, Matrix
 a=sys.argv[sys.argv.index('--')+1:]; src,gear,clip,fr,out=a[0],a[1],a[2],float(a[3]),a[4]; shift=float(a[5]) if len(a)>5 else .04
 bpy.ops.wm.read_factory_settings(use_empty=True); bpy.ops.import_scene.gltf(filepath=src)
+import os as _os
+if _os.environ.get('ATTACH'):   # optional held prop for previews (as in animvid.py)
+    import json as _j; from mathutils import Matrix as _M
+    _a = _j.loads(_os.environ['ATTACH']); _before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=_a['glb'])
+    for _o in set(bpy.data.objects) - _before:
+        if _o.type == 'MESH': _o.parent = bpy.data.objects[_a['parent']]; _o.matrix_parent_inverse = _M.Identity(4); _o.matrix_basis = _M(_a['M'])
 ao=[o for o in bpy.data.objects if o.type=='ARMATURE'][0]; bat=bpy.data.objects.get('weapon_bat')
 ao.data.pose_position='REST'; bpy.context.view_layer.update(); Wb=bat.matrix_world.copy() if bat else None
 WEAP=__import__('os').environ.get('WEAP')
