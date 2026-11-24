@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.347', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.348', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -8537,9 +8537,10 @@ function loadScreen(on) {
 }
 /* 3D.347 bug A14 (owner: the phone gets hot): draw at most 30 frames a second. The phone's screen asks 60 times a second (120 on some),
    and every frame was drawn, three passes each with the ink outlines. The game itself still runs every screen tick; only the drawing is
-   skipped in between. ?fps=60 lifts the cap (for a before/after). */
+   skipped in between. ?fps=60 lifts the cap (for a before/after).
+   3D.348: while a menu or a card is open the game is paused and the town only shows behind the glass: 5 frames a second. */
 const FPS_CAP = Math.max(10, Math.min(120, +QS.get('fps') || 30)); let lastDraw = -1e9;
-function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() || !worldReady() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); if (t - lastDraw >= 1000 / FPS_CAP - 2) { lastDraw = t; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); } requestAnimationFrame(frame); }
+function frame(t) { if (titleOn) { const k = t / 1000; centerOn(7.5 + OFF + Math.sin(k * .07) * 3, 10 + OFF + Math.cos(k * .05) * 2.5, Math.max(.8, Math.min(1.2, VW / 400))); } if (!last) last = t; acc += modalOpen || titleOn || menuPaused() || !worldReady() ? 0 : Math.min(100, t - last) * simSpeed; last = t; let n = 0; const cap = skipping ? 30 : 12; while (acc >= STEP && n < cap) { simTick(); acc -= STEP; n++; } if (n === cap) acc = 0; if (!(tick % 30)) skipDawnTick(); const still = !titleOn && (modalOpen || menuPaused()); if (t - lastDraw >= (still ? 200 : 1000 / FPS_CAP) - 2) { lastDraw = t; drawSmooth(modalOpen ? 1 : Math.min(1, acc / STEP)); } requestAnimationFrame(frame); }
 document.addEventListener('visibilitychange', () => { if (window.SND) SND.pause(document.hidden); if (document.hidden) { hiddenAt = Date.now(); saveGame(); } else { last = 0; tripUpdate(); expTick(); if (hiddenAt) { awayCredit(Date.now() - hiddenAt); hiddenAt = 0; } } }); window.addEventListener('pagehide', saveGame);
 
 /* ---------------- init ---------------- */
