@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.343', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.344', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7607,6 +7607,15 @@ function buildDetail(k, back) {
   const perDay = `<div class="perDay"><div><small>Each day</small></div>${mk.length ? `<div><span>Makes</span><b class="good">${mk.join('  ')}</b></div>` : ''}${us.length ? `<div><span>Uses</span><b class="bad">${us.join('  ')}</b></div>` : ''}</div>`;
   if (d.cap > 1 && d.role === 'inn') fx.push(`🛏 beds for ${d.cap}`); if (d.tier) fx.push(['', '⛺ Camp tier', '🪵 Timber tier', '🪨 Stone tier'][d.tier]); if (d.fam === 'research') fx.push('🔬 research + crafting'); if (d.train) fx.push(`📈 trains ${STAT_NAME[d.train]}`);
   if (d.role === 'home') fx.push('🛏 +2 people'); if (d.role === 'medical') fx.push(`💊 treats ${d.cap}`); if (d.slot) { const js = STAFF_JOBS[d.fam] || [], fr = freeFor(js).length; fx.push('👷 1 worker: ' + js.join(' / ') + (fr ? ` (${fr} free)` : ' (none free)')); }
+  /* 3D.344 (owner, 24 Nov, W249: "looks good. next"): the building's own page in the phone look: the picture in a wide tile, the note, then grouped lists
+     (To build, Each day, What it does) and one wide lime Build button; a locked building says what it needs instead. Same id (bdGo). */
+  if (phoneOn()) { const row = (kk, v, cls) => `<div class="phR"><span class="k">${kk}</span><span class="v${cls ? ' ' + cls : ''}">${v}</span></div>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`;
+    $('ib').innerHTML = `<div class="phBP"><div class="phHero">${bImg(k, 300, 160)}</div><p class="phNote">${BDESC[k] || ''}</p>`
+      + sec('To build') + grp(row('Cost', costShort(bCost(d))) + row('Size', size) + (have ? row('You have', have) : ''))
+      + (mk.length || us.length ? sec('Each day') + grp((mk.length ? row('Makes', mk.join('  '), 'good') : '') + (us.length ? row('Uses', us.join('  '), 'bad') : '')) : '')
+      + (fx.length ? sec('What it does') + grp(fx.map((x) => `<div class="phR"><span class="k">${x}</span></div>`).join('')) : '')
+      + (lk ? `<div class="phLock">Needs ${esc(lk.replace(/^Needs /, ''))}</div>` : `<button class="act go phWide" id="bdGo">${afford ? 'Build' : 'Place site · still need ' + missText(bCost(d))}</button>`) + '</div>';
+  } else
   $('ib').innerHTML = `<div class="bdetail"><div class="big">${bImg(k, 300, 140)}</div>
     <div class="row" style="justify-content:center;gap:14px;font-size:21px"><span><b>${costShort(bCost(d))}</b></span><span>${size}</span></div>
     <p class="desc">${BDESC[k] || ''}</p>${perDay}<div class="desc">${fx.map((x) => `<div>${x}</div>`).join('')}</div>
