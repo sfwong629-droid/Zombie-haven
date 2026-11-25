@@ -370,6 +370,12 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('alarm'); return;
   }
+  if (e.report && phoneOn()) {   /* 3D.381 (W249): the morning report, "Yesterday at the Haven" */
+    m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns">${bt.map((b, i) => `<button data-i="${i}" class="act rec">${b.label}</button>`).join('')}</div></div>`;
+    m.querySelectorAll('.rpT').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
+    SFX('event'); return;
+  }
   if ((e.stage)) {   /* V3D.12: DV2-style stage card */
     m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });

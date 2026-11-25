@@ -98,7 +98,7 @@ function radioNext() {
 /* 3D.159 the UX study: the night ends with ONE morning card (walkers stopped, damage, who is hurt, who was lost or arrived)
    instead of scattered messages. Facts first, the joke last. */
 const allIds = () => S.sv.map((q) => q.id).concat(S.trip ? S.trip.members.map((m) => m.id) : [], S.sh && S.sh.units ? S.sh.units.map((m) => m.id) : []);   /* 3D.161 a squad out on a trip still lives here */
-function nightStart() { S.nightLog = { day: S.day, kills: S.kills || 0, dmg: 0, ids: allIds(), fallen: (S.fallen || []).length }; }
+function nightStart() { S.nightLog = { day: S.day, kills: S.kills || 0, dmg: 0, ids: allIds(), fallen: (S.fallen || []).length, st: { food: S.food || 0, water: S.water || 0, wood: S.wood || 0, mat: S.mat || 0 }, h: [] }; }
 function morningCard() {
   const L = S.nightLog; S.nightLog = null; if (!L || S.cut || titleOn) return;
   const k = (S.kills || 0) - L.kills, lost = Math.max(0, (S.fallen || []).length - (L.fallen || 0));   /* 3D.161 play-test: squads coming home were counted as "Joined" and squads out as "Lost" */
@@ -108,7 +108,28 @@ function morningCard() {
   if (lost) rows.push(`🕯 Lost: ${lost}`); if (joined.length) rows.push(`👋 Joined: ${joined.join(', ')}`);
   { const sad = S.sv.filter((q) => q.resident && (q.sat || 0) < 15).sort((a, b) => (a.sat || 0) - (b.sat || 0)); if (sad.length) rows.push(`💔 Unhappy: ${sad.slice(0, 2).map((q) => `${q.name} ${moodLine(q)}`).join('; ')}${sad.length > 2 ? ` and ${sad.length - 2} more` : ''}`); }   /* 3D.168 */
   const quip = lost ? 'We light a candle and get back to work.' : hurt.length ? 'Bandages first, breakfast second.' : dmgB ? 'Grab a hammer, the fence has opinions.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : 'Not a scratch. The coffee is still terrible.';   /* 3D.161 it said "Not a scratch" under a list of hurt people */
+  if (phoneOn()) return showEventPopup({ title: 'Last night', report: morningReport(L, k, lost, joined, hurt, dmgB, quip), buttons: [{ label: 'Good morning' }] });   /* 3D.381 */
   showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
+}
+/* 3D.381 (W249, fun idea 9, "Yesterday at the Haven"): in the phone look the morning card is a short report like the phone's weekly screen-time
+   report: how many were put down, large, with a bar for each hour of the night; then one line for each thing that matters (hurt, lost, joined,
+   damaged, unhappy: only when there are any, the names on a tap), the stock overnight as signs and numbers, who put down the most, and the joke
+   last in small grey. Same facts as the old card. */
+function morningReport(L, k, lost, joined, hurt, dmgB, quip) {
+  const h = (L.h || []).slice(), per = h.map((v, i) => Math.max(0, v - (i ? h[i - 1] : L.kills))), mx = Math.max(1, ...per), sv = (id) => S.sv.find((q) => q.id === +id);
+  const bars = per.length ? `<div class="rpBars">${per.map((v, i) => `<i style="height:${v ? Math.max(6, Math.round(v / mx * 100)) : 2}%" title="${(20 + i) % 24}:00 · ${v}"></i>`).join('')}</div><div class="rpAx"><span>20:00</span><span>00:00</span><span>06:00</span></div>` : '';
+  const row = (ic, t, v, dt, cls) => `<div class="phR rpR${dt ? ' rpT' : ''}" ${dt ? 'role="button"' : ''}><span class="rpI">${ic}</span><span class="tx"><b>${t}</b>${dt ? `<small class="dt">${esc(dt)}</small>` : ''}</span><span class="v ${cls || ''}">${v}</span></div>`;
+  const sad = S.sv.filter((q) => q.resident && (q.sat || 0) < 15);
+  let rows = (hurt.length ? row('🩹', 'Hurt', hurt.length, hurt.join(', '), 'bad') : '') + (lost ? row('🕯', 'Lost', lost, '', 'bad') : '') + (joined.length ? row('👋', 'Joined', joined.length, joined.join(', '), 'good') : '')
+    + (dmgB ? row('🏚', 'Damaged', `${dmgB} building${dmgB > 1 ? 's' : ''}`, '', 'bad') : '') + (sad.length ? row('💔', 'Unhappy', sad.length, sad.map((q) => q.name).join(', '), 'bad') : '');
+  if (!rows) rows = row('✓', 'Everyone safe', '', '', 'good');
+  const st = L.st, d = st ? [['food', '🍖'], ['water', '💧'], ['wood', '🪵'], ['mat', '⚙']].map(([key, ic]) => [ic, Math.round((S[key] || 0) - (st[key] || 0))]).filter(([, v]) => v) : [];
+  const best = Object.entries(L.by || {}).map(([id, n]) => [sv(id), n]).filter(([q]) => q).sort((a, b) => b[1] - a[1])[0];
+  return `<div class="rpHd">Haven report · Day ${S.day}</div><div class="rpT1">Last night</div><div class="rpBig"><b>${k}</b> put down</div>${bars}`
+    + `<div class="phCard">${rows}</div>`
+    + (d.length ? `<div class="phSec">Stock overnight</div><div class="phCard"><div class="phR rpSt">${d.map(([ic, v]) => `<span class="${v > 0 ? 'good' : 'bad'}">${ic} ${v > 0 ? '+' : '−'}${Math.abs(v)}</span>`).join('')}</div></div>` : '')
+    + (best ? `<div class="phSec">Most put down</div><div class="phCard"><div class="phR tall rpBest">${pplFace(best[0])}<span class="tx"><b>${esc(best[0].name)}</b><small>${esc(best[0].job)}</small></span><span class="v">${best[1]}</span></div></div>` : '')
+    + `<div class="rpQ">${esc(quip)}</div>`;
 }
 let radioLast = null;
 /* 3D.349 (owner, 24 Nov, W270: "Yes on the radio. It will show up like an iPhone radio"): in the phone look a radio message no longer types out on
