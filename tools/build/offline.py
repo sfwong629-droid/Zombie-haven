@@ -75,7 +75,7 @@ def main():
     h = h.replace('<link rel="manifest" href="manifest.webmanifest">',
                   '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">'
                   '<meta name="apple-mobile-web-app-title" content="Zombie Haven">')
-    h = h.replace('<script src="js/iso.js', '<script>window.ZH_FORCE3D = true;</script>\n<script src="offline.js?v=' + v + '"></script>\n<script src="js/iso.js', 1)
+    h = h.replace('<script src="js/iso.js', '<script>window.ZH_FORCE3D = true; window.ZH_OFFLINE_PAGE = \'' + tag + '\';</script>\n<script src="offline.js?v=' + v + '"></script>\n<script src="js/iso.js', 1)
     assert 'offline.js' in h and 'apple-touch-icon' in h
     open(os.path.join(out, 'index.html'), 'w').write(h)
     m = json.load(open(os.path.join(R, 'manifest.webmanifest')))
