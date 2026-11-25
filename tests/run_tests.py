@@ -850,7 +850,7 @@ async def t_ceiling_notes(br, port, t):   # 3D.79 horde ceiling by rank, Field N
       ZH.spawn(8,3,'brute');S.z[S.z.length-1].mode='idle';ZH.step(61);out.silent=!!S.intro['z:brute']&&!document.getElementById('eventModal').textContent;
       out.notes=ZH.fieldNotesHtml();return out}""")
     t.ok(r['c1'] == r['c1late'] and r['c8'] == r['c8late'] and r['c1'] < r['c8'] < r['c20'], f"3D.253 the threat follows the town's level, never the day count {r['c1'], r['c1late'], r['c8'], r['c8late'], r['c20']}")
-    t.ok('NEW: RUNNER' in r['card'] and 'What to do' in r['card'] and r['seen'], f"a new zombie type gets a Field Notes card {r}")
+    t.ok(('NEW: RUNNER' in r['card'] or 'New zombieRunner' in r['card']) and 'What to do' in r['card'] and r['seen'], f"a new zombie type gets a Field Notes card {r}")
     t.ok(r['off'] and r['silent'], f"'No more tips' stops the cards but still records the note {r['off'], r['silent']}")
     t.ok('Runner' in r['notes'] and 'Brute' in r['notes'], f"Guide → Field Notes lists what was seen")
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()

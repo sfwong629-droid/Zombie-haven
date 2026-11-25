@@ -368,7 +368,7 @@ function nextEventPopup() {
     SFX(e.stage.scene === 'sad' || e.stage.scene === 'danger' ? 'alarm' : 'event'); return;
   }
   m.innerHTML = `<div class="evBox frame${e.x ? ' hasX' : ''}">${e.x ? '<button class="evX" aria-label="Close">×</button>' : ''}<div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
-  m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = el.classList.contains('evX') ? null : bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); else if (!b && e.onX) e.onX(); nextEventPopup(); }; });   /* 3D.240: x: true adds a ✕ that closes the card doing nothing (onX runs if given) */
+  m.querySelectorAll('button:not(.tipMb)').forEach((el) => { el.onclick = () => { const b = el.classList.contains('evX') ? null : bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); else if (!b && e.onX) e.onX(); nextEventPopup(); }; });   /* 3D.240: x: true adds a ✕ that closes the card doing nothing (onX runs if given) */
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
 /* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */

@@ -53,6 +53,13 @@ function intro(key) {   /* show a Field Note once per game */ if (ZOO) return;  
   if (!key.startsWith('z:') && !key.startsWith('boss:')) { radio('dj', `${rLine('note')} ${d[1]}. ${String(d[2]).split('. ')[0].replace(/\.$/, '')}.`, { key: 'fn' + key, title: d[1], more: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Guide → Field Notes keeps every note.</div>` }); return true; }   /* 3D.135 */
   let pic = '';   /* 3D.102: a new zombie gets its picture, seen from the game's iso angle, in the middle of the card */
   if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = key === 'z:raider' ? (window.ZH3D && ZH3D.raiderIso ? ZH3D.raiderIso((S.z.find((z) => z.type === 'raider' && z.hp > 0 && z.wpn) || {}).wpn) : null) /* 3D.178 bug A5: a raider is a person, not a walker; 3D.187: holding the weapon of the raider that came */ : zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
+  if (phoneOn()) {   /* 3D.372 (W249, W270 rule 6): the tip card says one line; what it is and the rest behind More */
+    const one = String(d[3]).split(/(?<=\.)\s/)[0], kind = key.startsWith('boss:') ? 'New boss' : key === 'z:raider' ? 'New enemy' : 'New zombie';
+    showEventPopup({ title: '', text: `<div class="tipP">${pic || `<div class="tipEm">${d[0]}</div>`}<small class="tipK">${kind}</small><b class="tipN">${esc(d[1])}</b><div class="tipL">${one}</div>`
+      + `<div class="tipMore"><button class="tipMb" type="button" onclick="this.parentNode.classList.toggle('open')">More <i>›</i></button><div class="tipF"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div></div></div>`,
+      buttons: [{ label: 'Got it', rec: true }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
+    return true;
+  }
   showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `${pic}<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
     buttons: [{ label: 'Got it' }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
   return true;

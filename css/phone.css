@@ -277,3 +277,14 @@ html.phone .phTown .phR.fac small.dt { display: none; color: rgba(255, 255, 255,
 html.phone .phTown .phR.fac .v { display: flex; align-items: center; gap: 6px; flex: none; } html.phone .phTown .phR.fac .fm { display: grid; } html.phone .phTown .phR .v.bad, html.phone .phTown .phR .k.bad { color: #ff8a72; font-weight: 700; }
 html.phone .phTown .phWide.in { margin: 6px 0; }
 html.phone .phTown .phR.cdesc { display: block; white-space: normal; color: rgba(255, 255, 255, .7); font-size: 14px; line-height: 1.4; padding-top: 10px; padding-bottom: 10px; }
+
+/* 3D.372 (W249, W270): tip cards say one line; the rest behind More */
+html.phone #eventModal .evBox:has(.tipP) { padding: 18px 18px 14px; } html.phone #eventModal .evBox:has(.tipP) .evTitle { display: none; }
+html.phone #eventModal .tipP { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+html.phone #eventModal .tipP img { width: 150px !important; height: 150px !important; margin: 0 0 4px !important; } html.phone #eventModal .tipP > div:first-child { margin: 0 !important; }
+html.phone #eventModal .tipEm { font-size: 56px; line-height: 1.2; } html.phone #eventModal .tipK { font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase; color: #9fe07a; }
+html.phone #eventModal .tipN { font: 800 26px/1.15 Manrope, system-ui, sans-serif; color: #fff; } html.phone #eventModal .tipL { font: 500 16px/1.35 Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .85); margin-top: 4px; }
+html.phone #eventModal .tipMore { width: 100%; margin-top: 6px; } html.phone #eventModal .tipMb { min-height: 44px; padding: 0 14px; border: 0; background: none; color: rgba(255, 255, 255, .6); font: 600 14px Manrope, system-ui, sans-serif; cursor: pointer; }
+html.phone #eventModal .tipMb i { font-style: normal; display: inline-block; transition: transform .15s; } html.phone #eventModal .tipMore.open .tipMb i { transform: rotate(90deg); }
+html.phone #eventModal .tipF { display: none; text-align: left; font: 500 14px/1.45 Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .78); padding: 4px 2px 6px; } html.phone #eventModal .tipMore.open .tipF { display: block; }
+html.phone #eventModal .evBox:has(.tipP) .act { min-height: 48px; margin-top: 8px; } html.phone #eventModal .evBox:has(.tipP) .act:not(.go) { background: none; border: 0; box-shadow: none; color: rgba(255, 255, 255, .6); min-height: 44px; margin-top: 2px; }

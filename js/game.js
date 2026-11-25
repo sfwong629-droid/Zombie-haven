@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.371', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.372', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4853,7 +4853,7 @@ function nextEventPopup() {
     SFX(e.stage.scene === 'sad' || e.stage.scene === 'danger' ? 'alarm' : 'event'); return;
   }
   m.innerHTML = `<div class="evBox frame${e.x ? ' hasX' : ''}">${e.x ? '<button class="evX" aria-label="Close">×</button>' : ''}<div class="evTitle out">${e.title}</div><div class="evText">${e.text}</div>${e.gains ? `<div class="evGain">${e.gains}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
-  m.querySelectorAll('button').forEach((el) => { el.onclick = () => { const b = el.classList.contains('evX') ? null : bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); else if (!b && e.onX) e.onX(); nextEventPopup(); }; });   /* 3D.240: x: true adds a ✕ that closes the card doing nothing (onX runs if given) */
+  m.querySelectorAll('button:not(.tipMb)').forEach((el) => { el.onclick = () => { const b = el.classList.contains('evX') ? null : bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); else if (!b && e.onX) e.onX(); nextEventPopup(); }; });   /* 3D.240: x: true adds a ✕ that closes the card doing nothing (onX runs if given) */
 }
 const residents = () => S.sv.filter((s) => s.resident).length;
 /* V2.33 DV2-style "Upgrade Town": each star has rating conditions; when all are met the player upgrades the town */
@@ -8709,6 +8709,13 @@ function intro(key) {   /* show a Field Note once per game */ if (ZOO) return;  
   if (!key.startsWith('z:') && !key.startsWith('boss:')) { radio('dj', `${rLine('note')} ${d[1]}. ${String(d[2]).split('. ')[0].replace(/\.$/, '')}.`, { key: 'fn' + key, title: d[1], more: `<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Guide → Field Notes keeps every note.</div>` }); return true; }   /* 3D.135 */
   let pic = '';   /* 3D.102: a new zombie gets its picture, seen from the game's iso angle, in the middle of the card */
   if (key.startsWith('z:') || key.startsWith('boss:')) { try { const zi = window.ZH3D && ZH3D.zombieIso, bk = key.startsWith('boss:') && (BOSS_KINDS[key.slice(5)] || BOSS_KINDS.mutant), u = key === 'z:raider' ? (window.ZH3D && ZH3D.raiderIso ? ZH3D.raiderIso((S.z.find((z) => z.type === 'raider' && z.hp > 0 && z.wpn) || {}).wpn) : null) /* 3D.178 bug A5: a raider is a person, not a walker; 3D.187: holding the weapon of the raider that came */ : zi && (bk ? zi(bk.look, true) : zi(key.slice(2))); if (u) pic = `<div style="text-align:center;margin:-4px 0 6px"><img src="${u}" alt="" style="width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))"></div>`; } catch (e) { pic = ''; } }
+  if (phoneOn()) {   /* 3D.372 (W249, W270 rule 6): the tip card says one line; what it is and the rest behind More */
+    const one = String(d[3]).split(/(?<=\.)\s/)[0], kind = key.startsWith('boss:') ? 'New boss' : key === 'z:raider' ? 'New enemy' : 'New zombie';
+    showEventPopup({ title: '', text: `<div class="tipP">${pic || `<div class="tipEm">${d[0]}</div>`}<small class="tipK">${kind}</small><b class="tipN">${esc(d[1])}</b><div class="tipL">${one}</div>`
+      + `<div class="tipMore"><button class="tipMb" type="button" onclick="this.parentNode.classList.toggle('open')">More <i>›</i></button><div class="tipF"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div></div></div>`,
+      buttons: [{ label: 'Got it', rec: true }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
+    return true;
+  }
   showEventPopup({ title: `${d[0]} NEW: ${d[1].toUpperCase()}`, text: `${pic}<div style="text-align:left"><b>What it is</b><br>${d[2]}<br><br><b>What to do</b><br>${d[3]}</div><div class="sm" style="margin-top:8px">Field Notes keeps every note: Guide → Field Notes.</div>`,
     buttons: [{ label: 'Got it' }, { label: 'No more tips', fn: () => { S.introOff = true; say('Tips are off. Turn them back on in Guide → Field Notes.', true); } }] });
   return true;
