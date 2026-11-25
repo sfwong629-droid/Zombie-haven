@@ -462,7 +462,7 @@ async def t_expchoices(br, port, t):   # V2.44: expedition situations with choic
     r = await pg.evaluate("""()=>{const S=ZH.S,t=S.trip;ZH.expEncounter(t,'cry');const en=t.enc;ZH.encResolve(t,0,0);let err=null;try{ZH.encChoose(en,0)}catch(e){err=String(e)}
       const n=S.sv.length+t.members.length,rec=t.recruitNow;t.phase='back';t.backAt=0;ZH.tripUpdate(Date.now()+1);return {rec,err,grew:S.sv.length-n,trip:!!S.trip,last:(S.lastTrip||{}).recruit}}""")
     t.ok(r['rec'] and r['grew'] == 1 and not r['err'] and not r['trip'], f"rescuing the survivor brings them home with the squad; a stale tap does nothing {r}")
-    r = await pg.evaluate("""()=>{const S=ZH.S;S.leads=[{id:'t1',dest:'houses',risk:'low',text:'test lead',untilH:S.day*24+S.hour+10}];ZH.showExpedition();const h1=document.getElementById('ib').innerHTML;ZH.closeP();return {hint:h1.includes('If something turns up:')&&h1.includes('Trip check')}}""")
+    r = await pg.evaluate("""()=>{const S=ZH.S;S.leads=[{id:'t1',dest:'houses',risk:'low',text:'test lead',untilH:S.day*24+S.hour+10}];ZH.showExpedition();{const vm=document.querySelector('[data-vm=houses]');if(vm){vm.click();document.getElementById('vmGo').click();}}const h1=document.getElementById('ib').innerHTML;ZH.closeP();return {hint:h1.includes('If something turns up:')&&h1.includes('Trip check')}}""")
     t.ok(r['hint'], 'the Explore panel shows the trip check with the real odds before sending')   # 3D.169 replaced the general hint with the trip's own odds
     t.ok(not errs, f'no page errors {errs[:1]}'); await ctx.close()
 

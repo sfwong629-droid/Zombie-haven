@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.361', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.362', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -7334,8 +7334,96 @@ function expPreWhy(ids) {   /* 3D.30: say up front why the squad can't leave, in
   return '';
 }
 function expMsg(t) { expMsg.t = t; expMsg.at = performance.now(); const e = $('expWhy'); if (!e) { say(t); return; } e.textContent = t; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); }
+/* 3D.362 (owner, 24 Nov, W249 "go next"; the valley map settled in W245 and W247: look C street map, no counts of the dead, few numbers, a
+   faction's mood as faces on its card; W270 less reading). Step 1 of 4: Explore opens on a map of the valley in place of the trip list. Every
+   place the game knows is a pin where 15-STRONGHOLDS.md 10.10 puts it, coloured by its state (a lead, locked, a stronghold, secured, a season's
+   place out of season, a faction town); a tap opens its card (one line of state, what it brings as signs, one button). "Plan a trip ›" opens
+   the old planner for that place, which comes back to the map. Not in this step: hiding unscouted places, herds and squads drawn on the map. */
+const VM_W = 360, VM_H = 500;
+const VM_P = { houses: [122, 360, 'door'], pharmacy: [132, 430, 'medic'], lumberyard: [146, 236, 'tree'], gasstation: [226, 262, 'fuel'], military: [250, 408, 'ammo'], quarrysite: [140, 66, 'pick'],
+  clinic: [236, 362, 'medic'], mall: [322, 380, 'shop'], prison: [184, 452, 'fort'], warehouse: [280, 330, 'box'], sh_spring: [96, 292, 'sprout'], sh_summer: [294, 460, 'fire'], sh_autumn: [64, 122, 'party'], sh_winter: [318, 124, 'snow'],
+  raid_toll: [268, 170, 'crown', 'toll'], raid_foundry: [74, 428, 'factory', 'foundry'], raid_quar: [318, 276, 'flag', 'quar'], raid_helix: [186, 104, 'research', 'helix'], raid_hollow: [116, 166, 'candle', 'hollow'], raid_green: [60, 250, 'leaf', 'green'] };
+const VM_SHORT = { houses: 'Elm Row', pharmacy: 'Pharmacy', lumberyard: 'Lumber Yard', gasstation: 'Gas Station', military: 'Army post', quarrysite: 'Quarry', clinic: 'Clinic', mall: 'Mall', prison: 'Prison', warehouse: 'Warehouses',
+  sh_spring: 'Greenhouse', sh_summer: 'Refinery', sh_autumn: 'Harvest Fair', sh_winter: 'Depot', raid_toll: 'Toll Kings', raid_foundry: 'Foundry', raid_quar: 'Bravo', raid_helix: 'Helix lab', raid_hollow: 'The Hollow', raid_green: 'Greenwater' };
+const VM_MOODS = [['angry', 'Hostile'], ['sad', 'Wary'], ['', 'Neutral'], ['happy', 'Friendly'], ['allies', 'Allies']];
+const vmMood = (F) => (F.ally ? 4 : F.att >= 25 ? 3 : F.att > -10 ? 2 : F.att > -50 ? 1 : 0);
+let vmCard = null;
+function vmState(id) {   /* what the pin shows: st (colour), tag (a word or two under it) */
+  const d = EXP_DEFS[id], fk = VM_P[id][3], lead = (S.leads || []).find((l) => l.dest === id);
+  if (fk) { const F = (S.fac || {})[fk]; if (!F || !F.met) return null; const m = vmMood(F); return { st: ['rival', 'wary', 'neutral', 'friend', 'friend'][m], tag: VM_MOODS[m][1], mood: m, fk }; }
+  if (shSecured(id)) return { st: 'outpost', tag: 'Secured' };
+  const lk = d.lock(); if (lk) { const lv = /level (\d+)/i.exec(lk); return id.startsWith('sh_') ? { st: 'off', tag: id.slice(3, 4).toUpperCase() + id.slice(4) } : { st: 'locked', tag: lv ? 'Level ' + lv[1] : (lk.replace(/^Needs (the )?/i, '').length <= 12 ? lk.replace(/^Needs (the )?/i, '') : 'Locked'), why: lk }; }
+  if (lead) return { st: 'lead', tag: 'Lead', lead };
+  if (d.stronghold) return { st: 'sealed' };
+  return { st: 'search' };
+}
+function vmMapSvg() {
+  const W = VM_W, H = VM_H, sm = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
+  const curve = (pts) => { let d = `M${pts[0][0]} ${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; d += ` Q${a[0]} ${a[1]} ${(a[0] + b[0]) / 2} ${(a[1] + b[1]) / 2}`; } const l = pts[pts.length - 1]; return d + ` T${l[0]} ${l[1]}`; };
+  const river = [[26, -5], [40, 70], [44, 130], [34, 200], [40, 262], [50, 330], [36, 400], [32, 450], [40, 505]];
+  const roads = [{ p: [[180, 318], [204, 290], [226, 262], [244, 222], [268, 170], [290, 110], [314, 42]], w: 7, hw: 1 }, { p: [[180, 318], [210, 340], [236, 362], [250, 408], [276, 428], [302, 440]], w: 4 }, { p: [[180, 318], [182, 390], [184, 452]], w: 4 },
+    { p: [[180, 318], [146, 236], [116, 166], [84, 140], [64, 122]], w: 4 }, { p: [[146, 236], [168, 170], [186, 104]], w: 3 }, { p: [[186, 104], [140, 66], [100, 50], [76, 40]], w: 2.5, dash: 1 }, { p: [[180, 318], [120, 284], [60, 250]], w: 4 },
+    { p: [[60, 250], [62, 340], [74, 428]], w: 3 }, { p: [[180, 318], [230, 322], [280, 330], [318, 276]], w: 4 }, { p: [[318, 276], [322, 200], [318, 124]], w: 3 }, { p: [[182, 390], [150, 376], [122, 360]], w: 2.5 }, { p: [[280, 330], [322, 380]], w: 2.5 }];
+  let r = 1; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  const blob = (cx, cy, rx, ry, n = 9, j = .22) => { let d = ''; for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2, k = 1 + (rnd() - .5) * j * 2; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * rx * k).toFixed(1) + ' ' + (cy + Math.sin(a) * ry * k).toFixed(1); } return d + 'Z'; };
+  let o = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block"><defs><filter id="vmBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter>
+    <pattern id="vmHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#f7e3df"/><path d="M0 0 V7" stroke="#efc9c2" stroke-width="2.4"/></pattern></defs><rect width="${W}" height="${H}" fill="#f1efe9"/>`;
+  for (const [x, y, rx, ry, a] of [[86, 44, 80, 46, .16], [150, 64, 50, 28, .12], [42, 100, 40, 26, .12], [300, 150, 40, 70, .07], [250, 120, 30, 22, .06]]) o += `<ellipse cx="${x + 8}" cy="${y + 10}" rx="${rx}" ry="${ry}" fill="rgba(60,70,40,${a})" filter="url(#vmBlur)"/><ellipse cx="${x - 6}" cy="${y - 8}" rx="${rx * .7}" ry="${ry * .6}" fill="rgba(255,255,255,${a * 1.6})" filter="url(#vmBlur)"/>`;
+  o += `<path d="${blob(96, 52, 86, 44, 12, .12)}" fill="#cfe5c0"/>`;
+  for (const [x, y, rx, ry] of [[146, 216, 30, 22], [216, 206, 22, 16], [100, 376, 22, 15], [232, 146, 20, 13], [292, 380, 18, 12], [160, 140, 16, 11], [120, 470, 26, 14], [300, 90, 18, 26]]) o += `<path d="${blob(x, y, rx, ry)}" fill="#bfe0ad"/>`;
+  o += `<path d="${blob(80, 106, 32, 20, 8, .1)}" fill="#e3eecb"/>`; for (let a = 0; a < 4; a++) for (let c = 0; c < 6; c++) o += `<circle cx="${60 + c * 6}" cy="${96 + a * 6}" r="1.6" fill="#a6cf8f"/>`;
+  o += `<rect x="344" y="0" width="16" height="${H}" fill="url(#vmHatch)"/><path d="${curve(river)}" fill="none" stroke="#9fd0f5" stroke-width="11" stroke-linecap="round"/><ellipse cx="34" cy="490" rx="26" ry="12" fill="#9fd0f5"/><ellipse cx="84" cy="240" rx="9" ry="6" fill="#9fd0f5"/>`;
+  for (const [x, y, w, h, kind] of [[180, 318, 52, 44], [60, 250, 30, 24], [74, 428, 34, 22, 'ind'], [268, 170, 28, 22], [318, 276, 24, 30, 'ind'], [186, 104, 30, 18, 'ind'], [116, 166, 30, 22], [314, 42, 58, 34], [226, 262, 14, 10], [280, 330, 34, 22, 'ind'], [128, 372, 30, 20], [236, 362, 22, 16], [184, 452, 30, 22, 'ind'], [250, 408, 18, 12], [322, 380, 20, 14, 'ind']]) {
+    const ind = kind === 'ind'; o += `<path d="${blob(x, y, w / 2 + 6, h / 2 + 6, 8, .12)}" fill="${ind ? '#e6e3ee' : '#ebe7e0'}"/>`;
+    for (let i = 0, n = Math.round(w * h / (ind ? 110 : 60)); i < n; i++) { const bx = x + (rnd() - .5) * w, by = y + (rnd() - .5) * h, bw = ind ? 6 + rnd() * 8 : 3 + rnd() * 4, bh = ind ? 4 + rnd() * 6 : 3 + rnd() * 3; o += `<rect x="${(bx - bw / 2).toFixed(1)}" y="${(by - bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${ind ? '#dcd8e6' : '#e0dbd2'}" stroke="#d2ccc1" stroke-width=".4"/>`; }
+    for (let i = -1; i <= 1; i++) o += `<path d="M${x - w / 2} ${y + i * h / 3} H${x + w / 2} M${x + i * w / 3} ${y - h / 2} V${y + h / 2}" stroke="#fff" stroke-width="1.6"/>`;
+  }
+  for (const rd of roads) { const d = sm(rd.p); if (rd.dash) { o += `<path d="${d}" fill="none" stroke="#a7a29a" stroke-width="1.4" stroke-dasharray="2 3"/>`; continue; } o += `<path d="${d}" fill="none" stroke="${rd.hw ? '#f0b44c' : '#d4d0c8'}" stroke-width="${rd.w + 2}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${rd.hw ? '#fde293' : '#fff'}" stroke-width="${rd.w}" stroke-linecap="round" stroke-linejoin="round"/>`; }
+  o += `<g transform="translate(296 216)"><rect x="-7" y="-6" width="14" height="12" rx="3" fill="#fff" stroke="#9aa0a6"/><text y="3.5" font-size="8.5" font-weight="800" text-anchor="middle" fill="#3c4043" font-family="Manrope,sans-serif">9</text></g><path d="M344 0 V${H}" stroke="#d93025" stroke-width="1.6" stroke-dasharray="6 4"/>`;
+  const lab = (x, y, t, c = '#80868b', rot = 0, sz = 8) => `<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" font-size="${sz}" letter-spacing="1.6" fill="${c}" font-family="Manrope,sans-serif" font-weight="800" text-anchor="middle" style="paint-order:stroke" stroke="#f1efe9" stroke-width="2.5">${t}</text>`;
+  o += lab(146, 22, 'PINE HILLS') + lab(22, 340, 'MILL RIVER', '#5d9bd0', -86) + lab(352, 330, 'CORDON ZONE', '#c5221f', 90, 7) + lab(130, 494, 'SOUTH VALLEY') + lab(250, 132, 'NORTH WOODS', '#7a9a5e', 0, 6.5);
+  o += `<g transform="translate(18 18)"><circle r="10" fill="#fff" stroke="#dadce0"/><path d="M0 -7 L3 1 L0 -1 L-3 1 Z" fill="#d93025"/><text y="8" font-size="6" text-anchor="middle" fill="#5f6368" font-family="Manrope,sans-serif" font-weight="800">N</text></g>`;
+  return o + '</svg>';
+}
+/* the five mood faces exactly as the owner approved them (W247: set A, Allies = sample 4, two faces together; tools/qa/mood_icons_mock.html, phone_b_mock.js) */
+const VM_FACES = (() => { const I = '#2a1d16', st = (f) => `fill="${f}" stroke="#fff" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"`, f = (c, x) => `<circle cx="24" cy="24" r="19" ${st(c)}/>${x}`;
+  return [f('#ff6b4a', `<path d="M12 15 L21 19 M36 15 L27 19" stroke="${I}" stroke-width="3.2" stroke-linecap="round"/><circle cx="18" cy="24" r="2.6" fill="${I}"/><circle cx="30" cy="24" r="2.6" fill="${I}"/><path d="M15 35 Q24 27 33 35" fill="none" stroke="${I}" stroke-width="3.2" stroke-linecap="round"/>`),
+    f('#f0a24a', `<path d="M27 15 L35 13" stroke="${I}" stroke-width="2.8" stroke-linecap="round"/><path d="M13 22 H21 M27 22 H35" stroke="${I}" stroke-width="2.8" stroke-linecap="round"/><circle cx="20" cy="24.5" r="2.2" fill="${I}"/><circle cx="34" cy="24.5" r="2.2" fill="${I}"/><path d="M16 33 q4 -3 8 0 t8 0" fill="none" stroke="${I}" stroke-width="2.8" stroke-linecap="round"/>`),
+    f('#e8d27a', `<circle cx="18" cy="22" r="2.6" fill="${I}"/><circle cx="30" cy="22" r="2.6" fill="${I}"/><path d="M17 32 H31" stroke="${I}" stroke-width="3" stroke-linecap="round"/>`),
+    f('#6fb7ff', `<path d="M13 23 q4 -5 8 0 M27 23 q4 -5 8 0" fill="none" stroke="${I}" stroke-width="2.8" stroke-linecap="round"/><path d="M15 29 Q24 38 33 29" fill="none" stroke="${I}" stroke-width="3" stroke-linecap="round"/>`),
+    `<circle cx="17" cy="27" r="13" ${st('#6fb7ff')}/><circle cx="32" cy="23" r="13" ${st('#3cc6b0')}/><circle cx="13" cy="26" r="1.9" fill="${I}"/><circle cx="20" cy="26" r="1.9" fill="${I}"/><path d="M12 31 Q16.5 35 21 31" fill="none" stroke="${I}" stroke-width="2.2" stroke-linecap="round"/><circle cx="28" cy="21" r="1.9" fill="${I}"/><circle cx="35" cy="21" r="1.9" fill="${I}"/><path d="M27 26 Q31.5 30 36 26" fill="none" stroke="${I}" stroke-width="2.2" stroke-linecap="round"/>`]; })();
+const vmFace = (k, z) => `<svg class="vmFace" viewBox="0 0 48 48" width="${z}" height="${z}" aria-hidden="true">${VM_FACES[k]}</svg>`;
+const vmIc = (n, z) => (window.ZHIcons ? ZHIcons.svg(n, z) : '');
+function showValley() {
+  expOpen = true; const RING = { friend: '#6fb7ff', neutral: '#e8d27a', wary: '#f0a24a', rival: '#ff7a59', sealed: '#c0392b', outpost: '#4fd1c5', off: '#8a8f94', locked: '#8a8f94', lead: '#f2c94c', search: '#ffffff' };
+  const BADGE = { sealed: 'skull', outpost: 'shield', locked: 'lock', off: 'clock', lead: 'search' }, pct = (x, y) => `left:${(x / VM_W * 100).toFixed(2)}%;top:${(y / VM_H * 100).toFixed(2)}%`;
+  let pins = `<div class="vmPin home" style="${pct(180, 318)};--r:#fff;--s:calc(40 * 100cqw / 360)"><span class="vmDot">${vmIc('home', 28)}</span><span class="vmName">The Haven</span></div>`;
+  const shown = {};
+  for (const [id, p] of Object.entries(VM_P)) { if (!EXP_DEFS[id]) continue; const s = vmState(id); if (!s) continue; shown[id] = s;
+    const big = s.st !== 'search', sz = big ? 32 : 28, dim = ['off', 'locked'].includes(s.st), badge = s.mood !== undefined ? '' : BADGE[s.st], face = s.mood !== undefined && s.mood !== 2 ? `<em class="vmBadge face">${vmFace(s.mood, 20)}</em>` : '';
+    pins += `<button class="vmPin${dim ? ' dim' : ''}${vmCard === id ? ' sel' : ''}" data-vm="${id}" style="${pct(p[0], p[1])};--r:${RING[s.st]};--s:calc(${sz} * 100cqw / 360)" aria-label="${esc(VM_SHORT[id])}"><span class="vmDot">${vmIc(p[2], Math.round(sz * .72))}${badge ? `<em class="vmBadge">${vmIc(badge, 14)}</em>` : face}</span><span class="vmName">${VM_SHORT[id]}</span>${s.tag ? `<span class="vmTag t_${s.st}">${s.tag}</span>` : ''}</button>`; }
+  let card = '';
+  if (vmCard && shown[vmCard]) { const id = vmCard, s = shown[id], d = EXP_DEFS[id], P = VM_P[id];
+    const name = P[3] ? FACTIONS[P[3]].name : d.name, loot = Object.keys(d.loot || {}).map((k) => `<span class="vmRes">${RES_ICON[k] || ''}</span>`).join('');
+    const line = P[3] ? (fac(P[3]).ally ? 'Allies' : 'Faction town') : s.st === 'lead' ? `Lead · ${EXP_RISK[s.lead.risk].label.toLowerCase()} risk` : s.st === 'locked' ? esc(s.why) : s.st === 'off' ? `${s.tag} only` : s.st === 'outpost' ? 'Secured' : d.stronghold ? 'Stronghold · no lead yet' : 'No lead yet';
+    const go = P[3] ? (expLocked(id) ? '' : `<button class="act go" id="vmGo">Plan a raid ›</button>`) : s.st === 'lead' ? `<button class="act go" id="vmGo">Plan a trip ›</button>` : '';
+    card = `<div class="vmCard"><div class="vmCH"><span class="vmDot" style="--r:${RING[s.st]};--s:40px">${vmIc(P[2], 28)}</span><div class="vmCT"><b>${esc(name)}</b><small>${line}</small></div><button class="vmX" id="vmX" aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`
+      + (s.mood !== undefined ? `<div class="vmMood">${VM_MOODS.map(([i, w], k) => `<span class="${k === s.mood ? 'on' : ''}"><em>${vmFace(k, k === s.mood ? 36 : 28)}</em><small>${w}</small></span>`).join('')}</div>` : '')
+      + (loot && !P[3] ? `<div class="vmBrings"><span>Brings</span>${loot}</div>` : '') + (go ? `<div class="vmBtns">${go}</div>` : '') + '</div>'; }
+  const nL = (S.leads || []).length;
+  $('ib').innerHTML = `<div class="vmWrap"><div class="vmMap">${vmMapSvg()}<div class="vmPins">${pins}</div>${card}</div>`
+    + `<div class="vmChips"><button class="vmChip" id="vmLeads"${nL ? '' : ' disabled'}>${vmIc('search', 18)}${nL ? `${nL} lead${nL > 1 ? 's' : ''}` : 'No leads'}</button>${S.lastTrip ? `<button class="vmChip" id="vmLast">${vmIc('boot', 18)}Last trip</button>` : ''}</div></div>`;
+  showPanel('Explore');
+  $('ib').querySelectorAll('[data-vm]').forEach((b) => { b.onclick = () => { vmCard = vmCard === b.dataset.vm ? null : b.dataset.vm; showValley(); }; });
+  { const x = $('vmX'); if (x) x.onclick = () => { vmCard = null; showValley(); }; }
+  { const l = $('vmLeads'); if (l && nL) l.onclick = () => { const ids = (S.leads || []).map((q) => q.dest).filter((q) => VM_P[q]), i = ids.indexOf(vmCard); vmCard = ids[(i + 1) % ids.length] || null; showValley(); }; }
+  { const l = $('vmLast'); if (l) l.onclick = () => say(`Last trip: ${EXP_DEFS[S.lastTrip.dest].name}${S.lastTrip.lost.length ? ' · lost ' + S.lastTrip.lost.join(', ') : ''}`, true); }
+  { const g = $('vmGo'); if (g) g.onclick = () => { const id = vmCard, P = VM_P[id]; if (P[3]) expSel.force = id; else { const ld = (S.leads || []).find((l) => l.dest === id); if (ld) expSel.lead = ld.id; } expSel.plan = true; expSel.ids = null; showExpedition(); }; }
+}
+function showExplore() { expSel.plan = false; expSel.force = null; showExpedition(); }   /* the Explore button and the trip chip: the map first */
 function showExpedition() {
   endBuildMode(true); closeP(); expOpen = true; $('it').textContent = 'Explore'; const t = S.trip;
+  if (phoneOn() && !t && !expSel.plan && !expSel.force) return showValley();
   if (t) {
     const d = EXP_DEFS[t.dest];
     $('ib').innerHTML = `<b>${d.icon} ${d.name}</b> · ${EXP_RISK[t.risk].label} risk<br><span id="expStage">${t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`}</span> · <b id="expTime">${mmss(expTripLeft(t))}</b> left<br>
@@ -7365,9 +7453,10 @@ function showExpedition() {
     $('ib').querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { expSel.risk = b.dataset.r; showExpedition(); }; });
     $('ib').querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => { const id = +b.dataset.s, q = S.sv.find((x) => x.id === id); if (ids.includes(id)) expSel.ids = ids.filter((x) => x !== id); else if (q && expEligible(q) && ids.length < expMax()) expSel.ids = [...ids, id]; else expMsg(q && !expEligible(q) ? `${q.name} can’t go: ${expBlock(q) || 'busy right now'}` : ids.length >= EXP_MAX_SQUAD ? `A squad is at most ${EXP_MAX_SQUAD}` : 'That survivor can’t go right now'); showExpedition(); }; });
     $('ib').querySelectorAll('[data-goal]').forEach((b) => { b.onclick = () => { expSel.goal = b.dataset.goal; showExpedition(); }; }); $('ib').querySelectorAll('[data-veh]').forEach((b) => { b.onclick = () => { expSel.veh = b.dataset.veh || null; showExpedition(); }; }); $('ib').querySelectorAll('[data-vbuild]').forEach((b) => { b.onclick = () => { vehBuildCart(); showExpedition(); }; }); $('ib').querySelectorAll('[data-vfix]').forEach((b) => { b.onclick = () => { vehRepair(b.dataset.vfix); showExpedition(); }; });   /* 3D.109 */
-    $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { expMsg(r.why); return; } if (!expSel.force) S.leads = (S.leads || []).filter((l) => l.id !== expSel.lead); closeP(); expSel.ids = null; expSel.force = null;  };
+    $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { expMsg(r.why); return; } if (!expSel.force) S.leads = (S.leads || []).filter((l) => l.id !== expSel.lead); closeP(); expSel.ids = null; expSel.force = null; expSel.plan = false; };
   }
   showPanel();
+  if (phoneOn() && !t) { panelBack = () => { expSel.plan = false; expSel.force = null; showValley(); }; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Map'; }   /* 3D.362: the planner goes back to the map */
 }
 /* V2.9 death and recovery model */
 const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 };
@@ -8778,7 +8867,7 @@ function tapAt(px, py) {
 $('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = (((sel.rot | 0) + 1) & 3); if (preview && sel.upgFrom) { const b = sel.upgFrom, d = Wd.rotDef(DEFS[sel.type], sel.rot), c = [[b.x, b.y], [b.x + b.w - d.w, b.y + b.h - d.h], [b.x, b.y + b.h - d.h], [b.x + b.w - d.w, b.y]].find(([x, y]) => Wd.placementCheck(world, x, y, d, b).ok) || [b.x, b.y]; updatePreview(c[0], c[1]); return; }   /* 3D.41: turning an upgrade keeps it over the old building */ if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(['Entrance faces front-left.', 'Entrance faces front-right.', 'Entrance faces back-right.', 'Entrance faces back-left.'][(sel.rot | 0) & 3]); };   /* V2.47: turn the entrance */
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
 $('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { if (edgeTool() && edgePlan.size) { edgePlan.clear(); edgePlanBar(); say('Plan cleared.'); return; } endBuildMode(true); say(sel ? '' : 'Done.'); };   /* 3D.361 Cancel throws a wall plan away first */
-$('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = () => (HUD_B ? showMore() : showGuide()); $('mExp').onclick = showExpedition; $('tripChip').onclick = showExpedition;
+$('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = () => (HUD_B ? showMore() : showGuide()); $('mExp').onclick = showExplore; $('tripChip').onclick = showExplore;   /* 3D.362: the valley map first */
 $('closeInfo').onclick = closeP;
 /* 3D.335: in the phone look a menu is a sheet with a handle: drag its top (the handle and title row) down to close it */
 { const pn = $('infoPanel'); let y0 = null, dy = 0;
