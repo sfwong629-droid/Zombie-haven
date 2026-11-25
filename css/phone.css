@@ -240,3 +240,14 @@ html.phone .phGuide .phR .k { flex: 1; min-width: 0; overflow: hidden; text-over
 html.phone .phGuide .gHero { display: grid; place-items: center; height: 110px; margin: 2px 0 10px; border-radius: 18px; background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .14), rgba(255, 255, 255, .03)); } html.phone .phGuide .gEmBig { font-size: 56px; line-height: 1; }
 html.phone .phGuide .phPad { padding: 14px 16px; font-size: 16px; line-height: 1.5; } html.phone .phGuide .phFootN { margin: 14px 16px 0; font-size: 12px; color: rgba(255, 255, 255, .45); } html.phone .phGuide .phFootN.in { margin: 10px 0 0; font-size: 14px; font-style: italic; }
 html.phone .phGuide .phSec { margin: 18px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); }
+
+/* 3D.368 (W249, W270): the Event log like the phone's notification history */
+html.phone .phLog .phSec { margin: 18px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); }
+html.phone .phLog .phR.lg { gap: 10px; cursor: pointer; }
+html.phone .phLog .phR.lg .t { flex: none; width: 42px; font: 600 13px Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .5); font-variant-numeric: tabular-nums; }
+html.phone .phLog .phR.lg .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .22); }
+html.phone .phLog .phR.lg.imp .dot { background: #f0a73a; } html.phone .phLog .phR.lg.crit .dot { background: #ff6b55; box-shadow: 0 0 6px rgba(255, 107, 85, .6); }
+html.phone .phLog .phR.lg .k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .78); }
+html.phone .phLog .phR.lg.imp .k, html.phone .phLog .phR.lg.crit .k { color: #fff; font-weight: 600; }
+html.phone .phLog .phR.lg.open .k { white-space: normal; overflow: visible; line-height: 1.35; padding: 6px 0; }
+html.phone .phLog .phR .k.dim { color: rgba(255, 255, 255, .5); }

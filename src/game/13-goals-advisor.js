@@ -222,8 +222,21 @@ function showGoals() {
 }
 function logEvent(t, lvl = 'routine') { if (!t || /^★ RENOWN|^Goal complete:|^\+\d+ SCRAP · mission/.test(t)) return;   /* skip echoes of toasts */ S.log = S.log || []; const last = S.log[S.log.length - 1]; if (last && last.t === t) return; S.log.push({ d: S.day, h: S.hour, t: String(t), l: lvl }); if (S.log.length > 60) S.log.splice(0, S.log.length - 60); }
 let logOnlyKey = false;
+function logPhone() {   /* 3D.368 (W249, W270): the Event log like the phone's notification history */
+  const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), ch = `<i class="phChv">${phG('ch', 14)}</i>`;
+  const day = (d) => d === S.day ? 'Today' : d === S.day - 1 ? 'Yesterday' : `Day ${d}`, groups = [];
+  L.forEach((e) => { const g = groups[groups.length - 1]; if (g && g.d === e.d) g.r.push(e); else groups.push({ d: e.d, r: [e] }); });
+  const row = (e) => `<div class="phR lg${e.l === 'critical' ? ' crit' : e.l === 'important' ? ' imp' : ''}" role="button"><span class="t">${String(e.h).padStart(2, '0')}:00</span><i class="dot"></i><span class="k">${esc(e.t)}</span></div>`;
+  $('ib').innerHTML = `<div class="phSet phLog"><div class="phSeg">${[[0, 'All'], [1, 'Important']].map(([k, t]) => `<button data-lf="${k}" class="${+logOnlyKey === k ? 'on' : ''}">${t}</button>`).join('')}</div>`
+    + (groups.length ? groups.map((g) => `<div class="phSec">${day(g.d)}</div><div class="phCard">${g.r.map(row).join('')}</div>`).join('') : `<div class="phCard" style="margin-top:14px"><div class="phR"><span class="k dim">Nothing yet</span></div></div>`)
+    + `<div class="phSec">Town</div><div class="phCard"><div class="phR" id="logBak" role="button">${phSI('save', '#3fae7c')}<span class="k">Backup this town</span>${ch}</div></div></div>`;
+  showPanel('Event log');
+  $('ib').querySelectorAll('[data-lf]').forEach((b) => { b.onclick = () => { logOnlyKey = b.dataset.lf === '1'; showLog(); }; });
+  $('ib').querySelectorAll('.phR.lg').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
+  $('logBak').onclick = () => showBackup();
+}
 function showLog() {
-  endBuildMode(true); closeP(); $('it').textContent = 'EVENT LOG';
+  endBuildMode(true); closeP(); if (phoneOn()) return logPhone(); $('it').textContent = 'EVENT LOG';
   const L = (S.log || []).slice().reverse().filter((e) => !logOnlyKey || e.l === 'critical' || e.l === 'important'), C = document.documentElement.classList.contains('cozy') ? { critical: '#b85a47', important: '#a8682a' } : { critical: '#ff9a84', important: '#ffe08a' };
   $('ib').innerHTML = `<div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logFilt" style="flex:1">${logOnlyKey ? 'Showing: alerts + important' : 'Showing: everything'}</button><button class="act" id="logSlow" style="flex:1">1× on emergencies: ${OPTS.autoSlow ? 'ON' : 'OFF'}</button></div><div class="row" style="gap:6px;margin-bottom:6px"><button class="act" id="logLights" style="flex:1">Night lights: ${OPTS.nightLights ? 'ON' : 'OFF (faster)'}</button><button class="act" id="logAdv" style="flex:1">Town advisor: ${OPTS.advisor ? 'ON' : 'OFF'}</button></div><button class="act" id="logBak" style="width:100%;margin-bottom:6px">💾 Backup this town</button>`
     + (L.length ? L.map((e) => `<div style="padding:2px 0;border-bottom:1px solid ${document.documentElement.classList.contains('cozy') ? '#e2cfb0' : '#3e4a56'}${e.l === 'routine' || !e.l ? ';opacity:.8' : ''}"><small style="color:var(--muted)">Day ${e.d} · ${String(e.h).padStart(2, '0')}:00</small> <span style="color:${C[e.l] || 'inherit'}">${e.l === 'critical' ? '⚠ ' : ''}${esc(e.t)}</span></div>`).join('') : '<small>Nothing yet.</small>');
