@@ -53,3 +53,6 @@ How: the owner's ChatGPT project "Zombie Haven testing". Claude types the messag
 | 3 | 3D.171 | 5.75 | 6 | |
 | 4 | 3D.173 | stopped at 4 of 8 | 1 | walled-in door was the top problem |
 Sheets, notes and comparisons: `runs/`.
+
+## Offline copy on the owner's iPhone (W275, 25 Nov)
+The owner tests on the iPhone where signal is patchy. `python3 tools/build/offline.py /tmp/zh-offline --push` builds the committed game as a Home Screen web app with a saver (service worker) and pushes it to the `gh-pages` branch: https://sfwong629-droid.github.io/Zombie-haven/. Opened once with signal it saves every file (about 84 MB) and then starts with no signal; with signal it updates itself, downloading only changed files. Its saves are separate from the artifact's (move a town with Backup → Copy text and Import). Check: `node tools/qa/offline_check.js /tmp/zh-offline` (saves, then with the network cut opens the title screen, loads the 3D world and the Zombie test, no failed request). Run it after every publish.
