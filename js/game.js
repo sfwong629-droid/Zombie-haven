@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.364', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.366', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2182,7 +2182,7 @@ function tryPost(x, y) {
   const h = p.cur && S.sv.find((q) => q.id === p.cur); say(`Guard post placed (night watch)${h ? ': ' + h.name + ' will hold it' : ': no free fighter yet'}. Tap it to set who and when.`, true); updatePostBar(); saveGame(); return { ok: true, post: p };
 }
 function removePost(p) { S.posts = (S.posts || []).filter((q) => q !== p); S.mat += 1; for (const q of S.sv) if (q.purpose === 'post' || q.purpose === 'post-hold') { if (!myPost(q)) { q.purpose = null; if (q.mode === 'wait') q.stateTicks = 0; } } postsAssign(); saveGame(); }
-function updatePostBar() { if (sel && sel.kind === 'post') $('confirmName').textContent = `GUARD POST · ⚙${POST_COST} · ${(S.posts || []).length}/${postMax()} placed · tap a tile to place, tap a post to set it up`; }
+function updatePostBar() { if (sel && sel.kind === 'post') { defPlanBar(); return; } if (0) $('confirmName').textContent = `GUARD POST · ⚙${POST_COST} · ${(S.posts || []).length}/${postMax()} placed · tap a tile to place, tap a post to set it up`; }
 function showPost(p) {
   endBuildMode(true); closeP(); postsAssign(); const h = p.cur && S.sv.find((q) => q.id === p.cur), manual = typeof p.holder === 'number' ? S.sv.find((q) => q.id === p.holder) : null;
   const fighters = S.sv.filter((q) => isFighter(q)), sc = POST_SCHED[p.sched] || POST_SCHED.night;
@@ -7642,14 +7642,13 @@ let moving = null;   // building being moved (removed from world while placing)
 function closeP() { $('infoPanel').classList.remove('show'); $('infoPanel').classList.remove('phPerson', 'scr'); expOpen = false; panelBack = null; if (selected && selected.kind === 'post') selected = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
-  moving = null; sel = null; preview = null; edgeDraft = null; edgePlan.clear(); $('yesBuild').textContent = 'Build'; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
+  moving = null; sel = null; preview = null; edgeDraft = null; edgePlan.clear(); defPlan.clear(); $('yesBuild').textContent = 'Build'; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
 }
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
   if (tool.kind === 'wall' && edgeOn()) { $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('confirmBar').style.display = 'block'; edgePlanBar(); }   /* 3D.361 walls on the lines: plan, then Confirm */
   else if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = (edgeOn() ? `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} a piece · tap a line, or drag along the lines · two fingers move the view` : `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove`) + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else if (tool.kind === 'trap') { const td = TRAP_DEFS[tool.ttype]; $('confirmName').textContent = `${td.name.toUpperCase()} · ${costShort(bCost(td))} · tap any open ground to set · tap a spent one to re-arm · ${trapMap().size}/${trapMax()} traps`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
+  else if (tool.kind === 'trap' || tool.kind === 'post') { $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('confirmBar').style.display = 'block'; defPlanBar(); }   /* 3D.366 traps and posts: plan, then Confirm */
   else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their scrap'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
   else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} scrap per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else { $('yesBuild').textContent = 'Build'; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
@@ -7667,6 +7666,7 @@ function pushUnitsOut(b) {
 }
 function confirmPreview() {
   if (sel && sel.kind === 'wall' && edgeOn()) { edgePlanConfirm(); return; }   /* 3D.361 */
+  if (defTool()) { defPlanConfirm(); return; }   /* 3D.366 */
   if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
   if (sel.upgFrom) { if (!preview.ok) { say(preview.why); return; } const b = sel.upgFrom, place = { x: preview.x, y: preview.y, rot: (sel.rot | 0) & 3, w: d.w, h: d.h }; sel = null; preview = null; $('confirmBar').style.display = 'none'; upgradeBuilding(b, place); ui(); return; }   /* 3D.41 */
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }
@@ -7908,6 +7908,78 @@ function lureStep(z) {   /* a lured zombie shuffles to the noise and mills there
 function demolish(b) { const d = DEFS[b.type], c = bCost(d); releasePost(b); world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); refundCost(c, .5); selected = null; closeP(); say(`${d.name} demolished · half the wood and scrap back`, true); saveGame(); ui(); }
 function moveBuilding(b) { world.buildings = world.buildings.filter((q) => q !== b); Wd.bump(world); moving = b; selected = null; closeP(); sel = { kind: 'building', type: b.type, rot: (b.rot | 0) & 3 }; preview = null; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; updatePreview(b.x, b.y); say('Tap a new spot for the south corner.'); }
 
+/* 3D.366 traps and guard posts planned, then built on Confirm (owner, 24 Nov, on W269: "for building wall and defend, we should be able to
+   place down and then finalize it with a confirm button"; on traps and guard posts: "yes those too"). With the trap or post tool, a tap only
+   marks the plan, drawn as see-through traps and posts (green to build, orange when the stock won't stretch that far, red to take away);
+   nothing is paid. A tap on a planned one takes it off the plan; a tap on a built trap of the same kind marks it to come up (a spent one is
+   still re-armed at once). A tap on a built post opens its setup as before when nothing is planned. Confirm builds the plan in the order it
+   was laid, as far as the stock goes (the rest stays planned); Cancel throws the plan away; leaving the tool throws it away too.
+   tryTrap and tryPost are unchanged (the bot and the tests still place with them). */
+const defPlan = new Map();   /* 't'|'p' + x,y -> { kind: 'trap' | 'post', type, x, y, op: 'add' | 'del' } */
+const defKey = (kind, x, y) => (kind === 'post' ? 'p' : 't') + x + ',' + y;
+const defTool = () => !!sel && (sel.kind === 'trap' || sel.kind === 'post');
+const defCost = (p) => p.kind === 'post' ? { mat: POST_COST } : bCost(TRAP_DEFS[p.type]);
+function defWhy(p, plan) {   /* why a new trap or post can't go at p now; plan: also count what is planned (not p itself) */
+  const others = plan ? [...defPlan.values()].filter((q) => q !== p && q.kind === p.kind && !(q.x === p.x && q.y === p.y)) : [];
+  const adds = others.filter((q) => q.op === 'add'), dels = others.filter((q) => q.op === 'del');
+  if (p.kind === 'trap') {
+    const td = TRAP_DEFS[p.type], ex = trapAt(p.x, p.y); if (ex) return 'A ' + TRAP_DEFS[ex.type].name + ' is already there.';
+    if (!trapOkTile(p.x, p.y)) return 'Something is in the way.';
+    if (S.rank < td.rank) return td.name + ' needs Haven level ' + lvlOfRank(td.rank) + '.';
+    if (trapMap().size + adds.length - dels.length >= trapMax()) return `Room for ${trapMax()} traps at this rank.`;
+    return '';
+  }
+  const { x, y } = p; if (postAt(x, y)) return 'A guard post is already there.';
+  if (!Wd.inWallZone(x, y) && !(x >= Wd.BUILD.x0 && x <= Wd.BUILD.x1 && y >= Wd.BUILD.y0 && y <= Wd.BUILD.y1)) return 'Guard posts go in or around the town, inside the glowing area.';
+  if (Wd.buildingAt(world, x, y)) return 'A building is in the way.';
+  if (Wd.wallAt(world, x, y)) return 'A wall is in the way: put the post just inside it.';
+  if ((S.posts || []).length + adds.length - dels.length >= postMax()) return `At most ${postMax()} guard posts at this rank.`;
+  const gone = new Set(dels.map((q) => q.x + ',' + q.y)), near = [...(S.posts || []).filter((q) => !gone.has(q.x + ',' + q.y)), ...adds];
+  if (near.some((q) => Math.abs(q.x - x) + Math.abs(q.y - y) < 3)) return 'Too close to another post: spread them out.';
+  return '';
+}
+function defPlanList() {   /* the plan with what each would be now: new (affordable), short (not enough stock), del */
+  const left = new Proxy({}, { get: (o, r) => r in o ? o[r] : (o[r] = S[r] || 0) }), cost = {}, out = [];   /* any stock a trap uses (fuel too) */
+  for (const p of defPlan.values()) if (p.op === 'del') { out.push({ ...p, st: 'del' }); if (p.kind === 'post') left.mat += 1; else for (const [r, v] of Object.entries(bCost(TRAP_DEFS[p.type]))) left[r] = (left[r] || 0) + Math.floor(v * .5); }
+  for (const p of defPlan.values()) { if (p.op === 'del') continue; const c = defCost(p), ok = Object.entries(c).every(([r, v]) => (left[r] || 0) >= v);
+    if (ok) for (const [r, v] of Object.entries(c)) { left[r] -= v; cost[r] = (cost[r] || 0) + v; } out.push({ ...p, st: ok ? 'new' : 'short' }); }
+  return { list: out, cost };
+}
+function defPlanBar() {
+  if (!defTool()) return; const pl = defPlanList(), n = (st) => pl.list.filter((p) => p.st === st).length, add = n('new'), sh = n('short'), del = n('del');
+  const idle = sel.kind === 'post' ? `GUARD POST · ⚙${POST_COST} · ${(S.posts || []).length}/${postMax()} · tap tiles, then Confirm · tap a post to set it up`
+    : `${TRAP_DEFS[sel.ttype].name.toUpperCase()} · ${costShort(bCost(TRAP_DEFS[sel.ttype]))} · ${trapMap().size}/${trapMax()} · tap open ground, then Confirm · tap a spent one to re-arm`;
+  $('confirmName').textContent = defPlan.size ? [add && `${add} to build · ${costShort(pl.cost) || 'free'}`, sh && `${sh} short of stock`, del && `${del} to take away`].filter(Boolean).join(' · ') : idle;
+  const yb = $('yesBuild'); yb.style.display = ''; yb.textContent = 'Confirm'; yb.disabled = !(add || del); yb.style.opacity = add || del ? 1 : .45; $('noBuild').textContent = defPlan.size ? 'Cancel' : 'Done';
+}
+function defPlanTap(x, y) {
+  const kind = sel.kind, type = kind === 'trap' ? sel.ttype : 'post', k = defKey(kind, x, y);
+  if (defPlan.has(k)) { defPlan.delete(k); defPlanBar(); return; }
+  if (kind === 'trap') { const ex = trapAt(x, y);
+    if (ex && ex.type === type && ex.ch <= 0) { tryTrap(x, y, type); defPlanBar(); return; }   /* re-arming stays one tap */
+    if (ex && ex.type === type) { defPlan.set(k, { kind, type, x, y, op: 'del' }); defPlanBar(); return; } }
+  else { const ex = postAt(x, y); if (ex) { if (defPlan.size) { say('Confirm or cancel the plan first, then tap a post to set it up.'); return; } showPost(ex); return; } }
+  const p = { kind, type, x, y, op: 'add' }, why = defWhy(p, true); if (why) { say(why); return; }
+  defPlan.set(k, p); defPlanBar();
+}
+function defPlanConfirm() {
+  const pl = defPlanList(); let built = 0, down = 0;
+  for (const p of pl.list) if (p.st === 'del') { const k = defKey(p.kind, p.x, p.y);
+    if (p.kind === 'trap') { const ex = trapAt(p.x, p.y); if (ex) { trapMap().delete(p.x + ',' + p.y); refundCost(bCost(TRAP_DEFS[ex.type]), .5); down++; } }
+    else { const ex = postAt(p.x, p.y); if (ex) { removePost(ex); down++; } }
+    defPlan.delete(k); }
+  for (const p of pl.list) { if (p.st === 'del') continue; const k = defKey(p.kind, p.x, p.y);
+    if (defWhy(p, false)) { defPlan.delete(k); continue; }   /* something moved in meanwhile */
+    const c = defCost(p); if (!canPay(c)) continue; payCost(c); if (p.kind === 'post') flow('mat', 'Guard posts', -POST_COST);
+    if (p.kind === 'trap') trapMap().set(p.x + ',' + p.y, { x: p.x, y: p.y, type: p.type, ch: TRAP_DEFS[p.type].ch });
+    else { S.posts = S.posts || []; S.posts.push({ x: p.x, y: p.y, holder: 'auto', sched: 'night', cur: null }); }
+    defPlan.delete(k); built++; }
+  if (built) { postsAssign(); SFX('build'); } if (built || down) { Wd.bump(world); saveGame(); ui(); }
+  const left = defPlan.size, what = sel.kind === 'post' ? (built === 1 ? 'guard post' : 'guard posts') : (built === 1 ? 'trap' : 'traps');
+  say([built && `${built} ${what} built${sel.kind === 'post' ? ' (night watch; tap one to set who and when)' : ''}`, down && `${down} taken away`, left && `${left} still planned: need more ${missText(defCost([...defPlan.values()][0]))}`].filter(Boolean).join(' · ') || 'Nothing to build.', true);
+  defPlanBar();
+}
+function defGhost() { return defPlan.size ? defPlanList().list.map((p) => ({ kind: p.kind, type: p.type, x: p.x, y: p.y, st: p.st })) : null; }
 /* ---------------- panels (V2.27: DV2-style, big text, less clutter) ---------------- */
 let panelBack = null;
 function showPanel(title, back) {
@@ -8878,8 +8950,7 @@ function tapAt(px, py) {
     if (sel.kind === 'road') { tryRoad(tx, ty); return; }
     if (sel.kind === 'demolish') { tryDemolish(px, py, tx, ty); return; }
     if (sel.kind === 'wall') { if (edgeOn()) { const e = edgeNear(t.x, t.y); edgePlanTap(e, sel.wtype); } else tryWall(tx, ty, sel.wtype); return; }
-    if (sel.kind === 'trap') { tryTrap(tx, ty, sel.ttype); return; }
-    if (sel.kind === 'post') { const r = tryPost(tx, ty); if (r.why !== 'open') updatePostBar(); return; }
+    if (sel.kind === 'trap' || sel.kind === 'post') { defPlanTap(tx, ty); return; }   /* 3D.366 plan, then Confirm */
     const d = Wd.rotDef(DEFS[sel.type], sel.rot), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
   }
   closePick();
@@ -8901,7 +8972,7 @@ function tapAt(px, py) {
 }
 $('rotBuild').onclick = () => { if (!sel || sel.kind !== 'building') return; sel.rot = (((sel.rot | 0) + 1) & 3); if (preview && sel.upgFrom) { const b = sel.upgFrom, d = Wd.rotDef(DEFS[sel.type], sel.rot), c = [[b.x, b.y], [b.x + b.w - d.w, b.y + b.h - d.h], [b.x, b.y + b.h - d.h], [b.x + b.w - d.w, b.y]].find(([x, y]) => Wd.placementCheck(world, x, y, d, b).ok) || [b.x, b.y]; updatePreview(c[0], c[1]); return; }   /* 3D.41: turning an upgrade keeps it over the old building */ if (preview) { const d = Wd.rotDef(DEFS[sel.type], sel.rot), sx = preview.x + preview.w - 1, sy = preview.y + preview.h - 1, o = Iso.originFromSouthTile(sx, sy, d.w, d.h); updatePreview(o.x, o.y); } say(['Entrance faces front-left.', 'Entrance faces front-right.', 'Entrance faces back-right.', 'Entrance faces back-left.'][(sel.rot | 0) & 3]); };   /* V2.47: turn the entrance */
 $('nudge').addEventListener('click', (e) => { const bt = e.target.closest('button'); if (!bt || !preview) return; const [dx, dy] = bt.dataset.d.split(',').map(Number); updatePreview(preview.x + dx, preview.y + dy); });
-$('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { if (edgeTool() && edgePlan.size) { edgePlan.clear(); edgePlanBar(); say('Plan cleared.'); return; } endBuildMode(true); say(sel ? '' : 'Done.'); };   /* 3D.361 Cancel throws a wall plan away first */
+$('yesBuild').onclick = confirmPreview; $('noBuild').onclick = () => { if (edgeTool() && edgePlan.size) { edgePlan.clear(); edgePlanBar(); say('Plan cleared.'); return; } if (defTool() && defPlan.size) { defPlan.clear(); defPlanBar(); say('Plan cleared.'); return; } endBuildMode(true); say(sel ? '' : 'Done.'); };   /* 3D.361 Cancel throws a wall plan away first */
 $('mBuild').onclick = showBuild; $('gauge').onclick = () => showUpgrade('rank'); $('btnHome').onclick = () => { if (titleOn) return; backToTitle(); }; $('mSurv').onclick = showSurvivors; $('mTown').onclick = showTown; $('mGuide').onclick = () => (HUD_B ? showMore() : showGuide()); $('mExp').onclick = showExplore; $('tripChip').onclick = showExplore;   /* 3D.362: the valley map first */
 $('closeInfo').onclick = closeP;
 /* 3D.335: in the phone look a menu is a sheet with a handle: drag its top (the handle and title row) down to close it */
@@ -8947,7 +9018,7 @@ function simTick() { Wd.touch();
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { edgeDraft: () => edgeGhost(), fpsCap: () => FPS_CAP, get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
+window.ZHG = { edgeDraft: () => edgeGhost(), defGhost: () => defGhost(), fpsCap: () => FPS_CAP, get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];

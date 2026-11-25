@@ -1770,6 +1770,25 @@ function syncEdgeGhost() {
     m.position.set((v ? p.x : p.x + .5) * T, .55, (v ? p.y + .5 : p.y) * T); edgeGhost.add(m); }
   scene.add(edgeGhost);
 }
+// 3D.366 planned traps and guard posts (planned, then built on Confirm): the real model, see-through, tinted green to build, orange short of stock, red to take away
+let defGhostG = null, defGhostKey = '';
+function syncDefGhost() {
+  const d = G.defGhost && G.defGhost(), key = d ? d.map((p) => p.kind + p.type + p.x + ',' + p.y + p.st).join(';') : '';
+  if (key === defGhostKey) return; defGhostKey = key;
+  if (defGhostG) { scene.remove(defGhostG); freeTree(defGhostG); defGhostG = null; } if (!d) return;
+  defGhostG = new THREE.Group(); const col = { new: '#7fd36a', short: '#ffa23a', del: '#ff4f45' }, bagG = new THREE.SphereGeometry(.5, 8, 5);
+  for (const p of d) { const cx = (p.x + .5) * T, cz = (p.y + .5) * T, y0 = groundH(cx, cz), c = col[p.st] || '#ffffff', tint = new THREE.Color(c), g = new THREE.Group(), P = new Parts();
+    if (p.kind === 'post') postPiece(P, { x: p.x, y: p.y, sched: 'night' }, cx, cz, y0 + .03, bagG); else trapPiece(P, { type: p.type, x: p.x, y: p.y, ch: 1 }, cx, cz, y0 + .03);
+    P.build(g, .02);
+    g.traverse((o) => { if (!o.isMesh) return; o.castShadow = false; o.receiveShadow = false; const ms = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = ms.map((m) => { const k = m.clone(); k.transparent = true; k.opacity = .6; k.depthWrite = false; if (k.color) k.color.lerp(tint, .45); return k; }); if (o.material.length === 1) o.material = o.material[0]; });
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(T * .9, T * .9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .45, depthWrite: false }));
+    pad.position.set(cx, y0 + .05, cz); g.add(pad);
+    const rim = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .95, depthWrite: false }), L = T * .9, th = .07;   /* a bright border round the tile, so a flat trap reads at any zoom */
+    for (const [dx, dz, w, dd] of [[0, -L / 2, L, th], [0, L / 2, L, th], [-L / 2, 0, th, L], [L / 2, 0, th, L]]) { const m = new THREE.Mesh(box(w, .05, dd), rim); m.position.set(cx + dx, y0 + .07, cz + dz); g.add(m); }
+    defGhostG.add(g); }
+  scene.add(defGhostG);
+}
 const insideBuilding3 = (s) => false;   // hidden survivors are already not shown
 const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
 let zCount = 0;
@@ -2493,7 +2512,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncEdgeGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncEdgeGhost(); syncDefGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
   if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT, cap = G.fpsCap ? G.fpsCap() : 60; frames = 0; fpsT = 0; fastT = fps > cap * .95 ? fastT + 1 : 0; const nd = fps < cap * .75 ? Math.max(1, dpr - .25) : fastT >= 4 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dprNext = nd; fastT = 0; } window.ZH3D.fps = fps; }   /* 3D.347: the bars are a share of the frame cap (were 57 and 45 of 60), so at 30 a second it does not drop the picture for nothing. 3D.133 owner: 'a black flash every now and then'. Changing the resolution right after drawing cleared the picture for one frame, and it stepped up and down about once a second. Now it changes before the next frame is drawn, and only steps up after four good seconds */
