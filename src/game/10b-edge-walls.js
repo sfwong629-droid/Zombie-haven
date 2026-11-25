@@ -63,3 +63,86 @@ function edgeGuard() {
   for (const q of S.sv) if (q.hp > 0 && !insideBuilding(q)) keep(q, false);
   for (const z of S.z) if (z.hp > 0) keep(z, true);
 }
+/* ---------------- 3D.358 W269 step 2: placing walls and gates on the lines ----------------
+   With the wall tool in a town on lines: a tap puts a piece on the line nearest the finger (tap it again to take it away, half the cost
+   back; a stronger wall on a weaker one upgrades it, a Gate swaps into any piece, as before). A one-finger drag draws a straight run from
+   the corner where it started along the lines (sideways or up and down, whichever the finger went more), shown as a ghost with its cost;
+   lifting the finger builds it, as far as the stock goes. With the tool open, two fingers move and zoom the view. A line can take a wall
+   when at least one of its tiles is in the build zone; never inside a building, on a building's doorway (a gate is fine) or across a
+   road (a gate only). */
+const wallCount = () => world.walls.size + (world.edges ? world.edges.size : 0);
+const edgeTool = () => !!(sel && sel.kind === 'wall' && edgeOn());
+function edgeNear(wx, wy) {   /* the line nearest a point on the ground */
+  const fx = Math.floor(wx), fy = Math.floor(wy), ax = wx - fx, ay = wy - fy;
+  return [{ s: 'v', x: fx, y: fy, d: ax }, { s: 'v', x: fx + 1, y: fy, d: 1 - ax }, { s: 'h', x: fx, y: fy, d: ay }, { s: 'h', x: fx, y: fy + 1, d: 1 - ay }].reduce((a, b) => (b.d < a.d ? b : a));
+}
+function edgeDoorOf(b) { const t = Wd.approachTile(b); return Wd.edgeOf(Math.max(b.x, Math.min(b.x + b.w - 1, t.x)), Math.max(b.y, Math.min(b.y + b.h - 1, t.y)), t.x, t.y); }
+function edgeWhy(e, type) {   /* why a wall of this type can't stand on this line, or null */
+  const [a, b] = Wd.edgeTiles(e);
+  if (!Wd.inMap(a.x, a.y) || !Wd.inMap(b.x, b.y)) return 'That is the edge of the map.';
+  if (!Wd.inTown(a.x, a.y) && !Wd.inTown(b.x, b.y)) return 'Walls go in the build zone or on its edge.';
+  const ba = Wd.buildingAt(world, a.x, a.y), bb = Wd.buildingAt(world, b.x, b.y);
+  if (ba && ba === bb) return 'A building is in the way.';
+  if (type !== 'gate') for (const bd of [ba, bb]) { if (!bd) continue; const d = edgeDoorOf(bd); if (d && d.s === e.s && d.x === e.x && d.y === e.y) return `That's the ${DEFS[bd.type].name}'s doorway: keep it clear (a gate is fine).`; }
+  if (type !== 'gate' && Wd.isRoad(world, a.x, a.y) && Wd.isRoad(world, b.x, b.y)) return 'Use a Gate to close a road.';
+  return null;
+}
+function edgeLocked(type) { const wd = Wd.WALL_DEFS[type]; if (wd.rank > S.rank) return wd.name + ' needs Haven level ' + lvlOfRank(wd.rank) + '.'; if ((wd.tier || 1) > hqTier()) return wd.name + ' needs the ' + hqName(wd.tier) + '.'; return null; }
+function setEdgeType(ex, type) { ex.type = type; ex.broken = false; ex.max = edgeMax(type); ex.hp = ex.max; }
+const edgeUpgrades = (ex, type) => { const wd = Wd.WALL_DEFS[type], od = Wd.WALL_DEFS[ex.type]; return (type === 'gate' && ex.type !== 'gate') || (!!wd.lvl && !!od.lvl && wd.lvl > od.lvl); };
+function tryEdgeWall(e, type) {   /* one tap on a line */
+  const wd = Wd.WALL_DEFS[type], k = Wd.ekey(e.s, e.x, e.y), ex = world.edges.get(k);
+  if (ex && ex.type === type) { if (!confirmTile('e' + e.s, e.x, e.y, `Tap the ${wd.name} again to remove it (half the cost back).`)) return; world.edges.delete(k); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
+  const why = edgeWhy(e, type) || edgeLocked(type); if (why) { say(why); return; }
+  if (ex && !edgeUpgrades(ex, type)) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
+  if (!canPay(bCost(wd))) { say('Not enough: need ' + missText(bCost(wd)) + '.'); return; }
+  payCost(bCost(wd));
+  if (ex) { refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); const old = Wd.WALL_DEFS[ex.type].name; setEdgeType(ex, type); say(type === 'gate' ? old + ' swapped for a Gate.' : old + ' upgraded to ' + wd.name + '.'); }
+  else putEdge(e.s, e.x, e.y, type);
+  Wd.bump(world); checkPerimeter(); saveGame(); ui();
+}
+/* the drag: a straight run of lines between two corners */
+let edgeDraft = null;
+function edgeRun(a, b) {
+  const out = [];
+  if (Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)) for (let x = Math.min(a.x, b.x); x < Math.max(a.x, b.x); x++) out.push({ s: 'h', x, y: a.y });
+  else for (let y = Math.min(a.y, b.y); y < Math.max(a.y, b.y); y++) out.push({ s: 'v', x: a.x, y });
+  return out;
+}
+function draftMark(list, type) {   /* what each piece of the run would be: have (already there), new or up (paid), bad (can't), short (no money left) */
+  const wd = Wd.WALL_DEFS[type], lock = edgeLocked(type), left = {}; for (const r of ['wood', 'stone', 'mat']) left[r] = S[r] || 0; let cost = {};
+  const take = (c) => { for (const [r, v] of Object.entries(c)) if ((left[r] || 0) < v) return false; for (const [r, v] of Object.entries(c)) { left[r] -= v; cost[r] = (cost[r] || 0) + v; } return true; };
+  for (const p of list) {
+    const ex = world.edges.get(Wd.ekey(p.s, p.x, p.y));
+    if (ex && ex.type === type) { p.st = 'have'; continue; }
+    const why = lock || edgeWhy(p, type); if (why) { p.st = 'bad'; p.why = why; continue; }
+    if (ex && !edgeUpgrades(ex, type)) { p.st = 'bad'; p.why = 'Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'; continue; }
+    p.st = take(bCost(wd)) ? (ex ? 'up' : 'new') : 'short';
+  }
+  return { list, cost, type };
+}
+function edgeDraftAt(a, b) { edgeDraft = a && b && (a.x !== b.x || a.y !== b.y) ? draftMark(edgeRun(a, b), sel.wtype) : null; if (edgeDraft) { const n = edgeDraft.list.filter((p) => p.st === 'new' || p.st === 'up').length, sh = edgeDraft.list.filter((p) => p.st === 'short').length; const c = costShort(edgeDraft.cost); say(n ? `${n} × ${Wd.WALL_DEFS[sel.wtype].name}: ${c || 'free'}${sh ? ` · ${sh} more need more stock` : ''}` : sh ? 'Not enough stock for this run.' : (edgeDraft.list.find((p) => p.why) || {}).why || 'Already built.'); } }
+function edgeDraftPlace() {
+  const d = edgeDraft; edgeDraft = null; if (!d) return;
+  const wd = Wd.WALL_DEFS[d.type]; let n = 0;
+  for (const p of d.list) { if (p.st !== 'new' && p.st !== 'up') continue; if (!canPay(bCost(wd))) break; payCost(bCost(wd)); const ex = world.edges.get(Wd.ekey(p.s, p.x, p.y)); if (ex) { refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); setEdgeType(ex, d.type); } else putEdge(p.s, p.x, p.y, d.type); n++; }
+  const sh = d.list.filter((p) => p.st === 'short').length, bad = d.list.filter((p) => p.st === 'bad');
+  if (n) { Wd.bump(world); checkPerimeter(); saveGame(); ui(); }
+  say(n ? `${n} × ${wd.name} built.${sh ? ` ${sh} more need more stock.` : ''}${bad.length ? ` ${bad.length} skipped: ${bad[0].why}` : ''}` : bad.length ? bad[0].why : sh ? 'Not enough: need ' + missText(bCost(wd)) + '.' : 'Already built.');
+}
+/* where the zombies' way in is, for the "gaps in your wall" helpers: walk from the town out to the map's edge across open lines; the line
+   where that walk leaves the build zone is a gap; pretend it is walled and walk again. Each gap is marked on the tile just inside it. */
+function findGapsEdge(max = 8) {
+  const B = Wd.BUILD, inB = (x, y) => x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1, plug = new Set(), out = [];
+  let seed = Wd.nearestWalkable(world, Math.floor((B.x0 + B.x1) / 2), Math.floor((B.y0 + B.y1) / 2), true); if (!seed) return [];
+  const ok = (a, b) => Wd.inMap(b.x, b.y) && Wd.walkable(world, b.x, b.y, true) && Wd.stepOk(world, a.x, a.y, b.x, b.y, true) && !plug.has(Wd.ekey(...(() => { const e = Wd.edgeOf(a.x, a.y, b.x, b.y); return [e.s, e.x, e.y]; })()));
+  for (let it = 0; it < max; it++) {
+    const prev = new Map([[seed.x + ',' + seed.y, null]]), q = [seed]; let end = null;
+    for (let i = 0; i < q.length && !end; i++) { const c = q[i]; if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) { end = c; break; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = { x: c.x + dx, y: c.y + dy }, k = n.x + ',' + n.y; if (!prev.has(k) && ok(c, n)) { prev.set(k, c); q.push(n); } } }
+    if (!end) break;
+    let c = end, gap = null; while (c) { const p = prev.get(c.x + ',' + c.y); if (p && inB(p.x, p.y) && !inB(c.x, c.y)) gap = { a: p, b: c }; c = p; }
+    if (!gap) break; const e = Wd.edgeOf(gap.a.x, gap.a.y, gap.b.x, gap.b.y); plug.add(Wd.ekey(e.s, e.x, e.y)); out.push({ x: gap.a.x, y: gap.a.y, label: 'wall', edge: e });
+  }
+  return out;
+}

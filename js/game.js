@@ -3305,6 +3305,89 @@ function edgeGuard() {
   for (const q of S.sv) if (q.hp > 0 && !insideBuilding(q)) keep(q, false);
   for (const z of S.z) if (z.hp > 0) keep(z, true);
 }
+/* ---------------- 3D.358 W269 step 2: placing walls and gates on the lines ----------------
+   With the wall tool in a town on lines: a tap puts a piece on the line nearest the finger (tap it again to take it away, half the cost
+   back; a stronger wall on a weaker one upgrades it, a Gate swaps into any piece, as before). A one-finger drag draws a straight run from
+   the corner where it started along the lines (sideways or up and down, whichever the finger went more), shown as a ghost with its cost;
+   lifting the finger builds it, as far as the stock goes. With the tool open, two fingers move and zoom the view. A line can take a wall
+   when at least one of its tiles is in the build zone; never inside a building, on a building's doorway (a gate is fine) or across a
+   road (a gate only). */
+const wallCount = () => world.walls.size + (world.edges ? world.edges.size : 0);
+const edgeTool = () => !!(sel && sel.kind === 'wall' && edgeOn());
+function edgeNear(wx, wy) {   /* the line nearest a point on the ground */
+  const fx = Math.floor(wx), fy = Math.floor(wy), ax = wx - fx, ay = wy - fy;
+  return [{ s: 'v', x: fx, y: fy, d: ax }, { s: 'v', x: fx + 1, y: fy, d: 1 - ax }, { s: 'h', x: fx, y: fy, d: ay }, { s: 'h', x: fx, y: fy + 1, d: 1 - ay }].reduce((a, b) => (b.d < a.d ? b : a));
+}
+function edgeDoorOf(b) { const t = Wd.approachTile(b); return Wd.edgeOf(Math.max(b.x, Math.min(b.x + b.w - 1, t.x)), Math.max(b.y, Math.min(b.y + b.h - 1, t.y)), t.x, t.y); }
+function edgeWhy(e, type) {   /* why a wall of this type can't stand on this line, or null */
+  const [a, b] = Wd.edgeTiles(e);
+  if (!Wd.inMap(a.x, a.y) || !Wd.inMap(b.x, b.y)) return 'That is the edge of the map.';
+  if (!Wd.inTown(a.x, a.y) && !Wd.inTown(b.x, b.y)) return 'Walls go in the build zone or on its edge.';
+  const ba = Wd.buildingAt(world, a.x, a.y), bb = Wd.buildingAt(world, b.x, b.y);
+  if (ba && ba === bb) return 'A building is in the way.';
+  if (type !== 'gate') for (const bd of [ba, bb]) { if (!bd) continue; const d = edgeDoorOf(bd); if (d && d.s === e.s && d.x === e.x && d.y === e.y) return `That's the ${DEFS[bd.type].name}'s doorway: keep it clear (a gate is fine).`; }
+  if (type !== 'gate' && Wd.isRoad(world, a.x, a.y) && Wd.isRoad(world, b.x, b.y)) return 'Use a Gate to close a road.';
+  return null;
+}
+function edgeLocked(type) { const wd = Wd.WALL_DEFS[type]; if (wd.rank > S.rank) return wd.name + ' needs Haven level ' + lvlOfRank(wd.rank) + '.'; if ((wd.tier || 1) > hqTier()) return wd.name + ' needs the ' + hqName(wd.tier) + '.'; return null; }
+function setEdgeType(ex, type) { ex.type = type; ex.broken = false; ex.max = edgeMax(type); ex.hp = ex.max; }
+const edgeUpgrades = (ex, type) => { const wd = Wd.WALL_DEFS[type], od = Wd.WALL_DEFS[ex.type]; return (type === 'gate' && ex.type !== 'gate') || (!!wd.lvl && !!od.lvl && wd.lvl > od.lvl); };
+function tryEdgeWall(e, type) {   /* one tap on a line */
+  const wd = Wd.WALL_DEFS[type], k = Wd.ekey(e.s, e.x, e.y), ex = world.edges.get(k);
+  if (ex && ex.type === type) { if (!confirmTile('e' + e.s, e.x, e.y, `Tap the ${wd.name} again to remove it (half the cost back).`)) return; world.edges.delete(k); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
+  const why = edgeWhy(e, type) || edgeLocked(type); if (why) { say(why); return; }
+  if (ex && !edgeUpgrades(ex, type)) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
+  if (!canPay(bCost(wd))) { say('Not enough: need ' + missText(bCost(wd)) + '.'); return; }
+  payCost(bCost(wd));
+  if (ex) { refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); const old = Wd.WALL_DEFS[ex.type].name; setEdgeType(ex, type); say(type === 'gate' ? old + ' swapped for a Gate.' : old + ' upgraded to ' + wd.name + '.'); }
+  else putEdge(e.s, e.x, e.y, type);
+  Wd.bump(world); checkPerimeter(); saveGame(); ui();
+}
+/* the drag: a straight run of lines between two corners */
+let edgeDraft = null;
+function edgeRun(a, b) {
+  const out = [];
+  if (Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)) for (let x = Math.min(a.x, b.x); x < Math.max(a.x, b.x); x++) out.push({ s: 'h', x, y: a.y });
+  else for (let y = Math.min(a.y, b.y); y < Math.max(a.y, b.y); y++) out.push({ s: 'v', x: a.x, y });
+  return out;
+}
+function draftMark(list, type) {   /* what each piece of the run would be: have (already there), new or up (paid), bad (can't), short (no money left) */
+  const wd = Wd.WALL_DEFS[type], lock = edgeLocked(type), left = {}; for (const r of ['wood', 'stone', 'mat']) left[r] = S[r] || 0; let cost = {};
+  const take = (c) => { for (const [r, v] of Object.entries(c)) if ((left[r] || 0) < v) return false; for (const [r, v] of Object.entries(c)) { left[r] -= v; cost[r] = (cost[r] || 0) + v; } return true; };
+  for (const p of list) {
+    const ex = world.edges.get(Wd.ekey(p.s, p.x, p.y));
+    if (ex && ex.type === type) { p.st = 'have'; continue; }
+    const why = lock || edgeWhy(p, type); if (why) { p.st = 'bad'; p.why = why; continue; }
+    if (ex && !edgeUpgrades(ex, type)) { p.st = 'bad'; p.why = 'Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'; continue; }
+    p.st = take(bCost(wd)) ? (ex ? 'up' : 'new') : 'short';
+  }
+  return { list, cost, type };
+}
+function edgeDraftAt(a, b) { edgeDraft = a && b && (a.x !== b.x || a.y !== b.y) ? draftMark(edgeRun(a, b), sel.wtype) : null; if (edgeDraft) { const n = edgeDraft.list.filter((p) => p.st === 'new' || p.st === 'up').length, sh = edgeDraft.list.filter((p) => p.st === 'short').length; const c = costShort(edgeDraft.cost); say(n ? `${n} × ${Wd.WALL_DEFS[sel.wtype].name}: ${c || 'free'}${sh ? ` · ${sh} more need more stock` : ''}` : sh ? 'Not enough stock for this run.' : (edgeDraft.list.find((p) => p.why) || {}).why || 'Already built.'); } }
+function edgeDraftPlace() {
+  const d = edgeDraft; edgeDraft = null; if (!d) return;
+  const wd = Wd.WALL_DEFS[d.type]; let n = 0;
+  for (const p of d.list) { if (p.st !== 'new' && p.st !== 'up') continue; if (!canPay(bCost(wd))) break; payCost(bCost(wd)); const ex = world.edges.get(Wd.ekey(p.s, p.x, p.y)); if (ex) { refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); setEdgeType(ex, d.type); } else putEdge(p.s, p.x, p.y, d.type); n++; }
+  const sh = d.list.filter((p) => p.st === 'short').length, bad = d.list.filter((p) => p.st === 'bad');
+  if (n) { Wd.bump(world); checkPerimeter(); saveGame(); ui(); }
+  say(n ? `${n} × ${wd.name} built.${sh ? ` ${sh} more need more stock.` : ''}${bad.length ? ` ${bad.length} skipped: ${bad[0].why}` : ''}` : bad.length ? bad[0].why : sh ? 'Not enough: need ' + missText(bCost(wd)) + '.' : 'Already built.');
+}
+/* where the zombies' way in is, for the "gaps in your wall" helpers: walk from the town out to the map's edge across open lines; the line
+   where that walk leaves the build zone is a gap; pretend it is walled and walk again. Each gap is marked on the tile just inside it. */
+function findGapsEdge(max = 8) {
+  const B = Wd.BUILD, inB = (x, y) => x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1, plug = new Set(), out = [];
+  let seed = Wd.nearestWalkable(world, Math.floor((B.x0 + B.x1) / 2), Math.floor((B.y0 + B.y1) / 2), true); if (!seed) return [];
+  const ok = (a, b) => Wd.inMap(b.x, b.y) && Wd.walkable(world, b.x, b.y, true) && Wd.stepOk(world, a.x, a.y, b.x, b.y, true) && !plug.has(Wd.ekey(...(() => { const e = Wd.edgeOf(a.x, a.y, b.x, b.y); return [e.s, e.x, e.y]; })()));
+  for (let it = 0; it < max; it++) {
+    const prev = new Map([[seed.x + ',' + seed.y, null]]), q = [seed]; let end = null;
+    for (let i = 0; i < q.length && !end; i++) { const c = q[i]; if (c.x === 0 || c.y === 0 || c.x === COLS - 1 || c.y === ROWS - 1) { end = c; break; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = { x: c.x + dx, y: c.y + dy }, k = n.x + ',' + n.y; if (!prev.has(k) && ok(c, n)) { prev.set(k, c); q.push(n); } } }
+    if (!end) break;
+    let c = end, gap = null; while (c) { const p = prev.get(c.x + ',' + c.y); if (p && inB(p.x, p.y) && !inB(c.x, c.y)) gap = { a: p, b: c }; c = p; }
+    if (!gap) break; const e = Wd.edgeOf(gap.a.x, gap.a.y, gap.b.x, gap.b.y); plug.add(Wd.ekey(e.s, e.x, e.y)); out.push({ x: gap.a.x, y: gap.a.y, label: 'wall', edge: e });
+  }
+  return out;
+}
 /* ---------------- town systems ---------------- */
 const xpNeed = (s) => { const p = professions[s.job]; const b = (p && p.master) || 60, l = s.l || 1; return Math.round(l < 5 ? b : b * (1 + (l - 4) * .6)); };
 function masteryCheck(s) {      // experience: each level raises the work boost and the daily ration; capped at LEVEL_CAP
@@ -4158,6 +4241,7 @@ function gapWhy(x, y) {
   return Wd.inWallZone(x, y) ? 'an open tile in an inner fence' : 'outside the wall area';
 }
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
+  if (edgeOn()) return findGapsEdge(max);   /* 3D.358 walls on the lines */
   let seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return [];
   { const per = Wd.perimeter(world); if (per.ring && per.outsideB.length) { const b = per.outsideB.find((q) => DEFS[q.type].fam !== 'hq') || per.outsideB[0], t = Wd.approachTile(b); seed = Wd.walkable(world, t.x, t.y, true) ? t : Wd.nearestWalkable(world, t.x, t.y, true) || seed; } }   /* 3D.172: the camp fence is closed but buildings are still outside: look for the gap from one of them */ const plug = new Set(), gaps = [];
   const open = (x, y) => Wd.inMap(x, y) && !plug.has(x + ',' + y) && Wd.walkable(world, x, y, true);
@@ -4190,7 +4274,7 @@ const OBJ_GUIDE = {
   'Gear Up': () => bOf('armory').length ? { reqs: [{ label: 'Spare scrap for gear', ok: S.mat >= 4, detail: `${Math.floor(S.mat)} scrap` }], spots: bSpots(['armory']), act: { label: 'Open People', fn: () => { closeP(); showSurvivors(); } } } : buildObj('armory')(),
   'Train Up': () => ({ reqs: [{ label: 'Any one of: Gym, Library or Lounge', ok: ['gym', 'library', 'lounge'].some((t) => canPay(bCost(DEFS[t]))), detail: 'You only need one. Each trains a different stat: Gym = Strength, Library = Intelligence, Lounge = Charisma.' }], spots: [], act: { label: 'Pick one to build', fn: () => { bCat = 'train'; showBuild(); } } }),   /* 3D.30: any one counts */
   'Research': () => { const ws = bOf('workshop')[0]; return ws ? { reqs: [{ label: 'Research points', ok: (S.rp || 0) >= Math.min(...Object.values(RESEARCH).map((r) => r.rp)), detail: `${Math.floor(S.rp || 0)} RP: the workshop makes more` }], spots: bSpots(['workshop']), act: { label: 'Open the Workshop', fn: () => showBuildingInfo(ws, 'research') } } : buildObj('workshop')(); },
-  'Hold the Line': () => { const wd = Wd.WALL_DEFS.wood; return { reqs: [{ label: `Walls: ${world.walls.size}/10`, ok: world.walls.size >= 10 }, { label: `Wood Fence: ${costShort(bCost(wd))} each`, ok: canPay(bCost(wd)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}` }], spots: [], act: { label: 'Place walls', fn: () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); } } }; },
+  'Hold the Line': () => { const wd = Wd.WALL_DEFS.wood; return { reqs: [{ label: `Walls: ${wallCount()}/10`, ok: wallCount() >= 10 }, { label: `Wood Fence: ${costShort(bCost(wd))} each`, ok: canPay(bCost(wd)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}` }], spots: [], act: { label: 'Place walls', fn: () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); } } }; },
   'Go Out There': () => ({ reqs: [{ label: 'A free squad member', ok: S.sv.some((q) => q.hp > q.max * .5 && !['down', 'away', 'errand', 'hospital'].includes(q.mode)) }], spots: [], act: { label: 'Open Explore', fn: () => { closeP(); showExpedition(); } } }),
   'More Land': () => { const e = expandInfo(); return { reqs: e ? [{ label: `Renown ${e.n.ren}`, ok: S.ren >= e.n.ren, detail: `you have ${Math.floor(S.ren)}` }, { label: costShort(bCost(e.n)), ok: canPay(bCost(e.n)), detail: `you have 🪵 ${Math.floor(S.wood || 0)}  ⚙ ${Math.floor(S.mat)}` }] : [], spots: [], act: { label: 'Open Town', fn: () => { closeP(); showTown(); } } }; },
 };
@@ -4253,7 +4337,7 @@ function advisorTips() {
   const up = upkeepTotal(); if (S.mat + (S.wood || 0) < up) add('upkeep', 70, '⚙', `Not enough wood and scrap for tonight's upkeep (${f1(up)})`, () => showResource('mat'));
   for (const b of world.buildings) { const d = DEFS[b.type]; if (!d.slot || b.staff || !FAMRES(d.fam)) continue; const free = S.sv.find((q) => (STAFF_JOBS[d.fam] || []).includes(q.job) && !q.post && q.hp > 0); add('staff' + b.x + ',' + b.y, 60, '👷', free ? `${d.name} has no worker: ${free.name} could take it` : `${d.name} has no ${(STAFF_JOBS[d.fam] || []).join(' or ')}: change someone's profession`, () => showBuildingInfo(b)); }
   if (S.rankReady || (rankConds() && rankConds().every((r) => r.ok))) add('rank', 85, '⭐', 'The Haven can reach the next level', () => showUpgrade('rank'));
-  if (world.walls.size >= 8 && !Wd.perimeter(world).sealed) { const g = findGaps(4).length; if (g) add('gaps', 45, '🧱', `Your wall ring has ${g} gap${g > 1 ? 's' : ''}`, () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); showObjMarks(findGaps()); }); }
+  if (wallCount() >= 8 && !Wd.perimeter(world).sealed) { const g = findGaps(4).length; if (g) add('gaps', 45, '🧱', `Your wall ring has ${g} gap${g > 1 ? 's' : ''}`, () => { closeP(); startTool({ kind: 'wall', wtype: 'wood' }); showObjMarks(findGaps()); }); }
   { const n = unhoused().length, c = campCap(), eb = world.buildings.filter((b) => isHousing(b) && !b.burnt && (b.res || []).length < cap(b));   /* 3D.30 housing */
     if (n && eb.length) add('emptyBeds', 55, '🛏', `${eb.reduce((a, b) => a + cap(b) - (b.res || []).length, 0)} empty bed${eb.length > 1 || cap(eb[0]) - (eb[0].res || []).length > 1 ? 's' : ''}: choose who moves in`, () => showResidents(eb[0]));
     else if (c && n > c) add('campFull', 65, '⛺', `Camp is over capacity: ${n}/${c}. Build housing`, () => { bCat = 'live'; showBuild(); }); }
@@ -7344,11 +7428,11 @@ let moving = null;   // building being moved (removed from world while placing)
 function closeP() { $('infoPanel').classList.remove('show'); $('infoPanel').classList.remove('phPerson', 'scr'); expOpen = false; panelBack = null; if (selected && selected.kind === 'post') selected = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
-  moving = null; sel = null; preview = null; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
+  moving = null; sel = null; preview = null; edgeDraft = null; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
 }
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
-  if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove` + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = (edgeOn() ? `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} a piece · tap a line, or drag along the lines · two fingers move the view` : `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove`) + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'trap') { const td = TRAP_DEFS[tool.ttype]; $('confirmName').textContent = `${td.name.toUpperCase()} · ${costShort(bCost(td))} · tap any open ground to set · tap a spent one to re-arm · ${trapMap().size}/${trapMax()} traps`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
   else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their scrap'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
@@ -7466,6 +7550,7 @@ function tryDemolish(px, py, x, y) {   /* V2.33: one Demolish tool for buildings
   const b = hitBuilding(px, py) || Wd.buildingAt(world, x, y);
   if (b) { if (demoPick === b) { demoPick = null; selected = null; demolish(b); startTool({ kind: 'demolish' }); return; } demoPick = b; selected = { kind: 'building', ref: b }; say(`Tap ${DEFS[b.type].name} again to demolish it (+${Math.floor(DEFS[b.type].mat * .5)} scrap).`); return; }
   demoPick = null; selected = null;
+  if (edgeOn()) { const t = unproject(px, py), e = edgeNear(t.x, t.y), ex = e.d < .3 && world.edges.get(Wd.ekey(e.s, e.x, e.y)); if (ex) { const wd = Wd.WALL_DEFS[ex.type]; if (!confirmTile('e' + e.s, e.x, e.y, `Tap the ${wd.name} again to remove it (half the cost back).`)) return; world.edges.delete(Wd.ekey(e.s, e.x, e.y)); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; } }   /* 3D.358 a wall on a line */
   { const gp = postAt(x, y); if (gp) { if (!confirmTile('p', x, y, 'Tap the guard post again to remove it (+1 part).')) return; removePost(gp); say('Guard post removed.'); ui(); return; } }
   { const tp = trapAt(x, y); if (tp) { if (!confirmTile('t', x, y, `Tap the ${TRAP_DEFS[tp.type].name} again to remove it (half the cost back).`)) return; trapMap().delete(x + ',' + y); refundCost(bCost(TRAP_DEFS[tp.type]), .5); Wd.bump(world); say(TRAP_DEFS[tp.type].name + ' removed.'); saveGame(); ui(); return; } }
   const wl = Wd.wallAt(world, x, y); if (wl) { if (!confirmTile('w', x, y, `Tap the ${Wd.WALL_DEFS[wl.type].name} again to remove it (half the cost back).`)) return; world.walls.delete(Wd.key(x, y)); Wd.bump(world); refundCost(bCost(Wd.WALL_DEFS[wl.type]), .5); say(Wd.WALL_DEFS[wl.type].name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
@@ -8543,16 +8628,16 @@ const pointers = new Map(); let gesture = null, tapStart = null;
 const local = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 const ZOOM_MIN = .35, ZOOM_MAX = 4.2;   /* V2.49: wider zoom (was 0.5–1.9); 3D.153 owner: a bit more zoom in (was 3) */
 function zoomAt(px, py, nz) { nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nz)); const w = unproject(px, py); cam.z = nz; const p = project(w.x, w.y); cam.x += px - p.x; cam.y += py - p.y; clampCam(); updateZoomLabel(); }
-cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); if (pointers.size === 1) tapStart = { ...p, id: e.pointerId, cx: cam.x, cy: cam.y, moved: false, t: performance.now() }; else if (pointers.size === 2) { if (tapStart) tapStart.moved = true;   /* V2.39: a second finger means a gesture, never a tap */ const a = [...pointers.values()]; gesture = { dist: Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), z: cam.z }; tapStart = null; } });
+cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); if (pointers.size === 1) { tapStart = { ...p, id: e.pointerId, cx: cam.x, cy: cam.y, moved: false, t: performance.now() }; if (edgeTool()) { const t = unproject(p.x, p.y); tapStart.edge = { x: Math.round(t.x), y: Math.round(t.y) }; edgeDraft = null; } } else if (pointers.size === 2) { if (tapStart) tapStart.moved = true;   /* V2.39: a second finger means a gesture, never a tap */ const a = [...pointers.values()]; gesture = { dist: Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), z: cam.z, mx: (a[0].x + a[1].x) / 2, my: (a[0].y + a[1].y) / 2 }; tapStart = null; edgeDraft = null; } });
 cv.addEventListener('pointermove', (e) => {
   if (!pointers.has(e.pointerId)) return; const p = local(e); pointers.set(e.pointerId, p);
-  if (pointers.size === 1 && tapStart) { const dx = p.x - tapStart.x, dy = p.y - tapStart.y; if (Math.hypot(dx, dy) > 8) tapStart.moved = true; if (tapStart.moved) { cam.x = tapStart.cx + dx; cam.y = tapStart.cy + dy; clampCam(); } }
-  else if (pointers.size >= 2 && gesture) { const a = [...pointers.values()].slice(0, 2), d = Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)); zoomAt((a[0].x + a[1].x) / 2, (a[0].y + a[1].y) / 2, gesture.z * d / gesture.dist); }
+  if (pointers.size === 1 && tapStart) { const dx = p.x - tapStart.x, dy = p.y - tapStart.y; if (Math.hypot(dx, dy) > 8) tapStart.moved = true; if (tapStart.moved && tapStart.edge && edgeTool()) { const t = unproject(p.x, p.y); edgeDraftAt(tapStart.edge, { x: Math.round(t.x), y: Math.round(t.y) }); } else if (tapStart.moved) { cam.x = tapStart.cx + dx; cam.y = tapStart.cy + dy; clampCam(); } }   /* 3D.358 with the wall tool on lines, one finger draws a run */
+  else if (pointers.size >= 2 && gesture) { const a = [...pointers.values()].slice(0, 2), d = Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2; zoomAt(mx, my, gesture.z * d / gesture.dist); if (edgeTool() && gesture.mx != null) { cam.x += mx - gesture.mx; cam.y += my - gesture.my; clampCam(); } gesture.mx = mx; gesture.my = my; }   /* two fingers also move the view while drawing walls */
 });
-function pointerEnd(e) { const p = local(e), wasTap = tapStart && tapStart.id === e.pointerId && !tapStart.moved && pointers.size === 1; pointers.delete(e.pointerId); if (pointers.size < 2) gesture = null;
+function pointerEnd(e) { const p = local(e), wasTap = tapStart && tapStart.id === e.pointerId && !tapStart.moved && pointers.size === 1; if (tapStart && tapStart.edge && tapStart.moved && tapStart.id === e.pointerId && edgeDraft && edgeTool()) edgeDraftPlace(); else if (tapStart && tapStart.id === e.pointerId) edgeDraft = null; pointers.delete(e.pointerId); if (pointers.size < 2) gesture = null;
   if (pointers.size === 1) { const [id, q] = [...pointers.entries()][0]; tapStart = { ...q, id, cx: cam.x, cy: cam.y, moved: true, t: performance.now() }; }   /* V2.39: pinch → one finger keeps panning from where it is (no jump) */
   if (wasTap) tapAt(p.x, p.y); if (!pointers.size) tapStart = null; }
-cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); gesture = null; tapStart = null; });
+cv.addEventListener('pointerup', pointerEnd); cv.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); gesture = null; tapStart = null; edgeDraft = null; });
 cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, cam.z * (e.deltaY < 0 ? 1.1 : .91)); }, { passive: false });
 function hitBuilding(px, py) {   /* 3D.129 the building under the finger in the 3D view (was the outline of the old 2D picture); falls back to the tile */
   const b = window.ZH3D && ZH3D.pickBuilding && ZH3D.pickBuilding(px, py); if (b) return b;
@@ -8576,7 +8661,7 @@ function tapAt(px, py) {
     const t = unproject(px, py), tx = Math.floor(t.x), ty = Math.floor(t.y);
     if (sel.kind === 'road') { tryRoad(tx, ty); return; }
     if (sel.kind === 'demolish') { tryDemolish(px, py, tx, ty); return; }
-    if (sel.kind === 'wall') { tryWall(tx, ty, sel.wtype); return; }
+    if (sel.kind === 'wall') { if (edgeOn()) { const e = edgeNear(t.x, t.y); tryEdgeWall(e, sel.wtype); } else tryWall(tx, ty, sel.wtype); return; }
     if (sel.kind === 'trap') { tryTrap(tx, ty, sel.ttype); return; }
     if (sel.kind === 'post') { const r = tryPost(tx, ty); if (r.why !== 'open') updatePostBar(); return; }
     const d = Wd.rotDef(DEFS[sel.type], sel.rot), o = Iso.originFromSouthTile(tx, ty, d.w, d.h); updatePreview(o.x, o.y); return;
@@ -8636,7 +8721,7 @@ function simTick() { Wd.touch();
   for (const o of movers()) o.pv = { x: o.w.x, y: o.w.y };   /* V2.33: previous position, for smooth drawing between ticks */
   tick++; if (S.alert > 0) S.alert--; driveTick(); truckTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { downWhyTick(); incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(1000 / 60); S.sv.forEach(ai); spreadOut(); if (tick % 30 === 0) wallUnstick(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
-  if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
+  if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && wallCount()) checkPerimeter();
   edgeGuard();   /* 3D.351 walls on the lines: nobody steps across one */
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick, S.z.some((z) => z.boss && z.hp > 0 && !z.zoo) || S.z.filter((z) => z.hp > 0 && !z.zoo && !z.human).length >= 25); }   /* 3D.255: a boss or a big crowd plays The Tide */   /* 3D.50 music follows the clock and the fighting */
@@ -8646,7 +8731,7 @@ function simTick() { Wd.touch();
 }
 let last = 0, acc = 0; const STEP = 1000 / 60;
 /* what the 3D renderer (js/render3d.js) reads each frame */
-window.ZHG = { fpsCap: () => FPS_CAP, get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
+window.ZHG = { edgeDraft: () => edgeDraft, fpsCap: () => FPS_CAP, get guest() { return guest; }, shots, CAR_SPOTS, BIN_SPOTS, treeState, nodeState, nodeList: () => nodeList(), ROCK_SPOTS, nodeVer: () => S.nodeVer || 0, jobList: () => jobList(), jobReady, season: () => seasonOf().id, tick: () => tick, preview: () => (sel && sel.kind === 'building' ? preview : null), world, S, cam, BASE_TW, COLS, ROWS, Wd, DEFS, ITEMS, corpses, TREE_SPOTS, CRATE_SPOTS, VW: () => VW, VH: () => VH, unproject, humanAnim, facing, insideBuilding, beingCarried, wreckSpots, simSpeed: () => (S.sh && S.sh.view ? (S.sh.sel.length || S.sh.ring ? SH_SLOW : SH_PACE) : simSpeed), paused: () => modalOpen || titleOn };
 const movers = () => { const l = S.sv.concat(S.z); if (S.trader) l.push(S.trader); return l; };
 function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two simulation positions, so movement is smooth at any frame rate and at 1x / 2x */
   const moved = [];

@@ -666,14 +666,19 @@ function wallPiece(P, w, has, cx, cz) {   // one wall tile; has(x, y) = a standi
 }
 let wallGroup = null, wallKey = '';
 function buildWalls() {
-  const W = G.world, list = [...W.walls.values()];
-  const key = list.map((w) => `${w.x},${w.y},${w.type},${w.broken ? 1 : 0},${w.hp < w.max * .6 ? 1 : 0}`).join(';');
+  const W = G.world, list = [...W.walls.values()], elist = W.edges ? [...W.edges.values()] : [];
+  const key = list.map((w) => `${w.x},${w.y},${w.type},${w.broken ? 1 : 0},${w.hp < w.max * .6 ? 1 : 0}`).join(';') + '|' + elist.map((e) => `${e.s}${e.x},${e.y},${e.type},${e.broken ? 1 : 0},${e.hp < e.max * .6 ? 1 : 0}`).join(';');
   if (key === wallKey) return false; wallKey = key;
   if (wallGroup) { scene.remove(wallGroup); freeTree(wallGroup); }
   wallGroup = new THREE.Group(); scene.add(wallGroup);
   const P = new Parts();
   const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
   for (const w of list) wallPiece(P, w, has, (w.x + .5) * T, (w.y + .5) * T);
+  /* 3D.358 W269 walls on the lines between tiles: each piece is drawn with its wall type's own look, centred on the middle of its line,
+     with its two arms along the line (one tile long). (Step 4 joins the corners and posts properly.) */
+  for (const e of elist) { const v = e.s === 'v', q = { type: e.type, hp: e.hp, max: e.max, broken: e.broken, x: e.x * 2 + (v ? 0 : 1), y: e.y * 2 + (v ? 1 : 0) };
+    const along = (x, y) => (v ? x === q.x && Math.abs(y - q.y) === 1 : y === q.y && Math.abs(x - q.x) === 1);
+    wallPiece(P, q, along, (v ? e.x : e.x + .5) * T, (v ? e.y + .5 : e.y) * T); }
   P.build(wallGroup, .03);
   return true;
 }
@@ -1754,6 +1759,17 @@ function syncGhost() {
     scene.add(g); ghost = { g, key }; }
   ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
 }
+// 3D.358 W269: the run being dragged with the wall tool, as see-through slabs on the lines: green to build, blue already there, red can't
+let edgeGhost = null, edgeGhostKey = '';
+function syncEdgeGhost() {
+  const d = G.edgeDraft && G.edgeDraft(), key = d ? d.list.map((p) => p.s + p.x + ',' + p.y + p.st).join(';') : '';
+  if (key === edgeGhostKey) return; edgeGhostKey = key;
+  if (edgeGhost) { scene.remove(edgeGhost); freeTree(edgeGhost); edgeGhost = null; } if (!d) return;
+  edgeGhost = new THREE.Group(); const col = { new: 0x7fd36a, up: 0x7fd36a, have: 0x6aa8d8, bad: 0xe25b55, short: 0xe2a455 };
+  for (const p of d.list) { const v = p.s === 'v', m = new THREE.Mesh(box(v ? .16 : T * .96, 1.1, v ? T * .96 : .16), new THREE.MeshBasicMaterial({ color: col[p.st] || 0xffffff, transparent: true, opacity: .55, depthWrite: false }));
+    m.position.set((v ? p.x : p.x + .5) * T, .55, (v ? p.y + .5 : p.y) * T); edgeGhost.add(m); }
+  scene.add(edgeGhost);
+}
 const insideBuilding3 = (s) => false;   // hidden survivors are already not shown
 const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
 let zCount = 0;
@@ -2477,7 +2493,7 @@ function frame() {
   _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
   zCount = G.S.z.length;
   const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
-  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncEdgeGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
   if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
   frames++; fpsT += dt;
   if (fpsT > 1) { const fps = frames / fpsT, cap = G.fpsCap ? G.fpsCap() : 60; frames = 0; fpsT = 0; fastT = fps > cap * .95 ? fastT + 1 : 0; const nd = fps < cap * .75 ? Math.max(1, dpr - .25) : fastT >= 4 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dprNext = nd; fastT = 0; } window.ZH3D.fps = fps; }   /* 3D.347: the bars are a share of the frame cap (were 57 and 45 of 60), so at 30 a second it does not drop the picture for nothing. 3D.133 owner: 'a black flash every now and then'. Changing the resolution right after drawing cleared the picture for one frame, and it stepped up and down about once a second. Now it changes before the next frame is drawn, and only steps up after four good seconds */
