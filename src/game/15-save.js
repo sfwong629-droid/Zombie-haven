@@ -51,7 +51,7 @@ function showSettings(back) {
       + sec('Look') + grp(sw('stPics', OPTS.pics !== false, 'face', '#2fa5a0', 'Survivor pictures', 'Off shows the first letter of their name') + sw('stLook', true, 'phone', '#6b7686', 'Phone look', 'Off shows the old look')
         + ($('btnInk') ? sw('stInk', $('btnInk').style.opacity !== '.45', 'ink', '#5a6a3a', 'Ink outlines', 'Dark outlines around people and zombies') : '') + (window.ZH3D && ZH3D.trackPanel ? sw('stTrack', !!(ZH3D.track && ZH3D.track.on), 'track', '#a0564a', 'Animation tracker', 'Shows what each survivor is doing and flags sliding') : ''))
       + sec('Help') + grp(go('stLog', 'log', '#6b7686', 'Event log') + go('stHow', 'help', '#3d8fe0', 'How to play') + go('stMenu', 'home', '#6b7686', 'Main menu'))
-      + `<div class="phFootN">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0).</div><button class="act go phWide" id="stResume">Resume</button></div>`;
+      + `<div class="phFootN">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0). A woman's hurt voice: "Female Gruntwork - 1" by PlumpDev (CC BY-SA 4.0). Other recorded sounds: CC0.</div><button class="act go phWide" id="stResume">Resume</button></div>`;
   } else
   $('ib').innerHTML = `<div class="setRow"><span class="moT"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go" id="stSave">Save</button></div>`
     + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
@@ -62,7 +62,7 @@ function showSettings(back) {
     + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
     + (window.ZH3D && ZH3D.trackPanel ? tg('stTrack', !!(ZH3D.track && ZH3D.track.on), 'Animation tracker', 'Shows what each survivor is doing and flags sliding. Tap Copy log and paste it to me') : '')
     + `<button class="setRow link" id="stHow"><span class="moT"><b>How to play</b></span><span class="moA">›</span></button>`
-    + `<div class="sm" style="margin-top:10px;opacity:.7">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0).</div>`
+    + `<div class="sm" style="margin-top:10px;opacity:.7">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0). A woman's hurt voice: "Female Gruntwork - 1" by PlumpDev (CC BY-SA 4.0). Other recorded sounds: CC0.</div>`
     + `<div class="setFoot"><button class="act" id="stMenu">Main menu</button><button class="act go" id="stResume">Resume</button></div>`;
   const re = () => showSettings(back), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
   $('stSave').onclick = () => { if (saveGame()) { banner('💾 SAVED'); re(); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); };

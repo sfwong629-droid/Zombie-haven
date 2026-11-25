@@ -9,6 +9,7 @@ const src = fs.readdirSync(path.join(root, 'src/game')).filter((f) => f.endsWith
 const block = (name) => { const i = sound.indexOf(`const ${name} = {`); let d = 0, j = sound.indexOf('{', i); const s = j; for (; j < sound.length; j++) { if (sound[j] === '{') d++; else if (sound[j] === '}' && --d === 0) break; } return sound.slice(s, j + 1); };
 const keys = (b) => { const out = new Set(); let d = 0; for (const line of b.split('\n')) { const m = line.match(/^\s*([a-z_0-9]+):/); if (m && d === 1) out.add(m[1]); for (const ch of line) { if (ch === '{') d++; else if (ch === '}') d--; } } return out; };
 const have = new Set([...keys(block('FX')), ...keys(block('GUNS'))]);
+for (const m of (sound.match(/const NEW_LIVE = \{([^}]*)\}/) || [, ''])[1].matchAll(/([a-z_0-9]+): '/g)) have.add(m[1]);   /* 3D.357: effects only the remake has (the Screamer's scream, the Gatling Boss's gun) */
 
 let bad = 0; const fail = (m) => { bad++; console.log('FAIL ' + m); };
 const asked = new Set([...src.matchAll(/SFX\('([a-z_0-9]+)'\)/g)].map((m) => m[1]));

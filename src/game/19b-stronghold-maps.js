@@ -150,7 +150,7 @@ function shThingFx(t, s) { const f = SH_FX[t.fx]; if (f) f(S.sh, t, s); }
 /* the boss's pattern (B7): a tell, then the big move. slam: hits everyone round it. gun: a long burst at range. summon: calls its kind. charge: runs through */
 function shBossPat(z, t, d0) { const H = S.sh; if (z.tellT) { z.moving = false; z.faceW = { ...t.w }; if (H.t < z.tellT) return true; z.tellT = 0; z.patT = H.t + (z.patGap || 420);
     if (z.pat === 'slam') { for (const s of H.units) if (s.hp > 0 && dist(s.w, z.w) < 1.9) { const dm = Math.max(1, Math.round(z.atk * 1.8 * (1 - dmgReduce(s)))); s.hp -= dm; s.hitT = 9; shFx(s.w, '-' + dm, '#ff6e62'); if (s.hp <= 0) { s.hp = 0; s.mode = 'down'; say(`${s.name} is down!`); } } shFx(z.w, '💥', '#ffb060'); SFX('hit'); (window.ZH_BOOMS ||= []).push({ x: z.w.x, y: z.w.y, r: 1.9, burn: false, t: performance.now() }); }
-    else if (z.pat === 'gun') { z.burst = 6; z.burstT = H.t; }
+    else if (z.pat === 'gun') { z.burst = 6; z.burstT = H.t; SFX('gatling'); }
     else if (z.pat === 'summon') { const zd = zombieTypes[z.kin || 'bloated'] || zombieTypes.walker; for (let i = 0; i < (z.kinN || 2); i++) { const w = { x: z.w.x + (i ? .8 : -.8), y: z.w.y + .5 }, c = shCell(w); if (shOpen(c.x, c.y, 'u') !== true) continue; H.zs.push({ type: z.kin || 'bloated', room: z.room, w, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: (zd.chase || .012) * 1.25, mode: 'idle', stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); } shFx(z.w, '📣 It calls its own', '#ff6e62'); }
     else if (z.pat === 'charge') { z.chargeTo = { x: t.w.x + (t.w.x - z.w.x) * .4, y: t.w.y + (t.w.y - z.w.y) * .4 }; z.chargeT = H.t + 90; }
     return true; }

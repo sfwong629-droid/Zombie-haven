@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.355', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.357', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2494,6 +2494,7 @@ function finishFacility(s) {
   { s.visits = (s.visits || []).filter((v) => tick - v[1] < 1500); s.visits.push([b.type, tick]); if (s.visits.filter((v) => v[0] === b.type).length >= 3) { (s.avoid ||= {})[b.type] = tick + 2500; s.visits = []; emote(s, '😩', 90); } }
   s.lastFacility = b; s.facility = null; s.activity = null; s.mode = 'free'; s.stateTicks = onShift(s) ? 8 : 120 + s.i * 28; s.cool = 0; s.why = onShift(s) ? 'Back to work' : 'Feeling better'; ui();
 }
+const isFem = (q) => { try { return !!(window.ZHChars && ZHChars.look(q).sex === 'f'); } catch (e) { return false; } };   /* 3D.357: a woman's or a man's grunt when they go down */
 function ai(s) {
   if (s.dummy && !s.go) { s.moving = false; s.mode = 'wait'; s.stateTicks = 99; s.hunger = s.thirst = s.fatigue = 0; return; }   /* 3D.152 gear test: the line-up stands still until released */
   if (s.para > 0 && s.hp > 0 && !['down', 'hospital', 'away'].includes(s.mode)) { s.para--; s.moving = false; if (s.para % 120 === 0) emote(s, '😵', 60); return; }   /* 3D.83 paralysed by a Lasher: cannot move, shoot or fight */
@@ -2505,7 +2506,7 @@ function ai(s) {
   /* 3D.284 healing, part 1 (owner, 20 Nov, W130): "a slow mend with no zombie about". Once a game hour everyone on their feet in town gets MEND_PCT of
      their health back while no zombie is inside the town. Not while starving or dying of thirst; a field wound still stops at its limit (below). */
   if (tick % 1000 === (s.i * 53) % 1000 && s.hp > 0 && s.hp < s.max && !['down', 'hospital', 'away', 'errand'].includes(s.mode) && s.hunger < 100 && s.thirst < 100 && !zInTown()) s.hp = Math.min(s.max, s.hp + Math.max(1, Math.round(s.max * MEND_PCT)));
-  if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.stable = false; s.ordered = false; if (s.downD !== S.day) { s.downD = S.day; s.downN = 0; } s.downN = (s.downN || 0) + 1; endAid(s); if (s.aidBy) { const m = s.aidBy; if (m.aidTo === s && m.aidKind === 'patch') { endAid(m); enterFree(m, 30); } } SFX('down'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
+  if (s.hp <= 0 && s.mode !== 'down') { s.bark = null; barkSomeone('help', {}, { pri: 2, line: s.name + ' is down! Help!', style: 'shout' }, s.w, s); s.hp = 0; s.mode = 'down'; s.target = null; s.dest = null; s.path = null; s.facility = null; s.activity = null; s.moving = false; s.rescuer = null; s.rescuing = null; s.carrying = null; s.why = 'Collapsed — needs rescue'; s.stable = false; s.ordered = false; if (s.downD !== S.day) { s.downD = S.day; s.downN = 0; } s.downN = (s.downN || 0) + 1; endAid(s); if (s.aidBy) { const m = s.aidBy; if (m.aidTo === s && m.aidKind === 'patch') { endAid(m); enterFree(m, 30); } } SFX(isFem(s) ? 'down_f' : 'down_m'); s.bleed = bleedMax(); s.warned = false; downAlert(s); return; }
   if (s.mode === 'down') { s.moving = false; if (tick % 60 === s.i % 60) { const gx = Math.floor(s.w.x), gy = Math.floor(s.w.y); if (!Wd.walkable(world, gx, gy)) { const t = Wd.nearestWalkable(world, gx, gy); if (t) { s.w = { x: t.x + .5, y: t.y + .5 }; s.path = null; } } }   /* 3D.169 round 2 (Lena down for 70 h): someone who went down inside a building that fell, or on a wall tile, lay where no rescuer can walk. They are dragged to the nearest open tile */
     bleedTick(s); return; }
   if (s.wounded && s.mode !== 'hospital' && !(s.mode === 'useFacility' && injuryTrip(s)) && s.hp > Math.round(s.max * FIELD_CAP)) s.hp = Math.round(s.max * FIELD_CAP);   /* 3D.67: a field wound heals no further until treated */
@@ -3143,10 +3144,10 @@ function zai0(z) {
     if (lq) { z.target = lq; z.mode = 'zattack'; z.lash = true; z.stateTicks = 84; }   /* 3D.80; 3D.83 owner: it only hooks ranged fighters */
     else if (z.bk === 'stalker' && !(z.smashCd > 0) && dd < SMASH_R * .8) { z.mode = 'zattack'; z.smash = true; z.stateTicks = 135; }   /* 3D.87 owner: Stalker hulk smash, an area attack */
     else if (z.bk === 'stalker' && dd <= ZREACH) { z.mode = 'zattack'; z.combo = true; z.stateTicks = 195; }   /* 3D.89 owner: haymaker then a front kick (clip 'haymaker_kick') */
-    else if (z.type === 'thrower' && dd < 4.4) { z.mode = 'zattack'; z.stateTicks = 56; } else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; } return;   /* 3D.36: the hammer fist lands later */
+    else if (z.type === 'thrower' && dd < 4.4) { z.mode = 'zattack'; z.stateTicks = 56; } else if (z.type === 'spitter' && dd < 2.8) { z.mode = 'zattack'; z.stateTicks = 34; } else if (z.type === 'screamer' && dd < SCREAM_R * .8) { z.mode = 'zattack'; z.stateTicks = 96; } else if (dd > ZREACH) { if (followPath(z, z.target.w, d.chase) === 'fail') zWalk(z, z.target.w, d.chase, true); } else { z.mode = 'zattack'; z.stateTicks = z.type === 'screamer' ? 96 : z.type === 'sporehead' ? 114 : z.type === 'brute' || z.type === 'alpha' ? 38 : 26; if (z.bk === 'gatling') SFX('gatling'); } return;   /* 3D.36: the hammer fist lands later */
   }
   if (z.mode === 'zattack' && z.type === 'screamer') { z.moving = false;   /* 3D.38 AOE shriek: hurts everyone outside within SCREAM_R, calls a walker; in time with the 'scream' clip */
-    if (z.stateTicks === 65) { SFX('alarm'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
+    if (z.stateTicks === 65) { SFX('scream'); impactFx(z, z.w); for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < SCREAM_R) { const dmg = zHitDmg(z, d, q); q.hp -= dmg; q.hitT = 9; if (rnd() < .5) emote(q, '😖', 60); floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#ff6e62', a: 55 }); callHelp(q, z); }
       if (S.z.filter((q) => q.hp > 0).length < 60) spawn(z.w.x + (rnd() - .5) * 2, z.w.y + (rnd() - .5) * 2, 'walker'); }
     if (z.stateTicks <= 0) { z.mode = 'zrecover'; z.stateTicks = z.recDur = 150 + rnd() * 60; } return; }
   if (z.mode === 'zattack' && z.combo) { z.moving = false;   /* 3D.89 Stalker combo: 3D.93 slower (3.25 s): the haymaker lands at clip t ~.41 (tick 80 of 195), the kick at t = .80 (tick 156) and shoves the survivor back */
@@ -4920,7 +4921,7 @@ function showSettings(back) {
       + sec('Look') + grp(sw('stPics', OPTS.pics !== false, 'face', '#2fa5a0', 'Survivor pictures', 'Off shows the first letter of their name') + sw('stLook', true, 'phone', '#6b7686', 'Phone look', 'Off shows the old look')
         + ($('btnInk') ? sw('stInk', $('btnInk').style.opacity !== '.45', 'ink', '#5a6a3a', 'Ink outlines', 'Dark outlines around people and zombies') : '') + (window.ZH3D && ZH3D.trackPanel ? sw('stTrack', !!(ZH3D.track && ZH3D.track.on), 'track', '#a0564a', 'Animation tracker', 'Shows what each survivor is doing and flags sliding') : ''))
       + sec('Help') + grp(go('stLog', 'log', '#6b7686', 'Event log') + go('stHow', 'help', '#3d8fe0', 'How to play') + go('stMenu', 'home', '#6b7686', 'Main menu'))
-      + `<div class="phFootN">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0).</div><button class="act go phWide" id="stResume">Resume</button></div>`;
+      + `<div class="phFootN">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0). A woman's hurt voice: "Female Gruntwork - 1" by PlumpDev (CC BY-SA 4.0). Other recorded sounds: CC0.</div><button class="act go phWide" id="stResume">Resume</button></div>`;
   } else
   $('ib').innerHTML = `<div class="setRow"><span class="moT"><b>Save game</b><small>${ago < 0 ? 'Saves on its own as you play' : ago === 0 ? 'Saved just now' : `Saved ${ago} min ago`}</small></span><button class="act go" id="stSave">Save</button></div>`
     + tg('stMusic', m === 'all', 'Music') + (window.SND && SND.setDayMusic ? `<div class="setRow"><span class="moT"><b>Day music</b><small>${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][1] : ''}</small></span><button class="act" id="stDayMus">${DAYMUS[SND.dayMusic] ? DAYMUS[SND.dayMusic][0] : 'Mix'}</button></div>` : '') + tg('stSfx', m !== 'off', 'Sound effects')
@@ -4931,7 +4932,7 @@ function showSettings(back) {
     + ($('btnInk') ? tg('stInk', $('btnInk').style.opacity !== '.45', 'Ink outlines', 'Dark outlines around people and zombies') : '')
     + (window.ZH3D && ZH3D.trackPanel ? tg('stTrack', !!(ZH3D.track && ZH3D.track.on), 'Animation tracker', 'Shows what each survivor is doing and flags sliding. Tap Copy log and paste it to me') : '')
     + `<button class="setRow link" id="stHow"><span class="moT"><b>How to play</b></span><span class="moA">›</span></button>`
-    + `<div class="sm" style="margin-top:10px;opacity:.7">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0).</div>`
+    + `<div class="sm" style="margin-top:10px;opacity:.7">Music: instrument samples from the FluidR3 GM sound font by Frank Wen (CC BY 3.0); percussion from the Versilian Community Sample Library (CC0). A woman's hurt voice: "Female Gruntwork - 1" by PlumpDev (CC BY-SA 4.0). Other recorded sounds: CC0.</div>`
     + `<div class="setFoot"><button class="act" id="stMenu">Main menu</button><button class="act go" id="stResume">Resume</button></div>`;
   const re = () => showSettings(back), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
   $('stSave').onclick = () => { if (saveGame()) { banner('💾 SAVED'); re(); } else say(saveBlocked ? 'This tab is not saving (see the alert).' : 'Saving failed: see the alert.'); };
@@ -6288,7 +6289,7 @@ function shThingFx(t, s) { const f = SH_FX[t.fx]; if (f) f(S.sh, t, s); }
 /* the boss's pattern (B7): a tell, then the big move. slam: hits everyone round it. gun: a long burst at range. summon: calls its kind. charge: runs through */
 function shBossPat(z, t, d0) { const H = S.sh; if (z.tellT) { z.moving = false; z.faceW = { ...t.w }; if (H.t < z.tellT) return true; z.tellT = 0; z.patT = H.t + (z.patGap || 420);
     if (z.pat === 'slam') { for (const s of H.units) if (s.hp > 0 && dist(s.w, z.w) < 1.9) { const dm = Math.max(1, Math.round(z.atk * 1.8 * (1 - dmgReduce(s)))); s.hp -= dm; s.hitT = 9; shFx(s.w, '-' + dm, '#ff6e62'); if (s.hp <= 0) { s.hp = 0; s.mode = 'down'; say(`${s.name} is down!`); } } shFx(z.w, '💥', '#ffb060'); SFX('hit'); (window.ZH_BOOMS ||= []).push({ x: z.w.x, y: z.w.y, r: 1.9, burn: false, t: performance.now() }); }
-    else if (z.pat === 'gun') { z.burst = 6; z.burstT = H.t; }
+    else if (z.pat === 'gun') { z.burst = 6; z.burstT = H.t; SFX('gatling'); }
     else if (z.pat === 'summon') { const zd = zombieTypes[z.kin || 'bloated'] || zombieTypes.walker; for (let i = 0; i < (z.kinN || 2); i++) { const w = { x: z.w.x + (i ? .8 : -.8), y: z.w.y + .5 }, c = shCell(w); if (shOpen(c.x, c.y, 'u') !== true) continue; H.zs.push({ type: z.kin || 'bloated', room: z.room, w, hp: zd.hp, max: zd.hp, atk: zd.atk, spd: (zd.chase || .012) * 1.25, mode: 'idle', stateTicks: 0, target: null, moving: false, phase: rnd() * 100 }); } shFx(z.w, '📣 It calls its own', '#ff6e62'); }
     else if (z.pat === 'charge') { z.chargeTo = { x: t.w.x + (t.w.x - z.w.x) * .4, y: t.w.y + (t.w.y - z.w.y) * .4 }; z.chargeT = H.t + 90; }
     return true; }
