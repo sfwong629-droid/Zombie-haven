@@ -63,6 +63,7 @@ function showLegacy() {
   showPanel("Founders' legacy");
 }
 function legacySave() {
+  if (testTown()) { say('A test town leaves no legacy.'); return false; }   /* 3D.379 W274 */
   const vets = legSel.vets.map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).map((q) => ({ name: q.name, job: q.job, l: q.l, st: q.st, trait: q.trait, age: q.age, south: q.south, skills: q.skills }));
   if (!vets.length) { say('Pick at least one veteran.'); return false; }
   const L = { from: S.townName || 'The Haven', day: S.day, lvl: S.lvl, vets, heir: legSel.heir, perks: legSel.perks.slice(0, legacyPerkN()) };

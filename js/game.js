@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.378', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.379', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -2749,9 +2749,9 @@ const REC_KEY = 'zhRecords';
 function records() { try { return JSON.parse(localStorage.getItem(REC_KEY) || '{}'); } catch (e) { return {}; } }
 function winGame() {
   if (S.won || !S.sv.length) return; const sc = scoreOf(), lost = (S.fallen || []).length; S.won = { day: S.day, score: sc, alive: S.sv.length, lost }; S.finale = null; S.z.forEach((z) => { if (z.type === 'boss' || z.mob) { z.hp = 0; z.escaped = true; } });
-  const k = recKey(), R = records(), prev = R[k], best = !prev || sc > prev.score; if (best) { R[k] = { score: sc, day: S.day, name: S.townName || 'Zombie Haven', t: Date.now() }; try { localStorage.setItem(REC_KEY, JSON.stringify(R)); } catch (e) { /* ignore */ } }
+  const k = recKey(), R = records(), prev = R[k], best = !testTown() && (!prev || sc > prev.score); if (best) {   /* 3D.379 a test town sets no record */ R[k] = { score: sc, day: S.day, name: S.townName || 'Zombie Haven', t: Date.now() }; try { localStorage.setItem(REC_KEY, JSON.stringify(R)); } catch (e) { /* ignore */ } }
   renownGain(50, 'The convoy arrived'); SFX('reward'); saveGame();
-  showEventPopup({ title: '🚚 THE CONVOY ARRIVES', text: `${esc(S.townName || 'The Haven')} held out. The convoy rolls in at dawn on day ${S.day}.<br><br>${ST().icon} ${ST().name} · ${DF().icon} ${DF().name}${modTag()}<br>${S.sv.length} survivors · ${lost} lost · ${legacyDone()}/${LEGACY.length} legacy goals<br><br><b style="font-size:26px">Score ${sc}</b>${best ? '<br>🏆 New best for this set-up!' : `<br>Best so far: ${prev.score}`}`, gains: 'You can keep playing this town, or start a new one with another start or difficulty.' });
+  showEventPopup({ title: '🚚 THE CONVOY ARRIVES', text: `${esc(S.townName || 'The Haven')} held out. The convoy rolls in at dawn on day ${S.day}.<br><br>${ST().icon} ${ST().name} · ${DF().icon} ${DF().name}${modTag()}<br>${S.sv.length} survivors · ${lost} lost · ${legacyDone()}/${LEGACY.length} legacy goals<br><br><b style="font-size:26px">Score ${sc}</b>${testTown() ? '<br>Test town: no record kept.' : best ? '<br>🏆 New best for this set-up!' : `<br>Best so far: ${prev.score}`}`, gains: 'You can keep playing this town, or start a new one with another start or difficulty.' });
 }
 /* V2.29 difficulty: zombies grow tougher every day and with the survivors' levels, so the Haven never gets comfortable */
 let dangerT = -1, dangerV = 1;
@@ -5786,6 +5786,7 @@ function showLegacy() {
   showPanel("Founders' legacy");
 }
 function legacySave() {
+  if (testTown()) { say('A test town leaves no legacy.'); return false; }   /* 3D.379 W274 */
   const vets = legSel.vets.map((id) => S.sv.find((q) => q.id === id)).filter(Boolean).map((q) => ({ name: q.name, job: q.job, l: q.l, st: q.st, trait: q.trait, age: q.age, south: q.south, skills: q.skills }));
   if (!vets.length) { say('Pick at least one veteran.'); return false; }
   const L = { from: S.townName || 'The Haven', day: S.day, lvl: S.lvl, vets, heir: legSel.heir, perks: legSel.perks.slice(0, legacyPerkN()) };
@@ -9300,6 +9301,36 @@ async function init() {
   if (loadedFrom === 'bak') note('important', '💾 LOADED THE DAY BACKUP', { log: `The latest save of this slot was damaged, so the backup from Day ${S.day} was loaded. The damaged copy was kept.` });
   if (saveBlocked === 'load') showEventPopup({ title: '💾 SAVE COULD NOT BE OPENED', text: `The town in slot ${SLOT} could not be loaded. <b>Nothing was overwritten</b>: this town will not save while you look around.<br><br>On the main screen, <b>Start → Backups</b> can export the file or import an older backup.`, buttons: [{ label: 'MAIN SCREEN', fn: () => { location.href = location.pathname; } }, { label: 'LOOK AROUND' }] });
 }
+/* ---------------- 3D.379 W274 step 1: test towns (owner, 25 Nov: "A large part of the game I am not able to test because it will take time to
+   reach the level or area"; "w274 yes to plan"). Title screen → Test towns: ready-made towns the balance bot played up to levels 3 to 20
+   (assets/testtowns/, remade by tools/build/test_towns.py when saves change). One loads into slot 3, never slot 1: the town that was in slot 3
+   stays as that slot's day backup, as with Backups → Import. A test town is marked (S.testTown): it never sets a trophy record or leaves a
+   legacy, and its name says it is a test. ---------------- */
+const TT_DIR = 'assets/testtowns/', TT_SLOT = 2;
+const testTown = () => !!(S && S.testTown);
+let ttArm = null;
+async function ttIndex() { const r = await fetch(TT_DIR + 'index.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+function ttButton() {   /* the title's button, made here so the published page (its own index.html) gets it too */
+  if ($('tTT')) return; const g = $('tGear') || $('tSvt'); if (!g) return; const b = document.createElement('button'); b.className = 'act tbtn'; b.id = 'tTT'; b.textContent = 'Test towns'; g.after(b); b.onclick = () => { ttArm = null; showTestTowns(); };
+}
+function showTestTowns(msg) {
+  $('title').style.display = 'none'; const box = $('slots'); box.style.display = 'flex'; box.querySelector('.sHead').textContent = 'Test towns'; $('sBak').style.display = 'none';
+  const list = box.querySelector('.slist'); list.innerHTML = '<div class="card sm">Loading…</div>'; $('sBack').onclick = () => { ttArm = null; showTitle(); };
+  ttIndex().then((idx) => { const x = slotInfo(TT_SLOT), keep = x && !x.broken && !x.test;
+    list.innerHTML = (msg ? `<div class="card sm" id="ttMsg" style="color:#b0402a">${esc(msg)}</div>` : '') + `<div class="card sm" id="ttNote" style="color:#2a2a5a;background:#f3f6f9">Towns played ahead by the bot. One loads into <b>slot 3</b>${keep ? `, in place of ${esc(x.name)} (Day ${x.day}), which is kept as the slot's backup` : ''}. Slot 1 is never touched.</div>`
+      + idx.towns.map((t) => `<div class="slot" data-tt="${t.lvl}"><span class="snum">${t.lvl}</span><span class="sinfo"><b>Level ${t.lvl}</b><small>Day ${t.day} · 👥 ${t.pop} · 🏠 ${t.bld}</small><small class="sago">${ttArm === t.lvl ? 'Tap again to replace slot 3' : 'Made with ' + esc(idx.build || '?')}</small></span></div>`).join('');
+    list.querySelectorAll('[data-tt]').forEach((el) => { el.onclick = () => ttLoad(+el.dataset.tt, keep, idx); });
+  }).catch((e) => { list.innerHTML = `<div class="card sm" id="ttMsg">The test towns could not be loaded (${esc(String(e && e.message || e))}).</div>`; });
+}
+async function ttLoad(lvl, keep, idx) {
+  if (keep && ttArm !== lvl) { ttArm = lvl; showTestTowns(); return; }
+  const t = idx.towns.find((q) => q.lvl === lvl); let o;
+  try { const r = await fetch(TT_DIR + t.file, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); o = await r.json(); } catch (e) { showTestTowns('Could not load the level ' + lvl + ' town (' + (e && e.message || e) + ').'); return; }
+  const sv = o.zhBackup ? o.save : o; if (!sv || !sv.S) { showTestTowns('The level ' + lvl + ' town file is damaged.'); return; }
+  sv.S.testTown = { lvl, build: idx.build || '' }; sv.S.townName = 'Test · Level ' + lvl;
+  const w = importBackup(TT_SLOT, JSON.stringify(o.zhBackup ? { ...o, save: sv } : sv)); ttArm = null; if (!w.ok) { showTestTowns(w.why); return; }
+  playSlot(TT_SLOT);
+}
 /* ---------------- 3D.32 Zombie test page (?zoo): every zombie type lined up on the map, frozen, with name tags and a list.
    Since 3D.183 it shows one at a time (tap a card) with Stand / Walk / Run / Attack played on the spot; "Show all" is the line-up. Nothing is saved. */
 const ZOO_ROWS = [['walker', 'crawler', 'runner', 'bloated', 'spitter', 'thrower', 'brute', 'sporehead', 'raider'], ['lasher', 'rotbomb', 'stalker', 'screamer', 'riot', 'burnt', 'dog', 'alpha', 'boss']], ZOO_GRID = [['lasher', 'rotbomb', 'stalker'], ['screamer', 'riot', 'burnt'], ['dog', 'alpha', 'boss'], ['walker', 'crawler', 'runner', 'bloated'], ['spitter', 'brute', 'sporehead', 'raider']];
@@ -9495,7 +9526,7 @@ function zooStart() {
 function slotRaw(i) { const k = SLOT_KEYS[i]; return readKey(k) || readKey(BAK(k)) || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || null; }
 function slotInfo(i) {   /* V2.42: a damaged slot shows its day backup if there is one */
   const k = SLOT_KEYS[i], main = readKey(k), bak = readKey(BAK(k)), raw = main || (i === 0 && (readKey(PREV_KEY) || readKey(OLD_KEY))) || bak; if (!raw) return null;
-  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '', diff: st.diff || 'normal', start: st.start || 'camp', won: !!st.won, finale: !!st.finale }; } catch (e) { return null; } };
+  const info = (r) => { try { const d = JSON.parse(r); if (!validSave(d, !d.sv)) return null; const st = d.S || {}; return { name: st.townName || 'Zombie Haven', day: st.day || 1, rank: st.rank || 1, pop: (d.sv || st.sv || []).length, mat: Math.floor(st.mat || 0), time: d.time || 0, ver: d.version || '', diff: st.diff || 'normal', start: st.start || 'camp', won: !!st.won, finale: !!st.finale, test: !!st.testTown }; } catch (e) { return null; } };
   const x = info(raw); if (x) return main || raw !== bak ? x : { ...x, fromBak: true };
   const y = bak && raw !== bak && info(bak); return y ? { ...y, fromBak: true } : { broken: true };
 }
@@ -9511,6 +9542,7 @@ function showTitle() {
   const latest = [0, 1, 2].map((i) => [i, slotInfo(i)]).filter(([, x]) => x && !x.broken).sort((a, b) => b[1].time - a[1].time)[0];
   $('tCont').style.display = latest ? 'block' : 'none'; if (latest) { $('tCont').innerHTML = `Continue<small>${esc(latest[1].name)} · Day ${latest[1].day}</small>`; $('tCont').onclick = () => playSlot(latest[0]); }
   if (document.documentElement.classList.contains('cozy')) { const t = document.querySelector('.tLogo .tsub'); if (t) t.textContent = 'a cozy end of the world'; $('tStart').textContent = 'New game'; }
+  ttButton();   /* 3D.379 W274 */
   $('tStart').onclick = showSlots; { const zb = $('tZoo'); if (zb) zb.onclick = () => { const q = new URLSearchParams(location.search); q.set('zoo', '1'); location.search = q.toString(); }; } { const sb = $('tSvt'); if (sb) sb.onclick = () => { const q = new URLSearchParams(location.search); q.set('svt', '1'); location.search = q.toString(); }; } { const gb = $('tGear'); if (gb) gb.onclick = () => { const q = new URLSearchParams(location.search); q.set('gear', '1'); location.search = q.toString(); }; }   /* 3D.151 */   /* 3D.32 */ { const R = Object.entries(records()).sort((a, b) => b[1].score - a[1].score)[0]; $('tVer').textContent = 'ver ' + VERSION + ((' · ' + BUILD_TAG)) + (R ? ` · 🏆 ${R[1].score} (${(STARTS[R[0].split('/')[0]] || STARTS.camp).name}, ${(DIFFS[R[0].split('/')[1]] || DIFFS.normal).name})` : ''); }
 }
 let slotDel = null;

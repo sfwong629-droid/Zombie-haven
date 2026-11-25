@@ -1,7 +1,7 @@
 [
  {
   "file": "01-core.js",
-  "starts": "/* Zombie Haven V2.6 — game (single IIFE; built from tools/parts/p1..p3 by tools/build_game.sh). */"
+  "starts": "/* Zombie Haven V2.6 \u2014 game (single IIFE; built from tools/parts/p1..p3 by tools/build_game.sh). */"
  },
  {
   "file": "02-draw.js",
@@ -110,6 +110,10 @@
  {
   "file": "26-input-loop-init.js",
   "starts": "/* ---------------- input ---------------- */"
+ },
+ {
+  "file": "26b-test-towns.js",
+  "starts": "/* ---------------- 3D.379 W274 step 1: test towns (owner, 25 Nov: \"A large part of the game I am not able to test because it will take time to"
  },
  {
   "file": "27-test-pages-title-backups.js",

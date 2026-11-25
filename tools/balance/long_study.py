@@ -16,7 +16,8 @@ SETUP = """(sd)=>{let x=sd;Math.random=()=>{x=(x*1103515245+12345)%2147483648;re
 DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day:S.day,spawn:{},night:{},peak:0,peakNight:0,bossNight:false,raid:0,issues:[]};
   const flag=(k,v)=>{const key=k+'|'+v;if(L.flags[key])return;L.flags[key]=1;if(day.issues.length<40)day.issues.push(k+': '+v);};
   let stepErr=null;
-  for(let h=0;h<(H||24);h++){for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
+  for(let h=0;h<(H||24);h++){if(window.__fastLv&&S.lvUp)S.lvUp.left=1;   /* FAST_LVL=1 (W274 test towns): no wait for a level once it is started */
+    for(let k=0;k<1000;k+=60){try{ZH.step(60);ZH.tripUpdate();AP.tick();}catch(e){stepErr=String(e&&e.stack||e).slice(0,400);break;} __flushTimers();
       const act=S.z.filter(z=>z.hp>0&&!z.human&&z.mode!=='zleave').length; if(S.hour>=6&&S.hour<20) day.peak=Math.max(day.peak,act); else day.peakNight=Math.max(day.peakNight,act);
       { const on=!!S.vanguard||S.bossOn!=null;   /* one record per boss event: how many of its horde arrived, from the first group until the horde is gone (it may cross midnight and this tool's day line) */
         if(on&&!L.hd)L.hd={n:0,lvl:S.lvl,day:S.day,h0:S.hour,d0:AP.deaths.length,k0:AP.downs.length,lvlBoss:!!S.vanguard||S.bossDay===S.day,bossH:null,peak:0};
@@ -43,7 +44,7 @@ DAY = """(H)=>{const S=ZH.S,L=__L,W=ZH.world,t0=performance.now();const day={day
   for(const j of (S.sites||[])){const d0=L.site.get(j)||(L.site.set(j,S.day),S.day);if(S.day-d0===10)flag('building site unfinished after 10 game days',((j.b&&j.b.type)||j.type||'?')+' day '+S.day);}
   day.autoHelp=(S.help&&S.help.auto)||0;if(day.raidAt)day.raidAt=[...new Set(day.raidAt)];day.zLeft=S.z.filter(z=>z.hp>0&&!z.human).length;day.zAll=S.z.length;
   const snap=AP.snap();Object.assign(day,snap);
-  day.downs=AP.downs.length-L.downs0;L.downs0=AP.downs.length;L.deaths0=L.deaths0||0;day.deathsDay=AP.deaths.length-L.deaths0;L.deaths0=AP.deaths.length;day.dayEnd=S.day;day.lvLeft=S.lvUp?Math.round((S.lvUp.left||0)/60000):null;day.unmet=ZH.rankConds?ZH.rankConds().filter(c=>!c.ok&&c.have<c.need).map(c=>c.name+' '+c.have+'/'+c.need).join('; '):'';
+  day.downs=AP.downs.length-L.downs0;L.downs0=AP.downs.length;L.deaths0=L.deaths0||0;day.deathsDay=AP.deaths.length-L.deaths0;L.deaths0=AP.deaths.length;day.dayEnd=S.day;day.lvLeft=S.lvUp?Math.round((S.lvUp.left||0)/60000):null;day.unmet=ZH.rankConds?(ZH.rankConds()||[]).filter(c=>!c.ok&&c.have<c.need).map(c=>c.name+' '+c.have+'/'+c.need).join('; '):'';
   day.lvl=S.lvl||1;day.banners=(S.banners||[]).map(b=>b.route).join(',');day.cloth=Math.round(S.cloth||0);day.inv=(S.inv||[]).length;
   day.cap=ZH.supplyCap?ZH.supplyCap():null;day.mcap=ZH.matCap?ZH.matCap():null;day.scap=ZH.scrapCap?ZH.scrapCap():null;
   day.fighters=S.sv.filter(q=>['Guard','Police Officer','Soldier'].includes(q.job)).length;day.left=S.left||0;{const st=ZH.supplyStats();day.wIn=+st.wIn.toFixed(1);day.wNet=+st.wNet.toFixed(1);day.fIn=+st.fIn.toFixed(1);day.fNet=+st.fNet.toFixed(1);}day.convoys=S.convoys||0;day.staffed=W.buildings.filter(b=>b.staff).length;day.gear=S.sv.filter(q=>q.armor||(q.gear&&q.gear.armor)).length;day.jobs={};for(const q of S.sv)day.jobs[q.job]=(day.jobs[q.job]||0)+1;
@@ -61,7 +62,7 @@ async def main():
             init = "try{if(!sessionStorage.getItem('zhPut')){localStorage.setItem('zombieHavenR1'," + json.dumps(sv) + ");localStorage.setItem('zhSlot','1');sessionStorage.setItem('zhPut','1');}}catch(e){}"
         ctx, pg, errs = await R.open_game(br, port, 'long%d' % seed, init)
         if init: print('start: day', await pg.evaluate('ZH.S.day'), 'level', await pg.evaluate('ZH.S.lvl'), 'people', await pg.evaluate('ZH.S.sv.length'), flush=True)
-        await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("(v)=>{AP.exp=true;AP.long=v}", os.environ.get('AP_LONG', '1') == '1')
+        await pg.evaluate(SETUP, seed); await pg.evaluate(AP); await pg.evaluate("(v)=>{window.__fastLv=v}", os.environ.get('FAST_LVL') == '1'); await pg.evaluate("(v)=>{AP.exp=true;AP.long=v}", os.environ.get('AP_LONG', '1') == '1')
         f = open(os.path.join(out, 's%d.jsonl' % seed), 'a'); n = 0
         checkin = float(os.environ.get('CHECKIN_MIN', '0')); first = float(os.environ.get('FIRST_MIN', '0')); away_h = float(os.environ.get('AWAY_H', '24'))   # a player profile: CHECKIN_MIN real minutes of play, then AWAY_H real hours away (the game's own away credit), MAX_DAYS check-ins
         while n < maxd and time.time() - t0 < budget:
@@ -70,6 +71,15 @@ async def main():
                 d['checkin'] = n + 1; d['realDay'] = round((n + 1) * (away_h + checkin / 60) / 24, 2)
                 d['away'] = await pg.evaluate("(ms)=>{__awayMs+=ms;let r=null;try{r=ZH.awayCredit(ms);ZH.tripUpdate();}catch(e){r={err:String(e)}}return r&&{hours:r.hours,err:r.err}}", away_h * 3600 * 1000)
             d['errs'] = errs[:]; errs.clear(); f.write(json.dumps(d) + '\n'); f.flush(); n += 1
+            if os.environ.get('ASSIST_BUILD') == '1' and str(d.get('unmet') or '').startswith('Buildings standing'):   # W274 test towns only: the bot's plan runs out of buildings at about 33; start one cheap building on free land
+                await pg.evaluate("""()=>{const Z=ZH,S=Z.S,W=Z.world,Wd=Z.Wd,D=Wd.DEFS,B=Wd.BUILD,cx=(B.x0+B.x1)/2,cy=(B.y0+B.y1)/2;if((S.sites||[]).length)return;
+                  for(const t of ['barrel','tent','crates','farm','cabin','storage']){const d=D[t];if(!d||(d.rank||1)>S.rank||!Z.canPay(Z.bCost(d)))continue;let best=null,bd=1e9;
+                    for(let y=B.y0;y<=B.y1-d.h+1;y++)for(let x=B.x0;x<=B.x1-d.w+1;x++){if(!Wd.placementCheck(W,x,y,d,null).ok)continue;const dd=Math.hypot(x-cx,y-cy);if(dd<bd){bd=dd;best={x,y};}}
+                    if(best){Z.newSite(t,best.x,best.y);return t;}}}""")
+            for lv in [int(x) for x in os.environ.get('SAVE_LVLS', '').split(',') if x]:   # W274: keep the town the first time it reaches each of these levels (test towns)
+                if d.get('lvl', 0) >= lv and not os.path.exists(os.path.join(out, 's%d_L%d.json' % (seed, lv))):
+                    b = await pg.evaluate("()=>{try{ZH.saveGame&&ZH.saveGame();return ZH.backupText?ZH.backupText((ZH.SLOT||1)-1):null}catch(e){return null}}")
+                    if b: open(os.path.join(out, 's%d_L%d.json' % (seed, lv)), 'w').write(b); print('seed', seed, 'saved level', lv, 'day', d['day'], flush=True)
             if d.get('stepErr') or d.get('sv', 1) == 0: break
             if n % 10 == 0:
                 try:
