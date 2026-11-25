@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.357', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.358', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -8026,9 +8026,49 @@ function workplacesHtml() {
     + `<details class="card"><summary><b>Which job works where</b></summary>${Object.entries(Object.entries(STAFF_JOBS).reduce((a, [f, js]) => { for (const j of js) (a[j] = a[j] || new Set()).add(f); return a; }, {})).map(([j, fs]) => `<div class="sm" style="margin-top:4px"><b>${j}</b>: ${[...new Set([...fs].flatMap((f) => Object.values(DEFS).filter((d) => d.fam === f && d.slot).map((d) => d.name)))].join(', ')}</div>`).join('')}</details>`;
 }
 let jTab = 'people';
+/* 3D.358 (owner, 24 Nov, W249: "do next screen"; W270: less reading): Jobs in the phone look. People: who can be promoted first, then everyone under
+   their job, one line each (name, level, Specialist or Hybrid icon). Workplaces: a staffed bar and one Fill button, then Empty and Staffed lists,
+   a second line only when something is wrong (no one free, wrong job). The rules are behind "How it works ›". Same ids as the old screen. */
+function jobsPhone(back, bk) {
+  const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`;
+  const slots = slotBs(), emp = slots.filter((b) => !b.staff).length;
+  let h = `<div class="phJobs"><div class="phSeg">${[['people', 'People'], ['work', 'Workplaces' + (emp ? ` <i class="phBadge">${emp}</i>` : '')]].map(([k, t]) => `<button data-tab="${k}" class="${k === jTab ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  if (jTab === 'work') {
+    const L = slots.slice().sort((x, y) => DEFS[x.type].name.localeCompare(DEFS[y.type].name)), E = L.filter((b) => !b.staff), F = L.filter((b) => b.staff);
+    const canFill = E.some((b) => freeFor(STAFF_JOBS[DEFS[b.type].fam] || []).length || (FAMRES(DEFS[b.type].fam) && freeFor(['Civilian']).length));
+    const th = (b) => `<span class="th">${bImg(b.type, 46, 40)}</span>`;
+    const eRow = (b) => { const jobs = STAFF_JOBS[DEFS[b.type].fam] || [], fr = freeFor(jobs).length;
+      return `<div class="phR tall" data-wp="${world.buildings.indexOf(b)}" role="button">${th(b)}<span class="tx"><b>${esc(DEFS[b.type].name)}</b>${fr ? '' : `<small class="bad">No free ${jobs.join(' or ')}</small>`}</span><span class="v">${b.noStaff ? 'Off' : fr ? `${fr} free` : ''}</span>${ch}</div>`; };
+    const fRow = (b) => { const f = fitOf(b, b.staff);
+      return `<div class="phR tall" data-wp="${world.buildings.indexOf(b)}" role="button">${th(b)}<span class="tx"><b>${esc(DEFS[b.type].name)}</b>${f === 'wrong' ? `<small class="bad">Wrong job: slower</small>` : ''}</span><span class="v">${esc(b.staff.name)}</span>${ch}</div>`; };
+    const pct = L.length ? Math.round(F.length / L.length * 100) : 0;
+    h += grp(`<div class="phR phBar"><b>Staffed</b><span class="phBarT"><i style="width:${pct}%;background:${emp ? '#f0a24a' : '#7fd6a8'}"></i></span><em>${F.length} of ${L.length}</em></div>`)
+      + (emp ? (canFill ? `<button class="act go phWide" id="wpFill">Fill ${emp} empty</button>` : '') : '')
+      + (L.length ? (E.length ? sec('Empty') + grp(E.map(eRow).join('')) : '') + (F.length ? sec('Staffed') + grp(F.map(fRow).join('')) : '') : `<div class="phFootN">No workplaces yet.</div>`)
+      + sec('') + grp(`<div class="phR" id="jHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`)
+      + `<div class="phHow" style="display:none">${grp(`<div class="phPad">Each workplace takes one worker. The right job: +50%. A Civilian: +25%. Anyone else: slower than empty.</div>` + Object.entries(Object.entries(STAFF_JOBS).reduce((a, [f, js]) => { for (const j of js) (a[j] = a[j] || new Set()).add(f); return a; }, {})).map(([j, fs]) => `<div class="phR tall"><span class="tx"><b>${j}</b><small>${[...new Set([...fs].flatMap((f) => Object.values(DEFS).filter((d) => d.fam === f && d.slot).map((d) => d.name)))].join(', ')}</small></span></div>`).join(''))}</div>`;
+  } else {
+    const ready = (q) => { const sp = SPECS[q.job]; return (sp && !q.spec && !specWhy(q)) || (!q.hyb && hybOptions(q).some((hh) => !hybWhy(q, hh))); };
+    const badge = (q) => { const hb = q.hyb && HYBRIDS.find((x) => x.k === q.hyb); return hb ? hb.icon : q.spec && SPECS[q.spec] ? SPECS[q.spec].icon : ''; };
+    const row = (q) => `<div class="phR tall" data-sv="${q.id}" role="button">${pplFace(q)}<span class="tx"><b>${esc(fullName(q))} <span class="n">${badge(q)}</span></b></span><span class="v">${ready(q) ? '<b class="go">Promote</b>' : 'Lv ' + q.l}</span>${ch}</div>`;
+    const all = S.sv.slice().sort((a, b) => (b.l || 1) - (a.l || 1) || a.name.localeCompare(b.name)), R = all.filter(ready), jobs = [...new Set(all.map((q) => q.job))].sort();
+    h += (specSlots() + hybSlots() ? grp(`<div class="phR"><span class="k">Specialists</span><span class="v">${specsUsed()} of ${specSlots()}</span></div>` + (hybSlots() ? `<div class="phR"><span class="k">Hybrids</span><span class="v">${hybsUsed()} of ${hybSlots()}</span></div>` : '')) : '')
+      + (R.length ? sec('Ready to promote') + grp(R.map(row).join('')) : '')
+      + jobs.map((j) => sec(j) + grp(all.filter((q) => q.job === j && !R.includes(q)).map(row).join(''))).filter((x) => !x.endsWith('<div class="phCard"></div>')).join('')
+      + sec('') + grp(`<div class="phR" id="jHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`)
+      + `<div class="phHow" style="display:none">${sec('Specialists · Haven level 4 · job level 5 · ' + costShort(SPEC_COST))}${grp(Object.entries(SPECS).map(([j, sp]) => `<div class="phR tall"><span class="tx"><b>${sp.icon} ${sp.name}</b><small>${j}: ${sp.desc}</small></span></div>`).join(''))}${sec('Hybrids · Haven level 9 · level 10 in two jobs · ' + costShort(HYB_COST))}${grp(HYBRIDS.map((x) => `<div class="phR tall"><span class="tx"><b>${x.icon} ${x.name}</b><small>${x.a} + ${x.b}: ${x.desc}</small></span></div>`).join(''))}</div>`;
+  }
+  $('ib').innerHTML = h + '</div>'; showPanel('Jobs', bk);
+  $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showJobs(back, x.dataset.tab); });
+  { const f = $('wpFill'); if (f) f.onclick = () => { fillSlots(); showJobs(back, 'work'); }; }
+  { const w = $('jHow'), hw = $('ib').querySelector('.phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; w.classList.toggle('open', o); if (o) hw.scrollIntoView({ block: 'nearest' }); }; }
+  $('ib').querySelectorAll('[data-wp]').forEach((el) => { el.onclick = () => { const b = world.buildings[+el.dataset.wp]; if (b) { showBuildingInfo(b); panelBack = () => showJobs(back, 'work'); $('pBack').style.display = 'block'; } }; });
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const q = S.sv.find((x) => x.id === +el.dataset.sv); if (q) { uTab = 'skills'; unitPanel(q); panelBack = () => showJobs(back); $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Jobs'; } }; });
+}
 function showJobs(back, tab) {   /* More > Jobs: who does what, who can be promoted, and what each Specialist and Hybrid gives */
   if (tab) jTab = tab;
   endBuildMode(true); closeP(); const L = pfList(S.sv.slice()), bk = back || showMore;
+  if (phoneOn()) return jobsPhone(back, bk);
   if (jTab === 'work') {
     const emp = slotBs().filter((b) => !b.staff).length;
     $('ib').innerHTML = tabBar([['people', 'People'], ['work', 'Workplaces' + (emp ? ' (' + emp + ' empty)' : '')]], 'work') + workplacesHtml(); showPanel('Jobs', bk);

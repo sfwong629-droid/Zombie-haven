@@ -178,3 +178,11 @@ html.phone .phNote .apI { width: 36px; height: 36px; border-radius: 10px; displa
 html.phone .phNote .apI svg, html.phone .phNote .apI img { width: 24px; height: 24px; }
 html.phone .phNote .apA { padding: 7px 14px; font-size: 13px; } html.phone .phNote .apM span { width: 26px; height: 26px; border: 0; background: rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .65); }
 html.phone .alertPop.phNote { margin-top: 30px; }   /* clear of the Renown chip on the right */
+/* 3D.358 (W249, W270): Jobs in the phone look. Grouped lists, one line a row, a red count on the Workplaces segment, the rules behind How it works */
+html.phone .phJobs { padding: 0 2px 10px; font-family: Manrope, system-ui, sans-serif; } html.phone .phJobs .phSeg { margin: 4px 0 12px; } html.phone .phJobs .phCard { border-radius: 14px; background: rgba(255, 255, 255, .08); }
+html.phone .phJobs .phSec { margin: 16px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); } html.phone .phJobs .phSec:empty { margin: 10px 0 0; }
+html.phone .phJobs .phPad { padding: 12px 14px; font-size: 15px; line-height: 1.4; } html.phone .phJobs .phR.tall .tx small { white-space: normal; } html.phone .phJobs .phR .tx small.bad { color: #ffb37a; }
+html.phone .phJobs .phR .th { width: 48px; height: 44px; } html.phone .phJobs .phR .th img, html.phone .phJobs .phR .th svg { max-width: 46px; max-height: 40px; object-fit: contain; } html.phone .phJobs .phR.tall:has(.th) + .phR.tall::before, html.phone .phJobs .phR.tall:has(.phFace) + .phR.tall::before { left: 72px; }
+html.phone .phJobs .phR.tall .v { flex: none; max-width: 42%; } html.phone .phJobs .phBar b { width: 66px; } html.phone .phJobs .phBar em { width: auto; min-width: 60px; color: #fff; } html.phone .phJobs .phBarT i { display: block; height: 6px; border-radius: 3px; }
+html.phone .phJobs #jHow.open .phChv { transform: rotate(90deg); } html.phone .phJobs .phHow .phSec { text-transform: none; }
+html.phone .phBadge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 4px; padding: 0 6px; border-radius: 10px; background: #ff5a4f; color: #fff; font: 800 12px Manrope, system-ui, sans-serif; font-style: normal; vertical-align: 1px; }
