@@ -251,3 +251,15 @@ html.phone .phLog .phR.lg .k { flex: 1; min-width: 0; overflow: hidden; text-ove
 html.phone .phLog .phR.lg.imp .k, html.phone .phLog .phR.lg.crit .k { color: #fff; font-weight: 600; }
 html.phone .phLog .phR.lg.open .k { white-space: normal; overflow: visible; line-height: 1.35; padding: 6px 0; }
 html.phone .phLog .phR .k.dim { color: rgba(255, 255, 255, .5); }
+
+/* 3D.369 (W249, W270): the trader like a shop app */
+html.phone .phTrade .phSec { margin: 18px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); }
+html.phone .phTrade .phR .k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } html.phone .phTrade .phR .v { flex: none; color: rgba(255, 255, 255, .55); } html.phone .phTrade .phR .v.good { color: #9fe07a; font-weight: 700; }
+html.phone .phTrade .trO .th { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; background: rgba(255, 255, 255, .1); font-size: 24px; overflow: hidden; } html.phone .phTrade .trO .th img, html.phone .phTrade .trO .th svg { width: 34px; height: 34px; object-fit: contain; }
+html.phone .phTrade .trO .tx { flex: 1; min-width: 0; } html.phone .phTrade .trO .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.phone .phTrade .trO .tx small.bad { color: #ffb07a; } html.phone .phTrade .trO .tx small.dt { display: none; color: rgba(255, 255, 255, .62); white-space: normal; line-height: 1.35; } html.phone .phTrade .trO.open .tx small.dt { display: block; }
+html.phone .phTrade .trO.sold { opacity: .5; } html.phone .phTrade .phMini { font-variant-numeric: tabular-nums; white-space: nowrap; } html.phone .phTrade .phMini.off { background: rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .55); box-shadow: none; }
+html.phone .phTrade .trS .k .ar { font-style: normal; color: rgba(255, 255, 255, .5); margin: 0 4px; } html.phone .phTrade .trS .v { margin-right: 4px; }
+html.phone .phTrade .phMini { min-width: 0; padding: 0 12px; font-size: 14px; letter-spacing: -.2px; } html.phone .phTrade .phR.tall { gap: 10px; }
+@container (max-width: 330px) { html.phone .phTrade .trO .th { width: 38px; height: 38px; } }
+html.phone .phTrade .pc { white-space: nowrap; }

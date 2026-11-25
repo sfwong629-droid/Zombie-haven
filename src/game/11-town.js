@@ -423,8 +423,32 @@ function traderTrade(i) {
   const T = S.trader, t = TRADES[i]; if (!T || (T.ex[i] || 0) >= 3) return false; const c = i < 2 ? t.give : priced(t.give); if (!canPay(c)) return false;
   for (const [k, v] of Object.entries(c)) S[k] -= v; for (const [k, v] of Object.entries(t.get)) S[k] += v; T.ex[i] = (T.ex[i] || 0) + 1; saveGame(); ui(); return true;
 }
+let trTab = 'buy';
+function traderPhone() {   /* 3D.369 (W249, W270): the trader like a shop app: Buy / Swap, one line per offer with its price on the button; the details on a tap */
+  const T = S.trader, disc = Math.round(traderDisc() * 100), ch = `<i class="phChv">${phG('ch', 14)}</i>`;
+  const grp = (x) => `<div class="phCard">${x}</div>`, sec = (t) => `<div class="phSec">${t}</div>`, pr = (c) => Object.entries(c).map(([k, v]) => `<span class="pc">${RES_ICON[k] || ''}${v}</span>`).join(' ');
+  const ico = (o) => { if (o.k === 'item' && window.ZHItemIcons && ZHItemIcons.has(o.id)) return ZHItemIcons.svg(o.id, 30); const src = o.k === 'item' && window.ZHItems && ZHItems.icon(o.id); return src ? `<img class="pix" src="${src}" alt="">` : o.k === 'pet' ? (o.id === 'dog' ? '🐕' : '🐈') : o.k === 'rp' ? '📜' : o.k === 'ex' ? EX_DEFS[o.id].icon : '📦'; };
+  const name = (o) => o.k === 'item' ? ITEMS[o.id].name : o.k === 'ex' ? `${o.n} ${EX_DEFS[o.id].name}s` : o.k === 'pet' ? PETS[o.id].name : `Research notes`;
+  const more = (o) => o.k === 'item' ? itemText(ITEMS[o.id]) + iQuip(o.id) : o.k === 'ex' ? EX_DEFS[o.id].desc : o.k === 'pet' ? PETS[o.id].desc : `+${o.n} research points`;
+  const buy = (o, i) => { const c = priced(o.cost), ok = canPay(c);
+    return `<div class="phR tall trO${o.sold ? ' sold' : ''}" data-tr="${i}" role="button"><span class="th">${ico(o)}</span><span class="tx"><b>${esc(name(o))}</b>${!o.sold && !ok ? `<small class="bad">Need ${missText(c)}</small>` : ''}<small class="dt">${more(o)}</small></span>`
+      + (o.sold ? `<span class="v">Sold</span>` : `<button class="act phMini${ok ? ' go' : ' off'}" data-buy="${i}">${pr(c)}</button>`) + `</div>`; };
+  const swap = (t, i) => { const c = i < 2 ? t.give : priced(t.give), left = 3 - (T.ex[i] || 0), ok = left > 0 && canPay(c);
+    return `<div class="phR trS"><span class="k">${pr(c)} <i class="ar">→</i> ${pr(t.get)}</span><span class="v">${left ? left + ' left' : 'Done'}</span>${left ? `<button class="act phMini${ok ? ' go' : ' off'}" data-trade="${i}">Swap</button>` : ''}</div>`; };
+  let h = `<div class="phSet phTrade"><div class="phSeg">${[['buy', 'Buy'], ['swap', 'Swap']].map(([k, t]) => `<button data-tt="${k}" class="${k === trTab ? 'on' : ''}">${t}</button>`).join('')}</div>`
+    + grp(`<div class="phR"><span class="k">Leaves</span><span class="v">19:00</span></div>` + (disc ? `<div class="phR"><span class="k">Your price</span><span class="v good">−${disc}%</span></div>` : ''));
+  h += trTab === 'swap' ? sec('Each 3 times a visit') + grp(TRADES.map(swap).join('')) : sec('For sale') + grp(T.stock.map(buy).join(''));
+  h += sec('') + grp(`<div class="phR" id="trHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`)
+    + `<div class="phHow" style="display:none">${grp(`<div class="phPad">The trader stays until 19:00. Your survivor with the best Charisma gets you a discount, and a Trading Post takes 15% more off. Each swap can be done 3 times a visit. What you buy goes to the stash.</div>`)}</div></div>`;
+  $('ib').innerHTML = h; showPanel('Trader');
+  $('ib').querySelectorAll('[data-tt]').forEach((b) => { b.onclick = () => { trTab = b.dataset.tt; showTrader(); }; });
+  $('ib').querySelectorAll('[data-buy]').forEach((x) => { x.onclick = (e) => { e.stopPropagation(); if (traderBuy(+x.dataset.buy)) showTrader(); }; });
+  $('ib').querySelectorAll('[data-trade]').forEach((x) => { x.onclick = () => { if (traderTrade(+x.dataset.trade)) showTrader(); }; });
+  $('ib').querySelectorAll('.trO').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
+  { const w = $('trHow'), hw = $('ib').querySelector('.phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; if (o) hw.scrollIntoView({ block: 'nearest' }); }; }
+}
 function showTrader() {
-  const T = S.trader; if (!T) return; selected = null; closeP(); $('it').textContent = 'WANDERING TRADER'; const disc = Math.round(traderDisc() * 100);
+  const T = S.trader; if (!T) return; selected = null; closeP(); if (phoneOn()) return traderPhone(); $('it').textContent = 'WANDERING TRADER'; const disc = Math.round(traderDisc() * 100);
   const tIcon = (o) => { if ((o.k === 'item') && window.ZHItemIcons && ZHItemIcons.has(o.id)) return `<span class="tIco">${ZHItemIcons.svg(o.id, 30)}</span>`; const src = o.k === 'item' && window.ZHItems && ZHItems.icon(o.id); return src ? `<img class="pix tIco" src="${src}" alt="">` : `<span class="tIco">${o.k === 'pet' ? (o.id === 'dog' ? '🐕' : '🐈') : o.k === 'rp' ? '📜' : '📦'}</span>`; };   /* V2.33: item icons in the trader menu */
   const offer = (o) => tIcon(o) + (o.k === 'item' ? `${ITEMS[o.id].name}<small> · ${itemText(ITEMS[o.id])}${iQuip(o.id)}</small>` : o.k === 'ex' ? `${EX_DEFS[o.id].icon} ${o.n} ${EX_DEFS[o.id].name}s<small> · ${EX_DEFS[o.id].desc}</small>` : o.k === 'pet' ? `${PETS[o.id].name}<small> · ${PETS[o.id].desc}</small>` : `Research notes<small> · +${o.n} RP</small>`);
   $('ib').innerHTML = `Leaves at 19:00. Prices ${disc ? `<b>−${disc}%</b> (your best Charisma)` : 'are full price — a survivor with high Charisma gets a discount'}.<br><b>For sale</b><br>`
