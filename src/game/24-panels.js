@@ -495,6 +495,17 @@ function townBars(st) {
     beds: { v: n ? (n - hl) / n * 100 : 100, w: hl ? `${n - hl} of ${n} have one` : 'Everyone has one', low: hl > 0 },
     walls: { v: mx ? hp / mx * 100 : 0, w: !p.walls ? 'No walls yet' : broken ? `${broken} broken` : !p.sealed ? 'Open: gaps in the ring' : hp / mx < .7 ? 'Damaged' : 'Sealed', low: !p.walls || broken > 0 || !p.sealed, none: !p.walls, gaps: !!p.walls && !p.sealed } };
 }
+function outTherePhone(sec, grp, row, ch) {   /* 3D.371 (W249, W270): the Defense tab's crisis, practice, raids and factions as grouped rows, one line each; a faction's details on a tap */
+  const c = S.crisis, C = c && CRISES[c.k], tall = (t, sub) => `<div class="phR tall"><span class="tx"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+  const crisis = (S.lvl || 1) < CRISIS_LVL && !c ? row('Weekly crisis', 'From level ' + CRISIS_LVL) : c ? `<div class="phR crisis"><span class="em">${C.icon}</span><span class="k">${esc(C.name)}</span><span class="v bad">Now</span></div>` + `<div class="phR cdesc">${esc(C.desc)}</div>` + (C.act ? `<div class="phR"><button class="act go phWide in" id="crisisAct">${esc(C.actLabel)}</button></div>` : '') : row('Next crisis', `Day ${S.crisisNext ?? '?'}`);
+  const raids = ['raid_toll', 'raid_green', 'raid_foundry', 'raid_quar', 'raid_helix', 'raid_hollow'].filter((k) => k === 'raid_toll' || k === 'raid_green' || ((S.fac || {})[EXP_DEFS[k] && SH_DEFS[k].raid] || {}).met);
+  const raid = (k) => { const lk = expLocked(k); return `<div class="phR${lk ? ' off' : ''}"${lk ? '' : ` data-raid="${k}" role="button"`}><span class="em">${EXP_DEFS[k].icon}</span><span class="k">${esc(EXP_DEFS[k].name.replace('Raid: ', '').replace(/^./, (x) => x.toUpperCase()))}</span><span class="v">${lk ? esc(lk) : ''}</span>${lk ? '' : ch}</div>`; };
+  const fac = ([k, F]) => { const f = (S.fac || {})[k], met = f && f.met, more = met ? [f.ally ? 'Ally' : '', f.goneUntil > S.day ? `Beaten, back day ${f.goneUntil}` : '', k === 'foundry' && !f.ally ? `Renown: them ${Math.round(f.ren || 0)}, you ${Math.round(S.ren)}` : '', k === 'quar' ? `Infection ${Math.round(f.inf || 0)}%${S.cordon > S.day ? `, cordon until day ${S.cordon}` : ''}` : '', k === 'helix' && f.immune ? `They want ${esc(f.immune)}${f.taken ? ' (taken)' : ''}` : '', k === 'hollow' ? `Their interest ${Math.round(f.int || 0)}%` : ''].filter(Boolean).join(' · ') : '';
+    return `<div class="phR fac" role="button"><span class="em">${F.icon}</span><span class="tx"><b>${esc(F.name)}</b><small class="dt">${more ? more + '<br>' : ''}${esc(F.desc)}</small></span><span class="v">${met ? `<span class="fm">${vmFace(vmMood(f), 22)}</span>${VM_MOODS[vmMood(f)][1]}` : 'Not met'}</span></div>`
+      + (k === 'quar' && met && (f.inf || 0) >= 20 ? `<div class="phR"><span class="k bad">Infection ${Math.round(f.inf || 0)}%</span><button class="act phMini${(S.meds || 0) < 3 ? ' off' : ' go'}" id="quarClean" ${(S.meds || 0) < 3 ? 'disabled' : ''}>Clean up · 💊 3</button></div>` : ''); };
+  return sec('Crisis · medals ' + (S.medals || 0)) + grp(crisis) + sec('Practice') + grp(row('Stronghold practice', '', 'shPrac'))
+    + sec('Raids') + grp(raids.map(raid).join('')) + sec('Factions') + grp(Object.entries(FACTIONS).map(fac).join(''));
+}
 function townPhoneHtml(st) {
   const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`, note = (t) => (t ? `<div class="phFootN">${t}</div>` : ''), I = (n, z = 20) => (window.ZHIcons ? ZHIcons.svg(n, z) : '');
   const row = (k, v, id, attr) => `<div class="phR"${id ? ` id="${id}"` : ''}${id || attr ? ' role="button"' : ''} ${attr || ''}><span class="k">${k}</span><span class="v">${v}</span>${id || attr ? ch : ''}</div>`;
@@ -516,10 +527,11 @@ function townPhoneHtml(st) {
   } else if (tTab === 'defense') {
     h += sec('Walls') + `<div class="phCard phPad">${perimText()}</div>`
       + sec('Explosives') + grp(Object.entries(EX_DEFS).map(([k, e]) => row(`${e.icon} ${e.name}`, `${(S.ex || {})[k] || 0} of ${exCap()}`)).join('') + `<div class="phR gTog"><span class="k">Throw them by themselves</span><span class="v"></span><button class="tgl${S.exAuto === false ? '' : ' on'}" id="tExAuto" aria-pressed="${S.exAuto !== false}" aria-label="Auto-throw"><i></i></button></div>`)
-      + note('Pipe bombs come from a staffed Ammo Bench, molotovs from a staffed Fuel Still (one a day each), grenades from traders and the Military Checkpoint. Fighters throw them at a crowd of 4 or more or a boss, never near our own people.')
       + sec('Retreat') + `<div class="phCard phPad"><div class="row"><span class="sm">Fighters fall back at</span><input class="sp" type="range" id="retreatR" min="15" max="60" step="5" value="${S.retreat}"><span id="retreatV">${S.retreat}%</span></div></div>`
-      + sec('Land and raids') + grp(row('Territory', `Tier ${S.terr || 0} of ${Wd.TERRITORY.length - 1}`) + row('Raiders', raidsOpen() ? 'Next raid about day ' + Math.ceil(S.nextRaid || 0) : 'None before level ' + FIRST_RAID_LVL)) + note('The Haven claims more land as it levels up: levels 4, 7, 11 and 16 (the City).')
-      + sec('Out there') + `<div class="phOld">${factionsHtml()}</div>`;
+      + sec('Land and raids') + grp(row('Territory', `Tier ${S.terr || 0} of ${Wd.TERRITORY.length - 1}`) + row('Raiders', raidsOpen() ? 'Next raid about day ' + Math.ceil(S.nextRaid || 0) : 'None before level ' + FIRST_RAID_LVL))
+      + outTherePhone(sec, grp, row, ch)
+      + sec('') + grp(row('How it works', '', 'tDefHow'))
+      + `<div class="phHow" style="display:none">${grp(`<div class="phPad"><b>Explosives.</b> Pipe bombs come from a staffed Ammo Bench, molotovs from a staffed Fuel Still (one a day each), grenades from traders and the Military Checkpoint. Fighters throw them at a crowd of 4 or more or a boss, never near our own people.<br><br><b>Land.</b> The Haven claims more land as it levels up: levels 4, 7, 11 and 16 (the City).<br><br><b>Raids.</b> Hit a faction camp with up to ${shCap(true)} people: steal their stockpile, free their prisoners or take out their leader. They will remember.<br><br><b>Crises.</b> From Haven level ${CRISIS_LVL}, a faction crisis each week: sieges, plagues, refugees. Overcome one for a Crisis Medal.</div>`)}</div>`;
   } else if (tTab === 'people') {
     const pets = S.sv.filter((q) => q.pet);
     h += grp(row('People', `${popNow()} of ${popCap()}`) + row('Residents', residents()) + row('Couples', S.sv.filter((q) => q.partner).length / 2 | 0) + row('Children', (S.kids || []).length)) + note('More Houses means more room.')
@@ -581,6 +593,7 @@ function showTown(tab) {
   { const ea = $('tExAuto'); if (ea) ea.onclick = () => { S.exAuto = S.exAuto === false; showTown('defense'); }; }
   { const pr = $('shPrac'); if (pr) pr.onclick = () => showShPractice(() => showTown('defense')); const qc = $('quarClean'); if (qc) qc.onclick = () => { quarClean(); showTown('factions'); }; $('ib').querySelectorAll('[data-raid]').forEach((b) => { b.onclick = () => { expSel.force = b.dataset.raid; expSel.ids = null; showExpedition(); }; }); }
   { const ca = $('crisisAct'); if (ca) ca.onclick = () => { const c = S.crisis; if (c && CRISES[c.k].act && CRISES[c.k].act()) showTown('defense'); }; }
+  { const w = $('tDefHow'), hw = $('ib').querySelector('.phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; if (o) hw.scrollIntoView({ block: 'nearest' }); }; $('ib').querySelectorAll('.phR.fac').forEach((r) => { r.onclick = () => r.classList.toggle('open'); }); }   /* 3D.371 */
   const tu = $('tUpg'); if (tu) tu.onclick = () => showUpgrade('rank');
   const tTi = $('tTitle'); if (tTi) tTi.onclick = backToTitle;
 }

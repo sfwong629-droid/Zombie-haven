@@ -269,3 +269,11 @@ html.phone .phPrac .phSec { margin: 18px 16px 6px; font: 700 12px Manrope, syste
 html.phone .phPrac .phR .k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } html.phone .phPrac .phR .v { flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .55); }
 html.phone .phPrac .phR .em { flex: none; width: 28px; font-size: 20px; text-align: center; } html.phone .phPrac .phR .tk { flex: none; width: 20px; display: grid; place-items: center; }
 html.phone .phPrac .phSeg { margin: 0; } html.phone .phPrac .phWide { margin-top: 18px; }
+
+/* 3D.371 (W249, W270): Town · Defense, the crisis, practice, raids and factions as rows */
+html.phone .phTown .phR .em { flex: none; width: 28px; font-size: 20px; text-align: center; } html.phone .phTown .phR.off { opacity: .5; } html.phone .phTown .phR .k.dim { color: rgba(255, 255, 255, .62); white-space: normal; font-size: 14px; line-height: 1.35; padding: 6px 0; }
+html.phone .phTown .phR.fac { cursor: pointer; } html.phone .phTown .phR.fac .tx { flex: 1; min-width: 0; } html.phone .phTown .phR.fac .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.phone .phTown .phR.fac small.dt { display: none; color: rgba(255, 255, 255, .62); white-space: normal; line-height: 1.35; } html.phone .phTown .phR.fac.open small.dt { display: block; }
+html.phone .phTown .phR.fac .v { display: flex; align-items: center; gap: 6px; flex: none; } html.phone .phTown .phR.fac .fm { display: grid; } html.phone .phTown .phR .v.bad, html.phone .phTown .phR .k.bad { color: #ff8a72; font-weight: 700; }
+html.phone .phTown .phWide.in { margin: 6px 0; }
+html.phone .phTown .phR.cdesc { display: block; white-space: normal; color: rgba(255, 255, 255, .7); font-size: 14px; line-height: 1.4; padding-top: 10px; padding-bottom: 10px; }
