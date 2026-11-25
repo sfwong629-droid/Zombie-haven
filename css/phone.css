@@ -294,3 +294,9 @@ html.phone #eventModal .evBox:has(.tipP) .act { min-height: 48px; margin-top: 8p
    status bar and the home bar, and each bar adds the notch or home-bar spacing once. */
 html.glass.phone #app { position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: auto; padding-top: 0; }
 html.glass.phone #lmenu { bottom: max(12px, calc(env(safe-area-inset-bottom) - 4px)); }
+/* 3D.377 (W249, W270): Details, Research and Craft on a placed building's page */
+html.phone .phWs .phR .k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } html.phone .phWs .phR .v .good { color: #9fe07a; font-weight: 700; }
+html.phone .phWs .trO .tx { flex: 1; min-width: 0; } html.phone .phWs .trO .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } html.phone .phWs .trO .tx small { display: block; color: rgba(255, 255, 255, .55); }
+html.phone .phWs .trO.lk .tx b { color: rgba(255, 255, 255, .5); } html.phone .phWs .trO { cursor: pointer; } html.phone .phWs .phR.tall { gap: 10px; }
+html.phone .phWs .trO .th { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; background: rgba(255, 255, 255, .1); font-size: 24px; overflow: hidden; } html.phone .phWs .trO .th img, html.phone .phWs .trO .th svg { width: 34px; height: 34px; object-fit: contain; }
+html.phone .phWs .phHow .phCard { margin-top: 8px; } html.phone .phWs .phPad { padding: 12px 14px; font: 500 15px/1.4 Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .8); }

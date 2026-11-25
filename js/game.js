@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.376', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.377', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -8971,6 +8971,40 @@ function bStatus(b) {
 }
 function nextTier(b) { const d = DEFS[b.type]; return Object.entries(DEFS).filter(([, n]) => n.fam === d.fam && (n.tier || 1) > (d.tier || 1)).sort((a, z) => (a[1].tier || 1) - (z[1].tier || 1))[0] || null; }
 let bTab = 'overview', bTabRef = null;
+/* 3D.377 (W249, W270): a placed building's Details, Research and Craft tabs in the phone look: grouped rows, one line each, the price on a button
+   (lime when it can be paid), what a thing does on a tap, the descriptions and tips behind How it works. Same data-res / data-craft as the old tabs. */
+function bTabPhone(b, d, cb) {
+  const ch = `<i class="phChv">${phG('ch', 14)}</i>`, grp = (x) => `<div class="phCard">${x}</div>`, sec = (t) => `<div class="phSec">${t}</div>`;
+  const row = (k, v) => `<div class="phR"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const how = (t) => sec('') + grp(`<div class="phR bHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`) + `<div class="phHow" style="display:none">${grp(`<div class="phPad">${t}</div>`)}</div>`;
+  const pc = (rp, m) => (rp ? `<span class="pc">🔬${rp}</span> ` : '') + (m ? `<span class="pc">⚙${m}</span>` : rp ? '' : '<span class="pc">Free</span>');
+  let h = '';
+  if (bTab === 'details') {
+    const users = S.sv.filter((q) => q.facility === b && ['goFacility', 'useFacility'].includes(q.mode));
+    h += sec('This building') + grp(row('Running cost', `⚙ ${f1(upkeepOf(b))} a day`) + row('In use', `${facilityUsers(b)} of ${cap(b)}`) + row('Quality', b.q) + row('Appeal', b.a));
+    if (users.length) h += sec('Using it now') + grp(users.map((q) => `<div class="phR tall">${pplFace(q)}<span class="k">${esc(q.name)}</span></div>`).join(''));
+    if (cb.names.length) h += sec('Neighbour bonuses') + grp(cb.names.map((n) => `<div class="phR"><span class="k">★ ${n}</span></div>`).join(''));
+    h += how(`${BDESC[b.type] || ''}${BDESC[b.type] ? '<br><br>' : ''}Related buildings next to each other give bonuses. Quality and Appeal make survivors who use it happier.`);
+  } else if (bTab === 'research') {
+    const L = Object.entries(RESEARCH), open = L.filter(([k, r]) => !researched(k) && researched(r.need)), lock = L.filter(([k, r]) => !researched(k) && !researched(r.need)), done = L.filter(([k]) => researched(k));
+    h += grp(row('Research points', `🔬 ${Math.floor(S.rp || 0)}`) + row('Each day', `<span class="good">+${f1((isWorking(b) ? d.out : 4) * prodMult(b))}</span>`) + row('Scrap', `⚙ ${Math.floor(S.mat)}`));
+    const one = ([k, r]) => { const m = resMat(k), ok = (S.rp || 0) >= r.rp && S.mat >= m, need = { rp: Math.max(0, Math.ceil(r.rp - (S.rp || 0))), mat: Math.max(0, m - Math.floor(S.mat)) };
+      return `<div class="phR tall trO" role="button"><span class="tx"><b>${r.name}</b>${ok ? '' : `<small class="bad">Need ${pc(need.rp, need.mat)}</small>`}<small class="dt">${esc(r.desc)}</small></span><button class="act phMini${ok ? ' go' : ' off'}"${ok ? ` data-res="${k}"` : ''}>${pc(r.rp, m)}</button></div>`; };
+    if (open.length) h += sec('Ready to research') + grp(open.map(one).join('')); else if (!lock.length) h += grp(row('Everything is researched', '✓'));
+    if (lock.length) h += sec('Locked') + grp(lock.map(([, r]) => `<div class="phR tall trO lk" role="button"><span class="tx"><b>${r.name}</b><small>Needs ${RESEARCH[r.need].name}</small><small class="dt">${esc(r.desc)}</small></span></div>`).join(''));
+    if (done.length) h += sec(`Done · ${done.length}`) + grp(done.map(([, r]) => `<div class="phR trO" role="button"><span class="tx"><b>${r.name}</b><small class="dt">${esc(r.desc)}</small></span><span class="v good">✓</span></div>`).join(''));
+    h += how('The Workshop makes research points each day, more with an Engineer on shift. A project costs research points and scrap (the first one costs no scrap). Tap a project to see what it does.');
+  } else if (bTab === 'craft') {
+    const ico = (id) => window.ZHItemIcons && ZHItemIcons.has(id) ? ZHItemIcons.svg(id, 34) : (window.ZHItems && ZHItems.icon(id) ? `<img class="pix" src="${ZHItems.icon(id)}" alt="">` : '📦');
+    const SETS = { blades: 'Blades', firearms: 'Firearms', bodyArmor: 'Armour', gadgets: 'Gadgets' }, sets = Object.entries(RECIPES).filter(([k]) => researched(k));
+    h += grp(row('Scrap', `⚙ ${Math.floor(S.mat)}`) + row('Goes to', 'the stash'));
+    h += sets.map(([k, l]) => sec(SETS[k] || RESEARCH[k].name) + grp(l.map((id) => { const c = craftCost(id), ok = S.mat >= c;
+      return `<div class="phR tall trO" role="button"><span class="th">${ico(id)}</span><span class="tx"><b>${esc(ITEMS[id].name)}</b>${ok ? '' : `<small class="bad">Need ⚙${c - Math.floor(S.mat)}</small>`}<small class="dt">${itemText(ITEMS[id])}${iQuip(id)}</small></span><button class="act phMini${ok ? ' go' : ' off'}"${ok ? ` data-craft="${id}"` : ''}><span class="pc">⚙${c}</span></button></div>`; }).join(''))).join('');
+    if (!sets.length) h += sec('Nothing to craft yet') + grp(`<div class="phR"><span class="k">Research a set first</span><span class="v"></span></div><div class="phR" data-tab="research" role="button"><span class="k">Go to Research</span><span class="v"></span>${ch}</div>`);
+    h += how('Research Bladesmithing, Firearms, Body Armor or Gadgets to unlock what can be made here. Crafting costs scrap and the item goes to the stash. Tap an item to see its numbers.');
+  }
+  return `<div class="phTrade phWs">${h}</div>`;
+}
 function showBuildingInfo(b, tab) {
   const d = DEFS[b.type], r = facilityRules[b.type]; selected = { kind: 'building', ref: b }; closeP();
   if (tab) bTab = tab; else if (bTabRef !== b) bTab = 'overview'; bTabRef = b;
@@ -9024,6 +9058,7 @@ function showBuildingInfo(b, tab) {
     if (d.fam === 'farm' && !b.burnt) h += `<div class="card row"><span class="sp">${herbOn(b) ? '🌿 Growing herbs: medicine instead of food' : '🥕 Growing food'}</span><button class="act" id="bHerbs">${herbOn(b) ? '🥕 Grow food' : `🌿 Grow herbs (💊 +${f1(d.out * HERB_RATE * expectedMult(b))}/day)`}</button></div>`;   /* 3D.301 herb beds */
     if (ph) h += `<div class="phSec">Manage</div><div class="phCard"><div class="phR" id="bMove"><span class="k">Move</span><span class="v"></span><span class="phChv">${phG('ch', 14)}</span></div></div>`; else
     h += `<div><button class="act" id="bMove">Move</button></div>`;
+  } else if (ph) { h += bTabPhone(b, d, cb); /* 3D.377 (W249, W270): Details, Research and Craft in the phone look */
   } else if (bTab === 'details') {
     const users = S.sv.filter((q) => q.facility === b && ['goFacility', 'useFacility'].includes(q.mode)).map((q) => esc(q.name));
     h += `<div class="sm">${BDESC[b.type] || ''}</div><div class="kv card"><div><span>Running cost</span><span>⚙ ${upkeepOf(b).toFixed(1)} / day</span></div><div><span>Capacity</span><span>${facilityUsers(b)}/${cap(b)}</span></div><div><span>Quality</span><span>${b.q}</span></div><div><span>Appeal</span><span>${b.a}</span></div></div>`
@@ -9040,8 +9075,11 @@ function showBuildingInfo(b, tab) {
   }
   $('ib').innerHTML = ph ? `<div class="phBld">${h}</div>` : h; showPanel(d.name);
   $('ib').querySelectorAll('[data-tab]').forEach((x) => { x.onclick = () => showBuildingInfo(b, x.dataset.tab); });
-  $('ib').querySelectorAll('[data-res]').forEach((x) => { x.onclick = () => { if (doResearch(x.dataset.res)) showBuildingInfo(b); }; });
-  $('ib').querySelectorAll('[data-craft]').forEach((x) => { x.onclick = () => { if (craft(x.dataset.craft)) showBuildingInfo(b); }; });
+  $('ib').querySelectorAll('[data-res]').forEach((x) => { x.onclick = (e) => { e.stopPropagation(); if (doResearch(x.dataset.res)) showBuildingInfo(b); }; });
+  $('ib').querySelectorAll('[data-craft]').forEach((x) => { x.onclick = (e) => { e.stopPropagation(); if (craft(x.dataset.craft)) showBuildingInfo(b); }; });
+  $('ib').querySelectorAll('.phWs .trO').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
+  $('ib').querySelectorAll('.phWs .phMini.off').forEach((x) => { x.onclick = (e) => { e.stopPropagation(); x.closest('.trO').classList.toggle('open'); }; });
+  { const w = $('ib').querySelector('.bHow'), hw = $('ib').querySelector('.phWs .phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; if (o) hw.scrollIntoView({ block: 'nearest' }); }; }
   const rb = $('bRush'); if (rb) rb.onclick = () => { if (rush(b)) showBuildingInfo(b); };
   const hb = $('bHerbs'); if (hb) hb.onclick = () => { setHerbs(b, !herbOn(b)); saveGame(); ui(); showBuildingInfo(b); };
   const rp = $('bRepair'); if (rp) rp.onclick = () => { if (repairBurnt(b)) showBuildingInfo(b); };
