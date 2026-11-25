@@ -53,7 +53,7 @@ html.phone .phSeg button.on { background: rgba(255, 255, 255, .92); color: #1418
 html.phone .phSec { margin: 14px 12px 6px; font: 800 11px Manrope, system-ui, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
 html.phone .phCard { border-radius: 20px; background: rgba(255, 255, 255, .075); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); overflow: hidden; }
 html.phone .phRow { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 12px; cursor: pointer; position: relative; } html.phone .phRow:active { background: rgba(255, 255, 255, .08); }
-html.phone .phRow + .phRow::before { content: ''; position: absolute; left: 68px; right: 0; top: 0; height: 1px; background: rgba(255, 255, 255, .09); }
+html.phone .phRow + .phRow::before, html.phone .phSw + .phSw .phRow::before { content: ''; position: absolute; left: 68px; right: 0; top: 0; height: 1px; background: rgba(255, 255, 255, .09); }
 html.phone .phFace { flex: none; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 85%, #fff), color-mix(in srgb, var(--c) 70%, #000)); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .5), 0 2px 6px rgba(0, 0, 0, .3); }
 html.phone .phFace img { width: 100%; height: 100%; object-fit: cover; } html.phone .phFace b { font: 800 19px Manrope, system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 html.phone .phTx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; } html.phone .phTx b { font: 800 16px Manrope, system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } html.phone .phTx small { font: 600 12.5px Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -300,3 +300,8 @@ html.phone .phWs .trO .tx { flex: 1; min-width: 0; } html.phone .phWs .trO .tx b
 html.phone .phWs .trO.lk .tx b { color: rgba(255, 255, 255, .5); } html.phone .phWs .trO { cursor: pointer; } html.phone .phWs .phR.tall { gap: 10px; }
 html.phone .phWs .trO .th { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; background: rgba(255, 255, 255, .1); font-size: 24px; overflow: hidden; } html.phone .phWs .trO .th img, html.phone .phWs .trO .th svg { width: 34px; height: 34px; object-fit: contain; }
 html.phone .phWs .phHow .phCard { margin-top: 8px; } html.phone .phWs .phPad { padding: 12px 14px; font: 500 15px/1.4 Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .8); }
+/* 3D.378 (W249): People rows slide left for quick actions */
+html.phone .phSw { position: relative; overflow: hidden; container-type: inline-size; } html.phone .phSwT { display: flex; transition: transform .25s cubic-bezier(.2, .8, .2, 1); touch-action: pan-y; will-change: transform; }
+html.phone .phSwT > .phRow { flex: 0 0 100%; min-width: 0; box-sizing: border-box; } html.phone .phSwA { flex: none; display: flex; }
+html.phone .phSwB { width: min(76px, 24cqw); min-height: 60px; border: 0; border-radius: 0; color: #fff; font: 700 14px Manrope, system-ui, sans-serif; cursor: pointer; }
+html.phone .phSwB.blue { background: #3d8bfd; } html.phone .phSwB.grey { background: #6b7280; } html.phone .phSwB.coral { background: #ff5b5b; } html.phone .phSwB.amber { background: #f0a020; color: #1d1405; }

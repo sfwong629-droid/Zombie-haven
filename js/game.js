@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.377', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.378', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -8462,14 +8462,44 @@ function showPeoplePhone() {
   endBuildMode(true); closeP(); if (PF.f === 'hurt') PF.f = 'all';
   const all = S.sv.slice(), nF = all.filter(isFighter).length, L = all.filter((q) => PF.f === 'all' || (PF.f === 'fight') === isFighter(q)).sort((a, b) => (b.l || 1) - (a.l || 1) || a.name.localeCompare(b.name));
   const row = (s) => { const hp = Math.max(0, Math.min(1, s.hp / s.max)); return `<div class="phRow" data-sv="${s.id}" data-n="${esc(fullName(s).toLowerCase())}">${pplFace(s)}<div class="phTx"><b>${esc(fullName(s))}</b><small>${esc(s.job)} · ${esc(activityText(s))}</small></div><span class="phHp${hp < .35 ? ' low' : hp < .7 ? ' mid' : ''}"><i style="width:${Math.round(hp * 100)}%"></i></span><span class="phCh">›</span></div>`; };
-  const groups = PPL_GROUPS.map(([k, t]) => { const g = L.filter((s) => pplGroup(s) === k); return g.length ? `<div class="phGrp" data-g="${k}"><div class="phSec">${t}</div><div class="phCard">${g.map(row).join('')}</div></div>` : ''; }).join('');
+  /* 3D.378 (W249): slide a row to the left for quick actions, like the phone's mail list: Find (show them on the map), Job; someone down gets Rescue and Bandage */
+  const acts = (s) => (s.mode === 'down' ? [['rescue', 'Rescue', 'coral'], ['bandage', 'Bandage', 'amber']] : []).concat([['find', 'Find', 'blue'], ['job', 'Job', 'grey']]);
+  const sw = (s) => `<div class="phSw" data-swid="${s.id}"><div class="phSwT">${row(s)}<div class="phSwA">${acts(s).map(([k, t, c]) => `<button class="phSwB ${c}" data-swa="${k}">${t}</button>`).join('')}</div></div></div>`;
+  const groups = PPL_GROUPS.map(([k, t]) => { const g = L.filter((s) => pplGroup(s) === k); return g.length ? `<div class="phGrp" data-g="${k}"><div class="phSec">${t}</div><div class="phCard">${g.map(sw).join('')}</div></div>` : ''; }).join('');
   $('ib').innerHTML = `<div class="phList"><label class="phSearch"><span class="phMag"></span><input id="pplQ" type="search" placeholder="Search" autocomplete="off" value="${esc(PF.q || '')}"></label>`
     + `<div class="phSeg">${[['all', 'All', all.length], ['fight', 'Fighters', nF], ['work', 'Workers', all.length - nF]].map(([k, t, n]) => `<button data-pff="${k}" class="${PF.f === k ? 'on' : ''}">${t} ${n}</button>`).join('')}</div>`
     + (groups || '<p class="sm">Nobody fits this filter.</p>') + `<p class="phNone sm" style="display:none">Nobody by that name.</p><div class="sm phFoot">${S.sv.length} of ${popCap()} people · ${bedCount()} beds</div></div>`;
   showPanel('People'); pfWire($('ib'), showSurvivors);
-  const q = $('pplQ'), filt = () => { const v = (PF.q = q.value).trim().toLowerCase(); let any = false; $('ib').querySelectorAll('.phGrp').forEach((g) => { let n = 0; g.querySelectorAll('.phRow').forEach((r) => { const ok = !v || r.dataset.n.includes(v); r.style.display = ok ? '' : 'none'; if (ok) n++; }); g.style.display = n ? '' : 'none'; if (n) any = true; }); const no = $('ib').querySelector('.phNone'); if (no) no.style.display = any || !groups ? 'none' : ''; };
+  const q = $('pplQ'), filt = () => { const v = (PF.q = q.value).trim().toLowerCase(); let any = false; $('ib').querySelectorAll('.phGrp').forEach((g) => { let n = 0; g.querySelectorAll('.phRow').forEach((r) => { const ok = !v || r.dataset.n.includes(v); r.closest('.phSw').style.display = ok ? '' : 'none'; if (ok) n++; }); g.style.display = n ? '' : 'none'; if (n) any = true; }); const no = $('ib').querySelector('.phNone'); if (no) no.style.display = any || !groups ? 'none' : ''; };
   q.oninput = filt; if (PF.q) filt();
-  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { const s = S.sv.find((x) => x.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'People'; } }; });
+  $('ib').querySelectorAll('[data-sv]').forEach((el) => { el.onclick = () => { if (swOpen) { swShut(); return; } if (swJust) return; const s = S.sv.find((x) => x.id === +el.dataset.sv); if (s) { centerOn(s.w.x, s.w.y); unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'People'; } }; });
+  swWire($('ib'));
+}
+/* 3D.378 (W249): swiping a People row. A drag left of more than a third of the buttons' width opens them, less springs back; one row open at a time;
+   a tap anywhere else in the list closes it. Vertical drags scroll the list as before (touch-action: pan-y). The first time People opens, the first row
+   slides open a little and back, so the player sees that rows move (OPTS.swHint). */
+let swOpen = null, swJust = false;
+function swShut() { if (swOpen) { swOpen.querySelector('.phSwT').style.transform = ''; swOpen.classList.remove('open'); swOpen = null; } }
+function swWire(root) {
+  swOpen = null;
+  root.querySelectorAll('.phSw').forEach((w) => { const t = w.querySelector('.phSwT'), aw = () => w.querySelector('.phSwA').offsetWidth; let x0 = 0, y0 = 0, base = 0, drag = false, dx = 0, id = null;
+    t.addEventListener('pointerdown', (e) => { if (e.target.closest('.phSwB')) return; x0 = e.clientX; y0 = e.clientY; base = w === swOpen ? -aw() : 0; drag = false; dx = 0; id = e.pointerId; });
+    t.addEventListener('pointermove', (e) => { if (id !== e.pointerId) return; const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!drag) { if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my) * 1.3) { drag = true; if (swOpen && swOpen !== w) swShut(); t.style.transition = 'none'; try { t.setPointerCapture(id); } catch (_) {} } else if (Math.abs(my) > 10) { id = null; return; } else return; }
+      dx = Math.max(-aw() * 1.15, Math.min(0, base + mx)); t.style.transform = `translateX(${dx}px)`; e.preventDefault(); });
+    const end = () => { if (id === null) return; id = null; if (!drag) return; t.style.transition = ''; swJust = true; setTimeout(() => { swJust = false; }, 80);
+      if (dx < -aw() / 3) { swOpen = w; w.classList.add('open'); t.style.transform = `translateX(${-aw()}px)`; } else { if (swOpen === w) swOpen = null; w.classList.remove('open'); t.style.transform = ''; } };
+    t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+    w.querySelectorAll('.phSwB').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); swAct(+w.dataset.swid, b.dataset.swa); }; }); });
+  if (!root._swW) { root._swW = 1; root.addEventListener('pointerdown', (e) => { if (swOpen && !swOpen.contains(e.target)) { swShut(); swJust = true; setTimeout(() => { swJust = false; }, 400); } }, true); }
+  if (!OPTS.swHint) { const f = root.querySelector('.phSw .phSwT'); if (f) { OPTS.swHint = 1; try { saveOpts(); } catch (_) {} setTimeout(() => { f.style.transform = 'translateX(-64px)'; setTimeout(() => { if (!f.closest('.phSw.open')) f.style.transform = ''; }, 700); }, 450); } }
+}
+function swAct(id, k) {
+  const s = S.sv.find((x) => x.id === id); if (!s) return;
+  if (k === 'find') { closeP(); centerOn(s.w.x, s.w.y); selected = { kind: 'unit', ref: s }; return; }
+  if (k === 'job') { uTab = 'skills'; unitPanel(s); panelBack = showSurvivors; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'People'; return; }
+  if (k === 'rescue') orderRescue(s); else if (k === 'bandage') useBandage(s);
+  ui(); showPeoplePhone();
 }
 function showSurvivors() {
   if (phoneOn()) return showPeoplePhone();
