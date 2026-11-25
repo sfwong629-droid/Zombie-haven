@@ -3,7 +3,7 @@
 // (half back); a one-finger drag along the build zone's edge draws a straight run (a ghost while dragging) and builds it on release, and
 // the view does not move; four drags close a ring round the town; a building's doorway is skipped by a wall run; a Gate tapped on a piece
 // swaps in; with too little wood a run builds what it can; a line outside the build zone is refused; the Demolish tool takes a piece away.
-// Pictures: runs/features/edge_place_drag.png (mid-drag) and edge_place_ring.png (the ring built).
+// Pictures for the owner are made by tools/qa/edge_place_pics.js (a drag's ghost, the ring built).
 // Serve the repo first (python3 -m http.server 8765) or set ZH_NOSERVER=1. Exit 0 ok, 1 a check failed.
 const Q = require('./lib'), path = require('path');
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { expose: 'startTool, endBuildMode, project, unproject, centerOn, cam, edgeOn, wallCount' }); await Q.newGame(p); await Q.clearCards(p);
@@ -29,7 +29,7 @@ const Q = require('./lib'), path = require('path');
   await tap(B.x0 - 4 + .5, B.y0 - 3 + .05); out.outside = (await st()).n;
   /* four drags round the build zone's edge: top, right, bottom, left (the top one photographed mid-drag) */
   const cam0 = (await st()).cam;
-  out.midTop = await drag({ x: B.x0, y: B.y0 }, { x: B.x1 + 1, y: B.y0 }, path.join(__dirname, '../../runs/features/edge_place_drag.png'));
+  out.midTop = await drag({ x: B.x0, y: B.y0 }, { x: B.x1 + 1, y: B.y0 });
   out.camMoved = JSON.stringify((await st()).cam) !== JSON.stringify(cam0);
   await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x1 + 1, y: B.y0 }); await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x0, y: B.y1 + 1 });   /* the right side drawn from its bottom corner: the top-right corner sits under the side buttons */ await drag({ x: B.x0, y: B.y1 + 1 }, { x: B.x0, y: B.y0 });
   out.sides = await p.evaluate((B) => { const E = ZH.world.edges, c = (f) => [...E.values()].filter(f).length; return { top: c((e) => e.s === 'h' && e.y === B.y0), bottom: c((e) => e.s === 'h' && e.y === B.y1 + 1), left: c((e) => e.s === 'v' && e.x === B.x0), right: c((e) => e.s === 'v' && e.x === B.x1 + 1) }; }, B);
@@ -47,7 +47,6 @@ const Q = require('./lib'), path = require('path');
   /* too little wood: a run of 6 with wood for 2 */
   await p.evaluate(() => { ZH.S.wood = 2.4; ZH.startTool({ kind: 'wall', wtype: 'wood' }); }); const n0 = (await st()).n; await drag({ x: B.x0 + 1, y: B.y0 + 3 }, { x: B.x0 + 7, y: B.y0 + 3 }); out.short = (await st()).n - n0;
   /* the ring photographed with the wall tool closed */
-  await p.evaluate(() => { ZH.S.wood = 400; ZH.endBuildMode(); }); await p.waitForTimeout(800); await Q.shot(p, path.join(__dirname, '../../runs/features/edge_place_ring.png'));
   console.log(JSON.stringify(out));
   if (out.tap.piece !== 'wood' || Math.abs(out.tap.wood - 1) > .01) bad.push('a tap did not put a Wood Fence on the line (1 wood): ' + JSON.stringify(out.tap));
   if (out.firstAgain !== 'wood' || out.removed) bad.push('tapping the piece again did not ask first and then take it away');
