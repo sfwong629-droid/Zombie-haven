@@ -319,7 +319,7 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
 - 21 Nov: Zombies get sounds of their own: the **Screamer** screams when it attacks (today it plays the alarm bell), the **Gatling Boss** sounds like a Gatling gun when he attacks, the **Digger** makes digging sounds. Samples in round 9 of the sound review (W187).
 - 21 Nov (review, round 9): **Approved:** Screamer take A (recorded creature screech, a lower echo under it; replaces the alarm bell on its shriek), Gatling Boss take B (a recorded rifle shot fired 20 times fast over a motor whir, played with his attack), Digger take B (scoops into gravel; goes in with the Digger).
 - 21 Nov: The day music (Meadow default plus four tunes) went in as 3D.248. The night music (Lanterns) went in as 3D.249. The fight music went in as 3D.255: Stand Firm A and B in turn by day; The Tide when a boss is alive or 25 or more zombies are out (Claude's line between a fight and a horde; the owner can move it).
-- 24 Nov (owner: "go"): the approved sound effects go in, in three groups, one build each. Group 1, the menu and reward sounds, went in as 3D.353 (live, version 316).
+- 24 Nov (owner: "go"): the approved sound effects go in, in three groups, one build each. Group 1, the menu and reward sounds, went in as 3D.353 (live, version 316). Group 2 went in as 3D.355 (live, version 318): night falls at 20:00 and the rooster at 06:00 (Claude's choice of the hours: the start of the night and of the day), the alarm, the radio, the car alarm (the Greenwater truck's horn uses it too) and the dog.
 
 ## Open questions (not decided)
 - None on 17 Nov.
