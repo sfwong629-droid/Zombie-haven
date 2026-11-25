@@ -112,6 +112,24 @@ const VM_FACES = (() => { const I = '#2a1d16', st = (f) => `fill="${f}" stroke="
     `<circle cx="17" cy="27" r="13" ${st('#6fb7ff')}/><circle cx="32" cy="23" r="13" ${st('#3cc6b0')}/><circle cx="13" cy="26" r="1.9" fill="${I}"/><circle cx="20" cy="26" r="1.9" fill="${I}"/><path d="M12 31 Q16.5 35 21 31" fill="none" stroke="${I}" stroke-width="2.2" stroke-linecap="round"/><circle cx="28" cy="21" r="1.9" fill="${I}"/><circle cx="35" cy="21" r="1.9" fill="${I}"/><path d="M27 26 Q31.5 30 36 26" fill="none" stroke="${I}" stroke-width="2.2" stroke-linecap="round"/>`]; })();
 const vmFace = (k, z) => `<svg class="vmFace" viewBox="0 0 48 48" width="${z}" height="${z}" aria-hidden="true">${VM_FACES[k]}</svg>`;
 const vmIc = (n, z) => (window.ZHIcons ? ZHIcons.svg(n, z) : '');
+/* 3D.364 (W247 step 3; owner, 25 Nov: "more on to step 3 next"): what is moving in the valley. The squad out on a trip walks the map from the
+   Haven to its place and back (a dashed line, a dot with the boot sign and how many go); a tap on it opens the trip. The next boss night's horde
+   comes down Route 9, nearer each day, with a word for when ("Horde · 2 days", "Horde · tomorrow", "Horde tonight"). Few numbers, no counts. */
+function vmMoving() {
+  const W = VM_W, H = VM_H, pct = (x, y) => `left:${(x / W * 100).toFixed(2)}%;top:${(y / H * 100).toFixed(2)}%`, lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  let svg = '', html = '';
+  const t = S.trip, P = t && VM_P[t.dest];
+  if (t && P) { const now = expNow(), home = [180, 318], to = [P[0], P[1]];
+    const f = t.phase === 'back' ? Math.max(0, (t.backPos == null ? 1 : t.backPos) * (1 - Math.min(1, (now - (t.backFrom || now)) / Math.max(1, (t.backAt || now + 1) - (t.backFrom || now))))) : Math.max(.05, Math.min(1, (now - t.t0) / Math.max(1, t.dur)));
+    const at = lerp(home, to, f);
+    svg += `<path d="M${home[0]} ${home[1]} L${to[0]} ${to[1]}" stroke="#2b7de9" stroke-width="2.4" stroke-dasharray="5 4" fill="none" stroke-linecap="round" opacity=".85"/>`;
+    html += `<button class="vmSquad" id="vmSquad" style="${pct(at[0], at[1])}" aria-label="The squad"><span class="vmDot sq">${vmIc('boot', 16)}<em class="vmN">${t.members.length}</em></span><span class="vmTag t_squad">${t.phase === 'back' ? 'Coming home' : 'Squad'}</span></button>`; }
+  const dl = S.nextBoss != null ? S.nextBoss - S.day : 99;
+  if (dl >= 0 && dl <= 2 && !S.bossOn) { const path = [[290, 110], [268, 170], [244, 222], [214, 280]], at = path[3 - dl] || path[1], nxt = path[Math.min(3, 4 - dl)] || [200, 300];
+    svg += `<defs><marker id="vmArr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#ff7a59"/></marker></defs><path d="M${at[0]} ${at[1]} L${(at[0] + nxt[0]) / 2} ${(at[1] + nxt[1]) / 2}" stroke="#ff7a59" stroke-width="2.4" stroke-dasharray="4 3" fill="none" marker-end="url(#vmArr)"/>`;
+    html += `<div class="vmHerd" style="${pct(at[0] + 18, at[1] - 6)}">${vmIc('zombie', 18)}${vmIc('zombie', 15)}${vmIc('zombie', 18)}<span class="vmTag t_rival">${dl === 0 ? 'Horde tonight' : dl === 1 ? 'Horde · tomorrow' : 'Horde · 2 days'}</span></div>`; }
+  return { svg: svg ? `<svg class="vmOver" viewBox="0 0 ${W} ${H}" width="100%" height="100%">${svg}</svg>` : '', html };
+}
 function showValley() {
   expOpen = true; const RING = { friend: '#6fb7ff', neutral: '#e8d27a', wary: '#f0a24a', rival: '#ff7a59', sealed: '#c0392b', outpost: '#4fd1c5', off: '#8a8f94', locked: '#8a8f94', lead: '#f2c94c', search: '#ffffff' };
   const BADGE = { sealed: 'skull', outpost: 'shield', locked: 'lock', off: 'clock', lead: 'search' }, pct = (x, y) => `left:${(x / VM_W * 100).toFixed(2)}%;top:${(y / VM_H * 100).toFixed(2)}%`;
@@ -129,19 +147,21 @@ function showValley() {
       + (s.mood !== undefined ? `<div class="vmMood">${VM_MOODS.map(([i, w], k) => `<span class="${k === s.mood ? 'on' : ''}"><em>${vmFace(k, k === s.mood ? 36 : 28)}</em><small>${w}</small></span>`).join('')}</div>` : '')
       + (loot && !P[3] ? `<div class="vmBrings"><span>Brings</span>${loot}</div>` : '') + (go ? `<div class="vmBtns">${go}</div>` : '') + '</div>'; }
   const nL = (S.leads || []).length;
-  $('ib').innerHTML = `<div class="vmWrap"><div class="vmMap">${vmMapSvg(Object.keys(shown).length, Object.keys(shown).map((k) => VM_P[k]))}<div class="vmPins">${pins}</div>${card}</div>`
-    + `<div class="vmChips"><button class="vmChip" id="vmLeads"${nL ? '' : ' disabled'}>${vmIc('search', 18)}${nL ? `${nL} lead${nL > 1 ? 's' : ''}` : 'No leads'}</button>${S.lastTrip ? `<button class="vmChip" id="vmLast">${vmIc('boot', 18)}Last trip</button>` : ''}</div></div>`;
+  const mv = vmMoving();
+  $('ib').innerHTML = `<div class="vmWrap"><div class="vmMap">${vmMapSvg(Object.keys(shown).length, Object.keys(shown).map((k) => VM_P[k]))}${mv.svg}<div class="vmPins">${pins}${mv.html}</div>${card}</div>`
+    + `<div class="vmChips"><button class="vmChip" id="vmLeads"${nL ? '' : ' disabled'}>${vmIc('search', 18)}${nL ? `${nL} lead${nL > 1 ? 's' : ''}` : 'No leads'}</button>${S.trip ? `<button class="vmChip" id="vmTrip">${vmIc('boot', 18)}Squad out</button>` : S.lastTrip ? `<button class="vmChip" id="vmLast">${vmIc('boot', 18)}Last trip</button>` : ''}</div></div>`;
   showPanel('Explore');
   $('ib').querySelectorAll('[data-vm]').forEach((b) => { b.onclick = () => { vmCard = vmCard === b.dataset.vm ? null : b.dataset.vm; showValley(); }; });
   { const x = $('vmX'); if (x) x.onclick = () => { vmCard = null; showValley(); }; }
   { const l = $('vmLeads'); if (l && nL) l.onclick = () => { const ids = (S.leads || []).map((q) => q.dest).filter((q) => VM_P[q]), i = ids.indexOf(vmCard); vmCard = ids[(i + 1) % ids.length] || null; showValley(); }; }
+  for (const id of ['vmSquad', 'vmTrip']) { const b = $(id); if (b) b.onclick = () => { expSel.tripView = true; showExpedition(); }; }
   { const l = $('vmLast'); if (l) l.onclick = () => say(`Last trip: ${EXP_DEFS[S.lastTrip.dest].name}${S.lastTrip.lost.length ? ' · lost ' + S.lastTrip.lost.join(', ') : ''}`, true); }
   { const g = $('vmGo'); if (g) g.onclick = () => { const id = vmCard, P = VM_P[id]; if (P[3]) expSel.force = id; else { const ld = (S.leads || []).find((l) => l.dest === id); if (ld) expSel.lead = ld.id; } expSel.plan = true; expSel.ids = null; showExpedition(); }; }
 }
-function showExplore() { expSel.plan = false; expSel.force = null; showExpedition(); }   /* the Explore button and the trip chip: the map first */
+function showExplore() { expSel.plan = false; expSel.force = null; expSel.tripView = false; showExpedition(); }   /* the Explore button and the trip chip: the map first */
 function showExpedition() {
   endBuildMode(true); closeP(); expOpen = true; $('it').textContent = 'Explore'; const t = S.trip;
-  if (phoneOn() && !t && !expSel.plan && !expSel.force) return showValley();
+  if (phoneOn() && !(t && expSel.tripView) && !expSel.plan && !expSel.force) { if (!t) expSel.tripView = false; return showValley(); }   /* 3D.364: the map comes first even with a squad out; a tap on the squad opens the trip */
   if (t) {
     const d = EXP_DEFS[t.dest];
     $('ib').innerHTML = `<b>${d.icon} ${d.name}</b> · ${EXP_RISK[t.risk].label} risk<br><span id="expStage">${t.phase === 'back' ? 'Walking home' : `Stage ${Math.min(EXP_STAGES, t.stage + 1)} of ${EXP_STAGES}`}</span> · <b id="expTime">${mmss(expTripLeft(t))}</b> left<br>
@@ -174,7 +194,7 @@ function showExpedition() {
     $('expGo').onclick = () => { const r = startExpedition(expSel.dest, expSel.risk, expSel.ids); if (!r.ok) { expMsg(r.why); return; } if (!expSel.force) S.leads = (S.leads || []).filter((l) => l.id !== expSel.lead); closeP(); expSel.ids = null; expSel.force = null; expSel.plan = false; };
   }
   showPanel();
-  if (phoneOn() && !t) { panelBack = () => { expSel.plan = false; expSel.force = null; showValley(); }; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Map'; }   /* 3D.362: the planner goes back to the map */
+  if (phoneOn()) { panelBack = () => { expSel.plan = false; expSel.force = null; expSel.tripView = false; showValley(); }; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Map'; }   /* the planner and the trip go back to the map */   /* 3D.362: the planner goes back to the map */
 }
 /* V2.9 death and recovery model */
 const BLEED_TICKS = { none: 7200, medic: 10800, clinic: 12600, hospital: 14400 };

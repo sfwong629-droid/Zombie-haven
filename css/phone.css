@@ -225,3 +225,11 @@ html.phone .vmMood small { font-size: 10.5px; color: #c9d1d9; } html.phone .vmMo
 html.phone .vmPin .vmDot > svg, html.phone .vmPin .vmDot > img { width: 72%; height: 72%; } html.phone .vmPin .vmName { font-size: calc(9.5 * 100cqw / 360); } html.phone .vmPin .vmTag { font-size: calc(9 * 100cqw / 360); } html.phone .vmPin .vmBadge { width: calc(18 * 100cqw / 360); height: calc(18 * 100cqw / 360); } html.phone .vmPin .vmBadge svg { width: 78%; height: 78%; }   /* the pins grow and shrink with the map, so small phones are not crowded; taps stay 44 px */
 html.phone .vmBadge.face { background: none; box-shadow: none; width: calc(22 * 100cqw / 360); height: calc(22 * 100cqw / 360); right: -8px; top: -8px; } html.phone .vmBadge.face svg { width: 100%; height: 100%; }   /* 3D.362: the approved faces (W247 set A) */
 html.phone .vmMood > span em { background: none; } html.phone .vmMood > span.on em { background: none; box-shadow: none; }
+/* 3D.364 (W247 step 3): the squad out and the coming horde on the valley map */
+html.phone .vmOver { position: absolute; inset: 0; pointer-events: none; }
+html.phone .vmSquad, html.phone .vmHerd { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 2; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+html.phone .vmSquad { cursor: pointer; } html.phone .vmSquad::before { content: ''; position: absolute; left: 50%; top: 13px; width: 44px; height: 44px; transform: translate(-50%, -50%); border-radius: 50%; }
+html.phone .vmSquad .vmDot.sq { --s: calc(26 * 100cqw / 360); --r: #2b7de9; background: #fff; } html.phone .vmSquad .vmDot svg { width: 70%; height: 70%; }
+html.phone .vmN { position: absolute; right: -7px; bottom: -5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: #2b7de9; color: #fff; font: 800 9.5px/15px Manrope, sans-serif; font-style: normal; text-align: center; }
+html.phone .vmTag.t_squad { background: #2b7de9; color: #fff; font-size: calc(9 * 100cqw / 360); }
+html.phone .vmHerd { flex-direction: row; flex-wrap: wrap; width: 76px; justify-content: center; pointer-events: none; } html.phone .vmHerd svg { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); } html.phone .vmHerd .vmTag { flex-basis: auto; font-size: calc(9 * 100cqw / 360); }
