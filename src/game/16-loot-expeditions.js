@@ -226,6 +226,7 @@ function leadsHour() {   /* hourly: new leads at 7:00 and 15:00 (not every time)
   const opts = Object.keys(EXP_DEFS).filter((k) => !expLocked(k) && !EXP_DEFS[k].raid), wantB = needsBanner() && !bannersFree() && opts.includes('clinic') && !(S.leads || []).some((l) => l.dest === 'clinic'), seas = opts.find((k) => k.startsWith('sh_') && !(S.leads || []).some((l) => l.dest === k)), dest = first ? 'houses' : wantB && rnd() < .6 ? 'clinic' : seas && rnd() < .5 ? seas : opts[Math.floor(rnd() * opts.length)], d = EXP_DEFS[dest], risk = d.risks[Math.floor(rnd() * d.risks.length)];
   const T = LEAD_TEXT[dest] || ['A new place to search']; S.leadSeen = true;
   (S.leads ||= []).push({ id: 'l' + S.day + '_' + S.hour, dest, risk, text: T[Math.floor(rnd() * T.length)], untilH: nowH() + 10 });
+  vmKnow(dest);   /* 3D.363: a lead puts its place on the valley map for good */
   banner(`🧭 New lead: ${d.name}`); logEvent(`New lead: ${d.name} (${EXP_RISK[risk].label} risk, ${EXP_HOURS[risk]} h trip). Open Explore to send a squad. It's gone in about 10 hours.`, 'important'); ui();
 }
 function expLocked(destId) { if (shSecured(destId)) return 'Secured: the dead there are gone for good';   /* 3D.302 */ return EXP_DEFS[destId].lock(); }
@@ -234,6 +235,7 @@ function startExpedition(destId, riskId, ids) {
   if (S.cordon > S.day) return { ok: false, why: `Quarantine cordon: nobody leaves until day ${S.cordon}` };
   if (S.trip) return { ok: false, why: 'A squad is already out' }; if (S.sh) return { ok: false, why: 'A squad is inside a stronghold' }; const r0 = startExpedition0(destId, riskId, ids); if (r0 && r0.ok) statAdd('exp'); return r0; }
 function startExpedition0(destId, riskId, ids) {
+  vmKnow(destId);   /* 3D.363: somewhere the squad has been stays on the map */
   const d = EXP_DEFS[destId], rk = EXP_RISK[riskId];
   const lock = expLocked(destId); if (lock) return { ok: false, why: lock };
   if (!d.risks.includes(riskId)) return { ok: false, why: d.name + ' only offers ' + d.risks.map((r) => EXP_RISK[r].label).join(' / ') + ' trips' };

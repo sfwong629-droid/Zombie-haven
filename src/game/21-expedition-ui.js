@@ -53,16 +53,22 @@ const VM_SHORT = { houses: 'Elm Row', pharmacy: 'Pharmacy', lumberyard: 'Lumber 
 const VM_MOODS = [['angry', 'Hostile'], ['sad', 'Wary'], ['', 'Neutral'], ['happy', 'Friendly'], ['allies', 'Allies']];
 const vmMood = (F) => (F.ally ? 4 : F.att >= 25 ? 3 : F.att > -10 ? 2 : F.att > -50 ? 1 : 0);
 let vmCard = null;
+/* 3D.363 (W245: "Yes on hide places"; step 2 of 4): a place stays off the map until the town knows it: a lead pointed there (it stays known after
+   the lead goes) or a squad went there; a faction town once met. The unknown part of the valley is fogged, the clear area round the Haven
+   growing with every place known. Towns from before this build know every place they could already go to. */
+function vmKnown() { if (!S.known) { S.known = {}; if ((S.day || 1) > 1 || S.lastTrip) for (const id of Object.keys(VM_P)) if (EXP_DEFS[id] && !VM_P[id][3] && !EXP_DEFS[id].lock()) S.known[id] = 1; } return S.known; }
+function vmKnow(id) { if (id && EXP_DEFS[id]) vmKnown()[id] = 1; }
 function vmState(id) {   /* what the pin shows: st (colour), tag (a word or two under it) */
   const d = EXP_DEFS[id], fk = VM_P[id][3], lead = (S.leads || []).find((l) => l.dest === id);
   if (fk) { const F = (S.fac || {})[fk]; if (!F || !F.met) return null; const m = vmMood(F); return { st: ['rival', 'wary', 'neutral', 'friend', 'friend'][m], tag: VM_MOODS[m][1], mood: m, fk }; }
+  if (!vmKnown()[id] && !lead) return null;   /* 3D.363: not scouted yet */
   if (shSecured(id)) return { st: 'outpost', tag: 'Secured' };
   const lk = d.lock(); if (lk) { const lv = /level (\d+)/i.exec(lk); return id.startsWith('sh_') ? { st: 'off', tag: id.slice(3, 4).toUpperCase() + id.slice(4) } : { st: 'locked', tag: lv ? 'Level ' + lv[1] : (lk.replace(/^Needs (the )?/i, '').length <= 12 ? lk.replace(/^Needs (the )?/i, '') : 'Locked'), why: lk }; }
   if (lead) return { st: 'lead', tag: 'Lead', lead };
   if (d.stronghold) return { st: 'sealed' };
   return { st: 'search' };
 }
-function vmMapSvg() {
+function vmMapSvg(nKnown, near = []) {
   const W = VM_W, H = VM_H, sm = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
   const curve = (pts) => { let d = `M${pts[0][0]} ${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; d += ` Q${a[0]} ${a[1]} ${(a[0] + b[0]) / 2} ${(a[1] + b[1]) / 2}`; } const l = pts[pts.length - 1]; return d + ` T${l[0]} ${l[1]}`; };
   const river = [[26, -5], [40, 70], [44, 130], [34, 200], [40, 262], [50, 330], [36, 400], [32, 450], [40, 505]];
@@ -88,6 +94,13 @@ function vmMapSvg() {
   const lab = (x, y, t, c = '#80868b', rot = 0, sz = 8) => `<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" font-size="${sz}" letter-spacing="1.6" fill="${c}" font-family="Manrope,sans-serif" font-weight="800" text-anchor="middle" style="paint-order:stroke" stroke="#f1efe9" stroke-width="2.5">${t}</text>`;
   o += lab(146, 22, 'PINE HILLS') + lab(22, 340, 'MILL RIVER', '#5d9bd0', -86) + lab(352, 330, 'CORDON ZONE', '#c5221f', 90, 7) + lab(130, 494, 'SOUTH VALLEY') + lab(250, 132, 'NORTH WOODS', '#7a9a5e', 0, 6.5);
   o += `<g transform="translate(18 18)"><circle r="10" fill="#fff" stroke="#dadce0"/><path d="M0 -7 L3 1 L0 -1 L-3 1 Z" fill="#d93025"/><text y="8" font-size="6" text-anchor="middle" fill="#5f6368" font-family="Manrope,sans-serif" font-weight="800">N</text></g>`;
+  if (nKnown !== undefined && nKnown < 10) {   /* 3D.363: fog over what nobody has scouted, clearing as places become known */
+    const r = Math.min(95, 30 + nKnown * 7);
+    o += `<defs><radialGradient id="vmFog" cx="${180 / W * 100}%" cy="${318 / H * 100}%" r="${r}%"><stop offset="55%" stop-color="#e8e6e1" stop-opacity="0"/><stop offset="85%" stop-color="#e8e6e1" stop-opacity=".95"/><stop offset="100%" stop-color="#e8e6e1" stop-opacity="1"/></radialGradient>
+      <pattern id="vmFogDots" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".8" fill="rgba(0,0,0,.07)"/></pattern><mask id="vmFogMask"><rect width="${W}" height="${H}" fill="url(#vmFog)"/></mask></defs>
+      <rect width="${W}" height="${H}" fill="url(#vmFog)"/><rect width="${W}" height="${H}" fill="url(#vmFogDots)" mask="url(#vmFogMask)"/>`;
+    for (const [x, y, rot] of [[90, 70, -4], [270, 72, 4], [290, 470, 0]]) if (!near.some(([px, py]) => Math.abs(px - x) < 60 && Math.abs(py - y) < 36)) o += lab(x, y, 'NO DATA', '#9aa0a6', rot, 8);   /* never over a known place */
+  }
   return o + '</svg>';
 }
 /* the five mood faces exactly as the owner approved them (W247: set A, Allies = sample 4, two faces together; tools/qa/mood_icons_mock.html, phone_b_mock.js) */
@@ -116,7 +129,7 @@ function showValley() {
       + (s.mood !== undefined ? `<div class="vmMood">${VM_MOODS.map(([i, w], k) => `<span class="${k === s.mood ? 'on' : ''}"><em>${vmFace(k, k === s.mood ? 36 : 28)}</em><small>${w}</small></span>`).join('')}</div>` : '')
       + (loot && !P[3] ? `<div class="vmBrings"><span>Brings</span>${loot}</div>` : '') + (go ? `<div class="vmBtns">${go}</div>` : '') + '</div>'; }
   const nL = (S.leads || []).length;
-  $('ib').innerHTML = `<div class="vmWrap"><div class="vmMap">${vmMapSvg()}<div class="vmPins">${pins}</div>${card}</div>`
+  $('ib').innerHTML = `<div class="vmWrap"><div class="vmMap">${vmMapSvg(Object.keys(shown).length, Object.keys(shown).map((k) => VM_P[k]))}<div class="vmPins">${pins}</div>${card}</div>`
     + `<div class="vmChips"><button class="vmChip" id="vmLeads"${nL ? '' : ' disabled'}>${vmIc('search', 18)}${nL ? `${nL} lead${nL > 1 ? 's' : ''}` : 'No leads'}</button>${S.lastTrip ? `<button class="vmChip" id="vmLast">${vmIc('boot', 18)}Last trip</button>` : ''}</div></div>`;
   showPanel('Explore');
   $('ib').querySelectorAll('[data-vm]').forEach((b) => { b.onclick = () => { vmCard = vmCard === b.dataset.vm ? null : b.dataset.vm; showValley(); }; });
