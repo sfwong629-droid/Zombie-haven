@@ -45,7 +45,7 @@ Their tricks were approved on 17 Nov; the move shows the trick.
 | Leaper | A Sunnyside street kid: free school meals from a tin, every day | **Jump**: crouches, springs over a fence or low wall, lands in a crouch; attack: a **pounce** onto the target |
 | Digger | A quarry man who ate his lunch tin underground for ten years | **Dig**: both arms scoop, the body sinks into the ground; **burst**: comes up through the mound with both arms overhead and brings them down |
 | Splitter | A Helix subject given two different doses, one down each side | **Splits in half** when killed: the body tears along the seam and the two halves hop and drag themselves on (needs the model cut into two); alive, the two arms strike out of time with each other |
-| Stag | A deer that dug up the tins people buried | **Charge**: head down, a straight run, a toss of the antlers; its run is the Dog's gallop (3D.256) |
+| Stag | A deer that dug up the tins people buried | **Charge**: head down, a straight run, a toss of the antlers; its run is the Dog's gallop (3D.256). Preview `zmove_stag.py charge`, 25 Nov |
 | Bile Spewer | A vat cleaner at the plant, who breathed concentrate for years | **Spray**: bends double, hands on the belly, a stream swept from side to side |
 | Lineman | Kept the plant's lights on; still goes to the power | **Tear down**: grips a cable or a fence with both hands and wrenches it |
 | Listener | A Forever Fresh Radio fan who never switched it off; blind now, it turns to any sound | **Listen**: the head tilts, an ear turns to the noise, the hands feel the air; then a **frantic two-handed flurry** when it finds someone |
@@ -100,6 +100,7 @@ One move that is not an attack for every zombie, played every now and then or be
 - Lasher: ~~a long, slow stretch~~ (turned down 24 Nov) a back scratch: over the shoulder to the shoulder blades, then down behind to the back of the knee (owner, 24 Nov: "1", then "the scratch is good"; `zmove_lasher.py scratch`; approved).
 - Stalker: a crouch and sniff: down low, hands on the knees, nose sweeping the ground, a look round, one more sniff (`zmove_stalker.py sniff`; approved 25 Nov: "its ok next").
 - Mutant: an arm crack: each arm pulled straight across the chest by the other hand with a jerk, then the neck snapped to each side (`zmove_mutant.py crack`; approved 25 Nov: "crack is ok").
+- Stag (new kind): scrapes the ground twice with a front hoof, then snorts and tosses its head (preview `zmove_stag.py scrape`, 25 Nov).
 
 ## The Alpha's blade (23 Nov, W265 to W267)
 The Alpha is the second zombie allowed a weapon: a big rusted blade (`tools/art/b3d/alpha_blade.py`, approved W266). He stands with it hanging, tip on the ground; walks and runs dragging it behind, the left arm swinging at his side; his attack lifts it slowly from the drag and swings it quickly across; he waves the others on with it. Previews in `tools/art/b3d/zmove_alpha.py`; **approved 23 Nov** (owner: "Looks good").
