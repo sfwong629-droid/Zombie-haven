@@ -63,7 +63,7 @@ function edgeGuard() {
   for (const q of S.sv) if (q.hp > 0 && !insideBuilding(q)) keep(q, false);
   for (const z of S.z) if (z.hp > 0) keep(z, true);
 }
-/* ---------------- 3D.358 W269 step 2: placing walls and gates on the lines ----------------
+/* ---------------- 3D.359 W269 step 2: placing walls and gates on the lines ----------------
    With the wall tool in a town on lines: a tap puts a piece on the line nearest the finger (tap it again to take it away, half the cost
    back; a stronger wall on a weaker one upgrades it, a Gate swaps into any piece, as before). A one-finger drag draws a straight run from
    the corner where it started along the lines (sideways or up and down, whichever the finger went more), shown as a ghost with its cost;

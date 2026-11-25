@@ -1,4 +1,4 @@
-// tools/qa/edge_place_pics.js — 3D.358 (W269 step 2): pictures for the owner: a fence being dragged along a line (green ghost) next to
+// tools/qa/edge_place_pics.js — 3D.359 (W269 step 2): pictures for the owner: a fence being dragged along a line (green ghost) next to
 // pieces already built, and the finished ring with its gate. Writes runs/features/edge_place_drag.png and edge_place_ring.png.
 const Q = require('./lib');
 (async () => { const b = await Q.launch(); const p = await Q.page(b, { expose: 'startTool, endBuildMode, centerOn, cam, edgeDraftAt, edgeDraftPlace' }); await Q.newGame(p); await Q.clearCards(p);

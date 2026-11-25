@@ -70,7 +70,7 @@ function gapWhy(x, y) {
   return Wd.inWallZone(x, y) ? 'an open tile in an inner fence' : 'outside the wall area';
 }
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
-  if (edgeOn()) return findGapsEdge(max);   /* 3D.358 walls on the lines */
+  if (edgeOn()) return findGapsEdge(max);   /* 3D.359 walls on the lines */
   let seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return [];
   { const per = Wd.perimeter(world); if (per.ring && per.outsideB.length) { const b = per.outsideB.find((q) => DEFS[q.type].fam !== 'hq') || per.outsideB[0], t = Wd.approachTile(b); seed = Wd.walkable(world, t.x, t.y, true) ? t : Wd.nearestWalkable(world, t.x, t.y, true) || seed; } }   /* 3D.172: the camp fence is closed but buildings are still outside: look for the gap from one of them */ const plug = new Set(), gaps = [];
   const open = (x, y) => Wd.inMap(x, y) && !plug.has(x + ',' + y) && Wd.walkable(world, x, y, true);

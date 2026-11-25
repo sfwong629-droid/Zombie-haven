@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.358', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.359', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3305,7 +3305,7 @@ function edgeGuard() {
   for (const q of S.sv) if (q.hp > 0 && !insideBuilding(q)) keep(q, false);
   for (const z of S.z) if (z.hp > 0) keep(z, true);
 }
-/* ---------------- 3D.358 W269 step 2: placing walls and gates on the lines ----------------
+/* ---------------- 3D.359 W269 step 2: placing walls and gates on the lines ----------------
    With the wall tool in a town on lines: a tap puts a piece on the line nearest the finger (tap it again to take it away, half the cost
    back; a stronger wall on a weaker one upgrades it, a Gate swaps into any piece, as before). A one-finger drag draws a straight run from
    the corner where it started along the lines (sideways or up and down, whichever the finger went more), shown as a ghost with its cost;
@@ -4241,7 +4241,7 @@ function gapWhy(x, y) {
   return Wd.inWallZone(x, y) ? 'an open tile in an inner fence' : 'outside the wall area';
 }
 function findGaps(max = 8) {   // where the zombies' way in is: trace the shortest escape from the town to the map edge, pick the gap tile on it, pretend it is walled, repeat
-  if (edgeOn()) return findGapsEdge(max);   /* 3D.358 walls on the lines */
+  if (edgeOn()) return findGapsEdge(max);   /* 3D.359 walls on the lines */
   let seed = Wd.nearestWalkable(world, 7 + Wd.OFF, 10 + Wd.OFF, true); if (!seed) return [];
   { const per = Wd.perimeter(world); if (per.ring && per.outsideB.length) { const b = per.outsideB.find((q) => DEFS[q.type].fam !== 'hq') || per.outsideB[0], t = Wd.approachTile(b); seed = Wd.walkable(world, t.x, t.y, true) ? t : Wd.nearestWalkable(world, t.x, t.y, true) || seed; } }   /* 3D.172: the camp fence is closed but buildings are still outside: look for the gap from one of them */ const plug = new Set(), gaps = [];
   const open = (x, y) => Wd.inMap(x, y) && !plug.has(x + ',' + y) && Wd.walkable(world, x, y, true);
@@ -7550,7 +7550,7 @@ function tryDemolish(px, py, x, y) {   /* V2.33: one Demolish tool for buildings
   const b = hitBuilding(px, py) || Wd.buildingAt(world, x, y);
   if (b) { if (demoPick === b) { demoPick = null; selected = null; demolish(b); startTool({ kind: 'demolish' }); return; } demoPick = b; selected = { kind: 'building', ref: b }; say(`Tap ${DEFS[b.type].name} again to demolish it (+${Math.floor(DEFS[b.type].mat * .5)} scrap).`); return; }
   demoPick = null; selected = null;
-  if (edgeOn()) { const t = unproject(px, py), e = edgeNear(t.x, t.y), ex = e.d < .3 && world.edges.get(Wd.ekey(e.s, e.x, e.y)); if (ex) { const wd = Wd.WALL_DEFS[ex.type]; if (!confirmTile('e' + e.s, e.x, e.y, `Tap the ${wd.name} again to remove it (half the cost back).`)) return; world.edges.delete(Wd.ekey(e.s, e.x, e.y)); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; } }   /* 3D.358 a wall on a line */
+  if (edgeOn()) { const t = unproject(px, py), e = edgeNear(t.x, t.y), ex = e.d < .3 && world.edges.get(Wd.ekey(e.s, e.x, e.y)); if (ex) { const wd = Wd.WALL_DEFS[ex.type]; if (!confirmTile('e' + e.s, e.x, e.y, `Tap the ${wd.name} again to remove it (half the cost back).`)) return; world.edges.delete(Wd.ekey(e.s, e.x, e.y)); Wd.bump(world); refundCost(bCost(wd), .5); say(wd.name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; } }   /* 3D.359 a wall on a line */
   { const gp = postAt(x, y); if (gp) { if (!confirmTile('p', x, y, 'Tap the guard post again to remove it (+1 part).')) return; removePost(gp); say('Guard post removed.'); ui(); return; } }
   { const tp = trapAt(x, y); if (tp) { if (!confirmTile('t', x, y, `Tap the ${TRAP_DEFS[tp.type].name} again to remove it (half the cost back).`)) return; trapMap().delete(x + ',' + y); refundCost(bCost(TRAP_DEFS[tp.type]), .5); Wd.bump(world); say(TRAP_DEFS[tp.type].name + ' removed.'); saveGame(); ui(); return; } }
   const wl = Wd.wallAt(world, x, y); if (wl) { if (!confirmTile('w', x, y, `Tap the ${Wd.WALL_DEFS[wl.type].name} again to remove it (half the cost back).`)) return; world.walls.delete(Wd.key(x, y)); Wd.bump(world); refundCost(bCost(Wd.WALL_DEFS[wl.type]), .5); say(Wd.WALL_DEFS[wl.type].name + ' removed.'); checkPerimeter(); saveGame(); ui(); return; }
@@ -8631,7 +8631,7 @@ function zoomAt(px, py, nz) { nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nz)); c
 cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); if (pointers.size === 1) { tapStart = { ...p, id: e.pointerId, cx: cam.x, cy: cam.y, moved: false, t: performance.now() }; if (edgeTool()) { const t = unproject(p.x, p.y); tapStart.edge = { x: Math.round(t.x), y: Math.round(t.y) }; edgeDraft = null; } } else if (pointers.size === 2) { if (tapStart) tapStart.moved = true;   /* V2.39: a second finger means a gesture, never a tap */ const a = [...pointers.values()]; gesture = { dist: Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), z: cam.z, mx: (a[0].x + a[1].x) / 2, my: (a[0].y + a[1].y) / 2 }; tapStart = null; edgeDraft = null; } });
 cv.addEventListener('pointermove', (e) => {
   if (!pointers.has(e.pointerId)) return; const p = local(e); pointers.set(e.pointerId, p);
-  if (pointers.size === 1 && tapStart) { const dx = p.x - tapStart.x, dy = p.y - tapStart.y; if (Math.hypot(dx, dy) > 8) tapStart.moved = true; if (tapStart.moved && tapStart.edge && edgeTool()) { const t = unproject(p.x, p.y); edgeDraftAt(tapStart.edge, { x: Math.round(t.x), y: Math.round(t.y) }); } else if (tapStart.moved) { cam.x = tapStart.cx + dx; cam.y = tapStart.cy + dy; clampCam(); } }   /* 3D.358 with the wall tool on lines, one finger draws a run */
+  if (pointers.size === 1 && tapStart) { const dx = p.x - tapStart.x, dy = p.y - tapStart.y; if (Math.hypot(dx, dy) > 8) tapStart.moved = true; if (tapStart.moved && tapStart.edge && edgeTool()) { const t = unproject(p.x, p.y); edgeDraftAt(tapStart.edge, { x: Math.round(t.x), y: Math.round(t.y) }); } else if (tapStart.moved) { cam.x = tapStart.cx + dx; cam.y = tapStart.cy + dy; clampCam(); } }   /* 3D.359 with the wall tool on lines, one finger draws a run */
   else if (pointers.size >= 2 && gesture) { const a = [...pointers.values()].slice(0, 2), d = Math.max(20, Math.hypot(a[1].x - a[0].x, a[1].y - a[0].y)), mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2; zoomAt(mx, my, gesture.z * d / gesture.dist); if (edgeTool() && gesture.mx != null) { cam.x += mx - gesture.mx; cam.y += my - gesture.my; clampCam(); } gesture.mx = mx; gesture.my = my; }   /* two fingers also move the view while drawing walls */
 });
 function pointerEnd(e) { const p = local(e), wasTap = tapStart && tapStart.id === e.pointerId && !tapStart.moved && pointers.size === 1; if (tapStart && tapStart.edge && tapStart.moved && tapStart.id === e.pointerId && edgeDraft && edgeTool()) edgeDraftPlace(); else if (tapStart && tapStart.id === e.pointerId) edgeDraft = null; pointers.delete(e.pointerId); if (pointers.size < 2) gesture = null;

@@ -1,4 +1,4 @@
-// tools/qa/edge_place_check.js — 3D.358 (W269 step 2): placing walls and gates on the lines between tiles, with real taps and drags on
+// tools/qa/edge_place_check.js — 3D.359 (W269 step 2): placing walls and gates on the lines between tiles, with real taps and drags on
 // the game's canvas. In a town on lines with the wall tool: a tap puts a piece on the nearest line, a second and third tap take it away
 // (half back); a one-finger drag along the build zone's edge draws a straight run (a ghost while dragging) and builds it on release, and
 // the view does not move; four drags close a ring round the town; a building's doorway is skipped by a wall run; a Gate tapped on a piece

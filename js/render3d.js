@@ -674,7 +674,7 @@ function buildWalls() {
   const P = new Parts();
   const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
   for (const w of list) wallPiece(P, w, has, (w.x + .5) * T, (w.y + .5) * T);
-  /* 3D.358 W269 walls on the lines between tiles: each piece is drawn with its wall type's own look, centred on the middle of its line,
+  /* 3D.359 W269 walls on the lines between tiles: each piece is drawn with its wall type's own look, centred on the middle of its line,
      with its two arms along the line (one tile long). (Step 4 joins the corners and posts properly.) */
   for (const e of elist) { const v = e.s === 'v', q = { type: e.type, hp: e.hp, max: e.max, broken: e.broken, x: e.x * 2 + (v ? 0 : 1), y: e.y * 2 + (v ? 1 : 0) };
     const along = (x, y) => (v ? x === q.x && Math.abs(y - q.y) === 1 : y === q.y && Math.abs(x - q.x) === 1);
@@ -1759,7 +1759,7 @@ function syncGhost() {
     scene.add(g); ghost = { g, key }; }
   ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
 }
-// 3D.358 W269: the run being dragged with the wall tool, as see-through slabs on the lines: green to build, blue already there, red can't
+// 3D.359 W269: the run being dragged with the wall tool, as see-through slabs on the lines: green to build, blue already there, red can't
 let edgeGhost = null, edgeGhostKey = '';
 function syncEdgeGhost() {
   const d = G.edgeDraft && G.edgeDraft(), key = d ? d.list.map((p) => p.s + p.x + ',' + p.y + p.st).join(';') : '';
