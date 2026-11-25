@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.379', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.380', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3037,6 +3037,9 @@ function eventSchedule() {   /* called every game hour */
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
   if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: townHurt() && activeZ() <= mobCap() / 2 ? 'The town is badly hurt. The boss\'s horde holds back a day: patch people up while you can.' : `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
   else if (S.day === S.nextBoss && S.hour === 12) S.bossWaits = 0;
+  /* 3D.380 (W249): in the phone look the noon warning of a boss night is an emergency alert, said once (W270 rule 3): no radio message and no Field Note card with it */
+  if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn() && phoneOn()) { S.intro = S.intro || {}; if (!S.intro['f:boss']) S.intro['f:boss'] = S.day;
+    showEventPopup({ title: 'Boss night', alert: { title: 'Boss night · 21:00', line: 'A boss leads tonight\'s horde to the Haven.', sub: 'Re-arm the traps, set a Noise Lure, heal the hurt.' }, buttons: [{ label: 'Show me', fn: () => showTown('defense') }, { label: 'OK' }] }); } else
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { hordeStart(); S.bossDay = S.day; S.nextBoss += bossGap(); }   /* 3D.269: the horde first, its boss behind it */
   incidentRoll();
@@ -4873,6 +4876,14 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('live'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('event'); return;
   }
+  if (e.alert && phoneOn()) {   /* 3D.380 (W249, fun idea 2): the big warnings as the phone's emergency alert: a red wash over the town, the alarm,
+       a dark card at the top with EMERGENCY ALERT, the title, one line, a second small line, and two plain buttons side by side. Only for the big nights. */
+    const A = e.alert; m.classList.add('emA');
+    m.innerHTML = `<div class="emWash"></div><div class="emBox" role="alertdialog"><div class="emHd"><span class="emIc"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3 2 21h20z" fill="#fff"/><path d="M12 9v6" stroke="#d92d2d" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="18" r="1.4" fill="#d92d2d"/></svg></span><b>EMERGENCY ALERT</b><span class="emNow">now</span></div>`
+      + `<div class="emT">${A.title}</div><div class="emL">${A.line}</div>${A.sub ? `<div class="emS">${A.sub}</div>` : ''}<div class="emBtns">${bt.map((b, i) => `<button data-i="${i}" class="emB${i === 0 && bt.length > 1 ? ' main' : ''}">${b.label}</button>`).join('')}</div></div>`;
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
+    SFX('alarm'); return;
+  }
   if ((e.stage)) {   /* V3D.12: DV2-style stage card */
     m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
@@ -5832,7 +5843,9 @@ function crisisDaily() {
   if (graceOn()) return;   /* 3D.292: not during a breather or a vigil either */
   const pool = Object.keys(CRISES).filter((k) => CRISES[k].fits() && k !== S.crisisLast); const k = QS.get('crisis') && CRISES[QS.get('crisis')] ? QS.get('crisis') : pool[Math.floor(rnd() * pool.length)]; if (!k) return;
   S.crisis = { k, day0: S.day, lost: 0 }; CRISES[k].start(S.crisis); S.crisisLast = k; S.crisisNext = S.day + CRISIS_EVERY;
-  const C = CRISES[k]; SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
+  const C = CRISES[k];
+  if (phoneOn()) { showEventPopup({ title: 'Weekly crisis', alert: { title: `${C.icon} ${C.name}`, line: C.desc, sub: 'See it through: a Crisis Medal, 30 renown and an epic crate.' }, buttons: C.act ? [{ label: C.actLabel, fn: () => C.act() }, { label: 'Later' }] : [{ label: 'Get ready' }] }); return; }   /* 3D.380 (W249): the crisis as an emergency alert */
+  SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
 }
 /* 3D.274 (owner, 21 Nov, W176: the limit of 60 standing holds for every kind of attack; zombies grow with the level, not the days):
    The Tide's three waves no longer appear all at once. Each wave joins a queue, and its zombies walk in one by one while fewer than

@@ -362,6 +362,14 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('live'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('event'); return;
   }
+  if (e.alert && phoneOn()) {   /* 3D.380 (W249, fun idea 2): the big warnings as the phone's emergency alert: a red wash over the town, the alarm,
+       a dark card at the top with EMERGENCY ALERT, the title, one line, a second small line, and two plain buttons side by side. Only for the big nights. */
+    const A = e.alert; m.classList.add('emA');
+    m.innerHTML = `<div class="emWash"></div><div class="emBox" role="alertdialog"><div class="emHd"><span class="emIc"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3 2 21h20z" fill="#fff"/><path d="M12 9v6" stroke="#d92d2d" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="18" r="1.4" fill="#d92d2d"/></svg></span><b>EMERGENCY ALERT</b><span class="emNow">now</span></div>`
+      + `<div class="emT">${A.title}</div><div class="emL">${A.line}</div>${A.sub ? `<div class="emS">${A.sub}</div>` : ''}<div class="emBtns">${bt.map((b, i) => `<button data-i="${i}" class="emB${i === 0 && bt.length > 1 ? ' main' : ''}">${b.label}</button>`).join('')}</div></div>`;
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
+    SFX('alarm'); return;
+  }
   if ((e.stage)) {   /* V3D.12: DV2-style stage card */
     m.innerHTML = `<div class="evBox frame stageCard"><div class="evTitle">${e.stage.head || 'News'}</div>${stageHtml(e.stage)}<div class="evLine">${e.short || e.title}</div>${e.chips ? `<div class="evChips">${e.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : ''}${bt.map((b, i) => `<button class="act${bt.length === 1 || b.rec ? ' go' : ''} out" data-i="${i}"${i === 0 ? ' id="eventOk"' : ''}${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>`;
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });

@@ -109,7 +109,9 @@ function crisisDaily() {
   if (graceOn()) return;   /* 3D.292: not during a breather or a vigil either */
   const pool = Object.keys(CRISES).filter((k) => CRISES[k].fits() && k !== S.crisisLast); const k = QS.get('crisis') && CRISES[QS.get('crisis')] ? QS.get('crisis') : pool[Math.floor(rnd() * pool.length)]; if (!k) return;
   S.crisis = { k, day0: S.day, lost: 0 }; CRISES[k].start(S.crisis); S.crisisLast = k; S.crisisNext = S.day + CRISIS_EVERY;
-  const C = CRISES[k]; SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
+  const C = CRISES[k];
+  if (phoneOn()) { showEventPopup({ title: 'Weekly crisis', alert: { title: `${C.icon} ${C.name}`, line: C.desc, sub: 'See it through: a Crisis Medal, 30 renown and an epic crate.' }, buttons: C.act ? [{ label: C.actLabel, fn: () => C.act() }, { label: 'Later' }] : [{ label: 'Get ready' }] }); return; }   /* 3D.380 (W249): the crisis as an emergency alert */
+  SFX('alarm'); showEventPopup({ title: `${C.icon} WEEKLY CRISIS`, text: `<b>${C.name}</b><br>${C.desc}<br><small>See it through for a Crisis Medal, 30 renown and an epic crate.</small>`, buttons: C.act ? [{ label: C.actLabel.toUpperCase(), fn: () => C.act() }, { label: 'LATER' }] : [{ label: 'GET READY' }] });
 }
 /* 3D.274 (owner, 21 Nov, W176: the limit of 60 standing holds for every kind of attack; zombies grow with the level, not the days):
    The Tide's three waves no longer appear all at once. Each wave joins a queue, and its zombies walk in one by one while fewer than

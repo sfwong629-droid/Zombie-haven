@@ -387,6 +387,9 @@ function eventSchedule() {   /* called every game hour */
      /* V3D.17: no warning in 3D; the boss card shows when it appears */
   if (S.day === S.nextBoss && S.hour === 12 && !graceOn() && streetsFull() && (S.bossWaits || 0) < BOSS_WAIT_MAX) { S.nextBoss++; S.bossWaits = (S.bossWaits || 0) + 1; note('important', '🧟 THE BIG NIGHT WAITS', { log: townHurt() && activeZ() <= mobCap() / 2 ? 'The town is badly hurt. The boss\'s horde holds back a day: patch people up while you can.' : `${activeZ()} zombies from before still walk the streets. The boss's horde holds back a day: clear the streets while the sun weakens them.` }); }   /* 3D.298 A12 tuning */
   else if (S.day === S.nextBoss && S.hour === 12) S.bossWaits = 0;
+  /* 3D.380 (W249): in the phone look the noon warning of a boss night is an emergency alert, said once (W270 rule 3): no radio message and no Field Note card with it */
+  if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn() && phoneOn()) { S.intro = S.intro || {}; if (!S.intro['f:boss']) S.intro['f:boss'] = S.day;
+    showEventPopup({ title: 'Boss night', alert: { title: 'Boss night · 21:00', line: 'A boss leads tonight\'s horde to the Haven.', sub: 'Re-arm the traps, set a Noise Lure, heal the hurt.' }, buttons: [{ label: 'Show me', fn: () => showTown('defense') }, { label: 'OK' }] }); } else
   if ((S.day === S.nextBoss) && S.hour === 12 && !graceOn()) radio('dj', rLine('boss'), { key: 'boss', level: 'important', more: 'Scouts saw a huge mutant gathering a horde. It will hit the Haven at 21:00.<br><br>Re-arm traps, set a Noise Lure, heal up.' });   /* 3D.76: time to prepare */
   if (S.day === S.nextBoss && S.hour === 21) { hordeStart(); S.bossDay = S.day; S.nextBoss += bossGap(); }   /* 3D.269: the horde first, its boss behind it */
   incidentRoll();
