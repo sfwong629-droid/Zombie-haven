@@ -553,9 +553,9 @@ async def t_rotate(br, port, t):   # V2.47: buildings can be turned so the entra
     t.ok(not errs and not errs2, f'no page errors {(errs + errs2)[:1]}'); await ctx.close()
 
 async def t_save_load(br, port, t):
-    ctx, pg, errs = await open_game(br, port, 'save1')
+    ctx, pg, errs = await open_game(br, port, 'save1')   # 3D.375: this town is switched to wall tiles (edgeWalls=false), so the tile save is still tested; pieces on the lines: tools/qa/edge_walls_check.js
     await pg.evaluate(PLACE, 'water'); await pg.evaluate(PLACE, 'workshop')
-    before = await pg.evaluate("""()=>{const S=ZH.S;S.mat=99;for(let x=8;x<=11;x++)ZH.tryWall(x,11,'wood');ZH.wallBroken(ZH.Wd.wallAt(ZH.world,9,11));S.pets.push(ZH.newPet('cat'));ZH.givePet(S.sv[0],0);
+    before = await pg.evaluate("""()=>{const S=ZH.S;S.mat=99;S.edgeWalls=false;for(let x=8;x<=11;x++)ZH.tryWall(x,11,'wood');ZH.wallBroken(ZH.Wd.wallAt(ZH.world,9,11));S.pets.push(ZH.newPet('cat'));ZH.givePet(S.sv[0],0);
       S.kids.push({name:'Ivy',age:2,parents:[S.sv[0].id],st:{str:5,end:5,agi:5,per:5,int:5,cha:5}});S.sv[0].rel={[S.sv[1].id]:60};S.res.blades=true;ZH.saveGame();
       return {b:ZH.world.buildings.length,w:ZH.world.walls.size,broken:ZH.Wd.wallAt(ZH.world,9,11).broken,pet:S.sv[0].pet.name,kids:S.kids.length,rel:S.sv[0].rel[S.sv[1].id],res:Object.keys(S.res).length,mat:Math.round(S.mat)}}""")
     save = await pg.evaluate("()=>localStorage.getItem('zombieHavenR1')"); await ctx.close()

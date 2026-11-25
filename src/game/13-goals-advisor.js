@@ -8,7 +8,7 @@ const GUIDE = [
   { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare scrap. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
   { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
   { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workbench and tap it. An Engineer working there makes research points faster. Research unlocks gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
-  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Fence or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with scrap.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
+  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Fence or Gate, then tap or drag along the lines round the town and press Confirm. Most zombies come from the north. A broken piece turns to rubble and is repaired automatically.', done: () => wallCount() >= 10, parts: 5, ren: 6 },
   { name: 'Go Out There', desc: 'Send an expedition', hint: 'EXPEDITION → pick a place, a risk level and a squad. Trips run in real time, even while the game is closed, and bring back supplies, scrap and sometimes gear or new survivors.', done: () => !!S.trip || (S.expCount || 0) > 0, parts: 5, ren: 6 },
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
 ];
@@ -25,7 +25,7 @@ const TUT = {
   'Gear Up': ['A jacket stops more teeth than you would think.', 'Build an Armory and they buy basic gear themselves, or tap a survivor, then Gear, and pick from the stash.'],
   'Train Up': ['Brains and muscles both rust. Build a Gym, a Library or a Lounge.', 'People train there in their free time, and every full bar is a permanent point.'],
   Research: ['Build a Workbench and tap it to pick a project.', 'An Engineer there works fastest. Research unlocks gear recipes and town upgrades.'],
-  'Hold the Line': ['Most of the dead come from the north. Give them something to chew on.', 'Build, then Wood Fence or Gate, and tap the tiles in the glowing ring. Ten pieces will do for now.'],
+  'Hold the Line': ['Most of the dead come from the north. Give them something to chew on.', 'Build, then Wood Fence or Gate. Drag along the lines round the town, then Confirm. Ten pieces will do for now.'],
   'Go Out There': ['There is a whole world of loot out there, and it bites.', 'Tap Expedition, pick a place, a risk and a squad. Trips keep going even with the game closed. Leave a fighter at home.'],
   'More Land': ['Feeling cramped? Tap Town, then Expand territory.', 'More room to build. More directions for trouble to come from, too.'],
 };

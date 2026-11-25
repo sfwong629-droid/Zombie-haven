@@ -6,7 +6,10 @@
    breaking and workers repairing them; (4) the look. Until step 4 a town only stands its walls on the lines when that is switched on for
    it (S.edgeWalls: ?edgewalls=1 on a new game or a load, and the checks), so the published game keeps today's walls in between. */
 const EDGE_Q = typeof location !== 'undefined' && /[?&]edgewalls=1/.test(location.search);
-const edgeOn = () => !!S.edgeWalls;
+const EDGE_OFF = typeof location !== 'undefined' && /[?&]edgewalls=0/.test(location.search);
+/* 3D.375 W269 step 4: every town has its walls on the lines (owner, 24 Nov, W269 "do B"): new towns, and old saves converted once on load.
+   A town can still be switched back for a test with S.edgeWalls = false, or ?edgewalls=0 on the address. */
+const edgeOn = () => S.edgeWalls !== false && !EDGE_OFF;
 function edgeMax(type) { const def = Wd.WALL_DEFS[type]; return def ? Math.round(def.hp * (researched('walls') ? 1.3 : 1)) : 0; }
 function putEdge(s, x, y, type, hp, broken) {
   const mx = edgeMax(type); if (!mx) return null; if (!world.edges) world.edges = new Map();
@@ -19,7 +22,7 @@ function putEdge(s, x, y, type, hp, broken) {
    inner sides are the ones facing that land (a building there counts as land). A ring's corner tile then has no inner side (the two
    straight runs already meet at the corner), and a second layer of a thick wall has none either: those pieces are not needed and their
    whole cost comes back. A loose piece that encloses nothing goes on the side facing the town's centre. Returns what was converted. */
-function wallsToEdges() {
+function wallsToEdges(refund = true) {
   if (!world.edges) world.edges = new Map();
   const tiles = [...world.walls.values()]; if (!tiles.length) return { tiles: 0, pieces: 0, dropped: 0 };
   const isW = (x, y) => world.walls.has(x + ',' + y), out = new Set(), q = [];
@@ -35,7 +38,7 @@ function wallsToEdges() {
     let sides = encl.length ? encl : ringPart ? [] : nb.filter((p) => p.dot < -.01);
     if (!sides.length && !ringPart && nb.length) sides = [nb.reduce((a, b) => (b.dot < a.dot ? b : a))];
     let put = 0; for (const p of sides) { const e = Wd.edgeOf(t.x, t.y, p.x, p.y); if (!e || Wd.edgeAt(world, e.s, e.x, e.y)) continue; if (putEdge(e.s, e.x, e.y, t.type, t.hp, t.broken)) { n++; put++; } }
-    if (!put) { dropped++; refundCost(bCost(Wd.WALL_DEFS[t.type] || Wd.WALL_DEFS.wood), 1); }
+    if (!put) { dropped++; if (refund) refundCost(bCost(Wd.WALL_DEFS[t.type] || Wd.WALL_DEFS.wood), 1); }
   }
   world.walls = new Map(); Wd.bump(world); return { tiles: tiles.length, pieces: n, dropped };
 }

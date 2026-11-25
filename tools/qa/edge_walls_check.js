@@ -10,7 +10,7 @@ const Q = require('./lib'), fs = require('fs'), path = require('path');
   const r = await p.evaluate(() => { const S = ZH.S, W = window.ZHWorld, world = ZH.world, Z = W.WALLZONE, out = {};
     ZH.ARRIVE.low = ZH.ARRIVE.high = 1e9; S.z.length = 0;
     /* an old town: a ring of wood fence tiles round the wall zone's edge, a gate in the middle of the south side */
-    world.walls = new Map(); const gx = Math.floor((Z.x0 + Z.x1) / 2);
+    world.walls = new Map(); world.edges = new Map(); S.edgeWalls = false; const gx = Math.floor((Z.x0 + Z.x1) / 2);   /* 3D.375: towns are on the lines by default; this one starts switched off, like a town from before */
     for (let x = Z.x0; x <= Z.x1; x++) for (let y = Z.y0; y <= Z.y1; y++) if (x === Z.x0 || x === Z.x1 || y === Z.y0 || y === Z.y1) { if (W.buildingAt(world, x, y)) continue; const t = x === gx && y === Z.y1 ? 'gate' : 'wood', mx = W.WALL_DEFS[t].hp; world.walls.set(x + ',' + y, { x, y, type: t, hp: x === Z.x0 + 2 && y === Z.y0 ? 30 : mx, max: mx, broken: false }); }
     W.bump(world); const before = W.perimeter(world); out.before = { sealed: before.sealed, inside: before.inside, total: before.total, tiles: world.walls.size };
     const oldTiles = [...world.walls.values()].map((t) => ({ x: t.x, y: t.y, type: t.type }));

@@ -664,6 +664,50 @@ function wallPiece(P, w, has, cx, cz) {   // one wall tile; has(x, y) = a standi
     }
   }
 }
+/* 3D.375 W269 step 4: a wall on the lines is drawn as a real fence: one post at every corner where pieces meet (the strongest kind there
+   sets its look) and each piece's panel running from post to post along its line. A broken piece leaves rubble and a fallen plank. */
+const LINE_RANK = { metal: 5, efence: 4, palisade: 3, gate: 2, wood: 1 };
+function linePost(P, type, x, z, sd) {
+  if (type === 'metal') { P.put(box(.46, 1.78, .46), '#8a8e92', M4(x, .89, z)); P.put(box(.54, .14, .54), '#6f7478', M4(x, 1.83, z)); return; }
+  if (type === 'efence') { P.put(box(.13, 1.62, .13), '#5f666e', M4(x, .81, z)); P.put(new THREE.SphereGeometry(.065, 8, 6), '#f2efe8', M4(x, 1.66, z)); return; }
+  if (type === 'palisade') { P.put(cyl(.15, .16, 2.25, 7), '#6a4528', M4(x, 1.12, z, sd * 6)); P.put(new THREE.ConeGeometry(.16, .34, 7), '#6a4528', M4(x, 2.4, z)); return; }
+  if (type === 'gate') { P.put(cyl(.11, .12, 1.62, 7), '#5a3b23', M4(x, .81, z)); P.put(new THREE.ConeGeometry(.12, .14, 7), '#5a3b23', M4(x, 1.69, z)); return; }
+  P.put(cyl(.08, .09, 1.32, 6), '#5e3e24', M4(x, .66, z, sd * 6)); P.put(new THREE.ConeGeometry(.09, .13, 6), '#5e3e24', M4(x, 1.385, z));
+}
+function linePanel(P, e) {
+  const v = e.s === 'v', cx = (v ? e.x : e.x + .5) * T, cz = (v ? e.y + .5 : e.y) * T, ry = v ? Math.PI / 2 : 0, L = T, sd = hash(e.x * 2 + (v ? 1 : 0), e.y * 3 + 1);
+  const at = (u, n = 0) => (v ? [cx + n, cz + u] : [cx + u, cz + n]), put = (g, col, u, y, n = 0, rx = 0, rz = 0) => { const [x, z] = at(u, n); P.put(g, col, M4(x, y, z, ry, rx, rz)); };
+  const dmg = e.hp < e.max * .6;
+  if (e.broken) {   /* rubble where it stood, one plank or stake knocked flat across the gap */
+    put(new THREE.DodecahedronGeometry(.32, 0).scale(1.7, .45, 1.2), '#6a5a48', -.15 + sd * .3, .1); put(box(L * .6, .07, .2), '#6f4a2c', .1, .07, .25, 0, .12);
+    if (e.type === 'metal') put(new THREE.DodecahedronGeometry(.26, 0).scale(1.2, .6, 1), '#8a8e92', .6, .14, -.2); return;
+  }
+  if (e.type === 'gate') {   /* two plank leaves under a top beam, with a brace each */
+    put(box(L - .1, .12, .12), '#6f4a2c', 0, 1.42);
+    for (const k of [-1, 1]) { for (let i = 0; i < 3; i++) put(box(.34, 1.05, .07), i % 2 ? '#8a6038' : '#7e5634', k * (.2 + i * .34), .6); put(box(1.02, .09, .08), '#6f4a2c', k * .54, .6, .05, 0, k * .62); }
+    return;
+  }
+  if (e.type === 'efence') { for (const y of [.35, .7, 1.05, 1.4]) put(box(L, .025, .025), dmg ? '#7d7466' : '#b8bec4', 0, y); return; }
+  if (e.type === 'metal') {   /* a stone wall with a darker cap; damaged: a bite out of the top */
+    if (dmg) { put(box(L * .55, 1.5, .3), '#9a9a94', -L * .225, .75); put(box(L * .45, 1.0, .3), '#9a9a94', L * .275, .5); put(box(L * .55, .12, .36), '#7c7f80', -L * .225, 1.54); }
+    else { put(box(L, 1.5, .3), '#9a9a94', 0, .75); put(box(L, .12, .36), '#7c7f80', 0, 1.54); for (let i = 0; i < 3; i++) put(box(.5, .04, .31), '#868682', -L / 3 + i * L / 3 + (sd - .5) * .2, .45 + (i % 2) * .5); }
+    return;
+  }
+  if (e.type === 'palisade') {   /* tall pointed stakes, one knocked short when damaged */
+    for (let k = 0; k < 7; k++) { const u = -L / 2 + (k + .5) * L / 7, h = 1.8 + hash(k * 7 + e.x, e.y * 5 + (v ? 3 : 0)) * .35 - (dmg && k === 3 ? .8 : 0);
+      put(cyl(.11, .12, h, 7), '#7a5232', u, h / 2); put(new THREE.ConeGeometry(.12, .3, 7), '#7a5232', u, h + .15); }
+    put(box(L, .1, .08), '#5e3e24', 0, 1.2, .12); return;
+  }
+  for (const y of [.36, .9]) put(box(L, .08, .06), '#6f4a2c', 0, y);   /* Wood Fence: two rails and upright planks */
+  for (let k = 0; k < 8; k++) { if (dmg && (k === 2 || k === 5)) continue; const u = -L / 2 + (k + .5) * L / 8, h = 1.0 + hash(k * 5 + e.x, e.y * 3 + (v ? 7 : 0)) * .16 - (dmg && k === 6 ? .35 : 0);
+    put(box(.25, h, .045), k % 2 ? '#8a6038' : '#7e5634', u, h / 2, .05, 0, (hash(k, e.x + e.y) - .5) * .06); }
+}
+function lineWalls(P, elist) {
+  const vx = new Map(), add = (x, y, e) => { const k = x + ',' + y, o = vx.get(k); if (!o) vx.set(k, { x, y, best: e.broken ? null : e.type, any: true }); else if (!e.broken && (!o.best || LINE_RANK[e.type] > LINE_RANK[o.best])) o.best = e.type; };
+  for (const e of elist) { linePanel(P, e); if (e.s === 'v') { add(e.x, e.y, e); add(e.x, e.y + 1, e); } else { add(e.x, e.y, e); add(e.x + 1, e.y, e); } }
+  for (const o of vx.values()) { const x = o.x * T, z = o.y * T, sd = hash(o.x * 13, o.y * 7);
+    if (o.best) linePost(P, o.best, x, z, sd); else P.put(cyl(.08, .1, .35, 6), '#5e3e24', M4(x, .17, z, sd * 6)); }   /* a stump where only broken pieces meet */
+}
 let wallGroup = null, wallKey = '';
 function buildWalls() {
   const W = G.world, list = [...W.walls.values()], elist = W.edges ? [...W.edges.values()] : [];
@@ -674,11 +718,7 @@ function buildWalls() {
   const P = new Parts();
   const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
   for (const w of list) wallPiece(P, w, has, (w.x + .5) * T, (w.y + .5) * T);
-  /* 3D.359 W269 walls on the lines between tiles: each piece is drawn with its wall type's own look, centred on the middle of its line,
-     with its two arms along the line (one tile long). (Step 4 joins the corners and posts properly.) */
-  for (const e of elist) { const v = e.s === 'v', q = { type: e.type, hp: e.hp, max: e.max, broken: e.broken, x: e.x * 2 + (v ? 0 : 1), y: e.y * 2 + (v ? 1 : 0) };
-    const along = (x, y) => (v ? x === q.x && Math.abs(y - q.y) === 1 : y === q.y && Math.abs(x - q.x) === 1);
-    wallPiece(P, q, along, (v ? e.x : e.x + .5) * T, (v ? e.y + .5 : e.y) * T); }
+  lineWalls(P, elist);   /* 3D.375 W269 step 4: walls on the lines, posts at the corners */
   P.build(wallGroup, .03);
   return true;
 }

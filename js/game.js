@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.374', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.375', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3251,7 +3251,10 @@ function fixWallTick(s) {
    breaking and workers repairing them; (4) the look. Until step 4 a town only stands its walls on the lines when that is switched on for
    it (S.edgeWalls: ?edgewalls=1 on a new game or a load, and the checks), so the published game keeps today's walls in between. */
 const EDGE_Q = typeof location !== 'undefined' && /[?&]edgewalls=1/.test(location.search);
-const edgeOn = () => !!S.edgeWalls;
+const EDGE_OFF = typeof location !== 'undefined' && /[?&]edgewalls=0/.test(location.search);
+/* 3D.375 W269 step 4: every town has its walls on the lines (owner, 24 Nov, W269 "do B"): new towns, and old saves converted once on load.
+   A town can still be switched back for a test with S.edgeWalls = false, or ?edgewalls=0 on the address. */
+const edgeOn = () => S.edgeWalls !== false && !EDGE_OFF;
 function edgeMax(type) { const def = Wd.WALL_DEFS[type]; return def ? Math.round(def.hp * (researched('walls') ? 1.3 : 1)) : 0; }
 function putEdge(s, x, y, type, hp, broken) {
   const mx = edgeMax(type); if (!mx) return null; if (!world.edges) world.edges = new Map();
@@ -3264,7 +3267,7 @@ function putEdge(s, x, y, type, hp, broken) {
    inner sides are the ones facing that land (a building there counts as land). A ring's corner tile then has no inner side (the two
    straight runs already meet at the corner), and a second layer of a thick wall has none either: those pieces are not needed and their
    whole cost comes back. A loose piece that encloses nothing goes on the side facing the town's centre. Returns what was converted. */
-function wallsToEdges() {
+function wallsToEdges(refund = true) {
   if (!world.edges) world.edges = new Map();
   const tiles = [...world.walls.values()]; if (!tiles.length) return { tiles: 0, pieces: 0, dropped: 0 };
   const isW = (x, y) => world.walls.has(x + ',' + y), out = new Set(), q = [];
@@ -3280,7 +3283,7 @@ function wallsToEdges() {
     let sides = encl.length ? encl : ringPart ? [] : nb.filter((p) => p.dot < -.01);
     if (!sides.length && !ringPart && nb.length) sides = [nb.reduce((a, b) => (b.dot < a.dot ? b : a))];
     let put = 0; for (const p of sides) { const e = Wd.edgeOf(t.x, t.y, p.x, p.y); if (!e || Wd.edgeAt(world, e.s, e.x, e.y)) continue; if (putEdge(e.s, e.x, e.y, t.type, t.hp, t.broken)) { n++; put++; } }
-    if (!put) { dropped++; refundCost(bCost(Wd.WALL_DEFS[t.type] || Wd.WALL_DEFS.wood), 1); }
+    if (!put) { dropped++; if (refund) refundCost(bCost(Wd.WALL_DEFS[t.type] || Wd.WALL_DEFS.wood), 1); }
   }
   world.walls = new Map(); Wd.bump(world); return { tiles: tiles.length, pieces: n, dropped };
 }
@@ -4270,7 +4273,7 @@ const GUIDE = [
   { name: 'Gear Up', desc: 'Get a survivor some armor', hint: 'Build an Armory: survivors buy basic gear there on their own when you have spare scrap. Or tap a survivor → Equipment → Change to pick from the stash.', done: () => S.sv.some((q) => q.eq && q.eq.armor), parts: 4, ren: 5 },
   { name: 'Train Up', desc: 'Build a Gym, Library or Lounge', hint: 'Survivors train in their free time: 100% training = +1 permanent stat. Strength helps fighters and farmers, Intelligence helps medics and research, Charisma helps happiness and trading.', done: () => ['gym', 'library', 'lounge', 'range', 'track', 'sparring'].some((t) => bOf(t).length), parts: 4, ren: 5 },
   { name: 'Research', desc: 'Complete a research project', hint: 'Build a Workbench and tap it. An Engineer working there makes research points faster. Research unlocks gear recipes and town upgrades.', done: () => Object.keys(S.res || {}).length >= 1, parts: 5, ren: 6 },
-  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Fence or Gate, then tap tiles in the glowing ring around the town. Most zombies come from the north. A broken segment turns to rubble and is repaired automatically with scrap.', done: () => world.walls.size >= 10, parts: 5, ren: 6 },
+  { name: 'Hold the Line', desc: 'Build 10 wall segments', hint: 'Build → Wood Fence or Gate, then tap or drag along the lines round the town and press Confirm. Most zombies come from the north. A broken piece turns to rubble and is repaired automatically.', done: () => wallCount() >= 10, parts: 5, ren: 6 },
   { name: 'Go Out There', desc: 'Send an expedition', hint: 'EXPEDITION → pick a place, a risk level and a squad. Trips run in real time, even while the game is closed, and bring back supplies, scrap and sometimes gear or new survivors.', done: () => !!S.trip || (S.expCount || 0) > 0, parts: 5, ren: 6 },
   { name: 'More Land', desc: 'Expand the territory', hint: 'Town → Expand territory (needs Renown, wood and scrap; a bigger HQ lets you claim more). More land to build on — and more zombies, from more directions.', done: () => (S.terr || 0) >= 1, parts: 6, ren: 8 },
 ];
@@ -4287,7 +4290,7 @@ const TUT = {
   'Gear Up': ['A jacket stops more teeth than you would think.', 'Build an Armory and they buy basic gear themselves, or tap a survivor, then Gear, and pick from the stash.'],
   'Train Up': ['Brains and muscles both rust. Build a Gym, a Library or a Lounge.', 'People train there in their free time, and every full bar is a permanent point.'],
   Research: ['Build a Workbench and tap it to pick a project.', 'An Engineer there works fastest. Research unlocks gear recipes and town upgrades.'],
-  'Hold the Line': ['Most of the dead come from the north. Give them something to chew on.', 'Build, then Wood Fence or Gate, and tap the tiles in the glowing ring. Ten pieces will do for now.'],
+  'Hold the Line': ['Most of the dead come from the north. Give them something to chew on.', 'Build, then Wood Fence or Gate. Drag along the lines round the town, then Confirm. Ten pieces will do for now.'],
   'Go Out There': ['There is a whole world of loot out there, and it bites.', 'Tap Expedition, pick a place, a risk and a squad. Trips keep going even with the game closed. Leave a fighter at home.'],
   'More Land': ['Feeling cramped? Tap Town, then Expand territory.', 'More room to build. More directions for trouble to come from, too.'],
 };
@@ -8763,6 +8766,7 @@ function cutFence() {   /* the broken farm fence: placed on any new game (with o
   const door = new Set(world.buildings.map((b) => { const t = Wd.approachTile(b); return t.x + ',' + t.y; }));
   for (const [x, y] of CUT_FENCE) { const k = x + ',' + y; if (CUT_GAP.has(k) || door.has(k) || world.walls.has(k) || Wd.buildingAt(world, x, y)) continue; const def = Wd.WALL_DEFS.wood, h = (x * 7 + y * 13) % 5;
     const hp = CUT_RUBBLE.has(k) ? 0 : Math.round(def.hp * (h < 2 ? .45 : h < 4 ? .7 : 1)); world.walls.set(k, { x, y, type: 'wood', hp, max: def.hp, ...(CUT_RUBBLE.has(k) ? { broken: true } : {}) }); }
+  if (edgeOn()) wallsToEdges(false);   /* 3D.375 the old farm fence stands on the lines too (it was free: nothing to refund) */
   Wd.bump(world); for (const q of S.sv) if (q.w && solidWall(q.w.x, q.w.y)) { const t = Wd.nearestWalkable(world, Math.floor(q.w.x), Math.floor(q.w.y)); if (t) q.w = { x: t.x + .5, y: t.y + .5 }; }   /* 3D.106: nobody starts inside the fence line */
 }
 const cutZoom = () => Math.max(.7, Math.min(1.1, VW / 430)) * ((1.25));
@@ -8879,7 +8883,7 @@ const GUIDE_TXT = [
   ['Building', 'Build → pick a building → Build. Tap the ground where its front corner goes, nudge it with the arrows, ↻ turns it so the entrance faces the other way, then tap Build. Buildings cost wood, scrap and (later) stone, and a little scrap upkeep each day.'],
   ['Food and water', 'Everyone eats a daily ration: half food, half water. Rain Barrels and Collectors make water, Garden Plots make food. Watch the Town panel to see how many days you have left.'],
   ['Workers', 'Buildings with a work slot are staffed automatically by the right job (Farmer, Engineer, Medic, Cook…). A green dot means someone is on shift.'],
-  ['Walls', 'Build → Defend: Wood Fence, Log Palisade (Lodge), Stone Wall (Fort) or Gate, then tap tiles around the town. Build a stronger wall on a weaker one to upgrade it. Close every gap to SEAL the perimeter. Broken walls turn to rubble; repair them with scrap. Zombies are bad at doors.'],
+  ['Walls', 'Build → Defend: Wood Fence, Log Palisade (Lodge), Stone Wall (Fort) or Gate, then tap or drag along the lines between tiles round the town and press Confirm. Walls take no land. Put a stronger wall on a weaker one to upgrade it. Close every gap to SEAL the perimeter. Broken walls turn to rubble; workers repair them. Zombies are bad at doors.'],
   ['Fighting', 'Guards, Police and Scavengers fight; everyone else very sensibly runs inside. A survivor knocked down bleeds out unless someone carries them to a medic in time, or a Medic treats them where they fell.'],
   ['Running the town', 'Beds give people a place to sleep; the Haven\'s level sets how many it can take in, so level up to grow. Hungry or thirsty people work at 70% and hit softer, and after two days with an empty store they start leaving. Newcomers come sooner to a town with spare beds, food and water. Someone down? Tap Send rescue. A boss? Tap Focus the boss (+30% damage). More people, more buildings, fewer zombies inside.'],
   ['Professions', 'Guards hold the line (+20% HP, 20% less damage). Police shoot further and hit raiders harder. Scavengers fetch wood and scrap. Medics patch people up (to 75%). Engineers build fastest. Cooks stretch rations. Farmers grow food and water. Mechanics run the machines. Civilians fill any job and carry twice the load. The wrong job works at 75%. Everyone is good at something.'],
