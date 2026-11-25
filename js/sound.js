@@ -124,6 +124,92 @@
       sfx(c, o, t, 'chop', 1, 1); sfx(c, o, t + .008, 'woodH' + rnd3(), .9, .82 + Math.random() * .08); noise(c, o, t + .03, .06, .05, 2600, 1.5);
     },
   };
+  const OLDFX = { ...FX };   /* the effects as they were, kept as the fallback while samples load */
+  /* Music chat (W106): the Ghibli remake of the effects, for review next to the old ones (render '+name'). Musical sounds are storybook
+     (harp, celesta, glockenspiel, horn, a village bell); fighting sounds are wood and body, natural and solid. Each falls back to the old sound until the samples load. */
+  const NEWFX = {
+    click: (c, o, t) => { if (!sfx(c, o, t, 'woodM' + rnd3(), .11, 2.6)) OLDFX.click(c, o, t); },   /* a soft wooden tock */
+    chime: (c, o, t) => { if (!samp(c, o, t, 'tpt', N(22), .28, .11, .1, .01, .05)) return OLDFX.chime(c, o, t); samp(c, o, t + .13, 'tpt', N(22), .28, .11, .1, .01, .05); samp(c, o, t + .26, 'tpt', N(22), .28, .11, .1, .01, .05); samp(c, o, t + .39, 'tpt', N(27), .32, .7, .1, .015, .3); },   /* dum dum dum daaa: three short trumpet notes and a long one a fourth higher */
+    reward_a: (c, o, t) => { if (!samp(c, o, t, 'vibes', N(15), .001, .1)) return OLDFX.reward(c, o, t); [15, 19, 22, 27, 31].forEach((sm, i) => samp(c, o, t + i * .06, 'vibes', N(sm), .4, 1.6, (i / 4 - .5) * .4)); samp(c, o, t + .3, 'glk', N(39), .24, 2, .2); [3, 7, 10].forEach((sm) => samp(c, o, t + .05, 'str', N(sm + 12), .07, 1.4, 0, .25, .5)); },   /* vibraphone */
+    reward_b: (c, o, t) => { if (!samp(c, o, t, 'cel', N(27), .001, .1)) return OLDFX.reward(c, o, t); [27, 31, 34, 39].forEach((sm, i) => samp(c, o, t + i * .07, 'cel', N(sm), .36, 1.6, (i / 3 - .5) * .4)); [3, 7, 10, 15].forEach((sm) => samp(c, o, t, 'str', N(sm + 12), .08, 1.6, 0, .15, .6)); samp(c, o, t + .3, 'glk', N(39), .2, 2); },   /* celesta */
+    reward_c: (c, o, t) => { if (!samp(c, o, t, 'flu', N(22), .001, .1)) return OLDFX.reward(c, o, t); [[22, 0, .1], [24, .09, .1], [27, .18, .9]].forEach(([sm, dt, d]) => { samp(c, o, t + dt, 'flu', N(sm), .4, d, .1, .02, .25); samp(c, o, t + dt, 'obo', N(sm - 5), .22, d, -.1, .02, .25); }); [3, 7, 10].forEach((sm) => samp(c, o, t + .18, 'str', N(sm + 12), .09, 1.3, 0, .1, .5)); samp(c, o, t + .2, 'glk', N(39), .2, 2, .2); },   /* flute and oboe */
+    coin: (c, o, t) => { if (!samp(c, o, t, 'glk', N(31), .26, .9)) return OLDFX.coin(c, o, t); samp(c, o, t + .07, 'glk', N(36), .26, 1.1); },
+    rankup: (c, o, t) => { if (!samp(c, o, t, 'hrn', N(10), .3, .16)) return OLDFX.rankup(c, o, t); samp(c, o, t + .15, 'hrn', N(15), .3, .16); samp(c, o, t + .3, 'hrn', N(19), .3, .16); samp(c, o, t + .45, 'hrn', N(22), .36, 1.2, 0, .02, .4); [15, 19, 22].forEach((sm) => samp(c, o, t + .45, 'str', N(sm), .08, 1.3, 0, .08, .5)); samp(c, o, t + .45, 'timp', N(-9), .3, 1.2); samp(c, o, t + .47, 'glk', N(39), .22, 2, .3); },
+    event: (c, o, t) => { if (!samp(c, o, t, 'cel', N(22), .3, 1)) return OLDFX.event(c, o, t); [27, 31, 29, 27].forEach((sm, i) => samp(c, o, t + (i + 1) * .1, 'cel', N(sm), .3, 1.2, .15)); samp(c, o, t, 'pz', N(-9), .4, .6, -.2); samp(c, o, t + .2, 'pz', N(-2), .35, .6, -.2); },
+    rescued: (c, o, t) => { if (!samp(c, o, t, 'nyl', N(-2), .45, 2)) return OLDFX.rescued(c, o, t); [2, 5, 10].forEach((sm, i) => samp(c, o, t + .02 + i * .022, 'nyl', N(sm), .42, 2)); [[14, 0, .2], [17, .18, .2], [22, .36, 1]].forEach(([sm, dt, d]) => samp(c, o, t + .05 + dt, 'flu', N(sm), .4, d, .1, .04, .25)); },
+    night: (c, o, t) => { if (!samp(c, o, t, 'cel', N(24), .3, 1.8, .1)) return OLDFX.night(c, o, t); samp(c, o, t + .45, 'cel', N(20), .28, 1.8, .1); samp(c, o, t + .9, 'cel', N(17), .3, 2.4, .1); [-7, 0].forEach((sm) => samp(c, o, t, 'str', N(sm), .07, 2.6, 0, .6, .9)); },
+    dawn: (c, o, t) => { if (sfx(c, o, t, 'rooster', .6, 1)) return; if (!samp(c, o, t, 'harp', N(5), .3, 1.5)) return OLDFX.dawn(c, o, t); [12, 17, 21].forEach((sm, i) => samp(c, o, t + (i + 1) * .08, 'harp', N(sm), .3, 1.6, (i / 2 - .5) * .4)); [[17, .3, .3], [19, .6, .3], [24, .9, 1.2]].forEach(([sm, dt, d]) => samp(c, o, t + dt, 'flu', N(sm), .36, d, .1, .05, .3)); [5, 9, 12].forEach((sm) => samp(c, o, t + .3, 'str', N(sm), .05, 1.9, 0, .5, .7)); },
+    alarm: (c, o, t) => { if (!samp(c, o, t, 'tub', N(10), .5, 1.2)) return OLDFX.alarm(c, o, t); for (let i = 1; i < 8; i++) { const tt = t + i * .15 - i * i * .002; samp(c, o, tt, 'tub', N(i % 2 ? 15 : 10), .5, 1.2); clang(c, o, tt, i % 2 ? 1180 : 880, .02, .3); } },   /* the village bell rung fast, two bells clashing: a warning */
+    hit: (c, o, t) => { if (!sfx(c, o, t, 'woodH' + rnd3(), .42, .7)) return OLDFX.hit(c, o, t); thud(c, o, t, 90, .28, .14); noise(c, o, t, .05, .12, 900, .8, 'lowpass', 250); },
+    hurt: (c, o, t) => { noise(c, o, t, .18, .14, 750, 5); noise(c, o, t, .16, .09, 1250, 6); formant(c, o, t, 190, .16, .06, [[700, 6, 1], [1200, 8, .5]], 140); thud(c, o, t, 120, .15, .08); },
+    kill: (c, o, t) => { if (!sfx(c, o, t, 'woodL' + rnd3(), .42, .5)) return OLDFX.kill(c, o, t); thud(c, o, t, 70, .32, .3); noise(c, o, t + .03, .5, .05, 500, 4, 'bandpass', 250); formant(c, o, t + .02, 95, .5, .06, [[480, 5, 1], [850, 6, .4]], 65, 5); },
+    down: (c, o, t, f, take) => { if (!SFXB.oofm0) return OLDFX.down(c, o, t); const fem = f ?? Math.random() < .5; if (take == null) take = fem ? (NEWFX._fTurn = !NEWFX._fTurn) ? 18 : 19 : 0; const k = (fem ? 'ooff' : 'oofm') + take;   /* approved: the man take A (oofm0); the woman takes S and T (ooff18, ooff19) in turn */ sfx(c, o, t, k, .6 * ({ oofm1: 1.6, ooff0: 1.6, ooff2: 1.8, ooff3: 1.1, ooff4: 1, ooff5: .8, ooff6: .75, ooff7: .85, ooff8: 1.05, ooff9: 1.15, ooff10: .72, ooff11: 2.6, ooff12: 2.5, ooff13: 1.6, ooff14: 1.6, ooff15: 1.7, ooff16: 1.6, ooff17: 1.6, ooff18: 1.6, ooff19: 1.3 }[k] || 1), .97 + Math.random() * .06); sfx(c, o, t + .2, 'woodL' + rnd3(), .3, .55); thud(c, o, t + .2, 70, .22, .25); },   /* a short oof or ugh, and the fall */
+    down_f: (c, o, t) => NEWFX.down(c, o, t, true), down_m: (c, o, t) => NEWFX.down(c, o, t, false),
+    down_f0: (c, o, t) => NEWFX.down(c, o, t, true, 0), down_f1: (c, o, t) => NEWFX.down(c, o, t, true, 1), down_m0: (c, o, t) => NEWFX.down(c, o, t, false, 0), down_m1: (c, o, t) => NEWFX.down(c, o, t, false, 1), down_f2: (c, o, t) => NEWFX.down(c, o, t, true, 2), down_f3: (c, o, t) => NEWFX.down(c, o, t, true, 3), down_f4: (c, o, t) => NEWFX.down(c, o, t, true, 4), down_f5: (c, o, t) => NEWFX.down(c, o, t, true, 5), down_f6: (c, o, t) => NEWFX.down(c, o, t, true, 6), down_f7: (c, o, t) => NEWFX.down(c, o, t, true, 7), down_f8: (c, o, t) => NEWFX.down(c, o, t, true, 8), down_f9: (c, o, t) => NEWFX.down(c, o, t, true, 9), down_f10: (c, o, t) => NEWFX.down(c, o, t, true, 10), down_f11: (c, o, t) => NEWFX.down(c, o, t, true, 11), down_f12: (c, o, t) => NEWFX.down(c, o, t, true, 12), down_f13: (c, o, t) => NEWFX.down(c, o, t, true, 13), down_f14: (c, o, t) => NEWFX.down(c, o, t, true, 14), down_f15: (c, o, t) => NEWFX.down(c, o, t, true, 15), down_f16: (c, o, t) => NEWFX.down(c, o, t, true, 16), down_f17: (c, o, t) => NEWFX.down(c, o, t, true, 17), down_f18: (c, o, t) => NEWFX.down(c, o, t, true, 18), down_f19: (c, o, t) => NEWFX.down(c, o, t, true, 19),
+    groan: (c, o, t) => { if (!sfx(c, o, t, 'zgroan' + Math.floor(Math.random() * 7), .7, .8 + Math.random() * .12)) OLDFX.groan(c, o, t); },   /* recorded moans and growls, slowed so they drag on */
+    boss: (c, o, t) => { sfx(c, o, t, 'zgroan6', .8, .55); sfx(c, o, t + .05, 'zgroan4', .55, .5); formant(c, o, t, 52, 2, .18, [[290, 4, 1], [680, 5, .7], [1500, 7, .2]], 38, 4.5); noise(c, o, t + .1, 1.4, .12, 220, .5, 'lowpass'); if (!samp(c, o, t, 'timp', N(-12), .5, 2)) thud(c, o, t, 45, .4, .8); },   /* a huge zombie roar (recorded growls slowed down) over a timpani hit */
+    radio: (c, o, t, beeps = true) => {   /* radio static with the signal pulsing through it: A little beeps between bursts, B the static itself throbbing */
+      const d = 2.3, n = c.createBufferSource(); n.buffer = noiseBuf(c, d + .1); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = .5; const g = c.createGain();
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.12, t + .08);
+      if (beeps) { for (let k = 1; k < 18; k++) g.gain.linearRampToValueAtTime(.05 + Math.random() * .07, t + k * .12); [.45, .95, 1.45].forEach((dt) => { g.gain.setValueAtTime(.05, t + dt - .02); g.gain.linearRampToValueAtTime(.015, t + dt + .02); g.gain.linearRampToValueAtTime(.015, t + dt + .16); g.gain.linearRampToValueAtTime(.07, t + dt + .22); tone(c, o, t + dt, 1150, .07, 'sine', .05, null, .004); tone(c, o, t + dt + .1, 1150, .07, 'sine', .05, null, .004); }); }
+      else for (let k = 1; k < 23; k++) g.gain.linearRampToValueAtTime(k % 2 ? .13 : .03, t + k * .1);
+      g.gain.linearRampToValueAtTime(.0001, t + d); n.connect(bp); bp.connect(g); g.connect(o); n.start(t); n.stop(t + d + .1);
+      for (let i = 0; i < 22; i++) noise(c, o, t + Math.random() * (d - .1), .008 + Math.random() * .02, .1, 2500 + Math.random() * 3000, 2);
+      tone(c, o, t + .3, 1300, 1.4, 'sine', .01, 700);
+    },
+    radio_b: (c, o, t) => NEWFX.radio(c, o, t, false),
+    radio_c: (c, o, t, tone2 = false) => {   /* a steady bed of static with pulses rising out of it (D: a faint tone inside each pulse) */
+      const d = 2.4, bed = c.createBufferSource(); bed.buffer = noiseBuf(c, d + .1); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = .5; const g = c.createGain();
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.065, t + .1); g.gain.setValueAtTime(.065, t + d - .3); g.gain.linearRampToValueAtTime(.0001, t + d); bed.connect(bp); bp.connect(g); g.connect(o); bed.start(t); bed.stop(t + d + .1);
+      for (let k = 0; k < 5; k++) { const pt = t + .3 + k * .4; noise(c, o, pt, .13, .11, 1700, .9); if (tone2) tone(c, o, pt + .01, 880, .11, 'sine', .028, null, .01); }
+      for (let i = 0; i < 18; i++) noise(c, o, t + Math.random() * (d - .1), .008 + Math.random() * .02, .09, 2500 + Math.random() * 3000, 2);
+    },
+    radio_d: (c, o, t) => NEWFX.radio_c(c, o, t, true),
+    caralarm: (c, o, t) => {   /* a real car alarm's cycle through its little horn speaker: rising whoops, a fast warble, then hi-lo */
+      const sp = c.createBiquadFilter(); sp.type = 'bandpass'; sp.frequency.value = 2000; sp.Q.value = .7; const ws = c.createWaveShaper(), cv = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cv[i] = Math.tanh(3 * x); } ws.curve = cv; ws.connect(sp); sp.connect(o);
+      const sweep = (t0, f0, f1, d, v = .05) => { const os = c.createOscillator(), g = c.createGain(); os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t0); os.frequency.exponentialRampToValueAtTime(f1, t0 + d); g.gain.setValueAtTime(v, t0); g.gain.setValueAtTime(v, t0 + d - .01); g.gain.linearRampToValueAtTime(0, t0 + d); os.connect(g); g.connect(ws); os.start(t0); os.stop(t0 + d + .02); };
+      for (let i = 0; i < 3; i++) sweep(t + i * .4, 650, 1600, .38);
+      for (let i = 0; i < 12; i++) sweep(t + 1.2 + i * .08, i % 2 ? 1500 : 1100, i % 2 ? 1500 : 1100, .08);
+      for (let i = 0; i < 4; i++) sweep(t + 2.2 + i * .3, i % 2 ? 950 : 1250, i % 2 ? 950 : 1250, .3);
+      swell(c, o, t + .2, 3.2, .015, 1500, 600, .3);
+    },
+    /* round 9 (owner, 21 Nov): zombie sounds. The Screamer's shriek, the Gatling Boss's gun, the Digger tunnelling */
+    scream_a: (c, o, t) => { if (!sfx(c, o, t, 'zscream0', .8, .92)) return OLDFX.alarm(c, o, t); sfx(c, o, t + .12, 'zscream0', .25, .7); },   /* a recorded creature screech, a lower echo under it */
+    scream_b: (c, o, t) => { if (!sfx(c, o, t, 'zscream1', .8, .9)) return OLDFX.alarm(c, o, t); sfx(c, o, t + .12, 'zscream1', .25, .68); },
+    scream_c: (c, o, t) => {   /* both screeches together, slowed into one long shriek, a howl underneath, a ringing tail */
+      if (!sfx(c, o, t, 'zscream0', .6, .8)) return OLDFX.alarm(c, o, t); sfx(c, o, t + .04, 'zscream1', .5, .74); sfx(c, o, t + .1, 'zhowl0', .45, .62);
+      [.35, .7].forEach((dt, i) => sfx(c, o, t + dt, 'zscream0', .14 / (i + 1), .78 - i * .04)); swell(c, o, t, 1.6, .03, 3200, 1200, .05);
+    },
+    gatling_a: (c, o, t) => {   /* made like the approved guns: the barrels spin up with a whine, a fast burst of 20 rounds, then spin down */
+      const sp = (t0, f0, f1, d, v) => { const os = c.createOscillator(), g = c.createGain(), bp = c.createBiquadFilter(); os.type = 'sawtooth'; os.frequency.setValueAtTime(f0, t0); os.frequency.linearRampToValueAtTime(f1, t0 + d); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 1.2; g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(v, t0 + .1); g.gain.setValueAtTime(v, t0 + d - .12); g.gain.linearRampToValueAtTime(.0001, t0 + d); os.connect(bp); bp.connect(g); g.connect(o); os.start(t0); os.stop(t0 + d + .05); };
+      sp(t, 60, 220, .45, .05); sp(t + .45, 220, 220, 1.3, .04); sp(t + 1.75, 220, 50, .6, .05);
+      const G = { crack: 3000, blast: .03, thump: 120, tail: .12, echo: .06, size: .55 };
+      for (let i = 0; i < 20; i++) gun(c, o, t + .45 + i * .065 + (Math.random() - .5) * .006, { ...G, size: G.size * (.85 + Math.random() * .3) });
+      swell(c, o, t + 1.7, 1.2, .05, 600, 90, .05);   /* the roll of the burst down the valley */
+    },
+    gatling_b: (c, o, t) => {   /* from a recorded small rifle shot, fired 20 times fast over a motor whir, then the barrels run down */
+      if (!SFXB.gunsm0) return NEWFX.gatling_a(c, o, t);
+      sfx(c, o, t, 'motor0', .35, 1.6); sfx(c, o, t + .3, 'motor0', .3, 2.1);
+      for (let i = 0; i < 20; i++) sfx(c, o, t + .4 + i * .065, 'gunsm' + (i % 2), .45 * (.85 + Math.random() * .3), 1.05 + (Math.random() - .5) * .1);
+      sfx(c, o, t + 1.7, 'motor0', .25, 1.2); swell(c, o, t + 1.7, 1.2, .05, 600, 90, .05);
+    },
+    dig_a: (c, o, t) => {   /* under the ground: muffled scrapes and dirt falling, coming closer, then breaking through */
+      if (!SFXB.digg0) return; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(o);
+      for (let i = 0; i < 6; i++) { const tt = t + i * .42 + Math.random() * .05; sfx(c, lp, tt, 'digg' + (i % 2), .5 + i * .1, .75); sfx(c, lp, tt + .16, 'dugg' + (i % 3), .3 + i * .06, .7); }
+      thud(c, o, t + 2.6, 60, .3, .3); sfx(c, o, t + 2.6, 'dugg1', .7, .8);
+    },
+    dig_b: (c, o, t) => {   /* close by: scoops into gravel and the dirt thrown aside */
+      if (!SFXB.digg0) return;
+      for (let i = 0; i < 4; i++) { const tt = t + i * .55 + Math.random() * .05; sfx(c, o, tt, 'digg' + (i % 2), .7, .9); sfx(c, o, tt + .22, 'dugg' + (i % 3), .45, .95); }
+    },
+    woof: (c, o, t) => { if (!sfx(c, o, t, 'dog0', .8, 1)) OLDFX.woof(c, o, t); },   /* a real dog barking */
+    breach: (c, o, t) => { if (!SFXB.rockb0) return OLDFX.breach(c, o, t); thud(c, o, t, 55, .4, .5); sfx(c, o, t, 'rockb' + rnd3(), .6, .8); sfx(c, o, t + .08, 'woodL' + rnd3(), .3, .5); [.18, .34, .55, .8].forEach((dt, i) => sfx(c, o, t + dt, 'rockf' + rnd3(), .5 - i * .08, .85 + Math.random() * .2)); noise(c, o, t + .1, 1.1, .08, 900, .5, 'lowpass', 120); },   /* a wall crumbling: cracking, then rubble falling */
+  };
+  const NFXV = { scream_a: .17, scream_b: .17, scream_c: .15, gatling_a: 1, gatling_b: .17, dig_a: .3, dig_b: .3, chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4, radio_c: .6 };   /* level each new sound to sit near the old one */
+  for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t, ...r) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t, ...r); };
+  /* Effects switched over to the remake, one group per build (Music chat; owner-approved in the sound review, 18-21 Nov) */
+  const NEW_LIVE = { click: 'click', chime: 'chime', reward: 'reward_a', coin: 'coin', rankup: 'rankup', event: 'event', rescued: 'rescued' };   /* 3D.353: menu and reward sounds */
+  for (const [k, n] of Object.entries(NEW_LIVE)) FX[k] = NEWFX[n];
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
      night  low drone, sparse music-box / piano notes in a big reverb, a faint heartbeat on the tense chord (D minor, 60 bpm)
@@ -458,7 +544,7 @@
     async render(events, sec, musicSec = 0, dark = false) {
       const c = new OfflineAudioContext(2, Math.ceil(44100 * sec), 44100), g = build(c);
       await loadBank(new OfflineAudioContext(1, 1, 44100));
-      for (const [t, n] of events) FX[n](c, g.s, t);
+      for (const [t, n] of events) (n[0] === '+' ? NEWFX[n.slice(1)] : n[0] === '-' ? OLDFX[n.slice(1)] : FX[n])(c, g.s, t);   /* '+name' a remade effect, '-name' the old one */
       const md = dark === true ? 'night' : dark || 'day', o = musicSec ? musicGraph(c, g.mu) : null; let tt = .05, i = 0; while (tt < musicSec) tt += writeBar(c, o, tt, md, i++);
       const buf = await c.startRendering(); return buf.getChannelData(0);
     },
