@@ -179,10 +179,10 @@ Full story, cutscene list and storyboards: `09-STORY.md`.
   - walking from one tile to the next is blocked when a wall stands on the line between them, and nobody cuts diagonally past a wall's end;
   - zombies break a wall piece from the tile next to it, on either side; workers repair it the same way;
   - walls are placed by tapping or dragging along the tile lines; nothing can be built on the line itself;
-  - old towns are converted: each wall tile becomes a wall on that tile's outer edge (the side away from the town), so the wall stays where it was and its tile becomes free land; nothing is lost or refunded;
+  - ~~old towns are converted: each wall tile becomes a wall on that tile's outer edge (the side away from the town), so the wall stays where it was and its tile becomes free land; nothing is lost or refunded;~~ **24 Nov (Features chat, owner: "inner edge"): old towns are converted onto each wall tile's inner edge**, the line on the town's side, so the wall sits on the edge of the land it guards and no strip of unbuildable land is left inside it (with the outer edge, the old wall tiles were free but outside the build zone). The wall moves half a tile in; its old tile is outside and free. A ring's corner tiles are then not needed (the straight runs meet at the corner): their whole cost comes back. Owner, same day: walls go wherever the player places them on the lines, inside the town too, right beside buildings;
   - "Sealed" (the HQ and 3 in 4 buildings inside the wall) and the land-growth rule (walls don't move out for free) are unchanged;
   - town walls only for now; stronghold and camp maps keep their own walls (the Strongholds chat can follow later).
-  Built in the Features chat, one change per build, each shown to the owner as a picture before it is pushed; the Balance chat checks zombies breaking in and the danger targets afterwards.
+  Built in the Features chat, one change per build, each shown to the owner as a picture before it is pushed; the Balance chat checks zombies breaking in and the danger targets afterwards. **Built so far: 3D.351** (step 1: the world, paths, movement and saves; switched on per town until step 4, so the published game keeps today's walls in between).
 
 ## Nights and survival
 - 15 Nov: Civilians form a militia when every fighter is down.
