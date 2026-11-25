@@ -1,6 +1,6 @@
 # zmove_leaper.py -- RAW.glb MODE OUT.json : the Leaper's moves (a new kind; 14-ZOMBIE-MOVES.md; previews for W216 and W239, made by hand, not in the game).
-# MODE jump (clip leaper_jump, 1.7 s; the trick: over a fence or low wall): a deep crouch with the arms swung back, then a hurdle in
-#   the air (W192: "the Leaper hurdles"): the right leg leads straight out, the left trails bent out to the side, the left arm reaches
+# MODE jump (clip leaper_jump, 1.7 s; the trick: over a fence or low wall): a deep crouch with the arms swung back, then a leap in
+#   the air (W192: "the Leaper hurdles"): the right leg leads out in front, the left trails bent back under him, the left arm reaches
 #   forward; a crouched landing, then it rises. Up and down on the spot (the game moves it across).
 # MODE pounce (clip leaper_pounce, 1.3 s, its attack): crouch, spring forward and up with the body flat and both clawed hands reaching,
 #   land in a deep crouch and claw down twice, rise. Starts and ends on today's attack's first pose.
@@ -91,9 +91,13 @@ def air_legs(kind, a_):   # forward-kinematics leg pose in the air, blended over
     q1 = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
     for n in LEGS: PB[n].rotation_quaternion = Q0[n].copy()
     upd()
-    if kind == 'hurdle':
-        turn('thigh.R', (1, 0, 0), -85); turn('shin.R', (1, 0, 0), 12); turn('foot.R', (1, 0, 0), -20)
-        turn('thigh.L', (0, 1, 0), -55); turn('thigh.L', (1, 0, 0), -25); turn('shin.L', (1, 0, 0), 95)
+    if kind == 'hurdle':   # feet placed directly, knees pointing forward (owner, 25 Nov: the trailing leg was "really angled out and not too natural")
+        LL = (PB['thigh.R'].length + PB['shin.R'].length) * SC
+        hr, hl = wpos('thigh.R'), wpos('thigh.L')
+        two_bone('thigh.R', 'shin.R', hr + Vector((-.02 * LL, -.62 * LL, -.62 * LL)), Vector((0, -.3, 1)))      # lead leg out in front, a soft knee
+        two_bone('thigh.L', 'shin.L', hl + Vector((.01 * LL, .42 * LL, -.42 * LL)), Vector((0, -1, -.2)))       # trailing leg folded back under him
+        for s_ in 'LR':
+            d = (wpos('shin.' + s_, True) - wpos('shin.' + s_)).normalized(); aim('foot.' + s_, wpos('foot.' + s_) + (d + Vector((0, -.6, 0))).normalized())
     else:   # tuck
         for s in 'LR': turn('thigh.' + s, (1, 0, 0), -70); turn('shin.' + s, (1, 0, 0), 90)
     qa = {n: PB[n].rotation_quaternion.copy() for n in LEGS}
