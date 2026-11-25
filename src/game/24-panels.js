@@ -579,7 +579,7 @@ function showTown(tab) {
   const tt = $('tTrade'); if (tt) tt.onclick = showTrader;
   const tx = $('tExpand'); if (tx) tx.onclick = () => { if (expandTerritory()) showTown(); };
   { const ea = $('tExAuto'); if (ea) ea.onclick = () => { S.exAuto = S.exAuto === false; showTown('defense'); }; }
-  { const pr = $('shPrac'); if (pr) pr.onclick = () => showShPractice(); const qc = $('quarClean'); if (qc) qc.onclick = () => { quarClean(); showTown('factions'); }; $('ib').querySelectorAll('[data-raid]').forEach((b) => { b.onclick = () => { expSel.force = b.dataset.raid; expSel.ids = null; showExpedition(); }; }); }
+  { const pr = $('shPrac'); if (pr) pr.onclick = () => showShPractice(() => showTown('defense')); const qc = $('quarClean'); if (qc) qc.onclick = () => { quarClean(); showTown('factions'); }; $('ib').querySelectorAll('[data-raid]').forEach((b) => { b.onclick = () => { expSel.force = b.dataset.raid; expSel.ids = null; showExpedition(); }; }); }
   { const ca = $('crisisAct'); if (ca) ca.onclick = () => { const c = S.crisis; if (c && CRISES[c.k].act && CRISES[c.k].act()) showTown('defense'); }; }
   const tu = $('tUpg'); if (tu) tu.onclick = () => showUpgrade('rank');
   const tTi = $('tTitle'); if (tTi) tTi.onclick = backToTitle;

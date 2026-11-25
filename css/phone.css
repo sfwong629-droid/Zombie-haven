@@ -263,3 +263,9 @@ html.phone .phTrade .trS .k .ar { font-style: normal; color: rgba(255, 255, 255,
 html.phone .phTrade .phMini { min-width: 0; padding: 0 12px; font-size: 14px; letter-spacing: -.2px; } html.phone .phTrade .phR.tall { gap: 10px; }
 @container (max-width: 330px) { html.phone .phTrade .trO .th { width: 38px; height: 38px; } }
 html.phone .phTrade .pc { white-space: nowrap; }
+
+/* 3D.370 (W249, W270): Stronghold practice like a settings form */
+html.phone .phPrac .phSec { margin: 18px 16px 6px; font: 700 12px Manrope, system-ui, sans-serif; letter-spacing: .4px; color: rgba(255, 255, 255, .52); }
+html.phone .phPrac .phR .k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } html.phone .phPrac .phR .v { flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .55); }
+html.phone .phPrac .phR .em { flex: none; width: 28px; font-size: 20px; text-align: center; } html.phone .phPrac .phR .tk { flex: none; width: 20px; display: grid; place-items: center; }
+html.phone .phPrac .phSeg { margin: 0; } html.phone .phPrac .phWide { margin-top: 18px; }

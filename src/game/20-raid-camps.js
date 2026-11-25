@@ -305,8 +305,43 @@ function campReinforce() {   /* 3D.128 once the alarm is up, patrols come back t
   SFX('alarm'); shFx(east ? shWorld(G.x1 + 1, G.east[1]) : shWorld((G ? G.gx : 13) + .5, (G ? G.y1 + 1.5 : 25.5)), `❗ ${n} more at the ${east ? 'east gate, on bikes' : 'gate'}${bell ? ', and the bell calls the dead' : ''}`, '#ff6e62'); say(`A patrol is back: ${n} more ${H.raid === 'toll' ? 'Toll Kings' : 'of them'} at the gate` + (H.reinAt ? ` (patrol ${H.reinN} of ${P.reinMax || 3}).` : '. That was the last patrol.')); shPanel(); }
 /* the practice page (owner: "a test page in the game for that function"): try any stronghold or camp with a ready-made squad;
    nothing is lost or gained, and the town waits. Open it from Town > Defense, or with ?shtest=1. */
-function showShPractice() {
+let prBack = null, prPick = '';
+function practicePhone(back) {   /* 3D.370 (W249, W270): Stronghold practice like a settings form: Place and Town level as rows that open a list with a tick,
+     squad size and day / night as segmented controls, one wide Start; what it is and the controls behind "How it works ›" */
+  const P = expSel.pr, D = (k) => EXP_DEFS[k] || {}, nm = (k) => esc((D(k).name || k).replace('Raid: ', '')), ic = (k) => D(k).icon || (SH_DEFS[k].raid ? '⚔' : '🏚'), ch = `<i class="phChv">${phG('ch', 14)}</i>`;
+  const grp = (x) => `<div class="phCard">${x}</div>`, sec = (t) => `<div class="phSec">${t}</div>`, tick = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9fe07a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const seg = (attr, opts, cur) => `<div class="phSeg">${opts.map(([v, t]) => `<button data-${attr}="${v}" class="${String(v) === String(cur) ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  const maps = Object.keys(SH_DEFS), pick = (k, v) => `<div class="phR" data-pk="${k}" role="button"><span class="k">${v}</span><span class="v"></span>${ch}</div>`;
+  let h = '<div class="phSet phPrac">';
+  if (prPick === 'map') {
+    const row = (k) => `<div class="phR" data-pm="${k}" role="button"><span class="em">${ic(k)}</span><span class="k">${nm(k)}</span><span class="v"></span><span class="tk">${P.map === k ? tick : ''}</span></div>`;
+    h += sec('Strongholds') + grp(maps.filter((k) => !SH_DEFS[k].raid).map(row).join('')) + sec('Faction camps') + grp(maps.filter((k) => SH_DEFS[k].raid).map(row).join(''));
+  } else if (prPick === 'lv') {
+    h += sec('Sets the map\'s size and the squad\'s level') + grp([3, 5, 8, 10, 12, 15, 18, 20].map((n) => `<div class="phR" data-pl="${n}" role="button"><span class="k">Level ${n}</span><span class="v"></span><span class="tk">${P.lv === n ? tick : ''}</span></div>`).join(''));
+  } else {
+    h += grp(`<div class="phR" data-pk="map" role="button"><span class="em">${ic(P.map)}</span><span class="k">Place</span><span class="v">${nm(P.map)}</span>${ch}</div><div class="phR" data-pk="lv" role="button"><span class="k">Town level</span><span class="v">${P.lv}</span>${ch}</div>`)
+      + sec('Squad') + seg('pn', [4, 5, 6, 7, 8].map((n) => [n, n]), P.n)
+      + (SH_DEFS[P.map].raid ? sec('Time') + seg('pt', [[0, 'Day'], [1, 'Night']], P.night ? 1 : 0) : '')
+      + `<button class="act go phWide" id="prGo">Start practice</button>`
+      + sec('') + grp(`<div class="phR" id="prHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`)
+      + `<div class="phHow" style="display:none">${grp(`<div class="phPad">A ready-made squad, nothing lost or gained; the town waits while you play.<br><br>Drag to look, pinch to zoom. Tap a survivor (or 👥 All), then the floor to move, an enemy to attack, a door to open or shut it. A 🔒 door: tap it to force the lock, or 💣 it. Rooms stay dark until their door opens.<br><br><b>Faction camps:</b> tap a building to attack it, tap it again once it's down to loot it. Stay unseen: once the alarm goes up, patrols keep coming to the gate. At night guards see less and workers sleep. 🏃 Get out leaves with what you took.</div>`)}</div>`;
+  }
+  $('ib').innerHTML = h + '</div>';
+  showPanel(prPick === 'map' ? 'Place' : prPick === 'lv' ? 'Town level' : 'Practice', prPick ? () => { prPick = ''; showShPractice(); } : back); if (prPick) $('pBack').dataset.t = 'Practice'; else if (back) $('pBack').dataset.t = 'Town';
+  const re = () => showShPractice();
+  $('ib').querySelectorAll('[data-pk]').forEach((b) => { b.onclick = () => { prPick = b.dataset.pk; re(); }; });
+  $('ib').querySelectorAll('[data-pm]').forEach((b) => { b.onclick = () => { P.map = b.dataset.pm; prPick = ''; re(); }; });
+  $('ib').querySelectorAll('[data-pl]').forEach((b) => { b.onclick = () => { P.lv = +b.dataset.pl; prPick = ''; re(); }; });
+  $('ib').querySelectorAll('[data-pn]').forEach((b) => { b.onclick = () => { P.n = +b.dataset.pn; re(); }; });
+  $('ib').querySelectorAll('[data-pt]').forEach((b) => { b.onclick = () => { P.night = b.dataset.pt === '1'; re(); }; });
+  { const w = $('prHow'), hw = $('ib').querySelector('.phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; if (o) hw.scrollIntoView({ block: 'nearest' }); }; }
+  return !!$('prGo');
+}
+function showShPractice(back) {
   endBuildMode(true); const maps = Object.keys(SH_DEFS); expSel.pr = expSel.pr || { map: 'clinic', n: 6, goal: 'loot', lv: 6, night: false }; const P = expSel.pr;
+  if (back !== undefined) { prBack = typeof back === 'function' ? back : null; prPick = ''; }
+  if (phoneOn() && !practicePhone(prBack)) return;
+  if (!phoneOn()) {
   $('ib').innerHTML = `<div class="card"><b>🎯 Stronghold practice</b><div class="sm">Try every control with a ready-made squad. Nothing is lost or gained, and the town waits while you play.</div></div>
     <div class="sm">Map</div><div class="row" style="flex-wrap:wrap;gap:6px">${maps.map((k) => `<button class="vehB ${P.map === k ? 'on' : ''}" data-pm="${k}">${(EXP_DEFS[k] || {}).icon || (SH_DEFS[k].raid ? '⚔' : '🏚')} ${esc((EXP_DEFS[k] || {}).name || k)}<small>${SH_DEFS[k].raid ? 'faction camp' : 'rec. ' + SH_DEFS[k].rec}</small></button>`).join('')}</div>
     ${('')}
@@ -317,8 +352,9 @@ function showShPractice() {
     <div class="sm" style="margin-top:8px"><b>Controls:</b> drag to look around, pinch or scroll to zoom. Tap a survivor (or 👥 All) to take control. Then tap the floor to move, an enemy to attack, a door to open or shut it. A 🔒 locked door: tap it and someone forces the lock (Mechanics, Scavengers and Engineers are quicker), or blow it open with a 💣. You can't see into a room until its door opens: it may hold supplies, nothing, or a nest. <b>Faction camps:</b> tap a building to send the squad at it; once it's down, tap it again to loot it. Stay unseen as long as you can: once the alarm goes up, the patrols come for you (the armoury and hall guards stay at their posts), and a bigger patrol arrives at the gate every half minute, so take what you came for and get out. Until they see you the squad holds its fire. At night the guards see and hear less far and the workers sleep. 🏃 Get out leaves through the gate with what you took. The fence can be broken (tap a section, or bomb it) to make your own way in, but guards close by will hear it. The selected survivor's stance, ability and ✦ critical show above the bottom bar.</div>`;
   $('ib').querySelectorAll('[data-pm]').forEach((b) => { b.onclick = () => { P.map = b.dataset.pm; showShPractice(); }; }); $('ib').querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => { P.goal = b.dataset.pg; showShPractice(); }; });
   $('ib').querySelectorAll('[data-pt]').forEach((b) => { b.onclick = () => { P.night = b.dataset.pt === '1'; showShPractice(); }; }); $('ib').querySelectorAll('[data-pn]').forEach((b) => { b.onclick = () => { P.n = +b.dataset.pn; showShPractice(); }; }); $('ib').querySelectorAll('[data-pl]').forEach((b) => { b.onclick = () => { P.lv = +b.dataset.pl; showShPractice(); }; });
+  }
   $('prGo').onclick = () => { if (S.sh) { say('A squad is already inside.'); return; } const jobs = ['Guard', 'Police Officer', 'Medic', 'Scavenger', 'Mechanic', 'Engineer', 'Guard', 'Police Officer'], wp = ['machete', 'rifle', 'pistol', 'crossbow', 'sledge', 'shotgun', 'katana', 'rifle'], ar = P.lv >= 9 ? 'kevlar' : P.lv >= 6 ? 'leather' : null;
     const sq = []; for (let i = 0; i < P.n; i++) { const q = mk(FIRST_NAMES[(i * 7 + 3) % FIRST_NAMES.length], jobs[i], P.lv, 0, 0, i); q.eq = { weapon: ITEMS[wp[i]] ? wp[i] : 'bat', armor: ar && ITEMS[ar] ? ar : null, head: null, acc: null }; setMaxHp(q); q.hp = q.max; q.ammo = 99; q.id = 80000 + i; sq.push(q); }
     S.sv.push(...sq); const r = startStronghold(P.map, sq.map((q) => q.id), { practice: true, goal: P.goal, night: !!P.night, lv: P.lv }); S.sv = S.sv.filter((q) => !sq.includes(q)); if (!r.ok) { say(r.why); return; } closeP(); };
-  showPanel('Stronghold practice');
+  if (!phoneOn()) showPanel('Stronghold practice');
 }
