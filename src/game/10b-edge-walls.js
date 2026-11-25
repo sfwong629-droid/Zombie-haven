@@ -190,3 +190,23 @@ function edgePlanConfirm() {
   edgePlanBar();
 }
 function edgeGhost() { const pl = edgePlan.size ? edgePlanList().list : [], d = edgeDraft ? edgeDraft.list : []; return pl.length || d.length ? { list: pl.concat(d) } : null; }
+/* 3D.374 W269 step 3: zombies break pieces on the lines and workers repair them, from either side (rule in 02-DECISIONS, Town, walls, building:
+   "zombies break a wall piece from the tile next to it, on either side; workers repair it the same way"). Tile walls and pieces on the lines go
+   through the same code: allWalls() lists both, wc() is a wall's middle, wallLive() says it still stands where it was, wallId() names it. */
+const allWalls = () => (world.edges && world.edges.size ? [...world.walls.values(), ...world.edges.values()] : [...world.walls.values()]);
+const wc = (wl) => (wl.edge ? { x: wl.cx, y: wl.cy } : { x: wl.x + .5, y: wl.y + .5 });
+const wallLive = (wl) => !!wl && (wl.edge ? !!world.edges && world.edges.get(Wd.ekey(wl.s, wl.x, wl.y)) === wl : world.walls.get(wl.x + ',' + wl.y) === wl);
+const wallId = (wl) => (wl.edge ? wl.s : '') + wl.x + ',' + wl.y;
+function edgeInWay(z, n) {   /* the shut line between z's tile and the next step of its path, when z has walked up to it */
+  if (!world.edges || !world.edges.size) return null;
+  const e = Wd.edgeBetween(world, Math.floor(z.w.x), Math.floor(z.w.y), Math.floor(n.x), Math.floor(n.y)); return Wd.edgeShuts(e, true) && dist(z.w, wc(e)) < .9 ? e : null;
+}
+function edgeBeside(z, goal) {   /* a shut line on a side of z's tile, close to z, the one nearest the goal (a zombie held still by a wall breaks it) */
+  if (!world.edges || !world.edges.size) return null; const tx = Math.floor(z.w.x), ty = Math.floor(z.w.y); let best = null, bd = 1e9;
+  for (const [s, x, y] of [['v', tx, ty], ['v', tx + 1, ty], ['h', tx, ty], ['h', tx, ty + 1]]) { const e = Wd.edgeAt(world, s, x, y); if (!Wd.edgeShuts(e, true) || dist(z.w, wc(e)) > .9) continue; const d = dist(wc(e), goal); if (d < bd) { bd = d; best = e; } }
+  return best;
+}
+function edgeFixSpot(e, s) {   /* where a worker stands to repair a piece on a line: on the town's side if it can, just short of the line */
+  const ts = Wd.edgeTiles(e).filter((t) => Wd.inMap(t.x, t.y) && Wd.walkable(world, t.x, t.y) && !Wd.buildingAt(world, t.x, t.y)).sort((a, b) => (Wd.inTown(b.x, b.y) - Wd.inTown(a.x, a.y)) || dist(s.w, { x: a.x + .5, y: a.y + .5 }) - dist(s.w, { x: b.x + .5, y: b.y + .5 }));
+  if (!ts.length) return null; const t = ts[0], m = wc(e); return { x: t.x + .5 + (m.x - t.x - .5) * .55, y: t.y + .5 + (m.y - t.y - .5) * .55 };
+}

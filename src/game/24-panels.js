@@ -489,7 +489,7 @@ function expandTerritory() {   /* V2.13: more land to build on, more zombies to 
    as a segmented control. Haven opens on the town's four bars, Food, Water, Beds, Walls (owner: "no ring, use bar"), each with a few words, then what would
    fill them as rows that open the right building; everything else is grouped lists. Same ids as the old panel, so showTown wires both. */
 function townBars(st) {
-  const n = S.sv.length, hl = Math.min(n, Math.max(0, unhoused().length - campCap()));   /* a bed is a home, a place in housing, or room at the Camp (bedFor) */ let hp = 0, mx = 0, broken = 0; for (const w of world.walls.values()) { hp += Math.max(0, w.hp); mx += w.max; if (w.broken) broken++; }
+  const n = S.sv.length, hl = Math.min(n, Math.max(0, unhoused().length - campCap()));   /* a bed is a home, a place in housing, or room at the Camp (bedFor) */ let hp = 0, mx = 0, broken = 0; for (const w of allWalls()) { hp += Math.max(0, w.hp); mx += w.max; if (w.broken) broken++; }
   const p = Wd.perimeter(world), dw = (d, net) => (d === Infinity || net >= 0 ? 'Stable' : d < 1 ? 'Under a day left' : `Enough for ${Math.floor(d)} day${Math.floor(d) === 1 ? '' : 's'}`), dv = (d, net) => (d === Infinity || net >= 0 ? 100 : Math.min(100, d / 5 * 100));
   return { food: { v: dv(st.fDays, st.fNet), w: dw(st.fDays, st.fNet), low: st.fNet < 0 && st.fDays < 2 }, water: { v: dv(st.wDays, st.wNet), w: dw(st.wDays, st.wNet), low: st.wNet < 0 && st.wDays < 2 },
     beds: { v: n ? (n - hl) / n * 100 : 100, w: hl ? `${n - hl} of ${n} have one` : 'Everyone has one', low: hl > 0 },

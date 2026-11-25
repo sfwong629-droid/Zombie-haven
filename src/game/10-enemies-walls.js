@@ -424,7 +424,7 @@ function rotBurst(z) {   /* 3D.80 Rotbomb: bursts when it dies. Hurts survivors 
   z.burst = true; z.fuseT = 0; SFX('alarm'); hitFx.push({ k: 'burst', w: { ...z.w }, t0: tick, bits: Array.from({ length: 14 }, () => ({ a: rnd() * 6.28, v: .4 + rnd() * .8, s: rnd() })) });   /* 3D.85 owner: the Rotbomb explodes (the Lasher still draws no effect) */
   let hurt = 0;
   for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && q.mode !== 'away' && dist(q.w, z.w) < ROT_R) { const dmg = Math.max(1, fairRound(16 * zPw(z) * (1 - dist(q.w, z.w) / ROT_R * .4) * (gearFx(q, 'gas') ? .5 : 1) * (1 - dmgReduce(q)))); q.hp -= dmg; q.hitT = 9; hurt++; floats.push({ w: { ...q.w }, t: '-' + dmg, col: '#b8d65a', a: 55 }); if (rnd() < .5) emote(q, '🤢', 70); }
-  for (const wl of world.walls.values()) if (!wl.broken && dist({ x: wl.x + .5, y: wl.y + .5 }, z.w) < ROT_R) { wl.hp -= 30; wl.hit = 14; if (wl.hp <= 0) wallBroken(wl); }
+  for (const wl of allWalls()) if (!wl.broken && dist(wc(wl), z.w) < ROT_R) { wl.hp -= 30; wl.hit = 14; if (wl.hp <= 0) wallBroken(wl); }
   for (const o of S.z) if (o !== z && o.hp > 0 && !o.human && dist(o.w, z.w) < ROT_R) { o.hp -= 25; o.hitT = 9; }
   if (hurt) note('important', `💥 A Rotbomb burst and hurt ${hurt} ${hurt === 1 ? 'survivor' : 'survivors'}.`);
 }
@@ -470,8 +470,8 @@ function zai0(z) {
   }
   if (z.mode === 'zbreak') {
     const wl = z.wallT; z.moving = false;
-    if (!wl || wl.broken || world.walls.get(wl.x + ',' + wl.y) !== wl) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
-    if (z.stateTicks <= 0) { const dmg = d.atk * zPw(z) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); if (wl.type === 'efence' && S.power) { z.hp -= 6; z.hitT = 9; floats.push({ w: { ...z.w }, t: '⚡6', col: '#9fd8ff', a: 40 }); }   /* 3D.104 Electric Fence */ const dmg2 = townHyb('fortifier') ? dmg * .8 : dmg; wl.hp -= dmg2 - dmg; wl.hp -= dmg; wl.hit = 14; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
+    if (!wl || wl.broken || !wallLive(wl)) { z.wallT = null; z.mode = z.siege ? 'zmarch' : 'idle'; z.blocked = 0; z.stateTicks = 20; return; }
+    if (z.stateTicks <= 0) { const dmg = d.atk * zPw(z) * (z.type === 'brute' ? 2.5 : z.type === 'boss' ? 4 : 1); if (wl.type === 'efence' && S.power) { z.hp -= 6; z.hitT = 9; floats.push({ w: { ...z.w }, t: '⚡6', col: '#9fd8ff', a: 40 }); }   /* 3D.104 Electric Fence */ const dmg2 = townHyb('fortifier') ? dmg * .8 : dmg; wl.hp -= dmg2 - dmg; wl.hp -= dmg; wl.hit = 14; floats.push({ w: wc(wl), t: '-' + Math.round(dmg), col: '#ffb27a', a: 45 }); z.stateTicks = z.type === 'brute' ? 60 : z.type === 'runner' ? 34 : 46;
       if (wl.hp <= 0) wallBroken(wl); }
     let best = null, bd = 1.1; for (const s of S.sv) if (s.hp > 0 && !['down', 'hospital'].includes(s.mode) && !insideBuilding(s) && !boxHid(s)) { const dd = dist(s.w, z.w); if (dd < bd) { bd = dd; best = s; } }
     if (best) { z.target = best; z.mode = 'zchase'; z.wallT = null; z.path = null; } return;
@@ -525,11 +525,11 @@ function zai0(z) {
 const wallAtTile = (x, y) => world.walls.get(x + ',' + y) || null;
 function siegeGoal(z) {
   const d = zDef(z), elite = z.type === 'spitter' || z.type === 'brute' || z.type === 'boss';
-  const open = [...world.walls.values()].some((wl) => wl.broken);
-  if (elite && world.walls.size && !open) {   // elites are smarter: they go for the gate; with no gate they pick the weakest segment
-    let best = null, bs = 1e9; for (const wl of world.walls.values()) if (wl.type === 'gate') { const sc = dist(z.w, { x: wl.x + .5, y: wl.y + .5 }); if (sc < bs) { bs = sc; best = wl; } }
-    if (!best) for (const wl of world.walls.values()) { const sc = wl.hp + dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) * 6; if (sc < bs) { bs = sc; best = wl; } }
-    return { x: best.x + .5, y: best.y + .5 }; }
+  const aw = allWalls(), open = aw.some((wl) => wl.broken);   /* 3D.374 pieces on the lines too */
+  if (elite && aw.length && !open) {   // elites are smarter: they go for the gate; with no gate they pick the weakest segment
+    let best = null, bs = 1e9; for (const wl of aw) if (wl.type === 'gate') { const sc = dist(z.w, wc(wl)); if (sc < bs) { bs = sc; best = wl; } }
+    if (!best) for (const wl of aw) { const sc = wl.hp + dist(z.w, wc(wl)) * 6; if (sc < bs) { bs = sc; best = wl; } }
+    return wc(best); }
   let g = null, gd = 1e9; for (const s of S.sv) if (s.hp > 0 && !insideBuilding(s)) { const dd = dist(s.w, z.w); if (dd < gd) { gd = dd; g = s.w; } }
   for (const b of world.buildings) { const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 }, dd = dist(c, z.w); if (dd < gd) { gd = dd; g = c; } }
   return g ? { x: g.x, y: g.y } : tc(7 + OFF, 11 + OFF);
@@ -538,7 +538,8 @@ const ZDRIFT = .25;   /* tiles of pull per wander step (~2 tiles per game hour):
 const townCentre = () => ({ x: (Wd.BUILD.x0 + Wd.BUILD.x1 + 1) / 2, y: (Wd.BUILD.y0 + Wd.BUILD.y1 + 1) / 2 });
 function zMarchStep(z, goal, sp) {   /* V2.33: walk around walls to any opening; only a sealed town makes them break a wall (the first one on the cheapest route) */
   if (!goal) return;
-  if (z.path && z.path.length) { const n = z.path[0], wl = wallAtTile(Math.floor(n.x), Math.floor(n.y)); if (wl && !wl.broken && dist(z.w, n) < 1.08) { z.wallT = wl; z.mode = 'zbreak'; z.stateTicks = 20; z.path = null; z.blocked = 0; return; } }
+  if (z.path && z.path.length) { const n = z.path[0], wl = wallAtTile(Math.floor(n.x), Math.floor(n.y)); if (wl && !wl.broken && dist(z.w, n) < 1.08) { z.wallT = wl; z.mode = 'zbreak'; z.stateTicks = 20; z.path = null; z.blocked = 0; return; }
+    const e = edgeInWay(z, n); if (e) { z.wallT = e; z.mode = 'zbreak'; z.stateTicks = 20; z.path = null; z.blocked = 0; return; } }   /* 3D.374 a piece on the line in the way */
   z.wallCost = 160; const r = followPath(z, goal, sp); z.wallCost = 0;
   if (r === 'fail') zWalk(z, goal, sp);
 }
@@ -557,36 +558,38 @@ function zWalk(z, goal, sp, viaPath = false) {   // slide toward the goal; when 
   if (Math.hypot(z.w.x - bx, z.w.y - by) < sp * .3) z.blocked++; else z.blocked = 0;
   if (z.blocked > 8) { const tx = Math.floor(z.w.x), ty = Math.floor(z.w.y); let best = null, bd = 1e9;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const wl = wallAtTile(tx + dx, ty + dy); if (!wl || wl.broken) continue; const dd = dist({ x: tx + dx + .5, y: ty + dy + .5 }, goal); if (dd < bd) { bd = dd; best = wl; } }
+    if (!best) best = edgeBeside(z, goal);   /* 3D.374 */
     if (best) { z.wallT = best; z.mode = 'zbreak'; z.stateTicks = 20; z.blocked = 0; z.path = null; } else if (z.blocked > 120) { z.goalT = 0; z.blocked = 0; z.dest = null; }
   }
 }
 function wallBroken(wl) {
   wl.hp = 0; wl.broken = true; Wd.bump(world); S.alert = 1800; SFX('breach'); const gate = wl.type === 'gate';
-  for (const z of S.z) if (z.hp > 0 && !z.human && ['idle', 'zmarch', 'zbreak'].includes(z.mode) && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 16) { z.siege = true; z.mode = 'zmarch'; z.wallT = null; z.path = null; z.goal = null; z.goalT = 0; z.blocked = 0; }   /* V2.33: the whole horde rushes the breach */   /* V2.18: it stays as rubble and the repair crew rebuilds it */
+  for (const z of S.z) if (z.hp > 0 && !z.human && ['idle', 'zmarch', 'zbreak'].includes(z.mode) && dist(z.w, wc(wl)) < 16) { z.siege = true; z.mode = 'zmarch'; z.wallT = null; z.path = null; z.goal = null; z.goalT = 0; z.blocked = 0; }   /* V2.33: the whole horde rushes the breach */   /* V2.18: it stays as rubble and the repair crew rebuilds it */
   breachAlert(wl); ui();
 }
 let repairFrac = 0;
 /* 3D.133 owner: 'why does the fence repair itself? doesn't someone need to work on it?' It did: every second the worst segment was patched from
    nowhere. Now a free survivor walks to it and hammers (Engineers, Mechanics and the handy first, and twice as fast). Same scrap cost as before
    (a full repair is 60% of a new segment). Nobody goes while a zombie is at that segment, or while they have something more urgent to do. */
-function autoRepair() {   // every second: send someone to the most damaged segment that can be worked on
-  const near = (wl) => S.z.some((z) => z.hp > 0 && dist(z.w, { x: wl.x + .5, y: wl.y + .5 }) < 2.6), inGap = (wl) => S.z.some((z) => z.hp > 0 && Math.floor(z.w.x) === wl.x && Math.floor(z.w.y) === wl.y) || S.sv.some((q) => Math.floor(q.w.x) === wl.x && Math.floor(q.w.y) === wl.y);
-  const cand = [...world.walls.values()].filter((wl) => wl.hp < wl.max).sort((a, b) => a.hp / a.max - b.hp / b.max);
-  if (repairFirst && (repairFirst.hp >= repairFirst.max || !world.walls.has(Wd.key(repairFirst.x, repairFirst.y)))) repairFirst = null;
-  const busy = S.sv.filter((q) => q.mode === 'fix' && q.fixW), taken = (wl) => busy.some((q) => q.fixW.x === wl.x && q.fixW.y === wl.y);
+function autoRepair() {   // every second: send someone to the most damaged segment that can be worked on (3D.374: pieces on the lines too)
+  const near = (wl) => S.z.some((z) => z.hp > 0 && dist(z.w, wc(wl)) < 2.6), inGap = (wl) => !wl.edge && (S.z.some((z) => z.hp > 0 && Math.floor(z.w.x) === wl.x && Math.floor(z.w.y) === wl.y) || S.sv.some((q) => Math.floor(q.w.x) === wl.x && Math.floor(q.w.y) === wl.y));
+  const cand = allWalls().filter((wl) => wl.hp < wl.max).sort((a, b) => a.hp / a.max - b.hp / b.max);
+  if (repairFirst && (repairFirst.hp >= repairFirst.max || !wallLive(repairFirst))) repairFirst = null;
+  const busy = S.sv.filter((q) => q.mode === 'fix' && q.fixW), taken = (wl) => busy.some((q) => (q.fixW.s || '') === (wl.edge ? wl.s : '') && q.fixW.x === wl.x && q.fixW.y === wl.y);
   const ok = (wl) => !near(wl) && !(wl.broken && inGap(wl)) && !taken(wl), best = repairFirst && ok(repairFirst) ? repairFirst : cand.find(ok); if (!best || busy.length >= 2 || S.mat < 1) return;
   const handy = (q) => q.job === 'Engineer' || q.job === 'Mechanic' || hasSkill(q, 'handy'), free = S.sv.filter((q) => q.hp > 0 && ['free', 'wait', 'walk'].includes(q.mode) && !q.sleeping && !q.purpose && !q.carriedLoot && !q.carrying && !insideBuilding(q) && !threatOf(q));
-  const who = free.sort((a, b) => (handy(b) - handy(a)) || dist(a.w, { x: best.x + .5, y: best.y + .5 }) - dist(b.w, { x: best.x + .5, y: best.y + .5 }))[0]; if (!who) return;
-  who.mode = 'fix'; who.fixB = null; who.fixW = { x: best.x, y: best.y }; who.fixWAt = null; who.path = null; who.why = 'Repairing the ' + Wd.WALL_DEFS[best.type].name.toLowerCase();
+  const who = free.sort((a, b) => (handy(b) - handy(a)) || dist(a.w, wc(best)) - dist(b.w, wc(best)))[0]; if (!who) return;
+  who.mode = 'fix'; who.fixB = null; who.fixW = best.edge ? { s: best.s, x: best.x, y: best.y } : { x: best.x, y: best.y }; who.fixWAt = null; who.path = null; who.why = 'Repairing the ' + Wd.WALL_DEFS[best.type].name.toLowerCase();
 }
 function fixWallTick(s) {
-  const wl = Wd.wallAt(world, s.fixW.x, s.fixW.y), done = (t) => { s.fixW = null; s.fixWAt = null; s.activity = null; enterFree(s, t); };
+  const wl = s.fixW.s ? Wd.edgeAt(world, s.fixW.s, s.fixW.x, s.fixW.y) : Wd.wallAt(world, s.fixW.x, s.fixW.y), done = (t) => { s.fixW = null; s.fixWAt = null; s.activity = null; enterFree(s, t); };
   if (!wl || wl.hp >= wl.max || threatOf(s)) { done(30); return; }
-  if (!s.fixWAt) { const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: wl.x + dx, y: wl.y + dy })).filter((t) => Wd.walkable(world, t.x, t.y)).sort((a, b) => (Wd.inTown(b.x, b.y) - Wd.inTown(a.x, a.y)) || dist(s.w, a) - dist(s.w, b)); if (!opts.length) { done(120); return; } s.fixWAt = { x: opts[0].x + .5, y: opts[0].y + .5 }; }
+  if (!s.fixWAt) { if (wl.edge) { const p = edgeFixSpot(wl, s); if (!p) { done(120); return; } s.fixWAt = p; }   /* 3D.374 beside the line, the town's side first */
+    else { const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: wl.x + dx, y: wl.y + dy })).filter((t) => Wd.walkable(world, t.x, t.y)).sort((a, b) => (Wd.inTown(b.x, b.y) - Wd.inTown(a.x, a.y)) || dist(s.w, a) - dist(s.w, b)); if (!opts.length) { done(120); return; } s.fixWAt = { x: opts[0].x + .5, y: opts[0].y + .5 }; } }
   const r = followPath(s, s.fixWAt, WALK); if (r === 'moving') return; if (r === 'fail') { done(120); return; }
-  s.moving = false; s.activity = 'Building'; s.faceW = { x: wl.x + .5, y: wl.y + .5 }; if (tick % Math.round(40 / TUNE.work) !== 0) return;
+  s.moving = false; s.activity = 'Building'; s.faceW = wc(wl); if (tick % Math.round(40 / TUNE.work) !== 0) return;
   const fast = s.job === 'Engineer' || s.job === 'Mechanic' || hasSkill(s, 'handy'), amt = Math.min(wl.max - wl.hp, (fast ? 6 : 3) * (gearFx(s, 'fix') ? 1.5 : 1)), cost = amt / wl.max * Wd.WALL_DEFS[wl.type].mat * .6;
   repairFrac += cost; if (repairFrac >= 1) { if (S.mat < 1) { repairFrac = 1; floats.push({ w: { ...s.w }, t: 'Needs ' + RES_ICON.mat, col: '#ff8a7a', a: 80 }); done(200); return; } S.mat -= 1; repairFrac -= 1; flow('mat', 'Wall repairs', -1); }
-  wl.hp += amt; SFX('hit'); if (wl.broken && wl.hp >= wl.max * .3) { wl.broken = false; Wd.bump(world); } if (wl.hp >= wl.max) { wl.hp = wl.max; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); done(30); }
+  wl.hp += amt; SFX('hit'); if (wl.broken && wl.hp >= wl.max * .3) { wl.broken = false; Wd.bump(world); } if (wl.hp >= wl.max) { wl.hp = wl.max; floats.push({ w: wc(wl), t: 'REPAIRED', col: '#9fe58a', a: 50 }); done(30); }
 }
 

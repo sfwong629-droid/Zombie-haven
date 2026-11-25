@@ -71,7 +71,7 @@ function foundrySabotage() {
   facAdd('foundry', -4); const r = rnd(); let what;
   if (r < .34 && S.water > 6) { const n = Math.round(S.water * .35); S.water -= n; what = `Somebody tipped lamp oil into the water. 💧 −${n}`; }
   else if (r < .67 && S.mat > 8) { const n = Math.min(20, Math.round(S.mat * .25)); S.mat -= n; what = `The scrap pile is lighter this morning. ⚙ −${n}`; }
-  else { const ws = [...world.walls.values()].filter((w) => !w.broken && w.type !== 'gate'); if (ws.length) { const w = ws[Math.floor(rnd() * ws.length)]; w.hp = 0; w.broken = true; Wd.bump(world); what = 'A section of the wall was cut through in the night.'; } else { const n = Math.min(10, Math.round(S.mat * .2)); S.mat -= n; what = `Tools went missing. ⚙ −${n}`; } }
+  else { const ws = allWalls().filter((w) => !w.broken && w.type !== 'gate'); if (ws.length) { const w = ws[Math.floor(rnd() * ws.length)]; w.hp = 0; w.broken = true; Wd.bump(world); what = 'A section of the wall was cut through in the night.'; } else { const n = Math.min(10, Math.round(S.mat * .2)); S.mat -= n; what = `Tools went missing. ⚙ −${n}`; } }
   ui(); radio('foundry', rLine('foundrySab'), { level: 'important', title: 'Sabotage', more: `${what}<br><br>Nobody was on watch. A manned guard post, a dog or a Floodlight makes a saboteur much easier to catch.` });
 }
 /* ======================= 3D.138 QUARANTINE COMMAND, HELIX BIOTECH, THE HOLLOW (the other three missing factions) =======================
@@ -147,7 +147,7 @@ function hollowDaily() {
   else if (F.int >= 45 && S.day >= (F.nightNext || 0)) { F.nightNext = S.day + 4; F.nightAt = S.day; }
 }
 function hollowWalkOut(q) {   /* talked round: walks out at night and leaves a gate section cut open behind them */
-  const ws = [...world.walls.values()].filter((w) => !w.broken); if (ws.length) { const g = ws.find((w) => w.type === 'gate') || ws[Math.floor(rnd() * ws.length)]; g.hp = 0; g.broken = true; Wd.bump(world); }
+  const ws = allWalls().filter((w) => !w.broken); if (ws.length) { const g = ws.find((w) => w.type === 'gate') || ws[Math.floor(rnd() * ws.length)]; g.hp = 0; g.broken = true; Wd.bump(world); }
   S.sv = S.sv.filter((x) => x !== q); for (const z of S.z) if (z.target === q) z.target = null; fac('hollow').int = Math.min(100, (fac('hollow').int || 0) + 15); logEvent(`${q.name} walked out to join the Hollow.`, 'important');
   showEventPopup({ title: '🕯 ' + q.name.toUpperCase() + ' IS GONE', text: `${q.name}'s bed is empty, and a section of the wall has been cut open from the inside. The Hollow have one more voice in the choir.`, gains: 'Keep everyone above "unhappy" and the Hollow have nobody to talk to' }); ui();
 }
