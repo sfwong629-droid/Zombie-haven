@@ -29,5 +29,7 @@ if (sm) {
   const plain = [...sm[1].matchAll(/'([a-zA-Z0-9_]+)'/g)].map((m) => m[1]).filter((n) => !/^(woodH|woodL|woodM|metalL)$/.test(n));
   for (const n of plain) if (!files.has(n) && !/^(woodH|woodL|woodM|metalL)\d$/.test(n)) fail(`the sound code loads sfx/${n}.mp3, which is missing`);
 }
+const game = fs.readdirSync(path.join(root, 'src/game')).filter((f) => f.endsWith('.js')).map((f) => fs.readFileSync(path.join(root, 'src/game', f), 'utf8')).join('\n');
+for (const [k] of live) if (!new RegExp(`SFX\\('${k}'\\)`).test(game)) fail(`'${k}' is switched over but the game never plays it (no SFX('${k}') in src/game)`);   /* 3D.355 */
 console.log(`switched over: ${live.map(([k, n]) => (k === n ? k : k + '=' + n)).join(', ')}`);
 if (bad) { console.log(`${bad} problem(s)`); process.exit(1); } else console.log('OK');

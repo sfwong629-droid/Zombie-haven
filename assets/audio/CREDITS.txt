@@ -15,3 +15,7 @@ Music chat (18 Nov 2026), added for the Ghibli remake (build 3D.248, the day mus
 
 More instruments from the same FluidR3_GM sound font (Frank Wen, CC BY 3.0, via midi-js-soundfonts), re-encoded to mono and shortened:
   flu (flute), glk (glockenspiel), acc (accordion), pz (pizzicato strings), obo (oboe), cel (celesta), hrn (French horn), tub (tubular bells).
+
+Music chat (24 Nov 2026), recorded effects for the Ghibli remake (build 3D.355), CC0 1.0 (public domain; no credit required, given here anyway):
+  sfx/rooster.mp3        "rooster" by poorenglishjuggler (freesound.org/s/269496), via the Minetest "sounds" mod by AntumDeluge (github.com/AntumMT/mod-sounds)
+  sfx/dog0.mp3           "dog_bark" by ivolipa (freesound.org/s/328730), same mod

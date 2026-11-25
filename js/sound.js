@@ -7,7 +7,7 @@
   let ctx = null, master = null, sfxBus = null, musBus = null, mode = 'all', night = false, nextNote = 0, step = 0, timer = null;
   try { mode = localStorage.getItem('zhSound') || 'all'; } catch (e) { /* storage blocked */ }
   const last = {};   // per-sound throttle (game speed 3× can fire the same event many times a second)
-  const GAP = { shot: 60, shot_pistol: 60, shot_smg: 50, shot_magnum: 90, shot_auto: 50, shot_rifle: 120, shot_bow: 120, shot_arrow: 120, shot_shotgun: 150, chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, rescued4: 1200, rescued5: 1200, rescued6: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
+  const GAP = { shot: 60, shot_pistol: 60, shot_smg: 50, shot_magnum: 90, shot_auto: 50, shot_rifle: 120, shot_bow: 120, shot_arrow: 120, shot_shotgun: 150, chop: 150, hammer: 150, rescued2: 1200, rescued3: 1200, rescued4: 1200, rescued5: 1200, rescued6: 1200, hit: 90, hurt: 140, kill: 120, click: 60, groan: 2500, crackle: 900, down: 400, chime: 300, reward: 400, build: 250, breach: 600, alarm: 3000, caralarm: 3400, radio: 1500, night: 5000, dawn: 5000, boss: 6000, coin: 200, woof: 900, rescued: 1200, rankup: 4000, event: 3000 };
 
   function build(c) {   // the graph for a given context (a live one, or an OfflineAudioContext for previews)
     const m = c.createGain(); m.gain.value = .9; m.connect(c.destination);
@@ -208,7 +208,8 @@
   const NFXV = { scream_a: .17, scream_b: .17, scream_c: .15, gatling_a: 1, gatling_b: .17, dig_a: .3, dig_b: .3, chime: 4.5, reward_a: 2.2, reward_b: 2.2, reward_c: 2.2, coin: 4.5, rankup: 1.7, event: 1.8, night: 3.7, dawn: .58, alarm: 2, boss: .31, down: .175, hurt: 2.2, breach: .8, caralarm: .4, woof: .22, groan: .17, radio: .4, radio_c: .6 };   /* level each new sound to sit near the old one */
   for (const [k, f] of Object.entries(NEWFX)) if (NFXV[k]) NEWFX[k] = (c, o, t, ...r) => { const g = c.createGain(); g.gain.value = NFXV[k]; g.connect(o); f(c, g, t, ...r); };
   /* Effects switched over to the remake, one group per build (Music chat; owner-approved in the sound review, 18-21 Nov) */
-  const NEW_LIVE = { click: 'click', chime: 'chime', reward: 'reward_a', coin: 'coin', rankup: 'rankup', event: 'event', rescued: 'rescued' };   /* 3D.353: menu and reward sounds */
+  const NEW_LIVE = { click: 'click', chime: 'chime', reward: 'reward_a', coin: 'coin', rankup: 'rankup', event: 'event', rescued: 'rescued',   /* 3D.353: menu and reward sounds */
+    night: 'night', dawn: 'dawn', alarm: 'alarm', radio: 'radio_c', caralarm: 'caralarm', woof: 'woof' };   /* 3D.355: the clock, warnings, the radio and the town's animals */
   for (const [k, n] of Object.entries(NEW_LIVE)) FX[k] = NEWFX[n];
   /* ---- 3D.50 music: a generative score in three moods, all synthesised (offline, original) ----
      day    folk guitar fingerpicking (Karplus-Strong strings) over soft strings, a breathy whistle tune now and then (A minor, 84 bpm)
@@ -270,7 +271,7 @@
      recorded; notes in between are re-pitched. Until they have loaded, the synth versions play instead. */
   const INST = { fid: [4, 6], gtr: [2, 5], nyl: [2, 5], bass: [1, 3], banjo: [3, 5], harp: [4, 5], vibes: [3, 5], tpt: [3, 5], str: [2, 5], mbox: [4, 6], whis: [4, 6], ep: [3, 5], cello: [2, 3], brass: [3, 4], timp: [2, 2], piano: [3, 6], flu: [4, 6], glk: [5, 7], acc: [3, 6], pz: [2, 5], obo: [4, 6], cel: [4, 7], hrn: [2, 5], tub: [4, 5] };
   const KIT = ['cajon_lo', 'cajon_hi', 'shaker_dn', 'shaker_up', 'clap', 'snare', 'hat', 'kick', 'tom', 'ride'];
-  const SFXN = ['chop', 'pizzi', ...['woodH', 'woodL', 'woodM', 'metalL'].flatMap((k) => [0, 1, 2].map((i) => k + i))], SFXB = {};   /* 3D.57 recorded effects */
+  const SFXN = ['chop', 'pizzi', ...['woodH', 'woodL', 'woodM', 'metalL'].flatMap((k) => [0, 1, 2].map((i) => k + i)), 'rooster', 'dog0'], SFXB = {};   /* 3D.57 recorded effects; 3D.355 the rooster and the dog */
   const rnd3 = () => Math.floor(Math.random() * 3);
   function sfx(c, out, t, k, vol, rate = 1) { const b = SFXB[k]; if (!b) return false; const s = c.createBufferSource(); s.buffer = b; s.playbackRate.value = rate * (1 + (Math.random() - .5) * .05); const g = c.createGain(); g.gain.value = vol; s.connect(g); g.connect(out); s.start(t); return true; }
   const NOTES = [['C', 0], ['Eb', 3], ['Gb', 6], ['A', 9]], BANK = {}, KITB = {}; let bankP = null;
