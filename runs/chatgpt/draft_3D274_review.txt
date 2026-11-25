@@ -1,0 +1,30 @@
+Unsent draft found in the ChatGPT composer on 25 Nov 2026, 17:30 (saved here before the composer was used for the dock icons).
+It is part 1 of a UI review prompt for build 3D.274 (ChatGPT chat). Kept so nothing is lost.
+
+PART 1 OF 2. Please don't review yet: read this, look at screens 01 to 10, and reply only "Got part 1". Part 2 follows.
+
+You are reviewing the UI of Zombie Haven, a cozy zombie-survival town builder for phones, build 3D.274. Your last review in this project was of 3D.212 four days ago (6.5/10: "looks more finished, but too much of the interface still treats explanation as the main content and action as secondary"). Many fixes since.
+
+The screenshots: 20 phone screens (390 x 844), numbered 01 to 20 in the file names. A bot played the test town for 7 days, so ignore how the town is doing. Judge only the screens. The lighting comes from a software renderer. On screen 09 the People menu behind the newcomer card was opened by the test script; a player can't do that, so ignore that overlap.
+
+The UI rules (judge against these):
+- Style: dark frosted glass panels with a rim light, white text, sticker icons. Lime only for Build / go / recommended; a selected tab is white. Coral for danger.
+- Buttons at least 44 px. Icons fill 80 to 90% of their button.
+- Menus pause the game. Nothing floats over an open menu (no radio button or card, the alert button covered, "Paused" centred on the menu's top edge).
+- Every message has one home: critical alerts in a red strip under the top bar; news in ONE pill; the radio DJ in a card on the tab bar.
+- Every cost shows have / need (red short, green ready). A share of a whole is a percentage; health always stays a count ("49/101"); real counts stay counts.
+- Panels keep full contrast at night. Text: facts first, joke last. The player always knows why something is stuck and how to fix it.
+
+Fixed since 3D.212; say whether each really looks fixed: tab icons on Town and Build; the move-in card and the radio card no longer float over menus; buttons and filters at least 44 px; selected tabs white; the rim light on menus; the newcomer card centred with a shade.
+
+Still known, so don't list them again (only say if one now looks fixed): U2 DONE bubbles and numbers pile up over the scene; U4 unlabelled icons and numbers (top bar, trip odds); U5 "Couldn't reach it" without saying what; U7 Needs you mixes emergencies and tips; U15 People and survivor details crowded; U16 Town panel crowded; U17/U18 Upgrade Town rush buttons and progress; U24 a Needs you button running off its card; U26 Upgrade Town goal labels hard to read; U27 costs without have / need; U28 "Better in this family: Lodge · needs Lodge"; U29 Town water warning under the policy buttons; U30 long explosives text on Defense; U31 to U33 survivor Status, Gear and Job duplication; U34 "People" vs "Residents"; U36 settings inside the event log; U39 selected options (like "Balanced") still lime; U56 the "9·1·0" stash chip in the top bar.
+
+What I want after part 2:
+1. A score out of 10, compared with 6.5 for 3D.212, in one line.
+2. A table of NEW problems only: screen | what is wrong (exact text or position) | rule broken (or "none, but…") | high / medium / low | one-line fix.
+3. Which of the fixes above really look fixed, and which known items look fixed now.
+4. The three changes that would help most now, in order.
+
+Be specific and blunt. Only report what you can see; say "not sure" when a still picture can't tell you.
+
+Part 1: screens 01 to 10.
