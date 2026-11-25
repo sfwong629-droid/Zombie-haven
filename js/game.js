@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.350', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.351', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -3232,6 +3232,71 @@ function fixWallTick(s) {
   wl.hp += amt; SFX('hit'); if (wl.broken && wl.hp >= wl.max * .3) { wl.broken = false; Wd.bump(world); } if (wl.hp >= wl.max) { wl.hp = wl.max; floats.push({ w: { x: wl.x + .5, y: wl.y + .5 }, t: 'REPAIRED', col: '#9fe58a', a: 50 }); done(30); }
 }
 
+/* ---------------- 3D.351 W269: town walls on the lines between tiles ---------------- */
+/* The rule (owner, 24 Nov, W269: "do B"; 02-DECISIONS.md, Town, walls, building): a town wall stands on the line between two tiles and takes
+   no land. A piece is one tile long, with today's cost and health; a gate is a piece people walk through and zombies must break. The world
+   side (which lines are shut, paths, the sealed check, building rules) is in js/world.js (Wd.edges, Wd.stepOk).
+   Built in four steps, one per build: (1) 3D.351 the world, paths, movement and saves; (2) placing walls and gates on the lines; (3) zombies
+   breaking and workers repairing them; (4) the look. Until step 4 a town only stands its walls on the lines when that is switched on for
+   it (S.edgeWalls: ?edgewalls=1 on a new game or a load, and the checks), so the published game keeps today's walls in between. */
+const EDGE_Q = typeof location !== 'undefined' && /[?&]edgewalls=1/.test(location.search);
+const edgeOn = () => !!S.edgeWalls;
+function edgeMax(type) { const def = Wd.WALL_DEFS[type]; return def ? Math.round(def.hp * (researched('walls') ? 1.3 : 1)) : 0; }
+function putEdge(s, x, y, type, hp, broken) {
+  const mx = edgeMax(type); if (!mx) return null; if (!world.edges) world.edges = new Map();
+  const h = hp == null ? mx : Math.max(0, Math.min(mx, hp)), e = { s, x, y, type, hp: h, max: mx, broken: !!broken || h <= 0, edge: true }, m = Wd.edgeMid(e); e.cx = m.x; e.cy = m.y;
+  world.edges.set(Wd.ekey(s, x, y), e); return e;
+}
+/* An old town on tiles is converted when it is switched on. Each wall tile becomes a wall on that tile's INNER edge, the line on the town's
+   side (owner, 24 Nov, W269: "inner edge", replacing "outer edge" so no strip of land is left between a converted wall and the town): the
+   wall moves half a tile in and sits on the edge of the land it guarded, and its old tile is outside, free. Where a wall encloses land, its
+   inner sides are the ones facing that land (a building there counts as land). A ring's corner tile then has no inner side (the two
+   straight runs already meet at the corner), and a second layer of a thick wall has none either: those pieces are not needed and their
+   whole cost comes back. A loose piece that encloses nothing goes on the side facing the town's centre. Returns what was converted. */
+function wallsToEdges() {
+  if (!world.edges) world.edges = new Map();
+  const tiles = [...world.walls.values()]; if (!tiles.length) return { tiles: 0, pieces: 0, dropped: 0 };
+  const isW = (x, y) => world.walls.has(x + ',' + y), out = new Set(), q = [];
+  const push = (x, y) => { const k = x + ',' + y; if (!out.has(k) && Wd.walkable(world, x, y, true)) { out.add(k); q.push([x, y]); } };
+  for (let x = 0; x < COLS; x++) { push(x, 0); push(x, ROWS - 1); } for (let y = 0; y < ROWS; y++) { push(0, y); push(COLS - 1, y); }
+  while (q.length) { const [x, y] = q.pop(); push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1); }
+  const bOut = new Map(); for (const bd of world.buildings) { let o = false; for (let x = bd.x - 1; !o && x <= bd.x + bd.w; x++) for (let y = bd.y - 1; !o && y <= bd.y + bd.h; y++) if (out.has(x + ',' + y)) o = true; bOut.set(bd, o); }
+  const inside = (x, y) => { if (!Wd.inMap(x, y) || isW(x, y)) return false; const bd = Wd.buildingAt(world, x, y); return bd ? !bOut.get(bd) : Wd.walkable(world, x, y, true) && !out.has(x + ',' + y); };
+  const c = townCentre(), D = [[1, 0], [-1, 0], [0, 1], [0, -1]]; let n = 0, dropped = 0;
+  for (const t of tiles) {
+    const nb = D.map(([dx, dy]) => ({ x: t.x + dx, y: t.y + dy, dot: dx * (t.x + .5 - c.x) + dy * (t.y + .5 - c.y) })).filter((p) => !isW(p.x, p.y) && Wd.inMap(p.x, p.y));
+    const encl = nb.filter((p) => inside(p.x, p.y)), corner = nb.length === 2 && nb[0].x !== nb[1].x && nb[0].y !== nb[1].y, ringPart = encl.length || corner;   /* next to guarded land, or a corner (walls on two sides at right angles) */
+    let sides = encl.length ? encl : ringPart ? [] : nb.filter((p) => p.dot < -.01);
+    if (!sides.length && !ringPart && nb.length) sides = [nb.reduce((a, b) => (b.dot < a.dot ? b : a))];
+    let put = 0; for (const p of sides) { const e = Wd.edgeOf(t.x, t.y, p.x, p.y); if (!e || Wd.edgeAt(world, e.s, e.x, e.y)) continue; if (putEdge(e.s, e.x, e.y, t.type, t.hp, t.broken)) { n++; put++; } }
+    if (!put) { dropped++; refundCost(bCost(Wd.WALL_DEFS[t.type] || Wd.WALL_DEFS.wood), 1); }
+  }
+  world.walls = new Map(); Wd.bump(world); return { tiles: tiles.length, pieces: n, dropped };
+}
+const edgesSave = () => [...(world.edges ? world.edges.values() : [])].map((e) => [e.x, e.y, e.s, e.type, Math.round(e.hp), e.broken ? 1 : 0]);
+function edgesLoad(list) { world.edges = new Map(); for (const [x, y, s, type, hp, br] of list || []) if (s === 'v' || s === 'h') putEdge(s, x, y, type, hp, br); }
+function edgesSwitch() {   /* after a new game or a load: switch the town on when asked, and convert any wall tiles it still has */
+  if (EDGE_Q) S.edgeWalls = true;
+  if (edgeOn() && world.walls.size) { const r = wallsToEdges(); if (r.tiles) logEvent(`🧱 The walls now stand on the lines between tiles, on the edge of the land they guard: ${r.tiles} wall tiles became ${r.pieces} pieces${r.dropped ? `; ${r.dropped} corner or spare pieces were not needed and their cost came back` : ''}. The old wall tiles are free land.`); }
+}
+/* Movement: people and zombies move freely between paths, chases, pushes and slides, in dozens of places. Rather than teach each of them,
+   once a tick everyone's move since the tick began (o.pv) is checked: a step onto the next tile across a standing wall (a gate is open to
+   our people only) is taken back on that axis, so they slide along the wall; a diagonal step past a wall's end is taken back too. A jump of
+   more than a tile (carried, loaded, placed) is not a step. */
+const EDGE_GAP = .06;
+function edgeGuard() {
+  if (!world.edges || !world.edges.size) return;
+  const keep = (o, z) => {
+    const p = o.pv; if (!p || !o.w) return; const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.floor(o.w.x), by = Math.floor(o.w.y);
+    if ((ax === bx && ay === by) || Math.abs(bx - ax) > 1 || Math.abs(by - ay) > 1) return;
+    if (Wd.stepOk(world, ax, ay, bx, by, z)) return;
+    if (bx !== ax && !Wd.stepOk(world, ax, ay, bx, ay, z)) o.w.x = bx > ax ? ax + 1 - EDGE_GAP : ax + EDGE_GAP;
+    const cx = Math.floor(o.w.x); if (by !== ay && !Wd.stepOk(world, cx, ay, cx, by, z)) o.w.y = by > ay ? ay + 1 - EDGE_GAP : ay + EDGE_GAP;
+    const fx = Math.floor(o.w.x), fy = Math.floor(o.w.y); if (!Wd.stepOk(world, ax, ay, fx, fy, z)) o.w.y = by > ay ? ay + 1 - EDGE_GAP : ay + EDGE_GAP;   /* past a wall's end: back off one axis */
+  };
+  for (const q of S.sv) if (q.hp > 0 && !insideBuilding(q)) keep(q, false);
+  for (const z of S.z) if (z.hp > 0) keep(z, true);
+}
 /* ---------------- town systems ---------------- */
 const xpNeed = (s) => { const p = professions[s.job]; const b = (p && p.master) || 60, l = s.l || 1; return Math.round(l < 5 ? b : b * (1 + (l - 4) * .6)); };
 function masteryCheck(s) {      // experience: each level raises the work boost and the daily ration; capped at LEVEL_CAP
@@ -4802,7 +4867,7 @@ function serialize() {
   const sv = S.sv.map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k)) o[k] = s[k]; return o; });
   if (S.sh) shMemSave(S.sh);   /* 3D.302 a game saved with a squad inside keeps what they have done there */
   const { requests, sv: _sv, z: _z, sh: _sh, ...rest } = S; if (rest.truck && rest.truck.medics) rest.truck = { ...rest.truck, medics: rest.truck.medics.map(({ carrying, target, path, pathGoal, pathVer, arrG, ...m }) => m) };   /* 3D.306: a medic is saved without its links to people (it finds its patient again by carryId) */ if (_sh && !_sh.practice) { rest.shHome = _sh.units.filter((s) => !s.ally).map((s) => { const o = {}; for (const k in s) if (!SKIP.has(k) && k !== 'target' && k !== 'shHome') o[k] = s[k]; return o; }); rest.shLeft = { dest: _sh.dest, raid: _sh.raid || null }; }   /* 3D.125: a practice squad is never saved into the town */   /* 3D.108 a squad inside a stronghold is saved as having fallen back */
-  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
+  return JSON.stringify({ sid: SID, version: VERSION, S: rest, sv, roads: [...world.roads], walls: [...world.walls.values()].map((w) => [w.x, w.y, w.type, Math.round(w.hp), w.broken ? 1 : 0]), edges: edgesSave(), traps: [...trapMap().values()].map((t) => [t.x, t.y, t.type, t.ch]), buildings: world.buildings.map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.w, h: b.h, q: b.q, a: b.a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staffId: b.staff ? b.staff.id : null })), cam: { x: cam.x, y: cam.y, z: cam.z }, time: Date.now() });
 }
 function writeKey(key, data) { try { localStorage.setItem(key, data); return true; } catch (e) { return e || new Error('blocked'); } }
 function readKey(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -4913,7 +4978,7 @@ function relinkSurvivor(s) {
 /* V2.42: try the slot, then its day backup; only a slot with no save at all falls back to the pre-V2.6 keys. A save that fails to load is copied aside and the slot is
    locked against autosave, so a bug or a damaged file can never be replaced by a fresh town. */
 const S_INIT = JSON.stringify(S), ROADS_INIT = [...world.roads];
-function resetState() { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, JSON.parse(S_INIT)); world.roads = new Set(ROADS_INIT); world.buildings = []; world.walls = new Map(); world.traps = new Map(); Wd.setTerritory(0); Wd.bump(world); }
+function resetState() { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, JSON.parse(S_INIT)); world.roads = new Set(ROADS_INIT); world.buildings = []; world.walls = new Map(); world.edges = new Map(); world.traps = new Map(); Wd.setTerritory(0); if (EDGE_Q) S.edgeWalls = true; Wd.bump(world); }
 function loadGame() {
   const tries = [[SAVE_KEY, 'main'], [BAK(SAVE_KEY), 'bak']]; /* V3D.22: no carry-over from the scrap-only saves */
   let had = false, failedMain = null;
@@ -4934,7 +4999,7 @@ function shiftSave(d) {
   walk(d.S); walk(d.sv); walk(d.buildings);
   if (d.S.nodes) d.S.nodes = Object.fromEntries(Object.entries(d.S.nodes).map(([k, v]) => [sk(k), v]));
   d.roads = (d.roads || []).map((r) => (Array.isArray(r) ? [r[0] + OFF, r[1] + OFF] : sk(r)));
-  d.walls = (d.walls || []).map((w) => [w[0] + OFF, w[1] + OFF, ...w.slice(2)]); d.traps = (d.traps || []).map((t) => [t[0] + OFF, t[1] + OFF, ...t.slice(2)]);
+  d.walls = (d.walls || []).map((w) => [w[0] + OFF, w[1] + OFF, ...w.slice(2)]); d.edges = (d.edges || []).map((e) => [e[0] + OFF, e[1] + OFF, ...e.slice(2)]); d.traps = (d.traps || []).map((t) => [t[0] + OFF, t[1] + OFF, ...t.slice(2)]);
   delete d.cam; delete d.S.cam; d.S.mapOff = OFF;
 }
 function applySave(raw, legacy, prev) {
@@ -4954,13 +5019,14 @@ function applySave(raw, legacy, prev) {
     if (d.roads) world.roads = new Set(d.roads.map((r) => (Array.isArray(r) ? r.join(',') : r))); world.buildings = (d.buildings || []).filter((b) => DEFS[b.type]).map((b) => ({ type: b.type, x: b.x, y: b.y, rot: (b.rot | 0) & 3, w: b.rot ? DEFS[b.type].h : DEFS[b.type].w, h: b.rot ? DEFS[b.type].w : DEFS[b.type].h, q: b.q ?? DEFS[b.type].q, a: b.a ?? DEFS[b.type].a, unpaid: !!b.unpaid, fire: b.fire || 0, burnt: !!b.burnt, rushT: b.rushT || 0, rushes: b.rushes || 0, staff: null, _staffId: b.staffId || null }));
     world.traps = new Map(); for (const [x, y, type, ch] of (d.traps || [])) if (TRAP_DEFS[type]) world.traps.set(x + ',' + y, { x, y, type, ch: Math.max(0, Math.min(TRAP_DEFS[type].ch, ch | 0)) });
     world.walls = new Map(); for (const [x, y, type, hp, br] of (d.walls || [])) { const def = Wd.WALL_DEFS[type]; if (def) { const mx = Math.round(def.hp * (researched('walls') ? 1.3 : 1)); world.walls.set(x + ',' + y, { x, y, type, hp: Math.max(0, Math.min(mx, hp)), max: mx, broken: !!br || hp <= 0 }); } }
+    edgesLoad(d.edges);   /* 3D.351 walls on the lines between tiles */
     if ((S.trip) && S.trip.t0 > 1e11) { const t = S.trip; t.t0 = expNow() - Math.min(t.stage, 2) / 3 * EXP_HOURS[t.risk] * EXP_HMS; t.dur = EXP_HOURS[t.risk] * EXP_HMS; if (t.phase === 'back') { t.backFrom = expNow(); t.backPos = .5; t.backAt = expNow() + .5 * EXP_HMS; } }   /* V3D.18: old real-time trip → game time */
     if (!isFinite(S.ren)) S.ren = 20 * (S.lvl || 1);   /* 3D.110 repair saves hit by the NaN renown bug */
     clearDoorways();   /* 3D.120 saves where a fence blocks a doorway */
     if (S.shHome) { for (const m of S.shHome) { m.w = tc(7 + OFF, 10 + OFF); m.mode = 'free'; m.hp = Math.max(1, Math.round((m.hp || 1) * .5)); m.target = null; S.sv.push(m); }   /* 3D.125 review bug 3: leaving mid-fight is a rout, not a free escape: they come home hurt, with nothing, and the place is on guard */
       const L = S.shLeft; if (L && L.raid) { const F = fac(L.raid); F.att = Math.max(-100, (F.att || 0) - 15); F.raidUntil = S.day + 4; } else if (L) S.shTryDay = { ...(S.shTryDay || {}), [L.dest]: S.day };
       setTimeout(() => say('Left without orders, the squad broke and ran home hurt. Whatever they carried was lost.'), 1500); delete S.shHome; delete S.shLeft; }   /* 3D.108 */
-    S.z = []; S.requests = []; setMap(S.map); S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr);   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
+    S.z = []; S.requests = []; setMap(S.map); S.sv.forEach(relinkSurvivor); if (S.ammo === undefined) S.ammo = 24; S.terr = S.terr || 0; if (!S.lvl) S.lvl = 1 + 3 * Math.max(0, (S.rank || 1) - 1); S.banners = S.banners || []; S.terr = Math.max(S.terr, terrOfLvl(S.lvl)); Wd.setTerritory(S.terr); edgesSwitch();   /* 3D.351 */   /* 3D.104 old saves: each old star = 3 levels */ S.inv = S.inv || {}; for (const w of (S.spare || [])) { const id = Object.keys(ITEMS).find((k) => ITEMS[k].name === (w && w[0])); if (id && id !== 'pipe') stashAdd(id); } S.spare = []; if (S.nextRaid === undefined) S.nextRaid = S.day + 1.6; if (S.nextBoss === undefined) S.nextBoss = Math.max(3, Math.ceil(S.day / 3) * 3); S.pets = S.pets || []; S.posts = (S.posts || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)); S.log = S.log || []; S.kids = S.kids || []; if (S.nextTrader === undefined) S.nextTrader = S.day + 1; if (S.trader) { S.trader.path = null; S.trader.ex = S.trader.ex || [0, 0, 0, 0]; } if (S.trip) S.trip.members.forEach((m) => { if (!TRAITS[m.trait]) m.trait = rollTrait(m); });
     for (const b of world.buildings) { if (b._staffId) { const q = S.sv.find((x) => x.id === b._staffId); if (q) { b.staff = q; q.post = b; } } delete b._staffId; }
     genRun = S.power ? gens() : []; powerGrid();   /* audit: power after staff are relinked */
     for (const q of S.sv) if (q.ammo == null && usesAmmo(itemOf(q, 'weapon'))) { q.ammo = 0; reloadGun(q); }   /* audit: guns from older saves load from the stock, not a free magazine */
@@ -8523,6 +8589,7 @@ function simTick() { Wd.touch();
   tick++; if (S.alert > 0) S.alert--; driveTick(); truckTick(); traderTick(); guestTick(); bagsTick(); errandsTick(); sitesTick(); if (tick % 30 === 0) { downWhyTick(); incidentTick(); petTick(); exTick(); dogBite(); } S.expClock = (S.expClock || 0) + 1000 / 60; lvTick(1000 / 60); S.sv.forEach(ai); spreadOut(); if (tick % 30 === 0) wallUnstick(); if (world.walls.size && tick % 6 === 0) for (const q of S.sv) if (q.hp > 0 && q.w && !insideBuilding(q) && !['away', 'down'].includes(q.mode)) unwall(q); dryTick(); introTick(); if (tick % 30 === 7) { answerSOS(); engineerRepairs(); } S.z.forEach(zai); for (const z of S.z) if (z.hp <= 0 && z.type === 'rotbomb' && !z.escaped && !z.zoo && !z.burst) { if (!(z.fuseT >= 0)) { z.fuseT = ROT_FUSE; z.mode = 'zfuse'; z.moving = false; } else if (--z.fuseT <= 0) rotBurst(z); }   /* 3D.85 it swells for a second, then bursts */ for (const z of S.z) if (z.hp <= 0 && z.type !== 'raider' && !z.escaped && !(z.fuseT > 0) && !z.burst) corpses.push({ type: z.type, w: { ...z.w }, phase: z.phase, mode: 'dead', dead: 0, target: z.target && z.target.w ? { w: { ...z.target.w } } : null }); S.z = S.z.filter((z) => z.hp > 0 || z.fuseT > 0); for (let i = corpses.length - 1; i >= 0; i--) if (++corpses[i].dead > 120) corpses.splice(i, 1); monsterGeneration(); visitorArrival();
   if (tick % 30 === 0) { alertsTick(); refreshNow(); for (let k = 0; k < 4 && assignRescue(); k++); } if (tick % 60 === 20) repelRaid(); if (tick % 300 === 150) rally() || militia(); if (tick % 120 === 0) { missionProgress(); bondTick(); } if (tick % 240 === 0) checkRank(); if (tick % 24000 === 0 && tick > 0) triggerTownEvent(); if (tick % 450 === 0) saveGame();
   if (tick % 300 === 0) { autoStaff(); postsAssign(); powerGrid(); } if (tick % 60 === 0) { tripUpdate(); expTick(); } if (tick % 60 === 0 && world.walls.size) autoRepair(); if (tick % 240 === 0 && world.walls.size) checkPerimeter();
+  edgeGuard();   /* 3D.351 walls on the lines: nobody steps across one */
   if (tick % 100 === 0) for (const b of world.buildings) if (b.staff) { b.wsN = (b.wsN || 0) + 1; b.wsW = (b.wsW || 0) + (isWorking(b) ? 1 : 0); }
   if (tick % 60 === 30 && window.SND) { if (S.z.some((z) => z.hp > 0 && !z.zoo && ['zchase', 'zattack', 'zbash', 'zmarch'].includes(z.mode) && Wd.inTown(Math.floor(z.w.x), Math.floor(z.w.y)))) S.musDanger = tick + 1500; SND.music(isNight(), S.day); SND.danger((S.musDanger || 0) > tick, S.z.some((z) => z.boss && z.hp > 0 && !z.zoo) || S.z.filter((z) => z.hp > 0 && !z.zoo && !z.human).length >= 25); }   /* 3D.255: a boss or a big crowd plays The Tide */   /* 3D.50 music follows the clock and the fighting */
   barkWatch(); if (tick % 30 === 15 && lastStand()) for (const q of standing()) if (['chase', 'attack', 'recover'].includes(q.mode) && q.target) { const z = q.target; q.target = null; engage(q, z); }   /* 3D.48 */

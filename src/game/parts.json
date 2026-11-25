@@ -40,6 +40,10 @@
   "starts": "/* ---------------- zombies ---------------- */"
  },
  {
+  "file": "10b-edge-walls.js",
+  "starts": "/* ---------------- 3D.351 W269: town walls on the lines between tiles ---------------- */"
+ },
+ {
   "file": "11-town.js",
   "starts": "/* ---------------- town systems ---------------- */"
  },

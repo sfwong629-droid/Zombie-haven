@@ -127,7 +127,7 @@
   ];
 
   const key = (x, y) => x + ',' + y;
-  function createWorld() { return { roads: new Set(), buildings: [], walls: new Map(), ver: 0 }; }   /* 3D.39 owner: a new game starts with just the camp, no roads (ROAD_COORDS kept for reference) */
+  function createWorld() { return { roads: new Set(), buildings: [], walls: new Map(), edges: new Map(), ver: 0 }; }   /* 3D.39 owner: a new game starts with just the camp, no roads (ROAD_COORDS kept for reference) */
   const bump = (w) => { w.ver++; BAE++; };
   const isRoad = (w, x, y) => w.roads.has(key(x, y));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
@@ -142,6 +142,25 @@
     return BA.m.get((Math.floor(x) + 512) * 4096 + Math.floor(y) + 512) || null; }   // V3D.12: construction sites block too
   const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
   const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
+  /* 3D.351 W269 (owner, 24 Nov: "do B"): town walls stand on the LINES between tiles and take no land. A piece is one tile long:
+     s 'v' is the line x = x between tiles (x-1, y) and (x, y); s 'h' is the line y = y between tiles (x, y-1) and (x, y). Kept in
+     w.edges (w.walls keeps the old wall tiles, empty in a town on lines). A step from a tile to its neighbour is shut by a standing
+     piece on the line between them (a gate only for zombies); a diagonal step must be open both ways round the corner, so nobody
+     cuts past a wall's end. */
+  const ekey = (s, x, y) => s + x + ',' + y;
+  const edgeOf = (ax, ay, bx, by) => (ay === by && Math.abs(ax - bx) === 1 ? { s: 'v', x: Math.max(ax, bx), y: ay } : ax === bx && Math.abs(ay - by) === 1 ? { s: 'h', x: ax, y: Math.max(ay, by) } : null);
+  const edgeAt = (w, s, x, y) => (w.edges && w.edges.get(ekey(s, x, y))) || null;
+  const edgeBetween = (w, ax, ay, bx, by) => { if (!w.edges || !w.edges.size) return null; const e = edgeOf(ax, ay, bx, by); return e ? edgeAt(w, e.s, e.x, e.y) : null; };
+  const edgeShuts = (e, z) => !!e && !e.broken && (z || e.type !== 'gate');
+  const edgeTiles = (e) => (e.s === 'v' ? [{ x: e.x - 1, y: e.y }, { x: e.x, y: e.y }] : [{ x: e.x, y: e.y - 1 }, { x: e.x, y: e.y }]);
+  const edgeMid = (e) => (e.s === 'v' ? { x: e.x, y: e.y + .5 } : { x: e.x + .5, y: e.y });
+  function stepOk(w, ax, ay, bx, by, z = false) {
+    if (!w.edges || !w.edges.size) return true;
+    const dx = bx - ax, dy = by - ay, adx = Math.abs(dx), ady = Math.abs(dy);
+    if (adx + ady === 1) return !edgeShuts(edgeBetween(w, ax, ay, bx, by), z);
+    if (adx === 1 && ady === 1) return stepOk(w, ax, ay, bx, ay, z) && stepOk(w, bx, ay, bx, by, z) && stepOk(w, ax, ay, ax, by, z) && stepOk(w, ax, by, bx, by, z);
+    return true;   // no move, or a jump of more than a tile (carried, loaded, placed): not a step
+  }
   // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
   const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || wl.broken || (!z && wl.type === 'gate'); };   // V2.18: a broken segment is rubble anyone can cross until it is repaired
 
@@ -170,7 +189,11 @@
     if ((w.sites || []).some(b => Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Under construction' };
     const dt = defApproach(x, y, def);   // the approach tile in front of the door must stay free
     if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
-    { const wl = wallAt(w, dt.x, dt.y); if (wl && wl.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }   /* 3D.163 play-test: a Canteen built with its door onto the fence trapped whoever went in; rescuers stood inside for 12+ hours while people bled out */
+    { const wl = wallAt(w, dt.x, dt.y); if (wl && wl.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }
+    if (w.edges && w.edges.size) {   /* 3D.351 walls on lines: nothing is built over a line with a wall on it, and a door never opens onto one */
+      for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) { if (xx && edgeAt(w, 'v', x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' }; if (yy && edgeAt(w, 'h', x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' }; }
+      const r = (def.rot | 0) & 3, inT = r === 1 ? { x: dt.x - 1, y: dt.y } : r === 2 ? { x: dt.x, y: dt.y + 1 } : r === 3 ? { x: dt.x + 1, y: dt.y } : { x: dt.x, y: dt.y - 1 }, de = edgeBetween(w, inT.x, inT.y, dt.x, dt.y);
+      if (de && de.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }   /* 3D.163 play-test: a Canteen built with its door onto the fence trapped whoever went in; rescuers stood inside for 12+ hours while people bled out */
     // V2.34: nor may it sit on ANOTHER building's entrance tile (people then walked through that building)
     for (const b of w.buildings) { if (b === ignore) continue; const at = approachTile(b); if (at.x >= x && at.x < x + def.w && at.y >= y && at.y < y + def.h) return { ok: false, why: `Blocks the ${(DEFS[b.type] && DEFS[b.type].name) || b.type} entrance` }; }
     return { ok: true, why: '' };
@@ -215,7 +238,7 @@
     const fb = buildingAt(w, from.x, from.y), ft = fb && !z ? approachTile(fb) : from;   // leaving a building = start from its approach tile
     const g = nearestWalkable(w, gt.x, gt.y, z), s = nearestWalkable(w, ft.x, ft.y, z); if (!g || !s) return null;
     if (s.x === g.x && s.y === g.y) return [];
-    const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap();
+    const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap(), eOn = !!(w.edges && w.edges.size);
     heap.push({ x: s.x, y: s.y, g: 0, f: Math.abs(s.x - g.x) + Math.abs(s.y - g.y) });
     let guard = 0;
     while (heap.size && guard++ < 9000) {
@@ -223,7 +246,8 @@
       if (c.x === g.x && c.y === g.y) { const out = []; let k = key(c.x, c.y); while (prev.has(k)) { const [px, py] = k.split(',').map(Number); out.push({ x: px, y: py }); k = prev.get(k); } return out.reverse(); }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = c.x + dx, ny = c.y + dy; let extra = 0;
-        if (!walkable(w, nx, ny, z)) { const wl = wallCost && inMap(nx, ny) && !buildingAt(w, nx, ny) ? wallAt(w, nx, ny) : null; if (!wl) continue; extra = wallCost; }
+        if (eOn) { const eg = edgeBetween(w, c.x, c.y, nx, ny); if (edgeShuts(eg, z)) { if (!wallCost) continue; extra = wallCost; } }   /* 3D.351 a wall on the line: zombies may count it as a way through, at a cost (the piece to break) */
+        if (!walkable(w, nx, ny, z)) { const wl = wallCost && inMap(nx, ny) && !buildingAt(w, nx, ny) ? wallAt(w, nx, ny) : null; if (!wl) continue; extra += wallCost; }
         const k = key(nx, ny), ng = c.g + stepCost(w, nx, ny) + extra + (avoid && avoid.has(k) ? 6 : 0);
         if (ng < (best.get(k) ?? 1e9)) { best.set(k, ng); prev.set(k, key(c.x, c.y)); heap.push({ x: nx, y: ny, g: ng, f: ng + Math.abs(nx - g.x) + Math.abs(ny - g.y) }); }
       }
@@ -233,23 +257,23 @@
 
   // Perimeter check: flood-fill from the town centre treating walls (gate included) and buildings as solid, the way zombies see them.
   function perimeter(w) {
-    let weakest = null, n = 0, gates = 0; for (const wl of w.walls.values()) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
+    let weakest = null, n = 0, gates = 0; for (const wl of [...w.walls.values(), ...(w.edges ? w.edges.values() : [])]) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
     /* 3D.172: flood from the map edge inward (3D.171 flooded out from the town centre, so a closed little camp fence round the HQ trapped the
        flood and the outer wall never counted: the Defender's 105-tile wall never sealed). Anything the outside cannot walk to is inside. */
-    const out = new Set(), q = [], push = (x, y) => { const k = key(x, y); if (!out.has(k) && walkable(w, x, y, true)) { out.add(k); q.push({ x, y }); } };
+    const out = new Set(), q = [], push = (x, y, c) => { const k = key(x, y); if (!out.has(k) && walkable(w, x, y, true) && (!c || stepOk(w, c.x, c.y, x, y, true))) { out.add(k); q.push({ x, y }); } };
     for (let x = 0; x < COLS; x++) { push(x, 0); push(x, ROWS - 1); } for (let y = 0; y < ROWS; y++) { push(0, y); push(COLS - 1, y); }
-    while (q.length) { const c = q.pop(); push(c.x + 1, c.y); push(c.x - 1, c.y); push(c.x, c.y + 1); push(c.x, c.y - 1); }
+    while (q.length) { const c = q.pop(); push(c.x + 1, c.y, c); push(c.x - 1, c.y, c); push(c.x, c.y + 1, c); push(c.x, c.y - 1, c); }
     const seed = nearestWalkable(w, 7 + OFF, 10 + OFF, true), ring = !!seed && !out.has(key(seed.x, seed.y));
     /* 3D.171 owner: sealed means most of the town is inside: the HQ and at least 3 in 4 buildings. A building is outside when its door, or a
        tile next to it, can be reached from the map edge */
     let inside = 0, total = 0, hqIn = false; const outsideB = [];
     for (const b of w.buildings) { if (!DEFS[b.type]) continue; total++; const t = approachTile(b); let reach = out.has(key(t.x, t.y));
-      for (let x = b.x - 1; !reach && x <= b.x + b.w; x++) for (let y = b.y - 1; !reach && y <= b.y + b.h; y++) if ((x < b.x || x >= b.x + b.w || y < b.y || y >= b.y + b.h) && out.has(key(x, y))) reach = true;
+      for (let x = b.x - 1; !reach && x <= b.x + b.w; x++) for (let y = b.y - 1; !reach && y <= b.y + b.h; y++) if ((x < b.x || x >= b.x + b.w || y < b.y || y >= b.y + b.h) && out.has(key(x, y)) && stepOk(w, x, y, Math.max(b.x, Math.min(b.x + b.w - 1, x)), Math.max(b.y, Math.min(b.y + b.h - 1, y)), true)) reach = true;   /* 3D.351 not across a wall on the line */
       if (!reach) { inside++; if (DEFS[b.type].fam === 'hq') hqIn = true; } else outsideB.push(b); }
     const sealed = hqIn && inside >= Math.ceil(total * SEAL_SHARE);
     return { sealed, ring, inside, total, outsideB, walls: n, gates, weakest, area: COLS * ROWS - out.size };
   }
   const SEAL_SHARE = .75;
   const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
-  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, touch, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, ekey, edgeOf, edgeAt, edgeBetween, edgeShuts, edgeTiles, edgeMid, stepOk, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, touch, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
 });
