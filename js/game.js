@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.372', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.373', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -8756,10 +8756,10 @@ function cutUi(on) {
   let el = document.getElementById('cutBox');
   if (!on) { if (el) el.remove(); document.getElementById('app').classList.remove('cutMode'); return; }
   if (!document.getElementById('cutCss')) { const st = document.createElement('style'); st.id = 'cutCss'; st.textContent = `#app.cutMode #plaque,#app.cutMode #quest,#app.cutMode #adv,#app.cutMode #lmenu,#app.cutMode #gauge,#app.cutMode #btnHome,#app.cutMode #zoom,#app.cutMode #alerts,#app.cutMode #bottom,#app.cutMode #requestBox,#app.cutMode #nudge{display:none!important}
-#cutBox{position:fixed;inset:0;z-index:60;pointer-events:auto;touch-action:none}#cutBox .bar{position:absolute;left:0;right:0;height:11vh;background:#0d0a07;border-radius:0;transition:height .6s}#cutBox .bar.t{top:0}#cutBox .bar.b{bottom:0;height:15vh}
-#cutBox .sub{position:absolute;left:0;right:0;bottom:3vh;padding:0 max(16px,env(safe-area-inset-left,0px));text-align:center;font:600 clamp(15px,2.4vw,21px)/1.3 system-ui,sans-serif;color:#f3e6c8;text-shadow:0 2px 0 #000;min-height:2.6em}#cutBox .sub b{color:#f0b84a}
-#cutBox .ttl{position:absolute;top:2.6vh;left:0;right:0;text-align:center;font:800 clamp(14px,2vw,18px)/1 system-ui,sans-serif;letter-spacing:.2em;color:#bfae8a;text-transform:uppercase}
-#cutBox .skip{position:absolute;right:max(14px,env(safe-area-inset-right,0px));top:calc(11vh + 10px);background:rgba(13,10,7,.75);color:#f3e6c8;border:1.5px solid #6d5a3c;border-radius:8px;padding:7px 14px;font:700 14px system-ui,sans-serif;cursor:pointer}
+#cutBox{position:fixed;inset:0;z-index:60;pointer-events:auto;touch-action:none}#cutBox .bar{position:absolute;left:0;right:0;height:calc(11% + env(safe-area-inset-top,0px));background:#0d0a07;border-radius:0;transition:height .6s}#cutBox .bar.t{top:0}#cutBox .bar.b{bottom:0;height:calc(15% + env(safe-area-inset-bottom,0px))}
+#cutBox .sub{position:absolute;left:0;right:0;bottom:calc(3% + env(safe-area-inset-bottom,0px));padding:0 max(16px,env(safe-area-inset-left,0px));text-align:center;font:600 clamp(15px,2.4vw,21px)/1.3 system-ui,sans-serif;color:#f3e6c8;text-shadow:0 2px 0 #000;min-height:2.6em}#cutBox .sub b{color:#f0b84a}
+#cutBox .ttl{position:absolute;top:calc(2.6% + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;font:800 clamp(14px,2vw,18px)/1 system-ui,sans-serif;letter-spacing:.2em;color:#bfae8a;text-transform:uppercase}
+#cutBox .skip{position:absolute;right:max(14px,env(safe-area-inset-right,0px));top:calc(11% + env(safe-area-inset-top,0px) + 10px);background:rgba(13,10,7,.75);color:#f3e6c8;border:1.5px solid #6d5a3c;border-radius:8px;padding:7px 14px;font:700 14px system-ui,sans-serif;cursor:pointer}
 #cutBox.out .bar{height:0}#cutBox.out .sub,#cutBox.out .ttl,#cutBox.out .skip{opacity:0;transition:opacity .4s}`; document.head.appendChild(st); }
   if (!el) { el = document.createElement('div'); el.id = 'cutBox'; el.innerHTML = `<div class="bar t"></div><div class="bar b"></div><div class="ttl">${esc(S.townName || 'Zombie Haven')} · Day 1</div><div class="sub" id="cutSub"></div><button class="skip" id="cutSkip">Skip ▸▸</button>`; document.body.appendChild(el); el.querySelector('#cutSkip').onclick = (e) => { e.stopPropagation(); cutEnd(true); }; }
 }

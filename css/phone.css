@@ -288,3 +288,9 @@ html.phone #eventModal .tipMore { width: 100%; margin-top: 6px; } html.phone #ev
 html.phone #eventModal .tipMb i { font-style: normal; display: inline-block; transition: transform .15s; } html.phone #eventModal .tipMore.open .tipMb i { transform: rotate(90deg); }
 html.phone #eventModal .tipF { display: none; text-align: left; font: 500 14px/1.45 Manrope, system-ui, sans-serif; color: rgba(255, 255, 255, .78); padding: 4px 2px 6px; } html.phone #eventModal .tipMore.open .tipF { display: block; }
 html.phone #eventModal .evBox:has(.tipP) .act { min-height: 48px; margin-top: 8px; } html.phone #eventModal .evBox:has(.tipP) .act:not(.go) { background: none; border: 0; box-shadow: none; color: rgba(255, 255, 255, .6); min-height: 44px; margin-top: 2px; }
+
+/* 3D.373 (W277, owner's iPhone play-test): on the Home Screen copy iOS gives 100dvh as the screen less the status bar, and the frame's own
+   top padding stacked with each bar's notch spacing. The game now fills the whole screen (pinned to all four edges), the scene runs under the
+   status bar and the home bar, and each bar adds the notch or home-bar spacing once. */
+html.glass.phone #app { position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: auto; padding-top: 0; }
+html.glass.phone #lmenu { bottom: max(12px, calc(env(safe-area-inset-bottom) - 4px)); }
