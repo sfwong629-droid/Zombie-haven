@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.353', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.354', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1447,7 +1447,14 @@ function alertHub() {
   if (!pop) { pop = document.createElement('div'); pop.id = 'alertPop'; pop.className = 'alertPop'; w.appendChild(pop); pop.onclick = (e) => e.stopPropagation(); }
   pop.style.top = (parseInt(b.style.top) || 120) + 'px';
   const sig = L.map((q) => q.key + q.text + q.acts.map((c) => c.label + c.ok).join()).join('|'); if (pop.dataset.sig === sig) return; pop.dataset.sig = sig;
-  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute || q.muteAll ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕'}</span></button>` : ''}</div>`).join('');
+  /* 3D.354 (owner, 24 Nov, W270: "the warning menu should match the style we are going for with the iphone menu"): in the phone look Needs you is
+     a frosted glass sheet like the phone's notifications: a large title, a small grey close, small grey group titles (Now, Tips), and each row a
+     notification card with a coloured square sign, the short title, a lime Go and a small grey ✕. Same classes and handlers as before. */
+  const cx = window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕', rowH = (q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute || q.muteAll ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${cx}</span></button>` : ''}</div>`;
+  if (phoneOn()) { const now = L.map((q, i) => [q, i]).filter(([q]) => q.urgent), tips = L.map((q, i) => [q, i]).filter(([q]) => !q.urgent);
+    pop.classList.add('phNote'); pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX" aria-label="Close">${cx}</button></div>` + (now.length ? `<div class="apS">Now</div>` + now.map(([q, i]) => rowH(q, i)).join('') : '') + (tips.length ? `<div class="apS">Tips</div>` + tips.map(([q, i]) => rowH(q, i)).join('') : '');
+  } else { pop.classList.remove('phNote');
+  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute || q.muteAll ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕'}</span></button>` : ''}</div>`).join(''); }
   if (window.ZHIcons && ZHIcons.swap) try { ZHIcons.swap(pop); } catch (e) { /* emoji stay */ }
   pop.querySelector('.apX').onclick = () => { hubOpen = false; alertHub(); };
   pop.querySelectorAll('.apRow').forEach((r) => { const q = L[+r.dataset.i];
