@@ -9,6 +9,7 @@ html.glass.phone #lmenu.dk .lm, html.glass.phone #lmenu.dk #mBuild { position: s
 html.glass.phone #lmenu.dk #mBuild { order: 9; }
 html.glass.phone #lmenu.dk .lm i { width: 56px; height: 56px; border-radius: 13px; overflow: hidden; display: block; box-shadow: 0 3px 8px rgba(0,0,0,.3); }
 html.glass.phone #lmenu.dk .lm i img { width: 100%; height: 100%; display: block; }
+html.glass.phone #lmenu.dk .lm i { position: relative; } html.glass.phone #lmenu.dk .lm i::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,0) 45%, rgba(0,0,0,0) 70%, rgba(0,0,0,.14)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 3px rgba(0,0,0,.15); }
 `;
 (async () => { const b = await Q.launch();
   for (const [n, w, h] of [['phone', 390, 844], ['phoneN', 320, 568]]) {
