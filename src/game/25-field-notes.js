@@ -205,8 +205,31 @@ const GUIDE_TXT = [
   ['Ammo', 'They use rounds from the town stock (🔸); crossbows and melee never do. Out of ammo, a gunner clubs with the empty gun. An Ammo Bench with a Mechanic makes about 16 a day, a powered Ammo Factory about 64. Raiders and the Military Checkpoint drop rounds. Guns are hungry.'],
   ['Traps', 'Build → Defend: Spike Strips, Barbed Wire and the Noise Lure go on any open ground, best on the zombies\' paths. They wear out: re-arm with scrap before night. Scouts warn you at noon when a boss is coming. Rude surprises, on purpose.'],
 ];
+/* 3D.365 (owner, 25 Nov, W249 "Ok next"; W270 less reading): the Guide in the phone look, like the iPhone's Tips: Goals and the Event log on top,
+   then Field Notes (the tips switch and one row per note found), then How to play (one row per topic, a sign and a title); a row opens its
+   page, where the words are (rule 5: how-it-works on its own page). The topics' text is unchanged. */
+const GUIDE_IC = ['map', 'build', 'food', 'worker', 'wall', 'fight', 'town', 'people', 'crowbar', 'explore', 'renown', 'zombie', 'power', 'ammo', 'bomb'];
+function guidePhone() {
+  const I = (n, c) => `<span class="phIc gIc" style="background:${c}">${window.ZHIcons ? ZHIcons.svg(n, 22) : ''}</span>`, ch = `<i class="phChv">${phG('ch', 14)}</i>`;
+  const row = (id, ic, c, t, v = '') => `<div class="phR" id="${id}" role="button">${I(ic, c)}<span class="k">${t}</span><span class="v">${v}</span>${ch}</div>`;
+  const seen = Object.keys(S.intro || {}).filter((k) => INTRO[k] || k.startsWith('b:'));
+  const note = (k) => INTRO[k] || ['🏗️', DEFS[k.slice(2)] ? DEFS[k.slice(2)].name : k, BDESC[k.slice(2)] || '', ''];
+  const g = GUIDE[S.guide || 0];
+  $('ib').innerHTML = `<div class="phSet phGuide"><div class="phCard">${row('gGoals', 'target', '#e0563b', 'Goals', g && guideActive() ? esc(g.name || '') : '')}${row('gLog2', 'log', '#8a6cd8', 'Event log')}</div>`
+    + `<div class="phSec">Field Notes · ${seen.length}</div><div class="phCard"><div class="phR">${I('bell', '#e0a42e')}<span class="k">Tips</span><span class="v"></span><button class="tgl${S.introOff ? '' : ' on'}" id="gTips" role="switch" aria-checked="${!S.introOff}" aria-label="Tips"><i></i></button></div>`
+    + (seen.length ? seen.map((k) => `<div class="phR" data-note="${esc(k)}" role="button"><span class="phIc gEm">${note(k)[0]}</span><span class="k">${esc(note(k)[1])}</span><span class="v"></span>${ch}</div>`).join('') : `<div class="phR"><span class="k dim">None yet</span></div>`) + `</div>`
+    + `<div class="phSec">How to play</div><div class="phCard">${GUIDE_TXT.map(([t], i) => `<div class="phR" data-topic="${i}" role="button">${I(GUIDE_IC[i] || 'question', ['#3d8fe0', '#e08a2e', '#4caf6d', '#d0a030', '#8d8f96', '#e0563b', '#5aa0c8', '#d0609a', '#7a6cd0', '#3a9a8a', '#d4a72c', '#6e7b4f', '#e0b030', '#b0703a', '#c04848'][i % 15])}<span class="k">${t}</span><span class="v"></span>${ch}</div>`).join('')}</div>`
+    + `<div class="phFootN">Version ${VERSION}</div></div>`;
+  showPanel('Guide');
+  $('gGoals').onclick = () => { showGoals(); panelBack = showGuide; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Guide'; };
+  $('gLog2').onclick = () => { showLog(); panelBack = showGuide; $('pBack').style.display = 'block'; $('pBack').dataset.t = 'Guide'; };
+  $('gTips').onclick = () => { S.introOff = !S.introOff; showGuide(); };
+  $('ib').querySelectorAll('[data-topic]').forEach((e) => { e.onclick = () => { const [t, x] = GUIDE_TXT[+e.dataset.topic]; $('ib').innerHTML = `<div class="phSet phGuide"><div class="gHero">${window.ZHIcons ? ZHIcons.svg(GUIDE_IC[+e.dataset.topic] || 'question', 64) : ''}</div><div class="phCard"><div class="phPad">${x}</div></div></div>`; showPanel(t, showGuide); }; });
+  $('ib').querySelectorAll('[data-note]').forEach((e) => { e.onclick = () => { const d = note(e.dataset.note); $('ib').innerHTML = `<div class="phSet phGuide"><div class="gHero"><span class="gEmBig">${d[0]}</span></div><div class="phCard"><div class="phPad">${d[2]}${d[3] ? `<div class="phFootN in">${d[3]}</div>` : ''}</div></div></div>`; showPanel(d[1], showGuide); }; });
+}
 function showGuide() {
   endBuildMode(true); closeP();
+  if (phoneOn()) return guidePhone();
   $('ib').innerHTML = `<details class="card"><summary style="font-size:21px;color:var(--gold)">📓 Field Notes</summary><div style="margin-top:6px">${fieldNotesHtml()}</div></details>` + GUIDE_TXT.map(([t, x], i) => `<details class="card"${i === 0 ? ' open' : ''}><summary style="font-size:21px;color:var(--gold)">${t}</summary><div style="margin-top:4px">${x}</div></details>`).join('') + `<button class="act" id="gGoals">🎯 Goals</button><button class="act" id="gLog2">📜 Event log</button><div class="sm" style="margin-top:8px">V${VERSION}</div>`;
   showPanel('Guide'); $('gGoals').onclick = showGoals; $('gLog2').onclick = showLog; { const tb = $('gTips'); if (tb) tb.onclick = () => { S.introOff = !S.introOff; showGuide(); }; }
 }
