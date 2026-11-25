@@ -34,7 +34,7 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 | Rot Bomb | A tin that swelled and never burst, in the shape of a man | **Clutch and swell**: both arms hug the belly as it grows (kept), with a hurried waddle | swell |
 | Dog | Guard dogs and pets fed on tin scraps | **Lunge and shake**: jumps at the arm, bites and shakes its head; **the run is a real gallop, one foot landing at a time** (owner: "the dog leg run is not natural"; built in 3D.256) | stiff legs |
 | Stalker (boss) | Helix's first Unlock test subject; it carries the prototype (the vaccine it drops) | **Punch and kick** (kept) | punch and kick |
-| Mutant (boss) | Helix "Phase 2": an overdose of concentrate | **Double smash** (kept) | smash |
+| Mutant (boss) | Helix "Phase 2": an overdose of concentrate | **Double smash** (kept; found 25 Nov: the game never plays it for him, only for the Stalker; owner to choose) | the shared one-arm hit (`zombie_attack`); `smash` sits unused in his file |
 | Butcher (boss) | Foreman of Sunnyside's meat line | **Chopping forearm**: the arm comes down like a cleaver, three times, each lower | the Brute's swing |
 | Gatling Boss | A Quarantine Command heavy gunner on Ration Pack Forever; the gun grew into the arm | **Braced fire, at long range** (owner, 21 Nov): the barrels spin up, feet wide, leaning into the kick, a long burst with the gun sweeping left and right | stands frozen in a walking stride |
 
@@ -98,8 +98,8 @@ One move that is not an attack for every zombie, played every now and then or be
 - Souphead: shakes its big mushroom hat like a dog shaking off water.
 - Fizzbomb: blows up a balloon until it pops in his face (owner, 23 Nov; replaces the belly pats; approved). Pulls it from his costume, four puffs, the fourth pops it, he flinches. The game needs a small balloon model that grows over the move.
 - Lasher: ~~a long, slow stretch~~ (turned down 24 Nov) a back scratch: over the shoulder to the shoulder blades, then down behind to the back of the knee (owner, 24 Nov: "1", then "the scratch is good"; `zmove_lasher.py scratch`; approved).
-- Stalker: a crouch and sniff: down low, hands on the knees, nose sweeping the ground, a look round, one more sniff (preview `zmove_stalker.py sniff`, 24 Nov).
-- Mutant: an arm crack.
+- Stalker: a crouch and sniff: down low, hands on the knees, nose sweeping the ground, a look round, one more sniff (`zmove_stalker.py sniff`; approved 25 Nov: "its ok next").
+- Mutant: an arm crack: each arm pulled straight across the chest by the other hand with a jerk, then the neck snapped to each side (preview `zmove_mutant.py crack`, 25 Nov).
 
 ## The Alpha's blade (23 Nov, W265 to W267)
 The Alpha is the second zombie allowed a weapon: a big rusted blade (`tools/art/b3d/alpha_blade.py`, approved W266). He stands with it hanging, tip on the ground; walks and runs dragging it behind, the left arm swinging at his side; his attack lifts it slowly from the drag and swings it quickly across; he waves the others on with it. Previews in `tools/art/b3d/zmove_alpha.py`; **approved 23 Nov** (owner: "Looks good").
