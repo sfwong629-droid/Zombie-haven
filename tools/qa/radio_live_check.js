@@ -1,0 +1,25 @@
+// tools/qa/radio_live_check.js [tag] — UI chat, 3D.349 (W270, owner: "Yes on the radio. It will show up like an iPhone radio"). In the phone look a
+// radio message shows as a "now playing" capsule (station, speaker, moving bars, none of the message's words), 44 px+ and on the screen; it goes by
+// itself and leaves a lime dot on the radio button; a tap on the button opens the words and clears the dot; a tap on the capsule opens them too;
+// a message waits while a menu is open. (Test messages are sent as urgent: ordinary chatter also waits out a fight, as before.) With the look off the old typing card is back. Pictures in runs/ui_samples/radio_live_*.png.
+const Q = require('./lib'); const path = require('path'); const out = path.join(__dirname, '../../runs/ui_samples'); const TAG = process.argv[2] || ''; let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.log('  FAIL ' + m); } };
+const MSG = 'Moth here. The Toll Kings raised the bridge toll again. Bring snacks, not scrap.';
+(async () => { const b = await Q.launch();
+  for (const [n, w, h] of [['phone', 390, 844], ['phoneN', 320, 568]]) { console.log(n);
+    const p = await Q.page(b, { w, h, look: '', expose: 'radio,OPTS,showTown,closeP,radioQ' }); await Q.newGame(p); const quiet = async () => { await p.evaluate(() => { const n = [...document.querySelectorAll('#eventModal button')].find((b) => /no more tips/i.test(b.textContent)); if (n) n.click(); }); await Q.clearCards(p); }; for (let i = 0; i < 4; i++) { await quiet(); await p.waitForTimeout(800); }
+    if (TAG) ok(await p.evaluate(() => ZH.BUILD_TAG) === TAG, 'build tag is ' + TAG);
+    const card = () => p.evaluate(() => { const e = document.getElementById('radioCard'), r = e && e.getBoundingClientRect(); return e && { live: e.classList.contains('rcLive'), on: e.classList.contains('in'), t: e.textContent, h: r.height, l: r.left, r: r.right, W: innerWidth }; });
+    const dot = () => p.evaluate(() => { const b = document.getElementById('radioBtn'); return !!(b && b.classList.contains('unread')); });
+    await quiet(); await p.evaluate(() => { ZH.radioQ.length = 0; }); await p.waitForFunction(() => { const e = document.getElementById('radioCard'); return !e || !e.classList.contains('in'); }, null, { timeout: 20000 }); await p.evaluate(() => { ZH.radioQ.length = 0; }); await p.evaluate((m) => ZH.radio('dj', m, { urgent: true }), MSG); await p.waitForTimeout(1200); let c = await card();
+    ok(c && c.live && c.on, 'a capsule is showing'); ok(c && /Dusk Radio/.test(c.t) && /DJ Moth/.test(c.t) && !/Toll|snacks/.test(c.t), 'it says who is on air and none of the words (' + (c && c.t) + ')'); ok(c && c.h >= 44 && c.l >= 0 && c.r <= c.W && c.r - c.l <= 270, '44 px+, on the screen, a capsule not a full-width card (' + (c && Math.round(c.r - c.l)) + ' x ' + (c && Math.round(c.h)) + ' px)');
+    await p.screenshot({ path: path.join(out, `radio_live_${n}_capsule.png`) });
+    await p.evaluate(() => { ZH.radioQ.length = 0; }); await p.waitForTimeout(6500); c = await card(); ok(c && !c.on, 'it goes by itself'); ok(await dot(), 'the radio button has a dot'); await p.screenshot({ path: path.join(out, `radio_live_${n}_dot.png`) });
+    await p.evaluate(() => document.getElementById('radioBtn').click()); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => /snacks/.test((document.getElementById('eventModal') || {}).textContent || '')), 'a tap on the button opens the words'); ok(!(await dot()), 'and the dot goes'); await p.screenshot({ path: path.join(out, `radio_live_${n}_open.png`) }); await Q.clearCards(p);
+    await p.evaluate((m) => ZH.radio('green', m, { urgent: true }), MSG); await p.waitForTimeout(1000); await p.evaluate(() => document.getElementById('radioCard').click()); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => /snacks/.test((document.getElementById('eventModal') || {}).textContent || '')), 'a tap on the capsule opens the words'); await Q.clearCards(p); await p.waitForTimeout(500);
+    await p.evaluate(() => ZH.showTown()); await p.evaluate((m) => ZH.radio('dj', m + ' One more.', { urgent: true }), MSG); await p.waitForTimeout(1500); c = await card(); ok(!c || !c.on, 'a message waits while a menu is open');
+    await p.evaluate(() => ZH.closeP()); await p.waitForTimeout(2500); c = await card(); ok(c && c.on, 'and shows when the menu closes');
+    if (n === 'phone') { await p.waitForTimeout(8000); await p.evaluate(() => { ZH.radioQ.length = 0; const b = document.getElementById('radioCard'); if (b) b.click(); }); await Q.clearCards(p); await p.waitForTimeout(1000); await p.evaluate(() => { ZH.OPTS.look = 'glass'; document.documentElement.classList.remove('phone'); }); await p.evaluate((m) => ZH.radio('dj', m, { urgent: true }), MSG); await p.waitForTimeout(4000); c = await card(); ok(c && !c.live && /snacks/.test(c.t), 'look off: the old typing card'); }
+    ok(!(p.errs || []).length, 'no page errors ' + JSON.stringify(p.errs || [])); await p.close(); }
+  await b.close(); console.log(bad ? `FAILED (${bad})` : 'PASS'); process.exit(bad ? 1 : 0); })();

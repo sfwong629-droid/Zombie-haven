@@ -75,6 +75,7 @@ function radioNext() {
   if (!radioNext.mo && window.MutationObserver && $('infoPanel')) { radioNext.mo = new MutationObserver(() => { if (menuOpenNow()) radioHold(); }); radioNext.mo.observe($('infoPanel'), { attributes: true, attributeFilter: ['class'] }); }
   if (radioOn || !radioQ.length) return; const w = nStack('nBot'); if (!w) return; if (menuOpenNow() || cardOpen() || (!radioQ[0].urgent && fightOn())) { clearTimeout(radioNext.wt); radioNext.wt = setTimeout(radioNext, 800); return; }   /* 3D.159 the radio waits while a card is open, and ordinary chatter waits out a fight */ const c = radioQ.shift(), V = RADIO_V[c.voice] || RADIO_V.dj; radioOn = c; radioLast = c; radioBtn();
   let el = $('radioCard'); if (!el) { el = document.createElement('button'); el.id = 'radioCard'; w.appendChild(el); } else if (el.parentElement !== w) w.appendChild(el);
+  if (phoneOn()) return radioLive(el, c, V);   /* 3D.349 */
   const tap = true;   /* 3D.159 the card shows 2 lines: a tap always opens the full words (or the action) */
   el.className = 'radioCard v-' + c.voice; el.style.setProperty('--rc', V.col);
   el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 30) : '📻'}<i></i><i></i><i></i></span><span class="rcT"><small>${esc(V.name)} · ${esc(V.who)}</small><b></b></span>${tap ? '<span class="rcA">›</span>' : ''}<span class="rcX" role="button" aria-label="Close the radio message">✕</span>`;   /* 3D.224 (owner, 19 Nov, W126): the card stays until it is tapped away: the ✕ closes it, a tap on the card opens the full words */
@@ -110,11 +111,28 @@ function morningCard() {
   showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
 }
 let radioLast = null;
+/* 3D.349 (owner, 24 Nov, W270: "Yes on the radio. It will show up like an iPhone radio"): in the phone look a radio message no longer types out on
+   a card. A slim "now playing" capsule shows who is on air (the station, the speaker, moving bars) while the message would be spoken, then goes;
+   the radio button keeps a lime dot until it is heard. A tap on the capsule or the button opens the words. */
+let radioUnread = null;
+function radioOpen(c) {
+  const V = RADIO_V[c.voice] || RADIO_V.dj; radioUnread = null; radioDot();
+  showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: `<span class="rcWho">${esc(V.who)}</span>` + (c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text)), buttons: c.act ? [{ label: 'Show me', rec: true, fn: c.act }, { label: 'OK' }] : undefined });
+}
+function radioDot() { const b = $('radioBtn'); if (b) b.classList.toggle('unread', !!radioUnread); }
+function radioLive(el, c, V) {
+  el.className = 'radioCard rcLive v-' + c.voice; el.style.setProperty('--rc', V.col);
+  el.innerHTML = `<span class="rcI">${window.ZHIcons ? ZHIcons.svg('radio', 22) : '📻'}</span><span class="rcT"><small>${esc(V.name)}</small><b>${esc(V.who)}</b></span><span class="rcEq"><i></i><i></i><i></i><i></i></span>`;
+  const words = String(c.text).split(/\s+/).length, ms = Math.max(4000, Math.min(12000, 900 + words * 260));
+  const close = (open) => { clearTimeout(radioNext.t); el.classList.remove('in', 'talk'); radioOn = null; if (!open) { radioUnread = c; radioDot(); } setTimeout(() => { if (!radioOn) radioNext(); }, 350); };
+  el.onclick = (e) => { e.stopPropagation(); close(true); radioOpen(c); };
+  requestAnimationFrame(() => el.classList.add('in', 'talk')); SFX('radio'); radioNext.t = setTimeout(() => { if (radioOn === c) close(false); }, ms);
+}
 const fightOn = () => S.z.some((z) => z.hp > 0 && !z.human && z.target && z.mode !== 'zleave');
 function radioBtn() {   /* 3D.159 a small radio under the ⚠ button: plays the DJ's last message again */
   if (typeof document === 'undefined') return; const w = $('world'); if (!w || !radioLast) return; let b = $('radioBtn');
   if (!b) { b = document.createElement('button'); b.id = 'radioBtn'; b.className = 'alertBtn radioBtn'; b.title = 'Play the last radio message again'; b.innerHTML = `<span class="abI">${window.ZHIcons ? ZHIcons.svg('radio', 28) : '📻'}</span>`; w.appendChild(b);
-    b.onclick = (e) => { e.stopPropagation(); if (radioOn || !radioLast) return; radioQ.unshift({ ...radioLast, urgent: true, key: null }); radioNext(); }; }
+    b.onclick = (e) => { e.stopPropagation(); if (phoneOn()) { const c = radioOn || radioUnread || radioLast; if (!c) return; if (radioOn) { clearTimeout(radioNext.t); const el = $('radioCard'); if (el) el.classList.remove('in', 'talk'); radioOn = null; } radioOpen(c); return; } if (radioOn || !radioLast) return; radioQ.unshift({ ...radioLast, urgent: true, key: null }); radioNext(); }; }
   b.style.display = 'flex'; alertHub();
 }
 function radioHour() {   /* the morning show (08:00) and the sign-off at dusk (19:00) */
