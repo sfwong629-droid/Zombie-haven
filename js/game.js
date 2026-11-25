@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.359', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.360', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5179,8 +5179,54 @@ const ITEM_ART = {};   /* 3D.232 (W139): item id -> picture file in assets/items
 const INV_FILT = [['all', 'All'], ['weapon', 'Weapons'], ['armor', 'Clothing'], ['head', 'Hats'], ['acc', 'Extras']];
 const invPic = (id, W, yaw) => { try { return window.ZH3D && ZH3D.snapItem ? ZH3D.snapItem(id, { W, H: W, yaw }) : null; } catch (e) { return null; } };
 function showStash() { showInventory(); }   /* the old name: anything that opened the Stash opens the Inventory */
+/* 3D.360 (owner, 24 Nov, W249 "next"; W270 less reading): the Inventory in the phone look. Gear and Supplies as a segmented control; Gear has the
+   filters as chips and the grid of pictures, six to a row with empty slots (W141), and no sentence under it; Supplies is one grouped list, a bar
+   and "have of cap" per row; where each comes from is behind "How it works ›". An item's page: the big still picture (W139), one line (rarity ·
+   slot), the numbers as rows, the joke under them (rule 5: on the thing's own page), then Give to, best first, one line each with the change. */
+const INV_RES = ['food', 'water', 'wood', 'stone', 'mat', 'cloth', 'meds', 'fuel'], INV_COL = { food: '#f0a24a', water: '#5db4ff', wood: '#c58b52', stone: '#a9b1ba', mat: '#9fb0c4', cloth: '#d79bff', meds: '#ff8b97', fuel: '#f2d15c' };
+const INV_WHERE = { food: 'Garden Plots, farms; Abandoned Houses', water: 'Rain Barrels, Collectors, wells', wood: 'trees, a Lumber Camp; Lumber Yard', stone: 'rocks, a Quarry; Old Quarry',
+  mat: 'wrecks, the Scrapyard, zombies; Warehouse', cloth: 'clothes bins; Abandoned Houses; some zombies', meds: 'Pharmacy, some zombies, supply drops', fuel: 'Gas Station, wrecks, raiders, supply drops' };
+function invPhone() {
+  const ch = `<i class="phChv">${phG('ch', 14)}</i>`, sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`;
+  let h = `<div class="phInv"><div class="phSeg">${[['gear', 'Gear'], ['sup', 'Supplies']].map(([k, t]) => `<button data-tab="${k}" class="${k === invTab ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  if (invTab === 'sup') {
+    const row = (k) => { const cap = k === 'food' || k === 'water' ? supplyCap() : k === 'mat' ? 0 : resCap(k), v = Math.floor(S[k] || 0), p = cap ? Math.max(0, Math.min(100, v / cap * 100)) : 0;
+      return `<div class="phR phBar"><span class="ic">${RES_ICON[k]}</span><b>${RES_TITLE[k]}</b>${cap ? `<span class="phBarT"><i style="width:${p}%;background:${INV_COL[k]}"></i></span>` : '<span class="phBarT none"></span>'}<em>${cap ? `${v} of ${cap}` : v}</em></div>`; };
+    h += grp(INV_RES.map(row).join('')) + sec('') + grp(`<div class="phR" id="invHow" role="button"><span class="k">How it works</span><span class="v"></span>${ch}</div>`)
+      + `<div class="phHow" style="display:none">${grp(`<div class="phPad">Storage buildings (Supply Crates, Storehouse, Warehouse) hold more of everything.</div>` + INV_RES.map((k) => `<div class="phR tall"><span class="tx"><b>${RES_ICON[k]} ${RES_TITLE[k]}</b><small>${INV_WHERE[k]}</small></span></div>`).join(''))}</div>`;
+  } else {
+    const ids = Object.keys(S.inv || {}).filter((id) => S.inv[id] > 0 && ITEMS[id] && (invFilt === 'all' || ITEMS[id].slot === invFilt)).sort((a, b) => (ITEMS[b].cost || 0) - (ITEMS[a].cost || 0) || ITEMS[a].name.localeCompare(ITEMS[b].name));
+    const slots = Math.max(24, Math.ceil((ids.length + 1) / 6) * 6);
+    const tile = (id) => `<button class="invT" data-inv="${id}" style="--rc:${RARITY[itemRar(id)].c}" aria-label="${esc(ITEMS[id].name)}">${itemIcon(id)}${S.inv[id] > 1 ? `<span class="n">×${S.inv[id]}</span>` : ''}</button>`;
+    h += `<div class="phChips">${INV_FILT.map(([k, l]) => `<button data-if="${k}" class="${k === invFilt ? 'on' : ''}"><span>${l}</span></button>`).join('')}</div>`
+      + `<div class="invG">${ids.map(tile).join('')}${'<div class="invT empty"></div>'.repeat(slots - ids.length)}</div>` + (ids.length ? '' : `<div class="phFootN">Nothing spare.</div>`);
+  }
+  $('ib').innerHTML = h + '</div>';
+  $('ib').querySelectorAll('[data-if]').forEach((b) => { b.onclick = () => { invFilt = b.dataset.if; showInventory(); }; });
+  $('ib').querySelectorAll('[data-inv]').forEach((b) => { b.onclick = () => showInvItem(b.dataset.inv); });
+  $('ib').querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => showInventory(b.dataset.tab); });
+  { const w = $('invHow'), hw = $('ib').querySelector('.phHow'); if (w && hw) w.onclick = () => { const o = hw.style.display === 'none'; hw.style.display = o ? '' : 'none'; w.classList.toggle('open', o); if (o) hw.scrollIntoView({ block: 'nearest' }); }; }
+  const job = showInventory.job = (showInventory.job || 0) + 1, todo = [...$('ib').querySelectorAll('[data-inv]')];
+  const fill = () => { if (job !== showInventory.job) return; for (let n = 0; n < 3 && todo.length; n++) { const b = todo.shift(), u = b.isConnected && invPic(b.dataset.inv, 160); if (u) { const ic = b.querySelector('.icon'); if (ic) ic.outerHTML = `<img src="${u}" alt="">`; } } if (todo.length) setTimeout(fill, 16); };
+  setTimeout(fill, 0);
+  showPanel('Inventory');
+}
+function invItemPhone(id) {
+  const it = ITEMS[id], R = RARITY[itemRar(id)], sec = (t) => `<div class="phSec">${t}</div>`, grp = (x) => `<div class="phCard">${x}</div>`;
+  const who = S.sv.filter((q) => q.hp > 0 && !q.dummy && !['down', 'away'].includes(q.mode)).map((q) => ({ q, g: invGain(q, it) })).sort((a, b) => b.g.d - a.g.d);
+  const art = ITEM_ART[id], big = art ? `assets/items/art/${art}` : invPic(id, 320, -.6);
+  const short = (g) => { const t = g.txt.replace(/^now: [^·]*· /, ''); return /^now: nothing/.test(t) ? 'Free slot' : /^now: /.test(t) ? 'Swap' : t; };
+  const stats = itemText(it).split(' · ').filter((x) => x && x !== '—');
+  $('ib').innerHTML = `<div class="phInv phItem"><div class="reStage${art ? ' art' : ''}" id="reStage" style="--rc:${R.c}">${big ? `<img id="reImg" src="${big}" alt="${esc(it.name)}" draggable="false">` : `<div class="reIcon">${itemIcon(id)}</div>`}</div>`
+    + `<div class="phStat"><b style="color:${R.c}">${R.n}</b> · ${SLOT_NAME[it.slot]}${S.inv[id] > 1 ? ` · ×${S.inv[id]}` : ''}</div>`
+    + (stats.length ? grp(stats.map((s) => `<div class="phR"><span class="k">${s}</span></div>`).join('')) : '') + (IQUIP[id] ? `<div class="phFootN">${IQUIP[id]}</div>` : '')
+    + sec('Give to') + (who.length ? grp(who.map((w, i) => `<div class="phR tall">${pplFace(w.q)}<span class="tx"><b>${esc(w.q.name)}</b></span><span class="v">${short(w.g)}${w.g.d > 0 ? ` <b class="up">+${w.g.d}</b>` : ''}</span><button class="act phMini${i === 0 && w.g.d > 0 ? ' go' : ''}" data-give="${w.q.id}">Give</button></div>`).join('')) : '<div class="phFootN">Nobody can take it now.</div>') + '</div>';
+  $('ib').querySelectorAll('[data-give]').forEach((b) => { b.onclick = () => { const q = S.sv.find((v) => String(v.id) === b.dataset.give); if (q && equip(q, id)) { say(`${q.name} takes the ${it.name}.`); ui(); } if ((S.inv || {})[id]) showInvItem(id); else showInventory(); }; });
+  showPanel(it.name, () => showInventory());
+}
 function showInventory(tab) {
   if (tab) invTab = tab; endBuildMode(true); if (!$('infoPanel').classList.contains('show')) closeP();
+  if (phoneOn()) return invPhone();
   const tabs = tabBar([['gear', 'Gear', 'gear'], ['sup', 'Supplies', 'supplies']], invTab);
   if (invTab === 'sup') {
     const WHERE = { food: 'Garden Plots, farms; Abandoned Houses trips', water: 'Rain Barrels and Collectors, wells', wood: 'chopping trees, a Lumber Camp; Lumber Yard trips', stone: 'breaking rocks, a Quarry; Old Quarry trips',
@@ -5211,7 +5257,7 @@ function invGain(s, it) {
   return { d: cur ? 0 : 1, txt: `now: ${cur ? esc(cur.name) : 'nothing'}` };
 }
 function showInvItem(id) {
-  const it = ITEMS[id]; if (!it || !(S.inv || {})[id]) { showInventory(); return; } const R = RARITY[itemRar(id)];
+  const it = ITEMS[id]; if (!it || !(S.inv || {})[id]) { showInventory(); return; } if (phoneOn()) return invItemPhone(id); const R = RARITY[itemRar(id)];
   const who = S.sv.filter((q) => q.hp > 0 && !q.dummy && !['down', 'away'].includes(q.mode)).map((q) => ({ q, g: invGain(q, it) })).sort((a, b) => b.g.d - a.g.d);
   /* 3D.232 (owner, 19 Nov, W139): the page shows a still picture, no turning. The made picture (ChatGPT, from the Art chat; listed in
      ITEM_ART) replaces it when there is one; until then it is the item's 3D model, still. */
