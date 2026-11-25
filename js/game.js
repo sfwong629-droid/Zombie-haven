@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.349', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.350', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1407,7 +1407,26 @@ function hubItems() {
   const L = [...alerts.values()].filter((a) => !a.dismissed).map((a) => ({ key: 'a:' + a.key, icon: a.icon, text: a.text, urgent: true, at: () => atOf(a), acts: a.acts.map((c) => ({ label: typeof c.label === 'function' ? c.label() : c.label, ok: !c.ok || c.ok(), fn: c.fn })) }));
   let tips = []; try { tips = OPTS.advisor ? advisorTips() : []; } catch (e) { /* never block the HUD */ }
   for (const t of tips) L.push({ key: 't:' + t.key, icon: t.icon, text: t.text, urgent: t.pri >= 80, acts: t.act ? [{ label: 'Go', ok: true, fn: t.act }] : [], mute: t.key });
-  return L;
+  return phoneOn() ? hubShort(L) : L;
+}
+/* 3D.350 (owner, 24 Nov, W270: "lots of reading all over the place will not be helping to keep the attention of the players"; rules 3 and 4: the same
+   warning once, with a count; titles of two to four words). Phone look only. Workplaces without a worker become one row that opens Workplaces;
+   rows that read the same after shortening are one row with "×n"; long titles lose their explanation (after " · ", " (" or ": "). */
+const HUB_SHORT = [[/^The Haven can reach the next level$/, 'Ready to level up'], [/^(.+?) has no (?:worker|[A-Za-z ]+?): .*$/, '$1: no worker'],
+  [/^Your wall ring has (\d+) gaps?$/, (m, n) => `${n} gap${n > 1 ? 's' : ''} in the wall`], [/^No backup this week.*$/, 'No backup this week'],
+  [/^(\w+) runs out in about (\d+) (h|days?).*$/, '$1 gone in $2 $3'], [/^(\w+) runs out in about ([\d.]+) days$/, '$1 gone in $2 days'],
+  [/^(.+?) slipped out of the (.+?) before it fell\.?$/, '$1 fled the $2'], [/^A horde of (\d+) zombies is at the walls.*$/, 'Horde of $1 at the walls'],
+  [/^Out of (\w+)\b.*$/, 'Out of $1'], [/^(.+?) is down · (\d+ s left) · .*$/, '$1 down · $2'], [/^(.+?) breached · (\d+ zombies?|no zombies) near.*$/, '$1 breached · $2'], [/^Saving failed.*$/, 'Saving failed']];
+function hubShortText(t) { t = String(t || ''); for (const [re, to] of HUB_SHORT) if (re.test(t)) return t.replace(re, to); if (t.split(' ').length > 5) { const c = t.search(/ · | \(|: /); if (c > 0) t = t.slice(0, c); } return t.replace(/[.!]$/, ''); }
+function hubShort(L) {
+  const out = [], staff = L.filter((q) => /^t:staff/.test(q.key));
+  for (const q of L) {
+    if (staff.length > 1 && staff.includes(q)) { if (q !== staff[0]) continue; out.push({ ...q, key: 't:staffAll', text: `${staff.length} jobs need a worker`, acts: [{ label: 'Go', ok: true, fn: () => showJobs(null, 'work') }], mute: null, muteAll: staff.map((x) => x.mute) }); continue; }
+    const t = hubShortText(q.text), same = out.find((o) => o.text0 === t && !o.muteAll);
+    if (same) { same.n++; same.text = `${t} ×${same.n}`; continue; }
+    out.push({ ...q, text: t, text0: t, n: 1 });
+  }
+  return out;
 }
 /* 3D.195 (owner, 16 Nov, U13): the alert button goes under an open menu. Where the menu reaches the button it is hidden whole, never cut in half,
    and it comes back when the menu closes or gets shorter. A menu that stays clear of it leaves it showing. */
@@ -1428,12 +1447,12 @@ function alertHub() {
   if (!pop) { pop = document.createElement('div'); pop.id = 'alertPop'; pop.className = 'alertPop'; w.appendChild(pop); pop.onclick = (e) => e.stopPropagation(); }
   pop.style.top = (parseInt(b.style.top) || 120) + 'px';
   const sig = L.map((q) => q.key + q.text + q.acts.map((c) => c.label + c.ok).join()).join('|'); if (pop.dataset.sig === sig) return; pop.dataset.sig = sig;
-  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕'}</span></button>` : ''}</div>`).join('');
+  pop.innerHTML = `<div class="apH"><b>Needs you</b><button class="apX">${window.ZHIcons ? ZHIcons.svg('cross', 16) : '✕'}</button></div>` + L.map((q, i) => `<div class="apRow${q.urgent ? ' urg' : ''}" data-i="${i}"><span class="apI">${q.icon}</span><span class="apT">${esc(q.text)}</span>${q.acts.map((c, j) => `<button class="apA" data-j="${j}"${c.ok ? '' : ' disabled'}>${esc(c.label)}</button>`).join('')}${q.mute || q.muteAll ? `<button class="apM" title="Hide until tomorrow" aria-label="Hide until tomorrow"><span>${window.ZHIcons ? ZHIcons.svg('cross', 12) : '✕'}</span></button>` : ''}</div>`).join('');
   if (window.ZHIcons && ZHIcons.swap) try { ZHIcons.swap(pop); } catch (e) { /* emoji stay */ }
   pop.querySelector('.apX').onclick = () => { hubOpen = false; alertHub(); };
   pop.querySelectorAll('.apRow').forEach((r) => { const q = L[+r.dataset.i];
     r.onclick = () => { const p = q.at && q.at(); if (p) { centerOn(p.x, p.y); hubOpen = false; alertHub(); } };
-    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), [q.mute]: S.day }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.186 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
+    { const m = r.querySelector('.apM'); if (m) m.onclick = (e) => { e.stopPropagation(); S.advMute = { ...(S.advMute || {}), ...Object.fromEntries((q.muteAll || [q.mute]).map((k) => [k, S.day])) }; say('Hidden until tomorrow.'); alertHub(); }; }   /* 3D.186 (W40): a tip can be hidden for the day again; the old tip line had a ✕ for this. Emergencies have no ✕. */
     r.querySelectorAll('.apA').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); const c = q.acts[+bt.dataset.j]; if (c && c.ok) { hubOpen = false; alertHub(); c.fn(); } alertsTick(); }; }); });
 }
 document.addEventListener('pointerdown', (e) => { if (hubOpen && !e.target.closest('#alertPop, #alertBtn')) { hubOpen = false; alertHub(); } });
