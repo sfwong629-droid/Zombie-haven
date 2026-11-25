@@ -3,16 +3,17 @@ let moving = null;   // building being moved (removed from world while placing)
 function closeP() { $('infoPanel').classList.remove('show'); $('infoPanel').classList.remove('phPerson', 'scr'); expOpen = false; panelBack = null; if (selected && selected.kind === 'post') selected = null; }
 function endBuildMode(restore) {
   if (restore && moving) { world.buildings.push(moving); Wd.bump(world); }
-  moving = null; sel = null; preview = null; edgeDraft = null; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
+  moving = null; sel = null; preview = null; edgeDraft = null; edgePlan.clear(); $('yesBuild').textContent = 'Build'; $('confirmBar').style.display = 'none'; renderAlerts(); setTimeout(nextEventPopup, 0);   /* V2.34: pop-ups wait while you are placing something */
 }
 function startTool(tool) {
   endBuildMode(true); closeP(); sel = tool; preview = null; renderAlerts();
-  if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = (edgeOn() ? `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} a piece · tap a line, or drag along the lines · two fingers move the view` : `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove`) + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
+  if (tool.kind === 'wall' && edgeOn()) { $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('confirmBar').style.display = 'block'; edgePlanBar(); }   /* 3D.361 walls on the lines: plan, then Confirm */
+  else if (tool.kind === 'wall') { const wd = Wd.WALL_DEFS[tool.wtype]; $('confirmName').textContent = (edgeOn() ? `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} a piece · tap a line, or drag along the lines · two fingers move the view` : `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} per tile · tap to place, tap again to remove`) + (tool.wtype === 'metal' ? ' · tap a wood wall to upgrade' : ''); $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'trap') { const td = TRAP_DEFS[tool.ttype]; $('confirmName').textContent = `${td.name.toUpperCase()} · ${costShort(bCost(td))} · tap any open ground to set · tap a spent one to re-arm · ${trapMap().size}/${trapMax()} traps`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
   else if (tool.kind === 'post') { $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; updatePostBar(); }
   else if (tool.kind === 'demolish') { $('confirmName').textContent = 'DEMOLISH · tap a building, road or wall to remove it · buildings and walls give back half their scrap'; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; demoPick = null; }
   else if (tool.kind === 'road') { $('confirmName').textContent = `ROAD · ${Wd.ROAD_COST} scrap per tile · tap a tile to add, tap a road to remove`; $('yesBuild').style.display = 'none'; $('nudge').style.display = 'none'; $('rotBuild').style.display = 'none'; $('noBuild').textContent = 'DONE'; $('confirmBar').style.display = 'block'; }
-  else { $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
+  else { $('yesBuild').textContent = 'Build'; $('yesBuild').style.display = ''; $('nudge').style.display = ''; $('rotBuild').style.display = ''; $('noBuild').textContent = 'CANCEL'; say('Tap the tile where the building’s SOUTH corner should sit.'); }
 }
 function updatePreview(x, y) {
   const d = Wd.rotDef(DEFS[sel.type], sel.rot), chk = Wd.placementCheck(world, x, y, d, sel.upgFrom || null); if (chk.ok && sel.upgFrom && !Iso.rectsOverlap(sel.upgFrom, { x, y, w: d.w, h: d.h })) { chk.ok = false; chk.why = 'Must cover the old building'; } if (chk.ok && (S.posts || []).some((p) => p.x >= x && p.x < x + d.w && p.y >= y && p.y < y + d.h)) { chk.ok = false; chk.why = 'A guard post is in the way'; }
@@ -26,6 +27,7 @@ function pushUnitsOut(b) {
   for (const u of [...S.sv, ...S.z]) if (Iso.footprintContains(b, u.w.x, u.w.y)) { u.w = { x: dp.x + (rnd() - .5) * .3, y: dp.y }; u.path = null; }
 }
 function confirmPreview() {
+  if (sel && sel.kind === 'wall' && edgeOn()) { edgePlanConfirm(); return; }   /* 3D.361 */
   if (!preview || !sel || sel.kind !== 'building') return; const d = Wd.rotDef(DEFS[sel.type], sel.rot);
   if (sel.upgFrom) { if (!preview.ok) { say(preview.why); return; } const b = sel.upgFrom, place = { x: preview.x, y: preview.y, rot: (sel.rot | 0) & 3, w: d.w, h: d.h }; sel = null; preview = null; $('confirmBar').style.display = 'none'; upgradeBuilding(b, place); ui(); return; }   /* 3D.41 */
   const chk = Wd.placementCheck(world, preview.x, preview.y, d, null); if (!chk.ok) { say(chk.why); return; } if (!preview.ok) { say(preview.why); return; }

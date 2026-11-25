@@ -1765,7 +1765,7 @@ function syncEdgeGhost() {
   const d = G.edgeDraft && G.edgeDraft(), key = d ? d.list.map((p) => p.s + p.x + ',' + p.y + p.st).join(';') : '';
   if (key === edgeGhostKey) return; edgeGhostKey = key;
   if (edgeGhost) { scene.remove(edgeGhost); freeTree(edgeGhost); edgeGhost = null; } if (!d) return;
-  edgeGhost = new THREE.Group(); const col = { new: 0x7fd36a, up: 0x7fd36a, have: 0x6aa8d8, bad: 0xe25b55, short: 0xe2a455 };
+  edgeGhost = new THREE.Group(); const col = { new: 0x7fd36a, up: 0x7fd36a, have: 0x6aa8d8, bad: 0xe25b55, short: 0xe2a455, del: 0xe25b55 };   /* 3D.361 the plan too: del = marked to come down */
   for (const p of d.list) { const v = p.s === 'v', m = new THREE.Mesh(box(v ? .16 : T * .96, 1.1, v ? T * .96 : .16), new THREE.MeshBasicMaterial({ color: col[p.st] || 0xffffff, transparent: true, opacity: .55, depthWrite: false }));
     m.position.set((v ? p.x : p.x + .5) * T, .55, (v ? p.y + .5 : p.y) * T); edgeGhost.add(m); }
   scene.add(edgeGhost);

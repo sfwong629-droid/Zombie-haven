@@ -21,43 +21,55 @@ const Q = require('./lib'), path = require('path');
   const { B, door, hq } = setup, out = {}, bad = [];
   out.corners = [await scr(B.x0, B.y0), await scr(B.x1 + 1, B.y0), await scr(B.x1 + 1, B.y1 + 1), await scr(B.x0, B.y1 + 1)].map((q) => [Math.round(q.x), Math.round(q.y)]);
   await p.evaluate(() => ZH.startTool({ kind: 'wall', wtype: 'wood' }));
-  /* a tap just inside the top edge of the build zone, a third of the way along: the line on the edge */
+  const confirm = async () => { await p.click('#yesBuild'); await p.waitForTimeout(80); }, cancel = async () => { await p.click('#noBuild'); await p.waitForTimeout(80); };
+  const planN = () => p.evaluate(() => { const g = window.ZHG.edgeDraft(); return g ? g.list.length : 0; });
+  const bar = () => p.evaluate(() => ({ yes: getComputedStyle(document.getElementById('yesBuild')).display !== 'none' && document.getElementById('yesBuild').textContent, no: document.getElementById('noBuild').textContent }));
+  /* a tap just inside the top edge of the build zone plans a piece on that line; nothing is paid until Confirm */
   const tx = B.x0 + 3; const w0 = (await st()).wood; await tap(tx + .5, B.y0 + .1);
-  out.tap = { piece: await has('h', tx, B.y0), wood: w0 - (await st()).wood };
-  await tap(tx + .5, B.y0 + .1); out.firstAgain = await has('h', tx, B.y0); await tap(tx + .5, B.y0 + .1); out.removed = await has('h', tx, B.y0); out.refund = (await st()).wood - (w0 - out.tap.wood);
+  out.planned = { piece: await has('h', tx, B.y0), plan: await planN(), wood: w0 - (await st()).wood, bar: await bar() };
+  await confirm(); out.tap = { piece: await has('h', tx, B.y0), wood: w0 - (await st()).wood, plan: await planN() };
+  /* tapping the built piece marks it to come down; Confirm takes it away */
+  await tap(tx + .5, B.y0 + .1); out.marked = { piece: await has('h', tx, B.y0), plan: await planN() }; await confirm(); out.removed = await has('h', tx, B.y0);
+  /* a tap on a planned piece takes it off the plan; Cancel throws a plan away */
+  await tap(tx + 1.5, B.y0 + .1); await tap(tx + 1.5, B.y0 + .1); out.untapped = await planN();
+  await tap(tx + 1.5, B.y0 + .1); await tap(tx + 2.5, B.y0 + .1); const nb = await bar(); await cancel(); out.cancel = { before: nb.no, plan: await planN(), pieces: (await st()).n, bar: await bar() };
   /* a line far outside the build zone */
-  await tap(B.x0 - 4 + .5, B.y0 - 3 + .05); out.outside = (await st()).n;
-  /* four drags round the build zone's edge: top, right, bottom, left (the top one photographed mid-drag) */
+  await tap(B.x0 - 4 + .5, B.y0 - 3 + .05); out.outside = await planN();
+  /* four drags round the build zone's edge plan a ring; nothing is built until Confirm */
   const cam0 = (await st()).cam;
   out.midTop = await drag({ x: B.x0, y: B.y0 }, { x: B.x1 + 1, y: B.y0 });
   out.camMoved = JSON.stringify((await st()).cam) !== JSON.stringify(cam0);
-  await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x1 + 1, y: B.y0 }); await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x0, y: B.y1 + 1 });   /* the right side drawn from its bottom corner: the top-right corner sits under the side buttons */ await drag({ x: B.x0, y: B.y1 + 1 }, { x: B.x0, y: B.y0 });
+  await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x1 + 1, y: B.y0 }); await drag({ x: B.x1 + 1, y: B.y1 + 1 }, { x: B.x0, y: B.y1 + 1 }); await drag({ x: B.x0, y: B.y1 + 1 }, { x: B.x0, y: B.y0 });   /* the right side drawn from its bottom corner: the top-right corner sits under the side buttons */
+  out.ringPlan = { plan: await planN(), built: (await st()).n };
+  await confirm();
   out.sides = await p.evaluate((B) => { const E = ZH.world.edges, c = (f) => [...E.values()].filter(f).length; return { top: c((e) => e.s === 'h' && e.y === B.y0), bottom: c((e) => e.s === 'h' && e.y === B.y1 + 1), left: c((e) => e.s === 'v' && e.x === B.x0), right: c((e) => e.s === 'v' && e.x === B.x1 + 1) }; }, B);
-  const elAt = await p.evaluate(([a, b]) => [document.elementFromPoint(a[0], a[1]), document.elementFromPoint(b[0], b[1])].map((e) => e && (e.id || e.className || e.tagName)), [out.corners[2], out.corners[3]]); out.elAt = elAt;
-  const ring = await st(); out.ring = { n: ring.n, expect: 2 * (B.x1 - B.x0 + 1) + 2 * (B.y1 - B.y0 + 1), sealed: ring.sealed };
-  /* a run across the HQ's doorway line skips it */
-  const dl = await p.evaluate((h) => { const W = window.ZHWorld, b = ZH.world.buildings[0], t = W.approachTile(b), i = { x: Math.max(b.x, Math.min(b.x + b.w - 1, t.x)), y: Math.max(b.y, Math.min(b.y + b.h - 1, t.y)) }; return W.edgeOf(i.x, i.y, t.x, t.y); }, hq);
+  const ring = await st(); out.ring = { n: ring.n, expect: 2 * (B.x1 - B.x0 + 1) + 2 * (B.y1 - B.y0 + 1), sealed: ring.sealed, plan: await planN() };
+  /* a run across the HQ's doorway line leaves the doorway out */
+  const dl = await p.evaluate(() => { const W = window.ZHWorld, b = ZH.world.buildings[0], t = W.approachTile(b), i = { x: Math.max(b.x, Math.min(b.x + b.w - 1, t.x)), y: Math.max(b.y, Math.min(b.y + b.h - 1, t.y)) }; return W.edgeOf(i.x, i.y, t.x, t.y); });
   if (dl.s === 'h') await drag({ x: dl.x - 1, y: dl.y }, { x: dl.x + 2, y: dl.y }); else await drag({ x: dl.x, y: dl.y - 1 }, { x: dl.x, y: dl.y + 2 });
-  out.door = { line: dl, piece: await has(dl.s, dl.x, dl.y), beside: dl.s === 'h' ? await has('h', dl.x + 1, dl.y) : await has('v', dl.x, dl.y + 1) };
-  /* a Gate tapped on a bottom piece swaps in */
-  await p.evaluate(() => ZH.startTool({ kind: 'wall', wtype: 'gate' })); const gx = Math.floor((B.x0 + B.x1) / 2); await tap(gx + .5, B.y1 + .9); out.gate = await has('h', gx, B.y1 + 1);
+  await confirm(); out.door = { line: dl, piece: await has(dl.s, dl.x, dl.y), beside: dl.s === 'h' ? await has('h', dl.x + 1, dl.y) : await has('v', dl.x, dl.y + 1) };
+  /* a Gate planned on a bottom piece swaps in on Confirm */
+  await p.evaluate(() => ZH.startTool({ kind: 'wall', wtype: 'gate' })); const gx = Math.floor((B.x0 + B.x1) / 2); await tap(gx + .5, B.y1 + .9); out.gatePlanned = await has('h', gx, B.y1 + 1); await confirm(); out.gate = await has('h', gx, B.y1 + 1);
   out.sealedWithGate = (await st()).sealed;
   /* Demolish takes a piece away (two taps) */
   await p.evaluate(() => ZH.startTool({ kind: 'demolish' })); await tap(B.x0 + 3.5, B.y1 + .9); await tap(B.x0 + 3.5, B.y1 + .9); out.demolished = await has('h', B.x0 + 3, B.y1 + 1);
-  /* too little wood: a run of 6 with wood for 2 */
-  await p.evaluate(() => { ZH.S.wood = 2.4; ZH.startTool({ kind: 'wall', wtype: 'wood' }); }); const n0 = (await st()).n; await drag({ x: B.x0 + 1, y: B.y0 + 3 }, { x: B.x0 + 7, y: B.y0 + 3 }); out.short = (await st()).n - n0;
-  /* the ring photographed with the wall tool closed */
+  /* too little wood: a run of 6 planned with wood for 2 builds 2 on Confirm, 4 stay planned; leaving the tool throws them away */
+  await p.evaluate(() => { ZH.S.wood = 2.4; ZH.startTool({ kind: 'wall', wtype: 'wood' }); }); const n0 = (await st()).n; await drag({ x: B.x0 + 1, y: B.y0 + 3 }, { x: B.x0 + 7, y: B.y0 + 3 }); await confirm();
+  out.short = { built: (await st()).n - n0, left: await planN() }; await p.evaluate(() => ZH.endBuildMode()); out.short.afterLeave = await planN();
   console.log(JSON.stringify(out));
-  if (out.tap.piece !== 'wood' || Math.abs(out.tap.wood - 1) > .01) bad.push('a tap did not put a Wood Fence on the line (1 wood): ' + JSON.stringify(out.tap));
-  if (out.firstAgain !== 'wood' || out.removed) bad.push('tapping the piece again did not ask first and then take it away');
-  if (out.refund < -.01 || out.refund > .51) bad.push('removing it gave back the wrong amount: ' + out.refund);   /* half of 1 wood rounds down, as for wall tiles */
-  if (out.outside) bad.push('a wall was put on a line outside the build zone');
-  if (!out.midTop || !out.midTop.length || out.midTop.some((s) => s !== 'new' && s !== 'bad')) bad.push('the ghost while dragging was wrong: ' + JSON.stringify(out.midTop));
+  if (out.planned.piece || out.planned.plan !== 1 || out.planned.wood || out.planned.bar.yes !== 'Confirm') bad.push('a tap did not just plan a piece (nothing built, nothing paid, Confirm shown): ' + JSON.stringify(out.planned));
+  if (out.tap.piece !== 'wood' || Math.abs(out.tap.wood - 1) > .01 || out.tap.plan) bad.push('Confirm did not build the planned Wood Fence for 1 wood: ' + JSON.stringify(out.tap));
+  if (out.marked.piece !== 'wood' || out.marked.plan !== 1 || out.removed) bad.push('tapping a built piece did not mark it, or Confirm did not take it down: ' + JSON.stringify([out.marked, out.removed]));
+  if (out.untapped) bad.push('tapping a planned piece again did not take it off the plan');
+  if (out.cancel.before !== 'Cancel' || out.cancel.plan || out.cancel.pieces || out.cancel.bar.no !== 'Done') bad.push('Cancel did not throw the plan away: ' + JSON.stringify(out.cancel));
+  if (out.outside) bad.push('a line outside the build zone was planned');
+  if (!out.midTop || !out.midTop.length || out.midTop.some((q) => q !== 'new' && q !== 'bad')) bad.push('the ghost while dragging was wrong: ' + JSON.stringify(out.midTop));
   if (out.camMoved) bad.push('the view moved while drawing a wall');
-  if (out.ring.n < out.ring.expect - 2 || !out.ring.sealed) bad.push('four drags did not close a ring round the town: ' + JSON.stringify(out.ring));
+  if (out.ringPlan.built || out.ringPlan.plan < out.ring.expect - 2) bad.push('four drags did not plan a ring without building it: ' + JSON.stringify(out.ringPlan));
+  if (out.ring.n < out.ring.expect - 2 || !out.ring.sealed || out.ring.plan) bad.push('Confirm did not build the ring and seal the town: ' + JSON.stringify([out.ring, out.sides]));
   if (out.door.piece) bad.push('a wall run built across the HQ doorway');
-  if (out.gate !== 'gate' || !out.sealedWithGate) bad.push('a Gate tapped on a piece did not swap in (or the ring opened): ' + out.gate);
+  if (out.gatePlanned !== 'wood' || out.gate !== 'gate' || !out.sealedWithGate) bad.push('a planned Gate did not swap in on Confirm (or the ring opened): ' + JSON.stringify([out.gatePlanned, out.gate]));
   if (out.demolished) bad.push('the Demolish tool did not take the piece away');
-  if (out.short !== 2) bad.push('with wood for 2, a run of 6 built ' + out.short);
-  console.log(bad.length ? 'FAIL: ' + bad.join('; ') : `ok: a tap puts a piece on the nearest line and taps again take it away (half back); drags draw straight runs with a ghost and the view stays still; four drags closed a ring of ${out.ring.n} pieces; the doorway is skipped; a Gate swaps in; Demolish works; a run stops when the wood runs out; nothing outside the build zone`);
+  if (out.short.built !== 2 || out.short.left !== 4 || out.short.afterLeave) bad.push('with wood for 2, a planned run of 6 did not build 2 and keep 4 planned, or leaving did not clear it: ' + JSON.stringify(out.short));
+  console.log(bad.length ? 'FAIL: ' + bad.join('; ') : `ok: taps and drags only plan (ghosts, nothing paid) and Confirm builds: a piece, a piece taken down, a ring of ${out.ring.n} that seals the town, a Gate swapped in; a tap on a planned piece unplans it; Cancel and leaving the tool throw the plan away; the doorway is left out; a plan builds what the wood allows and keeps the rest; Demolish works; nothing outside the build zone`);
   if (p.errs.length) console.log('page errors:', p.errs.slice(0, 3)); await b.close(); process.exit(bad.length ? 1 : 0); })();

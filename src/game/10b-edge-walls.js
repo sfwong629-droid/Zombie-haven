@@ -146,3 +146,47 @@ function findGapsEdge(max = 8) {
   }
   return out;
 }
+/* ---------------- 3D.361 W269: walls are planned first, built on Confirm ----------------
+   Owner, 24 Nov (on step 2): "for building wall and defend, we should be able to place down and then finalize it with a confirm button".
+   With the wall tool in a town on lines, taps and drags only mark the plan, shown as ghosts on the lines (green to build or upgrade,
+   orange when the stock won't stretch that far, red to take away); nothing is paid. A tap on a planned piece takes it off the plan; a tap
+   on a built piece of the same kind marks it to come down. Confirm builds the plan in the order it was laid, as far as the stock goes
+   (what is left stays planned); Cancel throws the plan away; leaving the tool throws it away too. */
+const edgePlan = new Map();   /* ekey -> { s, x, y, type, op: 'add' | 'up' | 'del' } */
+function edgePlanList() {   /* the plan with what each piece would be now: new / up (affordable), short (not enough stock), del */
+  const left = {}; for (const r of ['wood', 'stone', 'mat']) left[r] = S[r] || 0; const cost = {}, out = [];
+  for (const p of edgePlan.values()) if (p.op === 'del') { out.push({ ...p, st: 'del' }); for (const [r, v] of Object.entries(bCost(Wd.WALL_DEFS[p.type]))) left[r] = (left[r] || 0) + Math.floor(v * .5); }
+  for (const p of edgePlan.values()) { if (p.op === 'del') continue; const c = bCost(Wd.WALL_DEFS[p.type]), ok = Object.entries(c).every(([r, v]) => (left[r] || 0) >= v);
+    if (ok) for (const [r, v] of Object.entries(c)) { left[r] -= v; cost[r] = (cost[r] || 0) + v; } out.push({ ...p, st: ok ? (p.op === 'up' ? 'up' : 'new') : 'short' }); }
+  return { list: out, cost };
+}
+function edgePlanBar() {
+  if (!(sel && sel.kind === 'wall' && edgeOn())) return; const wd = Wd.WALL_DEFS[sel.wtype], pl = edgePlanList(), n = (st) => pl.list.filter((p) => p.st === st).length;
+  const add = n('new') + n('up'), sh = n('short'), del = n('del');
+  $('confirmName').textContent = edgePlan.size ? [add && `${add} to build · ${costShort(pl.cost) || 'free'}`, sh && `${sh} short of stock`, del && `${del} to take down`].filter(Boolean).join(' · ') : `${wd.name.toUpperCase()} · ${costShort(bCost(wd))} a piece · tap a line or drag along the lines, then Confirm`;
+  const yb = $('yesBuild'); yb.style.display = ''; yb.textContent = 'Confirm'; yb.disabled = !(add || del); yb.style.opacity = add || del ? 1 : .45; $('noBuild').textContent = edgePlan.size ? 'Cancel' : 'Done';
+}
+function edgePlanTap(e, type) {
+  const k = Wd.ekey(e.s, e.x, e.y), ex = world.edges.get(k);
+  if (edgePlan.has(k)) { edgePlan.delete(k); edgePlanBar(); return; }
+  if (ex && ex.type === type) { edgePlan.set(k, { s: e.s, x: e.x, y: e.y, type, op: 'del' }); edgePlanBar(); return; }
+  const why = edgeWhy(e, type) || edgeLocked(type); if (why) { say(why); return; }
+  if (ex && !edgeUpgrades(ex, type)) { say('Remove the ' + Wd.WALL_DEFS[ex.type].name + ' first.'); return; }
+  edgePlan.set(k, { s: e.s, x: e.x, y: e.y, type, op: ex ? 'up' : 'add' }); edgePlanBar();
+}
+function edgeDraftToPlan() {   /* a finished drag adds its run to the plan (pieces already there or that can't stand there are left out) */
+  const d = edgeDraft; edgeDraft = null; if (!d) return; let n = 0; const bad = d.list.filter((p) => p.st === 'bad');
+  for (const p of d.list) { if (p.st === 'have' || p.st === 'bad') continue; const k = Wd.ekey(p.s, p.x, p.y); if (edgePlan.has(k)) continue; edgePlan.set(k, { s: p.s, x: p.x, y: p.y, type: d.type, op: world.edges.get(k) ? 'up' : 'add' }); n++; }
+  edgePlanBar(); if (bad.length) say(`${bad.length} left out: ${bad[0].why}`);
+}
+function edgePlanConfirm() {
+  const pl = edgePlanList(); let built = 0, down = 0;
+  for (const p of pl.list) if (p.st === 'del') { const k = Wd.ekey(p.s, p.x, p.y), ex = world.edges.get(k); if (ex) { world.edges.delete(k); refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); down++; } edgePlan.delete(k); }
+  for (const p of pl.list) { if (p.st === 'del') continue; const k = Wd.ekey(p.s, p.x, p.y), wd = Wd.WALL_DEFS[p.type], ex = world.edges.get(k);
+    if (edgeWhy(p, p.type) || (ex && !edgeUpgrades(ex, p.type)) || (ex && ex.type === p.type)) { edgePlan.delete(k); continue; }   /* something moved in meanwhile */
+    if (!canPay(bCost(wd))) continue; payCost(bCost(wd)); if (ex) { refundCost(bCost(Wd.WALL_DEFS[ex.type]), .5); setEdgeType(ex, p.type); } else putEdge(p.s, p.x, p.y, p.type); edgePlan.delete(k); built++; }
+  if (built || down) { Wd.bump(world); checkPerimeter(); saveGame(); ui(); }
+  const left = edgePlan.size; say([built && `${built} built`, down && `${down} taken down`, left && `${left} still planned: need more ${missText(bCost(Wd.WALL_DEFS[sel.wtype]))}`].filter(Boolean).join(' · ') || 'Nothing to build.');
+  edgePlanBar();
+}
+function edgeGhost() { const pl = edgePlan.size ? edgePlanList().list : [], d = edgeDraft ? edgeDraft.list : []; return pl.length || d.length ? { list: pl.concat(d) } : null; }
