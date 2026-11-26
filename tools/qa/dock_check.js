@@ -1,7 +1,7 @@
 // tools/qa/dock_check.js [sizes] — 3D.382 (W249; owner, 25 Nov: dock A, "Go back to the today pick"): the phone look's tab bar is a dock of
 // five app icons (assets/ui/dock/*.webp) with a label under each. At three phone sizes:
 //  - the dock sits inside the screen, above the home bar; the five icons are in it in order Explore, People, Town, More, Build, none overlapping;
-//  - each icon picture has loaded, is square (56 px; the HUD is drawn smaller on a 320-wide phone) with round corners, the stickers are hidden, the label shows under it;
+//  - each icon picture has loaded, is square (50 px from 3D.384, 55 on the largest phone where the HUD is drawn larger; the HUD is drawn smaller on a 320-wide phone) with round corners, the stickers are hidden, the label shows under it;
 //  - every icon takes taps of 44 px or more; a tap on each opens its menu (or the map for Explore);
 //  - the radio's now-playing capsule sits clear of the dock;
 //  - Settings → Phone look off: the pictures are gone and the old bar with its stickers is back.
@@ -27,7 +27,7 @@ const read = (p) => p.evaluate((ORDER) => { const d = document.getElementById('l
     for (const [k, id] of ORDER.entries()) { const t = o.btn[id];
       if (!t.img) fail(`${S.n}: ${id}'s picture did not load`);
       if (!t.kShown || t.stShown) fail(`${S.n}: ${id} shows the sticker, not the app icon`);
-      if (Math.abs(t.kw - t.kh) > .5 || t.kw < 44) fail(`${S.n}: ${id}'s icon is ${t.kw.toFixed(1)}x${t.kh.toFixed(1)}, not square or under 44`);   /* 56 px, drawn smaller with the whole HUD on a 320-wide phone */
+      if (Math.abs(t.kw - t.kh) > .5 || t.kw < 40 || t.kw > 56) fail(`${S.n}: ${id}'s icon is ${t.kw.toFixed(1)}x${t.kh.toFixed(1)}, not square, or outside 40 to 56`);   /* 56 px, drawn smaller with the whole HUD on a 320-wide phone */
       if (t.rad < 10) fail(`${S.n}: ${id}'s icon has square corners`);
       if (t.text !== LABEL[id]) fail(`${S.n}: ${id}'s label is "${t.text}", not ${LABEL[id]}`);
       if (t.w < 43.5 || t.h < 43.5) fail(`${S.n}: ${id} takes taps of only ${t.w.toFixed(0)}x${t.h.toFixed(0)}`);

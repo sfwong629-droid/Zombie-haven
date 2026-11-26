@@ -18,7 +18,7 @@ const read = (p) => p.evaluate(() => { const r = (id) => { const e = document.ge
     const p = await Q.page(b, { w, h, look: '', expose: 'BUILD_TAG, stripUpdate, OPTS, saveOpts, applyLook, closeP, radio' });
     if (iphone) { await p.route(/\.css(\?|$)/, async (r) => { const res = await r.fetch(); r.fulfill({ response: res, body: fake(await res.text()) }); }); }   /* the stylesheets carry the insets; game.js is left to Q.page, which adds the exposed names */
     await Q.newGame(p); await clear(p); await p.waitForTimeout(600);
-    if (n === 'phone') ok((await p.evaluate(() => ZH.BUILD_TAG)) === '3D.383', 'build is not 3D.383');
+    if (n === 'phone') ok(+String(await p.evaluate(() => ZH.BUILD_TAG)).split('.')[1] >= 383, 'build is before 3D.383');
     const o = await read(p); const top = iphone ? 59 : 0;
     await p.screenshot({ path: path.join(out, `strip_built_${n}.png`) });
     ok(o.st && o.st.vis, `${n}: no strip`); if (!o.st) { await p.close(); continue; }

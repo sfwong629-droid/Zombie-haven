@@ -334,7 +334,7 @@ html.glass.phone #lmenu .lm, html.glass.phone #lmenu #mBuild { position: static;
   display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 11px Manrope, system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); opacity: 1 !important; filter: none !important; }
 html.glass.phone #lmenu #mBuild { order: 9; }
 html.glass.phone #lmenu .lm > i { display: none; }
-html.glass.phone #lmenu .lm .dkI { display: block; position: relative; width: 56px; height: 56px; border-radius: 13px; overflow: hidden; box-shadow: 0 3px 8px rgba(0, 0, 0, .3); }
+html.glass.phone #lmenu .lm .dkI { display: block; position: relative; width: 50px; height: 50px; border-radius: 12px; overflow: hidden; box-shadow: 0 3px 8px rgba(0, 0, 0, .3); }
 html.glass.phone #lmenu .lm .dkI img { width: 100%; height: 100%; display: block; pointer-events: none; }
 html.glass.phone #lmenu .lm .dkI::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, .14)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -2px 3px rgba(0, 0, 0, .15); }
 html.glass.phone #lmenu .lm:active .dkI { transform: scale(.94); filter: brightness(.9); }
@@ -357,3 +357,4 @@ html.glass.phone #quest b#clock { display: none !important; }
 html.glass.phone #plaque { top: calc(36px + env(safe-area-inset-top)); }
 html.glass.phone #pausedChip { top: calc(env(safe-area-inset-top) + 86px); }
 html.glass.phone .shTop { top: calc(36px + env(safe-area-inset-top, 0px)); }
+/* 3D.384 (W249; owner, 26 Nov: "The bottom 5 icon is a little big... make it just a little smaller"): the dock icons 50 px (were 56); the buttons still take 64 px wide taps */
