@@ -340,3 +340,20 @@ html.glass.phone #lmenu .lm .dkI::after { content: ''; position: absolute; inset
 html.glass.phone #lmenu .lm:active .dkI { transform: scale(.94); filter: brightness(.9); }
 html.glass.phone #nBot { bottom: calc(env(safe-area-inset-bottom, 0px) + 120px); }   /* the radio capsule and speech line sit clear of the taller dock */
 html.glass.phone #lmenu .lm .dkI::after { opacity: .6; }   /* owner, 25 Nov: "the color is a little too eye catching"; the icons themselves are muted (26 Nov: "Let's go with 4", the cool scheme), only the shine is softened */
+/* 3D.383 (W249; owner, 26 Nov: the time as a phone's status strip, "I like B"): a black strip across the very top, under the phone's own row;
+   the HUD moves down by its height; the clock capsule goes (Renown takes its place, by layoutTop) */
+#stStrip { display: none; }
+html.glass.phone #stStrip { display: flex; position: fixed; left: 0; right: 0; top: 0; z-index: 58; height: calc(env(safe-area-inset-top, 0px) + 26px); padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px)); box-sizing: border-box; align-items: center; gap: 8px;
+  background: #000; color: #f3ead8; font: 800 13px Manrope, system-ui, sans-serif; letter-spacing: .2px; pointer-events: none; }
+html.glass.phone #stStrip .stDay { display: flex; align-items: center; gap: 5px; } html.glass.phone #stStrip .stIc { display: flex; } html.glass.phone #stStrip .stTx b { color: #ffcf5a; font-weight: 800; }
+html.glass.phone #stStrip .stSp { flex: 1; }
+html.glass.phone #stStrip .stFm { display: flex; align-items: flex-end; gap: 2px; height: 13px; } html.glass.phone #stStrip .stFm i { width: 3.5px; border-radius: 1px; background: #5b5a55; }
+html.glass.phone #stStrip .stFm i:nth-child(1) { height: 4px; } html.glass.phone #stStrip .stFm i:nth-child(2) { height: 7px; } html.glass.phone #stStrip .stFm i:nth-child(3) { height: 10px; } html.glass.phone #stStrip .stFm i:nth-child(4) { height: 13px; }
+html.glass.phone #stStrip .stFm.on i { background: #8fd18b; } html.glass.phone #stStrip .stFm small { font: 700 10px Manrope, system-ui, sans-serif; color: #b9b2a3; margin-left: 3px; align-self: center; }
+html.glass.phone #stStrip .stDl { display: flex; align-items: center; margin-left: 6px; } html.glass.phone #stStrip .stDl i { position: relative; width: 28px; height: 13px; border: 1.5px solid #ffcf5a; border-radius: 7px; overflow: hidden; box-sizing: border-box; }
+html.glass.phone #stStrip .stDl i::after { content: ''; position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; right: 1.5px; transform-origin: left center; transform: scaleX(var(--dlf, 1)); border-radius: 4px; background: linear-gradient(90deg, #ffb23e, #ffd46e); }
+html.glass.phone #stStrip .stDl.night i { border-color: #9fb4ff; } html.glass.phone #stStrip .stDl.night i::after { background: linear-gradient(90deg, #6f86d8, #9fb4ff); }
+html.glass.phone #quest b#clock { display: none !important; }
+html.glass.phone #plaque { top: calc(36px + env(safe-area-inset-top)); }
+html.glass.phone #pausedChip { top: calc(env(safe-area-inset-top) + 86px); }
+html.glass.phone .shTop { top: calc(36px + env(safe-area-inset-top, 0px)); }

@@ -2,7 +2,7 @@
 // notch inset of 59 px at the top and a home bar inset of 34 px at the bottom, and iOS there gives 100dvh as the screen less the status bar. A
 // desktop browser has no insets, so this check fakes them: env(safe-area-inset-top) becomes 59px, -bottom 34px, and 100dvh becomes 100dvh - 59px
 // (the iOS quirk), in the page and every stylesheet. Then on a 393x852 phone: the game fills the whole screen (no band at the top or bottom),
-// the resource bar sits just under the status bar (59 to 75 px from the top), the tab bar's bottom sits on the home bar's line (no more than 40 px
+// the resource bar sits just under the status bar (59 to 75 px from the top; from 3D.383, 85 to 101, under the game's 26 px status strip), the tab bar's bottom sits on the home bar's line (no more than 40 px
 // from the bottom, never under 20), and the opening scene fills the screen too.
 const Q = require('./lib'); const path = require('path'); const fs = require('fs'); const out = path.join(__dirname, '../../runs/ui_samples');
 const args = process.argv.slice(2), TAG = args[0] && !args[0].startsWith('--') ? args[0] : '', NAME = (args[args.indexOf('--name') + 1] || 'after'); let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.log('  FAIL ' + m); } };
@@ -19,7 +19,7 @@ const fake = (t) => t.replace(/env\(\s*safe-area-inset-top\s*(,[^)]*)?\)/g, '59p
     return { app: r('app'), world: r('world'), res: (() => { const q = document.querySelector('#plaque .res').getBoundingClientRect(); return { t: Math.round(q.top), b: Math.round(q.bottom) }; })(), lmenu: r('lmenu'), H: innerHeight }; });
   console.log('  ', NAME, JSON.stringify(m));
   ok(m.app.t === 0 && m.app.b === m.H, 'the game fills the screen, top to bottom'); ok(m.world.t === 0 && m.world.b === m.H, 'the scene runs under the status bar and the home bar');
-  ok(m.res.t >= 59 && m.res.t <= 75, 'the resource bar sits just under the status bar'); ok(m.H - m.lmenu.b >= 20 && m.H - m.lmenu.b <= 40, 'the tab bar sits on the home bar line');
+  ok(m.res.t >= 85 && m.res.t <= 101, 'the resource bar sits just under the status bar and the game strip (3D.383: 59 + 26 px)'); ok(m.H - m.lmenu.b >= 20 && m.H - m.lmenu.b <= 40, 'the tab bar sits on the home bar line');
   await p.screenshot({ path: path.join(out, `insets_${NAME}.png`) });
   ok(!(p.errs || []).length, 'no page errors ' + JSON.stringify(p.errs || [])); await p.close();
   await b.close(); console.log(bad ? `FAILED (${bad})` : 'PASS'); process.exit(bad ? 1 : 0); })();

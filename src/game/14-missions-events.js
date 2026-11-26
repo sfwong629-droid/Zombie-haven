@@ -551,6 +551,24 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   $('ib').querySelectorAll('[data-ev]').forEach((b) => { b.onclick = () => { if (holdEvent(b.dataset.ev)) showUpgrade('events'); }; });
 }
 let upTab = 'rank';
+/* 3D.383 (W249; owner, 26 Nov: "like how a phone has a black strip all the way up top with time signal and battery... so that the player will
+   not be confused that it is real time", then of three mockups "I like B"): in the phone look a black strip runs across the very top, under
+   the phone's own row on an iPhone (the safe area stays black above it). Left: the sun or moon and "Day N · HH:00", the day always first so it
+   never reads as the phone's clock. Right: Moth FM's signal bars (lit while a message is on air or waiting) and a daylight bar where a phone
+   has its battery: full at dawn, empty at 20:00; at night it fills back toward dawn in blue. The clock capsule under the top bar goes. */
+const ST_SUN = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="#ffcf5a"/><g stroke="#ffcf5a" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></g></svg>';
+const ST_MOON = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="#c9d6ff"/></svg>';
+function stripUpdate() {
+  let st = $('stStrip');
+  if (!st) { st = document.createElement('div'); st.id = 'stStrip'; st.innerHTML = '<span class="stDay"><i class="stIc"></i><span class="stTx"></span></span><span class="stSp"></span><span class="stFm" title="Moth FM"><i></i><i></i><i></i><i></i><small>FM</small></span><span class="stDl" title="Daylight left"><i></i></span>'; document.body.appendChild(st); }
+  const h = S.hour, night = isNight(), key = `${S.day}|${h}|${night}|${radioOn || radioUnread ? 1 : 0}`; if (st.dataset.k === key) return; st.dataset.k = key;
+  st.querySelector('.stIc').innerHTML = night ? ST_MOON : ST_SUN;
+  st.querySelector('.stTx').innerHTML = `<b>Day ${S.day}</b> · ${String(h).padStart(2, '0')}:00`;
+  st.querySelector('.stFm').classList.toggle('on', !!(radioOn || radioUnread));
+  const dl = st.querySelector('.stDl'), left = night ? ((h + 24 - 20) % 24) / 10 : Math.max(0, Math.min(1, (20 - h) / 14));   /* day 06:00 to 20:00; night 20:00 to 06:00 */
+  dl.classList.toggle('night', night); dl.style.setProperty('--dlf', left.toFixed(2));
+  dl.title = night ? `Dawn in ${(30 - h) % 24} h` : `Dark in ${20 - h} h`;
+}
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
   { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) supplyChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = 'Lv ' + (S.lvl || 1); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
@@ -559,6 +577,7 @@ function ui() {
   {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
     const ck = $('clock'), h = S.hour, sub = h >= 17 && h < 20 ? `🌙 Night in ${20 - h}h` : isNight() ? `☀ Dawn in ${(30 - h) % 24}h` : '', ph = h === 19 ? 'dusk' : isNight() ? 'night' : '';
     if (ck.dataset.sub !== sub || ck.dataset.ph !== ph) { const re = !ck.dataset.sub !== !sub; ck.dataset.sub = sub; ck.dataset.ph = ph; if (re) requestAnimationFrame(layoutTop); } }
+  if (phoneOn()) stripUpdate();   /* 3D.383 */
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 

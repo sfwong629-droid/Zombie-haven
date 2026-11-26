@@ -20,7 +20,7 @@ const read = (p) => p.evaluate((ORDER) => { const d = document.getElementById('l
     const p = await Q.page(b, { w: S.w, h: S.h, look: '', expose: 'BUILD_TAG, closeP, endBuildMode, OPTS, saveOpts, applyLook, radio' });
     await Q.newGame(p); await Q.clearCards(p); await p.waitForTimeout(1500); await Q.clearCards(p);
     for (let k = 0; k < 6; k++) { await p.evaluate(() => { try { ZH.S.introOff = true; } catch (e) {} const x = document.querySelector('#eventModal button:not(.tipMb)'); if (x) x.click(); }); await Q.clearCards(p); await p.waitForTimeout(250); }
-    const tag = await p.evaluate(() => ZH.BUILD_TAG); if (tag !== '3D.382') fail(`build ${tag}, wanted 3D.382`);
+    const tag = await p.evaluate(() => ZH.BUILD_TAG); if (!(+String(tag).split('.')[1] >= 382)) fail(`build ${tag}, wanted 3D.382 or later`);
     const o = await read(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/dock_built.png') });
     if (o.dock.x < 0 || o.dock.r > o.vw + .5 || o.dock.b > o.vh + .5) fail(`${S.n}: the dock is off the screen`);
     if (o.dock.w < o.vw - 40) fail(`${S.n}: the dock does not run across the bottom (${o.dock.w.toFixed(0)} of ${o.vw})`);
