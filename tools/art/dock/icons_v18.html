@@ -30,11 +30,36 @@ S.town=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2
  ${[110,170,230,290,350].map(x=>`<path d="M${x} 420 L${x} 352 L${x+26} 336 L${x+52} 352 L${x+52} 420 Z"/>`).join('')}</g>`;
 S.more=tile('m','rgb(155,123,136)','rgb(121,96,107)')+`<defs>${lg('dot','#f6eddd','#d9ccb6')}</defs>`+
  [176,256,336].map(x=>shadow('m',x,292,34,9)+`<circle cx="${x}" cy="256" r="26" fill="url(#dot)"/>`).join('');
-S.build=tile('b','rgb(153,148,108)','rgb(117,115,80)')+`<defs>${lg('hd','#d4d8db','#8e9599')}${lg('hn','#c38c5c','#93603a','h')}</defs>`+
- shadow('b',256,432,150,22)+
- `<g transform="translate(-14 26) rotate(38 256 270)" stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
- <rect x="232" y="190" width="48" height="250" rx="20" fill="url(#hn)"/>
- <path d="M160 132 L300 132 Q330 132 344 150 Q368 176 392 168 Q372 214 330 214 L300 214 L300 200 L160 200 Q146 200 146 186 L146 146 Q146 132 160 132 Z" fill="url(#hd)"/>
- <rect x="226" y="198" width="60" height="22" rx="6" fill="#7d858a"/></g>`;
+S.build=tile('b','rgb(153,148,108)','rgb(117,115,80)')+`<defs>${lg('hd','#dfe3e6','#8a9195')}${lg('hn','#c38c5c','#93603a','h')}</defs>`+
+ shadow('b',256,436,150,22)+
+ `<g transform="translate(48 50) scale(0.84) rotate(-35 256 280)" stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="234" y="196" width="44" height="250" rx="18" fill="url(#hn)"/>
+ <path d="M140 132 H206 V144 H300 Q366 146 404 226 Q396 236 384 232 Q352 186 300 204 H206 V216 H140 Q128 216 128 204 V144 Q128 132 140 132 Z" fill="url(#hd)"/>
+ <rect x="226" y="206" width="60" height="24" rx="6" fill="#80888c"/></g>`;
+S.townB=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('roof','#5a6470','#3f4851')}${lg('door','#8a5a3a','#6c432a')}${lg('brick','#a8664a','#844b34')}</defs>`+
+ shadow('t',256,420,170,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="312" y="140" width="40" height="80" fill="url(#brick)"/>
+ <rect x="150" y="236" width="212" height="166" rx="6" fill="url(#wall)"/>
+ <path d="M124 252 L256 130 L388 252 Z" fill="url(#roof)"/>
+ <rect x="226" y="306" width="60" height="96" rx="6" fill="url(#door)"/>
+ <rect x="174" y="282" width="38" height="38" rx="4" fill="#f4d48a"/></g>`;
+S.townC=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('can','#efe3c9','#cdb893')}${lg('can2','#d6c49f','#b39d74')}${lg('pole','#8a6242','#6a4a32')}</defs>`+
+ shadow('t',256,418,190,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="244" y="100" width="16" height="130" fill="url(#pole)"/>
+ <path d="M260 106 L334 124 L260 146 Z" fill="#c45a44"/>
+ <path d="M256 196 L392 396 L120 396 Z" fill="url(#can)"/>
+ <path d="M256 196 L300 396 L212 396 Z" fill="url(#can2)"/>
+ <path d="M256 300 L286 396 L226 396 Z" fill="#6a4a36"/></g>`;
+S.townD=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('wall2','#e0cfae','#c3ae88')}${lg('roof','#5a6470','#3f4851')}${lg('roof2','#7a5a46','#5e4434')}${lg('door','#8a5a3a','#6c432a')}</defs>`+
+ shadow('t',256,420,190,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="276" y="250" width="140" height="150" rx="5" fill="url(#wall2)"/>
+ <path d="M258 262 L346 184 L434 262 Z" fill="url(#roof2)"/>
+ <rect x="96" y="226" width="180" height="174" rx="5" fill="url(#wall)"/>
+ <path d="M72 242 L186 140 L300 242 Z" fill="url(#roof)"/>
+ <rect x="160" y="310" width="52" height="90" rx="5" fill="url(#door)"/>
+ <rect x="326" y="296" width="40" height="40" rx="4" fill="#f4d48a"/></g>`;
 window.__render=async(k)=>{const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">${S[k]}</svg>`; return svg;};
 </script></body></html>
