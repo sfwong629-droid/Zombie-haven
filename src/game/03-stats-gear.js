@@ -364,8 +364,17 @@ function helpReady() { const h = S.help || {}; return !h.coming && !(h.owe) && (
 function lastStandNote() {
   if ((S.help || {}).offered === S.day + ':' + Math.floor(S.hour)) return; (S.help = S.help || {}).offered = S.day + ':' + Math.floor(S.hour);
   const downN = S.sv.filter((q) => q.mode === 'down').length; note('critical', '🫣 The last ones standing are hiding', { key: 'laststand', live: () => lastStand(), log: `${downN} down, too few left to fight. They hide until the zombies move on, then go for the fallen.` });
-  if (helpReady() && !modalOpen) showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. Greenwater is on the radio: "We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}. Two medics in the back, a horn on the roof that the dead can't resist. In two days we'll ask a favour: ${HELP_COST.food} food and ${HELP_COST.water} water."`,
-    buttons: [{ label: '📻 Call them', fn: () => radioHelp() }, { label: 'We can manage', fn: () => {} }] });
+  if (helpReady() && !modalOpen) { if (phoneOn()) { helpCall(downN); return; } showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. Greenwater is on the radio: "We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}. Two medics in the back, a horn on the roof that the dead can't resist. In two days we'll ask a favour: ${HELP_COST.food} food and ${HELP_COST.water} water."`,
+    buttons: [{ label: '📻 Call them', fn: () => radioHelp() }, { label: 'We can manage', fn: () => {} }] }); }
+}
+/* 3D.386 (W249, fun idea 1): in the phone look Greenwater's offer comes as an incoming call; declined, it waits in Needs you as a missed call
+   with Call back while the last ones are still hiding and the truck can still come */
+function helpCall(downN) {
+  showEventPopup({ title: 'Greenwater is calling', call: { who: RADIO_V.green.who, from: 'Greenwater', icon: '🌿', col: RADIO_V.green.col, via: 'Radio call',
+    line: `"${downN} of yours are down. We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}: two medics, and a horn the dead can't resist."`,
+    sub: `A favour in two days: ${HELP_COST.food} 🍖 ${HELP_COST.water} 💧`,
+    missed: { key: 'greenHelp', live: () => helpReady() && lastStand(), again: () => radioHelp() } },
+    buttons: [{ label: 'Send the truck', fn: () => radioHelp() }, { label: 'Decline', fn: () => {} }] });
 }
 function radioHelp() {
   if (!helpReady()) { say((S.help || {}).owe ? 'Greenwater says you still owe them a favour.' : 'Only static: Greenwater\'s truck is out. Try again in a day or two.'); return false; }
@@ -448,6 +457,11 @@ function helpTick() {
     showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and their medics ${S.truck ? 'are carrying' : 'carried'} ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
+    if (phoneOn()) { const ok = canPay({ food: o.food, water: o.water });
+      showEventPopup({ title: 'Greenwater is calling', call: { who: RADIO_V.green.who, from: 'Greenwater · at your gate', icon: '🌿', col: RADIO_V.green.col, via: 'Radio call',
+        line: '"The truck\'s outside, horn off this time. We came for that favour."', sub: `${o.food} 🍖 ${o.water} 💧${ok ? '' : ' · not enough in stock'}` },
+        buttons: [{ label: 'Pay', disabled: !ok, fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They load the truck and nod. "Call us if you need us. We\'ll bring the horn."'); } },
+          { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "Greenwater won't answer the radio for a week. Your people feel bad about it."); } }] }); return; }
     showEventPopup({ title: '🚚 GREENWATER CAME FOR THE FAVOUR', text: `Greenwater's truck is back, horn off this time. The people who carried your fallen into care ask for ${o.food} food and ${o.water} water.`, buttons: [
       { label: `Pay (${o.food} 🍖 ${o.water} 💧)`, disabled: !canPay({ food: o.food, water: o.water }), fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They load the truck and nod. "Call us if you need us. We\'ll bring the horn."'); } },
       { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "Greenwater won't answer the radio for a week. Your people feel bad about it."); } }] }); }

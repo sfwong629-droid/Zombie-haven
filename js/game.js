@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.385', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.386', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1031,8 +1031,17 @@ function helpReady() { const h = S.help || {}; return !h.coming && !(h.owe) && (
 function lastStandNote() {
   if ((S.help || {}).offered === S.day + ':' + Math.floor(S.hour)) return; (S.help = S.help || {}).offered = S.day + ':' + Math.floor(S.hour);
   const downN = S.sv.filter((q) => q.mode === 'down').length; note('critical', '🫣 The last ones standing are hiding', { key: 'laststand', live: () => lastStand(), log: `${downN} down, too few left to fight. They hide until the zombies move on, then go for the fallen.` });
-  if (helpReady() && !modalOpen) showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. Greenwater is on the radio: "We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}. Two medics in the back, a horn on the roof that the dead can't resist. In two days we'll ask a favour: ${HELP_COST.food} food and ${HELP_COST.water} water."`,
-    buttons: [{ label: '📻 Call them', fn: () => radioHelp() }, { label: 'We can manage', fn: () => {} }] });
+  if (helpReady() && !modalOpen) { if (phoneOn()) { helpCall(downN); return; } showEventPopup({ title: '📻 CALL FOR HELP?', text: `${downN} of your people are down and the rest are hiding. Greenwater is on the radio: "We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}. Two medics in the back, a horn on the roof that the dead can't resist. In two days we'll ask a favour: ${HELP_COST.food} food and ${HELP_COST.water} water."`,
+    buttons: [{ label: '📻 Call them', fn: () => radioHelp() }, { label: 'We can manage', fn: () => {} }] }); }
+}
+/* 3D.386 (W249, fun idea 1): in the phone look Greenwater's offer comes as an incoming call; declined, it waits in Needs you as a missed call
+   with Call back while the last ones are still hiding and the truck can still come */
+function helpCall(downN) {
+  showEventPopup({ title: 'Greenwater is calling', call: { who: RADIO_V.green.who, from: 'Greenwater', icon: '🌿', col: RADIO_V.green.col, via: 'Radio call',
+    line: `"${downN} of yours are down. We can have the truck there in ${bOf('radio').length ? 'half an hour' : 'an hour'}: two medics, and a horn the dead can't resist."`,
+    sub: `A favour in two days: ${HELP_COST.food} 🍖 ${HELP_COST.water} 💧`,
+    missed: { key: 'greenHelp', live: () => helpReady() && lastStand(), again: () => radioHelp() } },
+    buttons: [{ label: 'Send the truck', fn: () => radioHelp() }, { label: 'Decline', fn: () => {} }] });
 }
 function radioHelp() {
   if (!helpReady()) { say((S.help || {}).owe ? 'Greenwater says you still owe them a favour.' : 'Only static: Greenwater\'s truck is out. Try again in a day or two.'); return false; }
@@ -1115,6 +1124,11 @@ function helpTick() {
     showEventPopup({ title: '🚚 GREENWATER\'S TRUCK ARRIVED', text: `${self ? 'Nobody answered the radio, so they came anyway. ' : ''}${led ? `Horn blaring, they are leading ${led} zombie${led === 1 ? '' : 's'} out of town down the highway` : 'The streets were clear'}, and their medics ${S.truck ? 'are carrying' : 'carried'} ${saved} of your people into care. "Two days from now, we'll come by for that favour."` });
   }
   if (h.owe && S.day >= h.owe.day && !modalOpen) { const o = h.owe; h.owe = null;
+    if (phoneOn()) { const ok = canPay({ food: o.food, water: o.water });
+      showEventPopup({ title: 'Greenwater is calling', call: { who: RADIO_V.green.who, from: 'Greenwater · at your gate', icon: '🌿', col: RADIO_V.green.col, via: 'Radio call',
+        line: '"The truck\'s outside, horn off this time. We came for that favour."', sub: `${o.food} 🍖 ${o.water} 💧${ok ? '' : ' · not enough in stock'}` },
+        buttons: [{ label: 'Pay', disabled: !ok, fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They load the truck and nod. "Call us if you need us. We\'ll bring the horn."'); } },
+          { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "Greenwater won't answer the radio for a week. Your people feel bad about it."); } }] }); return; }
     showEventPopup({ title: '🚚 GREENWATER CAME FOR THE FAVOUR', text: `Greenwater's truck is back, horn off this time. The people who carried your fallen into care ask for ${o.food} food and ${o.water} water.`, buttons: [
       { label: `Pay (${o.food} 🍖 ${o.water} 💧)`, disabled: !canPay({ food: o.food, water: o.water }), fn: () => { pay({ food: o.food, water: o.water }); renownGain(5, 'Kept your word'); result('🤝 SQUARED AWAY', 'They load the truck and nod. "Call us if you need us. We\'ll bring the horn."'); } },
       { label: 'Refuse', fn: () => { h.next = S.day + 7; for (const q of S.sv) { q.sat = Math.max(0, (q.sat || 0) - 4); moodAdd(q, -4, 'refused the radio'); } result('📻 NO MORE FAVOURS', "Greenwater won't answer the radio for a week. Your people feel bad about it."); } }] }); }
@@ -4925,6 +4939,21 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('alarm'); return;
   }
+  if (e.call && phoneOn()) {   /* 3D.386 (W249, fun idea 1; owner, 23 Nov: "SOS will be like an incoming call from the ally", "I like 1 to 6"): an ally
+       on the radio as the phone's incoming call: the town dimmed, who is calling and from where, a ring that breathes round their sign, their
+       words in one bubble, a small line for the cost; round buttons at the bottom, Decline (coral) and the answer (lime); any third choice as a pill.
+       Declining a call that has `missed` leaves a "Missed call" row in Needs you with Call back. */
+    const C = e.call, yes = bt[0], no = bt[bt.length - 1], mid = bt.slice(1, -1); m.classList.add('clA');
+    const rb = (b, i, cls, svg) => `<div class="clRB"><button data-i="${i}" class="clR ${cls}"${b.disabled ? ' disabled' : ''} aria-label="${esc(b.label)}">${svg}</button><span>${b.label}</span></div>`;
+    const phone = '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>';
+    m.innerHTML = `<div class="clWash"></div><div class="clBox" role="alertdialog"><div class="clVia">${C.via || 'Radio call'}</div><div class="clAv" style="--clc:${C.col || '#7fd35a'}"><i></i><i></i><b>${C.icon || '📻'}</b></div>`
+      + `<div class="clWho">${C.who}</div><div class="clFrom">${C.from}</div><div class="clLine">${C.line}</div>${C.sub ? `<div class="clSub">${C.sub}</div>` : ''}`
+      + (mid.length ? `<div class="clMid">${mid.map((b, i) => `<button data-i="${i + 1}" class="clPill"${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>` : '')
+      + `<div class="clBtns">${bt.length > 1 ? rb(no, bt.length - 1, 'no', `<span style="transform:rotate(135deg);display:flex">${phone}</span>`) : ''}${rb(yes, 0, 'yes', phone)}</div></div>`;
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const i = +el.dataset.i, b = bt[i]; if (!b || b.disabled) return; m.innerHTML = ''; m.classList.remove('clA'); modalOpen = false;
+      if (b.fn) b.fn(); if (i === bt.length - 1 && bt.length > 1 && C.missed) missedCall(C); nextEventPopup(); }; });
+    SFX('radio'); return;
+  }
   if (e.report && phoneOn()) {   /* 3D.381 (W249): the morning report, "Yesterday at the Haven" */
     m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns${bt.length > 1 ? ' two' : ''}">${bt.map((b, i) => `<button data-i="${i}" class="act${b.rec ? ' go' : bt.length === 1 ? ' rec' : ''}">${b.label}</button>`).join('')}</div></div>`;
     m.querySelectorAll('.rpT').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
@@ -5105,6 +5134,11 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); }; for (const [id, all] of [['uRush', false], ['uRushAll', true]]) { const b = $(id); if (b) b.onclick = () => { lvRush(all); showUpgrade('rank'); }; }
   $('ib').querySelectorAll('[data-ev]').forEach((b) => { b.onclick = () => { if (holdEvent(b.dataset.ev)) showUpgrade('events'); }; });
 }
+/* 3D.386: a declined ally call stays in Needs you as "Missed call · <who>", with their words in the event log as the voicemail and Call back,
+   while the call still makes sense (C.missed.live) */
+function missedCall(C) { const M = C.missed, hh = String(Math.floor(S.hour)).padStart(2, '0') + ':' + String(Math.floor((S.hour % 1) * 60)).padStart(2, '0');
+  note('critical', `Missed call · ${C.who}`, { key: 'call:' + (M.key || C.who), icon: '📞', log: `📞 Voicemail from ${C.who} (${C.from}), ${hh}: ${C.line.replace(/<[^>]+>/g, '')}`, live: M.live || null, ttl: M.ttl || 0,
+    acts: [{ label: 'Call back', ok: () => true, fn: () => { alerts.delete('call:' + (M.key || C.who)); renderAlerts(); M.again(); } }] }); }
 let upTab = 'rank';
 /* 3D.383 (W249; owner, 26 Nov: "like how a phone has a black strip all the way up top with time signal and battery... so that the player will
    not be confused that it is real time", then of three mockups "I like B"): in the phone look a black strip runs across the very top, under

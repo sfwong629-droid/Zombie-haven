@@ -370,6 +370,21 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('alarm'); return;
   }
+  if (e.call && phoneOn()) {   /* 3D.386 (W249, fun idea 1; owner, 23 Nov: "SOS will be like an incoming call from the ally", "I like 1 to 6"): an ally
+       on the radio as the phone's incoming call: the town dimmed, who is calling and from where, a ring that breathes round their sign, their
+       words in one bubble, a small line for the cost; round buttons at the bottom, Decline (coral) and the answer (lime); any third choice as a pill.
+       Declining a call that has `missed` leaves a "Missed call" row in Needs you with Call back. */
+    const C = e.call, yes = bt[0], no = bt[bt.length - 1], mid = bt.slice(1, -1); m.classList.add('clA');
+    const rb = (b, i, cls, svg) => `<div class="clRB"><button data-i="${i}" class="clR ${cls}"${b.disabled ? ' disabled' : ''} aria-label="${esc(b.label)}">${svg}</button><span>${b.label}</span></div>`;
+    const phone = '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>';
+    m.innerHTML = `<div class="clWash"></div><div class="clBox" role="alertdialog"><div class="clVia">${C.via || 'Radio call'}</div><div class="clAv" style="--clc:${C.col || '#7fd35a'}"><i></i><i></i><b>${C.icon || '📻'}</b></div>`
+      + `<div class="clWho">${C.who}</div><div class="clFrom">${C.from}</div><div class="clLine">${C.line}</div>${C.sub ? `<div class="clSub">${C.sub}</div>` : ''}`
+      + (mid.length ? `<div class="clMid">${mid.map((b, i) => `<button data-i="${i + 1}" class="clPill"${b.disabled ? ' disabled' : ''}>${b.label}</button>`).join('')}</div>` : '')
+      + `<div class="clBtns">${bt.length > 1 ? rb(no, bt.length - 1, 'no', `<span style="transform:rotate(135deg);display:flex">${phone}</span>`) : ''}${rb(yes, 0, 'yes', phone)}</div></div>`;
+    m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const i = +el.dataset.i, b = bt[i]; if (!b || b.disabled) return; m.innerHTML = ''; m.classList.remove('clA'); modalOpen = false;
+      if (b.fn) b.fn(); if (i === bt.length - 1 && bt.length > 1 && C.missed) missedCall(C); nextEventPopup(); }; });
+    SFX('radio'); return;
+  }
   if (e.report && phoneOn()) {   /* 3D.381 (W249): the morning report, "Yesterday at the Haven" */
     m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns${bt.length > 1 ? ' two' : ''}">${bt.map((b, i) => `<button data-i="${i}" class="act${b.rec ? ' go' : bt.length === 1 ? ' rec' : ''}">${b.label}</button>`).join('')}</div></div>`;
     m.querySelectorAll('.rpT').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
@@ -550,6 +565,11 @@ function showUpgrade(tab) {   /* the DV2-style Upgrade Town screen */
   const u = $('uDo'); if (u) u.onclick = () => { if (upgradeTown()) showUpgrade('rank'); }; for (const [id, all] of [['uRush', false], ['uRushAll', true]]) { const b = $(id); if (b) b.onclick = () => { lvRush(all); showUpgrade('rank'); }; }
   $('ib').querySelectorAll('[data-ev]').forEach((b) => { b.onclick = () => { if (holdEvent(b.dataset.ev)) showUpgrade('events'); }; });
 }
+/* 3D.386: a declined ally call stays in Needs you as "Missed call · <who>", with their words in the event log as the voicemail and Call back,
+   while the call still makes sense (C.missed.live) */
+function missedCall(C) { const M = C.missed, hh = String(Math.floor(S.hour)).padStart(2, '0') + ':' + String(Math.floor((S.hour % 1) * 60)).padStart(2, '0');
+  note('critical', `Missed call · ${C.who}`, { key: 'call:' + (M.key || C.who), icon: '📞', log: `📞 Voicemail from ${C.who} (${C.from}), ${hh}: ${C.line.replace(/<[^>]+>/g, '')}`, live: M.live || null, ttl: M.ttl || 0,
+    acts: [{ label: 'Call back', ok: () => true, fn: () => { alerts.delete('call:' + (M.key || C.who)); renderAlerts(); M.again(); } }] }); }
 let upTab = 'rank';
 /* 3D.383 (W249; owner, 26 Nov: "like how a phone has a black strip all the way up top with time signal and battery... so that the player will
    not be confused that it is real time", then of three mockups "I like B"): in the phone look a black strip runs across the very top, under
