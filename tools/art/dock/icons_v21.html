@@ -1,0 +1,71 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script>
+const OL='#3a2a20', SW=9;
+const tile=(id,a,b)=>`<defs><linearGradient id="bg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>
+<radialGradient id="sh${id}"><stop offset="0" stop-color="#000" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+<rect width="512" height="512" fill="url(#bg${id})"/>`;
+const shadow=(id,cx,cy,rx,ry)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#sh${id})"/>`;
+const lg=(id,a,b,dir='v')=>`<linearGradient id="${id}" x1="0" y1="0" x2="${dir=='v'?0:1}" y2="${dir=='v'?1:0}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+const S={};
+S.explore=tile('e','rgb(92,104,108)','rgb(82,80,74)')+`<defs>${lg('p1','#e3d3b0','#cbb88f')}${lg('p2','#cdb98f','#b29d73')}${lg('pin','#cf5a46','#a83a2c')}</defs>`+
+ shadow('e',256,420,170,26)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <path d="M104 170 L196 140 L196 392 L104 420 Z" fill="url(#p1)"/>
+ <path d="M196 140 L316 170 L316 420 L196 392 Z" fill="url(#p2)"/>
+ <path d="M316 170 L408 140 L408 392 L316 420 Z" fill="url(#p1)"/></g>
+ <g opacity=".9"><path d="M112 300 Q140 270 176 286 L188 300 L188 380 L112 404 Z" fill="#a5b184"/><path d="M204 170 Q240 190 270 176 L308 186 L308 250 Q260 262 204 236 Z" fill="#a5b184"/><path d="M324 300 Q360 286 400 300 L400 384 L324 408 Z" fill="#a5b184"/></g><path d="M120 236 Q170 252 196 226 Q240 200 268 262 Q296 318 330 280 Q360 250 400 262" fill="none" stroke="#8fb0c4" stroke-width="12" stroke-linecap="round"/>
+ <path d="M140 360 C190 330 230 350 260 300 S330 250 370 230" fill="none" stroke="#7a6a4e" stroke-width="10" stroke-linecap="round" stroke-dasharray="4 22"/>
+ <g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round"><path d="M300 92 a52 52 0 0 1 52 52 c0 40 -52 96 -52 96 s-52 -56 -52 -96 a52 52 0 0 1 52 -52 z" fill="url(#pin)"/></g>
+ <circle cx="300" cy="144" r="19" fill="#f2e6cf" stroke="${OL}" stroke-width="6"/>`;
+const fig=(x,y,s,a,b,id)=>`<defs>${lg(id,a,b)}</defs><g stroke="${OL}" stroke-width="${SW}" fill="url(#${id})"><path d="M${x-86*s} ${y+150*s} c0 -78 38 -112 ${86*s} -112 s${86*s} 34 ${86*s} 112 z"/><circle cx="${x}" cy="${y}" r="${52*s}"/></g>`;
+S.people=tile('p','rgb(178,131,134)','rgb(146,106,104)')+shadow('p',256,424,180,24)+
+ fig(168,214,0.92,'#8fa07e','#6f8262','f1')+fig(344,214,0.92,'#7f93a6','#627689','f2')+fig(256,252,1.08,'#f0e4cf','#d8c6a8','f3');
+S.town=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('roof','#5a6470','#3f4851')}${lg('door','#8a5a3a','#6c432a')}${lg('wood','#b3825a','#8d6242')}</defs>`+
+ shadow('t',256,428,180,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="160" y="230" width="192" height="150" fill="url(#wall)"/>
+ <path d="M134 246 L256 136 L378 246 Z" fill="url(#roof)"/>
+ <rect x="232" y="276" width="48" height="104" fill="url(#door)"/></g>
+ <g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round" fill="url(#wood)">
+ <rect x="96" y="372" width="320" height="20"/>
+ ${[110,170,230,290,350].map(x=>`<path d="M${x} 420 L${x} 352 L${x+26} 336 L${x+52} 352 L${x+52} 420 Z"/>`).join('')}</g>`;
+S.more=tile('m','rgb(155,123,136)','rgb(121,96,107)')+`<defs>${lg('dot','#f6eddd','#d9ccb6')}</defs>`+
+ [176,256,336].map(x=>shadow('m',x,292,34,9)+`<circle cx="${x}" cy="256" r="26" fill="url(#dot)"/>`).join('');
+S.build=tile('b','rgb(153,148,108)','rgb(117,115,80)')+`<defs>${lg('hd','#dfe3e6','#8a9195')}${lg('hn','#c38c5c','#93603a','h')}</defs>`+
+ shadow('b',256,436,150,22)+
+ `<g transform="translate(48 50) scale(0.84) rotate(-35 256 280)" stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="234" y="196" width="44" height="250" rx="18" fill="url(#hn)"/>
+ <path d="M140 132 H206 V144 H300 Q366 146 404 226 Q396 236 384 232 Q352 186 300 204 H206 V216 H140 Q128 216 128 204 V144 Q128 132 140 132 Z" fill="url(#hd)"/>
+ <rect x="226" y="206" width="60" height="24" rx="6" fill="#80888c"/></g>`;
+S.townB=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('roof','#5a6470','#3f4851')}${lg('door','#8a5a3a','#6c432a')}${lg('brick','#a8664a','#844b34')}</defs>`+
+ shadow('t',256,420,170,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="312" y="140" width="40" height="80" fill="url(#brick)"/>
+ <rect x="150" y="236" width="212" height="166" rx="6" fill="url(#wall)"/>
+ <path d="M124 252 L256 130 L388 252 Z" fill="url(#roof)"/>
+ <rect x="226" y="306" width="60" height="96" rx="6" fill="url(#door)"/></g>`;
+S.townC=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('can','#efe3c9','#cdb893')}${lg('can2','#d6c49f','#b39d74')}${lg('pole','#8a6242','#6a4a32')}</defs>`+
+ shadow('t',256,418,190,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="244" y="100" width="16" height="130" fill="url(#pole)"/>
+ <path d="M260 106 L334 124 L260 146 Z" fill="#c45a44"/>
+ <path d="M256 196 L392 396 L120 396 Z" fill="url(#can)"/>
+ <path d="M256 196 L300 396 L212 396 Z" fill="url(#can2)"/>
+ <path d="M256 300 L286 396 L226 396 Z" fill="#6a4a36"/></g>`;
+S.townD=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('wall2','#e0cfae','#c3ae88')}${lg('roof','#5a6470','#3f4851')}${lg('roof2','#7a5a46','#5e4434')}${lg('door','#8a5a3a','#6c432a')}</defs>`+
+ shadow('t',256,420,190,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="276" y="250" width="140" height="150" rx="5" fill="url(#wall2)"/>
+ <path d="M258 262 L346 184 L434 262 Z" fill="url(#roof2)"/>
+ <rect x="96" y="226" width="180" height="174" rx="5" fill="url(#wall)"/>
+ <path d="M72 242 L186 140 L300 242 Z" fill="url(#roof)"/>
+ <rect x="160" y="310" width="52" height="90" rx="5" fill="url(#door)"/>
+ <rect x="326" y="296" width="40" height="40" rx="4" fill="#f4d48a"/></g>`;
+S.people+=`<g fill="none" stroke="${OL}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M230 300 L256 322 L282 300"/></g><g fill="#fff" opacity=".35"><ellipse cx="236" cy="232" rx="14" ry="9"/><ellipse cx="150" cy="198" rx="11" ry="7"/><ellipse cx="326" cy="198" rx="11" ry="7"/></g>`;
+S.townB+=`<g stroke="${OL}" stroke-width="6" stroke-linecap="round"><rect x="306" y="132" width="52" height="16" rx="3" fill="#6e3e2c"/></g><circle cx="274" cy="358" r="6" fill="#e2c27a" stroke="${OL}" stroke-width="3"/><path d="M150 256 L362 256" stroke="#00000033" stroke-width="10"/>`;
+S.townC+=`<g stroke="${OL}" stroke-width="5" stroke-linecap="round"><path d="M178 312 L96 404 M334 312 L416 404"/></g><g fill="#7a5a40" stroke="${OL}" stroke-width="4"><rect x="88" y="396" width="14" height="16" rx="3"/><rect x="410" y="396" width="14" height="16" rx="3"/></g><path d="M256 210 L256 300" stroke="#00000030" stroke-width="5"/>`;
+S.townD+=`<g stroke="${OL}" stroke-width="5" stroke-linecap="round"><path d="M346 298 V334 M328 316 H364"/></g><circle cx="200" cy="358" r="5" fill="#e2c27a" stroke="${OL}" stroke-width="3"/><rect x="112" y="268" width="36" height="34" rx="4" fill="#f4d48a" stroke="${OL}" stroke-width="7"/>`;
+S.more+=`<g fill="#fff" opacity=".7">${[176,256,336].map(x=>`<circle cx="${x-8}" cy="247" r="7"/>`).join('')}</g>`;
+S.build+=`<g transform="translate(48 50) scale(0.84) rotate(-35 256 280)"><g stroke="#6e4428" stroke-width="5" stroke-linecap="round" opacity=".7"><path d="M248 250 C252 300 246 350 250 420"/><path d="M262 240 C266 290 262 330 266 380"/></g><path d="M144 146 H296" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".55"/><rect x="220" y="232" width="72" height="16" rx="6" fill="#6f777b" stroke="${OL}" stroke-width="7"/></g>`;
+window.__render=async(k)=>{const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">${S[k]}</svg>`; return svg;};
+</script></body></html>
