@@ -1,0 +1,40 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script>
+const OL='#3a2a20', SW=9;
+const tile=(id,a,b)=>`<defs><linearGradient id="bg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>
+<radialGradient id="sh${id}"><stop offset="0" stop-color="#000" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+<rect width="512" height="512" fill="url(#bg${id})"/>`;
+const shadow=(id,cx,cy,rx,ry)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#sh${id})"/>`;
+const lg=(id,a,b,dir='v')=>`<linearGradient id="${id}" x1="0" y1="0" x2="${dir=='v'?0:1}" y2="${dir=='v'?1:0}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+const S={};
+S.explore=tile('e','rgb(92,104,108)','rgb(82,80,74)')+`<defs>${lg('p1','#e3d3b0','#cbb88f')}${lg('p2','#cdb98f','#b29d73')}${lg('pin','#cf5a46','#a83a2c')}</defs>`+
+ shadow('e',256,420,170,26)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <path d="M104 170 L196 140 L196 392 L104 420 Z" fill="url(#p1)"/>
+ <path d="M196 140 L316 170 L316 420 L196 392 Z" fill="url(#p2)"/>
+ <path d="M316 170 L408 140 L408 392 L316 420 Z" fill="url(#p1)"/></g>
+ <path d="M140 360 C190 330 230 350 260 300 S330 250 370 230" fill="none" stroke="#7a6a4e" stroke-width="10" stroke-linecap="round" stroke-dasharray="4 22"/>
+ <g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round"><path d="M300 92 a52 52 0 0 1 52 52 c0 40 -52 96 -52 96 s-52 -56 -52 -96 a52 52 0 0 1 52 -52 z" fill="url(#pin)"/></g>
+ <circle cx="300" cy="144" r="19" fill="#f2e6cf" stroke="${OL}" stroke-width="6"/>`;
+const fig=(x,y,s,a,b,id)=>`<defs>${lg(id,a,b)}</defs><g stroke="${OL}" stroke-width="${SW}" fill="url(#${id})"><path d="M${x-86*s} ${y+150*s} c0 -78 38 -112 ${86*s} -112 s${86*s} 34 ${86*s} 112 z"/><circle cx="${x}" cy="${y}" r="${52*s}"/></g>`;
+S.people=tile('p','rgb(178,131,134)','rgb(146,106,104)')+shadow('p',256,424,180,24)+
+ fig(168,214,0.92,'#8fa07e','#6f8262','f1')+fig(344,214,0.92,'#7f93a6','#627689','f2')+fig(256,252,1.08,'#f0e4cf','#d8c6a8','f3');
+S.town=tile('t','rgb(199,165,130)','rgb(170,132,100)')+`<defs>${lg('wall','#efe2c8','#d7c4a2')}${lg('roof','#5a6470','#3f4851')}${lg('door','#8a5a3a','#6c432a')}${lg('wood','#b3825a','#8d6242')}</defs>`+
+ shadow('t',256,428,180,24)+
+ `<g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="160" y="230" width="192" height="150" fill="url(#wall)"/>
+ <path d="M134 246 L256 136 L378 246 Z" fill="url(#roof)"/>
+ <rect x="232" y="276" width="48" height="104" fill="url(#door)"/></g>
+ <g stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round" fill="url(#wood)">
+ <rect x="96" y="372" width="320" height="20"/>
+ ${[110,170,230,290,350].map(x=>`<path d="M${x} 420 L${x} 352 L${x+26} 336 L${x+52} 352 L${x+52} 420 Z"/>`).join('')}</g>`;
+S.more=tile('m','rgb(155,123,136)','rgb(121,96,107)')+`<defs>${lg('dot','#f6eddd','#d9ccb6')}</defs>`+
+ [176,256,336].map(x=>shadow('m',x,292,34,9)+`<circle cx="${x}" cy="256" r="26" fill="url(#dot)"/>`).join('');
+S.build=tile('b','rgb(153,148,108)','rgb(117,115,80)')+`<defs>${lg('hd','#d4d8db','#8e9599')}${lg('hn','#c38c5c','#93603a','h')}</defs>`+
+ shadow('b',256,432,150,22)+
+ `<g transform="translate(-14 26) rotate(38 256 270)" stroke="${OL}" stroke-width="${SW}" stroke-linejoin="round">
+ <rect x="232" y="190" width="48" height="250" rx="20" fill="url(#hn)"/>
+ <path d="M160 132 L300 132 Q330 132 344 150 Q368 176 392 168 Q372 214 330 214 L300 214 L300 200 L160 200 Q146 200 146 186 L146 146 Q146 132 160 132 Z" fill="url(#hd)"/>
+ <rect x="226" y="198" width="60" height="22" rx="6" fill="#7d858a"/></g>`;
+window.__render=async(k)=>{const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">${S[k]}</svg>`; return svg;};
+</script></body></html>
