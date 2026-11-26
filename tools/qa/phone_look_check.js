@@ -1,6 +1,6 @@
 // tools/qa/phone_look_check.js [sizes] [tag] — 3D.317, 3D.333 (owner, 23 Nov, W249): the phone look, step 1: the town screen, on by default.
 // At six phone sizes:
-//  - a fresh game starts in the phone look (3D.333): the four tabs sit in one capsule, Build is a round button to its right, nothing
+//  - a fresh game starts in the phone look (3D.333): the five app icons sit in one dock, Build last (3D.382), nothing
 //    overlaps, nothing is off the screen, every one takes taps of 44 px or more, and the resource bar is clear glass;
 //  - the bag is its own round button beside the resource bar (3D.334) and a tap on it opens the supplies list;
 //  - Build, People and Town still open their menus;
@@ -12,7 +12,7 @@ const TAG = process.argv[3] || '3D.334';
 const box = (p) => p.evaluate(() => { const o = {}; for (const id of ['mExp', 'mSurv', 'mTown', 'mGuide', 'mBuild', 'lmenu']) { const r = document.getElementById(id).getBoundingClientRect(); o[id] = { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom }; }
   { const r = document.querySelector('#plaque .res').getBoundingClientRect(), g = document.querySelector('#plaque .bagChip').getBoundingClientRect(); o.res = { r: r.right }; o.bag = { x: g.x, y: g.y, w: g.width, h: g.height, r: g.right }; }
   o.phone = document.documentElement.classList.contains('phone'); o.sheet = !!document.getElementById('phoneCss'); o.resBg = getComputedStyle(document.querySelector('#plaque .res')).backgroundImage; o.vw = innerWidth; o.vh = innerHeight; return o; });
-const setLook = async (p) => { await p.click('#mGuide'); await p.waitForTimeout(300); await p.evaluate(() => { [...document.querySelectorAll('#ib .setRow, #ib button, #ib .card')].find((e) => /^Settings/.test(e.innerText.trim())).click(); }); await p.waitForTimeout(300); await p.click('#stLook'); await p.waitForTimeout(500); await p.evaluate(() => ZH.closeP()); await p.waitForTimeout(300); };
+const setLook = async (p) => { await p.click('#mGuide'); await p.waitForTimeout(300); await p.evaluate(() => { (document.getElementById('moSet') || [...document.querySelectorAll('#ib .setRow, #ib button, #ib .card')].find((e) => /^Settings/.test(e.innerText.trim()))).click(); }); await p.waitForTimeout(300); await p.click('#stLook'); await p.waitForTimeout(500); await p.evaluate(() => ZH.closeP()); await p.waitForTimeout(300); };
 (async () => {
   let bad = 0; const fail = (m) => { bad++; console.log('  FAIL ' + m); };
   const b = await Q.launch();
@@ -33,8 +33,8 @@ const setLook = async (p) => { await p.click('#mGuide'); await p.waitForTimeout(
     if (on.bag.w < 43.5 || on.bag.h < 43.5) fail(`${S.n}: the bag takes taps of only ${on.bag.w.toFixed(0)}x${on.bag.h.toFixed(0)}`);
     if (on.bag.x < 0 || on.bag.r > on.vw + .5 || on.bag.y < 0) fail(`${S.n}: the bag is off the screen`);
     await Q.clearCards(p); await p.click('#plaque .bagChip'); await p.waitForTimeout(300); { const sp = await p.evaluate(() => { const e = document.getElementById('supPop'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, r: r.right, w: innerWidth }; }); if (!sp) fail(`${S.n}: a tap on the bag did not open the supplies list`); else if (sp.x < 0 || sp.r > sp.w + .5) fail(`${S.n}: the supplies list is off the screen`); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_bag.png') }); await p.click('#plaque .bagChip'); await p.waitForTimeout(200); }
-    if (on.mBuild.x < on.lmenu.r) fail(`${S.n}: Build is not beside the tab capsule`);
-    if (on.mGuide.r > on.lmenu.r + .5) fail(`${S.n}: More sticks out of the capsule`);
+    /* 3D.382: the dock holds all five icons, Build last (it was a round button beside the capsule) */
+    for (const k of order) if (on[k].x < on.lmenu.x - .5 || on[k].r > on.lmenu.r + .5) fail(`${S.n}: ${k} sticks out of the dock`);
     for (const [id, t] of [['mBuild', 'Build'], ['mSurv', 'People'], ['mTown', 'Town']]) { await Q.clearCards(p); await p.click('#' + id); await p.waitForTimeout(350); const open = await p.evaluate(() => { const e = document.getElementById('infoPanel'); return !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 100; }); if (!open) fail(`${S.n}: ${t} did not open its menu in the phone look`); await p.evaluate(() => { ZH.closeP(); ZH.endBuildMode(true); }); await p.waitForTimeout(200); }
     await Q.clearCards(p); await setLook(p); await Q.clearCards(p); await p.waitForTimeout(300); const off = await box(p); if (i === 0) await p.screenshot({ path: path.join(__dirname, '../../runs/ui_samples/phone_look_off.png') });
     if (off.phone) fail(`${S.n}: the Settings switch did not turn the phone look off`);

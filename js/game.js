@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.381', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.382', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -9249,6 +9249,9 @@ if ((window.ZHIcons)) {
   set('#btnHome', 'home', 30); set('#btnLog', 'log', 30); set('#btnCenter', 'locate', 30); if (document.documentElement.classList.contains('glass')) { set('#btnSave', 'save', 30); const sv = $('btnSave'); if (sv) sv.setAttribute('aria-label', 'Save'); }   /* 3D.28 Glass: round icon buttons */
   ZHIcons.watchAll();   /* 3D.134 every panel, bar, card and toast: emoji -> the sticker icons */
 }
+/* 3D.382 (W249, owner, 25 Nov: dock A, "A is ok"; 26 Nov: icons 1,2,3,1,1 drawn simpler, Town A without a window, "Let's go with 4"): the phone look's tab bar
+   is a dock of five app icons with a label under each (assets/ui/dock/*.webp, drawn by tools/art/dock/icons_v21.html, the cool scheme); css/phone.css shows them and hides the stickers */
+[['mExp', 'explore'], ['mSurv', 'people'], ['mTown', 'town'], ['mGuide', 'more'], ['mBuild', 'build']].forEach(([id, f]) => { const b = $(id); if (b && !b.querySelector('.dkI')) { const s = document.createElement('b'); s.className = 'dkI'; s.innerHTML = `<img src="assets/ui/dock/${f}.webp" alt="" draggable="false">`; b.insertBefore(s, b.firstChild); } });
 { const sb = $('btnSound'), lab = () => { if (sb && window.SND) { if ((window.ZHIcons)) sb.innerHTML = ZHIcons.svg(SND.mode === 'all' ? 'sound' : SND.mode === 'sfx' ? 'soundLow' : 'soundOff', 26); else sb.textContent = SND.mode === 'all' ? '🔊' : SND.mode === 'sfx' ? '🔉' : '🔇'; } }; lab(); if (sb) sb.onclick = () => { if (window.SND) { SND.unlock(); const m = SND.cycle(); lab(); say(m === 'all' ? 'Sound: effects and music.' : m === 'sfx' ? 'Sound: effects only.' : 'Sound off.'); } }; }
 document.addEventListener('pointerdown', () => { if (window.SND) { SND.unlock(); SND.music(isNight(), S.day); } }, { capture: true });
 document.addEventListener('click', (e) => { if (e.target.closest('button')) SFX('click'); }, { capture: true }); $('plaque').onclick = (e) => { if (e.target.closest('#tripChip')) return; if (e.target.closest('#advX')) { if (advShown) { S.advMute = { ...(S.advMute || {}), [advShown.key]: S.day }; advisorUpdate(); } return; } if (e.target.closest('#adv')) { if (advShown) advShown.act(); return; } const r = e.target.closest('.res > span'); if (r) { if ((r.querySelector('b') || {}).id === 'rare') { supPop(); return; } const k = { food: 'food', water: 'water', mat: 'mat', wood: 'wood', stone: 'stone' }[(r.querySelector('b') || {}).id]; if (k) { showResource(k); return; } } showObjective(); };
