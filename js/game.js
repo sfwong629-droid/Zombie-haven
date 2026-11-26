@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.384', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.385', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -4106,6 +4106,7 @@ const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.293 (overnight branch; owner
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
   if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms); const built = sitesAway(ms);   /* 3D.305 building carries on while away. 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick(); const gate = gateAway(hours);
+  if (hours < 1 && built && phoneOn()) { awayReport(ms, 0, {}, built, gate); return { hours: 0, got: {}, built }; }   /* 3D.385 */
   if (hours < 1) return built ? (note('important', '🌅 WHILE YOU WERE AWAY', { log: `${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` }), { hours: 0, got: {}, built }) : null; const got = {};
   for (let h = 0; h < hours; h++) for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
@@ -4123,8 +4124,27 @@ function awayCredit(ms) {
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
   const real = ms >= 36e5 ? Math.round(ms / 36e5 * 10) / 10 + ' h' : Math.round(ms / 6e4) + ' min';
   const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '') + (gate ? ` ${gate === 1 ? 'Someone is' : gate + ' people are'} waiting at the gate.` : '') + (built ? ` ${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` : '');
-  note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
+  note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (phoneOn()) { try { awayReport(ms, hours, got, built, gate); } catch (e) { /* the note is enough */ } } else if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
   return { hours, got, built };
+}
+/* 3D.385 (W249, fun idea 9, the second half; owner, 23 Nov: "I like 1 to 6"; 26 Nov: "Start building the fun ideas"): in the phone look, coming
+   back to the game opens a short report like Yesterday at the Haven: how long you were gone, the game hours of shifts kept, what waits in the
+   trays (signs and numbers), building jobs finished, the trip still out, people at the gate; facts first, the joke last; one lime "Collect all"
+   empties every tray at once (the same as tapping each bubble), "Later" leaves them. */
+function awayReport(ms, hours, got, built, gate) {
+  const real = ms >= 36e5 ? (Math.round(ms / 36e5 * 10) / 10) + ' h' : Math.max(1, Math.round(ms / 6e4)) + ' min';
+  const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, tr = Object.entries(got).filter(([, v]) => v >= .5);
+  const row = (i, t, v, cls) => `<div class="phR rpR"><span class="rpI">${i}</span><span class="tx"><b>${t}</b></span><span class="v ${cls || ''}">${v}</span></div>`;
+  let rows = (built ? row('🔨', 'Built', `${built} job${built > 1 ? 's' : ''}`, 'good') : '') + (S.trip ? row('🧭', 'Squad still out', '', '') : '') + (gate ? row('👋', 'At the gate', gate, 'good') : '') + (S.lvUp ? row('⬆', `Level ${(S.lvl || 1) + 1}`, rtText(S.lvUp.left) + ' left', '') : '');
+  if (!rows && !tr.length) rows = row('·', 'Nothing staffed to produce', '', '');
+  const quips = ['Nobody touched your stuff. Probably.', 'The zombies were polite enough to wait.', 'Everyone pretended to work the whole time.', 'Moth kept the radio warm for you.'];
+  const html = `<div class="rpHd">While you were away</div><div class="rpT1">Back after ${real}</div>`
+    + (hours ? `<div class="rpBig"><b>${hours} h</b> of shifts kept</div>` : '')
+    + (tr.length ? `<div class="phSec">In the trays</div><div class="phCard"><div class="phR rpSt">${tr.map(([k, v]) => `<span class="good">${ic[k] || ''} +${Math.round(v)}</span>`).join('')}</div></div>` : '')
+    + (rows ? `<div class="phCard" style="margin-top:10px">${rows}</div>` : '')
+    + `<div class="rpQ">${quips[Math.floor(Math.random() * quips.length)]}</div>`;
+  const collectAll = () => { let n = 0; for (const b of world.buildings) if ((b.bonus || 0) >= 1 && collectBonus(b)) n++; return n; };
+  showEventPopup({ title: 'While you were away', report: html, buttons: tr.length ? [{ label: 'Collect all', rec: true, fn: collectAll }, { label: 'Later' }] : [{ label: 'OK' }] });
 }
 const dayKey = (t = Date.now()) => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 const weekKey = (t = Date.now()) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dayKey(d.getTime()); };   /* weeks start on Monday */
@@ -4906,7 +4926,7 @@ function nextEventPopup() {
     SFX('alarm'); return;
   }
   if (e.report && phoneOn()) {   /* 3D.381 (W249): the morning report, "Yesterday at the Haven" */
-    m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns">${bt.map((b, i) => `<button data-i="${i}" class="act rec">${b.label}</button>`).join('')}</div></div>`;
+    m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns${bt.length > 1 ? ' two' : ''}">${bt.map((b, i) => `<button data-i="${i}" class="act${b.rec ? ' go' : bt.length === 1 ? ' rec' : ''}">${b.label}</button>`).join('')}</div></div>`;
     m.querySelectorAll('.rpT').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('event'); return;

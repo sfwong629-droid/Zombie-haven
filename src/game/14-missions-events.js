@@ -371,7 +371,7 @@ function nextEventPopup() {
     SFX('alarm'); return;
   }
   if (e.report && phoneOn()) {   /* 3D.381 (W249): the morning report, "Yesterday at the Haven" */
-    m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns">${bt.map((b, i) => `<button data-i="${i}" class="act rec">${b.label}</button>`).join('')}</div></div>`;
+    m.innerHTML = `<div class="evBox frame rpBox">${e.report}<div class="rpBtns${bt.length > 1 ? ' two' : ''}">${bt.map((b, i) => `<button data-i="${i}" class="act${b.rec ? ' go' : bt.length === 1 ? ' rec' : ''}">${b.label}</button>`).join('')}</div></div>`;
     m.querySelectorAll('.rpT').forEach((r) => { r.onclick = () => r.classList.toggle('open'); });
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('event'); return;

@@ -358,3 +358,4 @@ html.glass.phone #plaque { top: calc(36px + env(safe-area-inset-top)); }
 html.glass.phone #pausedChip { top: calc(env(safe-area-inset-top) + 86px); }
 html.glass.phone .shTop { top: calc(36px + env(safe-area-inset-top, 0px)); }
 /* 3D.384 (W249; owner, 26 Nov: "The bottom 5 icon is a little big... make it just a little smaller"): the dock icons 50 px (were 56); the buttons still take 64 px wide taps */
+html.phone .rpBtns.two { display: flex; gap: 10px; } html.phone .rpBtns.two .act { flex: 1; } html.phone .rpBtns .act:not(.rec):not(.go) { background: rgba(255, 255, 255, .12); color: #fff; border: 0; box-shadow: none; }   /* 3D.385 While you were away: Collect all (lime) beside Later */
