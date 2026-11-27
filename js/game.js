@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.386', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.387', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1247,6 +1247,7 @@ const rLine = (k, v = {}) => { const L = RADIO_L[k]; return L[Math.floor(Math.ra
 function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: they are spoken one after another on the same card */
   const lines = (Array.isArray(text) ? text : [text]).filter(Boolean); text = lines.join(' ');
   const V = RADIO_V[voice] || RADIO_V.dj; logEvent(`📻 ${V.name}: ${text}`, o.level || 'routine');
+  if (typeof titleOn === 'undefined' || !titleOn) { (S.fm = S.fm || []).push({ d: S.day, h: S.hour, v: voice, t: text, ti: o.title || null }); if (S.fm.length > 60) S.fm.splice(0, S.fm.length - 60); }   /* 3D.387 Moth FM's old broadcasts */
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
   radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null, urgent: o.urgent || o.level === 'important' || o.level === 'critical' }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
@@ -1325,7 +1326,29 @@ let radioLast = null;
 let radioUnread = null;
 function radioOpen(c) {
   const V = RADIO_V[c.voice] || RADIO_V.dj; radioUnread = null; radioDot();
+  if (phoneOn()) { showFM(c); return; }
   showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: `<span class="rcWho">${esc(V.who)}</span>` + (c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text)), buttons: c.act ? [{ label: 'Show me', rec: true, fn: c.act }, { label: 'OK' }] : undefined });
+}
+/* 3D.387 (W249, fun idea 4; owner, 23 Nov: "I like 1 to 6"; 26 Nov: "Next"): Moth FM, the radio as a station. In the phone look the radio button,
+   the now-playing capsule and More → Moth FM open a sheet: a Now playing card (the station, who speaks, moving bars, the words coming in sentence
+   by sentence, Show me when the message has a place), then every earlier broadcast like a podcast's episodes, grouped by day, newest first;
+   a tap plays one again in the card. S.fm keeps the last 60 (saved with the town). */
+const FM_SPLIT = (t) => String(t).split(/(?<=[.!?…"”])\s+(?=[A-Z"“'(])/).filter(Boolean);
+function showFM(c, back) {
+  endBuildMode(true); closeP(); const L = (S.fm || []).slice().reverse(); c = c || (L[0] ? { voice: L[0].v, text: L[0].t, title: L[0].ti } : null);
+  const day = (d) => d === S.day ? 'Today' : d === S.day - 1 ? 'Yesterday' : `Day ${d}`, hh = (h) => String(Math.floor(h)).padStart(2, '0') + ':00';
+  let now = '<div class="phCard fmNow"><div class="phR fmEmpty">Nothing on air yet</div></div>';
+  if (c) { const V = RADIO_V[c.voice] || RADIO_V.dj;
+    now = `<div class="fmNow" style="--rc:${V.col}"><div class="fmSt"><span class="fmI">${window.ZHIcons ? ZHIcons.svg('radio', 26) : '📻'}</span><span class="fmW"><small>Now playing · ${esc(c.title || V.name)}</small><b>${esc(V.who)}</b></span><span class="rcEq"><i></i><i></i><i></i><i></i></span></div>`
+      + `<div class="fmWords">${FM_SPLIT(c.text).map((x, i) => `<p style="animation-delay:${(i * .9).toFixed(1)}s">${esc(x)}</p>`).join('')}</div>${c.more ? `<div class="fmMore">${c.more}</div>` : ''}${c.act ? '<button class="act go fmGo" id="fmGo">Show me</button>' : ''}</div>`; }
+  const rows = L.filter((e) => !c || e.t !== c.text).slice(0, 40); let list = '', g = null;
+  rows.forEach((e, i) => { const V = RADIO_V[e.v] || RADIO_V.dj, k = day(e.d); if (k !== g) { list += `${g ? '</div>' : ''}<div class="phSec">${k}</div><div class="phCard">`; g = k; }
+    list += `<div class="phR fmRow" role="button" data-i="${i}"><i class="fmDot" style="background:${V.col}"></i><span class="tx"><b>${esc(V.who)}</b><small>${esc(e.t)}</small></span><span class="v">${hh(e.h)}</span></div>`; });
+  if (g) list += '</div>';
+  $('ib').innerHTML = `<div class="phSet fmSheet">${now}${list}</div>`;
+  if (c && c.act) $('fmGo').onclick = () => { closeP(); c.act(); };
+  $('ib').querySelectorAll('.fmRow').forEach((r) => { r.onclick = () => { const e = rows[+r.dataset.i]; SFX('radio'); showFM({ voice: e.v, text: e.t, title: e.ti }, back); }; });
+  showPanel('Moth FM', back || null);
 }
 function radioDot() { const b = $('radioBtn'); if (b) b.classList.toggle('unread', !!radioUnread); }
 function radioLive(el, c, V) {
@@ -5189,13 +5212,13 @@ let savedAtMs = 0;
 const HUD_B = typeof document !== 'undefined' && document.documentElement.classList.contains('glass');
 /* 3D.343 (owner, 24 Nov, W249: "ok next"): More and Settings in the phone look: grouped lists, a small coloured square with a plain white sign on each row,
    switches on the right, chevrons on rows that open something. Same ids as the old lists, so the same wiring serves both looks. */
-const PH_SG = { music: '<path d="M9 18V6l10-2v12"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="16" r="2.500"/>', tune: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>', sfx: '<path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.500 6.500a7.500 7.500 0 0 1 0 11"/>', chat: '<path d="M5 6h14v10H10l-4 3v-3H5z"/>', tips: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900V15h7v-1.100A6 6 0 0 0 12 3z"/>', slow: '<path d="M5 6l6 6-6 6zM13 6l6 6-6 6z"/>', face: '<circle cx="12" cy="9" r="3.500"/><path d="M5 20a7 7 0 0 1 14 0"/>', phone: '<rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 18h2"/>', ink: '<path d="M4 20l4-1 10-10-3-3L5 16z"/>', moon: '<path d="M19 14.500A7.500 7.500 0 0 1 9.500 5a7.500 7.500 0 1 0 9.500 9.500z"/>', track: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>', log: '<path d="M7 3h10v18H7zM10 8h4M10 12h4M10 16h2"/>', help: '<circle cx="12" cy="12" r="8.500"/><path d="M9.700 9.500a2.400 2.400 0 1 1 3.400 2.200c-.800.400-1.100.900-1.100 1.800M12 16.800v.1"/>', home: '<path d="M4 11l8-7 8 7M6 10v10h12V10"/>', guide: '<path d="M5 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H5zM19 5h-4a2 2 0 0 0-2 2"/><path d="M19 5v12h-4a2 2 0 0 0-2 2"/>', jobs: '<rect x="3.500" y="7.500" width="17" height="12" rx="2.500"/><path d="M9 7.500V5.500a1.500 1.500 0 0 1 1.500-1.500h3A1.500 1.500 0 0 1 15 5.500v2"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100"/>' };
+const PH_SG = { radio: '<rect x="3" y="9" width="18" height="11" rx="2"/><path d="M7 9 17 4"/><circle cx="15" cy="14.500" r="2.500"/><path d="M6 13h4M6 16h4"/>', music: '<path d="M9 18V6l10-2v12"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="16" r="2.500"/>', tune: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>', sfx: '<path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.500 6.500a7.500 7.500 0 0 1 0 11"/>', chat: '<path d="M5 6h14v10H10l-4 3v-3H5z"/>', tips: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900V15h7v-1.100A6 6 0 0 0 12 3z"/>', slow: '<path d="M5 6l6 6-6 6zM13 6l6 6-6 6z"/>', face: '<circle cx="12" cy="9" r="3.500"/><path d="M5 20a7 7 0 0 1 14 0"/>', phone: '<rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 18h2"/>', ink: '<path d="M4 20l4-1 10-10-3-3L5 16z"/>', moon: '<path d="M19 14.500A7.500 7.500 0 0 1 9.500 5a7.500 7.500 0 1 0 9.500 9.500z"/>', track: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>', log: '<path d="M7 3h10v18H7zM10 8h4M10 12h4M10 16h2"/>', help: '<circle cx="12" cy="12" r="8.500"/><path d="M9.700 9.500a2.400 2.400 0 1 1 3.400 2.200c-.800.400-1.100.900-1.100 1.800M12 16.800v.1"/>', home: '<path d="M4 11l8-7 8 7M6 10v10h12V10"/>', guide: '<path d="M5 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H5zM19 5h-4a2 2 0 0 0-2 2"/><path d="M19 5v12h-4a2 2 0 0 0-2 2"/>', jobs: '<rect x="3.500" y="7.500" width="17" height="12" rx="2.500"/><path d="M9 7.500V5.500a1.500 1.500 0 0 1 1.500-1.500h3A1.500 1.500 0 0 1 15 5.500v2"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100"/>' };
 const phSI = (k, col) => `<span class="phIc" style="background:${col}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PH_SG[k]}</svg></span>`;
 function showMorePhone() {
   endBuildMode(true); closeP(); const ch = `<i class="phChv">${phG('ch', 14)}</i>`, e = slotBs().filter((b) => !b.staff).length;
   const row = (id, ic, col, t, sub) => `<div class="phR tall" id="${id}" role="button">${phSI(ic, col)}<span class="tx"><b>${t}</b><small>${sub}</small></span>${ch}</div>`;
-  $('ib').innerHTML = `<div class="phSet"><div class="phCard">${row('moGuide', 'guide', '#3d8fe0', 'Guide', 'Goals, how things work, the story so far')}${row('moJobs', 'jobs', '#e08a2e', 'Jobs', e ? e + ' empty workplace' + (e > 1 ? 's' : '') + ' · promotions' : 'Who works where, promotions')}${row('moLog', 'log', '#6b7686', 'Event log', 'Every message, news line and radio call')}${row('moSet', 'gear', '#8d6fe0', 'Settings', 'Save, sound, look, main menu')}</div></div>`;
-  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore); $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; };
+  $('ib').innerHTML = `<div class="phSet"><div class="phCard">${row('moGuide', 'guide', '#3d8fe0', 'Guide', 'Goals, how things work, the story so far')}${row('moJobs', 'jobs', '#e08a2e', 'Jobs', e ? e + ' empty workplace' + (e > 1 ? 's' : '') + ' · promotions' : 'Who works where, promotions')}${row('moFm', 'radio', '#e0a43d', 'Moth FM', 'The radio, and every broadcast so far')}${row('moLog', 'log', '#6b7686', 'Event log', 'Every message, news line and radio call')}${row('moSet', 'gear', '#8d6fe0', 'Settings', 'Save, sound, look, main menu')}</div></div>`;
+  $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moFm').onclick = () => showFM(null, showMore); $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore); $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; };
   showPanel('More');
 }
 function showMore() {

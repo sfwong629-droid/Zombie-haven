@@ -13,7 +13,7 @@ const TAG = process.argv[3] || ''; let bad = 0; const ok = (c, m) => { if (!c) {
     const fit = () => p.evaluate(() => { const ip = document.getElementById('infoPanel').getBoundingClientRect(), ib = document.getElementById('ib'), rs = [...ib.querySelectorAll('.phR')]; return { n: rs.length, ok: rs.map((e) => e.getBoundingClientRect()).every((q) => q.height >= 44 && q.left >= ip.left && q.right <= ip.right + 1), sw: ib.scrollWidth - ib.clientWidth, ic: rs.every((e) => !!e.querySelector('.phIc')), chv: [...ib.querySelectorAll('.phChv')].every((e) => ip.right - e.getBoundingClientRect().right < 40) }; });
     const title = () => p.evaluate(() => document.getElementById('it').textContent);
     await p.evaluate(() => ZH.showMore()); await p.waitForTimeout(500); await Q.clearCards(p);
-    let f = await fit(); ok(await title() === 'More' && f.n === 4 && f.ok && f.ic && f.chv && f.sw <= 1, 'More: four rows with a sign and a chevron at the right, 44 px+, inside the sheet'); ok(!(await p.evaluate(() => !!document.querySelector('#ib .moreRow'))), 'no old rows');
+    let f = await fit(); ok(await title() === 'More' && f.n === 5 && f.ok && f.ic && f.chv && f.sw <= 1, 'More: five rows (Moth FM from 3D.387) with a sign and a chevron at the right, 44 px+, inside the sheet'); ok(!(await p.evaluate(() => !!document.querySelector('#ib .moreRow'))), 'no old rows');
     await p.screenshot({ path: path.join(out, `phone_settings_${z.n}_more.png`) });
     await p.evaluate(() => document.getElementById('moSet').click()); await p.waitForTimeout(500); await Q.clearCards(p);
     f = await fit(); const secs = await p.evaluate(() => [...document.querySelectorAll('#ib .phSec')].map((e) => e.textContent));

@@ -60,6 +60,7 @@ const rLine = (k, v = {}) => { const L = RADIO_L[k]; return L[Math.floor(Math.ra
 function radio(voice, text, o = {}) {   /* 3D.147 text can be a list of lines: they are spoken one after another on the same card */
   const lines = (Array.isArray(text) ? text : [text]).filter(Boolean); text = lines.join(' ');
   const V = RADIO_V[voice] || RADIO_V.dj; logEvent(`📻 ${V.name}: ${text}`, o.level || 'routine');
+  if (typeof titleOn === 'undefined' || !titleOn) { (S.fm = S.fm || []).push({ d: S.day, h: S.hour, v: voice, t: text, ti: o.title || null }); if (S.fm.length > 60) S.fm.splice(0, S.fm.length - 60); }   /* 3D.387 Moth FM's old broadcasts */
   if (typeof document === 'undefined' || S.cut || titleOn) return; if (o.key && (radioQ.some((q) => q.key === o.key) || (radioOn && radioOn.key === o.key))) return;
   radioQ.push({ voice, text, lines, more: o.more || null, act: o.act || null, key: o.key || null, title: o.title || null, urgent: o.urgent || o.level === 'important' || o.level === 'critical' }); if (radioQ.length > 3) radioQ.shift(); radioNext();
 }
@@ -138,7 +139,29 @@ let radioLast = null;
 let radioUnread = null;
 function radioOpen(c) {
   const V = RADIO_V[c.voice] || RADIO_V.dj; radioUnread = null; radioDot();
+  if (phoneOn()) { showFM(c); return; }
   showEventPopup({ title: `📻 ${(c.title || V.name).toUpperCase()}`, text: `<span class="rcWho">${esc(V.who)}</span>` + (c.more ? `${esc(c.text)}<br><br>${c.more}` : esc(c.text)), buttons: c.act ? [{ label: 'Show me', rec: true, fn: c.act }, { label: 'OK' }] : undefined });
+}
+/* 3D.387 (W249, fun idea 4; owner, 23 Nov: "I like 1 to 6"; 26 Nov: "Next"): Moth FM, the radio as a station. In the phone look the radio button,
+   the now-playing capsule and More → Moth FM open a sheet: a Now playing card (the station, who speaks, moving bars, the words coming in sentence
+   by sentence, Show me when the message has a place), then every earlier broadcast like a podcast's episodes, grouped by day, newest first;
+   a tap plays one again in the card. S.fm keeps the last 60 (saved with the town). */
+const FM_SPLIT = (t) => String(t).split(/(?<=[.!?…"”])\s+(?=[A-Z"“'(])/).filter(Boolean);
+function showFM(c, back) {
+  endBuildMode(true); closeP(); const L = (S.fm || []).slice().reverse(); c = c || (L[0] ? { voice: L[0].v, text: L[0].t, title: L[0].ti } : null);
+  const day = (d) => d === S.day ? 'Today' : d === S.day - 1 ? 'Yesterday' : `Day ${d}`, hh = (h) => String(Math.floor(h)).padStart(2, '0') + ':00';
+  let now = '<div class="phCard fmNow"><div class="phR fmEmpty">Nothing on air yet</div></div>';
+  if (c) { const V = RADIO_V[c.voice] || RADIO_V.dj;
+    now = `<div class="fmNow" style="--rc:${V.col}"><div class="fmSt"><span class="fmI">${window.ZHIcons ? ZHIcons.svg('radio', 26) : '📻'}</span><span class="fmW"><small>Now playing · ${esc(c.title || V.name)}</small><b>${esc(V.who)}</b></span><span class="rcEq"><i></i><i></i><i></i><i></i></span></div>`
+      + `<div class="fmWords">${FM_SPLIT(c.text).map((x, i) => `<p style="animation-delay:${(i * .9).toFixed(1)}s">${esc(x)}</p>`).join('')}</div>${c.more ? `<div class="fmMore">${c.more}</div>` : ''}${c.act ? '<button class="act go fmGo" id="fmGo">Show me</button>' : ''}</div>`; }
+  const rows = L.filter((e) => !c || e.t !== c.text).slice(0, 40); let list = '', g = null;
+  rows.forEach((e, i) => { const V = RADIO_V[e.v] || RADIO_V.dj, k = day(e.d); if (k !== g) { list += `${g ? '</div>' : ''}<div class="phSec">${k}</div><div class="phCard">`; g = k; }
+    list += `<div class="phR fmRow" role="button" data-i="${i}"><i class="fmDot" style="background:${V.col}"></i><span class="tx"><b>${esc(V.who)}</b><small>${esc(e.t)}</small></span><span class="v">${hh(e.h)}</span></div>`; });
+  if (g) list += '</div>';
+  $('ib').innerHTML = `<div class="phSet fmSheet">${now}${list}</div>`;
+  if (c && c.act) $('fmGo').onclick = () => { closeP(); c.act(); };
+  $('ib').querySelectorAll('.fmRow').forEach((r) => { r.onclick = () => { const e = rows[+r.dataset.i]; SFX('radio'); showFM({ voice: e.v, text: e.t, title: e.ti }, back); }; });
+  showPanel('Moth FM', back || null);
 }
 function radioDot() { const b = $('radioBtn'); if (b) b.classList.toggle('unread', !!radioUnread); }
 function radioLive(el, c, V) {
