@@ -487,7 +487,8 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   if (S.rank > oldRank) { S.threat = threatNow(); rankReward(); S.mat += 4 + S.rank; for (const x of rankUnlocks(S.rank).filter((x) => !x.startsWith('+'))) lines.push(x); }
   else { S.food = keepCap(supplyCap(), S.food, 2); S.water = keepCap(supplyCap(), S.water, 2); S.mat += 2; }
   SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl);
-  showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
+  if (phoneOn()) { const w = updWhat(S.lvl, from, oldRank, true); showEventPopup({ title: 'Update complete', report: updCard(S.lvl, true, w), buttons: [{ label: 'OK', rec: true, fn: () => {} }] }); }   /* 3D.391 */
+  else showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
   say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' });
   if (needsBanner() && !bannersFree()) { const how = 'The next level needs a Banner over the Haven. Two ways to raise one: clear the Overrun Clinic on the Explore map, or finish a Trading Post or a Radio Tower.'; radio('dj', how, { key: 'banner', level: 'important' }); logEvent('🚩 ' + how, 'important'); }   /* 3D.162 play-test: two testers sat at level 5 for 13 days without learning what a Banner is (it was only in the Upgrade screen) */ saveGame(); ui();
 }
@@ -522,9 +523,31 @@ function rankConds() {
   if (needsBanner()) c.push({ ic: 'rating', name: 'A Banner over the Haven', need: 1, have: bannersFree(), ok: bannersFree() > 0, sub: 'opens the next era: ' + Object.values(BANNER_ROUTES).map((r) => r.icon + ' ' + r.how).join(' · ') });
   return c;
 }
+/* 3D.391 (W249, fun idea 10; owner, 23 Nov: "I like 1 to 6"; 27 Nov: "Yes push and publish. Next"): a level-up as the phone's software update.
+   Ready: "Haven 6 · Update ready", how long it takes, What's new (one line each), the joke last, Later / a lime Update now that starts the level-up.
+   Done: "Update complete" with the same card and what came with it, in place of the party card. Phone look only. */
+function updWhat(nl, from, rk = S.rank || 1, done = false) {
+  const nr = rankOfLvl(nl), o = [], short = (x) => x.replace(/ \(after [^)]+\)/g, '');
+  if (nr > rk) for (const x of rankUnlocks(nr)) { if (/^(Buildings|Walls|Traps|Events): /.test(x)) o.push(short(x)); }
+  if (terrOfLvl(nl) > terrOfLvl(from)) o.push('More land for the Haven');
+  if (eraOf(nl) !== eraOf(from)) o.unshift(`Era ${eraOf(nl).n} · ${eraOf(nl).name}`);
+  if (nr > rk) o.push(`Room for ${rankRoom() + (done ? 0 : 4)} people`);
+  o.push('Bigger stores', nr > rk ? `+${4 + nr} scrap` : '+2 scrap, food and water');
+  return o;
+}
+const UPD_JOKES = ['Known issue: zombies. Still.', 'Removed: nothing. Added: more of everything, including trouble.', 'Fixes the leaking roof. Introduces two new leaks.', 'Now 12% more haven per haven.', 'Please do not turn off your Haven during the update.'];
+function updCard(nl, done, list) {
+  const j = UPD_JOKES[(nl + (done ? 2 : 0)) % UPD_JOKES.length];
+  return `<div class="upHd"><span class="upIc">${appTile('town', 40)}</span><div class="upT"><small>${done ? 'Update complete' : 'Update ready'}</small><b>Haven ${nl}</b><span>${done ? `Installed · Day ${S.day}` : `Haven Works · takes ${rtText(lvMs(nl))}`}</span></div></div>`
+    + `<div class="phSec">What's new</div><div class="phCard">${list.map((x) => `<div class="phR upR"><span class="upDot"></span><span class="k">${esc(x)}</span></div>`).join('')}</div><div class="rpQ">${j}</div>`;
+}
+function updReady() {
+  const nl = (S.lvl || 1) + 1; if (!phoneOn() || S.lvUp || (S.lvl || 1) >= LV_MAX) return;
+  showEventPopup({ title: 'Update ready', report: updCard(nl, false, updWhat(nl, S.lvl || 1)), buttons: [{ label: 'Later', fn: () => {} }, { label: 'Update now', rec: true, fn: () => { upgradeTown(); } }] });
+}
 function checkRank() {
   const c = rankConds(); if (!c) return; lvStepCheck(c); const ok = c.every((r) => r.ok);
-  if (ok && !S.rankReady && !S.lvUp) { S.rankReady = true; banner('🏡 THE HAVEN CAN REACH LEVEL ' + ((S.lvl || 1) + 1)); say('Ready for the next level: open Upgrade (tap the Renown wheel or Town) to start it.', true); }
+  if (ok && !S.rankReady && !S.lvUp) { S.rankReady = true; if (phoneOn()) { updReady(); } else { banner('🏡 THE HAVEN CAN REACH LEVEL ' + ((S.lvl || 1) + 1)); say('Ready for the next level: open Upgrade (tap the Renown wheel or Town) to start it.', true); } }
   if (!ok) S.rankReady = false; ui();
 }
 function upgradeTown() {   /* 3D.104 starts the level-up timer; the level arrives when it runs out */
