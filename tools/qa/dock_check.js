@@ -1,5 +1,5 @@
 // tools/qa/dock_check.js [sizes] — 3D.382 (W249; owner, 25 Nov: dock A, "Go back to the today pick"): the phone look's tab bar is a dock of
-// five app icons (assets/ui/dock/*.webp) with a label under each. At three phone sizes:
+// five app icons (3D.390: appTile, a white line sign on a coloured gradient tile, as in More) with a label under each. At three phone sizes:
 //  - the dock sits inside the screen, above the home bar; the five icons are in it in order Explore, People, Town, More, Build, none overlapping;
 //  - each icon picture has loaded, is square (50 px from 3D.384, 55 on the largest phone where the HUD is drawn larger; the HUD is drawn smaller on a 320-wide phone) with round corners, the stickers are hidden, the label shows under it;
 //  - every icon takes taps of 44 px or more; a tap on each opens its menu (or the map for Explore);
@@ -10,8 +10,8 @@ const Q = require('./lib'); const path = require('path');
 const SIZES = (process.argv[2] || 'phone:390x844,phoneN:320x568,phoneXL:430x932').split(',').map((s) => { const [n, d] = s.split(':'); const [w, h] = d.split('x').map(Number); return { n, w, h }; });
 const ORDER = ['mExp', 'mSurv', 'mTown', 'mGuide', 'mBuild'], LABEL = { mExp: 'Explore', mSurv: 'People', mTown: 'Town', mGuide: 'More', mBuild: 'Build' };
 const read = (p) => p.evaluate((ORDER) => { const d = document.getElementById('lmenu').getBoundingClientRect(), o = { dock: { x: d.x, y: d.y, r: d.right, b: d.bottom, w: d.width }, vw: innerWidth, vh: innerHeight, btn: {} };
-  for (const id of ORDER) { const b = document.getElementById(id), r = b.getBoundingClientRect(), im = b.querySelector('.dkI img'), k = b.querySelector('.dkI'), st = b.querySelector(':scope > i');
-    const kr = k && k.getBoundingClientRect(); o.btn[id] = { x: r.x, r: r.right, y: r.y, b: r.bottom, w: r.width, h: r.height, img: !!im && im.complete && im.naturalWidth > 0, kw: kr ? kr.width : 0, kh: kr ? kr.height : 0, kb: kr ? kr.bottom : 0, rad: k ? parseFloat(getComputedStyle(k).borderTopLeftRadius) : 0, kShown: !!k && getComputedStyle(k).display !== 'none', stShown: !!st && getComputedStyle(st).display !== 'none', text: b.innerText.trim() }; }
+  for (const id of ORDER) { const b = document.getElementById(id), r = b.getBoundingClientRect(), im = b.querySelector('.dkI .apT svg'), k = b.querySelector('.dkI'), st = b.querySelector(':scope > i');
+    const kr = k && k.getBoundingClientRect(); o.btn[id] = { x: r.x, r: r.right, y: r.y, b: r.bottom, w: r.width, h: r.height, img: !!im && /gradient/.test(getComputedStyle(im.parentNode).backgroundImage) && im.querySelector('path,circle') !== null, sg: im && kr ? im.getBoundingClientRect().width / kr.width : 0, kw: kr ? kr.width : 0, kh: kr ? kr.height : 0, kb: kr ? kr.bottom : 0, rad: k ? parseFloat(getComputedStyle(k).borderTopLeftRadius) : 0, kShown: !!k && getComputedStyle(k).display !== 'none', stShown: !!st && getComputedStyle(st).display !== 'none', text: b.innerText.trim() }; }
   return o; }, ORDER);
 (async () => {
   let bad = 0; const fail = (m) => { bad++; console.log('  FAIL ' + m); };
@@ -25,7 +25,7 @@ const read = (p) => p.evaluate((ORDER) => { const d = document.getElementById('l
     if (o.dock.x < 0 || o.dock.r > o.vw + .5 || o.dock.b > o.vh + .5) fail(`${S.n}: the dock is off the screen`);
     if (o.dock.w < o.vw - 40) fail(`${S.n}: the dock does not run across the bottom (${o.dock.w.toFixed(0)} of ${o.vw})`);
     for (const [k, id] of ORDER.entries()) { const t = o.btn[id];
-      if (!t.img) fail(`${S.n}: ${id}'s picture did not load`);
+      if (!t.img) fail(`${S.n}: ${id} has no line sign on a gradient tile (3D.390)`); if (t.sg < .6 || t.sg > .85) fail(`${S.n}: ${id}'s sign fills ${t.sg.toFixed(2)} of its tile (3D.390: .6 to .85)`);
       if (!t.kShown || t.stShown) fail(`${S.n}: ${id} shows the sticker, not the app icon`);
       if (Math.abs(t.kw - t.kh) > .5 || t.kw < 40 || t.kw > 56) fail(`${S.n}: ${id}'s icon is ${t.kw.toFixed(1)}x${t.kh.toFixed(1)}, not square, or outside 40 to 56`);   /* 56 px, drawn smaller with the whole HUD on a 320-wide phone */
       if (t.rad < 10) fail(`${S.n}: ${id}'s icon has square corners`);

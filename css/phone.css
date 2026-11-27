@@ -422,3 +422,7 @@ html.phone .msRow .txAv { width: 40px; height: 40px; font-size: 20px; margin-rig
 html.phone .msRow .tx { min-width: 0; flex: 1; } html.phone .msRow .tx b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } html.phone .msEmpty { color: #9aa0a8; font-size: 14px; }
 html.phone .msThread .txHd { border-radius: 16px; margin-bottom: 6px; } html.phone .msThread .txList { overflow: visible; padding: 4px 2px 10px; }
 html.phone #ib .msRow .tx small, html.phone #ib .msRow .tx b { display: block; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset; }
+/* 3D.390: one set of app icons (appTile) for the dock and More */
+html.phone .apT { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; }
+html.phone .moTile { overflow: visible; } html.phone .moTile .apT { border-radius: 14px; }
+html.glass.phone #lmenu .lm .dkI .apT svg, html.phone .moTile .apT svg { display: block; }
