@@ -5,7 +5,7 @@
 //    the scrap is paid; OK closes it; no second card for the outcome;
 //  - everything said is kept (S.fac.toll.msgs) and the next time the thread opens it shows the earlier messages under a day;
 //  - 3D.389: they write several short texts like a real chat, your choice shows what you text with its cost under it, every no gets an answer;
-//    the old look keeps the old card.
+//    More → Messages lists the threads and opens the whole history; the old look keeps the old card.
 // Pictures: runs/ui_samples/texts_<size>.png, texts_reply.png, texts_history.png.
 const Q = require('./lib'); const path = require('path'); const out = path.join(__dirname, '../../runs/ui_samples');
 let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.log('  FAIL ' + m); try { require('fs').appendFileSync('/tmp/texts_fail.txt', m + '\n'); } catch (e) {} } };
@@ -53,6 +53,16 @@ const box = (p) => p.evaluate(() => { const b = document.querySelector('#eventMo
       await p.click('.txO[data-i="2"]'); await waitO(p);
       const g2 = await box(p); ok(g2 && /^Not today, sorry\.$/.test(g2.me[g2.me.length - 1].t) && /safe travels/.test(g2.them[g2.them.length - 1].t), `phone: Greenwater answers a no: ${g2 && JSON.stringify(g2.them.slice(-1))}`);
       await p.click('.txOk'); await p.waitForTimeout(300); ok(await p.evaluate(() => !document.querySelector('#eventModal .txBox')), 'phone: OK did not close Greenwater');
+      /* 3D.389: More → Messages lists the threads, newest first; a row opens the whole thread */
+      await clear(p); await p.evaluate(() => { ZH.closeP(); ZH.showMore(); }); await p.waitForTimeout(400); await p.click('#moMsg'); await p.waitForTimeout(500);
+      const ms = await p.evaluate(() => ({ t: document.getElementById('it').textContent, back: document.getElementById('pBack').dataset.t, rows: [...document.querySelectorAll('#ib .msRow')].map((r) => ({ t: r.innerText.replace(/\n/g, ' | '), h: r.getBoundingClientRect().height })) }));
+      await p.screenshot({ path: path.join(out, 'texts_messages.png') });
+      ok(ms.t === 'Messages' && ms.back === 'More' && ms.rows.length === 2 && /Greenwater/.test(ms.rows[0].t) && /Toll Kings/.test(ms.rows[1].t) && ms.rows.every((r) => r.h >= 44), `phone: Messages: ${JSON.stringify(ms)}`);
+      await p.click('.msRow[data-k="toll"]'); await p.waitForTimeout(500);
+      const th = await p.evaluate(() => ({ back: document.getElementById('pBack').dataset.t, them: document.querySelectorAll('#ib .txB.them').length, me: document.querySelectorAll('#ib .txB.me').length, head: document.querySelector('#ib .txHd').innerText }));
+      await p.screenshot({ path: path.join(out, 'texts_thread.png') });
+      ok(th.back === 'Messages' && /Toll Kings/.test(th.head) && th.me === 2 && th.them >= 13, `phone: the Toll Kings' thread: ${JSON.stringify(th)}`);
+      await p.evaluate(() => document.getElementById('pBack').click()); await p.waitForTimeout(400); ok(await p.evaluate(() => document.querySelectorAll('#ib .msRow').length === 2), 'phone: back to Messages');
       /* the old look keeps the old card */
       await clear(p); await p.evaluate(() => { ZH.OPTS.look = 'glass'; ZH.saveOpts && ZH.saveOpts(); ZH.applyLook && ZH.applyLook(); ZH.fac('toll').next = 0; ZH.STORY.toll1.run(); }); await p.waitForTimeout(400);
       ok(await p.evaluate(() => !document.querySelector('.txBox') && /THE TOLL KINGS|Toll Kings/i.test(document.querySelector('#eventModal').innerText)), 'phone: the old look lost its card');
