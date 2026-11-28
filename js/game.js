@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.393', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.394', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -1482,11 +1482,60 @@ function critStrip(text, icon) {
 const newsKey = (t) => (typeof t === 'object' ? t.t : t).replace(/[\d,.]+/g, '#').toLowerCase();
 function banner(t, who) {
   if (SVT) return;   /* 3D.200 the Survivor test page shows the survivor and nothing else */
+  if (phoneOn()) return notif(t, who);   /* 3D.394 notifications from the top */
   if ((who)) t = { t, who };
   const k = newsKey(t);
   if (bannerOn && bannerOn.k === k) { bannerOn.n++; bannerOn.show(t); return; }   /* the same news again while it is showing: count it */
   const q = bannerQ.find((x) => x.k === k); if (q) { q.t = t; q.n++; return; }
   bannerQ.push({ t, k, n: 1 }); if (bannerQ.length > 4) bannerQ.shift(); nextBanner();
+}
+/* 3D.394 (W249, idea 2; owner, 28 Nov: "A with C is good"): in the phone look the news drops from the top like the phone's notifications:
+   dark glass, the app's icon (or the person's picture with the app's icon on its corner), the app's name and "now", a bold title, one line;
+   several stack with "N more"; each goes after about 4 s; a tap opens the app it came from, a swipe up puts them all away; the same news again
+   counts up (×2) instead of stacking. */
+const NF = { list: [] };
+const NF_APP = { people: 'People', explore: 'Explore', town: 'Town', build: 'Build', moMsg: 'Messages', moFm: 'Moth FM', moJobs: 'Jobs', moGuide: 'Guide', moSet: 'Settings', moMem: 'Memories', moLog: 'Event log' };
+function nfApp(t, who) {
+  if (who) return 'people'; const s = t.toLowerCase();
+  if (/toll kings|greenwater|foundry|quarantine|helix|faction|ally|allies/.test(s)) return 'moMsg';
+  if (/radio|moth|broadcast/.test(s)) return 'moFm';
+  if (/lead|squad|trip|stronghold|raid|scout|expedition|explor/.test(s)) return 'explore';
+  if (/built|build|upgrad|repair|wall|gate|burn|fire|trap|construct|demolish/.test(s)) return 'build';
+  if (/down|hurt|bleed|died|dead|lost|joined|newcomer|left the|sick|bitten|wound|heal|promot|level \d+ (farmer|guard|builder)/.test(s) || S.sv.some((q) => s.includes(q.name.toLowerCase()))) return 'people';
+  if (/worker|job|workplace/.test(s)) return 'moJobs';
+  return 'town';
+}
+function nfCase(x) {   /* SHOUTED news back to a sentence, names kept */
+  if (!(x === x.toUpperCase() && /[A-Z]{3}/.test(x))) return x;
+  let o = x.charAt(0) + x.slice(1).toLowerCase();
+  const names = S.sv.map((q) => q.name).concat(Object.values(FACTIONS || {}).map((f) => f.name), ['Haven', 'Greenwater', 'Toll Kings', 'Foundry', 'Helix', 'Moth', 'Route 9'], Object.values(DEFS).map((d) => d.name));
+  for (const n of names) if (n && n.length > 2) o = o.replace(new RegExp('\\b' + n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), n);
+  return o.replace(/\bi\b/g, 'I');
+}
+function notif(t, who) {
+  if (typeof t === 'object' && t) { who = t.who; t = t.t; }
+  let txt = String(t || '').replace(/^\s*(\p{Extended_Pictographic}️?|[☠★⚠⚙⏸🕯])\s*/u, '').trim(); if (!txt) return;
+  const cut = txt.match(/^(.{4,60}?)(?:\s·\s|:\s|!\s)(.+)$/); let title = nfCase(cut ? cut[1] : txt).replace(/!$/, ''), body = cut ? nfCase(cut[2]) : '';
+  const app = nfApp(txt, who), q = NF.list.find((x) => x.title === title && x.app === app);
+  if (q) { q.n++; q.body = body || q.body; q.at = performance.now(); if (NF.list[0] !== q) q.shown = false; NF.list.splice(NF.list.indexOf(q), 1); NF.list.unshift(q); }
+  else { NF.list.unshift({ app, title, body, who: who || null, n: 1, at: performance.now() }); if (NF.list.length > 5) NF.list.length = 5; }
+  nfRender(); clearTimeout(NF.t); NF.t = setTimeout(nfTick, 600);
+}
+function nfTick() { const now = performance.now(); const before = NF.list.length; NF.list = NF.list.filter((x, i) => now - x.at < (i ? 4600 : 4200)); if (NF.list.length !== before) nfRender(); if (NF.list.length) NF.t = setTimeout(nfTick, 400); }
+function nfOpen(app) {
+  NF.list = []; nfRender(); if (cardOpen()) return;
+  try { ({ people: showSurvivors, explore: () => $('mExp').click(), town: () => $('mTown').click(), build: showBuild, moMsg: () => showMessages(), moFm: () => showFM(null), moJobs: () => showJobs(), moGuide: () => showGuide(), moSet: () => showSettings(), moMem: () => showMemories(), moLog: () => showLog() }[app] || (() => {}))(); } catch (e) { /* the app may not be ready */ }
+}
+function nfRender() {
+  let box = $('nfBox'); if (!box) { box = document.createElement('div'); box.id = 'nfBox'; document.body.appendChild(box);
+    let y0 = null; box.addEventListener('pointerdown', (e) => { y0 = e.clientY; }); box.addEventListener('pointerup', (e) => { if (y0 != null && y0 - e.clientY > 24) { NF.list = []; nfRender(); } else if (y0 != null) { const c = e.target.closest('.nfC'); if (c) nfOpen(c.dataset.app); } y0 = null; }); }
+  const L = NF.list;
+  box.innerHTML = L.slice(0, 3).map((x, i) => { const q = x.who != null && (typeof x.who === 'object' ? x.who : S.sv.find((s) => s.id === x.who));
+    const pic = q && window.ZH3D && ZH3D.portrait ? ZH3D.portrait(q) : null;
+    const fresh = !i && !x.shown; if (!i) x.shown = true;
+    return `<div class="nfC${i ? ' bk' + i : ''}${fresh ? ' in' : ''}" data-app="${x.app}"><span class="nfI">${pic ? `<img src="${pic}" alt=""><span class="nfMini">${appTile(x.app, 11)}</span>` : appTile(x.app, 26)}</span><span class="nfX"><span class="nfH"><span>${NF_APP[x.app] || 'Haven'}</span><span>now</span></span><b>${esc(x.title)}${x.n > 1 ? ` <i>×${x.n}</i>` : ''}</b>${x.body ? `<span class="nfB">${esc(x.body)}</span>` : ''}</span></div>`; }).reverse().join('')
+    + (L.length > 1 ? `<div class="nfMore">${L.length - 1} more</div>` : '');
+  box.classList.toggle('on', !!L.length);
 }
 function nextBanner() {
   const fx = nStack('nTop'); if (bannerOn || !bannerQ.length || !fx) return; if (cardOpen()) { clearTimeout(nextBanner.wt); nextBanner.wt = setTimeout(nextBanner, 600); return; }   /* news waits while a card is open */

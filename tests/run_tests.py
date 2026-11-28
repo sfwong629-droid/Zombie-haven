@@ -101,7 +101,7 @@ async def t_alerts(br, port, t):   # V2.34: notification levels, breach alerts, 
       const hub=()=>{ZH.alertsTick();ZH.advisorUpdate();if(!document.getElementById('alertPop'))document.getElementById('alertBtn').click()};   /* the alerts live in the Needs you list behind the alert button now */
       for(let x=8;x<=13;x++)ZH.tryWall(x,11,'wood');const wl=ZH.Wd.wallAt(W,10,11);
       const n0=S.log.length;ZH.note('routine','test routine line');out.routineToast=document.querySelectorAll('#fx .toast').length;out.routineLog=S.log[S.log.length-1].l;
-      for(let i=0;i<5;i++)ZH.note('important','IMPORTANT '+i);out.toasts=document.querySelectorAll('#fx .toast').length;
+      for(let i=0;i<5;i++)ZH.note('important','IMPORTANT '+i);out.toasts=document.querySelectorAll('#fx .toast').length+document.querySelectorAll('#nfBox .nfC:not(.bk1):not(.bk2)').length;   /* 3D.394: in the phone look they stack, one in front */
       ZH.OPTS.autoSlow=true;document.getElementById('btnSpeed').click();out.sp0=ZH.simSpeed;
       ZH.spawn(10,9,'walker');ZH.wallBroken(wl);out.sp1=ZH.simSpeed;ZH.wallBroken(wl);hub();
       out.keys=[...ZH.alerts.keys()];out.rows=document.querySelectorAll('#alertPop .apRow').length;out.text=document.querySelector('#alertPop .apT').textContent;
