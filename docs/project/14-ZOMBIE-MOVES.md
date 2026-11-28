@@ -42,8 +42,8 @@ The backstories are a first draft from the Art chat. **The Story chat owns the s
 Their tricks were approved on 17 Nov; the move shows the trick.
 | Zombie | Who it was (draft) | Signature move (and the trick it shows) |
 |---|---|---|
-| Leaper | A Sunnyside street kid: free school meals from a tin, every day | **Jump**: crouches, springs over a fence or low wall, lands in a crouch; attack: a **pounce** onto the target. `zmove_leaper.py pounce` approved 25 Nov; the jump `zmove_leaper.py jump` v2 (the trailing leg tucked under, not out to the side), waiting |
-| Digger | A quarry man who ate his lunch tin underground for ten years | **Dig**: both arms scoop, the body sinks into the ground; **burst**: comes up through the mound with both arms overhead and brings them down |
+| Leaper | A Sunnyside street kid: free school meals from a tin, every day | **Jump**: crouches, springs over a fence or low wall, lands in a crouch; attack: a **pounce** onto the target. `zmove_leaper.py pounce` approved 25 Nov; the jump `zmove_leaper.py jump` v2 (the trailing leg tucked under, not out to the side), approved 28 Nov |
+| Digger | A quarry man who ate his lunch tin underground for ten years | **Dig**: both arms scoop, the body sinks into the ground; **burst**: comes up through the mound with both arms overhead and brings them down. Previews `zmove_digger.py dig` and `burst`, 28 Nov |
 | Splitter | A Helix subject given two different doses, one down each side | **Splits in half** when killed: the body tears along the seam and the two halves hop and drag themselves on (needs the model cut into two); alive, the two arms strike out of time with each other |
 | Stag | A deer that dug up the tins people buried | **Charge**: head down, a straight run, a toss of the antlers; its run is the Dog's gallop (3D.256). `zmove_stag.py charge`, approved 25 Nov |
 | Bile Spewer | A vat cleaner at the plant, who breathed concentrate for years | **Spray**: bends double, hands on the belly, a stream swept from side to side |
@@ -102,6 +102,7 @@ One move that is not an attack for every zombie, played every now and then or be
 - Mutant: an arm crack: each arm pulled straight across the chest by the other hand with a jerk, then the neck snapped to each side (`zmove_mutant.py crack`; approved 25 Nov: "crack is ok").
 - Stag (new kind): scrapes the ground twice with a front hoof, then snorts and tosses its head (`zmove_stag.py scrape`; approved 25 Nov).
 - Leaper (new kind): a gargoyle crouch, knuckles on the ground, the head darting, two small hops (`zmove_leaper.py perch`; approved 25 Nov).
+- Digger (new kind): brushes the dirt off each shoulder, then shakes his head hard like a wet dog (preview `zmove_digger.py brush`, 28 Nov).
 
 ## The Alpha's blade (23 Nov, W265 to W267)
 The Alpha is the second zombie allowed a weapon: a big rusted blade (`tools/art/b3d/alpha_blade.py`, approved W266). He stands with it hanging, tip on the ground; walks and runs dragging it behind, the left arm swinging at his side; his attack lifts it slowly from the drag and swings it quickly across; he waves the others on with it. Previews in `tools/art/b3d/zmove_alpha.py`; **approved 23 Nov** (owner: "Looks good").
