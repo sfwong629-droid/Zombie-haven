@@ -24,13 +24,51 @@ const legSel = { vets: null, heir: null, perks: [] };
 /* 3D.145 the trophy shelf: what this town has beaten, and the best towns on this device */
 function trophyList() {
   const out = [], F = S.fac || {};
-  for (const k of ['toll', 'green', 'foundry', 'quar', 'helix', 'hollow']) { const D = SH_DEFS['raid_' + k], b = D && D.areas[2] && D.areas[2].boss, n = (F[k] || {}).beaten || 0; out.push({ icon: '👑', name: b ? b.name : FACTIONS[k].name, sub: FACTIONS[k].name, n, how: (F[k] || {}).met ? 'Beat the leader of ' + FACTIONS[k].name : 'A faction you have not met yet' }); }
-  for (const k of ['sh_spring', 'sh_summer', 'sh_autumn', 'sh_winter']) { const n = (S.trophies || []).filter((t) => t.k === k).length; out.push({ icon: EXP_DEFS[k].icon, name: EXP_DEFS[k].name, sub: 'Seasonal stronghold', n, how: 'Clear it in its season' }); }
-  out.push({ icon: '☠️', name: 'Mutant Bosses', sub: 'Put down', n: S.bossKills || 0, how: 'Kill a Mutant Boss' });
-  out.push({ icon: '🏅', name: 'Crises', sub: 'Weathered', n: S.medals || 0, how: 'Come through a town crisis' });
-  out.push({ icon: '🏴', name: 'Banners', sub: 'Earned', n: (S.banners || []).length, how: 'Earn a Banner' });
-  out.push({ icon: '🚚', name: 'The Convoy', sub: S.won ? 'Day ' + S.won.day + ' · score ' + S.won.score : 'The ending', n: S.won ? 1 : 0, how: 'Call the convoy and hold out' });
+  for (const k of ['toll', 'green', 'foundry', 'quar', 'helix', 'hollow']) { const D = SH_DEFS['raid_' + k], b = D && D.areas[2] && D.areas[2].boss, n = (F[k] || {}).beaten || 0; out.push({ k, icon: '👑', name: b ? b.name : FACTIONS[k].name, sub: FACTIONS[k].name, n, how: (F[k] || {}).met ? 'Beat the leader of ' + FACTIONS[k].name : 'A faction you have not met yet' }); }
+  for (const k of ['sh_spring', 'sh_summer', 'sh_autumn', 'sh_winter']) { const n = (S.trophies || []).filter((t) => t.k === k).length; out.push({ k, icon: EXP_DEFS[k].icon, name: EXP_DEFS[k].name, sub: 'Seasonal stronghold', n, how: 'Clear it in its season' }); }
+  out.push({ k: 'boss', icon: '☠️', name: 'Mutant Bosses', sub: 'Put down', n: S.bossKills || 0, how: 'Kill a Mutant Boss' });
+  out.push({ k: 'crisis', icon: '🏅', name: 'Crises', sub: 'Weathered', n: S.medals || 0, how: 'Come through a town crisis' });
+  out.push({ k: 'banner', icon: '🏴', name: 'Banners', sub: 'Earned', n: (S.banners || []).length, how: 'Earn a Banner' });
+  out.push({ k: 'convoy', icon: '🚚', name: 'The Convoy', sub: S.won ? 'Day ' + S.won.day + ' · score ' + S.won.score : 'The ending', n: S.won ? 1 : 0, how: 'Call the convoy and hold out' });
   return out;
+}
+/* 3D.399 (W249, phone idea 11; owner, 28 Nov: "then do the wallet" … "Do it like you suggested"): More → Wallet, the trophies as cards in a stack
+   like the phone's Wallet (earned first, the rest dark with a lock); a tap opens a card: its front, the story (facts first, joke last) and when it was won. */
+const WAL_COL = { toll: '#b8862b', green: '#4f9c5e', foundry: '#8a5a3b', quar: '#5a6a7a', helix: '#6b5aa6', hollow: '#4a4a58', sh_spring: '#7aa35a', sh_summer: '#d0a038', sh_autumn: '#c46a2e', sh_winter: '#5f86b8', boss: '#b0303a', crisis: '#d9922b', banner: '#4a82c8', convoy: '#3fa39a' };
+const WAL_JOKE = { toll: 'Nobody has paid a toll since.', green: 'The compost heap is under new management.', foundry: 'The furnace is cold. So is he.', quar: 'Quarantine lifted. Permanently.', helix: 'His lab coat is a dish towel now.', hollow: 'The Hollow is a little hollower.',
+  sh_spring: 'The flowers were not impressed.', sh_summer: 'Hot work. Nobody asked for sunscreen.', sh_autumn: 'They fell like leaves.', sh_winter: 'Cold out there. Colder for them.',
+  boss: 'They were big. Not big enough.', crisis: 'The town is still standing. Mostly.', banner: 'Flags are cheap. These were not.', convoy: 'The convoy came. Somebody has to drive it.' };
+const WAL_LOCK = '<svg class="wlLk" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-label="Locked"><rect x="5" y="11" width="14" height="10" rx="2.2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>';
+function walStory(t) {
+  const F = (S.fac || {})[t.k]; if (!t.n) return t.how + '.';
+  if (FACTIONS[t.k]) return `${t.name} led ${FACTIONS[t.k].name}. Beaten ${t.n === 1 ? 'once' : t.n + ' times'}. ${WAL_JOKE[t.k]}`;
+  if (EXP_DEFS[t.k]) return `${t.name}, cleared in its season ${t.n === 1 ? 'once' : t.n + ' times'}. ${WAL_JOKE[t.k]}`;
+  if (t.k === 'boss') return `${t.n} Mutant Boss${t.n > 1 ? 'es' : ''} put down. ${WAL_JOKE.boss}`;
+  if (t.k === 'crisis') return `${t.n} town crisis${t.n > 1 ? 'es' : ''} weathered. ${WAL_JOKE.crisis}`;
+  if (t.k === 'banner') return `${t.n} Banner${t.n > 1 ? 's' : ''} raised over the Haven. ${WAL_JOKE.banner}`;
+  if (t.k === 'convoy') return `The convoy was called and the Haven held out. ${WAL_JOKE.convoy}`;
+  return t.how + '.';
+}
+function walWon(t) {   /* the days we know; otherwise the count */
+  if (!t.n) return '';
+  if (EXP_DEFS[t.k]) return (S.trophies || []).filter((x) => x.k === t.k).map((x) => 'Day ' + x.day).join(' · ');
+  if (t.k === 'banner') return (S.banners || []).map((b) => 'Day ' + b.day + ' · ' + ((BANNER_ROUTES[b.route] || {}).name || 'Banner')).join('<br>');
+  if (t.k === 'convoy' && S.won) return 'Day ' + S.won.day + ' · score ' + S.won.score;
+  return '×' + t.n;
+}
+function walOrder() { const L = trophyList(); return L.filter((t) => t.n).concat(L.filter((t) => !t.n)); }
+function walPass(t, i, cls) { const c = WAL_COL[t.k] || '#555'; if (FACTIONS[t.k] && !((S.fac || {})[t.k] || {}).met) t = { ...t, name: '???', sub: '???' };   /* owner, 28 Nov: "Yes show ???" for factions not met */
+  return `<div class="wlPass${t.n ? '' : ' lock'}${cls ? ' ' + cls : ''}" role="button" data-i="${i}" style="--wc:${c}"><div class="wlTop"><span class="wlIc">${t.icon}</span><span class="wlNm"><b>${esc(t.name)}</b><small>${esc(t.sub)}</small></span><span class="wlN">${t.n ? '×' + t.n : WAL_LOCK}</span></div><div class="wlHow">${esc(t.how)}</div></div>`; }
+function showWallet(back) {
+  endBuildMode(true); closeP(); const L = walOrder(), got = L.filter((t) => t.n).length;
+  $('ib').innerHTML = `<div class="wlSheet"><div class="wlCnt">${got} of ${L.length} earned</div><div class="wlStack">${L.map((t, i) => walPass(t, i, i === L.length - 1 ? 'open' : '')).join('')}</div></div>`;
+  $('ib').querySelectorAll('.wlPass').forEach((c) => { c.onclick = () => showWalletCard(+c.dataset.i, back); });
+  showPanel('Wallet', back || null); if (back) $('pBack').dataset.t = 'More';
+}
+function showWalletCard(i, back) {
+  endBuildMode(true); closeP(); const t = walOrder()[i]; if (!t) return showWallet(back); const w = walWon(t);
+  $('ib').innerHTML = `<div class="wlSheet wlOne">${walPass(t, i, 'big')}<div class="wlBack"><b>The story</b>${esc(walStory(t))}</div>${w ? `<div class="wlBack"><b>Won</b>${w}</div>` : ''}</div>`;
+  showPanel('Wallet', () => showWallet(back)); $('pBack').dataset.t = 'Wallet';
 }
 const trophyCount = () => trophyList().filter((t) => t.n > 0).length;
 function trophyCard() { const L = trophyList(); return `<div class="card" style="margin-top:8px"><b>🏆 Trophy shelf</b> <span class="sm">${L.filter((t) => t.n > 0).length}/${L.length}</span><div style="display:flex;gap:3px;flex-wrap:wrap;margin:5px 0">${L.map((t) => `<span style="font-size:20px;opacity:${t.n ? 1 : .25};filter:${t.n ? 'none' : 'grayscale(1)'}">${t.icon}</span>`).join('')}</div><button class="act" id="trOpen" style="width:100%">Open the shelf</button></div>`; }

@@ -550,3 +550,23 @@ html.phone #holdBox .hR:last-child { border-bottom: 0; } html.phone #holdBox .hR
 html.phone #holdBox .hR b { display: block; font-size: 16.5px; font-weight: 500; } html.phone #holdBox .hR small { display: block; font-size: 12.5px; color: rgba(255, 255, 255, .55); margin-top: 1px; }
 html.phone #holdBox .hR.red { color: #ff6961; }
 html.glass.phone #lmenu .lm { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+/* 3D.399 Wallet: the trophies as a stack of cards */
+html.phone .wlSheet { padding: 4px 2px 14px; color: #fff; }
+html.phone .wlCnt { font-size: 13px; color: rgba(255,255,255,.6); margin: 0 4px 10px; }
+html.phone .wlPass { position: relative; border-radius: 16px; padding: 14px 16px 22px; background: linear-gradient(160deg, var(--wc), color-mix(in srgb, var(--wc) 75%, #000)); box-shadow: 0 -2px 8px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.22); overflow: hidden; cursor: pointer; min-height: 44px; }
+html.phone .wlPass::before { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 80% at 100% 0, rgba(255,255,255,.2), transparent 60%); pointer-events: none; }
+html.phone .wlPass.lock { background: #2a2b30; color: rgba(255,255,255,.5); }
+html.phone .wlPass.lock .wlIc { filter: grayscale(1); opacity: .45; }
+html.phone .wlTop { display: flex; align-items: center; gap: 10px; position: relative; }
+html.phone .wlIc { font-size: 20px; width: 34px; height: 34px; flex: none; border-radius: 9px; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; }
+html.phone .wlNm { flex: 1; min-width: 0; } html.phone .wlNm b { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } html.phone .wlNm small { display: block; font-size: 12px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.phone .wlN { font-size: 17px; font-weight: 700; flex: none; }
+html.phone .wlHow { position: relative; font-size: 13px; opacity: .85; margin-top: 14px; }
+html.phone .wlStack .wlPass { margin-top: -54px; } html.phone .wlStack .wlPass:first-child { margin-top: 0; }
+html.phone .wlStack .wlPass:not(.open) .wlNm small { visibility: hidden; }
+html.phone .wlStack .wlPass.open { margin-top: -40px; padding-bottom: 40px; }
+html.phone .wlStack .wlPass:active { transform: translateY(-4px); }
+html.phone .wlPass.big { padding: 18px 16px 26px; cursor: default; } html.phone .wlPass.big .wlHow { font-size: 15px; margin-top: 20px; }
+html.phone .wlBack { margin-top: 12px; border-radius: 16px; background: rgba(255,255,255,.08); padding: 14px 16px; font-size: 14px; line-height: 1.45; color: rgba(255,255,255,.88); }
+html.phone .wlBack b { display: block; font-size: 12px; text-transform: uppercase; opacity: .6; margin-bottom: 4px; letter-spacing: .02em; }

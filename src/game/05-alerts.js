@@ -53,7 +53,7 @@ function banner(t, who) {
    several stack with "N more"; each goes after about 4 s; a tap opens the app it came from, a swipe up puts them all away; the same news again
    counts up (×2) instead of stacking. */
 const NF = { list: [] };
-const NF_APP = { people: 'People', explore: 'Explore', town: 'Town', build: 'Build', moMsg: 'Messages', moFm: 'Moth FM', moJobs: 'Jobs', moGuide: 'Guide', moSet: 'Settings', moMem: 'Memories', moLog: 'Event log' };
+const NF_APP = { people: 'People', explore: 'Explore', town: 'Town', build: 'Build', moMsg: 'Messages', moFm: 'Moth FM', moJobs: 'Jobs', moGuide: 'Guide', moSet: 'Settings', moMem: 'Memories', moWal: 'Wallet', moLog: 'Event log' };
 function nfApp(t, who) {
   if (who) return 'people'; const s = t.toLowerCase();
   if (/toll kings|greenwater|foundry|quarantine|helix|faction|ally|allies/.test(s)) return 'moMsg';
@@ -83,7 +83,7 @@ function notif(t, who) {
 function nfTick() { const now = performance.now(); const before = NF.list.length; NF.list = NF.list.filter((x, i) => now - x.at < (i ? 4600 : 4200)); if (NF.list.length !== before) nfRender(); if (NF.list.length) NF.t = setTimeout(nfTick, 400); }
 function nfOpen(app) {
   NF.list = []; nfRender(); if (cardOpen()) return;
-  try { ({ people: showSurvivors, explore: () => $('mExp').click(), town: () => $('mTown').click(), build: showBuild, moMsg: () => showMessages(), moFm: () => showFM(null), moJobs: () => showJobs(), moGuide: () => showGuide(), moSet: () => showSettings(), moMem: () => showMemories(), moLog: () => showLog() }[app] || (() => {}))(); } catch (e) { /* the app may not be ready */ }
+  try { ({ people: showSurvivors, explore: () => $('mExp').click(), town: () => $('mTown').click(), build: showBuild, moMsg: () => showMessages(), moFm: () => showFM(null), moJobs: () => showJobs(), moGuide: () => showGuide(), moSet: () => showSettings(), moMem: () => showMemories(), moWal: () => showWallet(), moLog: () => showLog() }[app] || (() => {}))(); } catch (e) { /* the app may not be ready */ }
 }
 function nfRender() {
   let box = $('nfBox'); if (!box) { box = document.createElement('div'); box.id = 'nfBox'; document.body.appendChild(box);
