@@ -1,0 +1,36 @@
+// tools/qa/lock_mock.js — UI chat, 28 Nov (idea 5, a lock screen when the game opens; "many mock up for approval"). Mockup only, over the real town.
+// The town is the wallpaper (HUD hidden); the game's day and hour large like the phone's clock; what happened while you were away as notifications;
+// swipe up to play. A: the phone's own lock screen (the date small, the time huge, the notifications stacked, Moth FM and camera in the corners);
+// B: like A with lock-screen widgets under the clock (food, water, people, walls); C: one "While you were away" summary card;
+// D: every notification listed and grouped by app. Pictures: runs/ui_samples/lock_<A..D>.png, lock_sheet.png.
+const Q = require('./lib'); const path = require('path'); const out = path.join(__dirname, '../../runs/ui_samples');
+(async () => { const b = await Q.launch(); const p = await Q.page(b, { w: 390, h: 844, look: '', expose: 'appTile, pplFace' }); await Q.newGame(p);
+  for (let k = 0; k < 8; k++) { await p.evaluate(() => { try { ZH.S.introOff = true; } catch (e) {} const x = document.querySelector('#eventModal button:not(.tipMb)'); if (x) x.click(); }); await Q.clearCards(p); await p.waitForTimeout(150); }
+  await p.waitForTimeout(5500);
+  const T = await p.evaluate(() => ({ people: ZH.appTile('people', 26), explore: ZH.appTile('explore', 26), build: ZH.appTile('build', 26), town: ZH.appTile('town', 26), msg: ZH.appTile('moMsg', 26), fm: ZH.appTile('moFm', 26), nm: ZH.S.sv[1].name, nm2: ZH.S.sv[2].name }));
+  await p.addStyleTag({ content: `#nfBox,#lpIsl,#stStrip,#hud,#top,#lmenu,#nBot,#plaque,#mission,#renChip,#bagBtn,#fx,#qcard,.hudR,#sideR{visibility:hidden!important}
+    .lkW{position:fixed;inset:0;z-index:9999;font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;color:#fff;visibility:visible!important}
+    .lkBg{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,30,.42),rgba(0,0,0,.08) 40%,rgba(0,0,0,.5));-webkit-backdrop-filter:blur(7px) saturate(1.1);backdrop-filter:blur(7px) saturate(1.1)}
+    .lkD{position:absolute;left:0;right:0;top:62px;text-align:center;font-size:19px;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+    .lkT{position:absolute;left:0;right:0;top:84px;text-align:center;font-size:96px;font-weight:700;letter-spacing:-2px;line-height:1;text-shadow:0 2px 14px rgba(0,0,0,.35)}
+    .lkN{position:absolute;left:10px;right:10px;bottom:150px;display:flex;flex-direction:column;gap:8px}
+    .n{display:flex;gap:11px;align-items:center;padding:11px 13px;border-radius:22px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6)}
+    .n .ic{position:relative;flex:none;width:38px;height:38px;border-radius:9px;overflow:hidden}.n .ic .apT svg{width:26px;height:26px}.n .tx{flex:1;min-width:0}
+    .n .hd{display:flex;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.65);text-transform:uppercase}.n b{font-weight:600;font-size:15px;display:block}.n span.bd{font-size:14.5px;color:rgba(255,255,255,.88)}
+    .lkC{position:absolute;bottom:52px;width:50px;height:50px;border-radius:25px;background:rgba(40,40,44,.55);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center}
+    .lkC.l{left:46px}.lkC.r{right:46px}.lkSw{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:14px;font-weight:600;color:rgba(255,255,255,.85)}.lkSw:after{content:'';display:block;width:134px;height:5px;border-radius:3px;background:#fff;margin:10px auto 0}
+    .wg{position:absolute;left:0;right:0;top:194px;display:flex;justify-content:center;gap:12px}.wg div{width:62px;height:62px;border-radius:31px;background:rgba(40,40,44,.45);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:17px;font-weight:700}.wg small{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.7)}
+    .grp{font-size:20px;font-weight:700;margin:6px 6px 0}` });
+  const n = (ic, app, t, bd, when = 'now') => `<div class="n"><span class="ic">${ic}</span><span class="tx"><span class="hd"><span>${app}</span><span>${when}</span></span><b>${t}</b><span class="bd">${bd}</span></span></div>`;
+  const cam = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+  const rad = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8.5" width="18" height="11.5" rx="2.4"/><path d="M7 8.5l9.6-4.6"/><circle cx="8.6" cy="14.2" r="3"/><path d="M14 12.4h4.2M14 15h4.2"/></svg>';
+  const head = `<div class="lkBg"></div><div class="lkD">Day 8 · Autumn</div><div class="lkT">08:00</div>`, foot = `<div class="lkC l">${rad}</div><div class="lkC r">${cam}</div><div class="lkSw">Swipe up to play</div>`;
+  const V = {
+    A: `<div class="lkW">${head}<div class="lkN">${n(T.people, 'People', `${T.nm} joined`, 'A Scavenger found at the gate.', '2h ago')}${n(T.build, 'Build', 'Rain Barrel built', 'Water +6 a day.', '1h ago')}${n(T.msg, 'Messages', 'Toll Kings', 'hey neighbour 👋 Toll Kings here', 'now')}</div>${foot}</div>`,
+    B: `<div class="lkW">${head}<div class="wg"><div>14<small>Food</small></div><div>14<small>Water</small></div><div>6<small>People</small></div><div>92%<small>Walls</small></div></div><div class="lkN">${n(T.people, 'People', `${T.nm} joined`, 'A Scavenger found at the gate.', '2h ago')}${n(T.msg, 'Messages', 'Toll Kings', 'hey neighbour 👋 Toll Kings here', 'now')}</div>${foot}</div>`,
+    C: `<div class="lkW">${head}<div class="lkN"><div class="n" style="flex-direction:column;align-items:stretch;gap:8px;padding:14px 16px"><span class="hd" style="display:flex;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.65)"><span>WHILE YOU WERE AWAY</span><span>3 h</span></span>
+      <b style="font-size:17px">18 h of shifts kept</b><span style="font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.88)">🍖 +12 · 💧 +9 · 🪵 +20<br>${T.nm} joined · Rain Barrel built<br>Toll Kings texted you</span></div></div>${foot}</div>`,
+    D: `<div class="lkW">${head}<div class="lkN" style="bottom:120px"><div class="grp">Notifications</div>${n(T.people, 'People', `${T.nm} joined`, 'A Scavenger found at the gate.', '2h ago')}${n(T.people, 'People', `${T.nm2} is hurt`, 'Bandaged at the Camp.', '1h ago')}${n(T.build, 'Build', 'Rain Barrel built', 'Water +6 a day.', '1h ago')}${n(T.explore, 'Explore', 'New lead: the gas station', 'Fuel and tools. Low risk.', '40m ago')}${n(T.msg, 'Messages', 'Toll Kings', 'hey neighbour 👋 Toll Kings here', 'now')}</div><div class="lkSw">Swipe up to play</div></div>` };
+  for (const [k, h] of Object.entries(V)) { await p.evaluate((h) => { document.querySelectorAll('.lkW').forEach((x) => x.remove()); document.body.insertAdjacentHTML('beforeend', h); }, h); await p.waitForTimeout(300); await p.screenshot({ path: path.join(out, `lock_${k}.png`) }); }
+  await b.close(); console.log('ok');
+})();
