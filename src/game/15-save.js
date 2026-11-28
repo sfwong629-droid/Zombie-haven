@@ -68,6 +68,52 @@ function showMore() {
   showPanel('MORE');
 }
 const DAYMUS = { meadow: ['Meadow', 'A storybook waltz: flute over harp and strings'], morning: ['Morning Road', 'A walking tune: guitar and flute'], fair: ['Village Fair', 'Accordion over plucked strings'], rain: ['Rain on the Roof', 'Slow piano, then cello'], harvest: ['Harvest Song', 'Oboe and harp, rolling'], mix: ['Mix', 'A different tune each day'], slow: ['Slow mix', 'Only Meadow and Rain on the Roof'] };   /* Music chat: the Ghibli day tunes (owner-approved, 18 Nov) */
+/* 3D.396 (W249, idea 4; owner, 28 Nov: "A is ok but I like the icon in D better and D show what each of the items are"): Control Center,
+   pulled down from the right of the status strip (or tapped there): the phone's own layout (a dark blur, rounded tiles) with round, labelled
+   switches: Pause, Speed, Music, Sound; the day music with back and next; Night lights, Tips, Pictures, Save. A tap outside or a swipe up closes it.
+   Pause holds the game until it is switched off (the game also waits while Control Center is open). */
+let CC_PAUSE = false;
+const ccPaused = () => CC_PAUSE || !!(typeof document !== 'undefined' && document.getElementById('ccBox'));
+const CC_I = {
+  pause: '<rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="#fff" stroke="none"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="#fff" stroke="none"/>',
+  speed: '<path d="M4 6l7 6-7 6zM12 6l7 6-7 6z" fill="#fff" stroke="none"/>',
+  music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+  sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#fff"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" fill="#fff" stroke="none"/>',
+  tips: '<path d="M9 15.6c-1.8-1.3-3-3.4-3-5.7a6 6 0 0 1 12 0c0 2.3-1.2 4.4-3 5.7v1.8H9z"/><path d="M9.6 19.8h4.8"/>',
+  pics: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.6-3.6 3.4-5.6 7-5.6s6.4 2 7 5.6"/>',
+  save: '<path d="M12 4v10M7.5 10l4.5 4.5 4.5-4.5"/><path d="M5 17v2.5h14V17"/>',
+  prev: '<path d="M18 6l-8 6 8 6z" fill="#fff" stroke="none"/><path d="M7.5 6v12"/>', next: '<path d="M6 6l8 6-8 6z" fill="#fff" stroke="none"/><path d="M16.5 6v12"/>' };
+const ccIc = (k, px = 22) => `<svg viewBox="0 0 24 24" width="${px}" height="${px}" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CC_I[k]}</svg>`;
+function showCC() {
+  if (!phoneOn() || cardOpen()) return; endBuildMode(true); closeP(); let box = $('ccBox'); if (!box) { box = document.createElement('div'); box.id = 'ccBox'; document.body.appendChild(box); }
+  const m = window.SND ? SND.mode : 'off', dm = window.SND && SND.setDayMusic ? SND.dayMusic : null, D = dm && DAYMUS[dm];
+  const rb = (id, ic, label, on) => `<button class="ccB${on ? ' on' : ''}" id="${id}" aria-pressed="${!!on}"><span class="c">${ic}</span><span class="l">${label}</span></button>`;
+  box.innerHTML = `<div class="ccDim"></div><div class="ccG">`
+    + `<div class="ccT ccQ">${rb('ccPause', ccIc('pause'), CC_PAUSE ? 'Paused' : 'Pause', CC_PAUSE)}${rb('ccSpeed', `<b>${simSpeed}×</b>`, `Speed ${simSpeed}×`, simSpeed > 1)}${rb('ccMusic', ccIc('music'), 'Music', m === 'all')}${rb('ccSound', ccIc('sound'), 'Sound', m !== 'off')}</div>`
+    + `<div class="ccT ccNP">${D ? `<div class="np1"><span class="npI">${ccIc('music', 20)}</span><span class="npT"><b>${esc(D[0])}</b><small>Day music</small></span></div><div class="npC"><button id="ccPrev" aria-label="Previous tune">${ccIc('prev', 22)}</button><button id="ccNext" aria-label="Next tune">${ccIc('next', 22)}</button></div>` : '<div class="npT"><b>No music</b></div>'}</div>`
+    + `<div class="ccT ccRow">${rb('ccLights', ccIc('moon'), 'Night lights', !!OPTS.nightLights)}${rb('ccTips', ccIc('tips'), 'Tips', !!OPTS.advisor)}${rb('ccPics', ccIc('pics'), 'Pictures', OPTS.pics !== false)}${rb('ccSave', ccIc('save'), 'Save', false)}</div>`
+    + `</div><div class="ccGrab"></div>`;
+  const re = () => showCC(), snd = (mode) => { if (!window.SND) return; SND.unlock(); SND.setMode(mode); re(); };
+  $('ccPause').onclick = () => { CC_PAUSE = !CC_PAUSE; re(); };
+  $('ccSpeed').onclick = () => { $('btnSpeed').click(); re(); };
+  $('ccMusic').onclick = () => snd(m === 'all' ? 'sfx' : 'all'); $('ccSound').onclick = () => snd(m === 'off' ? 'sfx' : 'off');
+  const tune = (d) => { const k = Object.keys(DAYMUS), n = k[(k.indexOf(SND.dayMusic) + d + k.length) % k.length]; SND.setDayMusic(n); SND.unlock(); re(); };
+  if ($('ccPrev')) { $('ccPrev').onclick = () => tune(-1); $('ccNext').onclick = () => tune(1); }
+  $('ccLights').onclick = () => { OPTS.nightLights = !OPTS.nightLights; saveOpts(); re(); }; $('ccTips').onclick = () => { OPTS.advisor = !OPTS.advisor; saveOpts(); advisorUpdate(); re(); };
+  $('ccPics').onclick = () => { OPTS.pics = OPTS.pics === false; saveOpts(); re(); };
+  $('ccSave').onclick = () => { const ok = saveGame(); const l = $('ccSave').querySelector('.l'); l.textContent = ok ? 'Saved' : 'Not saved'; $('ccSave').classList.toggle('on', !!ok); };
+  let y0 = null; box.querySelector('.ccDim').onclick = closeCC; box.querySelector('.ccGrab').onclick = closeCC;
+  box.onpointerdown = (e) => { y0 = e.clientY; }; box.onpointerup = (e) => { if (y0 != null && y0 - e.clientY > 40) closeCC(); y0 = null; };
+}
+function closeCC() { const b = $('ccBox'); if (b) { b.classList.add('out'); setTimeout(() => b.remove(), 180); } }
+function ccWire() {   /* the right of the status strip opens it: a tap, or a pull down */
+  const st = $('stStrip'); if (!st || st.dataset.cc) return; st.dataset.cc = 1; let y0 = null;
+  const z = document.createElement('span'); z.className = 'stCC'; z.setAttribute('aria-label', 'Control Center'); z.setAttribute('role', 'button'); st.appendChild(z);
+  z.addEventListener('pointerdown', (e) => { y0 = e.clientY; });
+  z.addEventListener('pointerup', () => { if (y0 != null) showCC(); y0 = null; });
+  window.addEventListener('pointermove', (e) => { if (y0 != null && e.clientY - y0 > 30) { y0 = null; showCC(); } });
+}
 function showSettings(back) {
   endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
   const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;

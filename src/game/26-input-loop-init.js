@@ -116,7 +116,7 @@ function drawSmooth(alpha) {   /* V2.33: draw everyone between their last two si
   try { draw(); } finally { for (const [o, w] of moved) o.w = w; }
 }
 /* 3D.159 owner: People, Build, Town and a survivor's details pause the game (a "Paused" chip shows); map pop-ups, news and the radio do not */
-let menuEl = null; const menuPaused = () => { if (!menuEl) menuEl = typeof document !== 'undefined' && document.getElementById('infoPanel'); return !!(menuEl && menuEl.classList.contains('show')); };
+let menuEl = null; const menuPaused = () => { if (ccPaused()) return true; if (!menuEl) menuEl = typeof document !== 'undefined' && document.getElementById('infoPanel'); return !!(menuEl && menuEl.classList.contains('show')); };   /* 3D.396: Control Center's Pause too */
 /* 3D.160 the UX study: nights never become waiting. Once every walker is down, a "Skip to dawn" button fast-forwards to 06:00;
    it stops at once if anything turns up (walkers, a raid, an emergency). Before the last of the night's three waves it is
    "Fast-forward to the next wave" and stops when that wave arrives. */
