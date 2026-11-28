@@ -109,8 +109,64 @@ function morningCard() {
   if (lost) rows.push(`🕯 Lost: ${lost}`); if (joined.length) rows.push(`👋 Joined: ${joined.join(', ')}`);
   { const sad = S.sv.filter((q) => q.resident && (q.sat || 0) < 15).sort((a, b) => (a.sat || 0) - (b.sat || 0)); if (sad.length) rows.push(`💔 Unhappy: ${sad.slice(0, 2).map((q) => `${q.name} ${moodLine(q)}`).join('; ')}${sad.length > 2 ? ` and ${sad.length - 2} more` : ''}`); }   /* 3D.168 */
   const quip = lost ? 'We light a candle and get back to work.' : hurt.length ? 'Bandages first, breakfast second.' : dmgB ? 'Grab a hammer, the fence has opinions.' : k === 0 ? 'Quiet night. Suspiciously quiet. Enjoy it.' : 'Not a scratch. The coffee is still terrible.';   /* 3D.161 it said "Not a scratch" under a list of hurt people */
-  if (phoneOn()) return showEventPopup({ title: 'Last night', report: morningReport(L, k, lost, joined, hurt, dmgB, quip), buttons: [{ label: 'Good morning' }] });   /* 3D.381 */
+  memMorning(L, k, lost, joined);   /* 3D.392: the night's moments for Memories */
+  if (phoneOn()) { showEventPopup({ title: 'Last night', report: morningReport(L, k, lost, joined, hurt, dmgB, quip), buttons: [{ label: 'Good morning' }] }); memWeek(); return; }   /* 3D.381; 3D.392 a week's Memories after the report */
   showEventPopup({ title: `🌅 MORNING · DAY ${S.day}`, text: rows.map(esc).join('<br>') + `<br><br><i>${quip}</i>`, buttons: [{ label: 'Good morning' }] });
+}
+/* 3D.392 (W249, fun idea 11, Memories; owner, 23 Nov: "I like 1 to 6"; 27 Nov: "Yes ok push and next"): the town keeps its moments
+   (S.mem: who joined, who was lost, each level, each Banner or new friends, the first of each building) and each night's kills (S.memN).
+   Every seventh morning in the phone look, after the report, "Memories · Week N" plays like the phone's photo memories: a cover, one slide per
+   moment (the person's picture or a big sign, the day, a line), the week's longest night, then the week in numbers; bars on top, it moves on
+   by itself, tap right for next, left for back, ✕ to close. More → Memories plays any week again. */
+function memAdd(k, t, sub, o) { S.mem = S.mem || []; S.mem.push(Object.assign({ d: S.day, k, t, s: sub || '' }, o || {})); if (S.mem.length > 160) S.mem.splice(0, S.mem.length - 160); }
+function memMorning(L, k, lost, joined) {
+  try { S.memN = S.memN || []; const best = Object.entries(L.by || {}).sort((a, b) => b[1] - a[1])[0]; S.memN.push({ d: L.day != null ? L.day : S.day - 1, k, id: best ? +best[0] : null, n: best ? best[1] : 0 }); if (S.memN.length > 60) S.memN.splice(0, S.memN.length - 60);
+    for (const nm of joined) { const q = S.sv.find((x) => x.name === nm); memAdd('joined', `${nm} joined`, q ? q.job : '', { id: q ? q.id : null }); }
+    for (const f of (S.fallen || []).slice(-lost)) if (lost) memAdd('lost', f.name, `${f.job || ''}${f.l ? ' · level ' + f.l : ''}`);
+    S.memKinds = S.memKinds || null; const kinds = [...new Set(world.buildings.filter((b) => !b.burnt && !b.upg && DEFS[b.type]).map((b) => b.type))];
+    if (S.memKinds) { for (const t of kinds) if (!S.memKinds.includes(t)) { S.memKinds.push(t); memAdd('build', `First ${DEFS[t].name}`, '', { b: t }); } } else S.memKinds = kinds;
+  } catch (e) { /* never block the morning */ }
+}
+const MEM_ORDER = { level: 0, ally: 1, banner: 2, lost: 3, joined: 4, build: 5 };
+function memSlides(w) {
+  const a = (w - 1) * 7 + 1, z = w * 7, M = (S.mem || []).filter((m) => m.d >= a && m.d <= z), N = (S.memN || []).filter((x) => x.d >= a && x.d <= z);
+  const pick = M.slice().sort((x, y) => (MEM_ORDER[x.k] ?? 9) - (MEM_ORDER[y.k] ?? 9) || x.d - y.d).slice(0, 7).sort((x, y) => x.d - y.d);
+  const sl = [{ k: 'cover', t: `Week ${w}`, s: `Day ${a} to ${z}` }].concat(pick);
+  const top = N.filter((x) => x.k > 0).sort((x, y) => y.k - x.k)[0]; if (top) { const q = top.id != null && S.sv.find((s) => s.id === top.id); sl.push({ k: 'night', d: top.d, t: `${top.k} put down in one night`, s: q ? `${q.name} got ${top.n} of them` : 'Everyone pitched in', id: q ? q.id : null }); }
+  const kills = N.reduce((t, x) => t + (x.k || 0), 0), joined = M.filter((m) => m.k === 'joined').length;
+  sl.push({ k: 'end', t: `Week ${w}`, s: '', rows: [[`${S.sv.length}`, 'people'], [`${world.buildings.filter((b) => !b.burnt).length}`, 'buildings'], [`${kills}`, 'put down'], [`${joined}`, 'joined']], joke: ['Same time next week. Bring snacks.', 'Nobody looked at the camera. Classic.', 'Filed under: we\'re still here.', 'Photos by whoever was holding the torch.'][w % 4] });
+  return { w, sl };
+}
+function memWeek() { const w = Math.floor((S.day - 1) / 7); if (!phoneOn() || w < 1 || S.memShown === w) return; S.memShown = w; const W = memSlides(w); if (W.sl.length < 4) return; showEventPopup({ title: 'Memories', mem: W, buttons: [{ label: 'Close' }] }); }
+const MEM_TINT = { cover: ['#4a82c8', '#2b4f80'], joined: ['#c75f80', '#7a3550'], lost: ['#5a5f6a', '#2c2f36'], level: ['#cf9a3d', '#7d5a1c'], ally: ['#4f9c5e', '#2b5a34'], banner: ['#cb7a42', '#7a4520'], build: ['#cb7a42', '#6e3f1d'], night: ['#3c4b7a', '#151b30'], end: ['#8373bd', '#3f3570'] };
+const MEM_SIGN = { cover: 'town', level: 'town', build: 'build', joined: 'people', ally: 'moMsg', banner: 'explore', end: 'moMem' };
+function memPic(x) {
+  const q = x.id != null && S.sv.find((s) => s.id === x.id); if (q) return pplFace(q, 'mmFace');
+  if (x.k === 'lost') return '<span class="mmSign mmCandle">🕯</span>'; if (x.k === 'night') return '<span class="mmSign">🌙</span>';
+  return `<span class="mmTile">${appTile(MEM_SIGN[x.k] || 'town', 64)}</span>`;
+}
+function memSlide(x) {
+  const t = MEM_TINT[x.k] || MEM_TINT.cover;
+  return `<div class="mmS mmS_${x.k}" style="--m1:${t[0]};--m2:${t[1]}"><div class="mmPic">${memPic(x)}</div>${x.d ? `<div class="mmD">Day ${x.d}</div>` : '<div class="mmD">Memories</div>'}<div class="mmT">${esc(x.t)}</div>${x.s ? `<div class="mmSub">${esc(x.s)}</div>` : ''}`
+    + (x.rows ? `<div class="mmRows">${x.rows.map(([n, l]) => `<div><b>${n}</b><small>${l}</small></div>`).join('')}</div>` : '') + (x.joke ? `<div class="mmJoke">${esc(x.joke)}</div>` : '') + '</div>';
+}
+function memPlay(m, W, close) {   /* the player, inside #eventModal */
+  const n = W.sl.length; let i = 0, tm = null; m.classList.add('mmA');
+  m.innerHTML = `<div class="mmBox" role="dialog"><div class="mmBars">${W.sl.map(() => '<i><b></b></i>').join('')}</div><button class="mmX" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="mmStage"></div><button class="mmL" aria-label="Back"></button><button class="mmR" aria-label="Next"></button><button class="act go mmDone">Done</button></div>`;
+  const st = m.querySelector('.mmStage'), bars = [...m.querySelectorAll('.mmBars i')], done = m.querySelector('.mmDone');
+  const end = () => { clearTimeout(tm); m.classList.remove('mmA'); close(); };
+  const show = (k) => { i = Math.max(0, Math.min(n - 1, k)); clearTimeout(tm); st.innerHTML = memSlide(W.sl[i]); bars.forEach((b, j) => { b.className = j < i ? 'on' : j === i ? 'run' : ''; });
+    done.style.display = i === n - 1 ? '' : 'none'; if (i < n - 1) tm = setTimeout(() => { if (!m.querySelector('.mmBox').dataset.hold) show(i + 1); }, 3400); };   /* data-hold: a check holds the slide */
+  m.querySelector('.mmX').onclick = end; done.onclick = end; m.querySelector('.mmR').onclick = () => (i < n - 1 ? show(i + 1) : null); m.querySelector('.mmL').onclick = () => show(i - 1);
+  show(0); SFX('chime');
+}
+function showMemories(back) {   /* More → Memories: every week kept, newest first */
+  endBuildMode(true); closeP(); const ch = `<i class="phChv">${phG('ch', 14)}</i>`, wk = Math.floor((S.day - 1) / 7), rows = [];
+  for (let w = wk; w >= 1; w--) { const W = memSlides(w); const first = W.sl.find((x) => x.id != null && S.sv.some((s) => s.id === x.id)); rows.push(`<div class="phR msRow mmRow" role="button" data-w="${w}">${first ? pplFace(S.sv.find((s) => s.id === first.id)) : `<span class="txAv" style="--txc:#8373bd">📷</span>`}<span class="tx"><b>Week ${w}</b><small>Day ${(w - 1) * 7 + 1} to ${w * 7} · ${W.sl.length - 2} moments</small></span>${ch}</div>`); }
+  const thisW = (S.mem || []).filter((m) => m.d > wk * 7).length;
+  $('ib').innerHTML = `<div class="phSet msSheet">${rows.length ? `<div class="phCard">${rows.join('')}</div>` : ''}<div class="phFootN">${rows.length ? '' : 'Your first week plays on the morning of day 8. '}This week so far: ${thisW} moment${thisW === 1 ? '' : 's'}.</div></div>`;
+  $('ib').querySelectorAll('.mmRow').forEach((r) => { r.onclick = () => { closeP(); showEventPopup({ title: 'Memories', mem: memSlides(+r.dataset.w), buttons: [{ label: 'Close' }] }); }; });
+  showPanel('Memories', back || null); if (back) $('pBack').dataset.t = 'More';
 }
 /* 3D.381 (W249, fun idea 9, "Yesterday at the Haven"): in the phone look the morning card is a short report like the phone's weekly screen-time
    report: how many were put down, large, with a bar for each hour of the night; then one line for each thing that matters (hurt, lost, joined,

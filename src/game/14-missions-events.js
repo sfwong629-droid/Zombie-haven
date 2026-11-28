@@ -384,6 +384,7 @@ function nextEventPopup() {
     m.querySelectorAll('button[data-i]').forEach((el) => { el.onclick = () => { const b = bt[+el.dataset.i]; m.innerHTML = ''; m.classList.remove('emA'); modalOpen = false; if (b && b.fn) b.fn(); nextEventPopup(); }; });
     SFX('alarm'); return;
   }
+  if (e.mem && phoneOn()) { memPlay(m, e.mem, () => { m.innerHTML = ''; modalOpen = false; nextEventPopup(); }); return; }   /* 3D.392 Memories */
   if (e.thread && phoneOn()) {   /* 3D.388 a faction texts you (txSplit, txLog above) */
     const k = e.thread, V = RADIO_V[k] || {}, FX = FACTIONS[k] || {}, sp = txSplit(e.text), old = (fac(k).msgs || []).slice(-14); m.classList.add('txA');
     m.innerHTML = `<div class="txWash"></div><div class="txBox" role="dialog"><div class="txHd"><span class="txAv" style="--txc:${V.col || '#888'}">${FX.icon || '✉'}</span><div class="txWho"><b>${esc(FX.name || k)}</b><small>${esc(V.who || '')}<span class="txMood">${txMood(k)}</span></small></div></div>`
@@ -470,7 +471,7 @@ const BANNER_ROUTES = { stronghold: { icon: '🏚', name: 'Stronghold Banner', h
   community: { icon: '🎪', name: 'Community Banner', how: "Hold the Founders' Festival (Town events: Haven level 8, 12 people, mood ♥60)" } };   /* 3D.173: 'coming' was out of date; the festival is the second non-combat route */
 function earnBanner(route, why) {   /* a Banner raised over the Haven; one is spent on each era gate */
   S.banners = S.banners || []; if (S.banners.some((b) => b.route === route && !b.used && route !== 'stronghold')) return false; const R = BANNER_ROUTES[route];
-  S.banners.push({ route, day: S.day, used: false }); SFX('rankup'); renownGain(8, R.name);
+  S.banners.push({ route, day: S.day, used: false }); SFX('rankup'); renownGain(8, R.name); memAdd(route === 'ally' ? 'ally' : 'banner', route === 'ally' ? 'New friends' : R.name, why);
   showEventPopup({ stage: { scene: 'party', head: 'A Banner for the Haven!', icon: R.icon, badge: 'Banner', hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `${R.name} raised: ${why}`, title: R.icon + ' ' + R.name.toUpperCase(), text: why + '<br>A Banner opens the next era of the Haven (level 5 → 6 and 10 → 11).' });
   checkRank(); return true;
 }
@@ -486,7 +487,7 @@ function levelUpDone() {   /* the timer ran out: the Haven reaches the next leve
   if (eraOf(S.lvl) !== eraOf(from)) lines.unshift(`A new era begins: Era ${eraOf(S.lvl).n} · ${eraOf(S.lvl).name}`);
   if (S.rank > oldRank) { S.threat = threatNow(); rankReward(); S.mat += 4 + S.rank; for (const x of rankUnlocks(S.rank).filter((x) => !x.startsWith('+'))) lines.push(x); }
   else { S.food = keepCap(supplyCap(), S.food, 2); S.water = keepCap(supplyCap(), S.water, 2); S.mat += 2; }
-  SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl);
+  SFX('rankup'); renownGain(4 + S.lvl, 'Haven Level ' + S.lvl); memAdd('level', `Haven level ${S.lvl}`, eraOf(S.lvl) !== eraOf(from) ? `Era ${eraOf(S.lvl).n} · ${eraOf(S.lvl).name}` : '');
   if (phoneOn()) { const w = updWhat(S.lvl, from, oldRank, true); showEventPopup({ title: 'Update complete', report: updCard(S.lvl, true, w), buttons: [{ label: 'OK', rec: true, fn: () => {} }] }); }   /* 3D.391 */
   else showEventPopup({ stage: { scene: 'party', head: 'The Haven grows!', icon: '🏡', badge: 'Level ' + S.lvl, hero: S.sv[0], crowd: S.sv.slice(1, 3) }, short: `The Haven is now Level ${S.lvl}!`, chips: S.rank > oldRank ? rankUnlocks(S.rank).filter((x) => x.startsWith('Buildings')).map((x) => '🔓 ' + x.replace('Buildings: ', '')) : [], title: '🏡 HAVEN LEVEL ' + S.lvl, text: lines.map((x) => '• ' + esc(x)).join('<br>'), gains: S.rank > oldRank ? '+' + (4 + S.rank) + ' scrap' : '+2 scrap' });
   say('HAVEN LEVEL ' + S.lvl + '!', true); radio('dj', rLine('level', { n: S.lvl }), { key: 'lvl' });
