@@ -3,7 +3,7 @@
 'use strict';
 const Iso = window.ZHIso, Wd = window.ZHWorld;
 const SFX = (n) => { if (window.SND) SND.play(n); };   /* V2.21 sound (js/sound.js) */
-const VERSION = '2.57.0', BUILD_TAG = '3D.394', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
+const VERSION = '2.57.0', BUILD_TAG = '3D.395', PREV_KEY = 'zombieHavenV25', OLD_KEY = 'zombieHavenV2';
 /* V2.40 save slots: slot 1 keeps the old key, so existing towns carry over */
 const SLOT_KEYS = ['zombieHavenR1', 'zombieHavenR1_s2', 'zombieHavenR1_s3']   /* V3D.22 resources: fresh saves (old towns are not converted) */, QS = new URLSearchParams(location.search);
 let SLOT = 1; try { SLOT = Math.min(3, Math.max(1, +localStorage.getItem('zhSlot') || 1)); } catch (e) { /* storage blocked */ }
@@ -5337,6 +5337,43 @@ let upTab = 'rank';
    has its battery: full at dawn, empty at 20:00; at night it fills back toward dawn in blue. The clock capsule under the top bar goes. */
 const ST_SUN = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="#ffcf5a"/><g stroke="#ffcf5a" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></g></svg>';
 const ST_MOON = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="#c9d6ff"/></svg>';
+/* 3D.395 (W249, idea 3; owner, 28 Nov: "Do it like you suggested"): the live pill, like the phone's Dynamic Island. A small black island in the
+   middle of the status strip with the sign and the time of what is running: tonight's horde (from the morning of a boss day), the squad out,
+   the level-up; two at once split into a pill and a circle. A tap grows it into a card (what it is, from where, faces, a bar, the time, Show me);
+   it grows by itself for a few seconds when something enters its last hour; a tap outside or the ✕ shrinks it. */
+function liveItems() {
+  const o = [], hr = S.hour + (S.min || 0) / 60;
+  if (S.nextBoss === S.day && !S.bossOn && hr < 21) o.push({ k: 'horde', sign: 'horde', col: '#ff6961', left: 21 - hr, unit: 'h', title: 'Boss night', sub: 'The horde comes at 21:00', bar: Math.min(1, hr / 21), go: () => showTown('defense') });
+  const t = S.trip; if (t) { const now = expNow(), end = t.phase === 'back' ? (t.backAt || now) : t.t0 + t.dur + t.dur * .3, left = Math.max(0, (end - now) / EXP_HMS), D = EXP_DEFS[t.dest] || {};
+    o.push({ k: 'squad', sign: 'explore', col: '#7cc4ff', left, unit: 'h', title: t.phase === 'back' ? 'Squad coming home' : 'Squad out', sub: `${t.phase === 'back' ? 'From' : 'At'} ${D.name || 'the valley'} · ${t.members.length} ${t.members.length === 1 ? 'person' : 'people'}`,
+      faces: t.members, bar: Math.max(0, Math.min(1, 1 - left / Math.max(.1, (end - t.t0) / EXP_HMS))), ends: [D.name || 'Out', 'Haven'], go: () => $('mExp').click() }); }
+  if (S.lvUp) { lvFix(); o.push({ k: 'level', sign: 'town', col: '#ffd54a', ms: S.lvUp.left, title: `Haven level ${S.lvUp.to}`, sub: 'Upgrading', bar: 1 - S.lvUp.left / Math.max(1, S.lvUp.total), go: () => showUpgrade('rank') }); }
+  return o;
+}
+function liveTime(x) {
+  if (x.ms != null) { const m = Math.ceil(x.ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : `${m}m`; }
+  const m = Math.ceil(x.left * 60); return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : `${m}m`;
+}
+function liveSign(x, px) { return x.sign === 'horde' ? `<span class="apT lpZ" style="background:linear-gradient(180deg,#e0574f,#a1302a)"><svg viewBox="0 0 24 24" width="${px}" height="${px}" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9 16H3z"/><path d="M12 10v4.4"/><circle cx="12" cy="17.2" r=".9" fill="#fff" stroke="none"/></svg></span>` : appTile(x.sign, px); }
+const LIVE = { open: null, last: {} };
+function liveUpdate() {
+  const st = $('stStrip'); if (!st) return; const L = liveItems(); let isl = $('lpIsl'), card = $('lpCard');
+  if (!isl) { isl = document.createElement('button'); isl.id = 'lpIsl'; isl.setAttribute('aria-label', 'What is running'); document.body.appendChild(isl); isl.onclick = () => { LIVE.open = LIVE.open ? null : (liveItems()[0] || {}).k; liveUpdate(); }; }
+  if (!L.length) { isl.className = ''; isl.innerHTML = ''; if (card) card.remove(); LIVE.open = null; return; }
+  const a = L[0], b2 = L[1];
+  for (const x of L) { const soon = x.ms != null ? x.ms < 60000 * 5 : x.left <= 1; if (soon && !LIVE.last[x.k]) { LIVE.last[x.k] = 1; LIVE.open = x.k; clearTimeout(LIVE.t); LIVE.t = setTimeout(() => { LIVE.open = null; liveUpdate(); }, 5000); } if (!soon) LIVE.last[x.k] = 0; }
+  const sig = `${a.k}|${liveTime(a)}|${b2 ? b2.k : ''}`; if (isl.dataset.sig !== sig) { isl.dataset.sig = sig;
+    isl.innerHTML = `<span class="lpM"><span class="lpI">${liveSign(a, 11)}</span><b style="color:${a.col}">${liveTime(a)}</b></span>${b2 ? `<span class="lpS"><span class="lpI">${liveSign(b2, 11)}</span></span>` : ''}`; }
+  isl.className = 'on' + (b2 ? ' two' : '');
+  const x = LIVE.open && L.find((q) => q.k === LIVE.open);
+  if (!x) { if (card) card.remove(); return; }
+  if (!card) { card = document.createElement('div'); card.id = 'lpCard'; document.body.appendChild(card); }
+  const faces = (x.faces || []).slice(0, 5).map((m) => { const q = S.sv.find((s) => s.id === m.id || s.name === m.name); return q ? pplFace(q) : ''; }).join('');
+  card.innerHTML = `<div class="r1"><span class="lpI">${liveSign(x, 22)}</span><span class="t"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span><span class="tm" style="color:${x.col}">${liveTime(x)}</span></div>`
+    + (faces ? `<div class="fc">${faces}</div>` : '') + `<div class="bar"><i style="width:${Math.round(x.bar * 100)}%;background:${x.col}"></i></div>` + (x.ends ? `<div class="ends"><span>${esc(x.ends[0])}</span><span>${esc(x.ends[1])}</span></div>` : '')
+    + `<div class="lpBt"><button class="lpX">Close</button><button class="act go lpGo">Show me</button></div>`;
+  card.querySelector('.lpX').onclick = () => { LIVE.open = null; liveUpdate(); }; card.querySelector('.lpGo').onclick = () => { LIVE.open = null; liveUpdate(); x.go(); };
+}
 function stripUpdate() {
   let st = $('stStrip');
   if (!st) { st = document.createElement('div'); st.id = 'stStrip'; st.innerHTML = '<span class="stDay"><i class="stIc"></i><span class="stTx"></span></span><span class="stSp"></span><span class="stFm" title="Moth FM"><i></i><i></i><i></i><i></i><small>FM</small></span><span class="stDl" title="Daylight left"><i></i></span>'; document.body.appendChild(st); }
@@ -5371,7 +5408,7 @@ function ui() {
   {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
     const ck = $('clock'), h = S.hour, sub = h >= 17 && h < 20 ? `🌙 Night in ${20 - h}h` : isNight() ? `☀ Dawn in ${(30 - h) % 24}h` : '', ph = h === 19 ? 'dusk' : isNight() ? 'night' : '';
     if (ck.dataset.sub !== sub || ck.dataset.ph !== ph) { const re = !ck.dataset.sub !== !sub; ck.dataset.sub = sub; ck.dataset.ph = ph; if (re) requestAnimationFrame(layoutTop); } }
-  if (phoneOn()) { stripUpdate(); dockBadges(); }   /* 3D.383; 3D.393 badges */
+  if (phoneOn()) { stripUpdate(); dockBadges(); liveUpdate(); }   /* 3D.383; 3D.393 badges; 3D.395 the live pill */
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 
