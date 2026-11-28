@@ -711,7 +711,7 @@ function ui() {
   {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
     const ck = $('clock'), h = S.hour, sub = h >= 17 && h < 20 ? `🌙 Night in ${20 - h}h` : isNight() ? `☀ Dawn in ${(30 - h) % 24}h` : '', ph = h === 19 ? 'dusk' : isNight() ? 'night' : '';
     if (ck.dataset.sub !== sub || ck.dataset.ph !== ph) { const re = !ck.dataset.sub !== !sub; ck.dataset.sub = sub; ck.dataset.ph = ph; if (re) requestAnimationFrame(layoutTop); } }
-  if (phoneOn()) { stripUpdate(); dockBadges(); liveUpdate(); ccWire(); }   /* 3D.383; 3D.393 badges; 3D.395 the live pill; 3D.396 Control Center */
+  if (phoneOn()) { stripUpdate(); dockBadges(); liveUpdate(); ccWire(); holdWire(); }   /* 3D.383; 3D.393 badges; 3D.395 the live pill; 3D.396 Control Center; 3D.398 press and hold */
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 

@@ -114,6 +114,52 @@ function ccWire() {   /* the right of the status strip opens it: a tap, or a pul
   z.addEventListener('pointerup', () => { if (y0 != null) showCC(); y0 = null; });
   window.addEventListener('pointermove', (e) => { if (y0 != null && e.clientY - y0 > 30) { y0 = null; showCC(); } });
 }
+/* 3D.398 (W249, idea 8; owner, 28 Nov: "Let's do A"): press and hold a dock icon for shortcuts, the phone's own menu: the town dims and blurs,
+   the icon lifts, a list of shortcuts above it, each with its word, a small line when useful and a sign on the right. A tap on a shortcut does it,
+   a tap anywhere else closes it; a short tap on the icon still opens its menu as before. */
+const HOLD_SG = { find: '<circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L20 20"/>', aid: '<path d="M12 5v14M5 12h14"/>', all: '<circle cx="9" cy="9" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3.5 19c.5-3 2.7-4.6 5.5-4.6s5 1.6 5.5 4.6M14.5 14.6c2.6-.3 4.7 1 5.2 4"/>',
+  repair: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L3.6 17.1a1.8 1.8 0 0 0 2.6 2.6l5.7-5.7a4 4 0 0 0 5.1-5.4l-2.4 2.4-2.3-.6-.6-2.3z"/>', build: '<path d="M12 5v14M5 12h14"/>', map: '<path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  boot: '<path d="M7 4h5v8l6 2.5a2 2 0 0 1 1.5 2V19H6z"/>', pin: '<path d="M12 21s-6-5.6-6-10a6 6 0 0 1 12 0c0 4.4-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>', up: '<path d="M12 19V5M6 11l6-6 6 6"/>', shield: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>',
+  wall: '<rect x="3" y="7" width="18" height="11" rx="1"/><path d="M3 12.5h18M9 7v5.5M15 12.5V18"/>', msg: '<path d="M4 5h16v11H10l-4 3v-3H4z"/>', radio: '<rect x="3" y="8.5" width="18" height="11.5" rx="2.4"/><path d="M7 8.5l9.6-4.6"/><circle cx="8.6" cy="14.2" r="3"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>' };
+function holdItems(id) {
+  const o = [], it = (t, sub, k, fn, red) => o.push({ t, sub, k, fn, red });
+  if (id === 'mSurv') { const down = S.sv.filter((q) => q.hp <= 0 || q.bleed != null), hurt = S.sv.filter((q) => q.hp > 0 && q.hp < q.max * .5).sort((a, b) => a.hp / a.max - b.hp / b.max);
+    if (hurt.length || down.length) { const q = down[0] || hurt[0]; it('Find the hurt', `${down.length + hurt.length} hurt`, 'find', () => swAct(q.id, 'find'), true); }
+    if (down[0]) it(`Rescue ${down[0].name}`, 'Down', 'aid', () => { orderRescue(down[0]); ui(); });
+    it('Everyone', `${S.sv.length} people`, 'all', () => showSurvivors()); }
+  if (id === 'mBuild') { const seen = []; for (let i = world.buildings.length - 1; i >= 0 && seen.length < 3; i--) { const t = world.buildings[i].type; if (DEFS[t] && !/camp|base|haven/i.test(t + DEFS[t].name) && !seen.includes(t) && !(DEFS[t].unique)) seen.push(t); }
+    seen.forEach((t, i) => it(DEFS[t].name, i ? '' : 'Built last', 'build', () => startTool({ kind: 'building', type: t })));
+    const dmg = world.buildings.filter((b) => !b.burnt && b.max && b.hp < b.max * .7).sort((a, b) => a.hp / a.max - b.hp / b.max);
+    if (dmg.length) it('Repair damaged', `${dmg.length} building${dmg.length > 1 ? 's' : ''}`, 'repair', () => showBuildingInfo(dmg[0]));
+    it('All buildings', '', 'build', () => showBuild()); }
+  if (id === 'mExp') { if (S.trip) it('Squad', S.trip.phase === 'back' ? 'Coming home' : 'Out', 'boot', () => $('mExp').click());
+    leadsTidy(); const L = (S.leads || []).slice(-1)[0]; if (L) it('Newest lead', (EXP_DEFS[L.dest] || {}).name || '', 'pin', () => $('mExp').click());
+    it('The map', '', 'map', () => $('mExp').click()); }
+  if (id === 'mTown') { it('Upgrade', S.lvUp ? `Level ${S.lvUp.to} · ${lvLeftText()}` : S.rankReady ? 'Ready' : `Level ${(S.lvl || 1) + 1}`, 'up', () => showUpgrade('rank')); it('Defense', '', 'shield', () => showTown('defense')); it('Walls', 'Place walls', 'wall', () => startTool({ kind: 'wall', wtype: 'wood' })); }
+  if (id === 'mGuide') { it('Messages', '', 'msg', () => showMessages()); it('Moth FM', '', 'radio', () => showFM(null)); it('Settings', '', 'gear', () => showSettings()); }
+  return o;
+}
+function showHold(id) {
+  const btn = $(id), ic = btn && btn.querySelector('.dkI'); if (!ic || !phoneOn()) return; const L = holdItems(id); if (!L.length) return;
+  closeHold(); endBuildMode(true); closeP(); const r = ic.getBoundingClientRect(), W = 250, vw = innerWidth, vh = innerHeight;
+  const box = document.createElement('div'); box.id = 'holdBox';
+  box.innerHTML = `<div class="hDim"></div><div class="hM" style="left:${Math.min(vw - W - 10, Math.max(10, r.left + r.width / 2 - W / 2))}px;bottom:${vh - r.top + 14}px;width:${W}px">${L.map((x, i) => `<button class="hR${x.red ? ' red' : ''}" data-i="${i}"><span><b>${esc(x.t)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${HOLD_SG[x.k] || ''}</svg></button>`).join('')}</div>`
+    + `<div class="hIc" style="left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px">${ic.innerHTML.replace(/<span class="dkB[^>]*>[^<]*<\/span>/, '')}</div>`;
+  document.body.appendChild(box);
+  box.querySelector('.hDim').onclick = closeHold; box.querySelector('.hIc').onclick = closeHold;
+  box.querySelectorAll('.hR').forEach((b) => { b.onclick = () => { const x = L[+b.dataset.i]; closeHold(); try { x.fn(); } catch (e) { /* the shortcut's screen may not be ready */ } }; });
+}
+function closeHold() { const b = $('holdBox'); if (b) b.remove(); }
+let HOLD_ON = false;
+function holdWire() {   /* 0.45 s on a dock icon opens its shortcuts; the click that follows is swallowed. One listener on the page, wired once. */
+  if (HOLD_ON) return; HOLD_ON = true; const H = { t: null, fired: false, x: 0, y: 0, id: null };
+  const ids = ['mExp', 'mSurv', 'mTown', 'mGuide', 'mBuild'], btnOf = (e) => { const b = e.target && e.target.closest && e.target.closest('#lmenu .lm'); return b && ids.includes(b.id) ? b : null; };
+  document.addEventListener('pointerdown', (e) => { const b = btnOf(e); if (!b || !phoneOn()) return; H.fired = false; H.x = e.clientX; H.y = e.clientY; H.id = b.id; clearTimeout(H.t); H.t = setTimeout(() => { H.fired = true; showHold(H.id); }, 450); }, true);
+  const stop = () => clearTimeout(H.t); document.addEventListener('pointerup', stop, true); document.addEventListener('pointercancel', stop, true);
+  document.addEventListener('pointermove', (e) => { if (H.t && Math.abs(e.clientX - H.x) + Math.abs(e.clientY - H.y) > 12) stop(); }, true);
+  document.addEventListener('click', (e) => { if (H.fired && btnOf(e)) { H.fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('contextmenu', (e) => { if (btnOf(e)) e.preventDefault(); }, true);
+}
 function showSettings(back) {
   endBuildMode(true); closeP(); const m = window.SND ? SND.mode : 'off', ago = savedAtMs ? Math.round((Date.now() - savedAtMs) / 60000) : -1;
   const tg = (id, on, label, sub) => `<div class="setRow"><span class="moT"><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><button class="tgl${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${label}"></button></div>`;
