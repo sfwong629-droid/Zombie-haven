@@ -521,3 +521,19 @@ html.phone .ccNP .npT b { display: block; font-size: 15px; font-weight: 600; } h
 html.phone .ccNP .npC { display: flex; justify-content: space-around; } html.phone .ccNP .npC button { width: 48px; height: 44px; border: 0; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 html.phone .ccGrab { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom)); width: 120px; height: 30px; cursor: pointer; } html.phone .ccGrab::after { content: ''; position: absolute; left: 40px; right: 40px; top: 12px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .45); }
 html.glass.phone #stStrip .stCC { position: absolute; right: 0; bottom: 0; width: 42%; height: 26px; pointer-events: auto; cursor: pointer; }   /* 3D.396: the right of the strip opens Control Center */
+/* 3D.397 (W249, idea 5): the lock screen when you come back */
+#lkBox { display: none; }
+html.phone #lkBox { display: block; position: fixed; inset: 0; z-index: 450; color: #fff; font-family: -apple-system, "SF Pro Display", system-ui, sans-serif; touch-action: none; }
+html.phone #lkBox.out { animation: lkOut .32s ease-in forwards; } @keyframes lkOut { to { transform: translateY(-100%); opacity: .3; } }
+html.phone .lkBg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 30, .42), rgba(0, 0, 0, .08) 40%, rgba(0, 0, 0, .5)); -webkit-backdrop-filter: blur(7px) saturate(1.1); backdrop-filter: blur(7px) saturate(1.1); }
+html.phone .lkD { position: absolute; left: 0; right: 0; top: calc(24px + env(safe-area-inset-top)); text-align: center; font-size: 19px; font-weight: 600; text-shadow: 0 1px 6px rgba(0, 0, 0, .35); }
+html.phone .lkT { position: absolute; left: 0; right: 0; top: calc(46px + env(safe-area-inset-top)); text-align: center; font-size: 96px; font-weight: 700; letter-spacing: -2px; line-height: 1; text-shadow: 0 2px 14px rgba(0, 0, 0, .35); }
+html.phone .lkWgs { position: absolute; left: 0; right: 0; top: calc(156px + env(safe-area-inset-top)); display: flex; justify-content: center; gap: 12px; }
+html.phone .lkWg { width: 62px; height: 62px; border-radius: 31px; background: rgba(40, 40, 44, .45); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+html.phone .lkWg b { font-size: 17px; font-weight: 700; } html.phone .lkWg small { font-size: 10.5px; font-weight: 600; color: rgba(255, 255, 255, .75); }
+html.phone .lkNs { position: absolute; left: 10px; right: 10px; max-width: 460px; margin: 0 auto; bottom: calc(124px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
+html.phone .lkN1 { display: flex; gap: 11px; align-items: center; padding: 11px 13px; border-radius: 22px; background: rgba(40, 40, 44, .55); -webkit-backdrop-filter: blur(26px) saturate(1.6); backdrop-filter: blur(26px) saturate(1.6); font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; }
+html.phone .lkC { position: absolute; left: 46px; bottom: calc(52px + env(safe-area-inset-bottom)); width: 50px; height: 50px; border-radius: 25px; border: 0; padding: 0; overflow: hidden; background: rgba(40, 40, 44, .55); cursor: pointer; }
+html.phone .lkC .apT { position: absolute; inset: 9px; border-radius: 8px; overflow: hidden; } html.phone .lkC .apT svg { width: 22px; height: 22px; }
+html.phone .lkSw { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); min-width: 200px; min-height: 44px; border: 0; background: none; color: rgba(255, 255, 255, .88); font: 600 14px -apple-system, system-ui, sans-serif; cursor: pointer; }
+html.phone .lkSw::after { content: ''; display: block; width: 134px; height: 5px; border-radius: 3px; background: #fff; margin: 9px auto 0; }

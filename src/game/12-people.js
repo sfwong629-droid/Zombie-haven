@@ -156,7 +156,7 @@ const AWAY_MIN_PER_H = 10, AWAY_MAX_H = 24;   /* 3D.293 (overnight branch; owner
 function statAdd(k, n = 1) { S.stat = S.stat || {}; S.stat[k] = (S.stat[k] || 0) + n; }
 function awayCredit(ms) {
   if (titleOn || S.finale || !(ms > 0)) return null; lvTick(ms); const built = sitesAway(ms);   /* 3D.305 building carries on while away. 3D.104 a level upgrade keeps going while away; 3D.166 at the away rate, uncapped */ const hours = Math.min(AWAY_MAX_H, Math.floor(ms / 60000 / AWAY_MIN_PER_H)); goalsTick(); const gate = gateAway(hours);
-  if (hours < 1 && built && phoneOn()) { awayReport(ms, 0, {}, built, gate); return { hours: 0, got: {}, built }; }   /* 3D.385 */
+  if (hours < 1 && built && phoneOn()) { lockScreen(ms, 0, {}, built, gate); return { hours: 0, got: {}, built }; }   /* 3D.385; 3D.397 the lock screen */
   if (hours < 1) return built ? (note('important', '🌅 WHILE YOU WERE AWAY', { log: `${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` }), { hours: 0, got: {}, built }) : null; const got = {};
   for (let h = 0; h < hours; h++) for (const b of world.buildings) {
     const d = DEFS[b.type]; if (!d || b.burnt || b.fire || !d.out) continue; const sh = d.slot ? (b.staff ? Math.max(.5, (b.wh && b.wh.length ? b.wh.reduce((a, v) => a + v, 0) / b.wh.length : .7)) : 0) : 1;
@@ -174,13 +174,39 @@ function awayCredit(ms) {
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, parts = Object.entries(got).filter(([, v]) => v >= .5).map(([k, v]) => `${ic[k]} ${Math.round(v)}`);
   const real = ms >= 36e5 ? Math.round(ms / 36e5 * 10) / 10 + ' h' : Math.round(ms / 6e4) + ' min';
   const txt = `You were away ${real}. Your people kept their shifts for ${hours} game hour${hours > 1 ? 's' : ''}` + (parts.length ? `. Waiting in the trays: ${parts.join(' · ')}. Tap the bubbles to collect.` : ', but nothing was staffed to produce.') + (S.trip ? ' The expedition carried on too.' : '') + (gate ? ` ${gate === 1 ? 'Someone is' : gate + ' people are'} waiting at the gate.` : '') + (built ? ` ${built === 1 ? 'A building job was' : built + ' building jobs were'} finished while you were away.` : '');
-  note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (phoneOn()) { try { awayReport(ms, hours, got, built, gate); } catch (e) { /* the note is enough */ } } else if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
+  note('important', '🌅 WHILE YOU WERE AWAY', { log: txt }); if (phoneOn()) { try { lockScreen(ms, hours, got, built, gate); } catch (e) { /* the note is enough */ } } else if (parts.length) try { showEventPopup({ title: '🌅 WHILE YOU WERE AWAY', text: txt }); } catch (e) { /* the note is enough */ }
   return { hours, got, built };
 }
 /* 3D.385 (W249, fun idea 9, the second half; owner, 23 Nov: "I like 1 to 6"; 26 Nov: "Start building the fun ideas"): in the phone look, coming
    back to the game opens a short report like Yesterday at the Haven: how long you were gone, the game hours of shifts kept, what waits in the
    trays (signs and numbers), building jobs finished, the trip still out, people at the gate; facts first, the joke last; one lime "Collect all"
    empties every tray at once (the same as tapping each bubble), "Later" leaves them. */
+/* 3D.397 (W249, idea 5; owner, 28 Nov: "Do b"): in the phone look, coming back opens a lock screen in place of the While you were away card:
+   the town blurred as the wallpaper, the game's day and season small and its hour large like the phone's clock, four round widgets (food, water,
+   people, walls), what happened while away as notifications (shifts kept, the trays, jobs built, people at the gate, the squad, the level-up),
+   Moth FM in the corner, and "Swipe up to play": the swipe (or a tap on the bar) collects every tray and opens the town. */
+function lockScreen(ms, hours, got, built, gate) {
+  const real = ms >= 36e5 ? (Math.round(ms / 36e5 * 10) / 10) + ' h' : Math.max(1, Math.round(ms / 6e4)) + ' min';
+  const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, tr = Object.entries(got || {}).filter(([, v]) => v >= .5);
+  let hp = 0, mx = 0; try { for (const w of allWalls()) { hp += Math.max(0, w.hp); mx += w.max; } } catch (e) { /* no walls */ }
+  const se = seasonOf(), N = [];
+  const n = (app, t, b) => N.push(`<div class="lkN1"><span class="nfI">${appTile(app, 26)}</span><span class="nfX"><span class="nfH"><span>${NF_APP[app]}</span><span>away</span></span><b>${esc(t)}</b>${b ? `<span class="nfB">${b}</span>` : ''}</span></div>`);
+  n('town', `Back after ${real}`, hours ? `${hours} h of shifts kept` : 'The Haven held on.');
+  if (tr.length) n('town', 'In the trays', tr.map(([k, v]) => `${ic[k] || ''} +${Math.round(v)}`).join(' · '));
+  if (built) n('build', `Built ${built} job${built > 1 ? 's' : ''}`, 'While you were away.');
+  if (gate) n('people', `${gate} at the gate`, 'Waiting to be let in.');
+  if (S.trip) n('explore', 'Squad still out', `${(EXP_DEFS[S.trip.dest] || {}).name || 'In the valley'}`);
+  if (S.lvUp) n('town', `Haven level ${S.lvUp.to}`, `Ready in ${lvLeftText()}`);
+  const wg = (v, l) => `<div class="lkWg"><b>${v}</b><small>${l}</small></div>`;
+  let box = $('lkBox'); if (box) box.remove(); box = document.createElement('div'); box.id = 'lkBox';
+  box.innerHTML = `<div class="lkBg"></div><div class="lkD">Day ${S.day} · ${se ? se.name : ''}</div><div class="lkT">${String(S.hour).padStart(2, '0')}:00</div>`
+    + `<div class="lkWgs">${wg(Math.floor(S.food), 'Food')}${wg(Math.floor(S.water), 'Water')}${wg(S.sv.length, 'People')}${wg(mx ? Math.round(hp / mx * 100) + '%' : '–', 'Walls')}</div>`
+    + `<div class="lkNs">${N.slice(0, 4).join('')}</div><button class="lkC" id="lkFm" aria-label="Moth FM">${appTile('moFm', 22)}</button><button class="lkSw" id="lkSw">Swipe up to play</button>`;
+  document.body.appendChild(box);
+  const open = () => { if (!$('lkBox')) return; let c = 0; for (const b of world.buildings) if ((b.bonus || 0) >= 1 && collectBonus(b)) c++; box.classList.add('out'); setTimeout(() => box.remove(), 320); };
+  $('lkSw').onclick = open; $('lkFm').onclick = () => { open(); setTimeout(() => showFM(null), 340); };
+  let y0 = null; box.onpointerdown = (e) => { y0 = e.clientY; }; box.onpointerup = (e) => { if (y0 != null && y0 - e.clientY > 50) open(); y0 = null; };
+}
 function awayReport(ms, hours, got, built, gate) {
   const real = ms >= 36e5 ? (Math.round(ms / 36e5 * 10) / 10) + ' h' : Math.max(1, Math.round(ms / 6e4)) + ' min';
   const ic = { food: '🍖', water: '💧', mat: '⚙', wood: '🪵', stone: '🪨', rp: '🔬' }, tr = Object.entries(got).filter(([, v]) => v >= .5);

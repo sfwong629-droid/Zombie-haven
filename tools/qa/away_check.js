@@ -38,8 +38,9 @@ const card = (p) => p.evaluate(() => { const b = document.querySelector('#eventM
       await p.click('#eventModal .rpBtns button:not(.go)'); await p.waitForTimeout(300);
       ok((await p.evaluate(() => ZH.world.buildings.filter((q) => !(ZH.DEFS[q.type] || {}).out)[0].bonus || 0)) >= 1, 'phone: Later emptied the trays');
       /* the real path: three hours away */
-      await p.evaluate(() => ZH.awayCredit(3 * 36e5)); await p.waitForTimeout(500); const r = await card(p);
-      ok(!!r && /Back after 3 h/.test(r.text), 'phone: awayCredit did not open the report');
+      await p.evaluate(() => ZH.awayCredit(3 * 36e5)); await p.waitForTimeout(500);   /* 3D.397: coming back opens the lock screen now (lock_check.js) */
+      ok(await p.evaluate(() => { const l = document.getElementById('lkBox'); return !!l && /Back after 3 h/.test(l.innerText); }), 'phone: awayCredit did not open the lock screen');
+      await p.evaluate(() => { const l = document.getElementById('lkBox'); if (l) l.remove(); });
       await clear(p);
       await p.evaluate(() => { ZH.OPTS.look = 'glass'; ZH.saveOpts(); ZH.applyLook(); ZH.world.buildings[0].bonus = 0; ZH.trayAdd(ZH.world.buildings[0], 'food', 6); ZH.awayCredit(3 * 36e5); }); await p.waitForTimeout(500);
       ok(!(await card(p)), 'look off: the phone report showed');
