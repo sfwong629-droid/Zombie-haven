@@ -1,0 +1,2759 @@
+/* Zombie Haven: real-time 3D renderer (?3d=1). The game runs exactly as before: its simulation, UI, taps and camera
+   are unchanged. This module draws the world (ground, roads, walls, buildings, trees, survivors, zombies) with three.js
+   on a canvas UNDER the game canvas, with an orthographic camera that reproduces the game's own 2:1 projection
+   pixel for pixel, so every 2D overlay (labels, health bars, selection, build grid, alerts) still lines up.
+   Models: assets/characters/ai3d_male/realtime/*.glb (tools/art/b3d/export3d.py), the tent (export_prop3d.py);
+   everything else is built here from simple shapes as stand-ins. */
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';   /* 3D.126 the character models are stored compressed */
+
+const G = window.ZHG;
+const T = 2.4;                                                    // world units per tile; the survivor is 1.09 tall. V3D.3: 1.6 -> 2.4 (buildings 1.5x vs survivors, the ink-town mockup proportions)
+const SQ2 = Math.SQRT2, ELEV = Math.asin(.5);
+const DIR = new THREE.Vector3(Math.cos(ELEV) / SQ2, Math.sin(ELEV), Math.cos(ELEV) / SQ2);   // toward the camera: 30° up, from the +x +y corner
+
+// ---------------------------------------------------------------- renderer + camera matched to the game projection
+const worldEl = document.getElementById('world'), gameCv = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+const canvas = renderer.domElement;
+Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', pointerEvents: 'none', zIndex: '0' });
+worldEl.insertBefore(canvas, gameCv);
+Object.assign(gameCv.style, { position: 'relative', zIndex: '1' });
+// phones drop the WebGL context when graphics memory runs short or the tab is backgrounded: the world goes black while
+// the 2D UI keeps drawing. Save, then reload (the most reliable way back on iOS Safari).
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault(); console.warn('WebGL context lost');
+  const b = document.getElementById('crash'); if (b) { b.style.display = 'block'; b.textContent = 'Graphics paused by the phone — restoring…'; }
+  try { window.ZH && ZH.saveGame && ZH.saveGame(); } catch (err) { /* saving is best effort */ }
+  const back = () => location.reload();
+  canvas.addEventListener('webglcontextrestored', back, { once: true }); setTimeout(back, 2500);
+});
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+const DPR_MAX = Math.min(1.5, devicePixelRatio || 1); let dpr = DPR_MAX; renderer.setPixelRatio(dpr);
+const scene = new THREE.Scene();
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
+let size = [0, 0];
+function placeCamera() {
+  const VW = G.VW(), VH = G.VH(), c = G.cam;
+  if (size[0] !== VW || size[1] !== VH) { size = [VW, VH]; renderer.setSize(VW, VH, false); }
+  const ppu = (G.BASE_TW / 2 * (G.S.sh && G.S.sh.view ? G.S.sh.cz * Math.min(1.3, Math.max(.75, VW / 700)) : c.z)) / (T / SQ2);                     // screen px per world unit
+  const H = G.S.sh && G.S.sh.view ? G.S.sh : null;   /* 3D.108 watching the stronghold: the camera follows the squad in the arena */
+  const ctr = H ? { x: H.cx, y: H.cy } : G.unproject(VW / 2, VH / 2);                          // tile under the screen centre (ground level)
+  const tgt = new THREE.Vector3(ctr.x * T, 0, ctr.y * T);
+  cam.left = -VW / 2 / ppu; cam.right = VW / 2 / ppu; cam.top = VH / 2 / ppu; cam.bottom = -VH / 2 / ppu;
+  cam.position.copy(tgt).addScaledVector(DIR, 120); cam.lookAt(tgt); cam.updateProjectionMatrix();
+}
+
+// ---------------------------------------------------------------- light
+const hemi = new THREE.HemisphereLight(0xfff4dc, 0x5a5236, 1.25); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 1.9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const MC = new THREE.Vector3(G.COLS * T / 2, 0, G.ROWS * T / 2);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 160 });
+sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
+sun.position.copy(MC).add(new THREE.Vector3(-30, 52, 18)); sun.target.position.copy(MC); scene.add(sun, sun.target);
+const KEYS = [   // hour: sky, hemi colour, hemi intensity, sun colour, sun intensity, window glow 0..1
+  [0, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [4, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [5.4, 0x5c566a, 0xa8a4b8, 1.1, 0xc8b0b4, .86, .9],   /* 3D.100 owner: dawn and dusk fade like a dimmer (about twice as long, with in-between steps) */
+  [6.6, 0xb98a72, 0xf0bc9a, 1.02, 0xf4a070, 1.12, .6], [7.6, 0xd2a080, 0xffd0a6, 1.06, 0xffb27a, 1.38, .3],
+  [8.8, 0x9fb2bc, 0xfff0d8, 1.12, 0xffe8c4, 1.55, 0], [10.5, 0x9db8c6, 0xfff4dc, 1.22, 0xfff0d6, 1.85, 0], [13, 0x9cbac9, 0xfff6e2, 1.3, 0xfff4e0, 2.05, 0], [15.5, 0x9fb7c2, 0xfff2da, 1.24, 0xfff0d0, 1.85, 0],   /* 3D.58: the light climbs to noon and eases off through the afternoon */
+  [17, 0xb4b2a8, 0xffe8c8, 1.12, 0xffd8a8, 1.6, .1], [18.4, 0xd2a080, 0xffd0a6, 1.06, 0xffb27a, 1.45, .3], [19.4, 0xc8906c, 0xf8c09a, 1.02, 0xf4a070, 1.2, .6],
+  [20.5, 0x6a5e70, 0xb0a6bc, 1.1, 0xc8b0b4, .9, .85], [21.6, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1], [24, 0x33405c, 0x8494c4, 1.18, 0xaabfe6, .72, 1]];   // V3D.15: nights brighter again (.95 / .55 -> 1.18 / .72)   // V3D.12: nights brighter (were .7 / .35)
+const cA = new THREE.Color(), cB = new THREE.Color();
+let glowNow = -1, sunH = -1;
+function light(h) {
+  let i = 0; while (i < KEYS.length - 2 && h >= KEYS[i + 1][0]) i++;
+  const a = KEYS[i], b = KEYS[i + 1], u = Math.max(0, Math.min(1, (h - a[0]) / (b[0] - a[0] || 1)));
+  const mix = (k) => cA.set(a[k]).lerp(cB.set(b[k]), u).clone(), num = (k) => a[k] + (b[k] - a[k]) * u;
+  scene.background = mix(1); hemi.color.copy(mix(2)); hemi.intensity = num(3); sun.color.copy(mix(4)); sun.intensity = num(5);
+  { const ss = (a, b) => { const x = Math.max(0, Math.min(1, (h - a) / (b - a))); return x * x * (3 - 2 * x); }, dw = ss(4.5, 7) * (1 - ss(19.5, 21.6));   /* 3D.100: the sun slides into the night light (was a jump at 5:30 and 20:30) */
+    const f = Math.max(0, Math.min(1, (h - 6) / 14)), el = .75 + (Math.max(.12, Math.sin(Math.PI * f)) - .75) * dw, az = (f - .5) * 1.7 * dw, bx = -30, bz = 18, L = Math.hypot(bx, bz) * (1.25 - .45 * el);   /* 3D.58 the sun crosses the sky: long shadows morning and evening */
+    const k = Math.round(h * 10) / 10; if (k !== sunH) { sunH = k; sun.position.set(MC.x + (bx * Math.cos(az) - bz * Math.sin(az)) / Math.hypot(bx, bz) * L, 22 + 34 * el, MC.z + (bx * Math.sin(az) + bz * Math.cos(az)) / Math.hypot(bx, bz) * L); renderer.shadowMap.needsUpdate = true; } }
+  const g = Math.round(num(6) * 50) / 50;
+  if (g !== glowNow) { glowNow = g; winMat.color.set(0x4a3a28).lerp(new THREE.Color(0xffc864), g); poolMat.opacity = .8 * g; lampSprite.opacity = .9 * g; beamMat.opacity = .45 * g; haloMat.opacity = .5 * g; for (const m of charMats) m.emissive.setScalar(m.userData.nightGlow * g); }
+}
+
+// ---------------------------------------------------------------- materials, ink outline
+const grad = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 180, 180, 180, 255, 255, 255, 255, 255]), 3, 1);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const MATS = {};
+const toon = (c) => MATS[c] ||= new THREE.MeshToonMaterial({ color: new THREE.Color(c), gradientMap: grad });
+const winMat = new THREE.MeshBasicMaterial({ color: 0x4a3a28 });
+const hullMats = new Map();
+function hullMat(th) {
+  if (hullMats.has(th)) return hullMats.get(th);
+  const m = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
+  m.onBeforeCompile = (s) => {
+    s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normalize(normal) * ${th.toFixed(4)};`)
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  gl_Position.z += 0.0004 * gl_Position.w;');
+  };
+  hullMats.set(th, m); return m;
+}
+function addHull(mesh, th) {
+  let h;
+  if (mesh.isSkinnedMesh) { h = new THREE.SkinnedMesh(mesh.geometry, hullMat(th)); h.bind(mesh.skeleton, mesh.bindMatrix); h.position.copy(mesh.position); h.quaternion.copy(mesh.quaternion); h.scale.copy(mesh.scale); mesh.parent.add(h); }
+  else if (mesh.isInstancedMesh) { h = new THREE.InstancedMesh(mesh.geometry, hullMat(th), mesh.count); h.instanceMatrix = mesh.instanceMatrix; mesh.add(h); }
+  else { h = new THREE.Mesh(mesh.geometry, hullMat(th)); mesh.add(h); }
+  h.userData.hull = true; h.castShadow = false; h.frustumCulled = !!mesh.isSkinnedMesh; return h;
+}
+
+// ---------------------------------------------------------------- shape builder: geometry collected per colour, merged at the end
+const M4 = (x, y, z, ry = 0, rx = 0, rz = 0, sx = 1, sy = sx, sz = sx) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
+const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const cyl = (r0, r1, h, s = 8) => new THREE.CylinderGeometry(r0, r1, h, s);
+class Parts {
+  constructor() { this.p = {}; this.glow = []; }
+  put(geo, col, m) { const g = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); g.applyMatrix4(m); (this.p[col] ||= []).push(g); return this; }
+  win(geo, m) { const g = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); g.applyMatrix4(m); this.glow.push(g); }
+  build(group, th = .03, shadows = true) {
+    for (const [c, list] of Object.entries(this.p)) {
+      const g = mergeGeometries(list); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, toon(c)); m.castShadow = shadows; m.receiveShadow = true; group.add(m); addHull(m, th);
+    }
+    if (this.glow.length) { const g = mergeGeometries(this.glow); group.add(new THREE.Mesh(g, winMat)); }
+    return group;
+  }
+}
+
+// ---------------------------------------------------------------- ground (one colour per tile), forest and wreckage
+const PAD = 14;
+let groundMesh = null, groundKey = '';
+// V3D.21 rolling ground: gentle rises and dips (also under the roads), flat wherever something is built (buildings, walls)
+// so their bases stay on the ground. Heights live on a half-tile grid; groundH() samples it for everything placed on the ground.
+const GH = { a: null, x0: 0, y0: 0, nx: 0, ny: 0, amp: .45 };
+function groundH(wx, wz) {
+  if (!GH.a) return 0; const u = (wx / T - GH.x0) * 2, v = (wz / T - GH.y0) * 2, i = Math.floor(u), j = Math.floor(v);
+  if (i < 0 || j < 0 || i >= GH.nx || j >= GH.ny) return 0; const fu = u - i, fv = v - j, N = GH.nx + 1, A = GH.a;
+  return (A[j * N + i] * (1 - fu) + A[j * N + i + 1] * fu) * (1 - fv) + (A[(j + 1) * N + i] * (1 - fu) + A[(j + 1) * N + i + 1] * fu) * fv;
+}
+function buildHeights(X0, Y0, NX, NY) {
+  const W = G.world, blk = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y) || (G.Wd.hwyAt && G.Wd.hwyAt(x, y));   // 3D.101: the highway lies on flat ground
+  const D = new Float32Array(NX * NY).fill(9);   // distance (tiles) to the nearest built tile, up to 3
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) if (blk(x + X0, y + Y0)) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const d = Math.hypot(dx, dy); if (d < D[yy * NX + xx]) D[yy * NX + xx] = d; }
+  const sm = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const gx = NX * 2, gy = NY * 2, A = new Float32Array((gx + 1) * (gy + 1));
+  for (let j = 0; j <= gy; j++) for (let i = 0; i <= gx; i++) {
+    const u = X0 + i / 2, v = Y0 + j / 2;   // tile coordinates of this grid point
+    // distance to built ground, from the four tiles around this point (tile centres are at +.5)
+    let d = 9; for (const tx of [Math.floor(u - .01), Math.floor(u + .01)]) for (const ty of [Math.floor(v - .01), Math.floor(v + .01)]) { const xx = tx - X0, yy = ty - Y0; if (xx >= 0 && yy >= 0 && xx < NX && yy < NY) d = Math.min(d, D[yy * NX + xx]); }
+    const flat = sm(.9, 2.2, d), n = .5 * Math.sin(u * 1.35 + 1.3) * Math.cos(v * 1.1 + .4) + .32 * Math.sin(u * 2.3 - v * 1.9 + 2.1) + .18 * Math.cos(u * 3.7 + v * 3.1 + .7);
+    A[j * (gx + 1) + i] = GH.amp * flat * n;
+  }
+  Object.assign(GH, { a: A, x0: X0, y0: Y0, nx: gx, ny: gy });
+}
+const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const regrow = (x, y) => {   // town tiles where grass creeps back: near the town edge and in a few clumps
+  const B = G.Wd.BUILD, d = Math.min(x - B.x0, B.x1 - x, y - B.y0, B.y1 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3);
+  return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55);
+};
+const ROAD_STYLE = (() => { try { const q = new URLSearchParams(location.search).get('road'); if (q) localStorage.setItem('zh_road', q); return +(q || localStorage.getItem('zh_road') || 1); } catch (e) { return 1; } })();   // V3D.21 road look: 0 dirt track, 1 light gravel (default), 2 cobbles, 3 flagstones, 4 cracked asphalt
+const RU = { uRoad: { value: null }, uRO: { value: new THREE.Vector2() }, uRN: { value: new THREE.Vector2(1, 1) }, uT: { value: T }, uRS: { value: ROAD_STYLE } };
+let _gmat = null;
+// ---------------------------------------------------------------- night lights (V3D.12): warm light pools at every
+// door, a lantern glow above it, and a flashlight beam ahead of each survivor outside. Additive ground decals, so they
+// cost nothing like real lights do on a phone.
+function lightTex(cone) {
+  const S2 = 128, c = document.createElement('canvas'); c.width = c.height = S2; const g = c.getContext('2d');
+  if (!cone) { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.45, 'rgba(255,255,255,.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, S2, S2); }
+  else {   // a beam from the bottom centre widening upwards, brightest along its axis
+    const img = g.createImageData(S2, S2);
+    for (let y = 0; y < S2; y++) for (let x = 0; x < S2; x++) { const v = 1 - y / S2, half = .08 + .42 * v, dx = Math.abs(x / S2 - .5) / half;
+      const a = dx < 1 ? (1 - dx * dx) * Math.min(1, v * 6) * (1 - v * v * .85) : 0, i = (y * S2 + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = a * 255; }
+    g.putImageData(img, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const addM = (map, col) => new THREE.MeshBasicMaterial({ map, color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+const glowT = lightTex(false), poolMat = addM(glowT, 0xffb860), beamMat = addM(lightTex(true), 0xfff0c8);
+const poolG = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), beamG = new THREE.PlaneGeometry(1.5, 2.6).rotateX(-Math.PI / 2).translate(0, 0, -1.3);
+function doorLight(b) {   // world group: a pool on the ground at the door and a small lantern halo above it
+  const d = G.Wd.doorPoint(b), g = new THREE.Group(), pool = new THREE.Mesh(poolG, poolMat), lamp = new THREE.Sprite(lampSprite);
+  pool.scale.set(4.2, 1, 4.2); pool.position.y = .03; pool.renderOrder = 2; lamp.scale.set(.9, .9, 1); lamp.position.y = 1.35; g.add(pool, lamp);
+  g.position.set(d.x * T, 0, d.y * T); return g;
+}
+const haloMat = addM(glowT, 0xffe2b0);   // the light a survivor's lamp throws around them
+const lampSprite = new THREE.SpriteMaterial({ map: glowT, color: 0xffd890, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+function groundMat() {   // V3D.5: painted ground. World-space noise: big yellow/green patches, darker clumps, light flecks (grass), pebbles and ruts (dirt)
+  if (_gmat) return _gmat;
+  const gs = new THREE.DataTexture(new Uint8Array([120, 120, 120, 255, 165, 165, 165, 255, 205, 205, 205, 255, 235, 235, 235, 255, 255, 255, 255, 255]), 5, 1); gs.needsUpdate = true;   /* 3D.30: softer light steps on the ground (the 3-step toon ramp banded the slopes) */
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gs });
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, RU);
+    sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.)).xyz; vWN = normalize(mat3(modelMatrix) * normal);');
+    sh.fragmentShader = `varying vec3 vWP; varying vec3 vWN; uniform sampler2D uRoad; uniform vec2 uRO, uRN; uniform float uT; uniform int uRS;
+      vec2 vor(vec2 q){ vec2 i = floor(q), f = fract(q); float d1 = 9., d2 = 9.; for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 o = vec2(x, y), c = o + vec2(fract(sin(dot(i + o, vec2(127.1, 311.7))) * 43758.5), fract(sin(dot(i + o, vec2(269.5, 183.3))) * 43758.5)) * .8 + .1; float d = length(c - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return vec2(d1, d2); }
+      float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1., 0.)), f.x), mix(gh(i + vec2(0., 1.)), gh(i + 1.), f.x), f.y); }
+      float gf(vec2 p){ return .5 * gn(p) + .25 * gn(p * 2.03 + 7.1) + .125 * gn(p * 4.1 + 3.3) + .125 * gn(p * 8.3 + 1.7); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        vec2 p = vWP.xz;
+        float grass = smoothstep(-.10, .0, diffuseColor.g - diffuseColor.r);           // 1 on grass, 0 on dirt and roads
+        grass *= 1. - smoothstep(.70, .86, min(diffuseColor.r, diffuseColor.b));        // 3D.318 not on snow (near white, blue as high as red): it took the grass's yellow and green patches
+        float big = gf(p * .09), mid = gf(p * .45), fine = gn(p * 7.), fleck = gn(p * 19. + 3.);
+        vec3 patchTint = mix(vec3(1.06, 1.03, .80), vec3(.88, 1.04, .90), smoothstep(.35, .65, big));   // dry yellow vs fresh green
+        vec3 g = diffuseColor.rgb * mix(vec3(1.), patchTint, grass);
+        g *= .86 + .26 * mid;                                                            // soft light and dark clumps
+        g *= 1. - .16 * smoothstep(.58, .78, gn(p * 3.1 + 9.)) * grass;                   // dark grass clumps
+        g = mix(g, g * vec3(1.08, 1.06, .97), smoothstep(.72, .90, fleck) * grass);      // sunlit blades (subtle)
+        g *= 1. - .08 * (gn(p * 2.2 + 4.) - .5) * (1. - grass);                       // dirt: soft mottling, no specks
+        g = mix(g, g * .80, smoothstep(.66, .80, gn(vec2(p.x * 1.6, p.y * 5.) + 11.)) * (1. - grass) * .7);   // ruts
+        float rm = texture2D(uRoad, (p / uT - uRO) / uRN).r + (gn(p * 1.7) - .5) * .12;   // wobbly road edge
+        float rw = smoothstep(.42, .56, rm), rim = smoothstep(.36, .46, rm) * (1. - smoothstep(.5, .6, rm));
+        vec3 road = vec3(.215, .118, .045) * (.85 + .3 * gf(p * 1.3 + 2.));             // packed earth (#7f5f3b, linear), mottled
+        road = mix(road, road * .78, smoothstep(.80, .90, gn(p * 9. + 21.)) * .6);       // a few dark stones
+        // V3D.21 road detail (it read as a brown smudge): pale dusty middle, two wheel ruts, a grassy crown, pebbles, footprints of wear
+        road = mix(road, road * vec3(1.28, 1.22, 1.12), smoothstep(.55, .75, gf(p * .7 + 5.)) * .55);          // sun-bleached dusty patches
+        float brk = smoothstep(.25, .45, gn(p * 2.3 + 13.));                                                      // ruts come and go
+        float rut = (1. - smoothstep(.0, .045, abs(rm - .79))) * brk;
+        road = mix(road, road * .62, rut * .85);                                                                  // two dark wheel ruts either side of the middle
+        road = mix(road, road * 1.18, (1. - smoothstep(.0, .03, abs(rm - .755))) * brk * .6);                   // their pale lip
+        float crown = smoothstep(.93, .99, rm) * smoothstep(.62, .82, gn(p * 13. + 31.));
+        road = mix(road, vec3(.16, .23, .05), crown * .75);                                                       // grass blades down the middle
+        { vec2 q = p * 1.3, ci = floor(q), cf = fract(q); vec2 c = vec2(gh(ci), gh(ci + 3.7)) * .7 + .15; float dd = length(cf - c), on = step(.62, gh(ci + 7.3)), rs = .07 + .07 * gh(ci + 9.1);
+          road = mix(road, road * .55, on * (1. - smoothstep(rs, rs + .05, length(cf - c - vec2(.03, -.04)))));   // pebble shadow
+          road = mix(road, mix(vec3(.42, .34, .22), vec3(.30, .26, .21), gh(ci + 2.2)), on * (1. - smoothstep(rs - .02, rs, dd))); }   // pebbles, sandy or grey
+        { vec2 q = p * 4.5, ci = floor(q), cf = fract(q); float dd = length(cf - vec2(gh(ci + 1.3), gh(ci + 5.9)) * .8 - .1);
+          road = mix(road, road * 1.35, step(.7, gh(ci + 4.4)) * (1. - smoothstep(.05, .09, dd))); }             // grit
+        if (uRS == 1) {   // gravel, light: packed tan dirt with a scatter of grey chips (thicker in the middle, thinning to the edges)
+          vec3 base = mix(vec3(.25, .17, .09), vec3(.32, .24, .14), gf(p * .8)) * (.92 + .16 * gn(p * 3.));
+          vec2 v = vor(p * 4.5); vec2 ci = floor(p * 4.5); float t = gh(ci + 3.), dens = .22 + .2 * smoothstep(.6, .95, rm);
+          float chip = step(1. - dens, gh(ci + 8.1)) * (1. - smoothstep(.14, .2, v.x));
+          vec3 stone = mix(vec3(.26, .24, .21), vec3(.40, .37, .31), t);
+          road = mix(base, base * .78, (1. - smoothstep(.0, .05, abs(rm - .79))) * smoothstep(.25, .45, gn(p * 2.3 + 13.)) * .6);   // faint ruts
+          road = mix(road, road * .7, chip * .5 * (1. - smoothstep(.1, .22, length(v.x - .03))));   // chip shadow
+          road = mix(road, stone, chip);
+        } else if (uRS == 2) {   // cobbles: rounded grey-brown stones in dark joints
+          vec2 v = vor(p * 2.6); float edge = smoothstep(.03, .14, v.y - v.x), dome = 1. - smoothstep(.0, .45, v.x);
+          vec3 st = mix(vec3(.20, .17, .13), vec3(.30, .26, .20), gh(floor(p * 2.6) + 1.)) * (.8 + .35 * dome);
+          road = mix(vec3(.07, .055, .04), st, edge); road = mix(road, vec3(.12, .19, .04), (1. - edge) * smoothstep(.6, .8, gn(p * 6.)) * .7);   // moss in the joints
+        } else if (uRS == 3) {   // flagstones: big flat pale slabs with grass between
+          vec2 v = vor(p * 1.1); float edge = smoothstep(.02, .09, v.y - v.x);
+          vec3 st = mix(vec3(.33, .30, .25), vec3(.42, .38, .31), gh(floor(p * 1.1) + 5.)) * (.85 + .25 * gf(p * 1.7));
+          road = mix(vec3(.12, .17, .05), st, edge);
+        } else if (uRS == 4) {   // cracked asphalt: dark grey, faded patches, cracks with weeds, worn middle line
+          vec3 a = vec3(.075, .075, .08) * (.85 + .35 * gf(p * .9)); a = mix(a, a * 1.5, smoothstep(.6, .8, gf(p * .5 + 3.)) * .6);
+          vec2 v = vor(p * .9); float crack = 1. - smoothstep(.0, .025, v.y - v.x);
+          a = mix(a, vec3(.03, .03, .03), crack * smoothstep(.35, .55, gn(p * 1.4 + 2.)));
+          a = mix(a, vec3(.10, .17, .04), crack * smoothstep(.55, .75, gn(p * 3. + 7.)));
+          float mid = (1. - smoothstep(.0, .025, abs(rm - .985))) * step(.5, fract(gn(p * .2) * 3. + p.x * .25 + p.y * .25)) * smoothstep(.4, .6, gn(p * 2.));
+          road = mix(a, vec3(.55, .42, .10), mid * .7);
+        }
+        g = mix(g, g * .82, rim);                                                        // darker trodden edge
+        g = mix(g, vec3(.12, .19, .04), rim * smoothstep(.6, .8, gn(p * 17. + 8.)) * .8);  // grass tufts along the edge
+        g = mix(g, road, rw);
+        float hs = dot(normalize(vWN), normalize(vec3(-.55, 1., .35)));                    // V3D.21 hill shading: sunny slopes lighter, the far sides darker,
+        g *= mix(1., clamp(.55 + .62 * hs, .7, 1.25), .9) * (.93 + .14 * smoothstep(-.4, .4, vWP.y));   // hollows a touch darker than the tops
+        diffuseColor.rgb = g;
+      }`);
+  };
+  return (_gmat = m);
+}
+// V3D.17 seasons: grass, tufts, bushes and tree crowns follow the season (winter crowns are bare twigs)
+const season = () => (G.season ? G.season() : 'autumn');
+const SEASON_PAL = {
+  spring: { grass: ['#7aa846', '#80ae4a', '#76a242', '#86b24c', '#8db650', '#78a444'], tuft: ['#7ea83a', '#8fb446', '#a3c050', '#6f9a34'], bush: ['#e8a8c0', '#8fc25a', '#7fb04a', '#f2c8d8', '#a8c86a'], crown: ['#8fc25a', '#7fb04a', '#e8a8c0', '#a8c86a', '#9ac860', '#f2c8d8'] },
+  summer: { grass: ['#6f9e3e', '#74a442', '#6a983a', '#79a845', '#80ac48', '#6c9a3c'], tuft: ['#6a9a34', '#7aa83c', '#88b044', '#5e8c30'], bush: ['#4f8a3a', '#5a9a42', '#3f7a34', '#68a048', '#4a8238'], crown: ['#4f8a3a', '#5a9a42', '#3f7a34', '#68a048', '#4a8238', '#5c9440'] },
+  autumn: { grass: ['#7c9e42', '#80a245', '#78993f', '#85a547', '#8ba649', '#7a9b40'], tuft: ['#7d8a34', '#8f9a3c', '#a39a40', '#6f7d30'], bush: ['#c96a28', '#d9963a', '#8a9636', '#b8562a', '#a8a03a'], crown: ['#d06a2a', '#e39a35', '#c9541f', '#b8a03a', '#8a9a3a', '#d98a2c'] },
+  winter: { grass: ['#8a9a6a', '#8e9e6e', '#869666', '#92a272', '#96a474', '#889868'], tuft: ['#9a9a78', '#a6a482', '#8e8e6e', '#b0ac8a'], bush: ['#7a6a58', '#86765e', '#6e6252', '#8e7e66', '#7a7060'], crown: ['#7a6a5a', '#86745e', '#6e6050', '#8e7c66', '#76685a', '#827260'] },
+};
+// snow settles on whatever faces up (ground, roofs, tree tops): a shader hook on the scenery's toon materials
+const SNOW = { uSnow: { value: 0 } };
+function snowPatch(m) {
+  if (!m || !m.isMeshToonMaterial || m.userData.snowP) return; m.userData.snowP = true;
+  const prev = m.onBeforeCompile, pk = m.customProgramCacheKey && m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey ? m.customProgramCacheKey.bind(m) : null;
+  m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r); sh.uniforms.uSnow = SNOW.uSnow;
+    sh.fragmentShader = 'uniform float uSnow;\n' + sh.fragmentShader.replace('#include <lights_toon_fragment>', '{ vec3 wn = normalize((vec4(normal, 0.0) * viewMatrix).xyz); float sn = uSnow * smoothstep(0.22, 0.7, wn.y); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.95, 1.0), sn * 0.88); }\n#include <lights_toon_fragment>'); };
+  m.customProgramCacheKey = () => (pk ? pk() : '') + '|snow'; m.needsUpdate = true;
+}
+let snowScan = 0;
+function snowWalk(o) { if (o.userData.actor || o.userData.hull) return; if (o.isMesh && !o.isSkinnedMesh) (Array.isArray(o.material) ? o.material : [o.material]).forEach(snowPatch); for (const c of o.children) snowWalk(c); }
+const SNOW_N = 700, snowPos = new Float32Array(SNOW_N * 3), snowG = new THREE.BufferGeometry(); snowG.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowPts = new THREE.Points(snowG, new THREE.PointsMaterial({ color: 0xffffff, size: .16, transparent: true, opacity: .9, depthWrite: false })); snowPts.frustumCulled = false; snowPts.visible = false; scene.add(snowPts);
+const snowSeed = Array.from({ length: SNOW_N }, () => [Math.random(), Math.random(), Math.random(), Math.random() * 6]); let snowFallK = 0;
+function syncSnow(dt) {
+  const target = G.S.snowK || 0; SNOW.uSnow.value += (target - SNOW.uSnow.value) * Math.min(1, dt * .5);
+  if (SNOW.uSnow.value > .01 && (snowScan -= dt) <= 0) { snowScan = 2; snowWalk(scene); }
+  const w = G.S.weather, fk = w && w.kind && w.kind.startsWith('snow') ? (w.kind === 'snow-heavy' ? 1 : .55) : 0; snowFallK += (fk - snowFallK) * Math.min(1, dt * .8); snowPts.visible = snowFallK > .02; if (!snowPts.visible) return;
+  const n = Math.round(SNOW_N * snowFallK), c = cam.position.clone().addScaledVector(DIR, -120), span = (cam.right - cam.left) * 1.4;
+  for (let i = 0; i < n; i++) { const sd = snowSeed[i]; sd[1] = (sd[1] - dt * (.12 + sd[2] * .06)) % 1; if (sd[1] < 0) { sd[1] += 1; sd[0] = Math.random(); sd[2] = Math.random(); } sd[3] += dt;
+    snowPos.set([c.x + (sd[0] - .5) * span + Math.sin(sd[3] * 1.3) * .3, sd[1] * 9, c.z + (sd[2] - .5) * span + Math.cos(sd[3]) * .2], i * 3); }
+  snowG.setDrawRange(0, n); snowG.attributes.position.needsUpdate = true;
+  hemi.intensity *= 1 - .08 * snowFallK; sun.intensity *= 1 - .3 * snowFallK;
+}
+function buildGround() {
+  const W = G.world, B = G.Wd.BUILD, WZ = G.Wd.WALLZONE;
+  const key = [B.x0, B.y0, B.x1, B.y1, W.roads.size, W.ver, season()].join(',');
+  if (key === groundKey) return false; groundKey = key;
+  if (groundMesh) { scene.remove(groundMesh); groundMesh.geometry.dispose(); }
+  const pos = [], col = [], c = new THREE.Color();
+  const GR = SEASON_PAL[season()].grass   /* V3D.12: greener, so the town and people stand out; V3D.17: by season */, DIRT = ['#b08a52', '#ad874f', '#b38d55', '#a9854d'];
+  const X0 = -PAD, Y0 = -PAD, NX = G.COLS + 2 * PAD, NY = G.ROWS + 2 * PAD, tc = new Float32Array(NX * NY * 3);
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) {   // one colour per tile ...
+    const r = hash(x, y), inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1;
+    const edge = Math.max(0, B.x0 - x, x - B.x1, B.y0 - y, y - B.y1);
+    let k;
+    if (inB && regrow(x, y) && !G.Wd.isRoad(W, x, y)) k = r < .5 ? '#90a046' : '#97a44a';   // V3D.6: grass growing back into the town dirt
+    else if (inB || (edge === 1 && r < .55)) k = DIRT[(r * 4) | 0];
+    else if (G.Wd.hwyAt && G.Wd.hwyAt(x, y)) k = DIRT[(r * 4) | 0];   // 3D.101: packed dirt under the highway (shows in the potholes)
+    else if (x >= WZ.x0 && x <= WZ.x1 && y >= WZ.y0 && y <= WZ.y1 && r < .4) k = '#a39150';
+    else if (x < 0 || y < 0 || x >= G.COLS || y >= G.ROWS) k = r < .5 ? '#73923a' : '#6f8d38';
+    else k = GR[(r * 6) | 0];
+    c.set(k); const i = ((y - Y0) * NX + (x - X0)) * 3; tc[i] = c.r; tc[i + 1] = c.g; tc[i + 2] = c.b;
+  }
+  const corner = (x, y) => {   // ... and every tile corner takes the average of the tiles around it: soft painted edges, no checkerboard
+    let r = 0, g = 0, b = 0, n = 0;
+    for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tc[i]; g += tc[i + 1]; b += tc[i + 2]; n++; }
+    return [r / n, g / n, b / n];
+  };
+  const rm = new Uint8Array(NX * NY);   // V3D.7: roads as a smooth mask (bilinear between tile centres): ~1 tile wide, rounded corners, soft edges
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) if (G.Wd.isRoad(W, x, y)) rm[(y - Y0) * NX + (x - X0)] = 255;
+  if (RU.uRoad.value) RU.uRoad.value.dispose();
+  const rt = new THREE.DataTexture(rm, NX, NY, THREE.RedFormat); rt.magFilter = rt.minFilter = THREE.LinearFilter; rt.needsUpdate = true;
+  RU.uRoad.value = rt; RU.uRO.value.set(X0, Y0); RU.uRN.value.set(NX, NY);
+  buildHeights(X0, Y0, NX, NY);
+  const ccol = (x, y) => { const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, a = corner(x0, y0), b = corner(x0 + 1, y0), c2 = corner(x0, y0 + 1), d2 = corner(x0 + 1, y0 + 1); return [0, 1, 2].map((k) => (a[k] * (1 - fx) + b[k] * fx) * (1 - fy) + (c2[k] * (1 - fx) + d2[k] * fx) * fy); };
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++)   // two by two quads per tile, so the rises are smooth
+    for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { const u = x + (sx + dx) / 2, v = y + (sy + dz) / 2; pos.push(u * T, groundH(u * T, v * T), v * T); col.push(...(sx + dx === 0 || sx + dx === 2) && (sy + dz === 0 || sy + dz === 2) ? corner(u, v) : ccol(u, v)); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  { const nr = new Float32Array(pos.length), e = 1.4; for (let i = 0; i < pos.length; i += 3) { const x = pos[i], z = pos[i + 2], dx = (groundH(x + e, z) - groundH(x - e, z)) * .7, dz = (groundH(x, z + e) - groundH(x, z - e)) * .7, n = new THREE.Vector3(-dx, 2 * e, -dz).normalize();   /* 3D.30: wider, softer slope sample: no diamond banding when zoomed out or at dusk */ nr[i] = n.x; nr[i + 1] = n.y; nr[i + 2] = n.z; }
+    g.setAttribute('normal', new THREE.BufferAttribute(nr, 3)); }   // V3D.21 smooth normals from the height field (face normals showed the tile seams)
+  groundMesh = new THREE.Mesh(g, groundMat()); groundMesh.receiveShadow = true; scene.add(groundMesh);
+  return true;
+}
+const ni = (g) => { const n = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal') n.deleteAttribute(k); return n; };
+const merge = (list) => mergeGeometries(list.map(ni));
+// V3D.8 trees: layered pines, lumpy leaf crowns, bare dead trees; they sway in the wind (vertex shader, phase from position)
+const pineG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry([.95, .8, .64, .48, .3][i], [1.1, 1.0, .9, .8, .7][i], 9).rotateY(i * .41).translate(Math.sin(i * 2.1) * .04, [.75, 1.2, 1.6, 1.98, 2.32][i], Math.cos(i * 1.7) * .04)));
+const pineTrunkG = cyl(.09, .13, .8, 6).translate(0, .4, 0);
+const branch = (len, r0, r1, tilt, yaw, y, s = 5) => cyl(r1, r0, len, s).translate(0, len / 2, 0).rotateZ(-tilt).rotateY(yaw).translate(0, y, 0);   // grows out of the trunk at height y
+const trunkG = merge([cyl(.1, .15, 1.4, 7).translate(0, .7, 0), branch(.6, .06, .035, .8, 0, 1.0), branch(.55, .05, .03, .75, 2.3, 1.1)]);
+const crownG = merge([new THREE.IcosahedronGeometry(.62, 1).translate(0, 1.78, 0), new THREE.IcosahedronGeometry(.48, 0).translate(.44, 1.52, .16), new THREE.IcosahedronGeometry(.46, 0).translate(-.4, 1.56, -.2),
+  new THREE.IcosahedronGeometry(.42, 0).translate(.08, 1.46, -.44), new THREE.IcosahedronGeometry(.4, 0).translate(-.12, 2.16, .14), new THREE.IcosahedronGeometry(.36, 0).translate(.28, 2.0, .32), new THREE.IcosahedronGeometry(.38, 0).translate(-.3, 1.42, .34)]);
+const deadG = merge([cyl(.07, .13, 1.7, 6).translate(0, .85, 0), branch(.8, .055, .03, .85, .3, 1.05), branch(.7, .05, .025, .8, 2.6, .95), branch(.6, .04, .02, .6, 4.4, 1.3), branch(.45, .03, .015, .5, 1.4, 1.55, 4), branch(.35, .025, .012, .9, 5.3, 1.45, 4)]);
+
+// V3D.9 foliage made of leaf cards: painted leaf clusters / pine-needle sprays with cut-out gaps, laid around each crown.
+// Cards lean toward the (fixed) camera so few are seen edge-on; normals point out from the crown centre for soft round shading.
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function leafTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), R = rng(7);
+  for (let i = 0; i < 70; i++) {
+    const x = 30 + R() * 196, y = 30 + R() * 196, a = R() * 6.28, L = 26 + R() * 22, W = L * .42, v = 150 + R() * 105 | 0;
+    if (Math.hypot(x - 128, y - 128) > 108) continue;
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.moveTo(-L / 2, 0); g.quadraticCurveTo(0, -W, L / 2, 0); g.quadraticCurveTo(0, W, -L / 2, 0); g.fill();
+    g.strokeStyle = `rgba(0,0,0,.25)`; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-L / 2, 0); g.lineTo(L / 2, 0); g.stroke();
+    g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function needleTexture() {   // a fluffy pine spray: soft body + thick needle strokes along a stem, tip at the right
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d'), R = rng(11);
+  g.fillStyle = 'rgb(150,150,150)'; g.beginPath(); g.moveTo(2, 64); g.quadraticCurveTo(110, 4, 252, 60); g.quadraticCurveTo(110, 124, 2, 64); g.fill();
+  g.lineCap = 'round';
+  for (let i = 0; i < 260; i++) {
+    const u = R(), x = 4 + u * 240, half = (1 - u * .75) * 54, y = 64 + (R() * 2 - 1) * half * .55, len = (1 - u * .6) * (16 + R() * 14), s = y < 64 ? -1 : 1, v = 165 + R() * 90 | 0;
+    g.strokeStyle = `rgb(${v},${v},${v})`; g.lineWidth = 3.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x + len * .6, y + s * len * .8); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const LEAF_TEX = leafTexture(), NEEDLE_TEX = needleTexture();
+function cardGeometry(cards) {   // cards: [centre(Vector3), normal-for-light(Vector3), u-axis, v-axis] -> one BufferGeometry with uvs
+  const P = [], N = [], U = [], I = [];
+  cards.forEach(([c, n, ua, va], k) => {
+    const corners = [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]];
+    for (const [a, b, u, v] of corners) { const q = c.clone().addScaledVector(ua, a).addScaledVector(va, b); P.push(q.x, q.y, q.z); N.push(n.x, n.y, n.z); U.push(u, v); }
+    const o = k * 4; I.push(o, o + 1, o + 2, o, o + 2, o + 3);
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); return g;
+}
+const CAM_DIR = new THREE.Vector3(Math.cos(Math.PI / 6) / Math.SQRT2, Math.sin(Math.PI / 6), Math.cos(Math.PI / 6) / Math.SQRT2);
+const BLOBS = [[0, 1.8, 0, .66], [.46, 1.54, .16, .5], [-.42, 1.58, -.2, .48], [.08, 1.46, -.46, .44], [-.12, 2.2, .14, .44], [.3, 2.04, .32, .4], [-.32, 1.44, .36, .4]];
+const crownCardsG = (() => {
+  const R = rng(3), cards = [], ctr = new THREE.Vector3(0, 1.75, 0);
+  for (const [x, y, z, r] of BLOBS) {
+    const n = Math.round(22 * (r / .45) ** 2);
+    for (let i = 0; i < n; i++) {
+      const d = new THREE.Vector3(R() * 2 - 1, R() * 2 - 1, R() * 2 - 1); if (d.lengthSq() < .01) continue; d.normalize();
+      const c = new THREE.Vector3(x, y, z).addScaledVector(d, r * (.55 + R() * .4));
+      const face = d.clone().multiplyScalar(.45).addScaledVector(CAM_DIR, .55).normalize();
+      const t1 = new THREE.Vector3(0, 1, 0).cross(face).normalize(), t2 = face.clone().cross(t1).normalize(), a = R() * 6.28, sz = .26 + R() * .14;
+      const ua = t1.clone().multiplyScalar(Math.cos(a)).addScaledVector(t2, Math.sin(a)).multiplyScalar(sz), va = t2.clone().multiplyScalar(Math.cos(a)).addScaledVector(t1, -Math.sin(a)).multiplyScalar(sz);
+      cards.push([c, c.clone().sub(ctr).normalize(), ua, va]);
+    }
+  }
+  return cardGeometry(cards);
+})();
+const crownCoreG = merge(BLOBS.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r * .62, 0).translate(x, y, z)));
+const TIERS = [[.75, .98], [1.2, .82], [1.6, .66], [1.98, .5], [2.32, .34]];
+const pineCardsG = (() => {
+  const R = rng(5), cards = [];
+  TIERS.forEach(([y, rad], ti) => {
+    const nb = 11 + (ti < 2 ? 4 : 0);
+    for (let i = 0; i < nb; i++) {
+      const a = i / nb * 6.28 + ti * .5 + R() * .3, out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      const base = new THREE.Vector3(0, y + .3, 0), tip = new THREE.Vector3(out.x * rad * 1.05, y - .28, out.z * rad * 1.05);
+      const along = tip.clone().sub(base), c = base.clone().add(tip).multiplyScalar(.5), half = along.clone().multiplyScalar(.5);
+      const side = along.clone().cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(.24 + rad * .26);
+      const n = out.clone().multiplyScalar(.7).add(new THREE.Vector3(0, .7, 0)).normalize();
+      cards.push([c, n, half, side]);
+    }
+  });
+  return cardGeometry(cards);
+})();
+const pineCoreG = merge(TIERS.map(([y, rad]) => new THREE.ConeGeometry(rad * .62, .75, 7).translate(0, y + .02, 0)));
+
+const SWAY = { uTime: { value: 0 } };
+const swayCode = (lo, hi) => `
+  { vec3 ip = instanceMatrix[3].xyz; float ph = ip.x * .37 + ip.z * .53, h = max(transformed.y - .5, 0.);
+    float w = sin(uTime * 1.3 + ph) * .7 + sin(uTime * 2.3 + ph * 1.7) * .3;
+    transformed.x += w * h * h * .03; transformed.z += w * h * h * .018; vShade = clamp((position.y - ${lo.toFixed(2)}) / ${(hi - lo).toFixed(2)}, 0., 1.); }`;
+function swayMats(lo, hi, th, map) {   // the toon material and its outline both bend the same way
+  const m = new THREE.MeshToonMaterial(map ? { color: 0xffffff, gradientMap: grad, map, alphaTest: .45, side: THREE.DoubleSide } : { color: 0xffffff, gradientMap: grad });
+  m.onBeforeCompile = (sh) => { sh.uniforms.uTime = SWAY.uTime;
+    sh.vertexShader = 'uniform float uTime; varying float vShade;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + swayCode(lo, hi));
+    sh.fragmentShader = 'varying float vShade;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= mix(.7, 1.12, vShade);'); };
+  const hm = new THREE.MeshBasicMaterial({ color: 0x1e140f, side: THREE.BackSide });
+  hm.onBeforeCompile = (sh) => { sh.uniforms.uTime = SWAY.uTime;
+    sh.vertexShader = 'uniform float uTime; varying float vShade;\n' + sh.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = position + normalize(normal) * ${th.toFixed(4)};` + swayCode(lo, hi))
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  gl_Position.z += 0.0004 * gl_Position.w;'); };
+  return [m, hm];
+}
+function instSway(geo, list, colorFn, th, lo, hi, map) {
+  const [mat, hm] = swayMats(lo, hi, th, map), im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length)), m = new THREE.Matrix4();
+  im.count = list.length;
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im);
+  if (map) { im.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: .45, side: THREE.DoubleSide }); return im; }
+  const h = new THREE.InstancedMesh(geo, hm, im.count); h.instanceMatrix = im.instanceMatrix; h.userData.hull = true; h.castShadow = false; h.frustumCulled = false; im.add(h);
+  return im;
+}
+const rubbleG = merge([new THREE.DodecahedronGeometry(.22, 0).scale(1.4, .5, 1).translate(0, .06, 0), box(.36, .1, .14).rotateY(.6).translate(.12, .12, .05), box(.3, .08, .1).rotateY(-.4).translate(-.15, .1, -.08)]);
+const crateG = box(.36, .36, .36).translate(0, .18, 0);
+let forest = [], forestKey = '';
+function inst(geo, list, colorFn, th) {
+  const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
+  im.count = list.length;
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 6, 0)), new THREE.Vector3(s, s * (.9 + r * .25), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im); addHull(im, th); return im;
+}
+const tuftG = merge([0, 1, 2, 3, 4].map((i) => new THREE.ConeGeometry(.035, .3 + (i % 3) * .07, 3, 1, true).translate(0, .15, 0).rotateZ((i - 2) * .22).rotateY(i * 1.3).translate(Math.cos(i * 2.4) * .06, 0, Math.sin(i * 2.4) * .06)));
+const bushG = merge([new THREE.IcosahedronGeometry(.3, 0).scale(1, .95, 1).translate(0, .2, 0), new THREE.IcosahedronGeometry(.22, 0).scale(1, .75, 1).translate(.24, .14, .08), new THREE.IcosahedronGeometry(.2, 0).scale(1, .7, 1).translate(-.2, .13, -.1)]);
+const plankG = box(.9, .05, .16).translate(0, .025, 0);
+const planksG = merge([box(.95, .05, .15).translate(0, .025, 0), box(.85, .05, .15).rotateY(.18).translate(.05, .075, .2), box(.7, .05, .14).rotateY(-.3).translate(-.1, .025, -.24)]);
+const smallCrateG = merge([box(.34, .3, .34).translate(0, .15, 0), box(.26, .22, .26).rotateY(.5).translate(.36, .11, .1)]);
+const barrelG = cyl(.15, .15, .42, 10).translate(0, .21, 0);
+const tyreG = new THREE.TorusGeometry(.17, .07, 6, 12).rotateX(Math.PI / 2).translate(0, .07, 0);
+/* V3D.22 chopped trees: a stump; marked trees: an orange ribbon round the trunk */
+const rockG = new THREE.DodecahedronGeometry(.42, 0).scale(1.25, .8, 1).translate(0, .2, 0), rockG2 = new THREE.DodecahedronGeometry(.26, 0).scale(1, .9, 1.2).translate(.38, .14, .2), rubbleFlatG = merge([new THREE.DodecahedronGeometry(.16, 0).scale(1.3, .4, 1).translate(0, .04, 0), new THREE.DodecahedronGeometry(.12, 0).scale(1, .4, 1.2).translate(.22, .03, .12), new THREE.DodecahedronGeometry(.1, 0).scale(1.2, .4, 1).translate(-.18, .03, -.1)]);
+const binG = merge([new THREE.BoxGeometry(.62, .62, .42).translate(0, .31, 0), new THREE.BoxGeometry(.66, .05, .46).translate(0, .14, 0)]), binLidG = new THREE.BoxGeometry(.66, .06, .46).translate(0, .65, 0), binLidOpenG = new THREE.BoxGeometry(.66, .06, .46).rotateX(-1.1).translate(0, .82, -.3);   // V3D.25 clothes bins
+const stumpG = cyl(.15, .2, .26, 8).translate(0, .13, 0), stumpTopG = cyl(.135, .135, .03, 8).translate(0, .275, 0), ribbonG = cyl(.16, .16, .1, 10).translate(0, .42, 0), flagG = merge([cyl(.02, .02, .9, 5).translate(0, .45, 0), new THREE.BoxGeometry(.28, .17, .015).translate(.15, .8, 0)]);
+const pebbleG = merge([new THREE.OctahedronGeometry(.07, 0).scale(1.2, .55, 1).translate(0, .03, 0), new THREE.OctahedronGeometry(.05, 0).scale(1, .55, 1.2).translate(.11, .02, .05)]);
+function instD(geo, list, colorFn, shadow) {   // small scatter: no outline, one draw call each
+  const im = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), Math.max(1, list.length)), m = new THREE.Matrix4();
+  im.count = list.length;
+  list.forEach(([x, z, s, r], i) => { m.compose(new THREE.Vector3(x, groundH(x, z), z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r * 9, 0)), new THREE.Vector3(s, s * (.8 + r * .4), s)); im.setMatrixAt(i, m); im.setColorAt(i, new THREE.Color(colorFn(r))); });
+  im.castShadow = !!shadow; im.receiveShadow = true; scene.add(im); return im;
+}
+function buildForest() {
+  const W = G.world, wr = G.wreckSpots(), key = groundKey + '|' + W.buildings.length + '|' + W.walls.size + '|' + wr.length + '|' + season() + '|' + (G.nodeVer ? G.nodeVer() : 0) + '|' + (G.S.sites || []).length;
+  if (key === forestKey) return false; forestKey = key;
+  for (const o of forest) { scene.remove(o); } forest = [];
+  const pines = [], rounds = [], rubble = [], crates = [];
+  const blocked = (x, y) => G.Wd.buildingAt(W, x, y) || G.Wd.wallAt(W, x, y) || G.Wd.isRoad(W, x, y);
+  const stumps = [], marks = [];   // marks: orange ribbons (trees) / flags (rocks, wrecks)
+  for (const [x, y] of G.TREE_SPOTS) { const st = G.treeState ? G.treeState(x, y) : (blocked(x, y) ? null : 'tree'); if (!st) continue; const r = hash(x, y), t = [(x + .5) * T, (y + .5) * T, .8 + r * .5, r];
+    if (st === 'stump') { stumps.push([t[0], t[1], 1.2 + r * .4, r]); continue; } (r < .55 ? pines : rounds).push(t); if (st === 'marked') marks.push(t); }
+  for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {
+    const out = Math.max(-x, x - G.COLS + 1, -y, y - G.ROWS + 1); if (out < 1) continue;
+    const r = hash(x * 7 + 3, y * 5 + 1); if (r > Math.min(.55, .12 + out * .06)) continue;
+    const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([(x + hash(x, y + 9)) * T, (y + hash(x + 9, y)) * T, .75 + q * .6, q]);
+  }
+  const rocks = [], rubbleE = [];
+  for (const [x, y] of [...wr, ...(G.CAR_SPOTS || [])]) { const st = G.nodeState ? G.nodeState(x, y) : (blocked(x, y) ? null : 'full'); if (!st) continue; const t = [(x + .5) * T, (y + .5) * T, 1 + hash(x, y) * .6, hash(y, x)]; if (st === 'empty') rubbleE.push([t[0], t[1], .7, t[3]]); else { rubble.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.6, 0]); } }
+  const bins = [], binsE = [];
+  for (const [x, y] of G.BIN_SPOTS || []) { const st = G.nodeState(x, y); if (!st) continue; const r = hash(x * 5, y * 3), t = [(x + .5) * T, (y + .5) * T, 1, r]; if (st === 'empty') binsE.push(t); else { bins.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.6, 0]); } }
+  for (const [x, y] of G.ROCK_SPOTS || []) { const st = G.nodeState(x, y); if (!st) continue; const r = hash(x * 3, y * 7), t = [(x + .5) * T, (y + .5) * T, 1.2 + r * .5, r]; if (st === 'empty') rubbleE.push([t[0], t[1], 1, r]); else { rocks.push(t); if (st === 'marked') marks.push([t[0], t[1], 1.9, 0]); } }
+  for (const [x, y] of G.CRATE_SPOTS) if (!blocked(x, y)) crates.push([(x + .5) * T, (y + .5) * T, 1, hash(x, y)]);
+  const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], B = G.Wd.BUILD;
+  for (let y = -PAD + 1; y < G.ROWS + PAD - 1; y++) for (let x = -PAD + 1; x < G.COLS + PAD - 1; x++) {   // V3D.5: grass tufts, autumn bushes, pebbles
+    if (blocked(x, y)) continue;
+    const inB = x >= B.x0 && x <= B.x1 && y >= B.y0 && y <= B.y1, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9);
+    const at = (a, b) => [(x + a) * T, (y + b) * T];
+    const rg = inB && regrow(x, y);
+    const nt = inB ? (rg ? (h1 < .7 ? 2 : 1) : h1 < .1 ? 1 : 0) : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+    if (inB && !rg) {   // V3D.6: survivor clutter on the town dirt
+      const h4 = hash(x * 41 + 7, y * 23 + 5);
+      if (h4 < .09) planks.push([...at(.2 + .6 * h2, .2 + .6 * h3), 1, h1]);
+      else if (h4 < .14) junk.push([...at(.25 + .5 * h3, .25 + .5 * h1), 1, h2]);
+      else if (h4 < .175) barrels.push([...at(.3 + .4 * h1, .3 + .4 * h2), 1 + h3 * .15, h3]);
+      else if (h4 < .205) tyres.push([...at(.3 + .4 * h2, .3 + .4 * h1), 1, h1]);
+      else if (h4 < .26) lone.push([...at(.2 + .6 * h1, .2 + .6 * h3), 1, h2]);
+    }
+    for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(.1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
+    if (!inB && h2 < .10) bushes.push([...at(.2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]);
+    if (h3 < (inB ? .3 : .12)) pebbles.push([...at(.15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]);
+  }
+  for (const t of [...planks, ...junk, ...barrels, ...tyres, ...lone]) t[2] *= 1.45;   // sized against the survivors
+  forest.push(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true));
+  forest.push(instD(plankG, lone, (r) => ['#8a6a44', '#9a7a52', '#7a6248'][(r * 3) | 0]));
+  forest.push(instD(smallCrateG, junk, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true));
+  forest.push(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
+  forest.push(instD(tyreG, tyres, () => '#2e2c2a', true));
+  const SP = SEASON_PAL[season()];
+  { const t = instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0]); t.userData.noInk = true; forest.push(t); }   // grass tufts are too thin to ink
+  forest.push(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true));
+  { const t = instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0]); t.userData.noInk = true; forest.push(t); }
+  for (const t of [...pines, ...rounds]) t[2] *= 1.35;   // V3D.5: bigger trees for the 2.4-unit tiles (mockup proportions)
+  const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t));
+  forest.push(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8));
+  const PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = SP.crown;
+  const dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
+  forest.push(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7));
+  forest.push(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
+  forest.push(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4));
+  forest.push(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5));
+  forest.push(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX));
+  forest.push(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
+  forest.push(instD(stumpG, stumps, () => '#6a4a30', true)); forest.push(instD(stumpTopG, stumps, () => '#d9b07a'));
+  { const tr = marks.filter((t) => pines.includes(t) || rounds.includes(t)), fl = marks.filter((t) => !tr.includes(t)); const rb = tr.map((t) => [t[0], t[1], t[2] * 1.35 * (pines.includes(t) ? .8 : 1.05), 0]); forest.push(instD(ribbonG, rb, () => '#ff7a2e')); forest.push(instD(flagG, fl.map((t) => [t[0] + .35, t[1] - .2, 1, 0]), () => '#ff7a2e')); }
+  forest.push(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); forest.push(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
+  forest.push(instD(rubbleFlatG, rubbleE, () => '#7a7266'));
+  forest.push(instD(binG, bins, (r) => ['#3f7a5a', '#4a6a8a', '#7a5a3a'][(r * 3) | 0], true)); forest.push(instD(binLidG, bins, () => '#2e4a3a')); forest.push(instD(binG, binsE, () => '#5a5a52', true)); forest.push(instD(binLidOpenG, binsE, () => '#3a3a34'));
+  forest.push(inst(rubbleG, rubble, (r) => r < .5 ? '#6f675c' : '#7a6a58', .025));
+  forest.push(inst(crateG, crates, () => '#9a6d3e', .025));
+  return true;
+}
+
+// ---------------------------------------------------------------- 3D.76 traps (outside the wall ring; a spent trap lies flat and dull)
+function trapPiece(P, t, cx, cz, y0) {   // 3D.103 one trap (also used for the Build menu picture)
+  const s = hash(t.x, t.y), live = t.ch > 0;
+  if (t.type === 'spikes') {   // a plank with a row of stakes
+    P.put(box(1.2, .08, .34), '#6f4a2c', M4(cx, y0 + .04, cz, s));
+    for (let k = -2; k <= 2; k++) { const h = live ? .45 + hash(t.x + k, t.y) * .12 : .12; P.put(new THREE.ConeGeometry(.06, h, 5), live ? '#c9a46a' : '#7a6650', M4(cx + Math.cos(s) * k * .22, y0 + .08 + h / 2, cz - Math.sin(s) * k * .22, 0, live ? .25 : 1.2)); }
+  } else if (t.type === 'wire') {   // two stakes and a coil between them
+    for (const k of [-1, 1]) P.put(cyl(.04, .05, .7, 5), '#6a4528', M4(cx + k * .5, y0 + .35, cz));
+    if (live) for (let k = -2; k <= 2; k++) P.put(new THREE.TorusGeometry(.17, .015, 4, 10), '#9aa0a6', M4(cx + k * .18, y0 + .3, cz, Math.PI / 2));
+    else P.put(new THREE.TorusGeometry(.2, .015, 4, 10), '#7d7466', M4(cx, y0 + .03, cz, 0, Math.PI / 2));
+  } else if (t.type === 'trench') {   // 3D.104 Fire Trench: a dark ditch of brush, glowing when armed
+    P.put(box(1.4, .05, .5), '#3a2a1e', M4(cx, y0 + .02, cz, s)); for (let k = -2; k <= 2; k++) P.put(new THREE.ConeGeometry(.12, .22, 5), live ? '#8a5a2a' : '#4a3a2a', M4(cx + Math.cos(s) * k * .26, y0 + .1, cz - Math.sin(s) * k * .26));
+    if (live) P.put(box(1.3, .02, .3), '#ff8a3a', M4(cx, y0 + .06, cz, s));
+  } else if (t.type === 'mine') {   // 3D.104 Land Mine: a buried disc with a pressure cap
+    P.put(cyl(.24, .26, .06, 12), live ? '#5f6b3e' : '#4a4038', M4(cx, y0 + .03, cz)); if (live) P.put(cyl(.06, .06, .05, 8), '#c8a040', M4(cx, y0 + .08, cz)); else P.put(new THREE.DodecahedronGeometry(.25, 0).scale(1.4, .3, 1.2), '#3a3028', M4(cx, y0 + .02, cz));
+  } else if (t.type === 'lure') {   // a pole with a bell and hanging cans
+    P.put(cyl(.05, .06, 1.4, 6), '#6a4528', M4(cx, y0 + .7, cz)); P.put(box(.5, .05, .05), '#6a4528', M4(cx, y0 + 1.35, cz, s));
+    P.put(new THREE.ConeGeometry(.13, .2, 8), live ? '#d8b04a' : '#7a6a4a', M4(cx, y0 + 1.2, cz));
+    for (const k of [-1, 1]) P.put(cyl(.06, .06, .14, 8), live ? '#b8bec4' : '#6f6a62', M4(cx + Math.cos(s) * k * .22, y0 + 1.15, cz - Math.sin(s) * k * .22));
+  }
+}
+let trapGroup = null, trapKey = '';
+function buildTraps() {
+  const W = G.world, list = W.traps ? [...W.traps.values()] : [];
+  const key = list.map((t) => `${t.x},${t.y},${t.type},${t.ch > 0 ? 1 : 0}`).join(';');
+  if (key === trapKey) return false; trapKey = key;
+  if (trapGroup) { scene.remove(trapGroup); freeTree(trapGroup); }
+  trapGroup = new THREE.Group(); scene.add(trapGroup);
+  const P = new Parts();
+  for (const t of list) { const cx = (t.x + .5) * T, cz = (t.y + .5) * T; trapPiece(P, t, cx, cz, groundH(cx, cz)); }
+  P.build(trapGroup, .02);
+  return true;
+}
+// ---------------------------------------------------------------- 3D.101 the broken-down highway along the north-east edge
+// Two cracked asphalt lanes the width of the map with a ramp down towards the town: potholes where the asphalt is gone, a faded
+// yellow centre line, broken edge lines, concrete barriers (some knocked over) and a bent road sign. The cars on it are salvage nodes.
+let hwyGroup = null;
+function buildHighway() {
+  if (hwyGroup || !G.Wd.HWY) return false; hwyGroup = new THREE.Group(); scene.add(hwyGroup);
+  const P = new Parts(), Y = G.Wd.HWY_Y, at = (x, y) => G.Wd.hwyAt(x, y);
+  for (const [k, st] of G.Wd.HWY) {
+    const [x, y] = k.split(',').map(Number), cx = (x + .5) * T, cz = (y + .5) * T, r = hash(x * 3 + 1, y * 5 + 2);
+    if (st === 'hole') {   // asphalt gone: a few broken slabs tilted at the edges of the hole
+      for (let i = 0; i < 3; i++) { const a = hash(x + i, y * 7) * 6.28, d = .7 + hash(x * 2 + i, y) * .3; P.put(box(.5 + hash(i, x) * .4, .05, .35 + hash(y, i) * .3), '#4a4845', M4(cx + Math.cos(a) * d, .03, cz + Math.sin(a) * d, a, (hash(x, i) - .5) * .25, (hash(i, y) - .5) * .25)); }
+      continue;
+    }
+    P.put(box(T, .04, T), r < .5 ? '#4f4d4a' : '#55524e', M4(cx, .02, cz));
+    if (st === 'crack') for (let i = 0; i < 3; i++) { const a = hash(x * 7 + i, y * 3) * 3.14; P.put(box(.05, .012, .7 + hash(i, x * 3) * .9), '#2c2a28', M4(cx + (hash(x + i, y + 9) - .5) * 1.2, .045, cz + (hash(x + 9, y + i) - .5) * 1.2, a)); }
+  }
+  for (let x = 0; x < G.COLS; x++) {   // faded yellow dashes between the lanes, white edge lines with gaps
+    if (at(x, Y) !== 'hole' && at(x, Y + 1) !== 'hole' && x % 2 === 0) P.put(box(1.2, .012, .1), '#c9a640', M4((x + .5) * T, .045, (Y + 1) * T));
+    for (const [z, yy] of [[Y * T + .18, Y], [(Y + 2) * T - .18, Y + 1]]) if (at(x, yy) !== 'hole' && hash(x, yy * 11) > .3) P.put(box(T * .9, .012, .07), '#bdb8ac', M4((x + .5) * T, .045, z));
+  }
+  for (let x = 0; x < G.COLS; x += 2) {   // jersey barriers along the outer edge; some knocked over, some missing
+    const r = hash(x * 13, 77); if (r < .3) continue; const fell = r > .82, z = Y * T - .3;
+    P.put(box(1.7, .5, .3), '#bab5aa', M4((x + 1) * T, fell ? .15 : .25, z + (fell ? .25 : 0), (hash(x, 5) - .5) * .3, fell ? 1.4 : 0));
+    if (!fell) P.put(box(1.7, .12, .42), '#aaa59a', M4((x + 1) * T, .06, z));
+  }
+  { const sx = (G.Wd.HWY_RAMP_X + 2.3) * T, sz = (Y + 2.4) * T;   // a bent exit sign by the ramp
+    P.put(cyl(.05, .05, 2.2, 6), '#8a8f94', M4(sx, 1.0, sz, 0, 0, .18)); P.put(box(1.3, .7, .05), '#2f6b45', M4(sx + .2, 2.05, sz, .3, 0, .18)); P.put(box(1.1, .08, .06), '#e6e2d6', M4(sx + .2, 2.12, sz + .03, .3, 0, .18)); }
+  P.build(hwyGroup, .02); return true;
+}
+// ---------------------------------------------------------------- 3D.100 guard posts (owner: the old flat pixel sprite looked terrible)
+// A low sandbag nest open at the back, a sloped canvas lean-to over it, an ammo crate, a lantern and a flag on a pole coloured by the watch
+// (blue night, gold day, red both). Low detail, same toon parts as the traps.
+function postPiece(P, p, cx, cz, y0, bagG) {   // 3D.103 one guard post (also the Build menu picture)
+  const r = .78, N = 11;
+  for (let i = 0; i < N; i++) {   // a horseshoe of sandbags, two rows, open towards the back (north)
+    const a = Math.PI * (.12 + 1.76 * i / (N - 1)), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r, ry = -a + Math.PI / 2;
+    for (let row = 0; row < 2; row++) { const o = row ? .5 / N * Math.PI : 0, aa = a + o * (i < N - 1 ? 1 : 0); P.put(bagG, row ? '#b9a06a' : '#a68d58', M4(cx + Math.cos(aa) * (r - row * .03), y0 + .11 + row * .19, cz + Math.sin(aa) * (r - row * .03), ry, 0, 0, .42, .2, .24)); }
+  }
+  for (const [dx, dz, h] of [[-.78, -.62, 1.5], [.78, -.62, 1.5], [-.78, .48, 1.12], [.78, .48, 1.12]]) P.put(cyl(.045, .055, h, 6), '#6f4a2c', M4(cx + dx, y0 + h / 2, cz + dz));
+  P.put(box(1.86, .035, 1.3), '#c8b48a', M4(cx, y0 + 1.33, cz - .07, 0, .33));   // the canvas roof, sloping down to the front
+  P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.5, cz - .62)); P.put(box(1.7, .05, .06), '#8a6a44', M4(cx, y0 + 1.12, cz + .48));
+  P.put(box(.36, .24, .24), '#5f6b3e', M4(cx + .35, y0 + .12, cz - .3, .3)); P.put(box(.37, .04, .25), '#4a5430', M4(cx + .35, y0 + .25, cz - .3, .3));   // ammo crate
+  P.put(cyl(.035, .045, 2.3, 6), '#5a3c22', M4(cx - .78, y0 + 1.15, cz - .62));   // flag pole
+  P.put(box(.62, .38, .02), POST_COL[p.sched] || POST_COL.night, M4(cx - .45, y0 + 2.02, cz - .62, 0, 0, -.05));
+  P.put(cyl(.06, .07, .13, 8), '#3a3a36', M4(cx + .7, y0 + .98, cz + .48)); P.put(new THREE.SphereGeometry(.05, 8, 6), '#ffd27a', M4(cx + .7, y0 + .92, cz + .48));   // lantern
+}
+let postGroup = null, postKey = '';
+const POST_COL = { night: '#4f7fd0', day: '#e8b73a', all: '#d0503c' };
+function buildPosts() {
+  const list = G.S.posts || [], key = list.map((p) => `${p.x},${p.y},${p.sched}`).join(';');
+  if (key === postKey) return false; postKey = key;
+  if (postGroup) { scene.remove(postGroup); freeTree(postGroup); } postGroup = new THREE.Group(); scene.add(postGroup);
+  const P = new Parts(), bagG = new THREE.SphereGeometry(.5, 8, 5);
+  for (const p of list) { const cx = (p.x + .5) * T, cz = (p.y + .5) * T; postPiece(P, p, cx, cz, groundH(cx, cz), bagG); }
+  P.build(postGroup, .02); return true;
+}
+// ---------------------------------------------------------------- walls
+function wallPiece(P, w, has, cx, cz) {   // one wall tile; has(x, y) = a standing wall there (arms join to it)
+  const s = hash(w.x, w.y);
+  if (w.broken) { P.put(new THREE.DodecahedronGeometry(.3, 0).scale(1.6, .45, 1.3), '#6a5a48', M4(cx, .1, cz, s * 6)); P.put(cyl(.08, .09, .7, 6), '#6f4a2c', M4(cx + .2, .12, cz - .1, s, 0, Math.PI / 2)); return; }
+  const arms = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => has(w.x + dx, w.y + dy));
+  const dmg = w.hp < w.max * .6;
+  if (w.type === 'gate') {   // 3D.103 a person-high plank gate between two posts (sits in any wall tier)
+    const alongX = has(w.x - 1, w.y) || has(w.x + 1, w.y) || !(has(w.x, w.y - 1) || has(w.x, w.y + 1));
+    for (const k of [-1, 1]) P.put(cyl(.1, .11, 1.55, 7), '#5a3b23', M4(cx + (alongX ? k * .62 : 0), .78, cz + (alongX ? 0 : k * .62)));
+    P.put(box(1.5, .12, .12), '#6f4a2c', M4(cx, 1.42, cz, alongX ? 0 : Math.PI / 2));
+    for (const k of [-.36, 0, .36]) P.put(box(.34, 1.0, .07), '#8a6038', M4(cx + (alongX ? k : 0), .58, cz + (alongX ? 0 : k), alongX ? 0 : Math.PI / 2));
+    P.put(box(1.1, .1, .08), '#6f4a2c', M4(cx, .58, cz, alongX ? 0 : Math.PI / 2, 0, alongX ? .62 : 0));
+    return;
+  }
+  if (w.type === 'efence') {   // 3D.104 Electric Fence: steel posts, taut wires and white insulators
+    P.put(box(.12, 1.6, .12), '#5f666e', M4(cx, .8, cz)); P.put(new THREE.SphereGeometry(.06, 8, 6), '#f2efe8', M4(cx, 1.62, cz));
+    for (const [dx, dy] of (arms.length ? arms : [[1, 0], [-1, 0]])) for (const y of [.35, .7, 1.05, 1.4]) P.put(box(dx ? T / 2 : .025, .025, dy ? T / 2 : .025), dmg ? '#7d7466' : '#b8bec4', M4(cx + dx * T / 4, y, cz + dy * T / 4));
+    return;
+  }
+  if (w.type === 'metal') {
+    P.put(box(.18, 1.7, .18), '#5f666e', M4(cx, .85, cz));
+    for (const [dx, dy] of arms) P.put(box(dx ? T / 2 : .12, 1.5 - (dmg ? .4 * s : 0), dy ? T / 2 : .12), dmg ? '#7d7466' : '#8f9aa6', M4(cx + dx * T / 4, .75, cz + dy * T / 4));
+    if (!arms.length) P.put(box(.6, 1.4, .12), '#8f9aa6', M4(cx, .7, cz));
+    return;
+  }
+  const segs = arms.length ? arms : [[1, 0], [-1, 0]];
+  if (w.type === 'palisade') {   // Log Palisade (Lodge tier): a post in the middle, tall pointed stakes along each joined side
+    P.put(cyl(.12, .13, 2.1, 7), '#6a4528', M4(cx, 1.05, cz));
+    for (const [dx, dy] of segs) for (let k = 1; k <= 2; k++) {
+      const o = k * T / 5, h = 1.8 + hash(w.x * 3 + k, w.y + dx * 5 + dy) * .35 - (dmg && k === 2 ? .7 : 0);
+      P.put(cyl(.11, .12, h, 7), '#7a5232', M4(cx + dx * o, h / 2, cz + dy * o, k));
+      P.put(new THREE.ConeGeometry(.12, .3, 7), '#7a5232', M4(cx + dx * o, h + .15, cz + dy * o));
+    }
+    return;
+  }
+  // 3D.103 Wood Fence (camp tier, owner: about a person high): a post, two rails and upright planks along each joined side
+  P.put(cyl(.07, .08, 1.3, 6), '#5e3e24', M4(cx, .65, cz));
+  P.put(new THREE.ConeGeometry(.08, .12, 6), '#5e3e24', M4(cx, 1.36, cz));
+  for (const [dx, dy] of segs) {
+    for (const y of [.36, .9]) P.put(box(dx ? T / 2 : .06, .08, dy ? T / 2 : .06), '#6f4a2c', M4(cx + dx * T / 4, y, cz + dy * T / 4));
+    for (let k = 0; k < 4; k++) {
+      if (dmg && k === 2) continue;   // a plank knocked out
+      const o = .2 + k * .27, h = 1.0 + hash(w.x * 5 + k, w.y * 3 + dx + dy * 2) * .16 - (dmg && k === 3 ? .35 : 0), px = cx + dx * o + (dy ? .05 : 0), pz = cz + dy * o + (dx ? .05 : 0);
+      P.put(box(dx ? .2 : .045, h, dy ? .2 : .045), k % 2 ? '#8a6038' : '#7e5634', M4(px, h / 2, pz, 0, 0, (hash(k, w.x + w.y) - .5) * .06));
+    }
+  }
+}
+/* 3D.375 W269 step 4: a wall on the lines is drawn as a real fence: one post at every corner where pieces meet (the strongest kind there
+   sets its look) and each piece's panel running from post to post along its line. A broken piece leaves rubble and a fallen plank. */
+const LINE_RANK = { metal: 5, efence: 4, palisade: 3, gate: 2, wood: 1 };
+function linePost(P, type, x, z, sd) {
+  if (type === 'metal') { P.put(box(.46, 1.78, .46), '#8a8e92', M4(x, .89, z)); P.put(box(.54, .14, .54), '#6f7478', M4(x, 1.83, z)); return; }
+  if (type === 'efence') { P.put(box(.13, 1.62, .13), '#5f666e', M4(x, .81, z)); P.put(new THREE.SphereGeometry(.065, 8, 6), '#f2efe8', M4(x, 1.66, z)); return; }
+  if (type === 'palisade') { P.put(cyl(.15, .16, 2.25, 7), '#6a4528', M4(x, 1.12, z, sd * 6)); P.put(new THREE.ConeGeometry(.16, .34, 7), '#6a4528', M4(x, 2.4, z)); return; }
+  if (type === 'gate') { P.put(cyl(.11, .12, 1.62, 7), '#5a3b23', M4(x, .81, z)); P.put(new THREE.ConeGeometry(.12, .14, 7), '#5a3b23', M4(x, 1.69, z)); return; }
+  P.put(cyl(.08, .09, 1.32, 6), '#5e3e24', M4(x, .66, z, sd * 6)); P.put(new THREE.ConeGeometry(.09, .13, 6), '#5e3e24', M4(x, 1.385, z));
+}
+function linePanel(P, e) {
+  const v = e.s === 'v', cx = (v ? e.x : e.x + .5) * T, cz = (v ? e.y + .5 : e.y) * T, ry = v ? Math.PI / 2 : 0, L = T, sd = hash(e.x * 2 + (v ? 1 : 0), e.y * 3 + 1);
+  const at = (u, n = 0) => (v ? [cx + n, cz + u] : [cx + u, cz + n]), put = (g, col, u, y, n = 0, rx = 0, rz = 0) => { const [x, z] = at(u, n); P.put(g, col, M4(x, y, z, ry, rx, rz)); };
+  const dmg = e.hp < e.max * .6;
+  if (e.broken) {   /* rubble where it stood, one plank or stake knocked flat across the gap */
+    put(new THREE.DodecahedronGeometry(.32, 0).scale(1.7, .45, 1.2), '#6a5a48', -.15 + sd * .3, .1); put(box(L * .6, .07, .2), '#6f4a2c', .1, .07, .25, 0, .12);
+    if (e.type === 'metal') put(new THREE.DodecahedronGeometry(.26, 0).scale(1.2, .6, 1), '#8a8e92', .6, .14, -.2); return;
+  }
+  if (e.type === 'gate') {   /* two plank leaves under a top beam, with a brace each */
+    put(box(L - .1, .12, .12), '#6f4a2c', 0, 1.42);
+    for (const k of [-1, 1]) { for (let i = 0; i < 3; i++) put(box(.34, 1.05, .07), i % 2 ? '#8a6038' : '#7e5634', k * (.2 + i * .34), .6); put(box(1.02, .09, .08), '#6f4a2c', k * .54, .6, .05, 0, k * .62); }
+    return;
+  }
+  if (e.type === 'efence') { for (const y of [.35, .7, 1.05, 1.4]) put(box(L, .025, .025), dmg ? '#7d7466' : '#b8bec4', 0, y); return; }
+  if (e.type === 'metal') {   /* a stone wall with a darker cap; damaged: a bite out of the top */
+    if (dmg) { put(box(L * .55, 1.5, .3), '#9a9a94', -L * .225, .75); put(box(L * .45, 1.0, .3), '#9a9a94', L * .275, .5); put(box(L * .55, .12, .36), '#7c7f80', -L * .225, 1.54); }
+    else { put(box(L, 1.5, .3), '#9a9a94', 0, .75); put(box(L, .12, .36), '#7c7f80', 0, 1.54); for (let i = 0; i < 3; i++) put(box(.5, .04, .31), '#868682', -L / 3 + i * L / 3 + (sd - .5) * .2, .45 + (i % 2) * .5); }
+    return;
+  }
+  if (e.type === 'palisade') {   /* tall pointed stakes, one knocked short when damaged */
+    for (let k = 0; k < 7; k++) { const u = -L / 2 + (k + .5) * L / 7, h = 1.8 + hash(k * 7 + e.x, e.y * 5 + (v ? 3 : 0)) * .35 - (dmg && k === 3 ? .8 : 0);
+      put(cyl(.11, .12, h, 7), '#7a5232', u, h / 2); put(new THREE.ConeGeometry(.12, .3, 7), '#7a5232', u, h + .15); }
+    put(box(L, .1, .08), '#5e3e24', 0, 1.2, .12); return;
+  }
+  for (const y of [.36, .9]) put(box(L, .08, .06), '#6f4a2c', 0, y);   /* Wood Fence: two rails and upright planks */
+  for (let k = 0; k < 8; k++) { if (dmg && (k === 2 || k === 5)) continue; const u = -L / 2 + (k + .5) * L / 8, h = 1.0 + hash(k * 5 + e.x, e.y * 3 + (v ? 7 : 0)) * .16 - (dmg && k === 6 ? .35 : 0);
+    put(box(.25, h, .045), k % 2 ? '#8a6038' : '#7e5634', u, h / 2, .05, 0, (hash(k, e.x + e.y) - .5) * .06); }
+}
+function lineWalls(P, elist) {
+  const vx = new Map(), add = (x, y, e) => { const k = x + ',' + y, o = vx.get(k); if (!o) vx.set(k, { x, y, best: e.broken ? null : e.type, any: true }); else if (!e.broken && (!o.best || LINE_RANK[e.type] > LINE_RANK[o.best])) o.best = e.type; };
+  for (const e of elist) { linePanel(P, e); if (e.s === 'v') { add(e.x, e.y, e); add(e.x, e.y + 1, e); } else { add(e.x, e.y, e); add(e.x + 1, e.y, e); } }
+  for (const o of vx.values()) { const x = o.x * T, z = o.y * T, sd = hash(o.x * 13, o.y * 7);
+    if (o.best) linePost(P, o.best, x, z, sd); else P.put(cyl(.08, .1, .35, 6), '#5e3e24', M4(x, .17, z, sd * 6)); }   /* a stump where only broken pieces meet */
+}
+let wallGroup = null, wallKey = '';
+function buildWalls() {
+  const W = G.world, list = [...W.walls.values()], elist = W.edges ? [...W.edges.values()] : [];
+  const key = list.map((w) => `${w.x},${w.y},${w.type},${w.broken ? 1 : 0},${w.hp < w.max * .6 ? 1 : 0}`).join(';') + '|' + elist.map((e) => `${e.s}${e.x},${e.y},${e.type},${e.broken ? 1 : 0},${e.hp < e.max * .6 ? 1 : 0}`).join(';');
+  if (key === wallKey) return false; wallKey = key;
+  if (wallGroup) { scene.remove(wallGroup); freeTree(wallGroup); }
+  wallGroup = new THREE.Group(); scene.add(wallGroup);
+  const P = new Parts();
+  const has = (x, y) => { const o = G.Wd.wallAt(W, x, y); return !!o && !o.broken; };
+  for (const w of list) wallPiece(P, w, has, (w.x + .5) * T, (w.y + .5) * T);
+  lineWalls(P, elist);   /* 3D.375 W269 step 4: walls on the lines, posts at the corners */
+  P.build(wallGroup, .03);
+  return true;
+}
+
+// ---------------------------------------------------------------- buildings: one stand-in per type, built for its footprint
+function cabin(P, w, d, roof, o = {}) {
+  const H = o.h || 1.2, r = .08, n = Math.round(H / (2 * r)), wall = o.wall || ['#7b5232', '#6f4a2c'];
+  if (o.plank) P.put(box(w, H, d), wall[0], M4(0, H / 2, 0));
+  else for (let i = 0; i < n; i++) {
+    const y = r + i * 2 * r, c = wall[i % 2];
+    P.put(cyl(r, r, w + .2, 7), c, M4(0, y, d / 2, 0, 0, Math.PI / 2)); P.put(cyl(r, r, w + .2, 7), c, M4(0, y, -d / 2, 0, 0, Math.PI / 2));
+    P.put(cyl(r, r, d + .2, 7), c, M4(w / 2, y + r * .5, 0, 0, Math.PI / 2)); P.put(cyl(r, r, d + .2, 7), c, M4(-w / 2, y + r * .5, 0, 0, Math.PI / 2));
+  }
+  P.put(box(w - .02, H, d - .02), '#5a3b23', M4(0, H / 2, 0));
+  const rise = o.rise || .7, half = d / 2 + .22, len = Math.hypot(half, rise), ang = Math.atan2(rise, half);
+  P.put(box(w + .4, .09, len), roof, M4(0, H + rise / 2, half / 2, 0, ang)); P.put(box(w + .4, .09, len), roof, M4(0, H + rise / 2, -half / 2, 0, -ang));
+  const gv = [];
+  for (const sx of [w / 2, -w / 2]) gv.push(sx, H, -d / 2, sx, H, d / 2, sx, H + rise, 0, sx, H, d / 2, sx, H, -d / 2, sx, H + rise, 0);
+  const gable = new THREE.BufferGeometry(); gable.setAttribute('position', new THREE.Float32BufferAttribute(gv, 3)); gable.computeVertexNormals();
+  P.put(gable, o.plank ? wall[0] : wall[1], M4(0, 0, 0));
+  if (P.doorX === undefined) P.doorX = -w * .2;   /* 3D.28: remember where the door is so survivors walk in through it */
+  P.put(box(.4, .76, .06), '#3d2817', M4(-w * .2, .38, d / 2 + .08)); P.put(box(.56, .1, .4), '#6a5a48', M4(-w * .2, .05, d / 2 + .26));
+  for (const wx of o.windows || [w * .22]) { P.put(box(.4, .34, .06), '#3b2a1a', M4(wx, .72, d / 2 + .08)); P.win(box(.3, .24, .04), M4(wx, .72, d / 2 + .105)); }
+  if (o.chimney) P.put(box(.3, .8, .3), '#8c8478', M4(w * .3, H + .5, -d * .2));
+  if (o.sign) P.put(box(.5, .3, .05), o.sign, M4(w * .2, H - .15, d / 2 + .09));
+  if (o.cross) { P.put(box(.32, .1, .04), '#c83a32', M4(w * .2, H - .15, d / 2 + .12)); P.put(box(.1, .32, .04), '#c83a32', M4(w * .2, H - .15, d / 2 + .12)); }
+}
+function crates(P, x, z, n = 3) { for (let i = 0; i < n; i++) P.put(box(.3, .3, .3), '#9a6d3e', M4(x + (i % 2) * .34, .15 + (i > 1 ? .3 : 0), z + (i === 1 ? .05 : 0), i * .3)); }
+function beds(P, w, d, rows) {
+  const bw = w - .3, bd = (d - .3) / rows - .15;
+  for (let j = 0; j < rows; j++) {
+    const z = -d / 2 + .15 + bd / 2 + j * (bd + .15);
+    P.put(box(bw, .16, bd), '#5a3e25', M4(0, .08, z));
+    const n = Math.max(2, Math.round(bw / .4));
+    for (let i = 0; i < n; i++) {
+      const x = -bw / 2 + .2 + i * (bw - .4) / Math.max(1, n - 1);
+      if (j % 2) P.put(new THREE.IcosahedronGeometry(.13, 0), i % 2 ? '#7fae4a' : '#6f9e3f', M4(x, .26, z));
+      else for (let k = -1; k <= 1; k += 2) P.put(new THREE.ConeGeometry(.04, .24, 4), '#5f8f38', M4(x + k * .06, .28, z));
+    }
+  }
+}
+function fenceRing(P, w, d, h = .55, gapFront = true) {
+  const posts = [];
+  for (let i = 0; i <= 4; i++) { const x = -w / 2 + i * w / 4; posts.push([x, -d / 2], [x, d / 2]); }
+  for (let i = 1; i < 4; i++) { const z = -d / 2 + i * d / 4; posts.push([-w / 2, z], [w / 2, z]); }
+  for (const [x, z] of posts) P.put(cyl(.04, .05, h, 6), '#6f4a2c', M4(x, h / 2, z));
+  for (const y of [h * .45, h * .85]) {
+    P.put(box(w, .05, .05), '#7b5232', M4(0, y, -d / 2)); P.put(box(.05, .05, d), '#7b5232', M4(-w / 2, y, 0)); P.put(box(.05, .05, d), '#7b5232', M4(w / 2, y, 0));
+    if (gapFront) { P.put(box(w * .35, .05, .05), '#7b5232', M4(-w * .325, y, d / 2)); P.put(box(w * .35, .05, .05), '#7b5232', M4(w * .325, y, d / 2)); }
+    else P.put(box(w, .05, .05), '#7b5232', M4(0, y, d / 2));
+  }
+}
+/* V3D.23 tier looks: canvas tents (camp), log cabins (timber), stone walls (stone) */
+function tentG(P, w, d, col = '#c9b48a', o = {}) {
+  const H = o.h || 1.05, half = w / 2, len = Math.hypot(half, H), ang = Math.atan2(H, half);
+  P.put(box(len, .05, d), col, M4(-half / 2, H / 2, 0, 0, 0, ang)); P.put(box(len, .05, d), o.col2 || col, M4(half / 2, H / 2, 0, 0, 0, -ang));
+  P.put(cyl(.03, .03, d + .3, 6), '#6f4a2c', M4(0, H, 0, 0, Math.PI / 2));
+  const tv = [-half, 0, d / 2, half, 0, d / 2, 0, H, d / 2, half, 0, -d / 2, -half, 0, -d / 2, 0, H, -d / 2], tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tv, 3)); tg.computeVertexNormals();
+  P.put(tg, o.col2 || col, M4(0, 0, 0)); P.put(new THREE.ConeGeometry(.22, H * .62, 3).rotateY(Math.PI / 6), '#3a2c20', M4(0, H * .31, d / 2 + .01));
+  for (const k of [-1, 1]) P.put(cyl(.02, .02, .5, 4), '#6f4a2c', M4(k * (half + .2), .16, d / 2 + .1, 0, 0, k * .6));
+}
+function stoneHall(P, w, d, roof, o = {}) {
+  const H = o.h || 1.3; cabin(P, w, d, roof, { ...o, h: H, plank: true, wall: ['#a8a196', '#9a948a'] });
+  P.put(box(w + .12, .22, d + .12), '#7d776d', M4(0, .11, 0));
+  for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) for (let i = 0; i < 3; i++) P.put(box(.2, .18, .2), i % 2 ? '#b8b2a6' : '#8f8a80', M4(x * w / 2, .3 + i * H * .3, z * d / 2));
+  for (let i = 0; i < 4; i++) P.put(box(w * (.18 + hash(i, 3) * .1), .1, .03), '#8a847a', M4(-w * .3 + i * w * .2, .45 + (i % 2) * .4, d / 2 + .02));
+}
+function flag(P, x, z, h = 2.4, c = '#c83a32') { P.put(cyl(.035, .04, h, 6), '#5a3b23', M4(x, h / 2, z)); P.put(box(.5, .3, .02), c, M4(x + .26, h - .2, z)); }
+function logPile(P, x, z, n = 3) { for (let r = 0; r < n; r++) for (let i = 0; i < n - r; i++) P.put(cyl(.1, .1, .9, 7), i % 2 ? '#8a5a32' : '#7a4f2c', M4(x - (n - r - 1) * .1 + i * .2, .1 + r * .18, z, 0, 0, Math.PI / 2)); }
+function rockPile(P, x, z, n = 4, s0 = 1) { for (let i = 0; i < n; i++) P.put(new THREE.DodecahedronGeometry(.18 * s0 * (.7 + hash(i, 5) * .6), 0).scale(1.2, .8, 1), i % 2 ? '#8c8478' : '#a39b8e', M4(x + (hash(i, 9) - .5) * .5, .12, z + (hash(i, 2) - .5) * .4, i)); }
+const BUILD = {
+  /* 3D.109 Garage: a corrugated shed with the roller door up (the vehicle shows inside), a lean-to on the left for the Hand Cart */
+  garage: (P, w, d) => { const sx = w * .14, sw = w * .7, h = 1.75;
+    P.put(box(sw + .3, .08, d * .86), '#8c8478', M4(sx, .04, 0)); P.put(box(sw, h, .12), '#8a8f86', M4(sx, h / 2, -d * .41));
+    for (const k of [-1, 1]) P.put(box(.12, h, d * .84), '#7d8279', M4(sx + k * sw / 2, h / 2, 0));
+    for (let i = 0; i < 7; i++) P.put(box(sw + .4, .05, d * .92 / 7 + .02), i % 2 ? '#9a9f96' : '#8a8f86', M4(sx, h + .1 + (3 - i) * .045, -d * .46 + (i + .5) * d * .92 / 7, 0, .09));
+    P.put(cyl(.14, .14, sw - .1, 10), '#6d6a62', M4(sx, h - .12, d * .4, 0, 0, Math.PI / 2)); P.put(box(sw - .1, .06, .1), '#c8a23a', M4(sx, .03, d * .43));
+    P.put(box(w * .24, .05, d * .26), '#6a4528', M4(-w * .35, 1.1, -d * .33, 0, .35)); for (const k of [-1, 1]) P.put(cyl(.04, .04, 1.1, 5), '#5e3e24', M4(-w * .35 + k * w * .1, .55, -d * .22));
+    P.put(box(.5, .35, .3), '#b2493f', M4(sx + sw / 2 - .4, .18, -d * .3)); P.put(box(.3, .5, .25), '#5a5f66', M4(sx - sw / 2 + .3, .25, -d * .3)); },
+  /* 3D.104 the building study: Trading Post, Kennel, School, Floodlight, Wind Turbine, Solar Array, Power Pole */
+  /* 3D.113 the City: Town Hall (stone, columns, clock tower), Market Square (stalls under awnings), Water Tower (tank on legs) */
+  townhall: (P, w, d) => { P.put(box(w * .86, .2, d * .8), '#a39b8e', M4(0, .1, 0)); P.put(box(w * .74, 1.7, d * .52), '#d8cfbf', M4(0, 1.05, -d * .08)); P.put(box(w * .8, .14, d * .58), '#8c8478', M4(0, 1.95, -d * .08));
+    P.put(new THREE.ConeGeometry(w * .5, .6, 4).rotateY(Math.PI / 4).scale(1, 1, .7), '#7a3a2e', M4(0, 2.3, -d * .08)); for (let i = -2; i <= 2; i++) P.put(cyl(.09, .1, 1.6, 8), '#efe8da', M4(i * w * .14, 1.0, d * .2));
+    P.put(box(w * .78, .1, .5), '#cfc6b6', M4(0, 1.85, d * .22)); P.put(box(.7, 1.4, .7), '#d8cfbf', M4(0, 2.9, -d * .1)); P.put(cyl(.24, .24, .06, 16), '#f6f1e6', M4(0, 3.1, -d * .1 + .36, 0, Math.PI / 2, 0)); P.put(box(.03, .18, .02), '#2e2a26', M4(0, 3.15, -d * .1 + .4));
+    P.put(new THREE.ConeGeometry(.55, .6, 4).rotateY(Math.PI / 4), '#7a3a2e', M4(0, 3.9, -d * .1)); P.put(cyl(.025, .025, .7, 5), '#5a3b23', M4(0, 4.5, -d * .1)); P.put(box(.4, .26, .02), '#2f5f8a', M4(.21, 4.7, -d * .1));
+    for (let i = 0; i < 3; i++) P.put(box(w * .5 - i * .3, .1, .3), '#b8afa0', M4(0, .25 + i * .1, d * .38 - i * .12)); },
+  market: (P, w, d) => { P.put(box(w * .9, .06, d * .9), '#b8a68a', M4(0, .03, 0)); const cols = ['#c8603a', '#3f7a9c', '#d8b04a', '#5f8a4a'];
+    for (let i = 0; i < 4; i++) { const x = (i % 2 ? .22 : -.22) * w, z = (i < 2 ? -.22 : .22) * d; P.put(box(w * .28, .5, d * .16), '#8a6038', M4(x, .25, z)); for (const k of [-1, 1]) P.put(cyl(.03, .03, 1.2, 5), '#5e3e24', M4(x + k * w * .13, .6, z - d * .08));
+      P.put(box(w * .32, .04, d * .26), cols[i], M4(x, 1.2, z, 0, .25)); P.put(box(.18, .14, .14), i % 2 ? '#d8b04a' : '#7aa84f', M4(x - .15, .57, z)); P.put(box(.16, .12, .14), '#c8603a', M4(x + .12, .56, z)); }
+    P.put(cyl(.32, .36, .3, 12), '#8c8478', M4(0, .15, 0)); P.put(cyl(.06, .06, .5, 6), '#8c8478', M4(0, .5, 0)); },
+  watertower: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.put(cyl(.05, .07, 2.6, 6), '#5f666e', M4(x * w * .26, 1.3, z * d * .26, 0, x * .06, -z * .06));
+    P.put(cyl(w * .38, w * .38, 1.0, 14), '#8fa6b2', M4(0, 3.0, 0)); P.put(new THREE.ConeGeometry(w * .4, .4, 14), '#5f7682', M4(0, 3.7, 0)); for (let i = 0; i < 3; i++) P.put(cyl(w * .385, w * .385, .04, 14), '#6f8692', M4(0, 2.6 + i * .4, 0));
+    P.put(cyl(.06, .06, 2.4, 6), '#4a5560', M4(w * .1, 1.3, 0)); P.put(box(.3, .3, .3), '#4a5560', M4(w * .1, .15, 0)); },
+  tradepost: (P, w, d) => { P.put(box(w * .8, .12, d * .7), '#7a5232', M4(0, .06, 0)); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.put(cyl(.06, .07, 1.5, 6), '#5e3e24', M4(x * w * .36, .75, z * d * .3)); P.put(box(w * .86, .06, d * .78), '#c8603a', M4(0, 1.55, 0, 0, .12)); P.put(box(w * .6, .5, .3), '#8a6038', M4(0, .35, d * .18)); crates(P, -w * .28, -d * .15, 3); P.put(box(.6, .3, .04), '#e8d8a8', M4(0, 1.3, d * .36)); for (let i = 0; i < 3; i++) P.put(cyl(.08, .08, .2, 8), ['#c8a040', '#6f8a3a', '#a04a3a'][i], M4(-w * .15 + i * .18, .7, d * .18)); },
+  kennel: (P, w, d) => { P.put(box(w * .5, .55, d * .45), '#8a6038', M4(-w * .08, .28, -d * .08)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, .3)); P.put(box(w * .56, .06, d * .5), '#6a4528', M4(-w * .08, .66, -d * .08, 0, 0, -.3)); P.put(box(.26, .3, .02), '#2e1f14', M4(-w * .08, .2, d * .15)); P.put(cyl(.13, .1, .06, 10), '#9aa0a6', M4(w * .28, .03, d * .25)); P.put(box(.3, .06, .06), '#e8e2d4', M4(w * .22, .05, -d * .25, .5)); fenceRing(P, w * .9, d * .9, .35); },
+  school: (P, w, d) => { cabin(P, w * .82, d * .7, '#9a3a2a', { plank: true, wall: ['#d8c49a', '#cdb88e'], h: 1.25, windows: [-w * .1, w * .25] }); P.put(cyl(.03, .03, 1.1, 6), '#6a6a6a', M4(w * .32, 1.9, -d * .1)); P.put(cyl(.12, .1, .14, 8), '#d8b04a', M4(w * .32, 2.45, -d * .1)); },
+  floodlight: (P, w, d) => { P.put(box(.5, .12, .5), '#8c8478', M4(0, .06, 0)); P.put(cyl(.05, .07, 2.4, 6), '#5f666e', M4(0, 1.2, 0)); P.put(box(.7, .08, .08), '#5f666e', M4(0, 2.35, 0)); for (const k of [-1, 1]) { P.put(box(.26, .2, .16), '#3a3a36', M4(k * .26, 2.25, .06, 0, -.4)); P.win(box(.2, .14, .02), M4(k * .26, 2.23, .15, 0, -.4)); } },
+  turbine: (P, w, d) => { P.put(cyl(.24, .3, .2, 8), '#8c8478', M4(0, .1, 0)); P.put(cyl(.06, .1, 3, 8), '#e8e2d4', M4(0, 1.6, 0)); P.put(box(.18, .16, .4), '#d4d0c8', M4(0, 3.1, 0)); for (let i = 0; i < 3; i++) P.put(box(.08, 1.3, .03), '#f2efe8', M4(0, 3.1, .22, 0, 0, i * 2.094).multiply(new THREE.Matrix4().makeTranslation(0, .62, 0))); },
+  solar: (P, w, d) => { for (let i = 0; i < 2; i++) { const x = -w * .22 + i * w * .44; for (const k of [-1, 1]) P.put(cyl(.03, .03, .55, 5), '#6a6a6a', M4(x + k * w * .14, .28, 0)); P.put(box(w * .38, .04, d * .55), '#2c3e6a', M4(x, .62, 0, 0, -.45)); for (let j = 1; j < 3; j++) P.put(box(w * .38, .045, .015), '#b8c4d8', M4(x, .62, -d * .27 + j * d * .18, 0, -.45)); } P.put(box(.3, .25, .2), '#5f666e', M4(w * .38, .12, d * .3)); },
+  pole: (P, w, d) => { P.put(cyl(.06, .08, 2.6, 6), '#6a4528', M4(0, 1.3, 0)); P.put(box(.9, .07, .07), '#5e3e24', M4(0, 2.45, 0)); for (const k of [-.36, 0, .36]) P.put(cyl(.035, .035, .12, 6), '#e8e2d4', M4(k, 2.55, 0)); },
+  /* 3D.77 power, fuel and ammo buildings (low detail toon parts) */
+  pump: (P, w, d) => { P.put(box(w * .5, .14, d * .5), '#7d776d', M4(0, .07, 0)); P.put(cyl(.2, .22, .55, 10), '#5d7a8c', M4(-w * .1, .42, 0)); P.put(box(.34, .3, .26), '#4e6a4e', M4(w * .16, .3, -d * .05)); P.put(cyl(.05, .05, .7, 6), '#8f9aa6', M4(-w * .1, .9, 0)); P.put(cyl(.05, .05, w * .5, 6), '#8f9aa6', M4(0, 1.22, 0, 0, 0, Math.PI / 2)); P.put(cyl(.03, .03, .3, 6), '#2e2e2e', M4(w * .16, .5, -d * .05)); P.put(box(.12, .1, .02), '#e8c83a', M4(w * .16, .32, d * .085)); },
+  greenhouse: (P, w, d) => { P.put(box(w * .86, .12, d * .8), '#8a847a', M4(0, .06, 0)); const H = 1.3; for (let i = 0; i < 5; i++) { const x = -w * .4 + i * w * .2; P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, -d * .38)); P.put(box(.05, H, .05), '#e8e2d4', M4(x, H / 2, d * .38)); } for (const k of [-1, 1]) P.put(box(w * .84, .04, d * .42), '#bfe3d8', M4(0, H + .15, k * d * .19, 0, k * .45)); P.put(box(w * .82, H * .9, .03), '#cfeee4', M4(0, H * .45, d * .38)); beds(P, w * .7, d * .5, 2); },
+  coldstore: (P, w, d) => { cabin(P, w * .8, d * .74, '#8fa6b8', { plank: true, wall: ['#dfe7ec', '#d4dde3'], h: 1.2 }); P.put(box(.3, .3, .2), '#9aa0a6', M4(w * .3, 1.4, -d * .1)); for (let i = 0; i < 3; i++) P.put(box(.26, .02, .2), '#6f7a84', M4(w * .3, 1.3 + i * .08, -d * .1)); },
+  fuelstill: (P, w, d) => { P.put(cyl(.3, .32, .7, 12), '#b0773e', M4(-w * .12, .35, 0)); P.put(new THREE.SphereGeometry(.3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#c4884a', M4(-w * .12, .7, 0)); P.put(cyl(.03, .03, .6, 6), '#b0773e', M4(w * .1, .95, 0, 0, 0, 1.2)); P.put(cyl(.16, .16, .44, 10), '#8a3a2a', M4(w * .28, .22, d * .15)); P.put(new THREE.DodecahedronGeometry(.12, 0), '#3a2a20', M4(-w * .12, .08, d * .3)); logPile(P, w * .2, -d * .3, 2); },
+  ammobench: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.04, .05, .8, 6), '#6f4a2c', M4(x * w * .34, .4, z * d * .26)); P.put(box(w * .8, .08, d * .6), '#7a6a4e', M4(0, .82, 0)); P.put(box(.26, .3, .2), '#5d6b44', M4(-w * .2, 1.0, 0)); for (let i = 0; i < 4; i++) P.put(cyl(.025, .025, .1, 6), '#d8b04a', M4(w * .05 + i * .07, .91, d * .1)); P.put(box(.3, .2, .24), '#5d6b44', M4(w * .25, .1, d * .3)); },
+  ammofactory: (P, w, d) => { stoneHall(P, w * .82, d * .72, '#4e555c', { h: 1.5, windows: [w * .2] }); P.put(cyl(.12, .14, 1.2, 8), '#5f666e', M4(-w * .3, 2.1, -d * .15)); P.put(box(.5, .3, .3), '#5d6b44', M4(w * .3, .15, d * .45)); P.put(box(.12, .1, .02), '#e8c83a', M4(-w * .1, 1.1, d * .37 + .02)); },
+  generator: (P, w, d) => { P.put(box(w * .55, .5, d * .4), '#4e6a4e', M4(0, .32, 0)); P.put(box(w * .6, .08, d * .45), '#3a4a3a', M4(0, .6, 0)); for (const k of [-1, 1]) P.put(cyl(.09, .09, .06, 10), '#2e2e2e', M4(k * w * .2, .09, d * .22, 0, Math.PI / 2)); P.put(cyl(.04, .05, .5, 6), '#5f666e', M4(w * .18, .85, -d * .1)); P.put(cyl(.06, .06, .05, 8), '#2a2a2a', M4(w * .18, 1.1, -d * .1)); P.put(cyl(.025, .03, 1.5, 6), '#5a3b23', M4(-w * .36, .75, d * .3)); P.put(box(.16, .1, .16), '#ffe08a', M4(-w * .36, 1.52, d * .3)); for (let i = 0; i < 3; i++) P.put(box(.08, .12, .02), '#e8c36a', M4(-w * .1 + i * .1, .4, d * .2 + .01)); },
+  radio: (P, w, d) => { const H = 4.2; for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.025, .035, Math.hypot(H, w * .3), 5), '#8f9aa6', M4(x * w * .15, H / 2, z * d * .15, 0, -z * .07, x * .07)); for (let i = 1; i < 6; i++) { const y = i * H / 6, k = 1 - y / H * .7; P.put(box(w * .3 * k + .05, .03, .03), '#c83a32', M4(0, y, d * .15 * k)); P.put(box(.03, .03, d * .3 * k + .05), '#c83a32', M4(w * .15 * k, y, 0)); }
+    P.put(cyl(.2, .02, .12, 12).rotateX(Math.PI / 2), '#e8e2d4', M4(.1, H * .75, .12, .6)); P.put(box(.04, .04, .04), '#ff4a3a', M4(0, H + .05, 0)); P.put(box(w * .5, .55, d * .4), '#7a6a58', M4(-w * .1, .28, d * .25)); P.put(box(.2, .2, .04), '#3b2a1a', M4(-w * .1, .3, d * .45 + .02)); },
+  hq: (P, w, d) => { tentG(P, w * .62, d * .55, '#b9a37a', { h: 1.4, col2: '#a8926a' }); flag(P, -w * .38, -d * .3); crates(P, w * .3, d * .3, 3); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; P.put(new THREE.DodecahedronGeometry(.09, 0), '#8c8478', M4(-w * .3 + Math.cos(a) * .22, .06, d * .32 + Math.sin(a) * .22)); } },
+  hq2: (P, w, d) => { cabin(P, w * .78, d * .6, '#7a4a2e', { h: 1.6, chimney: true, sign: '#e8c36a', windows: [w * .05, w * .25] }); flag(P, -w * .42, -d * .36, 2.8); P.put(box(w * .7, .08, .5), '#8a6038', M4(0, .32, d * .3 + .3)); logPile(P, w * .38, d * .38); },
+  hq3: (P, w, d) => { stoneHall(P, w * .76, d * .66, '#4e555c', { h: 2.1, windows: [w * .05, w * .25] }); for (let i = 0; i < 7; i++) P.put(box(.18, .2, .18), '#9a948a', M4(-w * .38 + i * w * .76 / 6, 2.2, d * .33)); flag(P, 0, -d * .2, 3.4); },
+  tent: (P, w, d) => { tentG(P, w * .78, d * .72, '#c9b48a'); },
+  cabin: (P, w, d) => cabin(P, w * .82, d * .78, '#7a4a2e', { chimney: true }),
+  stonehouse: (P, w, d) => stoneHall(P, w * .8, d * .76, '#6a4a3a', { chimney: true }),
+  barrel: (P, w, d) => { P.put(cyl(.28, .26, .62, 12), '#7a5232', M4(0, .31, 0)); for (const y of [.12, .5]) P.put(cyl(.29, .29, .05, 12), '#4e555c', M4(0, y, 0)); P.put(new THREE.ConeGeometry(.42, .22, 12).rotateX(Math.PI), '#5d7a8c', M4(0, .74, 0)); },
+  irrig: (P, w, d) => { beds(P, w * .86, d * .86, 4); P.put(box(w * .9, .1, d * .92), '#8a847a', M4(0, .03, 0)); for (const z of [-d * .2, d * .2]) P.put(box(w * .8, .04, .08), '#5d8aa8', M4(0, .07, z)); P.put(cyl(.25, .28, .4, 10), '#9a948a', M4(w * .4, .2, -d * .38)); },
+  mess: (P, w, d) => { stoneHall(P, w * .8, d * .7, '#c47a2e', { chimney: true, windows: [w * .05, w * .28] }); P.put(box(w * .5, .05, .45), '#c8a46a', M4(w * .1, 1.25, d * .35 + .25, 0, -.35)); },
+  crates: (P, w, d) => { crates(P, -w * .15, -d * .1, 3); crates(P, w * .12, d * .12, 2); P.put(box(.7, .04, .6), '#5d7a5a', M4(-w * .05, .63, -d * .05, .2, .1)); },
+  warehouse: (P, w, d) => { stoneHall(P, w * .82, d * .76, '#4e555c', { h: 1.5, windows: [] }); crates(P, w * .25, d * .45, 3); },
+  bench: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.04, .05, 1.3, 6), '#6f4a2c', M4(x * w * .36, .65, z * d * .3)); P.put(box(w * .82, .06, d * .72), '#7a6a4e', M4(0, 1.32, 0, 0, .12)); P.put(box(w * .5, .08, .4), '#8a6038', M4(0, .5, 0)); for (const k of [-1, 1]) P.put(box(.06, .5, .34), '#6f4a2c', M4(k * w * .22, .25, 0)); P.put(cyl(.12, .12, .05, 10), '#8f9aa6', M4(w * .12, .58, 0, 0, Math.PI / 2)); crates(P, -w * .3, d * .32, 1); },
+  pallet: (P, w, d) => {   /* 3D.169 Pallet Yard: pallet stacks, a plank pile and a saw bench */
+    const pal = (x, z, n) => { for (let i = 0; i < n; i++) { const y = i * .13; P.put(box(.62, .035, .46), i % 2 ? '#a8834f' : '#b08a55', M4(x, y + .1, z, i * .08)); for (const o of [-.2, 0, .2]) P.put(box(.62, .07, .07), '#7a5a3a', M4(x, y + .04, z + o, i * .08)); } };
+    pal(-w * .24, d * .18, 4); pal(w * .02, -d * .24, 2);
+    for (let i = 0; i < 4; i++) P.put(box(.8, .05, .12), i % 2 ? '#c49a62' : '#b8905a', M4(w * .26, .03 + i * .055, d * .2 + (i % 2) * .04, 0, .05 * i));
+    P.put(box(.6, .06, .32), '#8a6a44', M4(w * .27, .48, -d * .2)); for (const [x, z] of [[-.25, -.12], [.25, -.12], [-.25, .12], [.25, .12]]) P.put(box(.05, .45, .05), '#5a3b23', M4(w * .27 + x, .23, -d * .2 + z));
+    P.put(cyl(.13, .13, .02, 14), '#c8ccd0', M4(w * .27, .6, -d * .2, 0, 0, Math.PI / 2)); crates(P, -w * .3, -d * .3, 2); },
+  lumber: (P, w, d) => { logPile(P, -w * .18, d * .1, 3); logPile(P, w * .22, -d * .15, 2); P.put(cyl(.2, .22, .3, 10), '#8a6038', M4(w * .3, .15, d * .3)); P.put(cyl(.02, .02, .5, 4), '#5a3b23', M4(w * .3, .45, d * .3, 0, 0, .4)); for (const [x, z] of [[-1, -1], [1, -1]]) P.put(cyl(.04, .05, 1.1, 6), '#6f4a2c', M4(x * w * .4, .55, z * d * .32)); P.put(box(w * .9, .05, .6), '#7a5a3a', M4(0, 1.1, -d * .28, 0, -.2)); },
+  quarry: (P, w, d) => { rockPile(P, -w * .15, -d * .05, 6, 1.4); rockPile(P, w * .25, d * .2, 3, 1); P.put(box(.5, .22, .34), '#6f4a2c', M4(w * .3, .2, -d * .25)); for (const k of [-1, 1]) P.put(cyl(.1, .1, .04, 10), '#3a3a3a', M4(w * .3 + k * .18, .1, -d * .25 + .2, 0, Math.PI / 2)); P.put(new THREE.DodecahedronGeometry(.4, 0).scale(1.6, .4, 1.2), '#6a6358', M4(0, .02, 0)); },
+  house: (P, w, d) => cabin(P, w * .82, d * .78, '#b5532e', { chimney: true }),
+  bonfire: (P, w, d) => {   // V3D.13: stone ring and a log pyre (the flames are fire FX, lit at night)
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; P.put(new THREE.DodecahedronGeometry(.13, 0), i % 2 ? '#8c8478' : '#7a7368', M4(Math.cos(a) * .42, .08, Math.sin(a) * .42, a)); }
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI + .3; P.put(cyl(.06, .07, .62, 6), i % 2 ? '#6f4a2c' : '#5a3b23', M4(Math.cos(a) * .05, .2, Math.sin(a) * .05, a, 0, .9)); }
+    P.put(new THREE.CircleGeometry(.36, 12).rotateX(-Math.PI / 2), '#3a2a20', M4(0, .02, 0)); },
+  inn: (P, w, d) => { cabin(P, w * .84, d * .74, '#3f6e8a', { h: 1.85, chimney: true, sign: '#e8c36a', windows: [w * .02, w * .2, w * .34] });   // V3D.12: everyone's beds
+    for (const wx of [-w * .28, w * .02, w * .3]) { P.put(box(.36, .3, .06), '#3b2a1a', M4(wx, 1.45, d * .37 + .08)); P.win(box(.26, .2, .04), M4(wx, 1.45, d * .37 + .105)); }
+    P.put(box(.7, .08, .22), '#7b5232', M4(w * .25, .28, d * .37 + .38)); for (const k of [-1, 1]) P.put(box(.06, .26, .2), '#6f4a2c', M4(w * .25 + k * .3, .13, d * .37 + .38)); },
+  water: (P, w, d) => { for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.05, .06, 1.1, 6), '#6f4a2c', M4(x * w * .25, .55, z * d * .25)); P.put(box(w * .6, .08, d * .6), '#7d5534', M4(0, 1.1, 0)); P.put(cyl(.38, .38, .7, 12), '#5d7a8c', M4(0, 1.5, 0)); P.put(new THREE.ConeGeometry(.5, .3, 12, 1, true), '#8f9aa6', M4(0, 2.0, 0, 0, Math.PI)); P.put(cyl(.04, .04, .9, 6), '#6f6a62', M4(.3, .5, .3)); },
+  well: (P, w, d) => { P.put(cyl(.42, .46, .5, 12), '#8f8a80', M4(0, .25, 0)); P.put(cyl(.32, .32, .52, 12), '#2a3a44', M4(0, .26, 0)); for (const k of [-1, 1]) P.put(box(.08, 1.2, .08), '#6f4a2c', M4(k * .42, .85, 0)); P.put(box(1.1, .07, .07), '#6f4a2c', M4(0, 1.42, 0)); P.put(new THREE.ConeGeometry(.75, .45, 4), '#8a4a2a', M4(0, 1.7, 0, Math.PI / 4)); P.put(cyl(.09, .07, .16, 8), '#7a5232', M4(.1, .9, 0)); },
+  farm: (P, w, d) => { beds(P, w * .9, d * .9, 2); },
+  field: (P, w, d) => { beds(P, w * .86, d * .86, 4); fenceRing(P, w * .96, d * .96, .5); P.put(box(.06, 1.1, .06), '#6f4a2c', M4(w * .3, .55, -d * .3)); P.put(box(.6, .06, .06), '#6f4a2c', M4(w * .3, .85, -d * .3)); P.put(new THREE.IcosahedronGeometry(.12, 0), '#d9b45a', M4(w * .3, 1.18, -d * .3)); },
+  medic: (P, w, d) => {   /* 3D.41 Medical Tent (1x1), toon parts: white canvas field tent with red crosses, a cot, a supply crate and an IV stand */
+    const tw = w * .74, td = d * .62, H = 1.0, gz = -d * .06; P.put(box(w * .86, .04, d * .82), '#8f8a7e', M4(0, .02, 0));   // canvas ground sheet
+    { const P2 = { put: (g, c, m) => P.put(g, c, new THREE.Matrix4().makeTranslation(0, 0, gz).multiply(m)) }; tentG(P2, tw, td, '#ece7da', { h: H, col2: '#d8d1c0' }); }
+    const fz = gz + td / 2 + .012; P.put(box(.26, .07, .02), '#c8352c', M4(0, H * .66, fz)); P.put(box(.07, .26, .02), '#c8352c', M4(0, H * .66, fz));   // cross over the door
+    for (const k of [-1, 1]) { const ang = Math.atan2(H, tw / 2); P.put(box(.22, .02, .06), '#c8352c', M4(k * tw * .25, H * .52, gz, 0, 0, -k * ang)); P.put(box(.06, .02, .22), '#c8352c', M4(k * tw * .25, H * .52, gz, 0, 0, -k * ang)); }   // crosses on both roof sides
+    P.put(cyl(.025, .025, 1.5, 6), '#6f4a2c', M4(-w * .38, .75, -d * .3)); P.put(box(.34, .22, .02), '#f4f1e8', M4(-w * .38 + .18, 1.36, -d * .3)); P.put(box(.16, .05, .025), '#c8352c', M4(-w * .38 + .18, 1.36, -d * .3)); P.put(box(.05, .16, .025), '#c8352c', M4(-w * .38 + .18, 1.36, -d * .3));   // red-cross flag
+    const cx = w * .3, cz = d * .3; P.put(box(.3, .05, .62), '#d9d4c6', M4(cx, .26, cz)); P.put(box(.26, .04, .14), '#f4f1e8', M4(cx, .3, cz - .22)); for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(box(.03, .24, .03), '#5a5650', M4(cx + x * .13, .12, cz + z * .28));   // cot with a pillow
+    P.put(box(.3, .24, .24), '#f2efe6', M4(-w * .3, .12, d * .3)); P.put(box(.16, .05, .01), '#c8352c', M4(-w * .3, .14, d * .3 + .125)); P.put(box(.05, .16, .01), '#c8352c', M4(-w * .3, .14, d * .3 + .125));   // supply crate
+    P.put(cyl(.012, .012, .9, 5), '#9aa0a6', M4(cx + .26, .45, cz - .3)); P.put(box(.12, .02, .02), '#9aa0a6', M4(cx + .26, .9, cz - .3)); P.put(box(.07, .12, .04), '#bfe3f2', M4(cx + .3, .8, cz - .3));   // IV stand
+  },
+  clinic: (P, w, d) => cabin(P, w * .86, d * .72, '#d9d2c2', { plank: true, wall: ['#e8e2d4', '#e8e2d4'], cross: true, windows: [w * .1, w * .32] }),
+  hospital: (P, w, d) => { cabin(P, w * .84, d * .8, '#c83a32', { plank: true, wall: ['#ece6d8', '#ece6d8'], h: 2.1, cross: true, windows: [w * .05, w * .3] }); },
+  canteen: (P, w, d) => { cabin(P, w * .8, d * .7, '#c47a2e', { chimney: true, windows: [w * .05, w * .28] }); P.put(box(w * .5, .05, .45), '#c8a46a', M4(w * .1, 1.15, d * .35 + .25, 0, -.35)); },
+  armory: (P, w, d) => { cabin(P, w * .82, d * .74, '#4e555c', { plank: true, wall: ['#6c6f70', '#6c6f70'], sign: '#3d4a52', windows: [w * .3] }); crates(P, w * .32, d * .45, 2); },
+  workshop: (P, w, d) => { cabin(P, w * .82, d * .72, '#7a6a4e', { sign: '#c47a2e', windows: [w * .3] }); P.put(box(.8, .45, .35), '#8a6038', M4(w * .05, .22, d * .45)); P.put(cyl(.16, .16, .06, 10), '#8f9aa6', M4(w * .05 + .3, .5, d * .45, 0, Math.PI / 2)); },
+  storage: (P, w, d) => { cabin(P, w * .8, d * .74, '#7a4a2e', { windows: [] }); crates(P, w * .22, d * .45, 3); },
+  scrapyard: (P, w, d) => { fenceRing(P, w * .94, d * .9, .7); for (let i = 0; i < 5; i++) { const x = -w * .3 + i * w * .15, s = .6 + hash(i, 7) * .5; P.put(new THREE.DodecahedronGeometry(.28 * s, 0).scale(1.3, .7, 1), i % 2 ? '#6c6f70' : '#7d5f48', M4(x, .15 * s, (hash(i, 3) - .5) * d * .4, i)); } P.put(cyl(.2, .2, .1, 12), '#2a2a2a', M4(w * .3, .05, d * .2)); P.put(cyl(.2, .2, .1, 12), '#2a2a2a', M4(w * .3, .15, d * .2)); },
+  gym: (P, w, d) => { P.put(box(w * .9, .12, d * .9), '#8a6a48', M4(0, .06, 0)); P.put(cyl(.03, .03, .9, 6), '#5f666e', M4(0, .45, -.1, 0, 0, Math.PI / 2)); for (const k of [-.42, .42]) P.put(cyl(.16, .16, .08, 12), '#2a2a2a', M4(k, .45, -.1, 0, 0, Math.PI / 2)); for (const k of [-1, 1]) P.put(box(.06, .5, .06), '#5f666e', M4(k * .35, .25, -.1)); P.put(box(.5, .12, .25), '#7a3a32', M4(0, .18, .3)); },
+  library: (P, w, d) => cabin(P, w * .8, d * .76, '#3e5a8a', { sign: '#e8e2d4' }),
+  lounge: (P, w, d) => { cabin(P, w * .8, d * .7, '#4f7a4a', {}); P.put(box(.7, .1, .25), '#7b5232', M4(w * .15, .25, d * .45)); },
+  range: (P, w, d) => { P.put(box(w * .9, .05, .3), '#7b5232', M4(0, .5, d * .32)); for (const k of [-1, 0, 1]) { P.put(box(.05, .7, .05), '#6f4a2c', M4(k * w * .3, .35, -d * .3)); P.put(cyl(.2, .2, .04, 14), '#e8e2d4', M4(k * w * .3, .75, -d * .3, 0, Math.PI / 2)); P.put(cyl(.1, .1, .05, 14), '#c83a32', M4(k * w * .3, .75, -d * .3 + .01, 0, Math.PI / 2)); } },
+  track: (P, w, d) => { for (let i = 0; i < 3; i++) { const x = -w * .3 + i * w * .3; for (const k of [-1, 1]) P.put(box(.05, .45, .05), '#6f4a2c', M4(x, .22, k * .3)); P.put(box(.06, .06, .7), '#c47a2e', M4(x, .42, 0)); } P.put(cyl(.1, .1, w * .7, 7), '#7b5232', M4(0, .1, d * .3, 0, 0, Math.PI / 2)); },
+  sparring: (P, w, d) => { P.put(box(w * .8, .2, d * .8), '#7a6a58', M4(0, .1, 0)); for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) P.put(cyl(.05, .05, .8, 6), '#c83a32', M4(x * w * .38, .5, z * d * .38)); for (const y of [.5, .75]) { P.put(box(w * .76, .03, .03), '#e8e2d4', M4(0, y, -d * .38)); P.put(box(w * .76, .03, .03), '#e8e2d4', M4(0, y, d * .38)); P.put(box(.03, .03, d * .76), '#e8e2d4', M4(-w * .38, y, 0)); P.put(box(.03, .03, d * .76), '#e8e2d4', M4(w * .38, y, 0)); } },
+  barracks: (P, w, d) => { cabin(P, w * .86, d * .62, '#3e5a3e', { windows: [w * .05, w * .25, w * .4] }); crates(P, -w * .36, d * .38, 2); },
+};
+let tentScene = null;
+const BGLB = { house: 'assets/buildings/ai3d/house/house_realtime.glb' }, glbB = {};   // V3D.3: Hunyuan models from export_prop3d.py (origin = footprint centre, door faces +Z = front-left); scaled to fill the footprint
+const bGroups = new Map();
+function buildingKey(b) { return [b.type, b.x, b.y, b.w, b.h, (b.rot | 0) & 3, b.burnt ? 1 : 0, b.wrecked ? 1 : 0].join(','); }
+function syncDoors() {   /* 3D.28: the game's door point (where survivors enter) follows the door drawn on each 3D building */
+  const def = (P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {});
+  for (const [k, D] of Object.entries(G.DEFS)) {
+    if (!D || D.door || glbB[k]) continue; const f = BUILD[k] || def, P = new Parts();
+    try { f(P, D.w * T, D.h * T); } catch (e) { continue; }
+    if (P.doorX !== undefined) D.door = [D.w / 2 + P.doorX / T, D.h - .35];
+  }
+}
+function makeBuilding(b) {
+  const g = new THREE.Group(), odd = (b.rot | 0) & 1, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T;
+  if (false && b.type === 'medic' && tentScene) {   /* 3D.41: the old Hunyuan tent is retired; the Medical Tent is built from toon parts */
+    const t = tentScene.clone(); const s = Math.min(w / 2.2, d / 2.4) * .95; t.scale.setScalar(s); g.add(t);
+  } else if (glbB[b.type]) {
+    const m = glbB[b.type], t = m.scene.clone(); t.scale.setScalar(Math.min(w / m.sx, d / m.sz) * .95); g.add(t);
+  } else {
+    const P = new Parts(); (BUILD[b.type] || ((P2, w2, d2) => cabin(P2, w2 * .8, d2 * .75, '#8a4a2a', {})))(P, w, d); P.build(g, .028);
+  }
+  if (b.burnt) g.traverse((o) => { if (o.isMesh && !o.userData.hull && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(b.wrecked ? .55 : .35); } });
+  g.position.set((b.x + b.w / 2) * T, 0, (b.y + b.h / 2) * T); g.rotation.y = ((b.rot | 0) & 3) * Math.PI / 2;   // V3D.15: four entrance directions
+  return g;
+}
+function syncBuildings() {
+  let changed = false; const seen = new Set();
+  for (const b of G.world.buildings) {
+    seen.add(b); const k = buildingKey(b), cur = bGroups.get(b);
+    if (cur && cur.key === k) continue;
+    if (cur) { scene.remove(cur.g); if (cur.lit) scene.remove(cur.lit); freeTree(cur.g); }
+    const g = makeBuilding(b); scene.add(g); let lit = null; try { if (!b.burnt) { lit = doorLight(b); scene.add(lit); } } catch (e) { lit = null; }
+    bGroups.set(b, { g, key: k, lit }); changed = true;
+  }
+  for (const [b, v] of bGroups) if (!seen.has(b)) { scene.remove(v.g); if (v.lit) scene.remove(v.lit); freeTree(v.g); bGroups.delete(b); changed = true; }
+  for (const [b, v] of bGroups) { const bx = (b.x + b.w / 2) * T, bz = (b.y + b.h / 2) * T; if (b.hitT > 0) { b.hitT--; v.g.position.set(bx + Math.sin(b.hitT * 2.3) * .06 * b.hitT / 12, 0, bz + Math.cos(b.hitT * 1.7) * .04 * b.hitT / 12); } else if (v.g.position.x !== bx) v.g.position.set(bx, 0, bz); }   // V3D.17: a hit building shudders
+  return changed;
+}
+
+// ---------------------------------------------------------------- construction sites (V3D.12): the building rises out of
+// the ground inside wooden scaffolding on a dug plot with a plank stack; dust puffs drift up while work goes on
+const siteMeshes = new Map();
+const dustT = lightTex(false), dustMat = new THREE.SpriteMaterial({ map: dustT, color: 0xd8c4a0, transparent: true, depthWrite: false, opacity: .6 });
+function makeSite(st, upg) {
+  const W = st.w * T, D = st.h * T, cx = (st.x + st.w / 2) * T, cz = (st.y + st.h / 2) * T, g = new THREE.Group(), wood = toon('#b98a56'), dark = toon('#8a5f36');
+  const plot = new THREE.Mesh(new THREE.PlaneGeometry(W + .3, D + .3).rotateX(-Math.PI / 2), toon('#9c7444')); plot.position.y = .015; plot.receiveShadow = true; g.add(plot);
+  const pole = new THREE.CylinderGeometry(.045, .05, 2.3, 6).translate(0, 1.15, 0), H = 2.3;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const m = new THREE.Mesh(pole, wood); m.position.set(sx * (W / 2 - .05), 0, sz * (D / 2 - .05)); m.castShadow = true; g.add(m); addHull(m, .018); }
+  for (const y of [.85, 1.7]) for (const [len, rx, px, pz] of [[W, 0, 0, -D / 2 + .05], [W, 0, 0, D / 2 - .05], [D, 1, -W / 2 + .05, 0], [D, 1, W / 2 - .05, 0]]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(len, .07, .09), y > 1 ? wood : dark); b.position.set(px, y, pz); if (rx) b.rotation.y = Math.PI / 2; b.castShadow = true; g.add(b); addHull(b, .015); }
+  const diag = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(W, .85), .05, .06), dark); diag.position.set(0, .43, D / 2 - .05); diag.rotation.z = Math.atan2(.85, W); g.add(diag);
+  for (let i = 0; i < 3; i++) { const pl = new THREE.Mesh(new THREE.BoxGeometry(.9, .07, .22), i % 2 ? dark : wood); pl.position.set(W / 2 + .35, .04 + i * .075, D / 2 - .2 - i * .03); pl.rotation.y = .2 * i; pl.castShadow = true; g.add(pl); addHull(pl, .012); }
+  g.position.set(cx, 0, cz); scene.add(g);
+  if (upg) { plot.visible = false; return { g, model: null, puffs: [], next: 0, upg: true }; }   // V3D.23: an upgrade gets scaffolding round the working building
+  const model = makeBuilding(st); model.scale.y = .05; scene.add(model);
+  return { g, model, puffs: [], next: 0 };
+}
+const confetti = [], CONF_COL = [0xffd45c, 0xff8a5c, 0x9be2ff, 0xffb0d0, 0x8fe07a, 0xfff6c2];
+function syncSites(dt) {
+  const seen = new Set(), ready = G.jobReady || (() => true);
+  const jobs = [...(G.S.sites || []).map((st) => [st, st, false]), ...G.world.buildings.filter((b) => b.upg).map((b) => [b.upg, b, true])];
+  for (const [j, at, upg] of jobs) {
+    seen.add(j); let e = siteMeshes.get(j); if (!e) { e = makeSite(at, upg); siteMeshes.set(j, e); }
+    const on = ready(j), k = on ? 1 - j.cons / j.dur : 0; if (e.model) e.model.scale.y = .05 + .95 * k;
+    e.next -= dt; if (on && e.next <= 0) { e.next = .35 + Math.random() * .4; const sp = new THREE.Sprite(dustMat.clone()); sp.position.set(e.g.position.x + (Math.random() - .5) * at.w * T, .2, e.g.position.z + (Math.random() - .5) * at.h * T); sp.scale.setScalar(.4); scene.add(sp); e.puffs.push({ sp, t: 0 }); }
+    for (let i = e.puffs.length - 1; i >= 0; i--) { const q = e.puffs[i]; q.t += dt; q.sp.position.y += dt * .5; q.sp.scale.setScalar(.4 + q.t * .7); q.sp.material.opacity = .55 * Math.max(0, 1 - q.t / 1.4); if (q.t > 1.4) { scene.remove(q.sp); q.sp.material.dispose(); e.puffs.splice(i, 1); } }
+  }
+  for (const [st, e] of siteMeshes) if (!seen.has(st)) { scene.remove(e.g); if (e.model) scene.remove(e.model); for (const q of e.puffs) scene.remove(q.sp); siteMeshes.delete(st); }
+  // V3D.23 completion confetti: paper bits shoot up and flutter down, plus a ring of dust
+  { const X = window.ZH_BOOMS; while (X && X.length) { const b = X.shift(), x = b.x * T, z = b.y * T;   /* 3D.104 explosions: a quick fireball, then smoke */
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: b.burn ? 0xff7a28 : 0xffc04a, transparent: true, opacity: .9 })); m.position.set(x, .4, z); m.scale.setScalar(.3); scene.add(m);
+      confetti.push({ m, boom: true, R: b.r * T * .55, t: 0, v: new THREE.Vector3() });
+      for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(dustMat.clone()); const a = i / 8 * 6.283; sp.position.set(x + Math.cos(a) * .5, .5, z + Math.sin(a) * .5); sp.scale.setScalar(.9); sp.material.color = new THREE.Color(0x555048); scene.add(sp); confetti.push({ m: sp, v: new THREE.Vector3(Math.cos(a) * 1.4, 1.2, Math.sin(a) * 1.4), t: 0, dust: true }); } } }
+  const B = window.ZH_BURSTS; while (B && B.length) { const b = B.shift(), x = b.x * T, z = b.y * T;
+    for (let i = 0; i < 46; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(.11, .07), new THREE.MeshBasicMaterial({ color: CONF_COL[i % CONF_COL.length], side: THREE.DoubleSide, transparent: true })); m.position.set(x, 1.2, z); scene.add(m);
+      const a = Math.random() * 6.283, sp = 1.2 + Math.random() * 2.2; confetti.push({ m, v: new THREE.Vector3(Math.cos(a) * sp, 4 + Math.random() * 3, Math.sin(a) * sp), r: new THREE.Vector3(Math.random() * 9, Math.random() * 9, 0), t: 0 }); }
+    for (let i = 0; i < 10; i++) { const sp = new THREE.Sprite(dustMat.clone()); const a = i / 10 * 6.283; sp.position.set(x + Math.cos(a) * .9, .25, z + Math.sin(a) * .9); sp.scale.setScalar(.7); scene.add(sp); confetti.push({ m: sp, v: new THREE.Vector3(Math.cos(a) * 1.2, .5, Math.sin(a) * 1.2), dust: true, t: 0 }); } }
+  for (let i = confetti.length - 1; i >= 0; i--) { const c = confetti[i]; c.t += dt;
+    if (c.boom) { const k = Math.min(1, c.t / .35); c.m.scale.setScalar(.3 + c.R * k); c.m.material.opacity = .9 * (1 - k); if (c.t > .4) { scene.remove(c.m); c.m.material.dispose(); c.m.geometry.dispose(); confetti.splice(i, 1); } continue; }
+    if (c.dust) { c.m.position.addScaledVector(c.v, dt); c.m.scale.setScalar(.7 + c.t * 1.2); c.m.material.opacity = .6 * Math.max(0, 1 - c.t / 1.2); }
+    else { c.v.y -= 9 * dt; c.v.multiplyScalar(c.v.y < 0 ? .94 : 1); if (c.v.y < -1.6) c.v.y = -1.6; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.r.x * dt; c.m.rotation.y += c.r.y * dt; if (c.m.position.y < .03) { c.m.position.y = .03; c.v.set(0, 0, 0); } c.m.material.opacity = Math.max(0, Math.min(1, (3.2 - c.t) * 1.5)); }
+    if (c.t > (c.dust ? 1.2 : 3.2)) { scene.remove(c.m); c.m.material.dispose(); if (c.m.geometry && !c.dust) c.m.geometry.dispose(); confetti.splice(i, 1); } }
+}
+
+// ---------------------------------------------------------------- characters
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+const parse = (buf) => new Promise((ok, bad) => loader.parse(buf, '', ok, bad));
+const LP = { started: 0, done: 0 };   /* 3D.250 bug A13: model files started and finished, for the loading screen */
+async function load(url) { LP.started++; try { return await load0(url); } finally { LP.done++; } }
+async function load0(url) {   // hosts that can't serve .glb get a base64 copy next to it (<name>.glb.txt)
+  if (!window.ZH_GLB_TXT) return new Promise((ok, bad) => loader.load(url, ok, undefined, bad));
+  const t = await (await fetch(url + '.txt')).text(), bin = atob(t.trim()), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return parse(u.buffer);
+}
+let MALE = null, LITE = null, ZMALE = null;   /* 3D.107 ZMALE: the V-pose male, kept for reskinned zombies (their textures fit its UVs) */
+const JOB_SHIRT = { Mechanic: '#3f5f7f', Civilian: null, Farmer: '#6f8a3a', Medic: '#8fc4d8', Engineer: '#d9822e', Cook: '#f2eadb', Scavenger: '#8a6a48', Guard: '#5d6b44', 'Police Officer': '#2f4a7a', SWAT: '#2a2f36', Raider: '#7a2e28', Trader: '#6b4f8c' };
+const JOB_PANTS = { Guard: '#4a5236', 'Police Officer': '#1f2a44', SWAT: '#1d2126', Raider: '#3a2a22', Cook: '#3a3a3a', Trader: '#3b3346' };
+const ZTINT = { walker: [.62, .86, .55], runner: [.75, .8, .5], crawler: [.6, .7, .55], bloated: [.7, .85, .45], spitter: [.8, .9, .4], brute: [.55, .7, .5], boss: [.7, .5, .8] };
+const ZSC = { bloated: 1.18, brute: 1.32, crawler: 1, boss: 1.6, alpha: 1.75, screamer: 1, riot: 1, dog: 1.15,
+  walker: 1.156,   /* 3D.185 owner: the same height as a survivor (the Walker models are 1.0 tall, a survivor 1.156) */
+  lasher: 1.6 };   /* 3D.185 owner: its chest where the top of a survivor's head is (chest 0.72 up the model) */
+function toonScene(root, map, clean = false) {   // clean (the #v2 models): mipmapped texture and no hull outline (it poked through the AI mesh as dark specks)
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.hull) return;
+    const m = o.material; const tex = map || m.map || null;
+    if (tex) { tex.colorSpace = THREE.SRGBColorSpace; if (clean) { tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.needsUpdate = true; } else { tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; } }
+    o.material = new THREE.MeshToonMaterial({ color: m.color, map: tex, gradientMap: grad });
+    o.castShadow = false; o.receiveShadow = true;
+    if (o.isSkinnedMesh) { o.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, .6, 0), 1.2); }
+  });
+  if (clean) return;
+  const ms = []; root.traverse((o) => { if (o.isMesh && !o.userData.hull) ms.push(o); }); for (const o of ms) addHull(o, o.isSkinnedMesh ? .022 : .018);
+}
+function recolor(img, shirt, pants) {   // the flat-colour body texture: shirt pixels are exactly (240,240,240), trousers two blues
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), a = d.data, S = shirt && new THREE.Color(shirt), Pn = pants && new THREE.Color(pants);
+  for (let i = 0; i < a.length; i += 4) {
+    const r = a[i], gg = a[i + 1], b = a[i + 2];
+    if (S && Math.abs(r - 240) < 5 && Math.abs(gg - 240) < 5 && Math.abs(b - 240) < 5) { a[i] = S.r * 255; a[i + 1] = S.g * 255; a[i + 2] = S.b * 255; }
+    else if (Pn && ((Math.abs(r - 21) < 6 && Math.abs(gg - 51) < 6 && Math.abs(b - 85) < 6) || (Math.abs(r - 57) < 6 && Math.abs(gg - 75) < 6 && Math.abs(b - 112) < 6))) { const k = r < 40 ? .8 : 1.1; a[i] = Math.min(255, Pn.r * 255 * k); a[i + 1] = Math.min(255, Pn.g * 255 * k); a[i + 2] = Math.min(255, Pn.b * 255 * k); }
+  }
+  g.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; return t;
+}
+// facial expressions: the GLB texture has the neutral face; <model>_face_<expr>.webp are the same texture with another
+// face painted on (tools/art/b3d/facepaint.py). Each clip shows one of them.
+const EXPR_OF_CLIP = { punch: 'angry', melee_swing_a: 'angry', melee_swing_b: 'angry', melee_swing_c: 'angry', gun_fire: 'angry', pistol_fire: 'angry',
+  hurt: 'hurt', melee_hold_hurt: 'hurt', gun_hold_hurt: 'hurt', collapse: 'ko', cheer: 'happy' };
+// The faces ship as face-only overlays (<model>_face_<expr>.png, transparent elsewhere) laid over the outfit's texture
+// in the shader, so every job shares one small texture per expression (full recoloured copies ran phones out of memory).
+const FACE_OVL = {};       // expr -> THREE.Texture
+function imgTex(img) { const t = new THREE.Texture(img); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; }
+const jobTex = {}, jobMats = {};
+const charMats = [];   // characters glow faintly from their own texture at night (lit by their lamps), so they don't turn to silhouettes
+function nightLit(m, k) { m.emissiveMap = m.map; m.emissive = new THREE.Color(0, 0, 0); m.userData.nightGlow = k; charMats.push(m); if (glowNow > 0) m.emissive.setScalar(k * glowNow); return m; }
+function jobBase(job) {
+  if (jobTex[job]) return jobTex[job]; const img = MALE.bodyImage;
+  return (jobTex[job] = img && (JOB_SHIRT[job] || JOB_PANTS[job]) ? recolor(img, JOB_SHIRT[job], JOB_PANTS[job]) : MALE.body.material.map);
+}
+// V3D.15 looks: skin tone and hair colour recoloured in the shader (the texture stays shared). Skin and hair are found by
+// colour: skin by its chromaticity, hair as dark brown (the darker eyes are left alone). Multipliers keep the shading.
+const lin = (h) => new THREE.Color(h);   // THREE.Color stores linear values
+const SKIN_REF = lin('#fac39f'), HAIR_REF = lin('#34251f');
+const SKINS = ['#fac9a8', '#e0ac82', '#c68c64', '#966446', '#69462f'], HAIRS = ['#34251f', '#1c1818', '#78341e', '#c4964f', '#82807c'];
+const mulOf = (h, ref) => { const c = lin(h); return new THREE.Vector3(c.r / ref.r, c.g / ref.g, c.b / ref.b); };
+const SKIN_MUL = SKINS.map((h) => mulOf(h, SKIN_REF)), HAIR_MUL = HAIRS.map((h) => mulOf(h, HAIR_REF));
+const SN = (() => { const t = SKIN_REF.r + SKIN_REF.g + SKIN_REF.b; return [SKIN_REF.r / t, SKIN_REF.g / t, SKIN_REF.b / t].map((v) => v.toFixed(4)).join(', '); })();
+const LOOK_GLSL = `{ vec3 c = diffuseColor.rgb; vec3 n = c / max(1e-4, c.r + c.g + c.b); float lum = dot(c, vec3(.3, .59, .11)); vec3 sn = vec3(${SN});
+    float isSkin = (1. - smoothstep(.022, .04, distance(n, sn))) * smoothstep(.12, .2, lum);
+    float isHair = (1. - smoothstep(.06, .11, distance(n, sn))) * smoothstep(.011, .016, lum) * (1. - smoothstep(.07, .1, lum));
+    diffuseColor.rgb = mix(c, min(c * skinMul, vec3(1.)), isSkin); diffuseColor.rgb = mix(diffuseColor.rgb, min(c * hairMul, vec3(1.)), isHair); }`;
+const CHAR_V2 = (() => {   // #v2 turns the new survivor on and remembers it; #v1 turns it off
+  /* 3D.27: the simple 1:6 survivor is now the default for everyone (it used to need #v2 on each device, so a fresh browser showed the old chibi one). #v1 or ?char=v1 brings the old one back for testing. */
+  try { if (location.hash === '#v1') localStorage.setItem('zh_char', 'v1'); if (location.hash === '#v2') localStorage.removeItem('zh_char'); } catch (e) {}
+  let ls = false; try { ls = localStorage.getItem('zh_char') === 'v1'; } catch (e) {}
+  return !(new URLSearchParams(location.search).get('char') === 'v1' || location.hash === '#v1' || ls); })();   // V3D.19 test: the new simple 1:6 survivor (Hunyuan) for everyone
+let v2Mat = null; const v2MatF = { m: null };
+let FEMALE3D = null, ZFEMALE = null;   /* 3D.124 FEMALE3D = the owner's original female survivor; ZFEMALE = the old female, kept for reskinned zombies (their skins fit its UVs) */
+let _fem0 = null;   // V3D.19 test: the female survivor model (only with #v2)
+function isFemale(s) { try { return !!(window.ZHChars && ZHChars.look(s).sex === 'f'); } catch (e) { return false; } }
+function newPerson(s) {   // a survivor's 3D actor: with #v2 women get the female model, each model keeps its own texture
+  if (MALE && MALE.v2 && FEMALE3D && isFemale(s)) { const m = (v2MatF.m ||= nightLit(new THREE.MeshToonMaterial({ map: FEMALE3D.body.material.map, gradientMap: grad }), .32)); return new Actor(FEMALE3D, m, false, () => m); }
+  return new Actor(MALE, jobMaterial(s.job, 'neutral', lookOf(s)), false, (e) => jobMaterial(s.job, e, lookOf(s)));
+}
+function jobMaterial(job, expr = 'neutral', look = null) {
+  if (MALE && MALE.v2) return (v2Mat ||= nightLit(new THREE.MeshToonMaterial({ map: MALE.body.material.map, gradientMap: grad }), .32));
+  if (!FACE_OVL[expr]) expr = 'neutral';
+  const sk = look ? look.sk % SKINS.length : 0, hr = look ? look.hr % HAIRS.length : 0, key = job + '|' + expr + '|' + sk + hr; if (jobMats[key]) return jobMats[key];
+  const m = new THREE.MeshToonMaterial({ map: jobBase(job), gradientMap: grad }), ovl = expr !== 'neutral' && FACE_OVL[expr];
+  m.onBeforeCompile = (sh) => { sh.uniforms.skinMul = { value: SKIN_MUL[sk] }; sh.uniforms.hairMul = { value: HAIR_MUL[hr] }; if (ovl) sh.uniforms.faceMap = { value: ovl };
+    sh.fragmentShader = 'uniform vec3 skinMul; uniform vec3 hairMul;\n' + (ovl ? 'uniform sampler2D faceMap;\n' : '') + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + LOOK_GLSL + (ovl ? '\n{ vec4 fo = texture2D(faceMap, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, fo.rgb, fo.a); }' : '')); };
+  m.customProgramCacheKey = () => (ovl ? 'face+look' : 'look');
+  return (jobMats[key] = nightLit(m, .32));
+}
+function lookOf(s) { if (!s.look3) { const r = Math.imul(s.id || 1, 2654435761) >>> 0; s.look3 = { sk: r % SKINS.length, hr: (r >>> 8) % HAIRS.length }; } return s.look3; }
+// zombie skins (tools/art/b3d/zombie_tex.py): grey-green skin, milky eyes, four dirty bloody outfits. Each zombie
+// picks one at random; a few types keep a light tint on top so they still read apart.
+const ZSKIN_TINT = { spitter: [.88, 1, .72], bloated: [.95, 1, .85], boss: [.85, .7, .95], brute: [.9, .9, .9], screamer: [1, .96, 1], burnt: [.42, .34, .3], riot: [.82, .86, .95], alpha: [1, .58, .52] };   /* 3D.32 new types */
+const ZALIAS = { alpha: 'brute', screamer: 'walker', burnt: 'walker', stalker: 'runner', lasher: 'runner', rotbomb: 'bloated' };   /* 3D.80 fallbacks if a new model fails to load */
+const zMats = {};
+// V3D.20 (#v2): zombies wear the new male / female bodies with zombie skins (tools/art/b3d/zombie_tex_v2.py)
+function v2Tex(img) { const t = imgTex(img); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; return t; }
+// V3D.21: each zombie type gets its own Hunyuan model when there is one (ZMODEL); the rest wear reskinned survivor bodies
+/* 3D.147 strides re-measured from the current models: planted-foot speed at timeScale 1, model size, walks x.91 / runs x1 to match the survivor table */
+const ZMODEL = { walker: { url: 'assets/characters/ai3d_v2/zombie_walker.glb', stride: { zombie_walk: 0.413, zombie_run: 1.049 } },
+  runner: { url: 'assets/characters/ai3d_v2/zombie_runner.glb', stride: { zombie_walk: 0.469, zombie_run: 1.197 } },
+  brute: { url: 'assets/characters/ai3d_v2/zombie_brute.glb', stride: { zombie_walk: 0.398, zombie_run: 1.059 } },
+  bloated: { url: 'assets/characters/ai3d_v2/zombie_bloated.glb', stride: { bloated_walk: 0.232 } },
+  crawler: { url: 'assets/characters/ai3d_v2/zombie_crawler.glb', stride: { crawl: .24 }, crawl: true },
+  spitter: { url: 'assets/characters/ai3d_v2/zombie_spitter.glb', stride: { zombie_walk: 0.469, zombie_run: 1.211 } },
+  sporehead: { url: 'assets/characters/ai3d_v2/zombie_sporehead.glb', stride: { zombie_walk: 0.374, zombie_run: 0.991 } },
+  screamer: { url: 'assets/characters/ai3d_v2/zombie_screamer.glb', stride: { zombie_walk: 0.365, zombie_run: 1.018 } },
+  riot: { url: 'assets/characters/ai3d_v2/zombie_riot.glb', stride: { zombie_walk: 0.489, zombie_run: 1.241 } },
+  lasher: { url: 'assets/characters/ai3d_v2/zombie_lasher.glb', stride: { creepy_walk: 0.412, walk: 1.389, naruto_run: 2.576, zombie_walk: 0.635, zombie_run: 1.752 }, human: true, walkClip: 'creepy_walk', runClip: 'naruto_run' },   /* 3D.82 owner: ninja run; 3D.84 creepy walk */   /* 3D.80 the user's gaunt model */
+  rotbomb: { url: 'assets/characters/ai3d_v2/zombie_rotbomb.glb', stride: { zombie_walk: 0.26, zombie_run: 0.666 } },   /* 3D.80 the user's clown */
+  stalker: { url: 'assets/characters/ai3d_v2/zombie_stalker.glb', stride: { walk: 0.895, heavy_walk: 0.633, run: 1.536, heavy_run: 1.186, zombie_walk: 0.353, zombie_run: 1.049 }, human: true, walkClip: 'heavy_walk', runClip: 'heavy_run', atkClip: 'haymaker_kick' },   /* 3D.87 owner: heavy walk (small arm swing), hulk smash; 3D.88 fingers bone: fists in the haymaker, palm-to-palm smash */   /* 3D.82 owner: walks and runs like a human, wide slow haymaker */   /* 3D.86 new Stalker model from the owner's Gemini sheet (no coat), 1.5x scale in BOSS_KINDS */
+  dog: { url: 'assets/characters/ai3d_v2/zombie_dog.glb', stride: { zombie_walk: .3, zombie_run: .62 }, dog: true },
+  /* 3D.126 the owner's new zombie set: female / male variants, the Burnt, and a model each for the Alpha and the bosses */
+  walker_f: { url: 'assets/characters/ai3d_v2/zombie_walker_f.glb', stride: { zombie_walk: 0.408, zombie_run: 1.073 }, kind: 'walker' },
+  runner_f: { url: 'assets/characters/ai3d_v2/zombie_runner_f.glb', stride: { zombie_walk: 0.453, zombie_run: 1.293 }, kind: 'runner' },
+  burnt: { url: 'assets/characters/ai3d_v2/zombie_burnt.glb', stride: { zombie_walk: 0.487, zombie_run: 1.265 } },
+  burnt_f: { url: 'assets/characters/ai3d_v2/zombie_burnt_f.glb', stride: { zombie_walk: 0.489, zombie_run: 1.292 }, kind: 'burnt' },
+  crawler_m: { url: 'assets/characters/ai3d_v2/zombie_crawler_m.glb', stride: { crawl: .24 }, crawl: true, kind: 'crawler' },
+  alpha: { url: 'assets/characters/ai3d_v2/zombie_alpha.glb', stride: { zombie_walk: 0.428, zombie_run: 1.225 }, kind: 'brute' },
+  queen: { url: 'assets/characters/ai3d_v2/zombie_queen.glb', stride: { bloated_walk: 0.157 }, kind: 'bloated' },
+  butcher: { url: 'assets/characters/ai3d_v2/zombie_butcher.glb', stride: { zombie_walk: 0.276, zombie_run: 0.716 }, kind: 'brute' },
+  mutant: { url: 'assets/characters/ai3d_v2/zombie_mutant.glb', stride: { zombie_walk: 0.481, zombie_run: 1.306 }, kind: 'mutant' },
+  thrower: { url: 'assets/characters/ai3d_v2/zombie_thrower.glb', stride: { zombie_walk: 0.353, zombie_run: 0.92 }, atkClip: 'melee_swing_a' },
+  /* 3D.182 the owner's 11 new models (16 Nov). Looks only for now: no zombie type uses them yet. A zombie with z.mk = one of these keys wears that model
+     and keeps the behaviour of its own type (the Zombie test page lines them up). four: the Dog's four-legged rig (tools/art/b3d/ai_stag.py). */
+  digger: { url: 'assets/characters/ai3d_v2/zombie_digger.glb', stride: { zombie_walk: 0.414, zombie_run: 1.096 } },
+  lineman: { url: 'assets/characters/ai3d_v2/zombie_lineman.glb', stride: { zombie_walk: 0.434, zombie_run: 1.136 } },
+  splitter: { url: 'assets/characters/ai3d_v2/zombie_splitter.glb', stride: { zombie_walk: 0.445, zombie_run: 1.203 } },
+  bilespewer: { url: 'assets/characters/ai3d_v2/zombie_bilespewer.glb', stride: { zombie_walk: 0.455, zombie_run: 1.217 } },
+  hazmat: { url: 'assets/characters/ai3d_v2/zombie_hazmat.glb', stride: { zombie_walk: 0.442, zombie_run: 1.163 } },
+  leaper: { url: 'assets/characters/ai3d_v2/zombie_leaper.glb', stride: { zombie_walk: 0.556, zombie_run: 1.476 }, sc: 1.2 },   /* 3D.185 owner: taller. sc = the size a z.mk model is drawn at (1 if not given) */
+  listener: { url: 'assets/characters/ai3d_v2/zombie_listener.glb', stride: { zombie_walk: 0.442, zombie_run: 1.18 } },
+  nurse: { url: 'assets/characters/ai3d_v2/zombie_nurse.glb', stride: { zombie_walk: 0.567, zombie_run: 1.494 } },
+  soldier_m: { url: 'assets/characters/ai3d_v2/zombie_soldier_m.glb', stride: { zombie_walk: 0.417, zombie_run: 1.104 } },
+  soldier_f: { url: 'assets/characters/ai3d_v2/zombie_soldier_f.glb', stride: { zombie_walk: 0.444, zombie_run: 1.174 } },
+  stag: { url: 'assets/characters/ai3d_v2/zombie_stag.glb', stride: { zombie_walk: .44, zombie_run: .9 }, four: true },
+  gatling: { url: 'assets/characters/ai3d_v2/zombie_gatling.glb', stride: { walk: 1.111, gun_hold_walk: 1.026, run: 1.709 }, human: true, kind: 'gatling' } }, ZSRC = {};
+const ZVAR = { walker: ['walker', 'walker_f'], runner: ['runner', 'runner_f'], burnt: ['burnt', 'burnt_f'], crawler: ['crawler', 'crawler_m'] };   /* a type's models; one is picked per zombie */
+const ZBOSS = { stalker: 'stalker', mutant: 'mutant', bloater: 'queen', butcher: 'butcher', gatling: 'gatling' };   /* boss kind -> its model */
+const ZFIRST = ['walker', 'walker_f', 'runner', 'runner_f', 'crawler', 'crawler_m'];   /* loaded at the start; every other type loads the first time one shows up */
+const ZLOAD = {}, ZFAIL = {};
+function zLoad(k) { const d = ZMODEL[k]; if (!d || ZSRC[k] || ZLOAD[k] || ZFAIL[k]) return ZLOAD[k] || null;
+  return (ZLOAD[k] = load(d.url).then((g) => { g.scene.traverse((o) => { if (o.isSkinnedMesh && !g.body) g.body = o; }); toonScene(g.scene, null, true); g.stride = d.stride; g.v2 = true; g.crawl = !!d.crawl; g.human = !!d.human; g.runClip = d.runClip; g.walkClip = d.walkClip; g.atkClip = d.atkClip; g.kind = d.kind || k; g.zkey = k; ZSRC[k] = g; }).catch((e) => { console.warn('zombie model', k, e); ZFAIL[k] = true; }).finally(() => { delete ZLOAD[k]; })); }
+const zGat = (z) => false;   /* 3D.143 owner: the Gatling Boss is a zombie, not a Toll King. He is a boss kind now (BOSS_KINDS.gatling); the Toll Collector is a man in the Toll Kings' kit */
+function zKeys(z) {   /* the models this zombie needs */
+  if (z.mk && ZMODEL[z.mk]) return [z.mk];   /* 3D.182 a zombie told which model to wear */
+  if (z.type === 'raider') return zGat(z) ? ['gatling'] : []; if (z.type === 'boss') return [ZBOSS[z.bk] || 'mutant'];
+  return (ZVAR[z.type] || [z.type]).filter((k) => ZMODEL[k]); }
+function zWaiting(z) { let w = false; for (const k of zKeys(z)) if (!ZSRC[k] && !ZFAIL[k]) { zLoad(k); w = true; } return w; }   /* 3D.80 the user's dog (four-legged rig, tools/art/b3d/ai_dog.py) */   /* 3D.39 the user's riot zombie (helmet, pads and vest are part of the model) */   /* 3D.38 the user's screamer */   /* 3D.37 the user's sporehead */   /* 3D.35 the user's spitter */   /* 3D.34 the user's legless crawler: lies face down, pulls itself on its arms */
+function zombieOwn(type, fem) {   /* 3D.126 every zombie wears the owner's model for its type, in its own colours; fem picks the female / male variant */
+  const keys = (ZVAR[type] || [type]).filter((k) => ZSRC[k]); for (const k of ZVAR[type] || [type]) if (!ZSRC[k]) zLoad(k);
+  let k = keys.length ? keys[(Math.random() * keys.length) | 0] : null; if (keys.length > 1 && fem !== undefined) k = keys.find((q) => /_f$/.test(q) === !!fem) || k;
+  const src = k ? ZSRC[k] : ZSRC[ZALIAS[type]]; if (!src) return null; const key = 'own|' + (k || 'alias|' + type);   /* 3D.179 bug A7: the stand-in model (a Runner for the Stalker, while its own file loads) saved its skin under the Stalker's name, so the real Stalker then wore the Runner's skin for the rest of the session */
+  const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad }), .2);
+  return new Actor(src, m, true);
+}
+const OWN_SHARE = {};   /* 3D.126 was walker .7: no more repainted survivors among the walkers */
+function zombieV2(type, female, v, noOwn = false) {
+  const own = !noOwn && Math.random() < (OWN_SHARE[type] ?? 1) && zombieOwn(type); if (own) return own;   // 3D.33: runners, brutes and bloated always wear their own model; walkers 70% (the rest a reskinned survivor for variety)
+  const src = female ? (ZFEMALE || FEMALE3D) : (ZMALE || MALE), tx = src && src.zTex2; if (!tx || !tx.length) return null;
+  const key = 'v2|' + type + '|' + (female ? 'f' : 'm') + v, t = ZSKIN_TINT[type] || [1, 1, 1];
+  const m = zMats[key] ||= nightLit(new THREE.MeshToonMaterial({ map: tx[v % tx.length], color: new THREE.Color(...t), gradientMap: grad }), .2);
+  return new Actor(src, m, true);
+}
+function zombieMaterial(type, v = 0) {
+  const key = type + '|' + v; if (zMats[key]) return zMats[key];
+  if (LITE.zTex && LITE.zTex.length) {
+    const t = ZSKIN_TINT[type] || [1, 1, 1];
+    return (zMats[key] = nightLit(new THREE.MeshToonMaterial({ map: LITE.zTex[v % LITE.zTex.length], color: new THREE.Color(...t), gradientMap: grad }), .2));
+  }
+  const t = ZTINT[type] || ZTINT.walker; return (zMats[key] = new THREE.MeshToonMaterial({ map: LITE.zombieMap || LITE.body.material.map, color: new THREE.Color(...t), gradientMap: grad }));
+}
+const WMODEL = { pipe: 'bat', bat: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', knife: 'axe', machete: 'axe', axe: 'axe', katana: 'axe',
+  pistol: 'pistol', revolver: 'pistol', shotgun: 'rifle', rifle: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', assault: 'ak47',
+  golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat', hatchet: 'axe', cleaver: 'axe', magnum: 'pistol' };   // 3D.28 new gear
+let WCLASS = { bat: 'melee', axe: 'melee', pistol: 'pistol', rifle: 'gun', ak47: 'gun' };
+/* 3D.207 owner (18 Nov): the big weapons are swung with both hands, copied from real people (a baseball swing, a golf swing, chopping wood), and the spear stabs.
+   Before the weapon models have loaded these weapons still borrow the bat, and swing as one-handed weapons. */
+const TWO_H = new Set(['sledge', 'axe', 'shovel', 'roadsign', 'spear']);
+const twoKind = (a, m) => (m === 'spear' && a.acts.spear_stab ? 'spear' : TWO_H.has(m) && a.acts.melee2h_swing_a ? '2h' : null);
+const twoIdle = (a, m) => { const k = twoKind(a, m); return k === 'spear' ? 'spear_hold_idle' : k === '2h' ? 'melee2h_hold_idle' : 'melee_hold_idle'; };
+const twoSwing = (a, m, n) => { const k = twoKind(a, m); return k === 'spear' ? 'spear_stab' : k === '2h' ? ['melee2h_swing_a', 'melee2h_swing_b', 'melee2h_swing_c'][((n % 3) + 3) % 3] : null; };
+const STAND_OF = { walk: 'idle', walk_f: 'idle', jog: 'idle', run: 'idle', carry_walk: 'carry_idle', melee_hold_walk: 'melee_hold_idle', gun_hold_walk: 'gun_hold_idle', melee_hold_jog: 'melee_hold_idle', gun_hold_jog: 'gun_hold_idle', zombie_walk: 'idle', zombie_run: 'idle', bloated_walk: 'idle', crawl: 'crawl_idle' };
+/* 3D.94 own models for the weapons that used to borrow the bat, axe, pistol or rifle (tools/art/b3d/gear3d.py builds them in
+   the survivor's rest pose). Each is fitted next to the weapon it borrowed: same bone, same grip, so every clip still lines up. */
+const GEAR_REF = { pipe: 'bat', crowbar: 'bat', nailbat: 'bat', sledge: 'bat', spear: 'bat', golf: 'bat', shovel: 'bat', roadsign: 'bat', spiked: 'bat',
+  knife: 'axe', machete: 'axe', katana: 'axe', hatchet: 'axe', cleaver: 'axe', revolver: 'pistol', magnum: 'pistol', shotgun: 'rifle', bow: 'rifle', crossbow: 'rifle', smg: 'ak47', axe: 'axe' };   // 3D.95: axe last, it replaces the old fire axe in place
+const SPEAR_SHIFT = new THREE.Matrix4().makeTranslation(0, 0, .04);   /* along the bat's own line, towards its tip (the bat's local +Z in the file; -Y once Blender has turned it upright) */
+function fitGear(gear, srcs) {
+  gear.scene.updateMatrixWorld(true); const inv = new THREE.Matrix4(), R = new THREE.Matrix4();
+  for (const [k, ref] of Object.entries(GEAR_REF)) {
+    const gw = gear.scene.getObjectByName('gw_' + k); if (!gw) continue; let ok = false;
+    for (const src of srcs) { if (!src) continue; src.scene.updateMatrixWorld(true); const rn = src.scene.getObjectByName('weapon_' + ref); if (!rn || !rn.parent) continue;
+      R.copy(inv.copy(rn.matrixWorld).invert()).multiply(gw.matrixWorld);   // the new weapon relative to the one it borrowed (both in the male rest pose)
+      const o = gw.clone(); o.name = 'weapon_' + k; o.matrix.copy(rn.matrix); if (k === 'spear') o.matrix.multiply(SPEAR_SHIFT); o.matrix.multiply(R);   /* 3D.213 owner: the hands closer to the spear's middle (the rear hand about 0.30 from the end, the front hand 0.28 further up); 3D.212 had it near the end */ o.matrix.decompose(o.position, o.quaternion, o.scale); o.visible = false; rn.parent.add(o); ok = true;
+      if (k === ref) { rn.name = 'weapon_old_' + ref; rn.visible = false; } }
+    if (ok) { WMODEL[k] = k; WCLASS[k] = WCLASS[ref]; }
+  }
+}
+const FISTY = (c) => /^(punch|melee_|gun_|pistol|work_|carry_|rescue|zombie_attack|shove|grabbed)/.test(c || ''), HQX = new THREE.Quaternion(), HEX = new THREE.Euler();
+class Actor {
+  constructor(src, mat, lite, faces = null) {
+    this.o = SkeletonUtils.clone(src.scene); this.o.userData.actor = true; this.src = src; scene.add(this.o);
+    this.w = {}; this.arm = []; this.skin = []; this.faces = faces; this.expr = 'neutral';   // faces: expr -> material (people only)
+    this.o.traverse((n) => { if (n.name.startsWith('weapon_')) this.w[n.name.slice(7)] = n; if (n.name.startsWith('armor_')) this.arm.push(n); if (n.isSkinnedMesh && !n.userData.hull) { this.skin.push(n); if (mat) n.material = mat; } });
+    this.mixer = new THREE.AnimationMixer(this.o); this.acts = {}; for (const c of src.animations) this.acts[c.name] = this.mixer.clipAction(c);
+    this.fing = []; if (src.m3) this.o.traverse((n) => { if (n.isBone && /^fingers\.?[LR]$/.test(n.name)) this.fing.push([n, n.quaternion.clone()]); });   /* 3D.107 the original male's finger bones */
+    this.cur = null; this.name = ''; this.weapon = undefined; this.armor = undefined; this.yaw = 0; this.last = null; this.acc = 0; this.lite = lite; this.spd = 0;
+    this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
+    if (faces) { this.beam = new THREE.Mesh(beamG, beamMat); this.beam.renderOrder = 2; this.halo = new THREE.Mesh(poolG, haloMat); this.halo.scale.set(1.7, 1, 1.7); this.halo.renderOrder = 2; this.beam.add(this.halo); this.halo.position.z = -.25; scene.add(this.beam); }   // survivors carry a flashlight at night
+  }
+  play(name, once = false, restart = false) {
+    if (this.src && this.src.crawl && name === 'collapse') name = 'crawl_die';   /* 3D.34 */
+    { const st0 = STAND_OF[name]; if (st0 && this.last && this.acts[st0] && !this.isMov() && this.spd < (this.name === name ? .05 : .1)) name = st0; }   /* 3D.28: blocked or waiting = standing, never walking on the spot (a little hysteresis so it doesn't flicker) */
+    if (!this.acts[name]) name = this.acts['idle'] ? 'idle' : Object.keys(this.acts)[0];
+    if (this.name === name && !restart) return;
+    const n = this.acts[name];
+    if (this.cur && this.cur !== n) this.cur.fadeOut(.12);
+    n.reset(); n.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); n.clampWhenFinished = true; n.fadeIn(this.cur && this.cur !== n ? .12 : 0).play();
+    this.cur = n; this.name = name;
+    this.setExpr(EXPR_OF_CLIP[name] || this.mood || 'neutral');
+  }
+  hands() { if (!this.fing.length) return; const fist = FISTY(this.name) || (this.weapon && /hold|walk|idle|run/.test(this.name)); const ang = fist ? 2.007 : .14; HQX.setFromEuler(HEX.set(ang, 0, 0)); for (const [b, q0] of this.fing) b.quaternion.copy(q0).multiply(HQX); }   /* 3D.107 fist when fighting, holding a tool or carrying; open otherwise (as on the Animation Board) */
+  setExpr(e) { if (this.faces && e !== this.expr) { this.expr = e; const m = this.faces(e); for (const k of this.skin) k.material = m; } }
+  setMood(e) { this.mood = e; if (!EXPR_OF_CLIP[this.name]) this.setExpr(e || 'neutral'); }   // V3D.14: the face follows the survivor's emote between moves
+  setWeapon(kind) { if (kind === this.weapon) return; this.weapon = kind; for (const k in this.w) this.w[k].visible = k === kind; }
+  setArmor(on) { if (on === this.armor) return; this.armor = on; for (const a of this.arm) a.visible = on; }
+  place(wx, wy, faceTo, dt, scale = 1) {
+    const x = wx * T, z = wy * T;
+    let dx, dz; const mv = this.last ? Math.hypot(x - this.last.x, z - this.last.z) / Math.max(dt, 1e-3) / scale : 0;   /* 3D.57 audit: a body that is really moving faces where it goes, even with a target (no sideways or backwards walking) */
+    if (faceTo && !(mv > .12 && this.spd > .12)) {   /* 3D.100 owner's log (Lena, Marcus SIDEWAYS): a body drifting at .12+ faces where it goes (was .3) */
+      dx = faceTo.x * T - x; dz = faceTo.y * T - z; } else if (this.last) { dx = x - this.last.x; dz = z - this.last.z; }
+    if (dx !== undefined && Math.abs(dx) + Math.abs(dz) > 1e-4) { const want = Math.atan2(dx, dz); let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * Math.min(1, dt * 12); }
+    if (this.last && dt > 0) {   /* 3D.100 owner's log (Maya sliding, FEET TOO FAST / WALK IN PLACE): 'moving' is the body's NET travel over the last .15 s, so a body
+       jostled back and forth on the spot counts as standing (per-frame speed saw that jitter as walking); the feet still follow the per-frame speed */
+      const h = this.hist || (this.hist = []); this.ht = (this.ht || 0) + dt; h.push([this.ht, x, z]); while (h.length > 2 && this.ht - h[0][0] > .15) h.shift();
+      const v = Math.min(8, Math.hypot(x - this.last.x, z - this.last.z) / dt / scale), span = this.ht - h[0][0], vn = span > .04 ? Math.hypot(x - h[0][1], z - h[0][2]) / span / scale : v;
+      this.spd += (v - this.spd) * Math.min(1, dt * 5); this.movT = vn > .07 ? 0 : (this.movT ?? 9) + dt; }   /* 3D.57: slow drifts (.07+) walk too, never glide in the idle pose */   /* 3D.41 movT: time since the body last really moved (raw, no smoothing lag) */   // V3D.20 ground speed (model units / s) for stride matching
+    const gy = groundH(x, z); this.o.position.set(x, gy, z); this.o.rotation.y = this.yaw; this.o.scale.setScalar(scale); this.last = { x, z };
+    this.sh.position.set(x, gy + .02, z); this.sh.scale.setScalar(scale);
+    if (this.beam) { this.beam.position.set(x + Math.sin(this.yaw) * .25, gy + .05, z + Math.cos(this.yaw) * .25); this.beam.rotation.y = this.yaw + Math.PI; this.beam.visible = this.o.visible && glowNow > .3; }
+  }
+  isMov() { return !!this.last && (this.movT ?? 9) < .25; }   /* 3D.100: unknown = not moving (paused at the start, they all walked on the spot) */   /* 3D.41: moving right now, measured from the body itself */
+  show(v) { if (!v) { this.spd = 0; this.last = null; this.movT = 9; this.hist = null; } this.o.visible = v; this.sh.visible = v; if (this.beam) this.beam.visible = v && glowNow > .3; }
+  dispose() { scene.remove(this.o); scene.remove(this.sh); if (this.beam) scene.remove(this.beam); const sk = new Set(); this.o.traverse((n) => { if (n.skeleton) sk.add(n.skeleton); }); for (const k of sk) k.dispose(); }   /* 3D.169: each skinned model owns a bone texture; never freed, it piled up with every zombie killed (play-test crashes) */
+}
+// ---------------------------------------------------------------- job hats (V3D.12): simple toon shapes parented to the head
+// bone, sized from the rig's head (bone at y .73, hair top 1.14, about .47 wide, centred slightly back)
+const HATS_ON = false;
+const HEAD = { x: .004, z: -.02, top: 1.14, r: .245 };
+function hatFor(job) {
+  const g = new THREE.Group(), M = (c) => toon(c), add = (geo, c, x, y, z, hull = .012) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); if (hull) addHull(m, hull); return m; };
+  const dome = (r, sy) => new THREE.SphereGeometry(r, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, sy, 1), cyl = (r1, r2, h) => new THREE.CylinderGeometry(r1, r2, h, 22);
+  const T0 = HEAD.top;
+  switch (job) {
+    case 'Farmer': add(cyl(.37, .37, .018), '#e3c472', 0, T0 - .13, 0); add(cyl(.18, .205, .13), '#e8cc7c', 0, T0 - .06, 0); add(cyl(.207, .207, .035), '#8a5a2a', 0, T0 - .105, 0, 0); break;
+    case 'Engineer': add(dome(.262, .82), '#f2b632', 0, T0 - .14, 0); add(cyl(.3, .3, .02), '#e8a822', 0, T0 - .14, .02); add(new THREE.BoxGeometry(.05, .2, .04).translate(0, .08, 0), '#ffd25a', 0, T0 - .14, .19, 0); break;
+    case 'Cook': add(cyl(.235, .235, .1), '#f7f3ea', 0, T0 - .08, 0); add(new THREE.SphereGeometry(.24, 16, 12).scale(1, .75, 1), '#ffffff', 0, T0 + .07, 0); break;
+    case 'Scavenger': add(dome(.258, .92), '#6b6a3a', 0, T0 - .15, 0); add(new THREE.TorusGeometry(.252, .03, 8, 24).rotateX(Math.PI / 2), '#5a5930', 0, T0 - .15, 0, 0); add(new THREE.SphereGeometry(.05, 8, 6), '#7d7c45', 0, T0 + .08, 0); break;
+    case 'Guard': add(dome(.27, .85), '#5d6b44', 0, T0 - .15, 0); add(cyl(.29, .29, .025), '#4e5a39', 0, T0 - .15, 0); break;
+    case 'Police Officer': add(cyl(.245, .225, .11), '#2f4a7a', 0, T0 - .07, 0); add(cyl(.255, .255, .03), '#1f2f50', 0, T0 - .12, 0, 0); add(new THREE.CylinderGeometry(.2, .2, .015, 18, 1, false, -Math.PI / 2, Math.PI).scale(1, 1, .7), '#141c30', 0, T0 - .13, .17, 0); add(new THREE.CircleGeometry(.035, 6), '#ffd45c', 0, T0 - .06, .245, 0); break;
+    case 'SWAT': add(dome(.275, .9), '#2a2f36', 0, T0 - .155, 0); add(cyl(.285, .285, .03), '#20242a', 0, T0 - .155, 0); break;
+    case 'Medic': add(new THREE.TorusGeometry(.243, .028, 8, 26).rotateX(Math.PI / 2), '#f7f7f2', 0, T0 - .17, 0, 0); { const c1 = add(new THREE.BoxGeometry(.07, .022, .02), '#d9443a', 0, T0 - .17, .27, 0), c2 = add(new THREE.BoxGeometry(.022, .07, .02), '#d9443a', 0, T0 - .17, .27, 0); } break;
+    case 'Raider': add(new THREE.TorusGeometry(.243, .034, 8, 26).rotateX(Math.PI / 2), '#a8322a', 0, T0 - .16, 0, 0); add(new THREE.SphereGeometry(.05, 8, 6), '#8a2a22', 0, T0 - .16, -.26, 0); break;
+    /* 3D.28 new hats */
+    case 'Headlamp': add(new THREE.TorusGeometry(.25, .025, 8, 26).rotateX(Math.PI / 2), '#2b2b2b', 0, T0 - .17, 0, 0); add(new THREE.BoxGeometry(.11, .08, .06), '#3a3f45', 0, T0 - .17, .26); { const l = new THREE.Mesh(new THREE.CircleGeometry(.032, 14), new THREE.MeshBasicMaterial({ color: 0xfff2a8 })); l.position.set(0, T0 - .17, .292); g.add(l); } break;
+    case 'GasMask': add(new THREE.SphereGeometry(.17, 16, 12).scale(1.1, .85, .7), '#3d4248', 0, T0 - .34, .17); for (const sx of [-1, 1]) { add(new THREE.TorusGeometry(.05, .014, 6, 16), '#22262b', sx * .085, T0 - .28, .275, 0); const l = new THREE.Mesh(new THREE.CircleGeometry(.045, 14), new THREE.MeshToonMaterial({ color: 0x9fd6e0, gradientMap: grad })); l.position.set(sx * .085, T0 - .28, .277); g.add(l); } add(cyl(.06, .07, .08).rotateX(Math.PI / 2), '#5c6670', 0, T0 - .41, .3); add(new THREE.TorusGeometry(.25, .02, 6, 26).rotateX(Math.PI / 2), '#22262b', 0, T0 - .27, 0, 0); break;
+    case 'TactCap': add(dome(.255, .55), '#4b5540', 0, T0 - .12, 0); add(new THREE.CylinderGeometry(.2, .2, .015, 18, 1, false, -Math.PI / 2, Math.PI).scale(1, 1, .75), '#3b4432', 0, T0 - .12, .18, 0); add(new THREE.BoxGeometry(.07, .045, .01), '#c9b98a', 0, T0 - .05, .245, 0); break;
+    case 'SwatHelm': add(dome(.285, .92), '#1e2228', 0, T0 - .16, 0); add(cyl(.295, .295, .03), '#15181c', 0, T0 - .16, 0); { const v = new THREE.Mesh(new THREE.CylinderGeometry(.29, .29, .17, 22, 1, true, -Math.PI / 2.6, Math.PI / 1.3), new THREE.MeshToonMaterial({ color: 0x8fb4c8, gradientMap: grad, transparent: true, opacity: .45, side: THREE.DoubleSide })); v.position.set(0, T0 - .25, .005); g.add(v); } break;
+    default: return null;
+  }
+  g.position.set(HEAD.x, 0, HEAD.z); g.rotation.x = -.06; return g;
+}
+const HAT_SHAPE = { bandana: 'Raider', cap: 'Police Officer', beanie: 'Scavenger', straw: 'Farmer', hard: 'Engineer', bike: 'SWAT', football: 'SWAT', army: 'Guard', riot: 'SWAT', headlamp: 'Headlamp', gasmask: 'GasMask', tactcap: 'TactCap', swathelm: 'SwatHelm' };
+const headFits = new Map();
+function headFit(a) {   // 3D.28: measure this model's head (top of the hair, centre, width) so hats fit any rig, not just the old one
+  if (headFits.has(a.src)) return headFits.get(a.src);
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const m = a.skin[0]; if (!head || !m) return null;
+  a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.updateMatrixWorld(true); const hb = new THREE.Vector3(); head.getWorldPosition(hb);
+  const v = new THREE.Vector3(), n = m.geometry.attributes.position.count; let top = -1e9, x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let i = 0; i < n; i++) { m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld); if (v.y < hb.y + .02) continue; if (v.y > top) top = v.y; if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.z < z0) z0 = v.z; if (v.z > z1) z1 = v.z; }
+  if (top < -1e8) return null; const f = { x: (x0 + x1) / 2, z: (z0 + z1) / 2, top, r: Math.max(x1 - x0, z1 - z0) / 2, hb: hb.y, front: z1, hw: (x1 - x0) / 2 }; headFits.set(a.src, f); return f;
+}
+function addHat(a, job, equipped = false) {   // parent to the head bone, placed at the rest pose
+  if (!HATS_ON && !equipped) { if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; } return; }   // V3D.16: no job hats; equipped hats (the Hat slot) do show
+  if (a.hat) { a.hat.parent && a.hat.parent.remove(a.hat); a.hat = null; }
+  const h0 = hatFor(job); if (!h0) return; let h = h0;
+  if (MALE && MALE.v2) { const f = headFit(a); if (!f) return; const k = f.r / HEAD.r * 1.13; h = new THREE.Group(); h0.position.set(h0.position.x - HEAD.x, -HEAD.top, h0.position.z - HEAD.z); h.add(h0); h.scale.setScalar(k); h.position.set(f.x, f.top + .015 * k, f.z); }   /* 3D.28: refit the old hats to the new head */
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); if (!head) return;
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, head.matrixWorld).invert();
+  h.updateMatrix(); h.applyMatrix4(m); head.add(h); a.hat = h;
+}
+/* ---------------- 3D.28 gear looks: accessories as small toon pieces on the bones; clothing recolours the shirt ----------------
+   Accessories: glasses, goggles, dog tags, lucky charm (neck), lifting gloves (hands), running shoes (feet), back brace (waist).
+   Clothing: light pieces swap the shirt colour (shader hue window, so shading and folds stay); heavy armour adds the plate parts. */
+const sliceFits = new Map();
+function sliceFit(a, key, test) {   // extents of the skinned rest-pose vertices that pass test(v) (model space)
+  const k = key + '|' + (a.src === FEMALE3D ? 'f' : 'm'); if (sliceFits.has(k)) return sliceFits.get(k); const m = a.skin[0]; if (!m) return null;
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), v = new THREE.Vector3(), n = m.geometry.attributes.position.count;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9, c = 0;
+  for (let i = 0; i < n; i++) { m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld).applyMatrix4(inv); if (!test(v)) continue; c++; x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
+  const f = c ? { x0, x1, y0, y1, z0, z1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, cz: (z0 + z1) / 2 } : null; sliceFits.set(k, f); return f;
+}
+function boneOf(a, name) { let b = null; a.o.traverse((n) => { if (n.isBone && n.name === name) b = n; }); return b; }
+function attachTo(a, bone, g) {   // g is built in model space at the rest pose; keep its world placement once parented to the bone
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), m = new THREE.Matrix4().multiplyMatrices(inv, bone.matrixWorld).invert();
+  g.updateMatrix(); g.applyMatrix4(m); bone.add(g); return g;
+}
+function bonePos(a, name) { const b = boneOf(a, name); if (!b) return null; a.o.updateMatrixWorld(true); const v = new THREE.Vector3(); b.getWorldPosition(v); return v.applyMatrix4(new THREE.Matrix4().copy(a.o.matrixWorld).invert()); }
+function accFor(a, id) {   // -> [[bone, group], ...]
+  const f = headFit(a); if (!f) return []; const M = (c) => toon(c), out = [];
+  const mesh = (geo, c, x, y, z, hull = .006) => { const m = new THREE.Mesh(geo, M(c)); m.position.set(x, y, z); if (hull) addHull(m, hull); return m; };
+  const r = f.r, eyeY = f.hb + (f.top - f.hb) * .3, fz = f.front;
+  if (id === 'glasses' || id === 'goggles') {
+    const g = new THREE.Group(), gog = id === 'goggles', lr = r * (gog ? .28 : .2), dx = r * (gog ? .36 : .33), y = gog ? eyeY + r * .42 : eyeY;
+    for (const sx of [-1, 1]) {
+      g.add(mesh(new THREE.TorusGeometry(lr, r * (gog ? .07 : .045), 8, 20), gog ? '#3a3a3a' : '#2a1d14', f.x + sx * dx, y, fz + r * .02));
+      const lens = mesh(new THREE.CircleGeometry(lr * .9, 20), gog ? '#7fd3e8' : '#d8eef5', f.x + sx * dx, y, fz + r * .025, 0); lens.material = new THREE.MeshToonMaterial({ color: gog ? 0x7fd3e8 : 0xe6f4f8, gradientMap: grad, transparent: true, opacity: gog ? .85 : .45 }); g.add(lens);
+    }
+    g.add(mesh(new THREE.BoxGeometry(dx * .7, r * .05, r * .05), gog ? '#3a3a3a' : '#2a1d14', f.x, y + (gog ? 0 : r * .04), fz + r * .02, 0));
+    if (gog) { const band = mesh(new THREE.TorusGeometry(f.hw * 1.02, r * .06, 6, 30).rotateX(Math.PI / 2), '#5b3a22', f.x, y, f.z, 0); band.scale.set(1, 1, (fz - f.z) / f.hw * 1.02); g.add(band); }
+    out.push(['head', g]);
+  }
+  if (id === 'dogtags' || id === 'charm') {
+    const n = bonePos(a, 'neck'), c = bonePos(a, 'chest'); if (n && c) {
+      const yb = c.y + (n.y - c.y) * .45, ch = sliceFit(a, 'chestband', (v) => Math.abs(v.y - yb) < .03 && Math.abs(v.x - n.x) < f.hw * .9), nk = sliceFit(a, 'neckband', (v) => Math.abs(v.y - (n.y + .01)) < .02 && Math.abs(v.x - n.x) < f.hw);
+      if (ch && nk) { const g = new THREE.Group(), col = id === 'charm' ? '#c9a24a' : '#b9c0c4', fz2 = ch.z1 + r * .03, top = n.y + .01;
+        for (const sx of [-1, 1]) { const len = Math.hypot(fz2 - nk.cz, top - yb), seg = mesh(new THREE.CylinderGeometry(r * .022, r * .022, len, 6), col, n.x + sx * (nk.x1 - nk.x0) * .32, (top + yb) / 2, (nk.z1 + fz2) / 2, 0); seg.rotation.x = Math.atan2(fz2 - nk.z1, top - yb); seg.rotation.z = -sx * .35; g.add(seg); }
+        if (id === 'dogtags') for (const k of [0, 1]) { const t = mesh(new THREE.BoxGeometry(r * .17, r * .27, r * .03), '#d5dadd', n.x + (k - .5) * r * .1, yb - k * r * .06, fz2 + k * .003); t.rotation.z = (k - .5) * .5; g.add(t); }
+        else g.add(mesh(new THREE.OctahedronGeometry(r * .13), '#d9443a', n.x, yb - r * .05, fz2 + r * .03));
+        out.push(['chest', g]); } }
+  }
+  if (id === 'gloves') for (const side of ['L', 'R']) { const h = bonePos(a, 'hand' + side); if (!h) continue; const hf = sliceFit(a, 'hand' + side, (v) => v.distanceTo(h) < r * .55 && v.y < h.y + r * .05);
+    if (hf) { const g = new THREE.Group(), rr = Math.max(hf.x1 - hf.x0, hf.z1 - hf.z0, hf.y1 - hf.y0) * .58; g.add(mesh(new THREE.SphereGeometry(rr, 12, 10), '#6b4a2b', hf.cx, hf.cy, hf.cz)); g.add(mesh(new THREE.CylinderGeometry(rr * .9, rr * .9, rr * .5, 12), '#4a3220', hf.cx, hf.y1 + rr * .1, hf.cz, 0)); out.push(['hand' + side, g]); } }
+  if (id === 'shoes') for (const side of ['L', 'R']) { const ft = bonePos(a, 'foot' + side); if (!ft) continue; const sf = sliceFit(a, 'foot' + side, (v) => v.y < ft.y + r * .15 && Math.sign(v.x - f.x) === Math.sign(ft.x - f.x) && Math.abs(v.x - ft.x) < r * .7);
+    if (sf) { const g = new THREE.Group(), w = (sf.x1 - sf.x0) * 1.12, d = (sf.z1 - sf.z0) * 1.1, hgt = (sf.y1 - sf.y0) * .8; g.add(mesh(new THREE.BoxGeometry(w, hgt, d), '#ece7dc', sf.cx, sf.y0 + hgt / 2, sf.cz)); g.add(mesh(new THREE.BoxGeometry(w * 1.02, hgt * .22, d * 1.02), '#d9443a', sf.cx, sf.y0 + hgt * .11, sf.cz, 0)); out.push(['foot' + side, g]); } }
+  if (id === 'belt') { const p = bonePos(a, 'pelvis'), c = bonePos(a, 'chest'); if (p && c) { const y = p.y + (c.y - p.y) * .3, wf = sliceFit(a, 'waist', (v) => Math.abs(v.y - y) < r * .08 && Math.abs(v.x - p.x) < f.hw * 1.05);
+    if (wf) { const g = new THREE.Group(), rx = (wf.x1 - wf.x0) / 2 * 1.1, rz = (wf.z1 - wf.z0) / 2 * 1.12; const b = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, r * .34, 28, 1, true), new THREE.MeshToonMaterial({ color: 0x5b3a22, gradientMap: grad, side: THREE.DoubleSide })); b.scale.set(rx, 1, rz); b.position.set(wf.cx, y, wf.cz); g.add(b); g.add(mesh(new THREE.BoxGeometry(r * .3, r * .28, r * .06), '#c9a24a', wf.cx, y, wf.cz + rz)); out.push(['pelvis', g]); } } }
+  /* 3D.28 new accessories (low detail, one or two boxes each) */
+  const torso = () => { const p = bonePos(a, 'pelvis'), n = bonePos(a, 'neck'); if (!p || !n) return null; const y = p.y + (n.y - p.y) * .55, t = sliceFit(a, 'torso', (v) => Math.abs(v.y - y) < r * .1 && Math.abs(v.x - p.x) < f.hw * 1.1); return t && { p, n, y, t }; };
+  if (id === 'backpack' || id === 'hikerpack') { const T = torso(); if (T) { const g = new THREE.Group(), big = id === 'hikerpack', w = (T.t.x1 - T.t.x0) * (big ? .82 : .72), h = (T.n.y - T.p.y) * (big ? .95 : .7), d = r * (big ? .55 : .42), z = T.t.z0 - d / 2 + r * .04, y = T.y - h * .08;
+    g.add(mesh(new THREE.BoxGeometry(w, h, d), big ? '#3f6b4a' : '#d9573c', T.p.x, y, z)); g.add(mesh(new THREE.BoxGeometry(w * .7, h * .3, d * .35), big ? '#335a3d' : '#2f6fb0', T.p.x, y - h * .18, z - d * .6, 0));
+    if (big) g.add(mesh(new THREE.CylinderGeometry(d * .32, d * .32, w * 1.05, 12).rotateZ(Math.PI / 2), '#8a6a3c', T.p.x, y + h * .58, z));
+    for (const sx of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(r * .1, h * .8, r * .03), '#2b2b2b', T.p.x + sx * w * .3, y + h * .05, T.t.z1 + r * .01, 0));
+    out.push(['chest', g]); } }
+  if (id === 'toolbelt' || id === 'medpouch') { const p = bonePos(a, 'pelvis'), c = bonePos(a, 'chest'); if (p && c) { const y = p.y + (c.y - p.y) * .3, wf = sliceFit(a, 'waist', (v) => Math.abs(v.y - y) < r * .08 && Math.abs(v.x - p.x) < f.hw * 1.05);
+    if (wf) { const g = new THREE.Group(), rx = (wf.x1 - wf.x0) / 2 * 1.1, rz = (wf.z1 - wf.z0) / 2 * 1.12, med = id === 'medpouch';
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, r * .26, 28, 1, true), new THREE.MeshToonMaterial({ color: med ? 0x2b2b2b : 0x8a5a2a, gradientMap: grad, side: THREE.DoubleSide })); b.scale.set(rx, 1, rz); b.position.set(wf.cx, y, wf.cz); g.add(b);
+      if (med) { g.add(mesh(new THREE.BoxGeometry(r * .5, r * .45, r * .3), '#f2efe6', wf.cx + rx * .85, y - r * .12, wf.cz + rz * .35)); g.add(mesh(new THREE.BoxGeometry(r * .3, r * .08, r * .02), '#d9443a', wf.cx + rx * .85, y - r * .12, wf.cz + rz * .35 + r * .16, 0)); g.add(mesh(new THREE.BoxGeometry(r * .08, r * .3, r * .02), '#d9443a', wf.cx + rx * .85, y - r * .12, wf.cz + rz * .35 + r * .16, 0)); }
+      else for (const sx of [-1, 1]) { g.add(mesh(new THREE.BoxGeometry(r * .32, r * .38, r * .22), '#6b4226', wf.cx + sx * rx * .8, y - r * .15, wf.cz + rz * .55)); g.add(mesh(new THREE.BoxGeometry(r * .05, r * .45, r * .05), sx < 0 ? '#c9b98a' : '#9aa3a8', wf.cx + sx * rx * .8, y + r * .05, wf.cz + rz * .62, 0)); }
+      out.push(['pelvis', g]); } } }
+  if (id === 'watch') { const h = bonePos(a, 'handL'), fa = bonePos(a, 'forearmL'); if (h && fa) { const g = new THREE.Group(), wp = h.clone().lerp(fa, .12), rr = r * .17; const band = mesh(new THREE.SphereGeometry(rr, 10, 8), '#2b2b2b', wp.x, wp.y, wp.z, 0); band.scale.set(1, .55, 1); g.add(band); g.add(mesh(new THREE.BoxGeometry(rr * .9, rr * .9, rr * .9), '#c9a24a', wp.x, wp.y, wp.z + rr * .55)); out.push(['forearmL', g]); } }
+  if (id === 'kneepads') for (const side of ['L', 'R']) { const k = bonePos(a, 'shin' + side); if (!k) continue; const kf = sliceFit(a, 'knee' + side, (v) => Math.abs(v.y - k.y) < r * .1 && v.distanceTo(k) < r * .6);
+    if (kf) { const g = new THREE.Group(); g.add(mesh(new THREE.BoxGeometry((kf.x1 - kf.x0) * .9, r * .36, r * .12), '#2f3338', kf.cx, k.y, kf.z1 + r * .03)); out.push(['shin' + side, g]); } }
+  if (id === 'walkie') { const T = torso(); if (T) { const g = new THREE.Group(), x = T.p.x + (T.t.x1 - T.t.x0) * .26, y = T.y + (T.n.y - T.y) * .35, z = T.t.z1 + r * .08; g.add(mesh(new THREE.BoxGeometry(r * .26, r * .42, r * .14), '#2b2f35', x, y, z)); g.add(mesh(new THREE.CylinderGeometry(r * .025, r * .025, r * .35, 6), '#1a1a1a', x + r * .07, y + r * .36, z, 0)); g.add(mesh(new THREE.BoxGeometry(r * .07, r * .05, r * .02), '#ffb347', x - r * .05, y + r * .12, z + r * .075, 0)); out.push(['chest', g]); } }
+  return out;
+}
+function setAccessory(a, id) {   // add / swap the accessory pieces
+  if (a.accId === (id || null)) return; for (const g of a.accParts || []) g.parent && g.parent.remove(g); a.accParts = []; a.accId = id || null;   /* 3D.176 bug A1: this list was called a.acc, the same name as the animation clock in tickMixer; it turned the clock into text, and anyone off screen at that moment (or wearing an accessory) never animated again */ if (!id || !MALE || !MALE.v2) return;
+  const keep = [a.o.position.clone(), a.o.rotation.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0);
+  for (const [bn, g] of accFor(a, id)) { const b = boneOf(a, bn); if (b) a.accParts.push(attachTo(a, b, g)); }
+  a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
+}
+/* 3D.94 clothing shapes, two ways to compare (owner: "show me both"):
+   rigid = add-on pieces fixed to bones (vest panels on the chest, pads on the shoulders, a collar), sized from the body;
+   shell = a whole outfit: the body's own torso skin pushed out a little, skinned to the same bones, so it bends with the body. */
+function clothShell(a, col, off = .026) {
+  const m = a.skin[0]; if (!m || !m.skeleton) return null; const B = m.skeleton.bones, bi = (n) => B.findIndex((b) => b.name === n);
+  const keep = new Set(['chest', 'neck', 'pelvis'].map(bi).filter((i) => i >= 0)), g0 = m.geometry, P = g0.attributes.position, N = g0.attributes.normal, SI = g0.attributes.skinIndex, SW = g0.attributes.skinWeight;
+  const f = headFit(a), p = bonePos(a, 'pelvis'), n = bonePos(a, 'neck'); if (!f || !p || !n) return null;
+  a.o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(a.o.matrixWorld).invert(), v = new THREE.Vector3(), yLo = p.y + (n.y - p.y) * .02, yHi = n.y - (n.y - p.y) * .02;
+  const ok = new Uint8Array(P.count);
+  for (let i = 0; i < P.count; i++) { let best = -1, bw = 0; for (let k = 0; k < 4; k++) { const w = SW.getComponent(i, k); if (w > bw) { bw = w; best = SI.getComponent(i, k); } }
+    if (!keep.has(best)) continue; m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld).applyMatrix4(inv); if (v.y < yLo || v.y > yHi) continue; ok[i] = 1; }
+  const idx = g0.index ? g0.index.array : Array.from({ length: P.count }, (_, i) => i), map = new Int32Array(P.count).fill(-1), tri = [], pos = [], nor = [], si = [], sw = [];
+  for (let t = 0; t < idx.length; t += 3) { const a0 = idx[t], a1 = idx[t + 1], a2 = idx[t + 2]; if (!(ok[a0] && ok[a1] && ok[a2])) continue;
+    for (const q of [a0, a1, a2]) { if (map[q] < 0) { map[q] = pos.length / 3; pos.push(P.getX(q) + N.getX(q) * off, P.getY(q) + N.getY(q) * off, P.getZ(q) + N.getZ(q) * off); nor.push(N.getX(q), N.getY(q), N.getZ(q)); for (let k = 0; k < 4; k++) { si.push(SI.getComponent(q, k)); sw.push(SW.getComponent(q, k)); } } tri.push(map[q]); } }
+  if (!tri.length) return null;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); geo.setIndex(tri);
+  const sm = new THREE.SkinnedMesh(geo, new THREE.MeshToonMaterial({ color: new THREE.Color(col), gradientMap: grad })); sm.bind(m.skeleton, m.bindMatrix); sm.frustumCulled = false; m.parent.add(sm); return sm;
+}
+function clothRigid(a, col) {   // vest panels front and back on the chest, shoulder pads, a collar
+  const f = headFit(a), p = bonePos(a, 'pelvis'), n = bonePos(a, 'neck'); if (!f || !p || !n) return [];
+  const r = f.r, out = [], M = (c) => toon(c), mesh = (geo, c, x, y, z) => { const o = new THREE.Mesh(geo, M(c)); o.position.set(x, y, z); addHull(o, .006); return o; };
+  const yc = p.y + (n.y - p.y) * .55, t = sliceFit(a, 'torso', (v) => Math.abs(v.y - yc) < r * .1 && Math.abs(v.x - p.x) < f.hw * 1.1); if (!t) return [];
+  const w = (t.x1 - t.x0) * 1.04, h = (n.y - p.y) * .72, y = p.y + (n.y - p.y) * .5, g = new THREE.Group(), dark = new THREE.Color(col).multiplyScalar(.75).getStyle();
+  g.add(mesh(new THREE.BoxGeometry(w, h, r * .14), col, t.cx, y, t.z1 + r * .03)); g.add(mesh(new THREE.BoxGeometry(w, h, r * .14), col, t.cx, y, t.z0 - r * .03));
+  for (const sx of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(r * .14, h * .8, (t.z1 - t.z0) * .9), dark, t.cx + sx * (w / 2 - r * .02), y - h * .05, t.cz));
+  g.add(mesh(new THREE.BoxGeometry(w * .55, h * .28, r * .06), dark, t.cx, y + h * .08, t.z1 + r * .12));   // chest plate
+  out.push(['chest', g]);
+  const nk = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(f.hw * .78, f.hw * .9, r * .28, 16, 1, true), new THREE.MeshToonMaterial({ color: new THREE.Color(dark), gradientMap: grad, side: THREE.DoubleSide })); c.position.set(n.x, n.y - r * .05, (t.z0 + t.z1) / 2); nk.add(c); out.push(['chest', nk]);
+  for (const sd of ['L', 'R']) { const u = bonePos(a, 'upperarm' + sd); if (!u) continue; const sg = new THREE.Group(), pad = mesh(new THREE.SphereGeometry(r * .36, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), dark, u.x, u.y + r * .05, u.z); pad.scale.set(1.1, .8, 1.1); sg.add(pad); out.push(['upperarm' + sd, sg]); }
+  return out;
+}
+function setOutfit(a, id, mode) {   // 3D.94 compare: mode 'rigid' | 'shell' | '' (off)
+  if (a.outKey === id + '|' + mode) return; for (const g of a.outfit || []) g.parent && g.parent.remove(g); a.outfit = []; a.outKey = id + '|' + mode; if (!id || !mode || !MALE || !MALE.v2) return;
+  const col = CLOTHES[id] || '#556'; const keep = [a.o.position.clone(), a.o.rotation.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.updateMatrixWorld(true);
+  if (mode === 'shell') { const sm = clothShell(a, col); if (sm) a.outfit.push(sm); }
+  else for (const [bn, g] of clothRigid(a, col)) { const b = boneOf(a, bn); if (b) a.outfit.push(attachTo(a, b, g)); }
+  a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.updateMatrixWorld(true);
+}
+const CLOTHES = { footpads: '#c8242c', hawaii: '#17a58c', foundry: '#a4553a', toll: '#3a3a40', quar: '#5d6b44', helix: '#e6eaec', green: '#d8c9a0', hollow: '#4a3f52', jacket: '#3d5f91', leather: '#6b4226', hockey: '#e6e1d4', biker: '#2c2c31', riot: '#3b4a5a', kevlar: '#4b5540', military: '#5d6b44', plate: '#5a5a55',
+  hoodie: '#8a8f96', raincoat: '#f2c230', firecoat: '#b8432f', hazmat: '#c9d34a', ghillie: '#6b7a3a', tactical: '#3f4636', swatarmor: '#262a30' };   // 3D.28 new clothing
+/* 3D.31 looks: skin tone, hair colour and hairstyle per survivor (v2 models), together with the Clothing shirt colour.
+   One shader on the v2 texture: skin = the peach areas scaled to the new tone (shading kept), hair = the near-black brown
+   areas recoloured by brightness, shirt = the hue window from 3D.28. Hairstyles are low-detail toon pieces on the head bone. */
+const SKIN2 = ['#f8d8c0', '#efc09e', '#d9a077', '#b07a52', '#85553a', '#5a3826'];
+const HAIR2 = ['#1d1817', '#3d2616', '#6e4528', '#8e3c1f', '#c4642f', '#dcb974', '#a9a59d'];
+const STYLES = { m: ['short', 'short', 'mohawk', 'afro', 'spiky', 'bun', 'long'], f: ['base', 'long', 'ponytail', 'bun', 'afro', 'long', 'ponytail'] };
+function look2(s) { const L = lookOf(s); if (L.v !== 2) { const r = Math.imul((s.id || 1) + 977, 2654435761) >>> 0; L.sk = r % SKIN2.length; L.hr = (r >>> 7) % HAIR2.length; L.hs = (r >>> 13) % 7; L.v = 2; } return L; }
+const clothMats = {}, SKIN_REF2 = { m: new THREE.Color('#efc09e'), f: new THREE.Color('#e6b587') }, HAIR_REF_LUM = .016;
+const headZones = new Map();
+function headZone(a) {   // 3D.31: where the face is, in the model's rest space, so hair recolouring skips the eyes
+  if (headZones.has(a.src)) return headZones.get(a.src); const f = headFit(a), m = a.skin[0]; if (!f || !m) return null;
+  a.o.updateMatrixWorld(true); const M = new THREE.Matrix4().copy(a.o.matrixWorld).invert().multiply(m.matrixWorld);
+  const z = { M, brow: f.hb + (f.top - f.hb) * .46, cz: f.z, cx: f.x, hw: f.hw }; headZones.set(a.src, z); return z;
+}
+const SHORTS3D = { hawaii: .33 }, SLEEVE3D = { hawaii: .59, footpads: .66 },   /* short sleeves painted on the upper arm, down to this height */
+   FLORAL3D = { hawaii: 1 };   /* 3D.148 soft clothes are painted on the survivor's own clothes: shorts turn the legs below this height to skin, a floral shirt gets flowers */
+/* 3D.154 the painted layer. Cloth (shirt, sleeves, trousers, gloves, boots) is painted on the survivor's own body by body part
+   (read from the skin weights), so it cannot tear and follows every clip; only the chunky hard pieces stay a 3D model.
+   top/legs/hand/foot: colours. sleeve: 'long' | 'short' | 'none' (bare arms). shorts: bare shins. pat: 'check' | 'stripe' on the legs, 'flower' | 'hoop' on the top (pat2 = its second colour). arm: sleeve colour when not the top's. */
+const PAINT3D = {
+  hivis: { top: '#adaba6', sleeve: 'short', legs: '#e3c88f', hand: '#e8c97f', foot: '#b98d4c' },
+  chef: { top: '#f4f2ee', sleeve: 'short', waist: .5, legs: '#f0f0f0', pat: 'check', pat2: '#55555a', hand: '#d9444a', foot: '#3c3c40' },
+  garden: { top: '#f5d51f', sleeve: 'short', legs: '#adb26f', hand: '#bd9e6e', foot: '#9a7b52' },
+  goalie: { top: '#f2f2f2', sleeve: 'long', legs: '#d9505f', shin: '#55555a', hand: '#f5f5f5', foot: '#444448' },
+  pillow: { top: '#dfe1e6', sleeve: 'short', legs: '#dfe1e6', foot: '#a6b8d6' },
+  bubblewrap: { top: '#bababc', sleeve: 'none', legs: '#bababc', foot: '#f0f0f0' },
+  cookware: { top: '#7a5c40', sleeve: 'short', legs: '#8f7355', foot: '#5a4a40' },
+  medic: { top: '#57bdb0', sleeve: 'short', legs: '#57bdb0', hand: '#1fcff7', foot: '#e3e3e3' },
+  mechanic: { top: '#7587ad', sleeve: 'short', legs: '#7587ad', hand: '#fabd12', foot: '#9a744a' },
+  cardboard: { top: '#b99b6b', sleeve: 'none', legs: '#ba9c6b', foot: '#7d6f5e' },
+  barrel: { top: '#8a7355', sleeve: 'short', legs: '#b09473', foot: '#7d736b' },
+  footpads: { top: '#d94d4d', sleeve: 'short', legs: '#f5f5f5', shin: '#d94f4f', foot: '#55555a' },
+  hawaii: { top: '#4dd1bd', sleeve: 'short', pat: 'flower', pat2: '#ffd21a', legs: '#e0c998', shorts: true },
+  ducttape: { top: '#d6d6d6', sleeve: 'long', legs: '#d6d6d6', hand: '#b4b4b6', foot: '#98989c' },
+};
+const PANTS3D = { footpads: '#ecebe6', hawaii: '#c9b07a', toll: '#1d1f24', foundry: '#3b3836', quar: '#5d6b44', green: '#7a5a3c', hollow: '#2e2833' }, CAMO3D = { quar: 1 };   /* 3D.144 owner: a shirt and a trouser colour per faction; Quarantine Command in green-and-brown camouflage; the Toll Kings dark */
+function clothMaterial(fem, id, lk, zone, suit = null) {   // the v2 texture with skin, hair and (Clothing) shirt recoloured; suit: everything below the neck that isn't skin in one colour (under a 3D armour set)
+  const col = CLOTHES[id], sk = lk ? lk.sk : -1, hr = lk ? lk.hr : -1, pt = PANTS3D[id] || null, cm = CAMO3D[id] ? 1 : FLORAL3D[id] ? 2 : 0, shy = SHORTS3D[id] || 0, sly = SLEEVE3D[id] || 0, pn = (suit === 'paint' && PAINT3D[id]) || null, key = (pn ? 'P' + id + '|' : '') + (fem ? 'f' : 'm') + (col || '') + '|' + sk + '|' + hr + (zone ? 'z' : '') + (suit || '') + (suit && SUITSKIN3D[id] ? 'k' : '') + (pt || '') + cm + (shy ? 'h' : '') + (sly ? 'v' + sly : ''); if (clothMats[key]) return clothMats[key];
+  const src = fem ? FEMALE3D : MALE, m = new THREE.MeshToonMaterial({ map: src.body.material.map, gradientMap: grad });
+  const c = new THREE.Color(col || '#000'), su = suit && !pn ? new THREE.Color(suit) : null, ref = SKIN_REF2[fem ? 'f' : 'm'], st = sk >= 0 ? new THREE.Color(SKIN2[sk]) : ref, ht = hr >= 0 ? new THREE.Color(HAIR2[hr]) : null;
+  m.onBeforeCompile = (sh) => { { const V = (c, on = 1) => { if (!c) return new THREE.Vector4(0, 0, 0, 0); if (c === 'skin') return new THREE.Vector4(0, 0, 0, 2); const k = new THREE.Color(c); return new THREE.Vector4(k.r, k.g, k.b, on); }, q = pn || {}, armC = q.arm || q.top;
+      sh.uniforms.pTop = { value: V(q.top) }; sh.uniforms.pUp = { value: q.sleeve === 'none' ? V('skin') : V(armC) }; sh.uniforms.pFore = { value: q.sleeve === 'long' ? V(armC) : pn ? V('skin') : V(null) }; sh.uniforms.pHand = { value: V(q.hand) }; sh.uniforms.pLeg = { value: V(q.legs) }; sh.uniforms.pShin = { value: q.shorts ? V('skin') : V(q.shin || q.legs) }; sh.uniforms.pFoot = { value: V(q.foot) };
+      sh.uniforms.pPat = { value: new THREE.Vector4(q.pat === 'check' ? 1 : q.pat === 'stripe' ? 2 : 0, q.pat === 'flower' ? 1 : q.pat === 'hoop' ? 2 : 0, q.waist || .47, pn ? 1 : 0) }; sh.uniforms.pPat2 = { value: V(q.pat2 || '#111') }; }
+    sh.uniforms.shirt = { value: new THREE.Vector3(c.r, c.g, c.b) }; sh.uniforms.suit = { value: su ? new THREE.Vector3(su.r, su.g, su.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.suitSk = { value: su && SUITSKIN3D[id] ? 1 : 0 }; { const pc = pt ? new THREE.Color(pt) : null; sh.uniforms.pants = { value: pc ? new THREE.Vector3(pc.r, pc.g, pc.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.camo = { value: cm }; sh.uniforms.shortsY = { value: shy }; sh.uniforms.sleeveY = { value: sly || 9 }; sh.uniforms.skinC = { value: new THREE.Vector3(st.r, st.g, st.b) }; } sh.uniforms.skinK = { value: new THREE.Vector3(st.r / ref.r, st.g / ref.g, st.b / ref.b) }; sh.uniforms.hairT = { value: ht ? new THREE.Vector3(ht.r, ht.g, ht.b) : new THREE.Vector3(-1, 0, 0) }; sh.uniforms.zhM = { value: zone ? zone.M : new THREE.Matrix4() }; sh.uniforms.zhZ = { value: new THREE.Vector4(zone ? zone.brow : -1e9, zone ? zone.cz : 1e9, zone ? zone.cx : 0, zone ? zone.hw * .5 : 0) };
+    sh.vertexShader = 'uniform mat4 zhM; varying vec3 vZh; varying float vPy; varying float vPx; varying vec4 vPa; varying vec4 vPb; varying vec3 vPp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvZh = (zhM * vec4(position, 1.)).xyz; vPy = position.y; vPx = abs(position.x); vPp = position; vPa = vec4(0.); vPb = vec4(0.);\n#ifdef USE_SKINNING\nfor (int i = 0; i < 4; i++) { float w = skinWeight[i]; int b = int(skinIndex[i] + .5); if (b == 5 || b == 9) vPa.x += w; else if (b == 6 || b == 10) vPa.y += w; else if (b == 7 || b == 8 || b == 11 || b == 12) vPa.z += w; else if (b == 3 || b == 4) vPa.w += w; else if (b == 13 || b == 16) vPb.x += w; else if (b == 14 || b == 17) vPb.y += w; else if (b == 15 || b == 18) vPb.z += w; }\n#endif\n');   /* 3D.154 vPa = upper arm, forearm, hand, head; vPb = thigh, shin, foot (how much of this vertex each body part owns) */
+    sh.fragmentShader = 'uniform vec4 pTop, pUp, pFore, pHand, pLeg, pShin, pFoot, pPat, pPat2; varying vec4 vPa; varying vec4 vPb; varying vec3 vPp;\nuniform vec3 shirt; uniform vec3 suit; uniform float suitSk; uniform vec3 pants; uniform float camo; uniform float shortsY; uniform float sleeveY; varying float vPx; uniform vec3 skinC; varying float vPy; uniform vec3 skinK; uniform vec3 hairT; uniform vec4 zhZ; varying vec3 vZh;\nvec3 zhHsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.*d+1e-10)),d/(q.x+1e-10),q.x);}\n' +
+      sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+{ vec3 lin = diffuseColor.rgb, h = zhHsv(lin), sc = zhHsv(pow(max(lin, vec3(0.)), vec3(.4545)));
+  float skinM = step(.03, sc.x) * step(sc.x, .115) * step(.18, sc.y) * (1. - step(.53, sc.y)) * step(.55, sc.z);
+  float hairM = step(.02, sc.x) * step(sc.x, .15) * step(${fem ? '.38' : '.5'}, sc.y) * (1. - step(${fem ? '.36' : '.29'}, sc.z)) * max(max(step(zhZ.x, vZh.y), step(vZh.z, zhZ.y)), step(zhZ.w, abs(vZh.x - zhZ.z)));   /* not the eyes: above the brow or behind the head's middle */
+  ${fem ? 'float headY = step(zhZ.x - .07, vZh.y); hairM = max(hairM, step(.085, sc.x) * step(sc.x, .17) * step(.6, sc.y) * step(.55, sc.z) * headY);   /* 3D.124 her yellow hair streaks and ponytail (the same yellow as her shirt) count as hair on the head */' : 'float headY = 0.;'}
+  float shirtM = ${col ? (fem ? 'step(.052, h.x) * step(h.x, .16) * step(.72, h.y) * step(.28, h.z) * (1. - headY)' : 'step(.24, h.x) * step(h.x, .42) * step(.3, h.y) * step(.08, h.z)') : '0.'} * (1. - skinM);
+  vec3 o = mix(lin, min(lin * skinK, vec3(1.)), skinM);
+  if (hairT.x >= 0.) { float l = clamp(dot(lin, vec3(.3, .59, .11)) / ${fem ? (HAIR_REF_LUM * 1.9).toFixed(3) : HAIR_REF_LUM.toFixed(3)}, .55, ${fem ? '1.1' : '1.7'}); o = mix(o, hairT * l, hairM); }
+  float pantsM = step(.52, h.x) * step(h.x, .70) * step(.25, h.y) * (1. - skinM) * (1. - hairM) * step(vPy, .9);   /* the blue jeans */
+  vec3 sC = shirt, pC = pants;
+  if (camo > 1.5) { vec3 q = vZh * 30.; float n = sin(q.x * 1.9 + sin(q.y * 1.4) * 1.5) * sin(q.y * 2.1 + sin(q.z * 1.2 + q.x * .8) * 1.5); if (n > .62) sC = n > .86 ? vec3(.9, .3, .05) : vec3(1., .78, .1); }   /* a Hawaiian shirt: yellow flowers with orange hearts */
+  else if (camo > .5) { vec3 q = vZh * 26.; float n = sin(q.x * 1.7 + sin(q.y * 1.3) * 1.6) * sin(q.y * 1.9 + sin(q.z * 1.1 + q.x * .7) * 1.6) + .55 * sin(q.z * 2.3 + q.x * .9 + q.y * .6);
+    vec3 cc = n > .42 ? vec3(.078, .058, .035) : n < -.38 ? vec3(.028, .045, .02) : n > .05 ? vec3(.115, .14, .058) : vec3(.07, .095, .04); sC = cc; pC = cc; }
+  o = mix(o, sC * min(1.25, h.z / ${fem ? '.72' : '.25'}), shirtM);
+  o = mix(o, sC * clamp(sc.z / .8, .6, 1.15), skinM * step(sleeveY, vPy) * step(vPy, .86) * step(.105, vPx));
+  if (pants.x >= 0.) o = mix(o, (vPy < shortsY ? skinC * .9 : pC) * clamp(h.z / .22, .6, 1.3), pantsM);
+  if (suit.x >= 0.) o = mix(o, suit * mix(clamp(h.z / .3, .55, 1.3), .92, skinM), (1. - skinM * (1. - suitSk * step(vPy, .86))) * (1. - hairM) * step(vPy, .9));   /* 3D.148 a full suit (beekeeper) covers the arms too: no bare skin shows through a gap in the sleeve */
+  if (pPat.w > .5) {   /* 3D.154 the painted layer, by body part */
+    float limb = vPa.x + vPa.y + vPa.z + vPb.x + vPb.y + vPb.z, part = max(max(max(vPa.x, vPa.y), max(vPa.z, vPb.x)), max(max(vPb.y, vPb.z), max(vPa.w, 1. - limb - vPa.w)));
+    vec4 pc = vec4(0.); float isLeg = 0., isTop = 0.;
+    if (vPa.w >= part) pc = vec4(0.); else if (vPa.z >= part) pc = pHand; else if (vPa.y >= part) pc = pFore; else if (vPa.x >= part) pc = pUp; else if (vPb.z >= part) pc = pFoot; else if (vPb.y >= part) { pc = pShin; isLeg = 1.; } else if (vPb.x >= part) { pc = pLeg; isLeg = 1.; } else if (vPy < pPat.z) { pc = pLeg; isLeg = 1.; } else { pc = pTop; isTop = 1.; pc.w *= (1. - skinM); }
+    if (pUp.w > .5 && pUp.w < 1.5 && (vPa.x >= part || vPa.y >= part)) isTop = 1.;
+    vec3 k = pc.w > 1.5 ? skinC * .92 : pc.rgb;
+    if (pc.w > .5 && pc.w < 1.5) {
+      if (isLeg > .5 && pPat.x > .5 && pPat.x < 1.5) { vec3 g = floor(vPp * 34.); if (mod(g.x + g.y + g.z, 2.) < .5) k = pPat2.rgb; }
+      if (isLeg > .5 && pPat.x > 1.5) { if (fract(vPp.x * 26.) < .3) k = pPat2.rgb; }
+      if (isTop > .5 && pPat.y > .5 && pPat.y < 1.5) { vec3 q = vPp * 30.; float n = sin(q.x * 1.9 + sin(q.y * 1.4) * 1.5) * sin(q.y * 2.1 + sin(q.z * 1.2 + q.x * .8) * 1.5); if (n > .62) k = n > .86 ? vec3(.9, .3, .05) : pPat2.rgb; }
+      if (isTop > .5 && pPat.y > 1.5) { if (fract(vPy * 9.) < .38) k = pPat2.rgb; } }
+    o = mix(o, k, step(.5, pc.w) * (1. - hairM * vPa.w)); }
+  diffuseColor.rgb = o; }`).replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb;'); };
+  m.customProgramCacheKey = () => 'look2' + (fem ? 'f' : 'm') + (col ? 's' : '');   // suit is a uniform: same program
+  return (clothMats[key] = nightLit(m, .32));
+}
+/* 3D.96 converter-made armour sets, fitted to the male rig by tools/art/b3d/fit_armor.py. Bound to the wearer's own skeleton
+   (bones matched by name, the set's bind pose), so they bend with every clip. */
+let ARMOR3D_DONE = false;   /* 3D.151 the Gear test page waits for every fitted armour */
+const HEAD3D = { quar: 1, helix: 1, foundry: 1, green: 1, hollow: 1 }, ARMOR3D = {}, SUIT3D = { riot: '#262b35', helix: '#e6eaec', beekeeper: '#efede6', lifejacket: '#2b3550', cookware: '#6b4a30', mattress: '#7088c2', cardboard: '#8a6242', phonebook: '#4a4a4c', tyre: '#77743f', bubblewrap: '#8b8d92', pillow: '#b9bdc6', barrel: '#5c4029', goalie: '#e8e6e1', skisuit: '#f07a12', ducttape: '#a9adb2', chef: '#efece4', medic: '#25978a', mechanic: '#2f4170', garden: '#5f7a35', hivis: '#c9a46a' }, SUITSKIN3D = { beekeeper: 1, skisuit: 1, ducttape: 1 }, FAC_GEAR3D = { foundry: 'foundry', toll: 'toll', quar: 'quar', helix: 'helix', green: 'green', hollow: 'hollow' };   /* 3D.142 the owner's Tripo kits, one per faction (Helix: a white suit under the hood and harness) */   // the undersuit colour: shirt, trousers and boots under the set
+function setArmor3D(a, id) {
+  const key = id && ARMOR3D[id] && (a.src === MALE || a.src === FEMALE3D) ? id : '';
+  if ((a.arm3dKey || '') === key) return; if (a.arm3d) { a.arm3d.parent && a.arm3d.parent.remove(a.arm3d); a.arm3d = null; } a.arm3dKey = key; if (!key) return;
+  const m = a.skin[0]; if (!m || !m.skeleton) return; const src = ARMOR3D[key], by = {}; for (const b of m.skeleton.bones) by[b.name] = b;
+  const bones = src.skeleton.bones.map((b) => by[b.name]); if (bones.some((b) => !b)) return;
+  const sm = new THREE.SkinnedMesh(src.geometry, src.material); sm.position.copy(src.position); sm.quaternion.copy(src.quaternion); sm.scale.copy(src.scale);
+  m.parent.add(sm); sm.updateMatrixWorld(true); sm.bind(new THREE.Skeleton(bones, src.skeleton.boneInverses), src.bindMatrix); sm.frustumCulled = false; a.arm3d = sm;
+}
+function setClothing(a, s) {   // 3D.28 shirt colour from the Clothing slot; 3D.31 plus skin and hair colour (v2 models only)
+  const id = (s.eq && s.eq.armor) || null, lk = s.id ? look2(s) : null, sig = id + '|' + (lk ? lk.sk + '.' + lk.hr : ''); if (a.clothSig === sig || !MALE || !MALE.v2) return; a.clothSig = sig; a.clothId = id;
+  const mat = clothMaterial(a.src === FEMALE3D, id, lk, lk ? headZone(a) : null, id && (a.src === MALE || a.src === FEMALE3D) ? (PAINT3D[id] ? 'paint' : ARMOR3D[id] ? SUIT3D[id] : null) : null); for (const n of a.skin) n.material = mat; a.faces = () => mat;
+  setArmor3D(a, id);
+}
+function hairFor(a, style, col) {   // -> [{ g, top }] pieces in model space at the rest pose
+  const f = headFit(a); if (!f) return []; const r = f.r, M = toon(col), out = [], mk = (geo, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.castShadow = true; addHull(m, .008); return m; };
+  const top = f.top, back = f.z - r * .55;
+  if (style === 'long') { const g = new THREE.Group(), h = (top - f.hb); g.add(mk(new THREE.SphereGeometry(1, 16, 12), f.x, f.hb + h * .2, back - r * .25, f.hw * .98, h * .78, r * .42)); out.push({ g, top: false }); }
+  if (style === 'ponytail') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * .22, 12, 10), f.x, top - r * .45, f.z - r * .98)); g.add(mk(new THREE.SphereGeometry(1, 12, 10), f.x, top - r * 1.05, f.z - r * 1.12, r * .17, r * .5, r * .17)); out.push({ g, top: false }); }
+  if (style === 'bun') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * .3, 14, 12), f.x, top - r * .02, f.z - r * .5)); out.push({ g, top: true }); }
+  if (style === 'afro') { const g = new THREE.Group(); g.add(mk(new THREE.SphereGeometry(r * 1.08, 18, 12, 0, Math.PI * 2, 0, Math.PI * .55), f.x, top - r * .72, f.z - r * .2, 1.05, 1, 1));
+    for (const [dx, dy, dz, k] of [[0, .32, .05, .5], [-.62, .05, .05, .45], [.62, .05, .05, .45], [-.45, .25, -.4, .5], [.45, .25, -.4, .5], [0, .2, -.7, .55], [-.3, .38, .45, .38], [.3, .38, .45, .38]]) g.add(mk(new THREE.SphereGeometry(r * k, 10, 8), f.x + dx * r, top - r * .25 + dy * r, f.z - r * .2 + dz * r)); out.push({ g, top: true }); }
+  if (style === 'mohawk') { const g = new THREE.Group(); g.add(mk(new THREE.BoxGeometry(r * .2, r * .42, r * 1.55), f.x, top + r * .04, f.z - r * .12)); out.push({ g, top: true }); }
+  if (style === 'spiky') { const g = new THREE.Group(); for (const [dx, dz, k] of [[0, .25, 1], [-.32, 0, .85], [.32, 0, .85], [0, -.3, .9], [-.2, -.55, .7], [.2, -.55, .7]]) { const c = mk(new THREE.ConeGeometry(r * .17, r * .45 * k, 6), f.x + dx * r, top + r * .08 * k, f.z + dz * r); c.rotation.set(-dz * .7, 0, dx * .9); g.add(c); } out.push({ g, top: true }); }
+  return out;
+}
+function setHair(a, s) {   // 3D.31 add / swap the hairstyle pieces; pieces on top of the head hide under a hat
+  if (!MALE || !MALE.v2 || !s.id) return; const lk = look2(s), fem = a.src === FEMALE3D, style = STYLES[fem ? 'f' : 'm'][lk.hs % 7], cap = !!(s.eq && HEAD3D[s.eq.armor] && ARMOR3D[s.eq.armor]), sig = style + '|' + lk.hr + '|' + !!a.hat + cap;
+  if (a.hairSig === sig) return; a.hairSig = sig; for (const p of a.hair || []) p.parent && p.parent.remove(p); a.hair = [];
+  const head = boneOf(a, 'head'); if (!head) return; const keep = [a.o.position.clone(), a.o.rotation.clone(), a.o.scale.clone()]; a.o.position.set(0, 0, 0); a.o.rotation.set(0, 0, 0); a.o.scale.setScalar(1);
+  for (const { g, top } of hairFor(a, style, HAIR2[lk.hr])) { if ((top && a.hat) || cap) continue; a.hair.push(attachTo(a, head, g)); }   /* 3D.143 owner: no hair sticking out of a helmet, hood or hat */
+  a.o.position.copy(keep[0]); a.o.rotation.copy(keep[1]); a.o.scale.copy(keep[2]); a.o.updateMatrixWorld(true);
+}
+const blobG = new THREE.CircleGeometry(.3, 20).rotateX(-Math.PI / 2), blobM = new THREE.MeshBasicMaterial({ color: 0x1a140c, transparent: true, opacity: .3, depthWrite: false });
+const people = new Map(), zeds = new Map(), dead = new Map();
+const ATTACK = new Set(['punch', 'blunt', 'shoot']), STRIKE_RE = /punch|swing|fire|attack|blunt|shoot/;
+const TOOL_OF = { work_barricade: 'hammer', work_chop: 'axe', work_hammer: 'hammer', work_dig: 'hoe', work_tinker: 'wrench', eat: 'bowl', carry_walk: 'crate', carry_idle: 'crate' };   // props shown with each everyday clip
+const WORK_CLIP = { farm: 'work_dig', field: 'work_dig', water: 'work_tinker', well: 'work_tinker',   /* 3D.100 owner: punching at work: every outdoor post has a work clip now (the 2D hoe swing came through as a punch) */
+  irrig: 'work_dig', barrel: 'work_tinker', crates: 'carry_idle', bench: 'work_hammer', scrapyard: 'work_tinker', lumber: 'work_chop', pallet: 'work_hammer', quarry: 'work_dig', bonfire: 'work_tinker', radio: 'work_tinker', track: 'idle', range: 'idle', sparring: 'punch' };
+const CALM_NOT = new Set(['hide', 'rescueTo', 'rescueCarry', 'chase', 'attack', 'recover', 'goFire', 'fightFire', 'postCombat', 'hiding']);
+function everyday(a, s, anim, hold) {   // returns a clip name when one of the everyday clips fits, if this model has it
+  const has = (c) => !!a.acts[c], still = !a.isMov() && !(a.last && a.spd > .3) && (s.moving === false || (!s.moving && !s.path) || (a.last && a.spd < .06));   // 3D.39: really covering ground is never 'still'; V3D.21: not actually covering ground = standing
+  if (a.name === 'pickup' && a.cur && a.cur.isRunning()) return 'pickup';   // let the pick-up finish even after the bag is gone
+  let c = null;
+  if (still && s.mode === 'work' && s.post && WORK_CLIP[s.post.type]) c = WORK_CLIP[s.post.type];   /* 3D.41: never dig or tinker while walking */
+  else if (still && s.mode === 'gather') c = s.gatherK === 'rock' ? 'work_dig' : s.gatherK === 'wreck' || s.gatherK === 'bin' ? 'work_tinker' : 'work_chop';   // V3D.22/23 gathering
+  else if (still && s.mode === 'hammer') c = 'work_hammer';
+  else if (anim === 'carry') c = still ? 'carry_idle' : 'carry_walk';
+  else if (still && s.mode === 'chat') c = 'talk';
+  else if (still && s.mode === 'campfire') c = a.src === FEMALE3D && a.acts.sit_f ? 'sit_f' : 'sit';
+  else if (still && s.mode === 'fix' && has('work_barricade')) c = 'work_barricade';   /* 3D.107 boarding up a wall */
+  else if (still && (s.mode === 'fix' || s.mode === 'pitch')) c = 'work_hammer';
+  else if (still && s.mode === 'loot') { const bg = (G.S.bags || []).find((q) => q.id === s.lootId); if (bg && Math.hypot(bg.w.x - s.w.x, bg.w.y - s.w.y) < .7) c = 'pickup'; }   /* 3D.28: only bend down at the bag itself */
+  else if (anim === 'walk' && !hold && a.src === FEMALE3D && !CALM_NOT.has(s.mode) && !s.target) c = 'walk_f';   /* 3D.28: the relaxed walk only in calm moments; in a fight she runs like everyone */
+  return c && has(c) ? c : null;
+}
+function personAnim(a, s, dt) {
+  const wid = s.mode === 'work' ? null : s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, cls = model ? (s.dry && WCLASS[model] === 'gun' ? 'melee' : WCLASS[model]) : null;   /* 3D.77: out of ammo, they swing the gun */
+  a.setWeapon(model);
+  const arm = s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]; a.setArmor(!!arm && !a.arm3d);   /* 3D.148 a fitted 3D armour never gets the old grey plates too */
+  let [anim] = G.humanAnim(s, G.facing(s));
+  if (anim === 'walk' && a.last && a.spd < .06 && !a.isMov()) anim = 'idle';   // V3D.21: the sim can say 'walking' while they wait in place: no walking on the spot
+  if (anim !== 'walk' && anim !== 'run' && anim !== 'carry' && anim !== 'collapse' && !ATTACK.has(anim) && a.isMov() && !(a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name) && performance.now() - (a.atkT || 0) < 600)) anim = 'walk';
+  if (anim === 'run' && a.last && a.spd < (a.name === 'run' ? .65 : .8)) anim = 'walk';   /* 3D.45 audit: 'run' at walking pace looked like a slow-motion sprint */   /* 3D.41: anything 'standing' while the body moves walks (owner: Marcus, Noah still sliding) */   /* 3D.39: the sim says 'standing' (fight stance, waiting, cooldown) but the body is moving: walk, never slide (owner video: Noah) */
+  const hold = cls === 'gun' ? 'gun' : cls ? 'melee' : null;
+  if (anim === 'collapse') { a.play('collapse', true); return; }
+  if (s.mode === 'greet' && a.acts.wave && !a.isMov()) { a.attacking = false; a.setWeapon(null); a.play('wave'); return; }   /* 3D.134 the newcomer at the edge of town: the real wave */
+  if (s.mode === 'rescueCarry') { a.setWeapon(null); a.play('rescue'); return; }
+  if (s.para > 0 && a.acts.grabbed) { a.attacking = false; a.play('grabbed'); return; }   /* 3D.107 hooked by a Lasher: struggles, breaks free */
+  if (s.reloadT > 0 && hold === 'gun' && !a.isMov() && a.acts.gun_reload) { a.attacking = false; a.play('gun_reload'); return; }   /* 3D.107 the real rifle reload */   /* 3D.30: pushing the cart wins over the carry clip */
+  { const sp = G.simSpeed ? G.simSpeed() : 1; if (anim === 'walk' && !hold && !s.carrying && a.acts.run && a.spd > (a.name === 'run' ? 1.6 : 1.8) * sp) { a.attacking = false; a.setWeapon(null); a.play('run'); return; } }   /* 3D.123 owner: anyone hurrying (faster than a walk) runs; women's hurried hip-sway walk looked sped up */
+  if (anim === 'walk' && !hold && !s.carrying && a.acts.jog && !(s.hp < s.max * .3) && a.spd > (a.name === 'jog' ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1)) { a.attacking = false; a.setWeapon(null); a.play('jog'); return; }   /* 3D.189 owner: at the pace people cross the town a real person jogs; the walk is for strolls and short trips */
+  const day = everyday(a, s, anim, hold); if (day) { a.attacking = false; const prop = TOOL_OF[day]; if (prop && a.w[prop]) a.setWeapon(prop); else if (day !== 'walk_f') a.setWeapon(null); if (a.w.plank) a.w.plank.visible = day === 'work_barricade'; a.play(day, day === 'pickup'); return; }   // V3D.19: work, rest, chat and carrying clips (models that have them)
+  if (ATTACK.has(anim) && s.mode === 'work' && !(s.post && s.post.type === 'sparring')) { a.attacking = false; a.play(hold === 'melee' ? twoIdle(a, model) : hold ? hold + '_hold_idle' : 'idle'); return; }   /* 3D.100: a work beat is never a punch */
+  if (ATTACK.has(anim) && anim === 'shoot' && hold && a.isMov() && a.spd > .15) { a.attacking = false; a.play(hold + '_hold_walk'); return; }   /* 3D.100 owner (bow: frozen and sliding): a shooter stepping back between shots walks with the weapon up instead of gliding in the aim pose */
+  if (ATTACK.has(anim)) {
+    const step = s.comboStep || 0, burst = step > 0 && (s.comboQ > 0 || s.comboFin);   /* 3D.58 random quick combo: A, B, finisher, played fast */
+    if (!a.attacking || (burst && a.comboSeen !== step)) {
+      const two = cls === 'melee' && anim !== 'punch' && anim !== 'shoot' ? twoSwing(a, model, burst ? step - 1 : s.swingN || 0) : null;   /* 3D.207 two-handed weapons and the spear */
+      const clip = two || (anim === 'punch' || !cls ? 'punch' : anim === 'shoot' ? (cls === 'pistol' ? 'pistol_fire' : 'gun_fire') : burst ? ['melee_swing_a', 'melee_swing_b', 'melee_swing_c'][Math.min(2, step - 1)] : ((s.swingN || 0) % 2 ? 'melee_swing_b' : 'melee_swing_a'));
+      /* 3D.205 owner (18 Nov): Swing 4 (overhead) is out of the one-handed set; the third blow of a quick combo is Swing 3, the rising cut */
+      a.play(clip, true, true); a.attacking = true; a.atkT = performance.now(); a.comboSeen = burst ? step : 0; if (a.cur) a.cur.timeScale = burst ? 1.9 : 1;
+    }
+    return;
+  }
+  if (a.attacking && a.cur && a.cur.isRunning() && STRIKE_RE.test(a.name) && performance.now() - (a.atkT || 0) < (a.isMov() ? 600 : 1500)) return;    // let the strike finish (3D.64 owner's log, Noah: a punch held for 8 s while he walked off; a strike now holds at most 1.5 s, 0.6 s once they move)   /* 3D.59 owner's log (Marcus, Ben): only a strike clip holds; a work or carry pose left over after a fight used to freeze them while they chased */
+  a.attacking = false;
+  if (s._lvT > 24 && !s.carrying && anim !== 'walk' && !(a.spd > .14)) { a.play('cheer'); return; }   /* 3D.30: only cheer standing still (cheering while walking looked like a frozen slide) */   // level-up: a happy jump while the LEVEL UP burst plays
+  // run (empty-handed clip) when hiding, hurrying to a downed friend, or rushing a zombie bare-handed
+  const rush = s.moving !== false && (s.mode === 'hide' || s.mode === 'rescueTo' || s.mode === 'cutRun' || (s.mode === 'chase' && !hold));
+  if (anim === 'walk' && rush && a.spd > (a.name === 'run' ? .65 : .8)) { a.play('run'); return; }   /* 3D.45: only sprint when actually moving fast */
+  if (anim === 'walk' && !hold && s.hp < s.max * .3 && a.acts.limp_walk && !rush) { a.play('limp_walk'); return; }   /* 3D.107 badly hurt: limps */
+  if (anim === 'walk' || anim === 'carry') { a.play(hold ? holdLoco(a, hold) : 'walk'); return; }
+  a.play(hold === 'melee' ? twoIdle(a, model) : hold ? hold + '_hold_idle' : 'idle');   /* 3D.207 two-handed weapons have their own ready stance */
+}
+/* 3D.32 Infected Dog: a low-detail toon dog built from boxes, legs swing with its ground speed (no rig needed) */
+class DogActor {
+  constructor() {
+    const o = new THREE.Group(), fur = toon('#5b5148'), dark = toon('#3a332d'), sore = toon('#8c3b33'), add = (geo, m, x, y, z, p = o) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.castShadow = true; addHull(k, .012); p.add(k); return k; };
+    add(new THREE.BoxGeometry(.26, .24, .62), fur, 0, .38, 0); add(new THREE.BoxGeometry(.12, .1, .18), sore, .08, .46, .05);
+    this.head = new THREE.Group(); this.head.position.set(0, .5, .34); o.add(this.head);
+    add(new THREE.BoxGeometry(.2, .2, .22), fur, 0, 0, .04, this.head); add(new THREE.BoxGeometry(.13, .1, .16), dark, 0, -.05, .2, this.head);
+    for (const sx of [-1, 1]) { add(new THREE.ConeGeometry(.045, .12, 4), dark, sx * .07, .14, -.02, this.head); const e = new THREE.Mesh(new THREE.SphereGeometry(.022, 6, 4), new THREE.MeshBasicMaterial({ color: 0xd8ff7a })); e.position.set(sx * .055, .04, .155); this.head.add(e); }
+    this.legs = []; for (const [x, z] of [[-.09, .22], [.09, .22], [-.09, -.22], [.09, -.22]]) { const g = new THREE.Group(); g.position.set(x, .3, z); add(new THREE.BoxGeometry(.07, .3, .08), dark, 0, -.15, 0, g); o.add(g); this.legs.push(g); }
+    this.tail = new THREE.Group(); this.tail.position.set(0, .45, -.31); add(new THREE.BoxGeometry(.05, .05, .22), fur, 0, 0, -.1, this.tail); o.add(this.tail);
+    o.scale.setScalar(1.15); this.o = o; scene.add(o); this.sh = new THREE.Mesh(blobG, blobM); scene.add(this.sh);
+    this.dog = true; this.acts = {}; this.w = {}; this.arm = []; this.skin = []; this.cur = null; this.name = ''; this.yaw = 0; this.last = null; this.acc = 0; this.lite = true; this.spd = 0; this.t = 0; this.atk = 0;
+    this.mixer = { update: (dt) => this.anim(dt) };
+  }
+  play(name) { if (name === 'collapse') this.dead = true; if (/attack/.test(name) && this.name !== name) this.atk = .35; this.name = name; }
+  setWeapon() {} setArmor() {} setExpr() {} setMood() {}
+  anim(dt) {
+    if (this.dead) { this.o.rotation.z = Math.min(Math.PI / 2, (this.o.rotation.z || 0) + dt * 5); return; }
+    const run = Math.min(1, this.spd / 1.2); this.t += dt * (3 + run * 12);
+    this.legs.forEach((g, i) => { g.rotation.x = Math.sin(this.t + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * (.15 + .6 * run); });
+    this.tail.rotation.y = Math.sin(this.t * 1.7) * .5; this.atk = Math.max(0, this.atk - dt);
+    this.head.rotation.x = this.atk > 0 ? -Math.sin(this.atk / .35 * Math.PI) * .6 : Math.sin(this.t * .5) * .06;
+  }
+}
+DogActor.prototype.place = Actor.prototype.place; DogActor.prototype.show = Actor.prototype.show; DogActor.prototype.dispose = Actor.prototype.dispose;
+function makeCart() {   // V3D.17 rescue cart: a wooden barrow on two wheels with a pushing handle
+  const g = new THREE.Group(), wood = toon('#b07a45'), dark = toon('#6b4a2e'), tyre = toon('#3a302a');
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; addHull(o, .012); g.add(o); return o; };
+  add(box(.56, .06, .92), wood, 0, .3, 0);                                   // bed
+  for (const sx of [-1, 1]) add(box(.05, .16, .92), dark, sx * .28, .38, 0);   // sides
+  add(box(.56, .16, .05), dark, 0, .38, .46); add(box(.56, .16, .05), dark, 0, .38, -.46);
+  for (const sx of [-1, 1]) { add(cyl(.17, .17, .06, 14), tyre, sx * .33, .17, .12, 0, 0, Math.PI / 2); add(cyl(.05, .05, .07, 8), wood, sx * .33, .17, .12, 0, 0, Math.PI / 2); }
+  for (const sx of [-1, 1]) add(box(.04, .04, .42), dark, sx * .2, .4, -.62, -.25);   // handles toward the pusher
+  add(box(.44, .04, .04), dark, 0, .45, -.82);
+  scene.add(g); return g;
+}
+function syncPeople(dt, vis) {
+  const seen = new Set();
+  for (const s of (G.S.sh ? G.S.sv.concat(G.S.sh.units) : G.guest ? G.S.sv.concat([G.guest]) : G.S.sv)) {   /* 3D.108 the stronghold squad too; 3D.134 the newcomer walking in */
+    seen.add(s); let a = people.get(s);
+    if (!a) { a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    if (a.job !== s.job) { a.dispose(); a = newPerson(s); addHat(a, s.job); people.set(s, a); a.job = s.job; }
+    const carried = s.mode === 'down' && G.beingCarried(s), ra = carried && people.get(s.rescuer);
+    if (carried && ra && ra.cart && ra.cart.visible) {   // V3D.17: ride in the rescuer's cart, lying down
+      a.show(true); const c = ra.cart; a.o.position.set(c.position.x, .34, c.position.z); a.o.rotation.set(0, c.rotation.y + Math.PI, 0); a.yaw = c.rotation.y + Math.PI; a.o.scale.setScalar(.9); a.sh.visible = false;
+      personAnim(a, s, dt); tickMixer(a, dt, vis); continue; }
+    const hidden = s.mode === 'away' || !s.w || G.insideBuilding(s) || carried;
+    a.show(!hidden); if (hidden) { if (a.cart) a.cart.visible = false; continue; }
+    const tgt = (s.mode === 'attack' || s.mode === 'chase') && s.target && s.target.w;
+    if (s.show) { const sh = s.show; if (sh.yaw == null) sh.yaw = SHOW_YAW; if (sh.turn) sh.yaw += dt * .8; a.yaw = sh.yaw; }   /* 3D.190 Survivor test: turning on the spot */
+    a.place(s.w.x, s.w.y, tgt && s.mode === 'attack' ? tgt : s.show ? null : (!s.moving && s.faceW) || null, dt);   // V3D.14: chatting / at the fire: face them
+    setClothing(a, s); setAccessory(a, s.eq && s.eq.acc);   /* 3D.28 */
+    { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; if (a.hatId !== (shape || null)) { a.hatId = shape || null; addHat(a, shape ? HAT_SHAPE[shape] : null, !!shape); } }   // V3D.16 equipped hat
+    setHair(a, s);   /* 3D.31 */
+    if (s.show) survivorShow(a, s); else personAnim(a, s, dt); a.setMood(s.emo && s.emo.face);
+    { const pushing = s.mode === 'rescueCarry' && s.carrying; if (pushing && !a.cart) a.cart = makeCart();   // the cart rolls ahead of the rescuer
+      if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
+    { const wn = a.weapon && a.w[a.weapon]; if (wn) { if (!wn.userData.q0) wn.userData.q0 = wn.quaternion.clone();   // V3D.16 reload: the gun tips down and rattles
+        if (s.reloadT > 0 && !a.isMov() && !a.acts.gun_reload) { a.play(WCLASS[a.weapon] === 'gun' ? 'gun_hold_idle' : 'melee_hold_idle'); wn.quaternion.copy(wn.userData.q0).multiply(_rq.setFromEuler(_re.set(-.9 + .18 * Math.sin(performance.now() / 60), 0, .25))); } else wn.quaternion.copy(wn.userData.q0); } } if (a.beam && a.beam.visible && (s.sleeping || s.mode === 'campfire' || s.mode === 'chat' || s.mode === 'useFacility' || s.mode === 'work' || s.mode === 'hospital' || s.mode === 'down' || (!a.isMov() && !['chase', 'attack', 'recover', 'postCombat'].includes(s.mode) && s.purpose !== 'patrol'))) a.beam.visible = false;   /* 3D.62 owner: the flashlight's orange pool stayed on round people asleep or standing about; it's on only while they walk or fight at night */ tickMixer(a, dt, vis); if (TRACK.on) trackActor(a, s, dt);
+  }
+  const T = G.S.trader;   // V3D.17 the wandering trader: a survivor-style figure in purple with a straw hat and a pack
+  if (T && T.w) { seen.add(T); let a = people.get(T); if (!a) { a = new Actor(MALE, jobMaterial('Trader', 'happy', { sk: 2, hr: 3 }), false, (e) => jobMaterial('Trader', e, { sk: 2, hr: 3 })); addHat(a, 'Farmer', true); a.setWeapon(null); a.setArmor(false); people.set(T, a); }
+    a.show(true); a.place(T.w.x, T.w.y, null, dt); a.play(T.moving ? (a.acts.jog && a.spd > (a.name === 'jog' ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1) ? 'jog' : 'walk') : 'idle'); tickMixer(a, dt, vis); }
+  for (const m of (G.S.truck && G.S.truck.medics) || []) {   /* 3D.306 Greenwater's medics: a Medic figure in Greenwater green, pushing a stretcher cart when carrying someone */
+    if (m.mode === 'in' || !m.w) continue; seen.add(m); let a = people.get(m);
+    if (!a) { a = newPerson({ job: 'Medic', id: m.id, name: m.name }); addHat(a, 'Medic'); a.setWeapon(null); a.setArmor(false); people.set(m, a); }
+    a.show(true); a.place(m.w.x, m.w.y, null, dt); a.play(m.moving ? (m.mode === 'rescueCarry' && a.acts.rescue ? 'rescue' : 'jog') : m.mode === 'go' && a.acts.pick_up ? 'pick_up' : 'idle'); tickMixer(a, dt, vis);
+    const pushing = m.mode === 'rescueCarry'; if (pushing && !a.cart) a.cart = makeCart();
+    if (a.cart) { a.cart.visible = pushing; if (pushing) { a.cart.position.set(a.o.position.x + Math.sin(a.yaw) * .95, 0, a.o.position.z + Math.cos(a.yaw) * .95); a.cart.rotation.y = a.yaw; } } }
+  for (const [s, a] of people) if (!seen.has(s)) { if (a.cart) { scene.remove(a.cart); a.cart = null; } a.dispose(); people.delete(s); }
+}
+/* 3D.183 Zombie test page: a zombie with z.show = { act: 'stand' | 'walk' | 'run' | 'attack', turn, yaw } plays that on the spot. The simulation still
+   sees a frozen zombie (mode 'zoo'); only the figure moves. Walk, run and attack go through zombieAnim, so each kind shows the clips it uses in the game. */
+const SHOW_YAW = Math.PI * .25;   /* facing the camera */
+/* 3D.190 Survivor test page: the survivor plays the one clip the page asks for, on the spot, with the thing that clip is held with
+   (bat for melee, rifle or pistol for firing, the tool for work). Walks, jogs and runs play at their natural pace. */
+const showProp = (c) => TOOL_OF[c] || (/^gun_|gun_hold/.test(c) ? 'rifle' : c === 'pistol_fire' ? 'pistol' : /^melee2h/.test(c) ? 'sledge' : /^spear_/.test(c) ? 'spear' : /melee/.test(c) ? 'bat' : null);   /* 3D.207: the two-handed set shows the sledgehammer, the stab the spear */
+function survivorShow(a, s) {
+  const c = s.show.clip || 'idle', pr = showProp(c); a.attacking = false; a.setWeapon(pr && a.w[pr] ? pr : null); if (a.w.plank) a.w.plank.visible = c === 'work_barricade'; a.setArmor(false);
+  a.movT = 0; a.play(c, false, s.show.again === true); s.show.again = false;
+  const st = strideOf(a); a.spd = st ? st * (/run/.test(a.name) && !recRun(a) ? 1 / .85 : 1) : 0;
+}
+function zombieShow(a, z) {
+  const act = z.show.act || 'stand';
+  if (act === 'attack') { zombieAnim(a, Object.assign(Object.create(z), { mode: 'zattack', moving: false, turned: false })); return; }
+  a.attacking = false;
+  if (act === 'stand' && !(a.src && a.src.crawl) && !a.dog) { const h = z.type === 'raider' ? (z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold_idle' : 'melee_hold_idle') : 'idle'; if (a.acts && a.acts[h]) { a.play(h); return; } }
+  a.spd = act === 'run' ? 2 : act === 'walk' ? .3 : 0; a.movT = act === 'stand' ? 9 : 0;
+  zombieAnim(a, Object.assign(Object.create(z), { mode: 'zchase', moving: act !== 'stand', turned: false }));
+  if (act !== 'stand') { const st = strideOf(a); if (st) a.spd = st * (/run/.test(a.name) && !recRun(a) ? 1 / .85 : 1); }   /* tickMixer then plays the steps at their natural speed */
+}
+function zombieAnim(a, z) {
+  if (z.fuseT > 0) { if (a.acts && a.acts.rot_swell && a.name !== 'rot_swell') a.play('rot_swell', true, true); return; }   /* 3D.85 */
+  if (a.dog) { a.play(z.mode); return; }   /* 3D.32 */
+  if (a.src && a.src.crawl) { if (z.mode === 'zattack' || z.mode === 'zbreak' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { a.play('crawl_attack', true, true); a.attacking = true; } return; } a.attacking = false; a.play('crawl'); return; }   /* 3D.34 */
+  if (z.turned && z.mode === 'appear' && z.stateTicks > 70) { a.play('collapse', true); return; }   // V3D.21: a survivor who died falls, lies still, then gets up a zombie
+  if (z.type === 'raider' && z.mode === 'zattack') { if (!a.attacking || !a.cur.isRunning()) { z.swingN = (z.swingN || 0) + 1; a.play(z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_fire' : twoSwing(a, a.weapon, z.swingN) || (z.swingN % 2 ? 'melee_swing_a' : 'melee_swing_b'), true, true); a.attacking = true; } return; }   /* 3D.114 raiders fight like people; 3D.207 with both hands on the big weapons */
+  if (z.mode === 'zattack' || z.mode === 'zbreak' || z.mode === 'attack' || (z.mode === 'zbash' && z.moving === false)) { if (!a.attacking || !a.cur.isRunning()) { const spit = (a.src && a.src.kind === 'spitter') && a.acts.spit && z.mode === 'zattack'; a.play((a.src && a.src.kind === 'lasher') && z.lash && a.acts.lash ? 'lash' : z.smash && a.acts.smash ? 'smash' : a.src.atkClip && a.acts[a.src.atkClip] ? a.src.atkClip : (a.src && a.src.kind === 'bloated') && a.acts.bloated_attack ? 'bloated_attack' : (a.src && a.src.kind === 'brute') && a.acts.brute_attack ? 'brute_attack' : (a.src && a.src.kind === 'sporehead') && a.acts.spore_combo ? 'spore_combo' : (a.src && a.src.kind === 'screamer') && a.acts.scream ? 'scream' : spit ? 'spit' : z.type !== 'raider' && a.acts.zombie_attack ? 'zombie_attack' : 'punch', true, true); if (spit && a.cur) a.cur.timeScale = 1.65; a.attacking = true; } return; }   /* 3D.35 brute hammer fist (also the Alpha), spitter spit: the glob leaves the mouth ~20 ticks in */   // V3D.20 zombies claw-swipe
+  a.attacking = false;
+  if (z.type === 'raider') { const h = z.ranged || (a.src && a.src.kind === 'gatling') ? 'gun_hold' : 'melee_hold';   /* 3D.126 the Gatling Boss carries his gun on his arm */ a.play(z.moving === false ? (h === 'melee_hold' ? twoIdle(a, a.weapon) : h + '_idle') : z.mode === 'rflee' && !z.ranged ? 'run' : holdLoco(a, h.replace('_hold', ''))); return; }   /* 3D.192 raiders walk or jog with the weapon, like the townspeople */
+  if (a.src && a.src.human && a.acts.walk) { const rc = a.acts[a.src.runClip] ? a.src.runClip : 'run', wc = a.acts[a.src.walkClip] ? a.src.walkClip : 'walk'; a.play(a.spd > (a.name === rc ? .6 : .75) ? rc : wc); return; }   /* 3D.82 Lasher and Stalker move like people */
+  if (z.type === 'runner' || a.dogM) { a.play(a.spd > (a.name === 'zombie_run' ? .6 : .75) * (a.dogM ? .8 : 1) ? 'zombie_run' : 'zombie_walk'); return; }   /* 3D.80 the dog gallops, the Stalker runs */   /* 3D.45: a runner that is slowing down walks (no slow-motion sprint) */
+  a.play((a.src && a.src.kind === 'bloated') && a.acts.bloated_walk ? 'bloated_walk' : 'zombie_walk');   // V3D.20 playback speed follows the ground speed (tickMixer); V3D.21 the bloated model waddles (arms fused to the belly)
+}
+function syncZombies(dt, vis) {
+  const seen = new Set();
+  for (const z of (G.S.sh ? G.S.z.concat(G.S.sh.zs) : G.S.z)) {   /* 3D.108 the stronghold's dead too */
+    if ((z.hp <= 0 && !(z.fuseT > 0)) || !z.w) continue; seen.add(z); let a = zeds.get(z);   /* 3D.85 a dying Rotbomb stays up while it swells */
+    if (!a && MALE.v2 && zWaiting(z)) continue;   /* 3D.126 its model is still loading: it appears a moment later */
+    if (!a) {
+      if (z.mk && ZSRC[z.mk]) { a = zombieOwn(z.mk); a.setWeapon(null); a.setArmor(false); if (ZMODEL[z.mk].four) a.dogM = true; }   /* 3D.182 */
+      else if (z.type === 'raider' && zGat(z) && ZSRC.gatling) { a = zombieOwn('gatling'); a.setWeapon(null); a.setArmor(false); a.big = 1.2; }   /* the Toll Kings' leader: the Gatling Boss */
+      else if (z.type === 'boss' && ZSRC[ZBOSS[z.bk] || 'mutant']) { a = zombieOwn(ZBOSS[z.bk] || 'mutant'); a.setWeapon(null); a.setArmor(false); a.bossOwn = true; }
+      else if (z.type !== 'raider' && z.type !== 'dog' && z.type !== 'boss' && (ZVAR[z.type] || [z.type]).some((k) => ZSRC[k])) { a = zombieOwn(z.type, z.turned ? !!z.turned.fem : undefined); a.setWeapon(null); a.setArmor(false); }
+      else if (z.type === 'raider' && FAC_GEAR3D[z.fk || z.fac] && ARMOR3D[FAC_GEAR3D[z.fk || z.fac]] && !z.worker) { { const fg = FAC_GEAR3D[z.fk || z.fac], fm = MALE.v2 ? clothMaterial(false, fg, null, null, SUIT3D[fg] || null) : jobMaterial('Raider'); a = new Actor(MALE, fm, false, () => fm); } a.setWeapon(WMODEL[z.wpn] || 'bat'); a.setArmor(false); setArmor3D(a, FAC_GEAR3D[z.fk || z.fac]); }   /* 3D.141 each faction's own gear, fitted to the survivor body */
+      else if (z.type === 'raider') { a = new Actor(MALE, jobMaterial('Raider'), false, (e) => jobMaterial('Raider', e)); addHat(a, 'Raider'); const m = WMODEL[z.wpn] || 'bat'; a.setWeapon(m); a.setArmor(!!z.leader); }   /* 3D.104 the Toll Collector is bigger and armoured */
+      else if (z.type === 'dog') { a = (ZSRC.dog && zombieOwn('dog')) || new DogActor(); if (!a.dog) { a.dogM = true; a.setWeapon(null); a.setArmor(false); } }   /* 3D.32 box dog; 3D.80 the user's dog model */
+      else if (z.type === 'boss' && z.bk === 'stalker' && ZSRC.stalker) { a = zombieOwn('stalker'); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 */
+      else if ((z.type === 'lasher' || z.type === 'rotbomb') && ZSRC[z.type]) { a = zombieOwn(z.type); a.setWeapon(null); a.setArmor(false); }   /* 3D.80 no weapons on any zombie */
+      else if (z.type === 'alpha') { a = zombieOwn('alpha') || new Actor(LITE, zombieMaterial('brute', 0), true); a.setWeapon(null); a.setArmor(false); }
+      else if (z.type === 'riot' && ZSRC.riot) { a = zombieOwn('riot'); a.setWeapon(null); a.setArmor(false); }   /* 3D.39 */
+      else if (z.type === 'riot' && MALE.v2) { a = zombieV2('riot', false, (Math.random() * 4) | 0, true) || new Actor(LITE, zombieMaterial('walker', 0), true); a.setWeapon(null); a.setArmor(true); addHat(a, 'SwatHelm', true); }
+      else { const v = (Math.random() * 4) | 0; a = (MALE.v2 && (z.turned ? zombieV2(z.type, !!(FEMALE3D && z.turned.fem), v, true) : zombieV2(z.type, FEMALE3D && Math.random() < .4, v))) || new Actor(LITE, zombieMaterial(z.type, v), true); a.setWeapon(null); a.setArmor(false); }
+      a.yaw = Math.random() * 6; zeds.set(z, a);
+    }
+    const tgt = z.target && z.target.w && (z.mode === 'zattack' || z.mode === 'attack') ? z.target.w : z.mode === 'zbash' && z.moving === false && z.faceB ? z.faceB : null;
+    const bk = z.type === 'boss' && z.bk && window.ZH && ZH.BOSS_KINDS && ZH.BOSS_KINDS[z.bk];   /* 3D.80 a boss kind with its own model uses its own size */
+    if (z.show) { const sh = z.show; if (sh.yaw == null) sh.yaw = SHOW_YAW; if (sh.turn) sh.yaw += dt * .8; a.yaw = sh.yaw; }   /* 3D.183 Zombie test: turning on the spot (a full turn in 8 s) */
+    a.place(z.w.x, z.w.y, tgt, dt, z.type === 'raider' ? 1 : z.mk && a.src && a.src.zkey === z.mk ? ZMODEL[z.mk].sc || 1 : a.big || z.big || (a.dogM ? 1 : bk && a.bossOwn ? bk.sc : ZSC[z.type] || 1)); if (z.show) zombieShow(a, z); else zombieAnim(a, z); tickMixer(a, dt, vis); if (z.hid) a.o.position.y = -60;   /* 3D.115 behind a shut door */
+  }
+  for (const [z, a] of zeds) if (!seen.has(z)) { zeds.delete(z); if (z.type === 'raider' || !a.lite || z.escaped || z.burst) { a.dispose(); continue; }   /* 3D.85 a burst Rotbomb leaves no body */   /* escaped: walked off the map, no death fall */ dead.set(a, 0); a.play('collapse', true, true); }
+  for (const c of G.corpses) c.__3d = true;
+  for (const [a, t0] of dead) {   // fall, lie still, then sink away (the 2D corpse fades over the same time)
+    const t = t0 + dt; dead.set(a, t); tickMixer(a, dt, vis);
+    if (t > 3) a.o.position.y = -(t - 3) * .4; if (t > 4.2) { a.dispose(); dead.delete(a); }
+  }
+}
+// ---------------------------------------------------------------- loot bags (V3D.12): a tied cloth sack that drops in
+// with a bounce, wobbles while it waits, and puffs up then shrinks away when opened (game.js draws the sparkles)
+const bagMeshes = new Map();
+const sackG = (() => { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, y = t * .42; pts.push(new THREE.Vector2(Math.max(.02, Math.sin(Math.min(1, t * 1.15) * Math.PI) * .2 * (1 - t * .25)), y)); } return new THREE.LatheGeometry(pts, 14); })();
+const knotG = new THREE.ConeGeometry(.075, .14, 8).translate(0, .46, 0), tieG = new THREE.TorusGeometry(.06, .018, 6, 12).rotateX(Math.PI / 2).translate(0, .38, 0);
+function makeBag() {
+  const g = new THREE.Group(), cloth = toon('#a8743c'), m = new THREE.Mesh(sackG, cloth), k = new THREE.Mesh(knotG, cloth), t = new THREE.Mesh(tieG, toon('#e2c27a'));
+  for (const o of [m, k, t]) { o.castShadow = true; g.add(o); } addHull(m, .02); addHull(k, .018);
+  const pat = new THREE.Mesh(new THREE.CircleGeometry(.07, 10), toon('#d9a55a')); pat.position.set(.08, .2, .17); pat.lookAt(.3, .2, .8); g.add(pat);   // a patch
+  scene.add(g); return g;
+}
+// V3D.17 supply crate: drifts down under a striped parachute, thumps down, the chute folds beside it; carried home overhead
+const crateMeshes = new Map();
+function makeCrate() {
+  const g = new THREE.Group(), wood = toon('#c8924f'), dark = toon('#7a5230');
+  const cr = new THREE.Mesh(box(.62, .5, .62), wood); cr.position.y = .25; cr.castShadow = true; addHull(cr, .014); g.add(cr);
+  for (const [x, z, w, d] of [[0, .32, .66, .06], [0, -.32, .66, .06], [.32, 0, .06, .66], [-.32, 0, .06, .66]]) { const b = new THREE.Mesh(box(w, .1, d), dark); b.position.set(x, .25, z); g.add(b); }
+  const ch = new THREE.Group(), red = toon('#e8584a'), wht = toon('#f2f0e6');
+  for (let i = 0; i < 8; i++) { const seg = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6, i * Math.PI / 4, Math.PI / 4, 0, Math.PI / 2), i % 2 ? red : wht); seg.scale.y = .55; ch.add(seg); }
+  const lm = new THREE.LineBasicMaterial({ color: 0x5a3f31 }); for (const [x, z] of [[.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) ch.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x * .35, -1.6, z * .35)]), lm));
+  ch.position.y = 2.2; g.add(ch); g.userData.chute = ch; scene.add(g); return g;
+}
+const RAR_COL = { uncommon: 0x7cc95a, rare: 0x5aa8f0, epic: 0xb072f0 };   // V3D.25: a coloured glow ring under rare crates and bags
+function rarRing(g, rar) { const c = RAR_COL[rar]; if (!c || g.userData.ring) return; const m = new THREE.Mesh(new THREE.RingGeometry(.28, .5, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .7, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.y = .04; g.add(m); const p = new THREE.Mesh(new THREE.CylinderGeometry(.18, .32, 1.6, 12, 1, true).translate(0, .8, 0), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); g.add(p); g.userData.ring = [m, p]; }
+function pulseRing(g, t) { const r = g.userData.ring; if (!r) return; const k = .5 + .5 * Math.sin(t * 3); r[0].material.opacity = .45 + .35 * k; r[0].scale.setScalar(.9 + .2 * k); r[1].material.opacity = .14 + .12 * k; }
+function syncCrates(dt) {
+  const seen = new Set();
+  for (const c of G.S.crates || []) {
+    seen.add(c); let g = crateMeshes.get(c); if (!g) { g = makeCrate(); g.userData.t = 0; crateMeshes.set(c, g); rarRing(g, c.rar); } pulseRing(g, g.userData.t);
+    g.userData.t += dt; const t = Math.max(g.userData.t, ((G.tick ? G.tick() : 0) - c.t0) / 60), ch = g.userData.chute; g.position.set(c.w.x * T, groundH(c.w.x * T, c.w.y * T), c.w.y * T);
+    if (c.taken) { g.position.y = 1.2; g.scale.setScalar(.7); ch.visible = false; continue; }
+    const fall = Math.max(0, 1 - t / 3.2); g.position.y = 9 * fall * fall; g.rotation.z = fall * Math.sin(t * 2.2) * .18;
+    if (fall > 0) { ch.visible = true; ch.position.set(0, 2.2, 0); ch.rotation.set(0, 0, 0); ch.scale.set(1, 1, 1); }
+    else { const k = Math.min(1, (t - 3.2) / .8); ch.position.set(1.1 * k, 2.2 * (1 - k) + .05, .3 * k); ch.rotation.z = -1.4 * k; ch.scale.set(1, 1 - .85 * k, 1); }
+  }
+  for (const [c, g] of crateMeshes) if (!seen.has(c)) { scene.remove(g); crateMeshes.delete(c); }
+}
+function syncBags(dt) {
+  const seen = new Set();
+  for (const b of G.S.bags || []) {
+    seen.add(b); let e = bagMeshes.get(b);
+    if (!e) { e = { g: makeBag(), t: 0, spin: Math.random() * 6 }; bagMeshes.set(b, e); if (b.rar && b.rar !== 'common') rarRing(e.g, b.rar); } pulseRing(e.g, e.t);
+    e.t += dt; const g = e.g; g.position.set(b.w.x * T, groundH(b.w.x * T, b.w.y * T), b.w.y * T); g.rotation.y = e.spin;
+    if (!b.opened) {   // fall in from above with two bounces, then a gentle wobble
+      const t = e.t, fall = t < .35 ? 1.4 * (1 - (t / .35) ** 2) : t < .55 ? .22 * Math.sin((t - .35) / .2 * Math.PI) : t < .68 ? .06 * Math.sin((t - .55) / .13 * Math.PI) : 0;
+      g.position.y = fall; const sq = t > .33 && t < .45 ? 1 - .25 * Math.sin((t - .33) / .12 * Math.PI) : 1; g.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); g.rotation.z = Math.sin(t * 3) * .05;
+      e.ot = 0;
+    } else { e.ot = (e.ot || 0) + dt; const k = e.ot; const s2 = k < .15 ? 1 + 1.6 * k : Math.max(0, 1.24 * (1 - (k - .15) / .35)); g.scale.setScalar(s2); g.position.y = k < .15 ? k * .8 : .12; }
+  }
+  for (const [b, e] of bagMeshes) if (!seen.has(b)) { scene.remove(e.g); bagMeshes.delete(b); }
+}
+// ---------------------------------------------------------------- fire (V3D.13): 3D flames, embers and smoke on burning buildings
+// and on bonfires at night, with a flickering orange pool of light; burnt shells keep smoking
+const flameT = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 92, 2, 32, 84, 44); r.addColorStop(0, 'rgba(255,255,230,1)'); r.addColorStop(.25, 'rgba(255,214,90,.95)'); r.addColorStop(.6, 'rgba(255,120,30,.75)'); r.addColorStop(1, 'rgba(255,60,10,0)');
+  g.fillStyle = r; g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(52, 46, 62, 74, 54, 98); g.bezierCurveTo(46, 122, 18, 122, 10, 98); g.bezierCurveTo(2, 74, 12, 46, 32, 4); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const flameMat = new THREE.SpriteMaterial({ map: flameT, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const smokeMat = new THREE.SpriteMaterial({ map: glowT, color: 0x5a5048, transparent: true, depthWrite: false, opacity: .5 });
+const firePoolMat = addM(glowT, 0xff8a3a), fires = new Map();
+function makeFire(n) { const g = new THREE.Group(), fl = [], sm = [];
+  for (let i = 0; i < n; i++) { const sp = new THREE.Sprite(flameMat.clone()); sp.userData = { ph: Math.random() * 6, x: (Math.random() - .5), z: (Math.random() - .5), s: .7 + Math.random() * .6 }; g.add(sp); fl.push(sp); }
+  for (let i = 0; i < 6; i++) { const sp = new THREE.Sprite(smokeMat.clone()); sp.userData = { t: Math.random() * 3 }; g.add(sp); sm.push(sp); }
+  const pool = new THREE.Mesh(poolG, firePoolMat.clone()); pool.position.y = .04; pool.renderOrder = 2; g.add(pool); scene.add(g); return { g, fl, sm, pool };
+}
+function syncFires(dt, t) {
+  const want = new Map();
+  for (const b of G.world.buildings) {
+    const bon = b.type === 'bonfire' || (b.type === 'generator' && G.S.power), lvl = bon ? (glowNow > .15 ? 1 : .25) : b.fire ? Math.min(1, .45 + .15 * b.fire) : b.burnt ? 0 : -1;
+    if (lvl < 0) continue; want.set(b, lvl);
+  }
+  for (const [b, lvl] of want) {
+    let f = fires.get(b); const bon = b.type === 'bonfire';
+    if (!f) { f = makeFire(bon ? 5 : 9); f.bon = bon; fires.set(b, f); }
+    const W = b.w * T, D = b.h * T, cx = (b.x + b.w / 2) * T, cz = (b.y + b.h / 2) * T; f.g.position.set(cx, 0, cz);
+    const spread = bon ? .2 : Math.min(W, D) * .32, hgt = bon ? .18 : 1.5;
+    f.fl.forEach((sp, i) => { const u = sp.userData, fk = .8 + .25 * Math.sin(t * 9 + u.ph) + .12 * Math.sin(t * 23 + u.ph * 2);
+      sp.visible = lvl > 0; const sz = (bon ? .85 : 1.35) * u.s * fk * (.5 + .5 * lvl); sp.scale.set(sz * .6, sz, 1); sp.position.set(u.x * spread * 2, hgt + sz * .45 + Math.sin(t * 5 + u.ph) * .04, u.z * spread * 2); sp.material.opacity = .9 * Math.min(1, lvl * 1.2); });
+    f.sm.forEach((sp) => { const u = sp.userData; u.t += dt * (bon ? .5 : .8); if (u.t > 3) { u.t = 0; u.x = (Math.random() - .5) * spread; u.z = (Math.random() - .5) * spread; }
+      const k = u.t / 3; sp.position.set((u.x || 0) + Math.sin(t + u.t) * .1, hgt + .4 + k * (bon ? 1.6 : 2.6), u.z || 0); sp.scale.setScalar(.4 + k * (bon ? .9 : 1.6)); sp.material.opacity = (bon ? .18 : lvl > 0 ? .45 : .3) * (1 - k) * Math.min(1, k * 5); });
+    const fk = .85 + .15 * Math.sin(t * 11) * Math.sin(t * 7.3);
+    const R = bon ? 10 : 5.5 * lvl; f.pool.scale.set(R * fk, 1, R * fk); f.pool.material.opacity = lvl > 0 ? (bon ? (.25 + .55 * glowNow) * Math.min(1, lvl * 1.4) : .55 * lvl) * fk : 0;
+  }
+  for (const [b, f] of fires) if (!want.has(b)) { scene.remove(f.g); fires.delete(b); }
+}
+let fireT = 0;
+// rain (V3D.13): streaks falling in a box around the view, denser in heavy rain; the light greys a little
+const RAIN_N = 900, rainPos = new Float32Array(RAIN_N * 6), rainG = new THREE.BufferGeometry();
+rainG.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0xdce8f4, transparent: true, opacity: .45, depthWrite: false })); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
+const rainSeed = Array.from({ length: RAIN_N }, () => [Math.random(), Math.random(), Math.random()]); let rainK = 0;
+function syncRain(dt) {
+  const w = G.S.weather, target = w && w.kind && w.kind.startsWith('rain') ? (w.kind === 'rain-heavy' ? .5 : .26) : 0;   // V3D.17: lighter, so the town stays readable rainK += (target - rainK) * Math.min(1, dt * .8); rain.visible = rainK > .02; if (!rain.visible) return;
+  const n = Math.round(RAIN_N * rainK), c = cam.position.clone().addScaledVector(DIR, -120), span = (cam.right - cam.left) * 1.4, L = .55;
+  for (let i = 0; i < n; i++) { const sd = rainSeed[i]; sd[1] = (sd[1] - dt * (1.6 + sd[2] * .6)) % 1; if (sd[1] < 0) { sd[1] += 1; sd[0] = Math.random(); sd[2] = Math.random(); }
+    const x = c.x + (sd[0] - .5) * span, z = c.z + (sd[2] - .5) * span, y = sd[1] * 9; rainPos.set([x, y, z, x - .06, y - L, z - .03], i * 6); }
+  rainG.setDrawRange(0, n * 2); rainG.attributes.position.needsUpdate = true;
+  hemi.intensity *= 1 - .18 * rainK; sun.intensity *= 1 - .45 * rainK; hemi.color.lerp(new THREE.Color(0xb8c4d0), .5 * rainK);   // overcast: flatter, cooler light, soft shadows
+}
+// placement ghost (V3D.12): a see-through copy of the building being placed, tinted red where it can't go
+let ghost = null;
+function syncGhost() {
+  const pv = G.preview && G.preview(), key = pv && [pv.type, pv.rot, pv.ok].join(',');
+  if (ghost && (!pv || ghost.key !== key)) { scene.remove(ghost.g); ghost = null; }
+  if (!pv) return;
+  if (!ghost) { const g = makeBuilding(pv); g.traverse((o) => { if (!o.isMesh) return; if (o.userData.hull) { o.visible = false; return; } o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .55; o.material.depthWrite = false; if (!pv.ok) o.material.color.lerp(new THREE.Color('#ff6a5a'), .55); o.castShadow = false; });
+    scene.add(g); ghost = { g, key }; }
+  ghost.g.position.set((pv.x + pv.w / 2) * T, 0, (pv.y + pv.h / 2) * T);
+}
+// 3D.359 W269: the run being dragged with the wall tool, as see-through slabs on the lines: green to build, blue already there, red can't
+let edgeGhost = null, edgeGhostKey = '';
+function syncEdgeGhost() {
+  const d = G.edgeDraft && G.edgeDraft(), key = d ? d.list.map((p) => p.s + p.x + ',' + p.y + p.st).join(';') : '';
+  if (key === edgeGhostKey) return; edgeGhostKey = key;
+  if (edgeGhost) { scene.remove(edgeGhost); freeTree(edgeGhost); edgeGhost = null; } if (!d) return;
+  edgeGhost = new THREE.Group(); const col = { new: 0x7fd36a, up: 0x7fd36a, have: 0x6aa8d8, bad: 0xe25b55, short: 0xe2a455, del: 0xe25b55 };   /* 3D.361 the plan too: del = marked to come down */
+  for (const p of d.list) { const v = p.s === 'v', m = new THREE.Mesh(box(v ? .16 : T * .96, 1.1, v ? T * .96 : .16), new THREE.MeshBasicMaterial({ color: col[p.st] || 0xffffff, transparent: true, opacity: .55, depthWrite: false }));
+    m.position.set((v ? p.x : p.x + .5) * T, .55, (v ? p.y + .5 : p.y) * T); edgeGhost.add(m); }
+  scene.add(edgeGhost);
+}
+// 3D.366 planned traps and guard posts (planned, then built on Confirm): the real model, see-through, tinted green to build, orange short of stock, red to take away
+let defGhostG = null, defGhostKey = '';
+function syncDefGhost() {
+  const d = G.defGhost && G.defGhost(), key = d ? d.map((p) => p.kind + p.type + p.x + ',' + p.y + p.st).join(';') : '';
+  if (key === defGhostKey) return; defGhostKey = key;
+  if (defGhostG) { scene.remove(defGhostG); freeTree(defGhostG); defGhostG = null; } if (!d) return;
+  defGhostG = new THREE.Group(); const col = { new: '#7fd36a', short: '#ffa23a', del: '#ff4f45' }, bagG = new THREE.SphereGeometry(.5, 8, 5);
+  for (const p of d) { const cx = (p.x + .5) * T, cz = (p.y + .5) * T, y0 = groundH(cx, cz), c = col[p.st] || '#ffffff', tint = new THREE.Color(c), g = new THREE.Group(), P = new Parts();
+    if (p.kind === 'post') postPiece(P, { x: p.x, y: p.y, sched: 'night' }, cx, cz, y0 + .03, bagG); else trapPiece(P, { type: p.type, x: p.x, y: p.y, ch: 1 }, cx, cz, y0 + .03);
+    P.build(g, .02);
+    g.traverse((o) => { if (!o.isMesh) return; o.castShadow = false; o.receiveShadow = false; const ms = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = ms.map((m) => { const k = m.clone(); k.transparent = true; k.opacity = .6; k.depthWrite = false; if (k.color) k.color.lerp(tint, .45); return k; }); if (o.material.length === 1) o.material = o.material[0]; });
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(T * .9, T * .9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .45, depthWrite: false }));
+    pad.position.set(cx, y0 + .05, cz); g.add(pad);
+    const rim = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .95, depthWrite: false }), L = T * .9, th = .07;   /* a bright border round the tile, so a flat trap reads at any zoom */
+    for (const [dx, dz, w, dd] of [[0, -L / 2, L, th], [0, L / 2, L, th], [-L / 2, 0, th, L], [L / 2, 0, th, L]]) { const m = new THREE.Mesh(box(w, .05, dd), rim); m.position.set(cx + dx, y0 + .07, cz + dz); g.add(m); }
+    defGhostG.add(g); }
+  scene.add(defGhostG);
+}
+const insideBuilding3 = (s) => false;   // hidden survivors are already not shown
+const _rq = new THREE.Quaternion(), _re = new THREE.Euler();
+let zCount = 0;
+const _fr = new THREE.Frustum(), _sph = new THREE.Sphere(new THREE.Vector3(), 1.4), _pm = new THREE.Matrix4();
+// V3D.20 stride matching: how fast the planted foot slides back in each walking clip (model units / s at 1x),
+// measured from the exported models (tools: scratchpad stride/meas.py). Playback speed = ground speed / this,
+// so the feet stay planted instead of skating or running in place.
+const JOG_ON = 1.22, JOG_OFF = 1.1;   /* 3D.189 ground speed (model units a second) where the walk becomes the jog, and back */
+/* 3D.192 with a weapon in the hand: the same recorded walk and jog, the weapon arm as before. h = 'melee' or 'gun' */
+const holdLoco = (a, h) => { const jg = h + '_hold_jog'; return a.acts[jg] && a.spd > (a.name === jg ? JOG_OFF : JOG_ON) * (G.simSpeed ? G.simSpeed() : 1) ? jg : h + '_hold_walk'; };
+const STRIDE = {
+  v2m: { walk: 1.019, walk_f: .918, run: 1.614, hold_walk: 1.019, gun_hold_walk: .930, carry_walk: .838, zombie_walk: .550, zombie_run: 1.301 },
+  m3: { walk: .912, walk_f: .912, jog: 1.560, run: 2.221, hold_walk: .912, gun_hold_walk: .912, melee_hold_jog: 1.560, gun_hold_jog: 1.560, carry_walk: 1.387, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.107 the original male (measured against v2m) */
+  f3: { walk: .876, walk_f: .876, jog: 1.500, run: 2.134, hold_walk: .876, gun_hold_walk: .876, melee_hold_jog: 1.500, gun_hold_jog: 1.500, carry_walk: 1.333, limp_walk: .352, zombie_walk: .550, zombie_run: 1.301 },   /* 3D.189 the walk and the jog are recordings of real people (CMU motion capture 07_12 and 09_11), fitted by tools/art/mocap/retarget.py, which prints these numbers; the woman's legs are a little shorter. 3D.191: every number in this table is GROUND SPEED at the clip's natural pace (units a second = ground per cycle / the clip's length), as tools/art/stride/measure.html measures it; 3D.189 had put in ground per cycle, which played the walk 14% and the jog 29% too fast */
+  v2f: { walk: 1.036, walk_f: .948, run: 1.648, hold_walk: 1.036, gun_hold_walk: .940, carry_walk: .864, zombie_walk: .561, zombie_run: 1.291 },
+  v1: { walk: .443, run: .800, hold_walk: .443, gun_hold_walk: .405, zombie_walk: .159, zombie_run: .636 },
+};
+function strideOf(a) {
+  const t = a.src.stride || STRIDE[a.src === FEMALE3D && FEMALE3D ? 'v2f' : a.src.v2 ? 'v2m' : 'v1'], n = a.name;
+  const v = t[n] || (n.endsWith('gun_hold_walk') ? t.gun_hold_walk : n.endsWith('hold_walk') ? t.hold_walk : 0);
+  return a.src.zkey && !a.src.crawl && !a.dogM ? v * (a.o.scale.x || 1) : v;   /* 3D.147 zombie strides are measured at model size (tools/art/stride/measure.html); a Brute drawn 1.32x big steps 1.32x as far */
+}
+const recRun = (a) => a.name === 'run' && !!(a.src && a.src.m3);   /* 3D.197 the recorded run of the two survivor models */
+function tickMixer(a, dt, vis) {
+  const st = a.cur && strideOf(a); if (st) { const run = /run/.test(a.name), slow = run && !recRun(a); a.cur.timeScale = Math.max(.15, Math.min((run ? 1.25 : 1.45) * (G.simSpeed ? G.simSpeed() : 1), (a.spd / st) * (slow ? .85 : 1))); }   /* 3D.197 the survivors' run is a recording of a real run: it plays at its true pace, with no 85% slow-down (that was for the old hand-made run, and still is for the zombies') */   /* the caps grow with the 2x/3x game speed so nobody skates */   /* 3D.123 owner: the run played too fast; it now plays at 85% and no clip is pushed past 1.25x (run) or 1.45x (walk) */   /* 3D.57: slow walkers step slowly instead of skating (min was .35) */   /* 3D.45 audit: at 2x-3x game speed the old cap of 3 left the feet skating (the 'sliding' the owner saw) */
+  a.acc += dt; _sph.center.set(a.o.position.x, .6, a.o.position.z);
+  const seen = _fr.intersectsSphere(_sph), every = !seen ? .25 : (a.lite && zCount > 40 ? 1 / 30 : 0);
+  if (a.acc >= every) { a.mixer.update(a.acc); a.hands(); a.acc = 0; }
+  const cs = seen && a.cur && CLIP_SFX[a.name]; if (cs) { const d = a.cur.getClip().duration, ph = d ? (a.cur.time % d) / d : 0; if (a.sfxPh != null && a.sfxPh < cs[0] && ph >= cs[0] && window.SND) SND.play(cs[1]); a.sfxPh = ph; } else a.sfxPh = null;   /* 3D.57 the axe and hammer sound when the tool lands */
+}
+/* 3D.58 animation tracker: for each survivor, compares how fast the body really moves (over the last .3 s) with what the
+   feet do, and logs anything that would look like sliding. Settings > Animation tracker shows it live; ZH3D.track for tests. */
+const TRACK = { on: false, log: [], rows: new Map(), t0: performance.now() };
+const LOCO_RE = /walk|run|jog|crawl$|rescue/, ATK_RE = /punch|swing|blunt|fire|attack|shoot/;
+function trackActor(a, s, dt) {
+  const now = performance.now(), h = a.trk || (a.trk = []); a.trkT = (a.trkT || 0) + dt; h.push([a.trkT, a.o.position.x, a.o.position.z]); while (h.length > 2 && a.trkT - h[0][0] > .3) h.shift();   // game time, the same clock the animation runs on
+  const [t0, x0, z0] = h[0], span = a.trkT - t0, sp = G.simSpeed ? G.simSpeed() : 1, v = span > .05 ? Math.hypot(a.o.position.x - x0, a.o.position.z - z0) / span : 0;
+  const n = a.name || '', loco = LOCO_RE.test(n), st = loco ? strideOf(a) : 0, ts = a.cur ? a.cur.timeScale : 1, foot = st ? st * ts : 0;
+  const mvAng = span > .05 && v > .1 ? Math.atan2(a.o.position.x - x0, a.o.position.z - z0) : null, side = mvAng == null ? 0 : Math.abs(Math.atan2(Math.sin(mvAng - a.yaw), Math.cos(mvAng - a.yaw))) * 57.3;
+  let flag = '';
+  if (v > .12 && !loco && !ATK_RE.test(n) && !/collapse|cheer|pickup/.test(n)) flag = 'SLIDE (no walk clip)';
+  else if (v > .12 && ATK_RE.test(n)) flag = 'SLIDE (attacking while moving)';
+  else if (loco && st && v > .12 && (foot / v < .6 || foot / v > 1.7)) flag = foot < v ? 'SKATE (feet too slow)' : 'FEET TOO FAST';
+  else if (loco && v < .03 && h.length > 3 && !/crawl/.test(n)) flag = 'WALK IN PLACE';
+  else if (side > 70) flag = side > 120 ? 'MOONWALK (backwards)' : 'SIDEWAYS';
+  /* 3D.175 frozen-pose check (bug A1): the flags above compare the body's speed with the clip the game ASKED for; this one looks at the
+     bones themselves. A survivor on their feet whose bones have not changed for over 1 s of game time while they move or fight (3 s
+     otherwise: even the idle clip breathes) is FROZEN, and the log says what the clip was really doing. */
+  let fz = null; { const sk = a.skin[0] && a.skin[0].skeleton; if (sk) { let sig = 0; for (let i = 0; i < sk.bones.length; i++) { const q = sk.bones[i].quaternion; sig += (q.x * 1.31 + q.y * 2.17 + q.z * 3.53 + q.w * 5.11) * (1 + (i % 7)); }
+    if (a.fzSig === undefined || Math.abs(sig - a.fzSig) > 1e-6) { a.fzSig = sig; a.fzT = a.trkT; }
+    const still = a.trkT - a.fzT, busy = v > .12 || s.mode === 'attack' || s.mode === 'recover' || s.mode === 'chase', down = s.mode === 'down' || /collapse|crawl_die/.test(n);
+    if (!down && a.o.visible && still > (busy ? 1 : 3)) { const c = a.cur; flag = 'FROZEN (bones not moving)';
+      fz = { still: +still.toFixed(1), ctime: c ? +c.time.toFixed(2) : null, cw: c ? +c.getEffectiveWeight().toFixed(2) : null, cen: c ? c.enabled : null, cpaused: c ? c.paused : null, crun: c ? c.isRunning() : null, acc: +(+a.acc).toFixed(3), mt: Math.round(a.mixer.time || 0), live: Object.keys(a.acts).filter((k) => a.acts[k].isRunning()).join(',') }; } } }
+  let sim = ''; try { const r = G.humanAnim(s, G.facing(s)); sim = Array.isArray(r) ? r[0] : r; } catch (e) { /* */ }
+  const row = { name: s.name, job: s.job, mode: s.mode, why: (s.why || '').slice(0, 40), clip: n, sim, v: +v.toFixed(2), foot: +foot.toFixed(2), ts: +ts.toFixed(2), moving: s.moving, flag, fps: Math.round(window.ZH3D.fps || 0), speed: sp, wpn: a.weapon || '', ...(fz || {}) };
+  TRACK.rows.set(s, row);
+  if (flag) { const last = a.trkLast; if (!last || last.flag !== flag || now - last.t > 1500) { a.trkLast = { flag, t: now }; TRACK.log.push({ t: +((now - TRACK.t0) / 1000).toFixed(1), ...row }); if (TRACK.log.length > 400) TRACK.log.shift(); } }
+}
+function trackPanel(on) {   /* 3D.58 the live tracker panel (Settings > Animation tracker) */
+  TRACK.on = !!on; let el = document.getElementById('trkPanel'); if (!on) { if (el) el.remove(); clearInterval(TRACK.iv); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'trkPanel'; el.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top) + 64px);z-index:60;background:rgba(20,16,12,.86);color:#f3ead8;font:11px/1.35 ui-monospace,Menlo,monospace;padding:6px 8px;border-radius:8px;max-width:min(94vw,430px);pointer-events:auto';
+    el.innerHTML = '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><b>Animation tracker</b><span id="trkN" style="opacity:.7"></span><span style="flex:1"></span><button id="trkCopy" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Copy log</button><button id="trkClr" style="font:inherit;padding:2px 8px;border-radius:6px;border:0">Clear</button></div><div id="trkRows" style="white-space:pre;overflow-x:auto"></div>'; document.body.appendChild(el);
+    el.querySelector('#trkClr').onclick = () => { TRACK.log.length = 0; };
+    el.querySelector('#trkCopy').onclick = () => { const txt = 'Zombie Haven animation log (build ' + ((window.ZH && ZH.BUILD_TAG) || document.title) + ', ' + new Date().toISOString() + ', ' + navigator.userAgent + ')\n' + TRACK.log.map((e) => JSON.stringify(e)).join('\n'); const done = () => { const b = el.querySelector('#trkCopy'); b.textContent = 'Copied ' + TRACK.log.length; setTimeout(() => (b.textContent = 'Copy log'), 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallback()); else fallback();
+      function fallback() { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;inset:10%;z-index:99;font-size:10px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { /* */ } ta.onblur = () => ta.remove(); } };
+    el.querySelector('#trkRows').onclick = (ev) => { const r = ev.target.closest('[data-n]'); if (!r) return; const s = G.S.sv.find((q) => q.name === r.dataset.n); if (s && s.w && window.ZH && ZH.centerOn) ZH.centerOn(s.w.x, s.w.y); };
+  }
+  const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  clearInterval(TRACK.iv); TRACK.iv = setInterval(() => { const rows = el.querySelector('#trkRows'); if (!rows) return; el.querySelector('#trkN').textContent = TRACK.log.length + ' flagged · ' + Math.round(window.ZH3D.fps || 0) + ' fps';
+    rows.innerHTML = G.S.sv.map((s) => { const r = TRACK.rows.get(s); if (!r) return ''; return `<div data-n="${esc(s.name)}" style="cursor:pointer;${r.flag ? 'color:#ff8a7a' : ''}">${esc(s.name.split(' ')[0]).padEnd(7)} ${esc(r.mode).padEnd(10).slice(0, 10)} ${esc(r.clip).padEnd(15).slice(0, 15)} body ${r.v.toFixed(2)} feet ${r.foot.toFixed(2)}${r.flag ? ' ⚠ ' + esc(r.flag) : ''}</div>`; }).join('') || 'Nobody visible'; }, 250);
+}
+const CLIP_SFX = { work_chop: [.55, 'chop'], work_hammer: [.45, 'hammer'] };
+
+
+// ---------------------------------------------------------------- comic ink (V3D.19): bold, even outlines like a graphic novel
+// Two passes: the scene (colour + depth) and a normals pass (same scene, MeshNormalMaterial). A full-screen shader then inks
+// (1) depth jumps: every silhouette against what is behind it, and (2) normal breaks: roof/wall corners, box edges, folds.
+// Lines are a fixed width on screen (no wobble), dark cocoa, and fade a little with distance so far crowds stay readable.
+// The old inverted-hull outlines are hidden while ink is on, so edges are not doubled. Toggle: the pen button, ?ink=0/1.
+let INK = (() => { const q = new URLSearchParams(location.search).get('ink'); if (q === '0' || q === '1') return q === '1'; try { return localStorage.getItem('zh3d_ink') !== '0'; } catch (e) { return true; } })();
+let inkRT = null, nrmRT = null;
+const inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), inkScene = new THREE.Scene();
+const nrmMat = new THREE.MeshNormalMaterial();
+/* 3D.157 people and walkers (the skinned models) mark themselves in the alpha of the normals pass and get no crease lines, only the outline:
+   gear sits tight on the body and its pieces cut through the skin, and every cut drew a short ink stroke (the speckle "noise" on armour) */
+nrmMat.onBeforeCompile = (sh) => {   /* USE_SKINNING is only defined in the vertex shader, so pass the flag on */
+  sh.vertexShader = 'varying float vSk;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_SKINNING\nvSk = 1.;\n#else\nvSk = 0.;\n#endif\n');
+  sh.fragmentShader = 'varying float vSk;\n' + sh.fragmentShader.replace(/}\s*$/, 'gl_FragColor.a = 1. - .5 * vSk;\n}'); };
+const inkMat = new THREE.ShaderMaterial({
+  uniforms: { tCol: { value: null }, tDep: { value: null }, tNrm: { value: null }, px: { value: new THREE.Vector2() }, near: { value: .1 }, far: { value: 400 },
+    r: { value: 1.5 }, dJump: { value: .14 }, nBreak: { value: .5 }, strength: { value: .9 }, ink: { value: new THREE.Color(0x22160f) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+  fragmentShader: `uniform sampler2D tCol, tDep, tNrm; uniform vec2 px; uniform float near, far, r, dJump, nBreak, strength; uniform vec3 ink; varying vec2 vUv;
+    float D(vec2 u){ return near + texture2D(tDep, u).x * (far - near); }
+    vec3 N(vec2 u){ return texture2D(tNrm, u).xyz * 2. - 1.; }
+    void main(){
+      float c = D(vUv); vec3 nc = N(vUv); float cs = step(.5, length(nc)) * step(.75, texture2D(tNrm, vUv).a);
+      float de = 0., ne = 0.;
+      for (int i = 0; i < 8; i++) {
+        float a = float(i) * 0.785398;
+        vec2 o = vec2(cos(a), sin(a)) * r * px;
+        float d = D(vUv + o);
+        vec3 n = N(vUv + o); float solid = step(.5, length(n));   // grass, leaves and effects are left out of the normals pass: they never ink
+        de = max(de, (c - d) * solid);                 // a nearer solid surface next to this pixel: the line sits just outside the object
+        ne = max(ne, (1. - dot(nc, n)) * step(abs(d - c), 0.6) * solid * cs);   // a crease inside one solid surface
+      }
+      float e = max(smoothstep(dJump, dJump * 1.8, de), smoothstep(nBreak, nBreak * 1.6, ne));
+      vec4 col = texture2D(tCol, vUv);
+      gl_FragColor = vec4(mix(col.rgb, ink, e * strength), 1.);
+      #include <colorspace_fragment>
+    }`,
+  depthTest: false, depthWrite: false,
+});
+inkScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), inkMat));
+const _db = new THREE.Vector2();
+let hullsShown = true, nrmSkip = [], nrmSkipT = 0;
+function showHulls(v, force) { if (hullsShown === v && !force) return; hullsShown = v; scene.traverse((o) => { if (o.userData.hull) o.visible = v; }); }
+function nrmSkipList() {   // things that must not go into the normals pass: sprites, particles, lines, see-through and cut-out leaves
+  const l = []; scene.traverse((o) => { if (!o.visible) return; const m = o.material; if (o.userData.noInk || o.isSprite || o.isPoints || o.isLine || (m && (m.transparent || m.alphaTest > 0 || (Array.isArray(m) && m.some((x) => x.transparent))))) l.push(o); }); return l;
+}
+function renderInk() {
+  renderer.getDrawingBufferSize(_db);
+  if (!inkRT || inkRT.width !== _db.x || inkRT.height !== _db.y) {
+    if (inkRT) { inkRT.dispose(); nrmRT.dispose(); }
+    inkRT = new THREE.WebGLRenderTarget(_db.x, _db.y, { type: THREE.HalfFloatType, samples: 4 });
+    inkRT.depthTexture = new THREE.DepthTexture(_db.x, _db.y); inkRT.depthTexture.type = THREE.UnsignedIntType;
+    nrmRT = new THREE.WebGLRenderTarget(_db.x, _db.y, { type: THREE.UnsignedByteType });
+    nrmRT.depthTexture = new THREE.DepthTexture(_db.x, _db.y); nrmRT.depthTexture.type = THREE.UnsignedIntType;   // depth of the inkable things only
+  }
+  showHulls(false);
+  renderer.setRenderTarget(inkRT); renderer.render(scene, cam);
+  // normals pass: same camera, no shadows, background black
+  if ((nrmSkipT -= 1) <= 0) { showHulls(false, true); nrmSkip = nrmSkipList(); nrmSkipT = 20; }   // new buildings and actors appear all the time
+  const bg = scene.background, fog = scene.fog, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), su = renderer.shadowMap.needsUpdate; scene.background = null; scene.fog = null; renderer.shadowMap.needsUpdate = false;
+  for (const o of nrmSkip) o.visible = false;
+  scene.overrideMaterial = nrmMat; renderer.setRenderTarget(nrmRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.render(scene, cam);
+  scene.overrideMaterial = null; for (const o of nrmSkip) o.visible = true;
+  scene.background = bg; scene.fog = fog; renderer.setClearColor(cc, ca); renderer.shadowMap.needsUpdate = su;
+  renderer.setRenderTarget(null);
+  const u = inkMat.uniforms, ppu = (G.BASE_TW / 2 * G.cam.z) / (T / SQ2);   // CSS px per world unit
+  u.tCol.value = inkRT.texture; u.tDep.value = nrmRT.depthTexture; u.tNrm.value = nrmRT.texture; u.px.value.set(1 / _db.x, 1 / _db.y);
+  u.near.value = cam.near; u.far.value = cam.far; u.r.value = Math.max(1.2, Math.min(3, ppu * .018)) * dpr;
+  renderer.render(inkScene, inkCam);
+}
+function inkButton() {
+  const bar = document.getElementById('bottom'); if (!bar || document.getElementById('btnInk')) return;
+  const b = document.createElement('button'); b.className = 'bb frame out'; b.id = 'btnInk'; b.title = 'Ink outlines'; b.textContent = '✒️';
+  const paint = () => { b.style.opacity = INK ? '1' : '.45'; }; paint();
+  b.onclick = () => { INK = !INK; paint(); try { localStorage.setItem('zh3d_ink', INK ? '1' : '0'); } catch (e) {} };
+  const before = document.getElementById('btnCenter'); bar.insertBefore(b, before ? before.nextSibling : null);
+}
+
+// ---------------------------------------------------------------- frame
+let ready = false, lastT = 0, frames = 0, fpsT = 0;
+
+
+/* 3D.109 vehicles: low-detail toon models (Hand Cart, Pickup Truck, Armored Van). Parked in their Garage, or driving the
+   road between the Garage and the highway when a trip leaves or comes home. Never placed on top of a building. */
+const VEHM = {};
+function vehModel(k) {
+  if (VEHM[k]) return VEHM[k].clone(); const P = new Parts(), g = new THREE.Group(), wheel = (x, z, r = .2) => P.put(cyl(r, r, .14, 12), '#26262a', M4(x, r, z, 0, Math.PI / 2, 0)).put(cyl(r * .45, r * .45, .15, 8), '#9aa0a6', M4(x, r, z, 0, Math.PI / 2, 0));
+  if (k === 'cart') { P.put(box(.95, .1, .6), '#b07a44', M4(0, .42, 0)); for (const z of [-1, 1]) P.put(box(.95, .2, .05), '#c48a4e', M4(0, .55, z * .3)); for (const x of [-1, 1]) P.put(box(.05, .2, .6), '#c48a4e', M4(x * .47, .55, 0)); P.put(cyl(.03, .03, .8, 5), '#5a3b23', M4(.85, .5, -.2, 0, 0, Math.PI / 2 - .2)); P.put(cyl(.03, .03, .8, 5), '#5a3b23', M4(.85, .5, .2, 0, 0, Math.PI / 2 - .2)); for (const z of [-1, 1]) { P.put(cyl(.3, .3, .06, 12), '#6a4528', M4(-.1, .3, z * .36, 0, Math.PI / 2, 0)); P.put(cyl(.06, .06, .08, 6), '#3a2a1a', M4(-.1, .3, z * .4, 0, Math.PI / 2, 0)); } P.put(box(.3, .18, .25), '#c8a23a', M4(-.15, .56, 0)); }
+  if (k === 'pickup') { const c = '#3f6e8c'; P.put(box(2.4, .26, 1.1), c, M4(0, .42, 0)); P.put(box(.95, .55, 1.04), c, M4(.38, .82, 0)); P.put(box(.5, .3, 1.06), '#2b3a44', M4(.4, .9, 0)); P.put(box(.04, .3, .9), '#2b3a44', M4(.86, .88, 0)); P.put(box(.5, .3, 1.1), c, M4(1.0, .64, 0));
+    for (const z of [-1, 1]) P.put(box(1.15, .22, .06), c, M4(-.68, .66, z * .52)); P.put(box(.06, .22, 1.1), c, M4(-1.24, .66, 0)); P.put(box(.1, .14, 1.12), '#8a8f96', M4(1.25, .4, 0)); P.put(box(.1, .14, 1.12), '#8a8f96', M4(-1.25, .38, 0));
+    for (const z of [-1, 1]) P.put(box(.04, .08, .16), '#f2e6a0', M4(1.27, .58, z * .38)); P.put(box(.5, .3, .4), '#a0743c', M4(-.6, .68, .15)); P.put(box(.35, .2, .3), '#6d7a4a', M4(-.85, .62, -.22)); P.put(box(.4, .14, .5), '#b5603a', M4(-.2, .72, 0, 0, 0, .1));
+    for (const x of [-.75, .75]) for (const z of [-1, 1]) wheel(x, z * .55, .22); }
+  if (k === 'van') { const c = '#7a8556', pl = '#55606b'; P.put(box(2.5, .95, 1.2), c, M4(-.1, .78, 0)); P.put(box(.55, .7, 1.16), c, M4(1.35, .62, 0)); P.put(box(.04, .26, 1.0), '#2b3a44', M4(1.63, .86, 0)); P.put(box(.12, .32, 1.1), pl, M4(1.66, .44, 0));
+    for (let i = 0; i < 5; i++) P.put(box(.05, .32, 1.12), '#3a4048', M4(1.73, .44, -.45 + i * .225)); for (const z of [-1, 1]) { P.put(box(2.2, .5, .06), pl, M4(-.15, .72, z * .62)); P.put(box(.5, .1, .065), '#1e2024', M4(.45, 1.02, z * .63)); } P.put(box(2.4, .08, 1.1), pl, M4(-.1, 1.29, 0));
+    P.put(box(.6, .12, .5), '#3a4048', M4(-.5, 1.38, 0)); for (const z of [-1, 1]) P.put(box(.04, .08, .16), '#f2e6a0', M4(1.64, .66, z * .42)); for (const x of [-.85, .95]) for (const z of [-1, 1]) wheel(x, z * .6, .25); }
+  if (k === 'gwtruck') {   /* 3D.288 (owner, W228 C): Greenwater's farm stake truck, barrels of the Old Brine, one big horn on a pole, an orange light bar */
+    const gw = '#5f9a3c', wood = '#8a6a44'; P.put(box(2.6, .22, 1.2), '#5a4a36', M4(-.1, .48, 0)); P.put(box(.85, .7, 1.12), gw, M4(.95, .82, 0)); P.put(box(.45, .28, 1.14), '#2b3a44', M4(.98, .95, 0)); P.put(box(.38, .35, 1.0), gw, M4(1.45, .62, 0)); P.put(box(.1, .16, 1.04), '#8a8f96', M4(1.66, .45, 0));
+    for (const z of [-1, 1]) { for (let i = 0; i < 5; i++) P.put(box(.06, .5, .05), wood, M4(-1.3 + i * .4, .84, z * .58)); P.put(box(1.7, .06, .05), wood, M4(-.5, 1.05, z * .58)); P.put(box(.04, .08, .14), '#f2e6a0', M4(1.67, .66, z * .36)); }
+    for (const [x, z] of [[-1.0, -.28], [-1.0, .28], [-.45, -.28], [-.45, .28]]) P.put(cyl(.2, .2, .5, 10), '#7a5a34', M4(x, .84, z)); P.put(box(.6, .08, .5), '#d9d4c4', M4(.1, .62, 0));
+    P.put(cyl(.04, .04, .9, 6), '#777777', M4(.7, 1.6, 0)); P.put(new THREE.ConeGeometry(.16, .4, 10, 1, true), '#c9c9c9', M4(.95, 2.05, 0, 0, 0, -Math.PI / 2)); P.put(box(.22, .1, .8), '#ff9a2a', M4(.95, 1.22, 0));
+    for (const x of [-.9, .95]) for (const z of [-1, 1]) wheel(x, z * .6, .26); }
+  P.build(g, .026); VEHM[k] = g; return g.clone();
+}
+const vehShown = new Map();
+function syncVehicles() {
+  const V = G.S.veh || {}, D = G.S.drive, gs = G.world.buildings.filter((b) => b.type === 'garage' && !b.unpaid), want = new Map();
+  const motors = ['van', 'pickup'].filter((k) => V[k] && !V[k].waiting), trip = G.S.trip;
+  motors.forEach((k, i) => { if (D && D.k === k) return; if (trip && trip.veh === k && !trip.vehBroke) return; if (V[k].broken && trip && trip.veh === k) return; const b = gs[i]; if (b) want.set(k, { b, x: .14, z: 0, tint: V[k].restoring > 0 }); });
+  if (V.cart && gs[0] && !(trip && trip.veh === 'cart')) want.set('cart', { b: gs[0], x: -.37, z: .36, cart: true });
+  if (D && D.path && D.path.length > 1) { const i = Math.min(D.path.length - 2, Math.floor(D.i)), f = D.i - i, a = D.path[i], c = D.path[i + 1]; want.set(D.k, { drive: true, x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, yaw: Math.atan2(c.y - a.y, c.x - a.x) }); }
+  { const R = G.S.truck; if (R && R.path && R.path.length > 1) { const i = Math.min(R.path.length - 2, Math.floor(R.i)), f = Math.min(1, R.i - i), a = R.path[i], c = R.path[i + 1]; want.set('gwtruck', { drive: true, x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, yaw: Math.atan2(c.y - a.y, c.x - a.x) }); } }   /* 3D.288 the rescue truck */
+  for (const [k, m] of vehShown) if (!want.has(k)) { scene.remove(m); vehShown.delete(k); }
+  for (const [k, o] of want) { let m = vehShown.get(k); if (!m) { m = vehModel(k); scene.add(m); vehShown.set(k, m); }
+    if (o.drive) { m.position.set(o.x * T, 0, o.y * T); m.rotation.y = -o.yaw; continue; }
+    const b = o.b, r = ((b.rot | 0) & 3) * Math.PI / 2, odd = r % Math.PI !== 0, w = (odd ? b.h : b.w) * T, d = (odd ? b.w : b.h) * T, lx = o.x * w, lz = o.z * d;
+    m.position.set((b.x + b.w / 2) * T + Math.cos(r) * lx + Math.sin(r) * lz, 0, (b.y + b.h / 2) * T - Math.sin(r) * lx + Math.cos(r) * lz); m.rotation.y = r + (o.cart ? Math.PI / 2 : 0); m.scale.setScalar(o.cart ? 1.05 : .92);
+    if (o.tint !== m.userData.tint) { m.userData.tint = o.tint; m.traverse((n) => { if (n.isMesh && !n.userData.hull && n.material.color) { if (!n.userData.c0) n.userData.c0 = n.material.color.clone(); n.material = n.material.clone(); n.material.color.copy(n.userData.c0); if (o.tint) n.material.color.lerp(new THREE.Color('#9a9488'), .6); } }); } }
+}
+/* 3D.169 (play-test crashes, "Target crashed" on day 14-15): fight maps, walls, posts, traps and buildings were taken out of the scene
+   but never freed, so every stronghold left ~70 geometries behind and every camp raid ~200. freeTree frees what the scene no longer
+   uses; three.js re-uploads anything freed if it is ever drawn again, so shared pieces stay safe. */
+function freeTree(root) {
+  if (!root) return; const geos = new Set(), mats = new Set(), texs = new Set(), insts = [];
+  const matOf = (m) => { if (!m) return; for (const x of Array.isArray(m) ? m : [m]) { mats.add(x); for (const k in x) { const v = x[k]; if (v && v.isTexture) texs.add(v); } } };
+  root.traverse((o) => { if (o.geometry) geos.add(o.geometry); matOf(o.material); matOf(o.customDepthMaterial); if (o.isInstancedMesh) insts.push(o); });
+  if (!geos.size && !mats.size) return;
+  scene.traverse((o) => { if (o.geometry) geos.delete(o.geometry); for (const m of [].concat(o.material || [], o.customDepthMaterial || [])) { mats.delete(m); for (const k in m) { const v = m[k]; if (v && v.isTexture) texs.delete(v); } } });
+  for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of texs) t.dispose(); for (const im of insts) if (im.dispose) im.dispose();
+}
+/* 3D.276 Strongholds chat: the things in a stronghold's rooms (B3), its floor hazards (B4) and its dark rooms (B5), drawn from the plan.
+   Static things are merged per colour like the camp props; the group is rebuilt only when one of them changes (a switch worked, a crate picked up). */
+const shZoneMat = {}; const shZoneM = (k) => shZoneMat[k] || (shZoneMat[k] = new THREE.MeshBasicMaterial({ color: { water: 0x3f7fb0, fire: 0xff7a2a, gas: 0x9ad24a, cold: 0xdff2ff, heat: 0xff5a3a, ice: 0xcfe8ff, shred: 0x2a2a2a }[k] || 0xffffff, transparent: true, opacity: { water: .5, fire: .45, gas: .35, cold: .22, heat: .3, ice: .35, shred: .55 }[k] || .35, depthWrite: false }));
+const shDarkMat = new THREE.MeshBasicMaterial({ color: 0x05070c, transparent: true, opacity: .62, depthWrite: false });
+/* 3D.311 (owner, 23 Nov: "if it's a hospital, it should look like a hospital"): a place's own look. plan.look = floor patterns and a wall band;
+   plan.deco = set dressing that does nothing in the fight (drawn once with the arena; nothing here is taller than the dark slab over an unopened room, except what stands outside) */
+/* 3D.314 (owner: "add some texture or colour variation for all the ground, wall etc, it looks so plain and not real"): floors and walls are no longer one flat colour.
+   World-space noise: floors get soft light and dark patches, wear and a few stains; walls get grime rising from the floor and faint streaks. No texture files. */
+const _surfM = {};
+/* 3D.315 (owner: "wall should be higher and have a fade out if a character is behind the wall so that the character can be seen"; "a little bit more gore with some blood and make it a little messy"):
+   walls are see-through (a fine dot pattern, no sorting needed) where they stand between the camera and one of the squad or the dead; floors and walls carry old blood. */
+const SURF_U = { uWho: { value: Array.from({ length: 28 }, () => new THREE.Vector3(0, -999, 0)) }, uWhoN: { value: 0 }, uView: { value: new THREE.Vector3(0, -1, 0) }, uGore: { value: 1 } };
+function surfMat(c, wall) { const key = c + (wall ? '|w' : '|f'); if (_surfM[key]) return _surfM[key]; const m = new THREE.MeshToonMaterial({ color: new THREE.Color(c), gradientMap: grad }); if (wall) m.alphaTest = .01;   /* keeps the outline pass off the walls: an outline would stay where the wall has faded */
+  m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, SURF_U); sh.vertexShader = 'varying vec3 vSP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vSP = (modelMatrix * vec4(position, 1.)).xyz;');
+    sh.fragmentShader = 'varying vec3 vSP; uniform vec3 uWho[28]; uniform int uWhoN; uniform vec3 uView; uniform float uGore;\nfloat sfh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat sfn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(sfh(i), sfh(i + vec2(1., 0.)), f.x), mix(sfh(i + vec2(0., 1.)), sfh(i + 1.), f.x), f.y); }\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  { vec2 p = vSP.xz; float big = sfn(p * .3), mid = sfn(p * 1.6 + 4.), fine = sfn(p * 8.); vec3 BLOOD = vec3(.36, .07, .06);\n' + (wall
+      ? `    float grime = smoothstep(.5, .02, vSP.y) * .2 + smoothstep(.55, .9, sfn(vec2((p.x + p.y) * 2.6, vSP.y * .5))) * .1; diffuseColor.rgb *= (1. - grime) * (.93 + .12 * mid);
+    float along = (p.x + p.y) * 1.1, sp = smoothstep(.80, .86, sfn(vec2(along * .5, 3.7))) * smoothstep(1.25, .2, vSP.y + sfn(vec2(along * 3., 9.)) * .7);   /* a splash low on the wall */
+    float drip = smoothstep(.72, .8, sfn(vec2(along * 7., 1.3))) * smoothstep(.80, .86, sfn(vec2(along * .5, 3.7))) * smoothstep(1.2, .0, vSP.y);                 /* and what ran down from it */
+    diffuseColor.rgb = mix(diffuseColor.rgb, BLOOD * (.8 + .4 * fine), clamp(sp * .75 + drip * .5, 0., .85) * uGore);
+    float fade = 0.; for (int i = 0; i < 28; i++) { if (i >= uWhoN) break; vec3 v = vSP - (uWho[i] + vec3(0., .55, 0.)); float al = dot(v, -uView); vec3 pr = v + uView * al; float d = length(pr * vec3(1., .75, 1.)); fade = max(fade, (1. - smoothstep(.85, 1.7, d)) * step(.05, al) * (1. - smoothstep(5., 9., al))); }
+    if (fade > .02) { vec2 fc = floor(mod(gl_FragCoord.xy, 4.)); float th = (fc.x + fc.y * 4. + mod(fc.x * 3. + fc.y * 5., 4.) * 2.5) / 26.; if (fade * .9 > th + .04) discard; }`
+      : `    diffuseColor.rgb *= .88 + .13 * big + .08 * mid + .05 * fine; diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(.80, .77, .72), smoothstep(.70, .86, sfn(p * .8 + 11.)) * .55); diffuseColor.rgb *= 1. - .10 * smoothstep(.82, .95, sfn(p * 5.3 + 2.));
+    float pool = smoothstep(.77, .81, sfn(p * .42 + 31.)) * smoothstep(.30, .55, sfn(p * 1.9 + 5.));                      /* old pools, dried dark at the middle */
+    float spat = smoothstep(.86, .9, sfn(p * 6.5 + 17.)) * smoothstep(.62, .78, sfn(p * .42 + 31.));                       /* spatter round them */
+    float drag = smoothstep(.9, .93, sfn(vec2(p.x * .35 + 3., p.y * 2.6 + sfn(p * .4) * 2.))) * smoothstep(.45, .7, sfn(p * .22 + 8.));   /* drag marks */
+    diffuseColor.rgb = mix(diffuseColor.rgb, BLOOD * (.75 + .5 * mid), clamp(pool * .8 + spat * .7 + drag * .55, 0., .88) * uGore);`) + '\n  }'); };
+  m.customProgramCacheKey = () => (wall ? 'zh-surf-wall-2' : 'zh-surf-floor-2'); return _surfM[key] = m; }
+/* each frame: who the walls must not hide (the squad, and the dead the squad can see) and which way the camera looks */
+function shWallFade(H) { const W = SURF_U.uWho.value; let n = 0; const put = (w) => { if (n < 28 && w) W[n++].set(w.x * T, 0, w.y * T); };
+  if (H && !H.camp) { for (const s of H.units || []) if (s.hp > 0) put(s.w); const us = (H.units || []).filter((s) => s.hp > 0), near = (H.zs || []).filter((z) => z.hp > 0 && !z.hid && z.mode !== 'sleep').map((z) => [z, Math.min(...us.map((s) => Math.hypot(s.w.x - z.w.x, s.w.y - z.w.y)), 99)]).sort((a, b) => a[1] - b[1]); for (const [z] of near) put(z.w); }
+  SURF_U.uWhoN.value = n; cam.getWorldDirection(SURF_U.uView.value); }
+/* the ground round a stronghold: the town's own painted ground, one colour per tile (grass, or what the plan lays: paving, asphalt, gravel, dirt), and the town's tufts, bushes, pebbles, rocks and trees */
+function shGroundGroup(H) { const g = new THREE.Group(), PL = H.plan || {}, LK = PL.look || {}, AX = ZH.SH_AX, AY = ZH.SH_AY, PW = PL.W || 46, PH = PL.H || 19, SP = SEASON_PAL[LK.season] || SEASON_PAL[season()], GR = SP.grass;   /* 3D.318 a seasonal place stands in its own season's ground and trees, whatever the practice page's date */
+  const X0 = -24, Y0 = -22, NX = PW + 48, NY = PH + 44, tcs = new Float32Array(NX * NY * 3), kind = new Uint8Array(NX * NY), cc = new THREE.Color();
+  const SURF = { paving: ['#bdb9ad', '#b6b2a6', '#c2beb2', '#b9b5a8'], asphalt: ['#5c5f63', '#585b5f', '#606367', '#55585c'], gravel: ['#a59f8e', '#9d9786', '#aba594', '#a19b8a'], ash: ['#5f574e', '#59514a', '#655d54', '#544d46'], snow: ['#eef3f6', '#e8eef2', '#f2f6f8', '#e4ebf0'], dirt: ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], mud: ['#7d6a4c', '#766446', '#836f50', '#70603f'], concrete: ['#a8a8a2', '#a2a29c', '#aeaea8', '#9e9e98'] };
+  const rects = LK.ground || [], surfAt = (x, y) => { let k = ''; for (const q of rects) if (x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h) k = q.k; return k; };
+  const kid = Object.keys(SURF), near = (x, y) => { for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (surfAt(x + dx, y + dy)) return true; return false; };
+  for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), k = surfAt(x, y), i = (y - Y0) * NX + (x - X0);
+    cc.set(k ? SURF[k][(r * 4) | 0] : near(x, y) && r < .5 ? SURF.dirt[(r * 8) | 0] : hash(x * 3 + 7, y * 5 + 1) < .035 ? SURF.dirt[(r * 4) | 0] : GR[(r * 6) | 0]); kind[i] = k ? kid.indexOf(k) + 1 : 0; tcs[i * 3] = cc.r; tcs[i * 3 + 1] = cc.g; tcs[i * 3 + 2] = cc.b; }
+  const corner = (x, y) => { let r = 0, gg = 0, bb = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tcs[i]; gg += tcs[i + 1]; bb += tcs[i + 2]; n++; } return [r / n, gg / n, bb / n]; };
+  const pos = [], col = [], nrm = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const hard = kind[(y - Y0) * NX + (x - X0)], i3 = ((y - Y0) * NX + (x - X0)) * 3; for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, -.02, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz));   /* blended at the corners, hard ground too: one flat colour a tile read as a chequerboard */ nrm.push(0, 1, 0); } }
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); gg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  const gm = new THREE.Mesh(gg, groundMat()); gm.receiveShadow = true; g.add(gm);
+  const at = (x, y, a, b) => [(AX + x + a) * T, (AY + y + b) * T], clear = LK.clear || [], inClear = (x, y) => clear.some((q) => x >= q.x - 1 && x < q.x + q.w + 1 && y >= q.y - 1 && y < q.y + q.h + 1), ed = (x, y) => Math.max(0, -3 - x, x - (PW + 2), -3 - y, y - (PH + 2));
+  const tufts = [], bushes = [], pebbles = [], pines = [], rounds = [], rocks = [];
+  for (let y = Y0 + 1; y < Y0 + NY - 1; y++) for (let x = X0 + 1; x < X0 + NX - 1; x++) { const hard = kind[(y - Y0) * NX + (x - X0)], e = ed(x, y), h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9);
+    if (x >= -1 && y >= -1 && x <= PW && y <= PH) continue;   /* under the building: nothing grows through the floors */
+    const SNOW = kid.indexOf('snow') + 1; if (hard === SNOW) { if (inClear(x, y)) continue; const r = hash(x * 7 + 3, y * 5 + 1); if (e >= ((y > PH + 2 || x > PW + 2) ? 8 : 2) && r < Math.min(.4, .015 + (e - 1) * .04)) pines.push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + hash(x, y * 3) * .6) * 1.35, hash(x, y * 3)]); else if (r > .985) rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; }   /* snow: pines and rocks, no grass */
+    if (hard) { if (h3 < .05) pebbles.push([...at(x, y, .15 + .7 * h2, .15 + .7 * h1), 1.2 + h1, h2]); if (hard !== 2 && h1 < .05) tufts.push([...at(x, y, .2 + .6 * h2, .2 + .6 * h3), 1.0 + h2 * .6, h3]); continue; }   /* weeds in the cracks */
+    if (inClear(x, y)) { if (h1 < .3) tufts.push([...at(x, y, .1 + .8 * h2, .1 + .8 * h3), 1.1 + h2 * .9, h3]); continue; }
+    if (e >= ((y > PH + 2 || x > PW + 2) ? 8 : 2)) { const r = hash(x * 7 + 3, y * 5 + 1); if (r < Math.min(.5, .015 + (e - 1) * .05))   /* none close on the camera's side: they would stand in front of the rooms */ { const q = hash(x, y * 3); (q < .5 ? pines : rounds).push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + q * .6) * 1.35, q]); continue; } if (r > .985) { rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; } }
+    const nt = h1 < .5 ? 2 : h1 < .85 ? 1 : 0; for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(x, y, .1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
+    if (h2 < .09) bushes.push([...at(x, y, .2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]); if (h3 < .12) pebbles.push([...at(x, y, .15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]); }
+  const put = (m) => { g.add(m); return m; }, dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t)), PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = SP.crown, dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
+  put(instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0])).userData.noInk = true; put(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true)); put(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0])).userData.noInk = true;
+  put(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8)); put(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7)); put(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
+  put(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4)); put(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5)); put(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX)); put(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
+  put(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); put(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
+  return g; }
+function shLookGroup(H) { const g = new THREE.Group(), Q = new Parts(), QF = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, PL = H.plan || {}, LK = PL.look || {}, R = ZH.SH_ROOMS, grid = H.camp ? [] : ZH.shGridOf(), isFloor = (x, y) => !!(grid[y] && grid[y][x]);
+  for (const [rk, col] of Object.entries(LK.checker || {})) { const r = R[rk]; if (!r) continue; for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) if ((x + y) % 2 === 0) Q.put(box(T * .97, .02, T * .97), col, M4((AX + x + .5) * T, .045, (AY + y + .5) * T)); }
+  for (const L of LK.lines || []) { const r = R[L.room]; if (!r) continue; const hz = r[2] >= r[3]; Q.put(hz ? box(r[2] * T, .02, L.w || .1) : box(L.w || .1, .02, r[3] * T), L.col, M4(hz ? (AX + r[0] + r[2] / 2) * T : (AX + r[0] + L.at * r[2]) * T, .062, hz ? (AY + r[1] + L.at * r[3]) * T : (AY + r[1] + r[3] / 2) * T)); }
+  /* 3D.313 sheet floors: a border strip inside the walls, plank lines, and flat painted patches (tiles from the map's corner) */
+  for (const [rk, bd] of Object.entries(LK.border || {})) { const r = R[rk]; if (!r) continue; const w = bd.w || .22, x0 = (AX + r[0]) * T, z0 = (AY + r[1]) * T, ww = r[2] * T, hh = r[3] * T; Q.put(box(ww, .02, w), bd.col, M4(x0 + ww / 2, .046, z0 + w / 2)); Q.put(box(ww, .02, w), bd.col, M4(x0 + ww / 2, .046, z0 + hh - w / 2)); Q.put(box(w, .02, hh), bd.col, M4(x0 + w / 2, .046, z0 + hh / 2)); Q.put(box(w, .02, hh), bd.col, M4(x0 + ww - w / 2, .046, z0 + hh / 2)); }
+  for (const [rk, col] of Object.entries(LK.planks || {})) { const r = R[rk]; if (!r) continue; for (let i = 1; i < r[3] * 3; i++) Q.put(box(r[2] * T, .02, .035), col, M4((AX + r[0] + r[2] / 2) * T, .044, (AY + r[1] + i / 3) * T)); for (let j = 0; j < r[3] * 3; j++) for (let i = (j % 2) + 1; i < r[2]; i += 2) Q.put(box(.035, .02, T / 3), col, M4((AX + r[0] + i) * T, .044, (AY + r[1] + (j + .5) / 3) * T)); }
+  for (const p of LK.pads || []) Q.put(box(p.w * T, .02, p.h * T), p.col, M4((AX + p.x + p.w / 2) * T, p.lift != null ? p.lift : .048, (AY + p.y + p.h / 2) * T));
+  const RED = '#c9412e', STEEL = '#8a9499', WHITE = '#eef2f2', PI2 = Math.PI / 2;
+  /* 3D.315 an overrun place is not tidy: every room gets its own litter, worked out from where the room is (the same every visit): bodies and body bags, dark pools, drag marks, scattered paper, broken bits, a tipped chair */
+  const mess = []; if (LK.mess !== 0) for (const [rk, r] of Object.entries(R)) { const area = r[2] * r[3], nn = Math.max(1, Math.round(area / 9 * (LK.mess || 1))); for (let i = 0; i < nn; i++) { const h1 = hash(r[0] * 7 + i * 13 + 1, r[1] * 5 + i * 3 + 2), h2 = hash(r[0] * 3 + i * 5 + 9, r[1] * 11 + i * 7 + 4), h3 = hash(r[0] + i * 17 + 5, r[1] * 2 + i * 23 + 8);
+      const x = r[0] + .3 + h1 * (r[2] - 1.6), y = r[1] + .3 + h2 * (r[3] - 1.6), st = PL.start || { x: -9, y: -9 }; if (Math.hypot(x - st.x, y - st.y) < 1.5) continue;
+      mess.push({ k: h3 < .16 ? 'corpse' : h3 < .24 ? 'bodybag' : h3 < .44 ? 'blood' : h3 < .56 ? 'smear' : h3 < .74 ? 'papers' : h3 < .9 ? 'debris' : 'tipped', x, y, r: h1 * 4, s: .7 + h2 * .9, len: 2 + h1 * 3, v: h2, auto: 1 }); } }
+  for (const t of mess.concat(PL.deco || [])) { const cx = (AX + t.x + .5) * T, cz = (AY + t.y + .5) * T, ry = (t.r || 0) * PI2, n = t.n || 1;
+    const b = (w, h, d, col, x, y, z, r = 0, rx = 0, rz = 0) => Q.put(box(w, h, d), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, r, rx, rz)));
+    const c = (r0, r1, h, col, x, y, z, seg = 8, rx = 0, rz = 0) => Q.put(cyl(r0, r1, h, seg), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, 0, rx, rz)));
+    const cross = (x, y, z, s, face) => { if (face === 'x') { b(.03, s, s, WHITE, x, y, z); b(.05, s * .28, s * .72, RED, x, y, z); b(.05, s * .72, s * .28, RED, x, y, z); } else { b(s, s, .03, WHITE, x, y, z); b(s * .72, s * .28, .05, RED, x, y, z); b(s * .28, s * .72, .05, RED, x, y, z); } };
+    const k = t.k;
+    if (k === 'curtain') { b(.05, 1.0, 2.0, t.col || '#9fd0bd', 0, .62, 0); b(.07, .05, 2.1, STEEL, 0, 1.14, 0); for (const z of [-.95, .95]) b(.05, 1.15, .05, STEEL, 0, .58, z); }
+    else if (k === 'iv') { c(.025, .025, 1.15, '#b9c2c8', 0, .58, 0, 6); c(.17, .17, .04, STEEL, 0, .03, 0, 8); b(.3, .03, .03, '#b9c2c8', 0, 1.14, 0); b(.14, .24, .07, '#dff1f6', .13, .98, 0); b(.1, .1, .08, RED, .13, .9, 0); }
+    else if (k === 'gurney') { b(1.9, .07, .72, '#dfe8ec', 0, .62, 0); b(1.45, .1, .66, '#8fb6c9', -.15, .7, 0); b(.36, .1, .5, '#ffffff', .72, .72, 0); for (const [dx, dz] of [[-.8, -.3], [.8, -.3], [-.8, .3], [.8, .3]]) { b(.05, .56, .05, STEEL, dx, .32, dz); c(.07, .07, .05, '#22252a', dx, .07, dz, 8, PI2); } b(.05, .3, .72, STEEL, -.95, .78, 0); if (t.blood) b(.6, .02, .4, '#7d1c18', -.2, .76, 0); }
+    else if (k === 'wheelchair') { b(.5, .06, .5, '#33373c', 0, .45, 0); b(.06, .5, .5, '#33373c', -.25, .72, 0); for (const z of [-.3, .3]) { c(.28, .28, .05, '#22252a', -.05, .28, z, 12, PI2); c(.09, .09, .05, '#22252a', .3, .09, z, 8, PI2); b(.4, .04, .04, STEEL, 0, .62, z); } }
+    else if (k === 'chairs') { const col = t.col || '#5f8fb0'; for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .6; b(.52, .07, .5, col, x, .42, 0); b(.52, .46, .07, col, x, .68, -.24); } b(n * .6, .05, .06, STEEL, 0, .2, 0); for (const x of [-(n - 1) * .3, (n - 1) * .3]) b(.06, .4, .4, STEEL, x, .2, 0); }
+    else if (k === 'reception') { b(3.6, .95, .7, WHITE, 0, .48, 0); b(3.75, .07, .86, '#7fb7a3', 0, .99, 0); b(.7, .95, 1.5, WHITE, 1.45, .48, -1.0); b(.86, .07, 1.6, '#7fb7a3', 1.45, .99, -1.0); cross(0, .52, .37, .56); b(.42, .3, .05, '#2e2a28', -.9, 1.17, -.1); b(.5, .03, .35, '#ffffff', .4, 1.04, 0); }
+    else if (k === 'optable') { b(2.0, .1, .8, '#c7ced2', 0, .8, 0); b(1.9, .06, .7, '#7fb7a3', 0, .88, 0); c(.14, .22, .76, STEEL, 0, .38, 0, 8); c(.4, .4, .05, STEEL, 0, .03, 0, 10); b(.8, .02, .45, '#7d1c18', .25, .92, 0);
+      c(.04, .04, 1.2, '#b9c2c8', -1.3, .6, -.7, 6); b(1.3, .05, .05, '#b9c2c8', -.65, 1.19, -.5, .28); c(.42, .3, .1, WHITE, 0, 1.15, -.3, 12); c(.3, .3, .02, '#fff6c8', 0, 1.09, -.3, 12); }
+    else if (k === 'trolley') { for (const y of [.36, .72]) b(.72, .04, .46, '#c7ced2', 0, y, 0); for (const [dx, dz] of [[-.32, -.2], [.32, -.2], [-.32, .2], [.32, .2]]) b(.04, .72, .04, STEEL, dx, .36, dz); b(.22, .05, .12, RED, -.15, .77, 0); b(.3, .03, .2, '#e8f0f2', .15, .76, .05); if (t.linen) b(.66, .3, .4, '#e9e4d2', 0, .54, 0); }
+    else if (k === 'sink') { b(1.7, .8, .5, WHITE, 0, .4, 0); b(1.56, .06, .4, '#9fb3bb', 0, .82, 0); for (const x of [-.4, .4]) { c(.03, .03, .26, STEEL, x, .95, -.16, 6); b(.03, .03, .16, STEEL, x, 1.07, -.08); } b(1.7, .3, .04, '#cfe1e6', 0, 1.02, -.24); }
+    else if (k === 'pills') { b(1.9, 1.15, .4, WHITE, 0, .58, 0); const PC = ['#c9412e', '#3c78c9', '#e0b23a', '#4d9a62', '#ffffff', '#b06ab3']; for (let r = 0; r < 3; r++) { b(1.8, .03, .42, '#b9c2c8', 0, .3 + r * .34, .02); for (let i = 0; i < 7; i++) b(.14, .2, .12, PC[(i * 3 + r * 2 + ((t.x * 7) | 0)) % 6], -.72 + i * .24, .42 + r * .34, .18); } }
+    else if (k === 'cabinet') { b(.9, 1.1, .45, '#dfe8ec', 0, .55, 0); b(.03, 1.0, .02, '#aab7bd', 0, .55, .24); cross(-.22, .8, .24, .28); }
+    else if (k === 'counter') { b(n * T * .96, .9, .5, WHITE, 0, .45, 0); b(n * T * .98, .06, .62, '#7fb7a3', 0, .93, 0); b(.5, .16, .3, '#33373c', .4, 1.04, 0); }
+    else if (k === 'cross') { c(.06, .06, 2.4, STEEL, 0, 1.2, 0, 6); b(1.1, 1.1, .1, WHITE, 0, 2.6, 0); b(.78, .26, .14, RED, 0, 2.6, 0); b(.26, .78, .14, RED, 0, 2.6, 0); }
+    else if (k === 'ambulance') { b(3.6, 1.5, 1.9, '#f2f2ee', -.5, 1.1, 0); b(1.4, 1.05, 1.9, '#f2f2ee', 2.0, .88, 0); b(.5, .45, 1.7, '#6f8f9c', 2.5, 1.2, 0); b(5.02, .22, 1.93, RED, .2, .78, 0); for (const z of [-.96, .96]) { b(.7, .22, .03, RED, -.6, 1.4, z); b(.22, .7, .03, RED, -.6, 1.4, z); } b(.3, .14, 1.1, '#3c78c9', 1.5, 1.92, 0); b(.3, .14, .4, RED, 1.5, 1.93, 0);
+      for (const [dx, dz] of [[-1.5, -.9], [-1.5, .9], [1.9, -.9], [1.9, .9]]) c(.36, .36, .3, '#22252a', dx, .36, dz, 10, PI2); b(.06, 1.2, .9, '#dfe6e6', -2.32, 1.0, -.48, .5); b(.06, 1.2, .9, '#dfe6e6', -2.32, 1.0, .48, -.5); }
+    else if (k === 'pad') { QF.put(box((t.w || 4) * T, .03, (t.h || 4) * T), t.col || '#73777c', M4(cx, t.lift || 0, cz, ry)); for (let i = 0; i < (t.bays || 0); i++) b(.08, .035, (t.h || 4) * T * .7, '#e8e4d4', (i - ((t.bays - 1) / 2)) * 2.6, .005, 0); }
+    else if (k === 'blood') { const s = t.s || 1; b(.9 * s, .015, .6 * s, '#7d1c18', 0, .07, 0, .4); b(.5 * s, .015, .7 * s, '#8a211c', .3 * s, .071, .2 * s, 1.1); b(.25 * s, .015, .25 * s, '#7d1c18', -.6 * s, .07, -.3 * s); }
+    else if (k === 'smear') { b((t.len || 3), .015, .34, '#7d1c18', 0, .07, 0); b((t.len || 3) * .6, .015, .2, '#8a211c', .3, .071, .2, .08); }
+    else if (k === 'vending') { b(.9, 1.2, .7, '#3c5a78', 0, .6, 0); b(.56, .7, .04, '#9fd0e0', -.1, .72, .36); b(.14, .5, .04, '#22252a', .3, .7, .36); }
+    else if (k === 'plant') { c(.2, .15, .3, '#a0613c', 0, .15, 0); c(.36, .1, .62, '#4d8a52', 0, .6, 0, 6); c(.22, .05, .4, '#5f9a5c', .05, .95, .05, 6); }
+    else if (k === 'bin') { c(.2, .16, .5, t.col || '#d7c23a', 0, .25, 0); c(.21, .21, .04, '#33373c', 0, .52, 0); }
+    else if (k === 'screen') { for (let i = 0; i < 3; i++) { b(.6, 1.0, .04, '#bfe0d2', (i - 1) * .56, .6, i % 2 ? .1 : -.1, i % 2 ? .35 : -.35); } }
+    else if (k === 'lightbox') { b(1.3, .55, .06, '#33373c', 0, .9, 0); b(1.2, .46, .07, '#cfeaf4', 0, .9, .01); b(.4, .4, .08, '#5b6f7a', -.3, .9, .02); b(.4, .4, .08, '#5b6f7a', .3, .9, .02); }
+    else if (k === 'papers') { for (let i = 0; i < 5; i++) b(.22, .012, .3, '#f4f1e6', (hash(t.x * 7 + i, t.y * 3) - .5) * 1.6, .07, (hash(t.y * 5 + i, t.x) - .5) * 1.6, i * 1.3); }
+    /* 3D.312 the prison's pieces */
+    else if (k === 'bars') { const y0 = t.base != null ? t.base : .32, hh = t.h || .88, len = n * T; for (let i = 0; i <= n * 5; i++) c(.035, .035, hh, '#3d444c', -len / 2 + i * (len / (n * 5)), y0 + hh / 2, 0, 6); b(len, .07, .09, '#2f353c', 0, y0 + hh, 0); b(len, .06, .08, '#2f353c', 0, y0 + .04, 0); }
+    else if (k === 'bunk') { for (const y of [.3, .85]) { b(2.0, .07, .85, '#4a5560', 0, y, 0); b(1.9, .1, .78, t.col || '#d9772e', 0, y + .08, 0); b(.4, .1, .5, '#e8e4d8', -.7, y + .14, 0); } for (const [dx, dz] of [[-.97, -.4], [.97, -.4], [-.97, .4], [.97, .4]]) b(.06, 1.15, .06, '#3d444c', dx, .58, dz); b(.05, .5, .3, '#3d444c', .97, .58, .25); }
+    else if (k === 'toilet') { c(.2, .16, .36, '#cfd6d8', 0, .18, 0, 10); b(.44, .5, .16, '#cfd6d8', 0, .45, -.24); b(.5, .25, .32, '#b9c2c8', .7, .62, -.2); c(.03, .03, .6, '#8a9499', .7, .3, -.2, 6); }
+    else if (k === 'mtable') { b(1.9, .07, .8, '#9aa3a8', 0, .7, 0); c(.07, .1, .7, '#5d6570', 0, .35, 0, 8); for (const [dx, dz] of [[-.6, -.72], [.6, -.72], [-.6, .72], [.6, .72]]) { c(.19, .19, .06, t.col || '#d9772e', dx, .42, dz, 10); c(.04, .04, .42, '#5d6570', dx, .21, dz, 6); } if (t.tray) { b(.4, .03, .28, '#c9b27a', -.3, .76, .1, .3); b(.4, .03, .28, '#c9b27a', .4, .76, -.1, -.2); } }
+    else if (k === 'hoop') { c(.07, .07, 2.6, '#5d6570', 0, 1.3, 0, 8); b(.08, .8, 1.2, '#e8e4d8', .3, 2.5, 0); b(.06, .3, .4, '#c9412e', .35, 2.4, 0); c(.26, .26, .04, '#d9772e', .62, 2.2, 0, 12); }
+    else if (k === 'court') { const w = (t.w || 5) * T, h = (t.h || 6) * T; QF.put(box(w, .02, h), t.col || '#6f6a60', M4(cx, .045, cz, ry)); for (const z of [-h / 2 + .08, h / 2 - .08]) b(w, .025, .08, '#e8e4d4', 0, .05, z); for (const x of [-w / 2 + .08, w / 2 - .08]) b(.08, .025, h, '#e8e4d4', x, .05, 0); b(w, .025, .08, '#e8e4d4', 0, .05, 0); c(1.3, 1.3, .02, '#e8e4d4', 0, .047, 0, 20); c(1.2, 1.2, .022, t.col || '#6f6a60', 0, .049, 0, 20); }
+    else if (k === 'weights') { b(1.3, .08, .4, '#33373c', 0, .4, 0); for (const x of [-.5, .5]) b(.06, .4, .4, '#5d6570', x, .2, 0); for (const z of [-.3, .3]) b(.05, .95, .05, '#5d6570', -.5, .48, z); c(.03, .03, 1.5, '#b9c2c8', -.5, .95, 0, 6, PI2); for (const z of [-.62, .62]) c(.2, .2, .08, '#22252a', -.5, .95, z, 10, PI2); }
+    else if (k === 'fence') { const len = n * T, hh = 1.7; for (let i = 0; i <= n; i++) c(.05, .05, hh, '#5d6570', -len / 2 + i * T, hh / 2, 0, 6); for (const y of [.25, .7, 1.15, 1.6]) b(len, .03, .03, '#8a9499', 0, y, 0); for (let i = 0; i < n * 2; i++) b(.03, 1.55, .03, '#8a9499', -len / 2 + (i + .5) * T / 2, .8, 0, 0, 0, i % 2 ? .5 : -.5);
+      for (let i = 0; i < n * 5; i++) c(.2, .2, .03, '#b9c2c8', -len / 2 + (i + .5) * T / 5, hh + .16, 0, 8, 0, PI2 + (i % 2 ? .35 : -.35)); }
+    else if (k === 'wtower') { for (const [dx, dz] of [[-.8, -.8], [.8, -.8], [-.8, .8], [.8, .8]]) b(.16, 3.0, .16, '#5d6570', dx, 1.5, dz); for (const y of [1.0, 2.0]) { b(1.76, .08, .08, '#4a5560', 0, y, -.8); b(1.76, .08, .08, '#4a5560', 0, y, .8); b(.08, .08, 1.76, '#4a5560', -.8, y, 0); b(.08, .08, 1.76, '#4a5560', .8, y, 0); }
+      b(2.2, .14, 2.2, '#6a727c', 0, 3.0, 0); for (const [dx, dz, w, d] of [[0, -1.05, 2.2, .1], [0, 1.05, 2.2, .1], [-1.05, 0, .1, 2.2], [1.05, 0, .1, 2.2]]) b(w, .6, d, '#7d858e', dx, 3.4, dz); for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b(.1, 1.5, .1, '#4a5560', dx, 3.8, dz); b(2.6, .14, 2.6, '#3d444c', 0, 4.6, 0); c(.22, .3, .4, '#e8e4d8', .7, 3.95, .7, 10, .9); c(.2, .2, .03, '#fff6c8', .82, 3.86, .82, 10, .9); }
+    else if (k === 'bus') { b(5.6, 1.6, 2.0, t.col || '#d8d4c6', 0, 1.2, 0); b(5.62, .3, 2.02, '#3d5a78', 0, .75, 0); for (let i = 0; i < 6; i++) for (const z of [-1.01, 1.01]) { b(.6, .5, .03, '#2f353c', -2.1 + i * .82, 1.55, z); for (const dx of [-.18, 0, .18]) b(.03, .5, .05, '#b9c2c8', -2.1 + i * .82 + dx, 1.55, z); } b(.05, .6, 1.7, '#4a6878', 2.82, 1.5, 0); for (const [dx, dz] of [[-1.9, -.95], [-1.9, .95], [1.9, -.95], [1.9, .95]]) c(.4, .4, .3, '#22252a', dx, .4, dz, 10, PI2); b(.6, .1, 1.2, '#d9772e', 1.5, 2.05, 0); }
+    else if (k === 'console') { b(n * T * .92, .8, .7, '#4a5560', 0, .4, 0); b(n * T * .92, .08, .8, '#33373c', 0, .84, .04, 0, .25); for (let i = 0; i < n * 2; i++) { b(.6, .45, .06, '#22252a', -n * T * .46 + .6 + i * 1.1, 1.0, -.3); b(.52, .37, .07, i % 3 === 1 ? '#3a5a44' : '#33485a', -n * T * .46 + .6 + i * 1.1, 1.0, -.29); } for (let i = 0; i < n * 4; i++) b(.1, .04, .1, ['#c9412e', '#e0b23a', '#4d9a62'][i % 3], -n * T * .4 + i * .5, .9, .2); }
+    else if (k === 'rack') { b(1.6, 1.1, .2, '#5d4a36', 0, .6, 0); for (let i = 0; i < 5; i++) { b(.07, .8, .07, '#22252a', -.6 + i * .3, .62, .14, 0, 0, .08); b(.09, .25, .09, '#6a4a2e', -.6 + i * .3, .3, .14); } }
+    else if (k === 'shields') { for (let i = 0; i < (n || 3); i++) { b(.5, .95, .06, '#2f353c', (i - ((n || 3) - 1) / 2) * .6, .5, 0, 0, -.2); b(.34, .2, .07, '#9fb3bb', (i - ((n || 3) - 1) / 2) * .6, .72, .03, 0, -.2); } }
+    else if (k === 'barrier') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * 2.1; b(2.0, .3, .6, '#a9a9a2', x, .15, 0); b(2.0, .5, .3, '#b5b5ae', x, .5, 0); b(.5, .25, .32, '#e0b23a', x - .5, .5, 0); b(.5, .25, .32, '#e0b23a', x + .5, .5, 0); } }
+    else if (k === 'spot') { c(.06, .06, 3.2, '#5d6570', 0, 1.6, 0, 6); b(.9, .1, .1, '#4a5560', 0, 3.2, 0); for (const x of [-.3, .3]) { b(.36, .3, .3, '#33373c', x, 3.0, .1); b(.3, .24, .04, '#fff6c8', x, 3.0, .26); } }
+    else if (k === 'drums') { for (const [dx, dz, col] of [[0, 0, '#3d5a78'], [.5, .1, '#8a4a2c'], [.2, .5, '#3d5a78']]) { c(.24, .24, .7, col, dx, .35, dz, 10); c(.25, .25, .04, '#22252a', dx, .5, dz, 10); } }
+    else if (k === 'tyres') { for (let i = 0; i < 3; i++) c(.34, .34, .2, '#22252a', (i % 2) * .08, .1 + i * .2, 0, 12); c(.34, .34, .2, '#22252a', .75, .34, .1, 12, PI2); }
+    else if (k === 'cone') { c(.03, .16, .5, '#d9772e', 0, .27, 0, 8); b(.36, .04, .36, '#d9772e', 0, .02, 0); c(.07, .1, .1, '#ffffff', 0, .3, 0, 8); }
+    else if (k === 'gatearch') { for (const z of [-2.2, 2.2]) { b(.9, 3.0, .9, '#6a6e74', 0, 1.5, z); b(1.0, .2, 1.0, '#4a4e54', 0, 3.1, z); } b(.7, .7, 5.3, '#4a4e54', 0, 3.3, 0); b(.74, .44, 3.2, '#22252a', 0, 3.3, 0); for (let i = 0; i < 9; i++) b(.76, .26, .2, '#e8e4d4', 0, 3.3, -1.3 + i * .33 - (i > 4 ? -.1 : 0)); for (let i = 0; i < 11; i++) c(.04, .04, 1.1, '#3d444c', 0, 3.9, -2.0 + i * .4, 6); }
+    else if (k === 'jumpsuit') { b(.5, .03, .9, '#d9772e', 0, .07, 0, t.a || .4); b(.9, .03, .3, '#d9772e', .1, .071, -.3, t.a || .4); }
+    /* 3D.313 the ground outside */
+    else if (k === 'road') { const len = (t.len || 20) * T, wd = (t.w || 4) * T; QF.put(box(len, .03, wd), '#5a5d61', M4(cx, .002, cz, ry)); for (const z of [-wd / 2 + .25, wd / 2 - .25]) b(len, .034, .1, '#e8e4d4', 0, .003, z); for (let i = 0; i < (t.len || 20) / 2; i++) b(T * .9, .034, .12, '#e0b23a', -len / 2 + (i * 2 + 1) * T, .003, 0); if (!t.nokerb) for (const z of [-wd / 2 - .2, wd / 2 + .2]) b(len, .16, .3, '#c4c0b4', 0, .06, z); }
+    else if (k === 'car') { const col = t.col || '#7a8fa3'; b(3.4, .55, 1.6, col, 0, .6, 0); b(1.8, .5, 1.45, col, -.15, 1.1, 0); b(1.84, .36, 1.3, '#56707c', -.15, 1.12, 0); b(.1, .34, 1.5, '#56707c', .76, 1.1, 0); for (const [dx, dz] of [[-1.05, -.8], [-1.05, .8], [1.1, -.8], [1.1, .8]]) c(.32, .32, .22, '#22252a', dx, .32, dz, 10, PI2); b(.08, .14, 1.2, '#e8e4d4', 1.72, .62, 0); if (t.wreck) { b(1.3, .08, 1.5, '#3a3d42', 1.1, .92, 0, 0, 0, .3); b(.8, .02, .8, '#2a2c30', 2.2, .02, .4); } }
+    else if (k === 'lamp') { c(.06, .08, 3.4, '#5d6570', 0, 1.7, 0, 6); b(.9, .07, .1, '#5d6570', .4, 3.4, 0); b(.4, .1, .22, '#33373c', .8, 3.36, 0); b(.34, .03, .18, '#fff6c8', .8, 3.3, 0); }
+    else if (k === 'hedge') { b(n * T, .7, .8, '#4d7f4a', 0, .35, 0); b(n * T * .98, .2, .7, '#5f9558', 0, .78, 0); }
+    else if (k === 'helipad') { c(4.6, 4.6, .04, '#6a6d70', 0, .01, 0, 28); c(4.2, 4.2, .045, '#e8e4d4', 0, .012, 0, 28); c(3.9, 3.9, .05, '#6a6d70', 0, .014, 0, 28); for (const x of [-1.0, 1.0]) b(.5, .06, 2.8, '#e8e4d4', x, .02, 0); b(2.0, .06, .5, '#e8e4d4', 0, .02, 0); for (let i = 0; i < 4; i++) c(.12, .12, .1, RED, Math.cos(i * PI2 + .78) * 4.4, .06, Math.sin(i * PI2 + .78) * 4.4, 8); }
+    else if (k === 'canopy') { for (const [dx, dz] of [[-1.6, -2.2], [-1.6, 2.2]]) c(.1, .1, 2.2, '#b9c2c8', dx, 1.1, dz, 8); b(4.0, .22, 5.2, WHITE, 0, 2.3, 0); b(.1, .5, 5.2, RED, -2.0, 2.3, 0); b(4.0, .5, .1, RED, 0, 2.3, -2.6); b(4.0, .5, .1, RED, 0, 2.3, 2.6); cross(-2.06, 2.3, 0, .4, 'x'); }
+    else if (k === 'bollard') { for (let i = 0; i < n; i++) { c(.09, .09, .7, '#e0b23a', (i - (n - 1) / 2) * 1.2, .35, 0, 8); c(.1, .1, .1, '#22252a', (i - (n - 1) / 2) * 1.2, .55, 0, 8); } }
+    else if (k === 'corpse') { const cl = ['#4f5a66', '#6a5a48', '#7a3f38', '#4a5f4a', '#8a8f96'][((t.v || 0) * 5) | 0], sk = '#8f9a84'; b(.9, .02, .7, '#5a1512', .1, .068, .1, .5); b(.5, .02, .5, '#6a1a16', -.3, .069, -.2, 1.2);
+      b(.62, .2, .36, cl, 0, .14, 0); b(.24, .2, .24, sk, .46, .14, .02); b(.5, .14, .14, '#3d4046', -.56, .1, .1, .12); b(.5, .14, .14, '#3d4046', -.55, .1, -.1, -.2); b(.4, .1, .1, sk, .1, .09, .33, .6); b(.38, .1, .1, sk, .15, .09, -.32, -.9); }
+    else if (k === 'bodybag') { const col = (t.v || 0) < .5 ? '#e8e6dc' : '#2e3136'; b(1.5, .24, .5, col, 0, .13, 0); b(1.1, .3, .44, col, -.05, .16, 0); b(1.4, .02, .04, '#8a8f96', 0, .3, 0); if ((t.v || 0) < .5) b(.5, .02, .34, '#6a1a16', .2, .29, 0, .3); }
+    else if (k === 'debris') { for (let i = 0; i < 7; i++) { const a = hash(t.x * 9 + i, t.y * 7), c2 = hash(t.y * 5 + i, t.x * 3); b(.12 + a * .3, .05 + c2 * .08, .1 + c2 * .22, ['#8a8478', '#6f6a60', '#a59f8e', '#5d6066', '#b8b2a2'][i % 5], (a - .5) * 1.5, .05, (c2 - .5) * 1.5, i * 1.1, 0, a * .4); } }
+    else if (k === 'tipped') { b(.5, .06, .5, '#6a7078', 0, .28, 0, 0, 0, 1.45); b(.5, .45, .06, '#6a7078', -.2, .12, 0, 0, 1.5, 0); for (const z of [-.22, .22]) b(.44, .05, .05, '#4a4f55', .22, .26, z); b(.3, .012, .22, '#f4f1e6', .5, .07, .3, .4); }
+    /* 3D.316 the greenhouse's pieces */
+    else if (k === 'planter') { const len = n * T * .92; b(len, .34, .9, '#8a6a44', 0, .17, 0); b(len - .12, .06, .78, '#4a3a2a', 0, .35, 0); for (let i = 0; i < n * 4; i++) { const a = hash(t.x * 5 + i, t.y * 3), x = -len / 2 + .3 + i * (len - .6) / Math.max(1, n * 4 - 1); if (a < .2) { c(.03, .03, .2, '#6a5a3a', x, .45, 0, 5); continue; } Q.put(new THREE.IcosahedronGeometry(.16 + a * .16, 0), ['#4d8a52', '#5f9a5c', '#3d7048', '#7a9a4a', '#8a8f4a'][i % 5], M4(cx, 0, cz, ry).multiply(M4(x, .5 + a * .2, (a - .5) * .3))); if (a > .7) b(.1, .1, .1, ['#c9412e', '#e0b23a', '#b06ab3'][i % 3], x + .1, .68 + a * .1, .1); } }
+    else if (k === 'potbench') { b(1.9, .06, .7, '#9a7a52', 0, .78, 0); b(1.9, .05, .6, '#8a6a44', 0, .3, 0); for (const [dx, dz] of [[-.88, -.3], [.88, -.3], [-.88, .3], [.88, .3]]) b(.07, .78, .07, '#6a4a2e', dx, .39, dz); for (let i = 0; i < 5; i++) { c(.1, .07, .16, '#b0613c', -.7 + i * .35, .89, (i % 2) * .16 - .08, 7); if (i % 2) Q.put(new THREE.IcosahedronGeometry(.11, 0), '#5f9a5c', M4(cx, 0, cz, ry).multiply(M4(-.7 + i * .35, 1.04, (i % 2) * .16 - .08))); } b(.5, .14, .3, '#5a4630', .4, .4, 0); }
+    else if (k === 'pots') { for (const [dx, dz, h] of [[0, 0, 3], [.3, .12, 2], [-.1, .32, 1]]) for (let i = 0; i < h; i++) c(.15, .1, .2, i % 2 ? '#b0613c' : '#a0553a', dx, .1 + i * .13, dz, 8); c(.14, .1, .2, '#b0613c', .5, .1, -.3, 8, 0, 1.4); for (let i = 0; i < 4; i++) b(.1, .03, .14, '#a0553a', .6 + i * .1, .04, .2 - i * .12, i); }
+    else if (k === 'palm') { const hgt = t.h || 2.6; for (let i = 0; i < 5; i++) c(.13 - i * .012, .15 - i * .012, hgt / 5, i % 2 ? '#7a5a3a' : '#6a4d32', Math.sin(i * .5) * .1, hgt / 10 + i * hgt / 5, 0, 7); for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; b(1.5, .04, .34, i % 2 ? '#4d8a52' : '#3d7048', Math.cos(a) * .7 + .2, hgt + .05, Math.sin(a) * .7, -a, 0, -.45); } c(.5, .42, .5, '#8a6a44', 0, .25, 0, 10); c(.46, .46, .05, '#4a3a2a', 0, .5, 0, 10); }
+    else if (k === 'sacks') { for (const [dx, dy, dz, r] of [[0, .12, 0, 0], [.1, .34, .05, .3], [-.5, .12, .3, 1.2], [.6, .1, -.35, .6]]) b(.7, .22, .44, dy > .3 ? '#c9b98a' : '#b5a47a', dx, dy, dz, r); b(.3, .02, .3, '#4a3a2a', .9, .07, .2); }
+    else if (k === 'barrow') { b(.9, .3, .56, '#4d7a52', 0, .5, 0, 0, 0, -.12); b(.8, .05, .46, '#4a3a2a', 0, .64, 0); c(.2, .2, .08, '#22252a', .55, .2, 0, 10, PI2); for (const z of [-.24, .24]) { b(.9, .04, .04, '#6a4a2e', -.55, .5, z, 0, 0, .15); b(.05, .4, .05, '#6a4a2e', -.3, .2, z); } }
+    else if (k === 'coldframe') { b(n * T * .9, .3, 1.0, '#8a6a44', 0, .15, 0); b(n * T * .9, .04, 1.0, '#bfe6ee', 0, .36, 0, 0, .12); for (let i = 0; i <= n * 2; i++) b(.04, .06, 1.02, '#f2f2ee', -n * T * .45 + i * T * .45, .38, 0, 0, .12); }
+    else if (k === 'plot') { const w = (t.w || 3) * T, h = (t.h || 3) * T; b(w, .05, h, '#5a4630', 0, .02, 0); for (let r = 0; r < (t.h || 3) * 2; r++) { b(w * .94, .1, .26, '#4a3a2a', 0, .06, -h / 2 + .4 + r * (h - .8) / Math.max(1, (t.h || 3) * 2 - 1)); for (let i = 0; i < (t.w || 3) * 2; i++) if (hash(t.x * 3 + i, t.y + r * 7) < .7) Q.put(new THREE.IcosahedronGeometry(.13, 0), ['#5f9a5c', '#7a9a4a', '#4d8a52'][(i + r) % 3], M4(cx, 0, cz, ry).multiply(M4(-w / 2 + .4 + i * (w - .8) / Math.max(1, (t.w || 3) * 2 - 1), .2, -h / 2 + .4 + r * (h - .8) / Math.max(1, (t.h || 3) * 2 - 1)))); } }
+    else if (k === 'lily') { for (let i = 0; i < (t.n || 5); i++) { const a = hash(t.x * 7 + i, t.y * 5), d2 = hash(t.y * 3 + i, t.x); c(.16 + a * .14, .16 + a * .14, .02, i % 2 ? '#4d8a52' : '#5f9a5c', (a - .5) * 2.2, .09, (d2 - .5) * 2.0, 8); if (a > .7) c(.05, .09, .08, '#f2c4d4', (a - .5) * 2.2, .14, (d2 - .5) * 2.0, 6); } }
+    else if (k === 'reeds') { for (let i = 0; i < 9; i++) { const a = hash(t.x * 3 + i, t.y * 9); c(.015, .025, .7 + a * .6, i % 2 ? '#7a8f4a' : '#5f7f3f', (a - .5) * 1.2, .35 + a * .3, (hash(t.y + i, t.x * 2) - .5) * .8, 4, (a - .5) * .3, (a - .5) * .3); if (i % 3 === 0) c(.04, .04, .22, '#5a3b23', (a - .5) * 1.2, .9 + a * .5, (hash(t.y + i, t.x * 2) - .5) * .8, 5); } }
+    else if (k === 'glassbits') { for (let i = 0; i < 9; i++) { const a = hash(t.x * 11 + i, t.y * 7), d2 = hash(t.y * 5 + i, t.x * 3); b(.12 + a * .3, .015, .1 + d2 * .22, i % 3 ? '#cfeaf0' : '#e8f6f8', (a - .5) * 1.8, .07, (d2 - .5) * 1.8, i * .9); } b(1.2, .05, .05, '#f2f2ee', .2, .08, .1, .5); b(.9, .05, .05, '#f2f2ee', -.3, .08, -.3, 1.9); }
+    else if (k === 'trellis') { for (let i = 0; i <= n * 2; i++) b(.05, 1.4, .05, '#8a6a44', -n * T * .45 + i * T * .45, .7, 0); for (const y of [.4, .8, 1.2]) b(n * T * .9, .04, .04, '#8a6a44', 0, y, 0); for (let i = 0; i < n * 6; i++) { const a = hash(t.x * 5 + i, t.y); Q.put(new THREE.IcosahedronGeometry(.13 + a * .08, 0), a < .25 ? '#c9412e' : i % 2 ? '#4d8a52' : '#3d7048', M4(cx, 0, cz, ry).multiply(M4(-n * T * .42 + a * n * T * .84, .3 + hash(i, t.x) * 1.0, .08))); } }
+    else if (k === 'compost') { c(.9, 1.1, .5, '#4a3a2a', 0, .25, 0, 9); c(.5, .8, .3, '#5a4630', .1, .6, .1, 8); for (const [dx, dz] of [[-1, -.9], [1, -.9], [-1, .9]]) b(.08, .7, .08, '#8a6a44', dx, .35, dz); b(2.0, .5, .05, '#9a7a52', 0, .35, -.9); b(.05, .5, 1.8, '#9a7a52', -1, .35, 0); }
+    else if (k === 'picket') { const len = n * T; for (let i = 0; i < n * 5; i++) { b(.14, .8, .04, i % 7 === 3 ? '#b8b2a2' : '#e8e4d4', -len / 2 + (i + .5) * len / (n * 5), .4, 0, 0, 0, i % 11 === 5 ? .3 : 0); } for (const y of [.25, .6]) b(len, .05, .05, '#d8d4c4', 0, y, .03); }
+    /* 3D.316 the refinery's pieces */
+    else if (k === 'pipe') { const len = n * T, col = t.col || '#d9b233', y0 = t.y0 != null ? t.y0 : .28; c(.13, .13, len, col, 0, y0, 0, 8, 0, PI2); for (let i = 0; i <= n; i += 2) { b(.14, y0 + .1, .4, '#5d6066', -len / 2 + i * T + .1, (y0 + .1) / 2, 0); c(.16, .16, .08, '#4a4d52', -len / 2 + i * T + .6, y0, 0, 8, 0, PI2); } if (t.wheel) for (let i = 1; i < n; i += 4) { c(.03, .03, .34, '#5d6066', -len / 2 + i * T, y0 + .25, 0, 5); c(.16, .16, .04, RED, -len / 2 + i * T, y0 + .44, 0, 10); } }
+    else if (k === 'piperack') { for (const z of [-.9, .9]) { b(.12, 1.5, .12, '#5d6570', 0, .75, z); b(.5, .06, .5, '#4a4d52', 0, .03, z); } b(.14, .12, 2.0, '#5d6570', 0, 1.5, 0); b(.14, .1, 2.0, '#5d6570', 0, 1.0, 0); }
+    else if (k === 'column') { const hgt = t.h || 5.2; c(.75, .8, hgt, t.col || '#b9b3a6', 0, hgt / 2, 0, 12); c(.5, .75, .5, '#8a857a', 0, hgt + .25, 0, 12); for (const y of [1.6, 3.1, 4.5]) if (y < hgt) { c(1.15, 1.15, .06, '#5d6570', 0, y, 0, 12); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; b(.04, .4, .04, '#e0b23a', Math.cos(a) * 1.1, y + .2, Math.sin(a) * 1.1); } } b(.06, hgt, .3, '#5d6570', .85, hgt / 2, 0); for (let i = 0; i < hgt * 3; i++) b(.06, .03, .3, '#8a8f96', .9, .2 + i / 3, 0); c(.12, .12, 1.6, '#8a4a2c', -.9, 1.0, 0, 6, 0, 0); b(.9, .9 * .2, .06, '#22252a', 0, hgt * .5, .78); }
+    else if (k === 'flare') { const hgt = t.h || 6; c(.14, .2, hgt, '#5d6066', 0, hgt / 2, 0, 8); for (let i = 0; i < 4; i++) { const a = i * PI2 + .78; b(.05, hgt * .8, .05, '#4a4d52', Math.cos(a) * .5, hgt * .4, Math.sin(a) * .5, 0, Math.sin(a) * .08, -Math.cos(a) * .08); } for (const y of [1.5, 3.0, 4.4]) b(1.0, .05, 1.0, '#4a4d52', 0, y, 0, .78); Q.put(new THREE.ConeGeometry(.42, 1.3, 7), '#e8742a', M4(cx, hgt + .6, cz)); Q.put(new THREE.ConeGeometry(.26, .9, 6), '#f2c23a', M4(cx, hgt + .55, cz)); Q.put(new THREE.IcosahedronGeometry(.55, 0), '#3a3530', M4(cx + .5, hgt + 1.9, cz - .2)); Q.put(new THREE.IcosahedronGeometry(.75, 0), '#4a443e', M4(cx + 1.2, hgt + 2.9, cz - .5)); }
+    else if (k === 'spheretank') { Q.put(new THREE.IcosahedronGeometry(1.5, 1), t.col || '#d8d4c6', M4(cx, 2.0, cz)); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; c(.08, .08, 2.0, '#5d6570', Math.cos(a) * 1.2, 1.0, Math.sin(a) * 1.2, 6); } c(1.56, 1.56, .12, '#c9412e', 0, 2.0, 0, 16); b(.08, 2.6, .4, '#5d6570', 1.45, 1.3, 0); c(.3, .3, .2, '#8a857a', 0, 3.55, 0, 8); }
+    else if (k === 'tanker') { c(.85, .85, 4.4, t.col || '#c9c9c9', -.5, 1.25, 0, 14, 0, PI2); for (const x of [-2.6, 1.6]) c(.87, .87, .1, '#8a8f96', x, 1.25, 0, 14, 0, PI2); b(4.6, .2, 1.5, '#3d4046', -.5, .5, 0); b(1.4, 1.5, 1.8, '#b0564a', 2.7, 1.05, 0); b(.5, .5, 1.6, '#56707c', 3.2, 1.35, 0); for (const [dx, dz] of [[-2.2, -.8], [-2.2, .8], [-1.3, -.8], [-1.3, .8], [2.6, -.8], [2.6, .8]]) c(.4, .4, .3, '#22252a', dx, .4, dz, 10, PI2); b(1.2, .5, .03, '#e0b23a', -.5, 1.3, .86); b(.3, .3, .04, RED, -.5, 1.3, .88, 0, 0, .78); }
+    else if (k === 'forklift') { b(1.3, .5, .8, '#e0b23a', 0, .5, 0); b(.6, .7, .7, '#e0b23a', -.3, 1.0, 0); for (const [dx, dz] of [[-.4, -.42], [-.4, .42], [.45, -.42], [.45, .42]]) c(.22, .22, .16, '#22252a', dx, .22, dz, 10, PI2); for (const z of [-.25, .25]) { b(.06, 1.6, .06, '#3d4046', .72, .8, z); b(.9, .05, .1, '#5d6066', 1.2, .12, z); } for (const [dx, dz] of [[-.6, -.36], [-.6, .36], [.1, -.36], [.1, .36]]) b(.05, .7, .05, '#3d4046', dx, 1.2, dz); b(.8, .05, .8, '#3d4046', -.25, 1.55, 0); }
+    else if (k === 'bund') { const w = (t.w || 4) * T, h = (t.h || 4) * T; for (const z of [-h / 2, h / 2]) b(w, .3, .2, '#9a958a', 0, .15, z); for (const x of [-w / 2, w / 2]) b(.2, .3, h, '#9a958a', x, .15, 0); b(w * .7, .015, h * .6, '#2a2622', .1, .068, .1, .2); }
+    else if (k === 'scorch') { const s = t.s || 1; c(1.5 * s, 1.5 * s, .014, '#2a2622', 0, .066, 0, 12); c(.9 * s, .9 * s, .016, '#1c1917', .3 * s, .067, .2 * s, 10); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + (t.x || 0); b(.9 * s, .014, .2 * s, '#2a2622', Math.cos(a) * 1.5 * s, .066, Math.sin(a) * 1.5 * s, -a); } }
+    else if (k === 'hazsign') { b(.08, 1.3, .08, '#5d6066', 0, .65, 0); b(.7, .7, .05, '#e0b23a', 0, 1.3, 0, 0, 0, .78); b(.12, .34, .06, '#22252a', 0, 1.34, .01); b(.12, .1, .06, '#22252a', 0, 1.08, .01); }
+    else if (k === 'firebox') { b(.6, .9, .25, RED, 0, .75, 0); b(.4, .5, .03, '#f2d0c8', 0, .8, .13); c(.1, .1, .5, RED, .6, .3, 0, 8); c(.04, .04, .14, '#22252a', .6, .6, 0, 6); }
+    /* 3D.318 the fair's pieces */
+    else if (k === 'tent') { const c1 = t.col || '#c94a3a', c2 = '#f2ead8'; for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, a2 = (i + 1) / 8 * 6.283, mx = (Math.cos(a) + Math.cos(a2)) * .75, mz = (Math.sin(a) + Math.sin(a2)) * .75; b(1.2, 1.1, .05, i % 2 ? c1 : c2, mx, .55, mz, -(a + a2) / 2 + PI2); } Q.put(new THREE.ConeGeometry(1.75, 1.1, 8), c1, M4(cx, 1.65, cz, .39)); Q.put(new THREE.ConeGeometry(1.2, .8, 8), c2, M4(cx, 1.95, cz, .39)); c(.03, .03, .5, '#8a6a44', 0, 2.5, 0, 5); b(.3, .16, .02, c1, .16, 2.65, 0); }
+    else if (k === 'bunting') { const len = n * T, FC = ['#c94a3a', '#e0b23a', '#3a6ac9', '#3aa04a', '#f2ead8']; for (let i = 0; i <= n; i += 4) c(.05, .05, 2.2, '#8a6a44', -len / 2 + i * T, 1.1, 0, 6); b(len, .02, .02, '#5a4630', 0, 2.1, 0); for (let i = 0; i < n * 3; i++) if (i % 9 !== 4) Q.put(new THREE.ConeGeometry(.16, .3, 3), FC[i % 5], M4(cx, 0, cz, ry).multiply(M4(-len / 2 + (i + .5) * len / (n * 3), 1.92 - Math.abs(((i % 12) - 6) / 6) * .12, 0, 0, Math.PI, 0))); }
+    else if (k === 'ferris') { /* 3D.322 a real county-fair wheel is 16 to 27 m tall: about 12 units across here (was 6) */ const rad = t.rad || 5.6, hy = rad + 1.3, leg = rad * .55, nn = 16; for (const z of [-.9, .9]) { b(.22, Math.hypot(hy, leg) + .2, .22, '#5d6570', -leg / 2, hy / 2, z, 0, 0, -Math.atan2(leg, hy)); b(.22, Math.hypot(hy, leg) + .2, .22, '#5d6570', leg / 2, hy / 2, z, 0, 0, Math.atan2(leg, hy)); b(leg * .55, .14, .14, '#5d6570', 0, hy * .5, z); b(.5, .3, .5, '#3d4046', -leg, .15, z); b(.5, .3, .5, '#3d4046', leg, .15, z); } c(.26, .26, 2.2, '#3d4046', 0, hy, 0, 10, PI2); c(.7, .7, .2, '#e0b23a', 0, hy, .62, 12, PI2); c(.7, .7, .2, '#e0b23a', 0, hy, -.62, 12, PI2);
+      for (let i = 0; i < nn; i++) { const a = i / nn * 6.283, a2 = (i + 1) / nn * 6.283, ch = 2 * rad * Math.sin(3.1416 / nn); for (const z of [-.55, .55]) { b(ch, .1, .1, i % 2 ? '#c94a3a' : '#f2ead8', (Math.cos(a) + Math.cos(a2)) * rad / 2, hy + (Math.sin(a) + Math.sin(a2)) * rad / 2, z, 0, 0, (a + a2) / 2 + PI2); b(ch * .62, .07, .07, '#e0b23a', (Math.cos(a) + Math.cos(a2)) * rad * .31, hy + (Math.sin(a) + Math.sin(a2)) * rad * .31, z, 0, 0, (a + a2) / 2 + PI2); b(rad, .06, .06, '#8a8f96', Math.cos(a) * rad / 2, hy + Math.sin(a) * rad / 2, z, 0, 0, a); c(.07, .07, .06, '#fff6c8', Math.cos(a) * rad, hy + Math.sin(a) * rad, z * 1.12, 6, PI2); }
+        b(.08, .08, 1.2, '#8a8f96', Math.cos(a) * rad, hy + Math.sin(a) * rad, 0); const gc = ['#c94a3a', '#e0b23a', '#3a6ac9', '#3aa04a'][i % 4], gx = Math.cos(a) * rad, gy = hy + Math.sin(a) * rad; b(.05, .5, .05, '#5d6570', gx, gy - .25, 0); b(.9, .45, .8, gc, gx, gy - .72, 0); b(.96, .06, .86, '#f2ead8', gx, gy - .47, 0); b(1.0, .06, .9, gc, gx, gy - .2, 0, 0, 0, 0); }
+      b(leg * 2 + 1.6, .2, 3.0, '#6a4a2e', 0, .1, 0); b(1.6, .5, .1, '#c94a3a', 0, .55, 1.5); b(1.1, 1.3, 1.0, '#3a6ac9', leg + 1.2, .65, 1.2); b(1.3, .1, 1.2, '#f2ead8', leg + 1.2, 1.35, 1.2); for (let i = 0; i < 5; i++) { b(.07, .9, .07, '#8a8f96', -leg + i * leg * .5, .45, 1.9); } b(leg * 2, .06, .06, '#8a8f96', 0, .85, 1.9); }
+    else if (k === 'booth') { b(1.1, 1.3, 1.1, t.col || '#3a6ac9', 0, .65, 0); b(.9, .4, .04, '#22252a', 0, .95, .56); b(1.4, .1, 1.4, '#f2ead8', 0, 1.4, 0); b(1.3, .2, .05, '#e0b23a', 0, 1.6, .6); for (let i = 0; i < 5; i++) b(.22, 1.3, .03, '#f2ead8', -.44 + i * .22, .65, -.56, 0, 0, 0); }
+    else if (k === 'pumpkins') { for (let i = 0; i < (t.n || 6); i++) { const a = hash(t.x * 5 + i, t.y * 9), d2 = hash(t.y * 3 + i, t.x * 7), r0 = .14 + a * .14; Q.put(new THREE.IcosahedronGeometry(r0, 1), i % 4 === 3 ? '#b8732a' : '#e0862a', M4(cx, 0, cz, ry).multiply(M4((a - .5) * 1.5, r0 * .8, (d2 - .5) * 1.3, 0, 0, 0, 1, .8, 1))); c(.02, .03, .1, '#5a6a2a', (a - .5) * 1.5, r0 * 1.6 + .03, (d2 - .5) * 1.3, 5); } }
+    else if (k === 'haybale') { for (let i = 0; i < (t.n || 2); i++) { b(1.0, .5, .55, i % 2 ? '#d2b04e' : '#c9a644', (i % 2) * .15 - (i > 1 ? .5 : 0), .25 + (i > 1 ? .5 : 0) * 0 + Math.floor(i / 2) * .5, i % 2 ? .6 : 0, i * .2); } for (let i = 0; i < 5; i++) b(.5, .012, .05, '#d9b858', (hash(t.x + i, t.y) - .5) * 2, .07, (hash(t.y + i, t.x) - .5) * 2, i * 1.3); }
+    else if (k === 'balloons') { c(.02, .02, 1.0, '#8a6a44', 0, .5, 0, 5); for (const [dx, dy, dz, col] of [[0, 1.5, 0, '#c94a3a'], [.2, 1.3, .1, '#e0b23a'], [-.18, 1.35, -.08, '#3a6ac9'], [.05, 1.15, -.2, '#3aa04a']]) { Q.put(new THREE.IcosahedronGeometry(.17, 1), col, M4(cx + dx, dy, cz + dz, 0, 0, 0, 1, 1.2, 1)); } }
+    else if (k === 'fairarch') { for (const z of [-2.4, 2.4]) { b(.5, 3.0, .5, '#c94a3a', 0, 1.5, z); for (let i = 0; i < 3; i++) b(.52, .3, .52, '#f2ead8', 0, .5 + i * 1.0, z); } b(.4, .9, 5.4, '#e0b23a', 0, 3.3, 0); b(.44, .5, 3.6, '#c94a3a', 0, 3.3, 0); for (let i = 0; i < 7; i++) c(.1, .1, .08, '#fff6c8', .24, 3.3, -1.5 + i * .5, 8, 0, PI2); Q.put(new THREE.IcosahedronGeometry(.34, 1), '#c9412e', M4(cx, 4.1, cz)); c(.03, .04, .12, '#5a6a2a', 0, 4.45, 0, 5); }
+    else if (k === 'backdrop') { const len = n * T; for (let i = 0; i < n * 4; i++) b(len / (n * 4), 1.6, .06, i % 2 ? '#c94a3a' : '#f2ead8', -len / 2 + (i + .5) * len / (n * 4), .8, 0); b(len + .2, .16, .16, '#8a6a44', 0, 1.66, 0); Q.put(new THREE.IcosahedronGeometry(.42, 1), '#c9412e', M4(cx, 0, cz, ry).multiply(M4(0, 1.05, .1))); c(.5, .5, .04, '#e0b23a', 0, 1.05, .05, 14, PI2); }
+    else if (k === 'pa') { b(.7, .6, .6, '#22252a', 0, .3, 0); b(.6, .55, .55, '#2e3136', 0, .88, 0); for (const y of [.3, .88]) c(.2, .2, .04, '#5d6066', 0, y, .31, 10, PI2); c(.04, .04, 1.6, '#5d6066', .5, .8, .2, 5); b(.34, .26, .3, '#33373c', .5, 1.55, .25); }
+    else if (k === 'pen') { const w = (t.w || 2) * T, h = (t.h || 2) * T; for (const z of [-h / 2, h / 2]) for (const y of [.3, .65]) b(w, .07, .07, '#9a7a52', 0, y, z); for (const x of [-w / 2, w / 2]) for (const y of [.3, .65]) b(.07, .07, h, '#9a7a52', x, y, 0); for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b(.1, .8, .1, '#6a4a2e', dx * w / 2, .4, dz * h / 2); b(w * .9, .02, h * .9, '#c9a644', 0, .066, 0); b(1.0, .25, .35, '#6a4a2e', 0, .14, -h / 2 + .4); b(.8, .2, .5, '#8a8478', .2, .16, .2, .5); }
+    else if (k === 'applecrate') { for (const [dx, dy, dz, r] of [[0, .2, 0, 0], [.75, .2, .1, .2], [.3, .6, .05, .1]]) { b(.7, .38, .5, '#9a7a52', dx, dy, dz, r); for (let i = 0; i < 4; i++) b(.14, .1, .14, i % 3 ? '#c9412e' : '#8fae48', dx - .2 + (i % 2) * .34, dy + .22, dz - .1 + Math.floor(i / 2) * .2, r); } for (let i = 0; i < 4; i++) b(.12, .1, .12, '#8a2f24', -.6 - i * .2, .1, .4 - i * .15); }
+    else if (k === 'track') { const len = n * T; for (const z of [-.3, .3]) b(len, .06, .06, '#5d6066', 0, .1, z); for (let i = 0; i < n * 2; i++) b(.14, .04, .9, '#5a4630', -len / 2 + (i + .5) * T / 2, .07, 0); }
+    else if (k === 'ridecar') { b(1.1, .4, .7, t.col || '#5a2f5a', 0, .4, 0); b(.1, .5, .7, t.col || '#5a2f5a', -.5, .75, 0); b(.5, .1, .6, '#22252a', -.1, .5, 0); b(.3, .3, .5, '#c94a3a', .55, .55, 0, 0, 0, .5); for (const [dx, dz] of [[-.35, -.36], [.35, -.36], [-.35, .36], [.35, .36]]) c(.12, .12, .06, '#22252a', dx, .14, dz, 8, PI2); }
+    else if (k === 'coffin') { b(1.6, .3, .6, '#4a3528', 0, .15, 0); b(1.5, .06, .52, '#5a4030', .15, .36, .12, .2); b(.4, .04, .08, '#b9b3a6', 0, .34, 0); b(.08, .04, .3, '#b9b3a6', 0, .34, 0); Q.put(new THREE.IcosahedronGeometry(.14, 0), '#e8dcc0', M4(cx, 0, cz, ry).multiply(M4(-.9, .14, .5))); for (let i = 0; i < 3; i++) b(.4, .05, .06, '#d2c8b0', -.8 + i * .1, .05, .7 + i * .12, i); }
+    else if (k === 'appletree') { c(.12, .18, 1.3, '#5a3b23', 0, .65, 0, 7); Q.put(new THREE.IcosahedronGeometry(1.0, 1), '#5f8f3c', M4(cx, 1.8, cz)); Q.put(new THREE.IcosahedronGeometry(.7, 1), '#6fa048', M4(cx + .5, 2.2, cz + .3)); for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; b(.14, .14, .14, '#c9412e', Math.cos(a) * .85, 1.5 + (i % 3) * .3, Math.sin(a) * .85); } for (let i = 0; i < 4; i++) b(.12, .1, .12, '#a8362a', Math.cos(i * 2.1) * 1.0, .1, Math.sin(i * 2.1) * 1.0); }
+    else if (k === 'tractor') { b(1.6, .7, .9, '#3a8a4a', .3, .9, 0); b(.8, .9, .9, '#3a8a4a', -.7, 1.3, 0); b(.7, .5, .8, '#56707c', -.7, 1.45, 0); for (const z of [-.6, .6]) { c(.6, .6, .3, '#22252a', -.7, .6, z, 12, PI2); c(.3, .3, .3, '#e0b23a', -.7, .6, z * 1.02, 8, PI2); c(.34, .34, .24, '#22252a', .9, .34, z, 10, PI2); } c(.06, .06, .7, '#3d4046', .8, 1.5, 0, 6); b(2.4, .12, 1.3, '#8a6a44', -2.9, .6, 0); b(2.4, .4, .06, '#9a7a52', -2.9, .85, .64); b(2.4, .4, .06, '#9a7a52', -2.9, .85, -.64); for (const z of [-.7, .7]) c(.3, .3, .2, '#22252a', -2.9, .3, z, 10, PI2); b(.9, .4, .5, '#d2b04e', -2.6, .9, 0); b(.9, .4, .5, '#c9a644', -3.4, .9, .1, .3); }
+    /* 3D.318 the depot's pieces */
+    else if (k === 'snowdrift') { const s = t.s || 1; for (const [dx, dz, r0] of [[0, 0, .9], [.8, .2, .6], [-.7, -.2, .55], [.2, .7, .5]]) Q.put(new THREE.IcosahedronGeometry(r0 * s, 1), '#f2f6f8', M4(cx, 0, cz, ry).multiply(M4(dx * s, .02, dz * s, 0, 0, 0, 1.3, .38, 1))); }
+    else if (k === 'atruck') { b(1.5, 1.2, 1.7, '#5f6b45', 1.9, .95, 0); b(.5, .5, 1.5, '#56707c', 2.4, 1.25, 0); b(3.2, .25, 1.7, '#4a5538', -.4, .6, 0); b(3.1, 1.3, 1.66, t.canvas === 0 ? '#5f6b45' : '#7a7f5a', -.45, 1.4, 0); for (let i = 0; i < 4; i++) b(.06, 1.32, 1.7, '#5a5f40', -1.8 + i * .9, 1.4, 0); for (const [dx, dz] of [[-1.6, -.8], [-1.6, .8], [-.7, -.8], [-.7, .8], [1.9, -.8], [1.9, .8]]) c(.42, .42, .3, '#22252a', dx, .42, dz, 10, PI2); b(.08, .3, 1.5, '#3d4046', 2.7, .5, 0); if (t.snow !== 0) b(3.0, .1, 1.5, '#f2f6f8', -.45, 2.1, 0); }
+    else if (k === 'jeep') { b(2.4, .5, 1.3, '#5f6b45', 0, .6, 0); b(.9, .4, 1.3, '#5f6b45', .75, .95, 0); b(.05, .5, 1.2, '#56707c', .25, 1.2, 0, 0, 0, -.2); for (const [dx, dz] of [[-.8, -.66], [-.8, .66], [.8, -.66], [.8, .66]]) c(.34, .34, .24, '#22252a', dx, .34, dz, 10, PI2); c(.3, .3, .2, '#22252a', -1.3, .75, 0, 10, 0, PI2); b(.9, .3, .5, '#3d4046', -.6, .95, 0); b(.3, .3, .03, '#f2f6f8', .9, .9, .66); }
+    else if (k === 'acrates') { for (const [dx, dy, dz, r, s] of [[0, .22, 0, 0, 1], [.85, .22, .1, .15, 1], [.35, .64, .05, .1, .9], [-.7, .16, .4, .5, .7]]) { b(.8 * s, .42 * s, .6 * s, '#5f6b45', dx, dy, dz, r); b(.82 * s, .06, .62 * s, '#4a5538', dx, dy + .1, dz, r); b(.3 * s, .12, .02, '#e8e4cc', dx, dy, dz + .31 * s, r); } }
+    else if (k === 'sandbags') { for (let r = 0; r < 3; r++) for (let i = 0; i < n * 5 - r; i++) b(.44, .2, .5, (i + r) % 2 ? '#b5a47a' : '#a89870', -n * T * .45 + r * .22 + i * .46, .1 + r * .2, 0); b(n * T * .8, .06, .4, '#f2f6f8', 0, .68, 0); }
+    else if (k === 'flagp') { c(.05, .06, 3.6, '#c9c9c9', 0, 1.8, 0, 6); b(1.0, .6, .04, t.col || '#5f6b45', .55, 3.25, 0); b(1.0, .2, .05, '#e8e4cc', .55, 3.25, 0); c(.32, .38, .22, '#8a8a84', 0, .11, 0, 8); }
+    else if (k === 'ruts') { const len = t.len || 6; for (const z of [-.5, .5]) { b(len, .012, .22, '#b9c2c8', 0, .066, z); b(len * .8, .013, .1, '#8f989e', .2, .067, z + .03); } }
+    else if (k === 'iceblocks') { for (const [dx, dy, dz] of [[0, .25, 0], [.75, .25, .05], [.35, .75, 0], [1.5, .25, -.05], [1.1, .75, .05]]) b(.7, .5, .6, '#bfe6f2', dx, dy, dz); for (const [dx, dz] of [[.3, .5], [1.2, .55]]) b(.4, .06, .3, '#dff4fa', dx, .04, dz, .4); }
+    else if (k === 'locker') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .62; b(.6, 1.5, .45, i % 3 === 1 ? '#6f7f8a' : '#5f6f7a', x, .75, 0); b(.03, 1.3, .02, '#3d4046', x + .2, .75, .24); b(.3, .1, .02, '#3d4046', x, 1.25, .24); } }
+    else if (k === 'heli') { const col = t.col || '#5f6b45'; Q.put(new THREE.IcosahedronGeometry(1.0, 1), col, M4(cx, 0, cz, ry).multiply(M4(0, 1.3, 0, 0, 0, 0, 1.7, 1, 1))); b(1.0, .7, 1.3, '#56707c', 1.2, 1.4, 0); b(3.2, .3, .3, col, -2.6, 1.5, 0, 0, 0, .08); b(.1, .9, .5, col, -4.1, 1.9, 0); c(.4, .4, .04, '#3d4046', -4.1, 2.0, .3, 10, PI2); c(.08, .08, .5, '#3d4046', 0, 2.3, 0, 6); for (let i = 0; i < 4; i++) b(4.6, .04, .22, '#2e3136', Math.cos(i * PI2 + .4) * 2.3, 2.56 - (i % 2) * .5, Math.sin(i * PI2 + .4) * 2.3, -(i * PI2 + .4), 0, i % 2 ? -.22 : 0); for (const z of [-.8, .8]) { b(2.4, .08, .08, '#3d4046', .1, .2, z); for (const x of [-.6, .7]) b(.06, .7, .06, '#3d4046', x, .55, z * .9); } b(1.6, .1, 1.6, '#f2f6f8', -.2, 2.1, 0); }
+    else if (k === 'radar') { b(1.6, 1.0, 1.6, '#8a8f96', 0, .5, 0); c(.1, .1, 1.4, '#5d6570', 0, 1.7, 0, 6); Q.put(new THREE.ConeGeometry(1.5, .6, 14, 1, true), '#d8dde0', M4(cx, 2.7, cz, .6, -1.0)); c(.03, .03, 1.0, '#5d6570', .3, 2.9, .5, 5, -1.0); b(1.7, .1, 1.7, '#f2f6f8', 0, 1.05, 0); }
+    /* 3D.319 lab and office pieces */
+    else if (k === 'labbench') { const w = n * 1.2; b(w, .8, .6, '#e6eaec', 0, .4, 0); b(w + .06, .05, .68, '#3d4a52', 0, .83, 0); for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * 1.2; c(.07, .1, .22, ['#8fd0a0', '#d0c26a', '#9ab8d8'][i % 3], x - .3, .97, .08, 8); c(.03, .03, .16, '#dfeef2', x - .3, 1.15, .08, 6); b(.28, .05, .2, '#2e3338', x + .22, .88, 0); b(.07, .3, .07, '#2e3338', x + .3, 1.02, -.04); b(.07, .07, .22, '#dfe8ec', x + .22, 1.14, 0, 0, .5); b(.34, .04, .1, '#b9c2c8', x - .05, .87, -.2); for (let j = 0; j < 4; j++) c(.018, .018, .14, j % 2 ? '#c9412e' : '#6ad08a', x - .17 + j * .08, .95, -.2, 5); } }
+    else if (k === 'fumehood') { b(1.3, .8, .7, '#dfe4e6', 0, .4, 0); b(1.36, .05, .74, '#3d4a52', 0, .83, 0); b(1.3, 1.0, .06, '#cfd6d9', 0, 1.35, -.32); for (const x of [-.62, .62]) b(.06, 1.0, .7, '#cfd6d9', x, 1.35, 0); b(1.3, .14, .7, '#b9c2c8', 0, 1.9, 0); b(1.18, .36, .03, '#a8d4dc', 0, 1.62, .33); c(.09, .11, .2, '#d0c26a', -.2, .96, 0, 8); c(.12, .12, .5, '#8a9499', .3, 2.2, -.1, 8); }
+    else if (k === 'tube') { const g2 = t.col || '#7fd6a4'; c(.46, .5, .26, '#4a5560', 0, .13, 0, 12); c(.42, .42, .14, '#33373c', 0, .33, 0, 12); if (t.broken) { c(.38, .38, .34, g2, 0, .56, 0, 10); c(.95, .95, .02, '#5fae6a', .3, .035, .25, 12); for (let i = 0; i < 6; i++) b(.12, .02, .16, '#cfeee0', .5 * Math.cos(i * 1.3) + .2, .05, .6 * Math.sin(i * 1.3) + .3, i); } else { c(.38, .38, 1.25, g2, 0, 1.02, 0, 10); b(.2, .62, .18, '#4f6a54', 0, .85, 0); c(.11, .11, .2, '#4f6a54', 0, 1.26, 0, 6); c(.44, .44, .16, '#4a5560', 0, 1.72, 0, 12); } b(.3, .22, .1, '#22252a', 0, .32, .46); b(.08, .05, .11, '#6ad08a', -.06, .34, .47); b(.08, .05, .11, RED, .07, .34, .47); }
+    else if (k === 'serverrack') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .72; b(.68, 1.75, .8, '#2e3338', x, .88, 0); for (let j = 0; j < 6; j++) { b(.56, .16, .03, '#454c54', x, .3 + j * .26, .41); b(.05, .04, .04, (i + j) % 3 ? '#6ad08a' : '#e0b23a', x - .2, .3 + j * .26, .42); } } }
+    else if (k === 'biosign') { b(.56, .56, .04, '#e0b23a', 0, 1.2, 0); c(.15, .15, .05, '#22252a', 0, 1.2, .01, 10, PI2); c(.07, .07, .06, '#e0b23a', 0, 1.2, .012, 8, PI2); for (let i = 0; i < 3; i++) b(.1, .1, .05, '#22252a', .17 * Math.sin(i * 2.094), 1.2 + .17 * Math.cos(i * 2.094), .01); }
+    else if (k === 'shower') { b(1.0, .03, 1.0, '#e0b23a', 0, .05, 0); for (const x of [-.48, .48]) b(.05, 1.9, .05, '#e0b23a', x, .95, -.4); b(1.0, .05, .05, '#e0b23a', 0, 1.9, -.4); b(.05, .05, .5, '#e0b23a', 0, 1.9, -.15); c(.16, .1, .08, '#b9c2c8', 0, 1.82, .1, 8); b(.3, .24, .04, '#3aa04a', 0, 1.5, -.42); }
+    else if (k === 'frontdesk') { const col = t.col || '#3c78c9'; b(3.2, .95, .7, '#e8ecee', 0, .48, 0); b(3.3, .07, .82, '#3d4a52', 0, .99, 0); b(3.2, .16, .04, col, 0, .62, .36); b(.44, .3, .05, '#22252a', -.8, 1.2, -.12); b(.44, .3, .05, '#22252a', .7, 1.2, -.12); b(.5, .03, .35, '#ffffff', -.1, 1.04, .05, .2); }
+    else if (k === 'sofa') { const col = t.col || '#5a6f8a'; b(1.7, .34, .72, col, 0, .27, 0); b(1.7, .5, .18, col, 0, .62, -.3); for (const x of [-.8, .8]) b(.16, .5, .72, col, x, .38, 0); b(.74, .08, .5, '#7d92ac', -.38, .47, .06); b(.74, .08, .5, '#7d92ac', .38, .47, .06); }
+    else if (k === 'turnstile') { for (let i = 0; i <= n; i++) { const x = (i - n / 2) * 1.0; b(.24, .95, 1.0, '#8a9499', x, .48, 0); b(.26, .05, 1.02, '#3d4a52', x, .97, 0); b(.1, .06, .1, i % 2 ? RED : '#6ad08a', x, 1.01, .3); if (i < n) b(.74, .05, .05, '#d8dde0', x + .5, .7, 0, 0, 0, i % 2 ? .0 : .5); } }
+    else if (k === 'cubicle') { const pc = t.col || '#8a97a8'; b(1.6, 1.15, .06, pc, 0, .58, -.72); b(.06, 1.15, 1.44, pc, -.78, .58, 0); b(1.6, .05, .08, '#5d6570', 0, 1.17, -.72); b(1.46, .06, .62, '#c9b48a', 0, .64, -.38); for (const x of [-.66, .66]) b(.05, .62, .56, '#8a9499', x, .31, -.38); b(.44, .3, .05, '#22252a', .1, .95, -.56); b(.38, .24, .06, '#56707c', .1, .95, -.55); b(.06, .12, .06, '#22252a', .1, .74, -.56); b(.4, .03, .14, '#dfe0dc', .1, .69, -.3); b(.26, .03, .2, '#ffffff', -.4, .69, -.36, .3); b(.44, .07, .44, '#33373c', .05, .42, .22, t.v ? .6 : .1); b(.44, .46, .07, '#33373c', .05, .68, .44, t.v ? .6 : .1); c(.04, .04, .4, '#22252a', .05, .2, .22, 6); }
+    else if (k === 'filecab') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .56, hh = hash(i * 7 + Math.round(t.x * 3), Math.round(t.y * 5)); b(.54, 1.3, .62, i % 2 ? '#8f968f' : '#9aa19a', x, .65, 0); for (let j = 0; j < 4; j++) { const open = hh > .55 && j === Math.floor(hh * 40) % 4; b(.46, .26, open ? .5 : .03, '#aab1aa', x, .2 + j * .31, open ? .5 : .32); b(.16, .04, .04, '#5d6570', x, .24 + j * .31, open ? .76 : .34); if (open) b(.4, .06, .44, '#f2f0e8', x, .34 + j * .31, .5); } } }
+    else if (k === 'shelves') { const w = n * 1.2; for (const x of [-w / 2, w / 2]) b(.06, 1.8, .5, '#6f7a80', x, .9, 0); for (let j = 0; j < 4; j++) { b(w, .04, .5, '#8a9499', 0, .12 + j * .5, 0); for (let i = 0; i < n * 3; i++) { const hh = hash(i * 5 + j * 11 + Math.round(t.x * 7), j + Math.round(t.y * 3)); if (hh < .2) continue; b(.32, .3 + hh * .1, .4, hh > .7 ? '#b89a68' : hh > .45 ? '#a88a58' : '#c9b48a', -w / 2 + .24 + i * .39, .3 + j * .5, 0); b(.14, .1, .02, '#f2f0e8', -w / 2 + .24 + i * .39, .32 + j * .5, .21); } } }
+    else if (k === 'shredder') { b(.6, .7, .5, '#4a4f55', 0, .35, 0); b(.64, .14, .54, '#33373c', 0, .77, 0); b(.4, .02, .06, '#111417', 0, .85, 0); b(.06, .04, .06, RED, .22, .85, .18); b(.36, .3, .02, '#f2f0e8', 0, .98, 0, 0, .12); c(.12, .62, .3, '#f2f0e8', .15, .15, .62, 9); for (let i = 0; i < 9; i++) b(.04, .015, .34, i % 3 ? '#f2f0e8' : '#e4dfd0', .2 + .7 * Math.cos(i * 2.1), .04, .6 + .55 * Math.sin(i * 1.7), i * .7); }
+    else if (k === 'paperpile') { const s = t.s || 1; c(.14 * s, 1.0 * s, .5 * s, '#f2f0e8', 0, .25 * s, 0, 10); c(.1 * s, .6 * s, .32 * s, '#e4dfd0', .8 * s, .16 * s, .4 * s, 8); c(.08 * s, .45 * s, .22 * s, '#f7f5ee', -.7 * s, .11 * s, .5 * s, 8); for (let i = 0; i < 22; i++) b(.05, .015, .4, i % 3 ? '#f2f0e8' : '#e4dfd0', (1.0 + (i % 3) * .3) * s * Math.cos(i * 2.4), .04, (1.0 + (i % 4) * .25) * s * Math.sin(i * 1.3), i * .9); }
+    else if (k === 'copier') { b(.85, .85, .62, '#dfe0dc', 0, .43, 0); b(.9, .12, .66, '#bfc3c4', 0, .92, 0); b(.3, .05, .2, '#33373c', .22, 1.0, .18, 0, .3); b(.5, .04, .4, '#dfe0dc', -.66, .6, 0); b(.4, .02, .3, '#ffffff', -.66, .63, 0, .1); b(.7, .02, .04, '#8a9499', 0, .3, .32); b(.7, .02, .04, '#8a9499', 0, .55, .32); }
+    else if (k === 'watercooler') { b(.36, .95, .36, '#eef2f2', 0, .48, 0); c(.16, .16, .42, '#9fd0e8', 0, 1.18, 0, 10); c(.06, .16, .08, '#9fd0e8', 0, .99, 0, 8); b(.06, .06, .06, '#3c78c9', -.07, .72, .19); b(.06, .06, .06, RED, .07, .72, .19); }
+    else if (k === 'boardtable') { const w = n * 1.2; b(w, .08, 1.3, '#5a3f2a', 0, .72, 0); b(w * .7, .68, .3, '#4a3322', 0, .34, 0); for (let i = 0; i < n; i++) for (const s of [-1, 1]) { const x = (i - (n - 1) / 2) * 1.2, tip = hash(i * 3 + s + 2, Math.round(t.x)) > .75; if (tip) { b(.46, .46, .08, '#2e3338', x, .12, s * 1.25); b(.46, .08, .46, '#2e3338', x, .26, s * 1.45); } else { b(.46, .08, .46, '#2e3338', x, .44, s * .95); b(.46, .5, .08, '#2e3338', x, .72, s * 1.16); c(.04, .04, .42, '#22252a', x, .21, s * .95, 6); } b(.26, .02, .2, '#ffffff', x + .1, .78, s * .4, i * .4); } b(.3, .06, .3, '#22252a', 0, .79, 0); }
+    else if (k === 'stairs') { const st = 8; for (let i = 0; i < st; i++) { const h = .2 * (i + 1), x = -1.4 + i * .4; b(.4, h, 1.7, i % 2 ? '#8f8a7c' : '#a39d8c', x, h / 2, 0); b(.07, .04, 1.7, '#3d4a52', x - .17, h + .02, 0); for (const z of [-.88, .88]) { b(.4, h + .55, .07, '#6f6a5e', x, (h + .55) / 2, z); b(.42, .06, .1, '#3d4a52', x, h + .58, z); } } b(.7, 1.6, 1.86, '#a39d8c', 2.15, .8, 0); b(.06, .5, .7, '#3aa04a', 2.52, 2.0, 0); b(.07, .1, .4, '#ffffff', 2.53, 2.0, 0); b(.07, .3, .1, '#ffffff', 2.53, 2.05, 0); }
+    else if (k === 'whiteboard') { b(1.7, 1.0, .05, '#8a9499', 0, 1.15, 0); b(1.6, .9, .06, '#f6f8f8', 0, 1.15, .005); for (let i = 0; i < 5; i++) b(.5 + hash(i, Math.round(t.x * 3)) * .7, .03, .07, ['#3c78c9', RED, '#22252a', '#3aa04a', RED][i], -.25 + hash(i + 4, Math.round(t.y * 3)) * .4, 1.45 - i * .15, .008); b(1.6, .05, .12, '#8a9499', 0, .66, .05); }
+    else if (k === 'vaultdoor') { b(1.9, 1.7, .22, '#6f7a80', 0, .85, 0); c(.68, .68, .16, '#8a9499', 0, .9, .14, 16, PI2); c(.3, .3, .1, '#5d6570', 0, .9, .24, 12, PI2); for (let i = 0; i < 4; i++) b(.9, .07, .07, '#b9c2c8', 0, .9, .3, 0, 0, i * .785); for (const y of [.45, 1.35]) b(.16, .3, .14, '#5d6570', -.86, y, .16); }
+    else if (k === 'sign') { const col = t.col || '#2f6f8a', w = t.w || 2.6; for (const x of [-w * .36, w * .36]) b(.12, 1.2, .12, '#5d6570', x, .6, 0); b(w, .95, .16, col, 0, 1.55, 0); b(w * .86, .1, .18, '#ffffff', 0, 1.3, 0); b(w * .5, .2, .18, '#ffffff', -w * .14, 1.68, 0); c(.2, .2, .2, t.dot || '#6ad08a', w * .3, 1.68, 0, 10, PI2); }
+    else if (k === 'guardbooth') { b(1.5, 1.9, 1.5, '#dfe4e6', 0, .95, 0); b(1.54, .6, 1.54, '#56707c', 0, 1.3, 0); b(1.56, .14, 1.56, '#e0b23a', 0, .85, 0); b(1.8, .1, 1.8, '#4a5560', 0, 1.95, 0); c(.07, .07, 1.0, '#e0b23a', 1.0, .5, .9, 6); b(3.2, .1, .1, '#f2f2f2', 2.5, .95, .9, 0, 0, t.up ? .9 : 0); for (let i = 0; i < 3; i++) b(.4, .11, .11, RED, 1.6 + i * 1.0, .95, .9, 0, 0, t.up ? .9 : 0); }
+    else if (k === 'bookcase') { const w = n * 1.1; b(w, 1.8, .36, '#6a4a2e', 0, .9, 0); for (let j = 0; j < 4; j++) { b(w - .1, .34, .04, '#3a2a1c', 0, .3 + j * .42, .17); for (let i = 0; i < n * 6; i++) { const hh = hash(i * 3 + j * 7 + Math.round(t.x * 5), j * 2 + Math.round(t.y * 3)); if (hh < .14) continue; b(.14, .24 + hh * .08, .06, ['#7d2f2a', '#2f4f6a', '#3a5a3a', '#8a6a2a', '#4a3a5a'][Math.floor(hh * 50) % 5], -w / 2 + .14 + i * .172, .28 + j * .42, .18); } } }
+    /* 3D.322 fairground pieces */
+    else if (k === 'gamebooth') { const col = t.col || '#c94a3a'; b(2.2, .9, .3, '#f2ead8', 0, .45, .55); for (let i = 0; i < 6; i++) b(.37, .9, .04, i % 2 ? col : '#f2ead8', -.92 + i * .37, .45, .71); b(2.2, 2.0, .08, '#8a6a44', 0, 1.0, -.6); for (const x of [-1.08, 1.08]) { b(.08, 2.0, 1.3, '#8a6a44', x, 1.0, 0); } b(2.5, .1, 1.7, col, 0, 2.08, .1, 0, .18); for (let i = 0; i < 7; i++) b(.36, .12, 1.72, i % 2 ? '#f2ead8' : col, -1.08 + i * .36, 2.1, .1, 0, .18); for (let i = 0; i < 5; i++) { const pc = ['#e58fb0', '#e0b23a', '#7fb7e0', '#9fd08f', '#c9a0e0'][i]; Q.put(new THREE.IcosahedronGeometry(.17, 0), pc, M4(cx, 0, cz, ry).multiply(M4(-.8 + i * .4, 1.62, -.5))); b(.2, .22, .16, pc, -.8 + i * .4, 1.38, -.5); } for (let i = 0; i < 4; i++) c(.08, .08, .22, ['#3a6ac9', '#f2ead8'][i % 2], -.6 + i * .4, 1.0, .5, 8); b(1.6, .22, .05, '#e0b23a', 0, 2.36, .86); }
+    else if (k === 'foodcart') { const col = t.col || '#e0b23a'; b(1.4, .7, .8, '#f2ead8', 0, .65, 0); b(1.42, .16, .82, col, 0, .4, 0); for (const z of [-.44, .44]) c(.3, .3, .07, '#22252a', -.3, .3, z, 12, PI2); b(.06, .5, .06, '#5d6570', .62, .25, 0); b(.5, .5, .5, '#cfeef2', -.3, 1.25, 0); b(.4, .22, .4, '#f7e08a', -.3, 1.13, 0); b(.54, .08, .54, RED, -.3, 1.54, 0); c(.03, .03, 1.5, '#8a8f96', .4, 1.5, 0, 5); Q.put(new THREE.ConeGeometry(1.1, .45, 8), RED, M4(cx, 2.3, cz, .39)); for (let i = 0; i < 3; i++) c(.05, .09, .2, '#f2ead8', .25 + i * .14, 1.1, .2, 6); }
+    else if (k === 'striker') { b(.9, .14, .9, '#6a4a2e', 0, .07, 0); b(.3, 3.6, .14, '#c94a3a', 0, 1.9, -.2); for (let i = 0; i < 9; i++) b(.32, .05, .15, '#f2ead8', 0, .5 + i * .36, -.2); c(.26, .26, .12, '#e0b23a', 0, 3.8, -.2, 10, PI2); b(.4, .16, .4, '#3d4046', 0, .2, .2); b(.08, .9, .08, '#8a6a44', .5, .3, .3, 0, 0, 1.2); b(.26, .2, .2, '#3d4046', .9, .16, .3); }
+    else if (k === 'picnic') { b(1.8, .07, .8, '#b0895a', 0, .72, 0); for (const z of [-.72, .72]) b(1.8, .06, .3, '#a37c50', 0, .44, z); for (const x of [-.7, .7]) { b(.08, .76, .08, '#8a6a44', x, .36, -.3, 0, .35); b(.08, .76, .08, '#8a6a44', x, .36, .3, 0, -.35); b(.08, .06, 1.6, '#8a6a44', x, .4, 0); } if (t.v) { c(.07, .07, .2, RED, .3, .86, .1, 6); b(.3, .04, .3, '#f2ead8', -.3, .78, 0, .3); } }
+    else if (k === 'portaloo') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * 1.1; b(1.0, 2.0, 1.0, i % 2 ? '#3a8a9a' : '#3a6ac9', x, 1.0, 0); b(1.06, .12, 1.06, '#e8ecee', x, 2.06, 0); b(.7, 1.6, .04, '#e8ecee', x, .95, .51); b(.08, .16, .05, '#22252a', x + .25, 1.0, .54); } }
+    else if (k === 'carousel') { c(2.3, 2.3, .22, '#c94a3a', 0, .11, 0, 16); c(2.2, 2.2, .06, '#f2ead8', 0, .25, 0, 16); c(.3, .3, 2.4, '#e0b23a', 0, 1.4, 0, 10); Q.put(new THREE.ConeGeometry(2.6, .9, 12), '#c94a3a', M4(cx, 3.05, cz)); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; b(.5, .2, .05, i % 2 ? '#f2ead8' : '#e0b23a', Math.cos(a) * 2.45, 2.55, Math.sin(a) * 2.45, -a + PI2); } for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + .3, x = Math.cos(a) * 1.55, z = Math.sin(a) * 1.55, hc = ['#f2ead8', '#d9b08a', '#8a6a5a'][i % 3], up = i % 2 ? .25 : 0; c(.03, .03, 2.3, '#e0b23a', x, 1.4, z, 5); b(.7, .3, .24, hc, x, .85 + up, z, -a); b(.2, .34, .2, hc, x + Math.sin(a) * .34 * 1, 1.08 + up, z - Math.cos(a) * .34, -a); for (const d of [-.22, .22]) b(.07, .4, .07, hc, x + Math.sin(a) * d, .52 + up, z - Math.cos(a) * d); b(.3, .06, .26, RED, x, 1.02 + up, z, -a); } c(.22, .22, .3, '#e0b23a', 0, 3.6, 0, 8); }
+    /* 3D.323 depot pieces */
+    else if (k === 'workbench') { b(1.8, .1, .7, '#8a6a44', 0, .85, 0); b(1.7, .5, .6, '#5f6b45', 0, .3, 0); for (const x of [-.82, .82]) b(.08, .85, .62, '#3d4046', x, .42, 0); b(1.8, .9, .05, '#7a7f76', 0, 1.4, -.33); for (let i = 0; i < 6; i++) b(.06, .3 + (i % 3) * .08, .03, i % 2 ? '#c9412e' : '#b9c2c8', -.7 + i * .28, 1.45, -.3); b(.3, .22, .24, '#3d4046', .55, 1.0, .1); b(.12, .1, .34, '#5d6570', .55, 1.12, .2); b(.4, .16, .3, '#c9412e', -.45, .98, .05); }
+    else if (k === 'toolchest') { b(.9, .8, .5, '#b0332a', 0, .55, 0); b(.94, .06, .54, '#22252a', 0, .97, 0); for (let i = 0; i < 4; i++) { b(.8, .02, .02, '#22252a', 0, .3 + i * .18, .26); b(.3, .04, .03, '#b9c2c8', 0, .36 + i * .18, .27); } for (const [dx, dz] of [[-.36, -.18], [.36, -.18], [-.36, .18], [.36, .18]]) c(.07, .07, .05, '#22252a', dx, .08, dz, 8, PI2); }
+    else if (k === 'jerrycans') { for (let i = 0; i < (t.n || 4); i++) { const x = (i % 3) * .3 - .3, z = Math.floor(i / 3) * .42; b(.24, .5, .36, i % 4 === 3 ? '#b0332a' : '#5f6b45', x, .25, z, 0, 0, i === 3 ? 1.57 : 0); b(.1, .06, .1, '#3d4046', x - .05, .53, z); } }
+    else if (k === 'pallet') { b(1.3, .12, 1.1, '#9a7a52', 0, .06, 0); for (let i = 0; i < 3; i++) b(1.3, .03, .2, '#8a6a44', 0, .135, -.4 + i * .4); if (t.v !== 0) { b(1.2, .7, 1.0, t.col || '#6f7a55', 0, .5, 0); b(1.22, .04, 1.02, '#3d4046', 0, .5, 0); b(.04, .72, 1.02, '#3d4046', 0, .5, 0); if (t.tarp) b(1.3, .1, 1.1, '#f4f8fa', 0, .9, 0); } }
+    /* 3D.324 greenhouse pieces */
+    else if (k === 'growbench') { const len = n * 1.2; b(len, .06, 1.1, '#9aa39a', 0, .78, 0); for (const z of [-.54, .54]) b(len, .1, .04, '#7a857a', 0, .84, z); for (let i = 0; i <= n; i++) for (const z of [-.45, .45]) b(.06, .78, .06, '#7a857a', -len / 2 + i * 1.2 * (len / (n * 1.2)), .39, z); b(len, .04, .9, '#7a857a', 0, .3, 0);
+      for (let i = 0; i < n * 2; i++) { const hh = hash(i * 3 + Math.round(t.x * 5), Math.round(t.y * 7)), x = -len / 2 + .3 + i * .6; b(.52, .07, .9, '#2e2a28', x, .84, 0); if (hh < .18) continue; for (let j = 0; j < 4; j++) { const g2 = hash(i * 7 + j, Math.round(t.x * 3 + t.y)); b(.36, .12 + g2 * .34, .16, hh > .75 ? '#8a8f4a' : g2 > .5 ? '#5f9a5c' : '#4d8a52', x, .92 + g2 * .17, -.33 + j * .22); } } for (let i = 0; i < n; i++) c(.12, .09, .2, '#a0613c', -len / 2 + .5 + i * 1.1, .42, .1, 7); }
+    else if (k === 'hangbasket') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * 1.1, dead = hash(i + Math.round(t.x * 3), Math.round(t.y * 3)) > .6; c(.012, .012, .5, '#5d6570', x, 1.75, 0, 4); c(.2, .12, .2, '#8a6a44', x, 1.42, 0, 8); c(.3, .16, .26, dead ? '#8a8f4a' : '#5f9a5c', x, 1.6, 0, 7); c(.1, .04, .5, dead ? '#7a7f3a' : '#4d8a52', x + .16, 1.25, .06, 5); } b(n * 1.1 + .4, .04, .04, '#5d6570', 0, 2.0, 0); for (const x of [-(n * 1.1 + .4) / 2, (n * 1.1 + .4) / 2]) b(.05, 2.0, .05, '#5d6570', x, 1.0, 0); }
+    else if (k === 'hosereel') { b(.5, .6, .3, '#3d4a3d', 0, .5, 0); c(.26, .26, .22, '#3a8a4a', 0, .55, .1, 12, PI2); c(.1, .1, .26, '#22252a', 0, .55, .1, 8, PI2); for (let i = 0; i < 5; i++) c(.035, .035, .5, '#3a8a4a', .3 + i * .2, .04, .3 + Math.sin(i * 1.4) * .22, 5, 0, PI2); c(.05, .03, .16, '#e0b23a', 1.3, .06, .34, 6, 0, PI2); }
+    else if (k === 'watertank') { b(1.2, .14, 1.2, '#3d4046', 0, .07, 0); b(1.1, 1.0, 1.1, '#e8eef0', 0, .66, 0); b(1.04, .6 * (t.v == null ? .7 : t.v), 1.12, '#9fc7d8', 0, .2 + .3 * (t.v == null ? .7 : t.v), 0); for (const x of [-.55, 0, .55]) { b(.05, 1.06, .05, '#8a9499', x, .68, .57); b(.05, 1.06, .05, '#8a9499', x, .68, -.57); } for (const y of [.4, .9]) { b(1.2, .05, .05, '#8a9499', 0, y, .57); b(1.2, .05, .05, '#8a9499', 0, y, -.57); b(.05, .05, 1.2, '#8a9499', .58, y, 0); b(.05, .05, 1.2, '#8a9499', -.58, y, 0); } c(.14, .14, .08, '#22252a', 0, 1.2, 0, 8); c(.05, .05, .2, RED, .3, .22, .62, 6, PI2); }
+    else if (k === 'fan') { b(1.3, 1.3, .2, '#8a9499', 0, 1.0, 0); c(.56, .56, .22, '#3d4046', 0, 1.0, .02, 14, PI2); for (let i = 0; i < 4; i++) b(1.0, .16, .06, '#b9c2c8', 0, 1.0, .14, 0, 0, i * .785); c(.1, .1, .1, '#5d6570', 0, 1.0, .16, 8, PI2); }
+    else if (k === 'cart') { for (const y of [.25, .7, 1.15]) { b(1.2, .04, .6, '#8a9499', 0, y, 0); for (let i = 0; i < 4; i++) if (hash(i + y * 10, Math.round(t.x * 5 + t.y * 3)) > .3) { c(.1, .08, .14, '#a0613c', -.42 + i * .28, y + .1, 0, 6); c(.14, .06, .18, i % 2 ? '#5f9a5c' : '#8a8f4a', -.42 + i * .28, y + .25, 0, 6); } } for (const [dx, dz] of [[-.57, -.27], [.57, -.27], [-.57, .27], [.57, .27]]) { b(.04, 1.3, .04, '#8a9499', dx, .7, dz); c(.06, .06, .04, '#22252a', dx, .06, dz, 6, PI2); } }
+    /* 3D.325 refinery pieces */
+    else if (k === 'pumpskid') { b(1.6, .14, .8, '#5d6066', 0, .07, 0); c(.26, .26, .7, t.col || '#3a6ac9', -.3, .42, 0, 10, 0, PI2); for (let i = 0; i < 4; i++) c(.28, .28, .03, '#2e4f96', -.56 + i * .16, .42, 0, 10, 0, PI2); c(.3, .3, .3, '#8a8f96', .45, .42, 0, 10, 0, PI2); c(.1, .1, .5, '#8a8f96', .45, .8, 0, 8); c(.2, .2, .05, '#8a8f96', .45, 1.05, 0, 8); c(.1, .1, .4, '#8a8f96', .8, .42, 0, 8, 0, PI2); c(.16, .16, .05, RED, .45, .6, .34, 8, PI2); }
+    else if (k === 'exchanger') { const len = t.len || 3.2, col = t.col || '#b9b3a6'; for (const lv2 of t.n > 1 ? [.75, 1.75] : [.75]) { c(.42, .42, len, col, 0, lv2, 0, 12, 0, PI2); c(.46, .46, .12, '#8a857a', -len / 2 + .3, lv2, 0, 12, 0, PI2); c(.46, .46, .12, '#8a857a', len / 2 - .1, lv2, 0, 12, 0, PI2); c(.12, .12, .4, '#8a8f96', -len / 2 + .7, lv2 + .5, 0, 8); c(.12, .12, .4, '#8a8f96', len / 2 - .6, lv2 - .5, 0, 8); } for (const x of [-len / 3, len / 3]) { b(.2, t.n > 1 ? 1.5 : .5, .9, '#5d6066', x, t.n > 1 ? .75 : .25, 0); } }
+    else if (k === 'firemon') { c(.1, .12, .9, RED, 0, .45, 0, 8); c(.16, .16, .1, RED, 0, .9, 0, 8); c(.07, .05, .8, RED, .25, 1.15, 0, 8, 0, -1.0); c(.1, .07, .16, '#e0b23a', .56, 1.36, 0, 8, 0, -1.0); c(.14, .14, .04, '#22252a', 0, .5, .14, 8, PI2); b(.5, .5, .5, RED, -.7, .25, 0); c(.2, .2, .2, '#e8e4d4', -.7, .6, 0, 8); }
+    else if (k === 'gascyl') { b(n * .34 + .2, .1, .5, '#5d6066', 0, .05, 0); for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .34; c(.14, .14, 1.2, ['#3aa04a', '#c94a3a', '#8a8f96', '#e0b23a'][i % 4], x, .7, 0, 8); c(.07, .12, .16, '#3d4046', x, 1.38, 0, 8); } b(n * .34 + .2, .05, .05, '#5d6066', 0, .9, .2); for (const x of [-(n * .17 + .1), n * .17 + .1]) b(.05, 1.0, .05, '#5d6066', x, .5, .2); }
+    else if (k === 'scaffold') { const w = 2.0, d = 1.0, lev = t.h || 3; for (const [dx, dz] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) c(.035, .035, lev * 1.3, '#9aa0a6', dx, lev * .65, dz, 5); for (let l = 1; l <= lev; l++) { b(w, .05, d, '#b89a68', 0, l * 1.3 - .3, 0); for (const z of [-d / 2, d / 2]) { c(.03, .03, w, '#9aa0a6', 0, l * 1.3 + .25, z, 5, 0, PI2); b(Math.hypot(w, 1.3), .03, .03, '#9aa0a6', 0, l * 1.3 - .65, z, 0, 0, l % 2 ? .58 : -.58); } } }
+    else if (k === 'elecbox') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .82; b(.8, 1.7, .5, '#8f968f', x, .85, 0); b(.7, 1.5, .03, '#a3aaa3', x, .9, .26); b(.06, .2, .04, '#22252a', x + .26, .9, .28); b(.2, .2, .04, '#e0b23a', x - .1, 1.35, .28); for (let j = 0; j < 3; j++) b(.06, .06, .04, j ? '#6ad08a' : RED, x - .22 + j * .1, 1.6, .28); } }
+    /* 3D.326 hospital pieces */
+    else if (k === 'monitor') { c(.03, .03, 1.2, '#b9c2c8', 0, .6, 0, 6); for (let i = 0; i < 4; i++) b(.34, .04, .05, '#8a9499', Math.cos(i * 1.57) * .15, .04, Math.sin(i * 1.57) * .15, i * 1.57); b(.42, .32, .12, '#dfe8ec', 0, 1.3, 0); b(.36, .24, .02, '#12303a', 0, 1.3, .07); b(.3, .02, .03, '#6ad08a', 0, 1.34, .08); b(.22, .02, .03, '#e0b23a', -.04, 1.26, .08); b(.2, .16, .2, '#dfe8ec', 0, .8, 0); }
+    else if (k === 'crashcart') { b(.8, .8, .5, RED, 0, .55, 0); b(.84, .05, .54, '#dfe8ec', 0, .97, 0); for (let i = 0; i < 4; i++) { b(.72, .02, .02, '#7d1c18', 0, .3 + i * .17, .26); b(.2, .04, .03, '#dfe8ec', 0, .36 + i * .17, .27); } b(.34, .22, .26, '#33373c', -.15, 1.1, 0); b(.2, .14, .02, '#6ad08a', -.15, 1.12, .14); c(.07, .07, .5, '#3aa04a', .5, .6, 0, 7); for (const [dx, dz] of [[-.34, -.2], [.34, -.2], [-.34, .2], [.34, .2]]) c(.06, .06, .04, '#22252a', dx, .08, dz, 7, PI2); }
+    else if (k === 'anaesth') { b(.7, 1.0, .6, '#dfe8ec', 0, .6, 0); b(.6, .5, .1, '#b9c2c8', 0, 1.35, -.2); b(.4, .3, .03, '#12303a', -.05, 1.4, -.14); b(.3, .02, .03, '#6ad08a', -.05, 1.44, -.12); for (let i = 0; i < 3; i++) c(.05, .05, .3, ['#3a6ac9', '#e0b23a', '#8a8f96'][i], -.2 + i * .2, 1.25, .12, 6); c(.09, .09, .22, '#3d4046', .2, 1.2, .2, 8); b(.06, .06, .5, '#8a9499', .3, 1.3, .3, 0, .6); for (const [dx, dz] of [[-.3, -.25], [.3, -.25], [-.3, .25], [.3, .25]]) c(.06, .06, .04, '#22252a', dx, .06, dz, 7, PI2); for (const x of [-.42, -.5]) c(.08, .08, .9, x < -.45 ? '#3a6ac9' : '#f2f2ee', x, .5, -.1, 7); }
+    /* 3D.327 prison pieces */
+    else if (k === 'payphone') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .7; b(.6, .9, .1, '#4a5560', x, 1.1, 0); b(.3, .44, .12, '#22252a', x, 1.1, .06); b(.08, .34, .1, '#3d444c', x - .2, 1.12, .1); b(.18, .14, .03, '#b9c2c8', x + .03, 1.08, .13); if (hash(i + Math.round(t.x * 3), Math.round(t.y)) > .5) c(.012, .012, .6, '#22252a', x - .2, .7, .12, 4); } }
+    else if (k === 'cctv') { c(.05, .06, 2.6, '#5d6570', 0, 1.3, 0, 6); b(.5, .05, .05, '#5d6570', .22, 2.55, 0); b(.3, .16, .16, '#dfe4e6', .5, 2.46, 0, 0, 0, -.3); b(.06, .1, .1, '#22252a', .66, 2.4, 0); c(.14, .16, .1, '#3d4046', 0, .05, 0, 8); }
+    /* 3D.330 radio mast pieces */
+    else if (k === 'lattice') { const hgt = t.h || 15, w0 = 1.5; for (let i = 0; i < 4; i++) { const sx = i % 2 ? 1 : -1, sz = i < 2 ? 1 : -1; b(.1, hgt, .1, '#c9412e', sx * w0 * .32, hgt / 2, sz * w0 * .32, 0, sz * -.028, sx * .028); } const lv2 = Math.floor(hgt / 1.5); for (let j = 0; j < lv2; j++) { const y = .6 + j * 1.5, w = w0 * (1 - j / lv2 * .55), col = Math.floor(j / 2) % 2 ? '#f2f2ee' : '#c9412e'; for (const z of [-w / 2, w / 2]) { b(w, .06, .06, col, 0, y, z); b(Math.hypot(w, 1.5), .05, .05, col, 0, y + .75, z, 0, 0, j % 2 ? .95 : -.95); } for (const x of [-w / 2, w / 2]) { b(.06, .06, w, col, x, y, 0); b(.05, .05, Math.hypot(w, 1.5), col, x, y + .75, 0, 0, j % 2 ? .95 : -.95); } }
+      c(.04, .04, 2.4, '#8a8f96', 0, hgt + 1.2, 0, 5); c(.1, .1, .12, RED, 0, hgt + 2.45, 0, 6); for (const [dy, a] of [[hgt * .55, 0], [hgt * .7, 2.1], [hgt * .82, 4.2]]) { c(.5, .12, .2, '#e8ecee', Math.cos(a) * .7, dy, Math.sin(a) * .7, 12, PI2 * Math.sin(a), PI2 * Math.cos(a)); } for (let i = 0; i < 4; i++) b(.5, .1, .06, '#8a8f96', 0, hgt * .92 + (i % 2) * .5, 0, i * .785);
+      /* 3D.331 the guy wires run slanted from an anchor block on the ground up to the mast, two to each anchor (they were drawn standing upright) */
+      const wire = (ax, ay, az, bx, by, bz) => { const d = new THREE.Vector3(bx - ax, by - ay, bz - az), len = d.length(); Q.put(box(.045, len, .045), '#4a5058', M4(cx, 0, cz, ry).multiply(new THREE.Matrix4().compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1)))); };
+      for (let i = 0; i < 3; i++) { const a = i * 2.094 + .4, R2 = t.guy || 5.2, gx = Math.cos(a) * R2, gz = Math.sin(a) * R2; wire(gx, .5, gz, Math.cos(a) * .25, hgt * .86, Math.sin(a) * .25); wire(gx, .5, gz, Math.cos(a) * .35, hgt * .5, Math.sin(a) * .35); b(.8, .5, .8, '#9a958a', gx, .25, gz); b(.12, .3, .12, '#5d6570', gx, .6, gz); } b(2.2, .3, 2.2, '#9a958a', 0, .15, 0); }
+    else if (k === 'dish') { c(.08, .1, 1.6, '#8a8f96', 0, .8, 0, 6); c(.3, .34, .1, '#5d6066', 0, .05, 0, 8); Q.put(new THREE.ConeGeometry(.9, .36, 14, 1, true), '#e8ecee', M4(cx, 1.9, cz, ry, -1.0)); c(.02, .02, .7, '#5d6570', 0, 2.1, .3, 4, -1.0); c(.07, .07, .12, '#3d4046', 0, 2.3, .6, 6); }
+    else if (k === 'genset') { b(2.0, .14, 1.0, '#5d6066', 0, .07, 0); b(1.9, 1.0, .9, t.col || '#d9a03a', 0, .65, 0); b(1.92, .08, .92, '#3d4046', 0, 1.18, 0); for (let i = 0; i < 6; i++) b(.04, .5, .02, '#3d4046', -.8 + i * .12, .7, .46); b(.5, .4, .02, '#22252a', .5, .75, .46); b(.08, .08, .02, '#6ad08a', .4, .82, .47); b(.08, .08, .02, RED, .6, .82, .47); c(.06, .06, .6, '#3d4046', -.6, 1.5, -.2, 6); c(.09, .06, .1, '#3d4046', -.6, 1.82, -.2, 6); }
+    else if (k === 'fueltank') { c(.5, .5, 2.0, t.col || '#8f968f', 0, .95, 0, 12, 0, PI2); for (const x of [-.7, .7]) { b(.12, .5, 1.0, '#5d6066', x, .25, 0); } c(.1, .1, .16, '#3d4046', .3, 1.5, 0, 6); b(.5, .34, .04, '#e0b23a', 0, 1.0, .5); b(.06, .9, .06, '#5d6066', 1.1, .45, .3); c(.03, .03, .8, '#22252a', 1.1, .7, .5, 4, .6); }
+    else if (k === 'cans') { const len = n * T; for (const x of [-len / 2, len / 2]) c(.05, .06, 1.1, '#8a6a44', x, .55, 0, 5); b(len, .015, .015, '#c9b48a', 0, 1.0, 0); for (let i = 0; i < n * 3; i++) { const x = -len / 2 + .4 + i * (len - .8) / (n * 3 - 1), hh = hash(i + Math.round(t.x * 3), Math.round(t.y * 5)); b(.012, .16 + hh * .12, .012, '#c9b48a', x, .9 - hh * .06, 0); c(.07, .07, .16, ['#c94a3a', '#b9c2c8', '#e0b23a'][i % 3], x, .76 - hh * .12, 0, 7); } }
+    else if (k === 'boulder') { const s2 = t.s || 1; Q.put(new THREE.IcosahedronGeometry(.6 * s2, 0), '#8f8a80', M4(cx, .34 * s2, cz, (t.r || 0) + .4)); Q.put(new THREE.IcosahedronGeometry(.36 * s2, 0), '#9a958a', M4(cx + .55 * s2, .2 * s2, cz + .3 * s2, 1.1)); Q.put(new THREE.IcosahedronGeometry(.22 * s2, 0), '#827d74', M4(cx - .5 * s2, .12 * s2, cz + .4 * s2, 2)); }
+    /* 3D.338 Sunnyside plant pieces */
+    else if (k === 'lorry') { const col = t.col || '#e8b62a'; b(4.6, 2.0, 1.9, '#f2ead8', -.9, 1.5, 0); b(4.6, .5, 1.92, col, -.9, 1.0, 0); c(.5, .5, .06, '#ffe08a', -.9, 1.9, .97, 14, PI2); c(.5, .5, .06, '#ffe08a', -.9, 1.9, -.97, 14, PI2); for (let i = 0; i < 8; i++) { b(.5, .06, .05, '#f0c040', -.9 + Math.cos(i * .785) * .7, 1.9 + Math.sin(i * .785) * .7, .97, 0, 0, i * .785); } b(1.5, 1.5, 1.8, col, 2.2, 1.15, 0); b(.9, .6, 1.7, '#9fc7d8', 2.5, 1.5, 0); b(6.4, .22, 1.7, '#3d4046', 0, .42, 0); for (const x of [-2.4, -1.4, 2.1]) for (const z of [-.86, .86]) c(.4, .4, .26, '#22252a', x, .4, z, 12, PI2); if (t.open) { b(.06, 1.9, .95, '#dcd4c0', -3.25, 1.5, 1.4, .9); b(.06, 1.9, .95, '#dcd4c0', -3.25, 1.5, -1.4, -.9); for (let i = 0; i < 5; i++) c(.09, .09, .16, i % 2 ? '#c94a3a' : '#b9c2c8', -3.7 - (i % 3) * .3, .08, -.5 + i * .24, 7); } }
+    else if (k === 'factory') { const w = t.w || 14, d = t.d || 7, hgt = t.h || 5, col = t.col || '#b9b3a6'; b(w, hgt, d, col, 0, hgt / 2, 0); const teeth = Math.max(2, Math.round(w / 3.4)); for (let i = 0; i < teeth; i++) { const x = -w / 2 + (i + .5) * w / teeth, tw = w / teeth; b(tw, .1, d, '#7f8a92', x, hgt + .55, 0, 0, 0, -.42); b(.1, 1.1, d, '#9fc7d8', x + tw / 2 - .05, hgt + .55, 0); } b(w + .2, .5, d + .2, '#e8b62a', 0, hgt * .62, 0); for (let i = 0; i < Math.round(w / 2.6); i++) b(1.2, .8, .06, '#56707c', -w / 2 + 1.4 + i * 2.6, hgt * .32, d / 2 + .02); b(2.4, 2.6, .08, '#5d6570', 0, 1.3, d / 2 + .03); for (let i = 0; i < 6; i++) b(2.3, .06, .1, '#4a5058', 0, .3 + i * .42, d / 2 + .05);
+      c(1.5, 1.5, .1, '#ffe08a', -w / 4, hgt * .62, d / 2 + .12, 16, PI2); for (let i = 0; i < 8; i++) b(.5, .12, .08, '#f0c040', -w / 4 + Math.cos(i * .785) * 1.9, hgt * .62 + Math.sin(i * .785) * 1.9, d / 2 + .12, 0, 0, i * .785); for (const [cx2, ch] of (t.stacks === 0 ? [] : [[w / 2 - 1.4, hgt + 5], [w / 2 - 3.2, hgt + 3.6]])) { c(.5, .62, ch, '#a59f8e', cx2, ch / 2, -d / 4, 12); c(.54, .54, .4, '#c9412e', cx2, ch - .6, -d / 4, 12); } }
+    else if (k === 'filler') { c(.9, 1.0, .5, '#8a9499', 0, .25, 0, 14); c(.8, .8, .9, '#dfe4e6', 0, .95, 0, 14); c(.95, .95, .08, '#5d6570', 0, 1.42, 0, 14); for (let i = 0; i < 8; i++) { const a = i * .785; c(.06, .06, .5, '#b9c2c8', Math.cos(a) * .68, 1.15, Math.sin(a) * .68, 6); c(.09, .09, .16, i % 2 ? '#c94a3a' : '#b9c2c8', Math.cos(a) * .68, .82, Math.sin(a) * .68, 7); } c(.5, .7, .7, '#b9c2c8', 0, 1.85, 0, 10); c(.12, .12, .8, '#8a9499', 0, 2.5, 0, 6); b(.5, .7, .3, '#2e3338', 1.1, .9, 0); b(.36, .3, .04, '#6ad08a', 1.1, 1.0, .16); }
+    else if (k === 'canstack') { b(1.3, .12, 1.1, '#9a7a52', 0, .06, 0); const lay = t.h || 3; for (let l = 0; l < lay; l++) for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { if (l === lay - 1 && hash(i * 3 + j + Math.round(t.x * 5), Math.round(t.y * 3)) > .6) continue; c(.15, .15, .3, (i + j + l) % 3 === 0 ? '#c94a3a' : '#c2c9cc', -.47 + i * .31, .28 + l * .31, -.33 + j * .33, 8); } b(1.26, .02, 1.06, '#d8c8a0', 0, .12 + lay * .31, 0); }
+    else if (k === 'hooks') { const len = n * 1.4; b(len, .1, .1, '#5d6570', 0, 2.3, 0); for (const x of [-len / 2, len / 2]) b(.1, 2.3, .1, '#5d6570', x, 1.15, 0); for (let i = 0; i < n * 2; i++) { const x = -len / 2 + .4 + i * (len - .8) / Math.max(1, n * 2 - 1), full = hash(i + Math.round(t.x * 3), Math.round(t.y * 7)) > .45; c(.02, .02, .5, '#8a8f96', x, 2.0, 0, 4); c(.07, .02, .14, '#8a8f96', x, 1.7, 0, 5); if (full) { b(.34, .9, .22, '#9a3a34', x, 1.15, 0); b(.3, .3, .2, '#b85a4e', x, .62, 0); b(.36, .08, .24, '#e8d8c8', x, 1.4, 0); } } c(.6, .6, .02, '#6a1c18', 0, .03, .2, 10); }
+    /* 3D.339 the raid camps' set pieces (sizes in world units: a tile is 2.4, about 3.5 m) */
+    else if (k === 'tollbooth') { const sg = t.arm || 1; b(4.4, .18, 1.2, '#b9b5a8', 0, .09, 0); for (const x of [-2.0, 2.0]) { b(.5, .5, 1.0, '#e0b23a', x, .34, 0); b(.52, .12, 1.02, '#22252a', x, .34, 0); } b(1.6, 2.0, 1.0, '#dfe4e6', 0, 1.18, 0); b(1.64, .6, 1.04, '#56707c', 0, 1.5, 0); b(1.66, .16, 1.06, RED, 0, .9, 0); b(1.9, .1, 1.3, '#4a5560', 0, 2.22, 0); c(.08, .08, 1.0, '#e0b23a', 1.3, .68, sg * .45, 6); b(.1, .1, 1.3, '#f2f2f2', 1.3, 1.1, sg * 1.1); for (const z of [.8, 1.4]) b(.12, .12, .26, RED, 1.3, 1.1, sg * z); }
+    else if (k === 'tollroof') { const L = (t.lanes || 4) * T + .8; b(4.2, .3, L, '#dfe4e6', 0, 3.4, 0); for (const x of [-2.1, 2.1]) b(.12, .5, L, '#b83a2e', x, 3.4, 0); for (const z of [-3.6, 3.6]) for (const x of [-1.2, 1.2]) c(.12, .12, 3.2, '#8a9499', x, 1.6, z, 8); for (const z of [-1.2, 1.2]) { b(.14, .34, .34, '#22252a', -2.24, 2.9, z); b(.05, .18, .18, z < 0 ? '#6ad08a' : RED, -2.33, 2.9, z); } }
+    else if (k === 'gantry') { const hz = (t.lanes || 4) * T / 2 - .2; for (const z of [-hz, hz]) { b(.24, 4.2, .24, '#8a9499', 0, 2.1, z); b(.6, .1, .6, '#6a6e74', 0, .05, z); } b(.2, .16, hz * 2, '#8a9499', 0, 4.1, 0); b(.2, .16, hz * 2, '#8a9499', 0, 3.3, 0); for (const z of [-hz / 2, hz / 2]) { b(.1, 1.1, hz * .8, '#2f7a4a', -.12, 3.7, z); b(.12, .1, hz * .6, '#ffffff', -.14, 3.45, z); b(.12, .2, hz * .36, '#ffffff', -.14, 3.86, z - hz * .1); } }
+    else if (k === 'mbike') { const BC = ['#b83a2e', '#22252a', '#3d5a78', '#c9772e']; for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .72, col = BC[(i + Math.round(t.x * 3)) % 4]; for (const z of [-.5, .5]) c(.27, .27, .1, '#22252a', x, .27, z, 10, 0, PI2); b(.14, .3, .9, col, x, .52, 0); b(.22, .2, .42, col, x, .74, .12); b(.2, .1, .42, '#22252a', x, .7, -.28); b(.6, .05, .05, '#8a9499', x, .95, .4); b(.05, .5, .05, '#8a9499', x, .65, .45, 0, .3); b(.3, .03, .08, '#8a9499', x + .16, .2, -.1, 0, 0, .5); } }
+    else if (k === 'isocont') { const col = t.col || '#a34a3a', dkc = '#' + new THREE.Color(col).multiplyScalar(.8).getHexString(); b(4.2, 1.8, 1.7, col, 0, .9, 0); for (let i = 0; i < 10; i++) b(.06, 1.7, 1.74, dkc, -1.9 + i * .42, .9, 0); b(4.24, .08, 1.74, dkc, 0, 1.82, 0); for (const z of [-.42, .42]) { b(.06, 1.6, .78, dkc, 2.12, .9, z); c(.025, .025, 1.5, '#b9c2c8', 2.16, .9, z * .55, 5); } if (t.band) b(4.22, .3, 1.72, t.band, 0, 1.3, 0); if (t.lab) { b(.7, 1.4, .05, '#56707c', -.9, .8, .86); b(.9, .5, .05, '#9fd0e0', .5, 1.15, .86); b(.6, .5, .3, '#b9c2c8', 1.5, 1.2, 1.0); b(.9, .1, .5, '#8a9499', -.9, .05, 1.1); } if (t.stack) { const c2 = '#' + new THREE.Color(col).offsetHSL(.45, 0, .05).getHexString(); b(4.2, 1.8, 1.7, c2, .2, 2.76, 0, .1); b(4.24, .08, 1.74, '#3d4046', .2, 3.68, 0, .1); } }
+    else if (k === 'hesco') { const len = n * T; for (let i = 0; i < n * 2; i++) { const x = -len / 2 + (i + .5) * 1.2; b(1.16, 1.3, 1.1, i % 2 ? '#b5a47a' : '#ad9c72', x, .65, 0); b(1.18, .03, 1.12, '#7f8478', x, .45, 0); b(1.18, .03, 1.12, '#7f8478', x, .9, 0); for (const dx of [-.58, 0, .58]) b(.03, 1.3, 1.12, '#7f8478', x + dx, .65, 0); b(1.0, .1, .94, '#9a8a62', x, 1.33, 0); } }
+    else if (k === 'razor') { const len = n * T, m = n * 4; for (let i = 0; i <= n; i++) { b(.06, .9, .06, '#5d6570', -len / 2 + i * T, .45, 0, 0, .25); b(.06, .9, .06, '#5d6570', -len / 2 + i * T, .45, 0, 0, -.25); } for (let i = 0; i < m; i++) Q.put(new THREE.TorusGeometry(.3, .02, 4, 8), i % 2 ? '#aab2b8' : '#8f989e', M4(cx, 0, cz, ry).multiply(M4(-len / 2 + (i + .5) * len / m, .36, 0, PI2, 0, 0))); b(len, .03, .03, '#8f989e', 0, .66, 0); }
+    else if (k === 'gptent') { const L = t.short ? 4.2 : 6.4; b(3.4, 1.1, L, '#6a7650', 0, .55, 0); b(1.98, .06, L + .2, '#5f6b45', -.86, 1.56, 0, 0, 0, .487); b(1.98, .06, L + .2, '#566240', .86, 1.56, 0, 0, 0, -.487); b(.1, .1, L + .24, '#4a5538', 0, 2.03, 0); for (const z of [-L / 2, L / 2]) { b(2.2, .45, .05, '#6a7650', 0, 1.3, z); b(1.0, .4, .05, '#6a7650', 0, 1.7, z); } b(1.0, 1.05, .06, '#4a5538', 0, .52, L / 2 + .02); for (let i = 0; i < 3; i++) for (const x of [-1.72, 1.72]) b(.04, .5, .5, '#4a5538', x, .7, -L / 3 + i * L / 3); }
+    else if (k === 'labtent') { const col = t.col || '#eef2f2'; c(1.1, 1.1, 4.2, col, 0, 0, 0, 14, 0, PI2); for (const x of [-1.5, 0, 1.5]) c(1.13, 1.13, .22, t.band || '#3f8fb5', x, 0, 0, 14, 0, PI2); b(.05, 1.3, .9, '#56707c', 2.12, .65, 0); b(.05, 1.3, .9, '#56707c', -2.12, .65, 0); c(.2, .2, 1.0, '#b9c2c8', -2.5, .25, .6, 8, 0, PI2); b(.5, .5, .5, '#b9c2c8', -3.1, .25, .6); }
+    else if (k === 'bayline') { b(.1, .03, 4.4, '#e8e4d4', 0, .02, 0); }
+    else if (k === 'trolleys') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .36; b(.8, .35, .5, '#b9c2c8', x, .75, 0); b(.82, .04, .52, '#8a9499', x, .94, 0); b(.05, .05, .55, RED, x - .45, 1.0, 0); for (const z of [-.22, .22]) { b(.7, .04, .04, '#8a9499', x, .2, z); b(.04, .4, .04, '#8a9499', x - .3, .4, z); } } }
+    else if (k === 'trolleybay') { for (const z of [-.65, .65]) { b(4.2, .06, .06, '#5d6570', 0, .9, z); for (const x of [-2.1, 0, 2.1]) b(.08, 2.0, .08, '#5d6570', x, 1.0, z); } b(4.5, .06, 1.6, '#9fd0e0', 0, 2.03, 0); b(.08, .4, 1.2, '#3f7a4a', -2.2, 2.3, 0); for (let i = 0; i < 7; i++) { const x = -1.6 + i * .36; b(.8, .35, .5, '#b9c2c8', x, .75, 0); b(.05, .05, .55, RED, x - .45, 1.0, 0); b(.7, .04, .46, '#8a9499', x, .2, 0); } }
+    else if (k === 'checkout') { b(2.0, .85, .7, '#dfe4e6', 0, .43, 0); b(1.2, .04, .5, '#22252a', -.3, .87, 0); b(.4, .35, .35, '#33373c', .7, 1.05, 0); b(.3, .25, .05, '#9fd0e0', .7, 1.35, .1); c(.03, .03, 1.3, '#8a9499', .9, 1.5, -.25, 5); b(.34, .3, .06, '#3f7a4a', .9, 2.2, -.25); b(2.0, .45, .05, '#b9c2c8', 0, .62, -.42); }
+    else if (k === 'cupola') { for (const [dx, dz] of [[-.7, -.7], [.7, -.7], [-.7, .7], [.7, .7]]) b(.2, 1.1, .2, '#4a4643', dx, .55, dz); c(.85, .85, 3.6, '#6a5248', 0, 2.9, 0, 12); for (const y of [1.3, 2.4, 3.5, 4.6]) c(.89, .89, .12, '#3e3a38', 0, y, 0, 12); c(1.05, 1.05, .4, '#4a4643', 0, 1.8, 0, 12); c(.5, .62, 1.5, '#4a4643', 0, 5.4, 0, 10); Q.put(new THREE.ConeGeometry(.8, .5, 10), '#3e3a38', M4(cx, 6.4, cz)); b(.9, .14, .3, '#3e3a38', 1.25, 1.3, 0, 0, 0, -.25); b(.5, .05, .2, '#ff9a3a', 1.3, 1.36, 0, 0, 0, -.25); b(2.3, .1, 1.0, '#6f7780', 0, 3.2, 1.35); b(2.3, .05, .05, '#8a9499', 0, 3.9, 1.82); for (const x of [-1.12, 1.12]) { b(.05, .7, .05, '#8a9499', x, 3.55, 1.82); b(.06, 3.2, .06, '#8a9499', x * .2 - 1.4, 1.6, 1.6); } for (let i = 0; i < 7; i++) b(.5, .04, .04, '#8a9499', -1.4, .4 + i * .42, 1.6); c(.16, .16, 1.6, '#5f5a56', -1.3, 1.8, -.4, 8, 0, PI2); b(.7, .6, .7, '#5f666e', -2.0, .3, -.4); }
+    else if (k === 'gcrane') { for (const x of [-3.2, 3.2]) { for (const z of [-1.6, 1.6]) b(.2, 3.7, .2, '#d9a03a', x, 1.85, z); b(.2, .2, 3.4, '#d9a03a', x, 3.6, 0); b(.5, .12, .5, '#3d4046', x, .06, -1.6); b(.5, .12, .5, '#3d4046', x, .06, 1.6); } b(6.6, .4, .4, '#d9a03a', 0, 3.9, 0); for (let i = 0; i < 6; i++) b(.5, .1, .42, '#22252a', -2.75 + i * 1.1, 3.9, 0); b(.6, .3, .6, '#3d4046', .8, 3.55, 0); c(.02, .02, 1.5, '#22252a', .8, 2.65, 0, 4); b(.22, .25, .22, '#22252a', .8, 1.85, 0); c(.48, .36, .72, '#4a4643', .8, 1.36, 0, 10); c(.4, .4, .04, '#ff9a3a', .8, 1.73, 0, 10); for (let i = 0; i < 3; i++) { b(.9, .3, .7, '#5f5a56', -2.2 + i * 1.15, .15, .3); b(.6, .04, .4, i === 1 ? '#ff9a3a' : '#2e2c2a', -2.2 + i * 1.15, .31, .3); } b(1.4, .06, 1.2, '#8a6a44', 1.9, .03, -.6); }
+    else if (k === 'scrapheap') { Q.put(new THREE.ConeGeometry(1.0, 1.1, 7), '#6a5a4e', M4(cx, 0, cz, ry).multiply(M4(-.8, .55, 0, t.v ? 1 : 0))); Q.put(new THREE.ConeGeometry(.9, .8, 6), '#8a4a2c', M4(cx, 0, cz, ry).multiply(M4(.9, .4, .1, .6))); Q.put(new THREE.ConeGeometry(.6, .5, 5), '#5f666e', M4(cx, 0, cz, ry).multiply(M4(.1, .25, .6, 1.3))); b(1.6, .1, .1, '#8a4a2c', .2, .75, .2, .4, 0, .4); b(.9, .08, .5, '#6f7780', -.4, .95, -.2, 1, .3, .2); c(.3, .3, .12, '#3e4348', 1.3, .3, .65, 10, PI2); b(.8, .6, .06, t.v ? '#3d5a78' : '#a34a3a', -1.5, .35, .7, .3, .5); b(.1, 1.2, .1, '#5f666e', .6, .8, -.4, 0, .5, .3); c(.25, .25, .5, '#7a4a32', -1.7, .25, -.5, 8, 0, PI2); }
+    else if (k === 'ladle') { b(1.3, .1, 1.3, '#4a4643', 0, .05, 0); for (const x of [-.78, .78]) b(.12, 1.2, .12, '#5f666e', x, .6, 0); c(.6, .45, .9, '#4a4643', 0, .8, 0, 12); c(.62, .62, .08, '#3e3a38', 0, 1.24, 0, 12); c(.52, .52, .04, '#ff9a3a', 0, 1.28, 0, 12); b(1.7, .08, .08, '#5f666e', 0, 1.0, 0); b(.3, .1, .2, '#3e3a38', 0, 1.2, .62); }
+    else if (k === 'ingots') { b(1.25, .06, 1.15, '#6a4a2e', 0, .03, 0); for (let l = 0; l < 3; l++) for (let i = 0; i < 3; i++) { if (l === 2 && i === 2) continue; b(.95, .16, .28, (l + i) % 2 ? '#8f969c' : '#7c858e', l % 2 ? -.35 + i * .35 : 0, .15 + l * .17, l % 2 ? 0 : -.35 + i * .35, l % 2 ? PI2 : 0); } }
+    else if (k === 'orecar') { b(1.8, .12, .7, '#3e4348', 0, .36, 0); b(1.6, .7, 1.0, '#6a4a3a', 0, .78, 0); b(1.64, .08, 1.04, '#3e3a38', 0, 1.14, 0); b(1.4, .14, .8, t.v ? '#2e2c2a' : '#8a4a2c', 0, 1.18, 0); for (const x of [-.55, .55]) for (const z of [-.32, .32]) c(.2, .2, .08, '#22252a', x, .2, z, 10, PI2); for (const x of [-1.0, 1.0]) b(.3, .06, .06, '#22252a', x, .36, 0); }
+    else if (k === 'barn') { b(6.6, 2.4, 4.2, '#a33a2e', 0, 1.2, 0); for (const x of [-3.3, 3.3]) { for (const z of [-2.1, 2.1]) b(.14, 2.4, .14, WHITE, x, 1.2, z); b(.1, .5, 3.2, '#a33a2e', x, 2.65, 0); b(.1, .5, 2.0, '#a33a2e', x, 3.15, 0); b(.1, .4, .9, '#a33a2e', x, 3.6, 0); b(.12, .5, .5, WHITE, x * 1.005, 2.9, 0); } b(7.0, .1, 2.75, '#5a4a40', 0, 3.12, -1.15, 0, -.547); b(7.0, .1, 2.75, '#63524a', 0, 3.12, 1.15, 0, .547); b(7.04, .14, .2, '#4a3c34', 0, 3.86, 0); b(1.9, 1.9, .06, '#7a2a22', 0, .95, 2.12); b(2.1, .1, .08, WHITE, 0, 1.95, 2.13); for (const x of [-1.0, 1.0]) b(.1, 1.95, .08, WHITE, x, .97, 2.13); b(2.5, .08, .08, WHITE, 0, .95, 2.14, 0, 0, .78); b(2.5, .08, .08, WHITE, 0, .95, 2.14, 0, 0, -.78); for (const x of [-2.3, 2.3]) b(.6, .6, .06, WHITE, x, 1.4, 2.12); }
+    else if (k === 'silo') { c(1.0, 1.0, 4.6, '#c9ced2', 0, 2.3, 0, 14); for (const y of [.9, 1.8, 2.7, 3.6, 4.5]) c(1.02, 1.02, .06, '#9aa3a8', 0, y, 0, 14); Q.put(new THREE.SphereGeometry(1.0, 12, 6, 0, 6.283, 0, 1.571), '#aab2b8', M4(cx, 4.6, cz)); b(.3, 4.6, .05, '#8a9499', 0, 2.3, 1.03); for (let i = 0; i < 10; i++) b(.3, .04, .08, '#6f7780', 0, .4 + i * .44, 1.05); c(.1, .1, .3, '#8a9499', 0, 5.7, 0, 6); }
+    else if (k === 'windpump') { c(.07, .5, 5.0, '#8a9499', 0, 2.5, 0, 4); for (const y of [1.2, 2.4, 3.6]) b(.9 - y * .15, .05, .9 - y * .15, '#6f7780', 0, y, 0, .785); c(.9, .9, .03, '#d8dde0', 0, 5.1, .32, 12, PI2); for (let i = 0; i < 4; i++) b(1.9, .1, .04, '#9aa3a8', 0, 5.1, .35, 0, 0, i * .785); c(.12, .12, .2, '#5d6570', 0, 5.1, .4, 8, PI2); b(.05, .5, .9, RED, 0, 5.1, -.75); b(.05, .05, .6, '#5d6570', 0, 5.1, -.1); c(.45, .45, .5, '#5a6e7a', .7, .25, .4, 10); c(.03, .03, 1.0, '#5d6570', .35, .5, .2, 5, 0, .5); }
+    else if (k === 'coop') { for (const [dx, dz] of [[-1.9, -.6], [-.5, -.6], [-1.9, .6], [-.5, .6]]) b(.08, .5, .08, '#6a4a2e', dx, .25, dz); b(1.6, 1.0, 1.4, '#b8894e', -1.2, .95, 0); b(1.9, .1, 1.7, '#7a3a2e', -1.2, 1.55, 0, 0, 0, .15); b(.4, .45, .05, '#3a2a1e', -.9, .75, .71); b(.8, .05, .3, '#8a6a44', -.2, .3, .3, 0, 0, -.5); for (const z of [-.8, .8]) { for (const x of [-.3, .8, 1.9]) b(.06, 1.0, .06, '#6a4a2e', x, .5, z); b(2.2, .05, .05, '#6a4a2e', .8, 1.0, z); for (let i = 0; i < 9; i++) b(.02, .95, .02, '#9aa3a8', -.2 + i * .25, .5, z); } for (let i = 0; i < 7; i++) b(.02, .95, .02, '#9aa3a8', 1.9, .5, -.7 + i * .23); for (const [dx, dz, col] of [[.6, .2, '#f2ead8'], [1.3, -.3, '#a0613c'], [.2, -.4, '#f2ead8']]) { b(.2, .2, .3, col, dx, .16, dz); b(.1, .12, .1, col, dx, .32, dz + .14); b(.05, .05, .05, RED, dx, .4, dz + .16); } }
+    else if (k === 'hives') { for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .72; b(.5, .2, .5, '#6a4a2e', x, .1, 0); b(.5, .3, .5, ['#f2ead8', '#e0b23a', '#9fd0bd'][i % 3], x, .36, 0); b(.5, .3, .5, '#f2ead8', x, .67, 0); b(.56, .06, .56, '#8a9499', x, .85, 0); b(.2, .04, .02, '#22252a', x, .26, .26); } }
+    else if (k === 'field') { const w = (t.w || 3) * T, h = (t.h || 3) * T, rows = (t.h || 3) * (t.crop ? 3 : 5), cr = t.crop || 0; if (cr === 0) b(w * .98, .3, h * .98, '#c9a644', 0, .15, 0); for (let i = 0; i < rows; i++) { const z = -h / 2 + (i + .5) * h / rows; if (cr) b(w * .96, .08, .32, '#4a3a2a', 0, .04, z); if (cr === 0) b(w * .96, .1, .2, i % 2 ? '#e0c468' : '#d6b858', 0, .33, z); else if (cr === 1) b(w * .96, .28, .2, i % 2 ? '#5f9a3c' : '#6fae48', 0, .22, z); else for (let j = 0; j < (t.w || 3) * 3; j++) b(.34, .22, .34, (i + j) % 3 ? '#7fb069' : '#8fc078', -w / 2 + (j + .5) * w / ((t.w || 3) * 3), .18, z); } }
+    else if (k === 'tv') { b(.9, .55, .08, '#22252a', 0, .95, 0); b(.8, .45, .09, '#4a6878', 0, .95, .01); b(.06, .7, .06, STEEL, 0, .35, 0); }
+    else if (k === 'table') { b(1.0, .06, .6, '#b8a07a', 0, .42, 0); for (const [dx, dz] of [[-.42, -.22], [.42, -.22], [-.42, .22], [.42, .22]]) b(.05, .42, .05, '#8a6a44', dx, .21, dz); b(.3, .03, .22, '#c9412e', -.1, .47, 0, .3); b(.3, .03, .22, '#3c78c9', .2, .47, .05, -.2); }
+  }
+  Q.build(g, .03); for (const [c, list] of Object.entries(QF.p)) { const gq = mergeGeometries(list); gq.computeVertexNormals(); const m = new THREE.Mesh(gq, surfMat(c)); m.receiveShadow = true; m.userData.noInk = true; g.add(m); }
+  return g; }
+function shThingsKey(H) { return (H.things || []).map((t) => (t.done ? 1 : 0) + (t.carried != null ? 'c' : '') + (t.delivered ? 'd' : '') + (t.out ? 'o' : '') + t.x + ',' + t.y).join('|') + '/' + (H.zones || []).map((z) => (z.on === false ? 0 : 1) + z.x + ',' + z.y + ',' + z.w).join('|') + '/' + (H.lit ? 1 : 0) + Object.keys(H.rev || {}).length; }
+function shThingsGroup(H) { const g = new THREE.Group(), Q = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, PL = H.plan || {}, glow = [];
+  for (const t of H.things || []) { if (t.carried != null) continue; const cx = (AX + t.x + .5) * T, cz = (AY + t.y + .5) * T, ry = (t.r || 0) * Math.PI / 2, on = !!t.done;
+    const b = (w, h, d, col, x, y, z, r = 0, rx = 0, rz = 0) => Q.put(box(w, h, d), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, r, rx, rz)));
+    const c = (r0, r1, h, col, x, y, z, seg = 8, rx = 0, rz = 0) => Q.put(cyl(r0, r1, h, seg), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, 0, rx, rz)));
+    const gl = (geo, x, y, z) => { const q = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(q.attributes)) if (k !== 'position' && k !== 'normal') q.deleteAttribute(k); q.applyMatrix4(M4(cx, 0, cz, ry).multiply(M4(x, y, z))); glow.push(q); };
+    const k = t.k;
+    if (k === 'bed') { b(2.2, .28, 1.0, '#9aa3a8', T / 2, .14, 0); b(2.1, .14, .9, '#f2f2ee', T / 2, .35, 0); b(1.3, .08, .92, '#8fb6c9', T / 2 + .35, .44, 0); b(.4, .12, .6, '#ffffff', T / 2 - .75, .48, 0); b(.08, .6, 1.0, '#7d878c', T / 2 - 1.1, .3, 0); }
+    else if (k === 'locker') { b(1.0, 1.9, .6, on ? '#c9d7de' : '#dfe8ec', 0, .95, -.6); b(.5, .5, .04, '#c9412e', 0, 1.35, -.28); b(.14, .38, .05, '#ffffff', 0, 1.35, -.25); b(.38, .14, .05, '#ffffff', 0, 1.35, -.25); if (on) b(.9, .05, .6, '#b2493f', .5, .1, .1); }
+    else if (k === 'lever') { b(.5, .9, .3, '#5d6066', 0, .45, -.5); b(.08, .6, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.1, -.4, 0, on ? -.8 : .8); c(.09, .09, .1, '#2e2c2a', 0, 1.4, -.4 + (on ? -.4 : .4)); gl(box(.12, .12, .04), 0, .7, -.34); }
+    else if (k === 'valve') { c(.18, .18, 2.2, '#7c858e', 0, .6, 0, 10, 0, Math.PI / 2); c(.12, .12, .9, '#6f7780', 0, .45, 0, 8); c(.42, .42, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.0, 0, 12); b(.8, .05, .05, on ? '#5fbf6a' : '#c9412e', 0, 1.0, 0, on ? .8 : 0); }
+    else if (k === 'pump') { b(1.3, .9, 1.0, on ? '#5a7a5a' : '#5f666e', 0, .45, 0); c(.2, .2, 1.4, '#7c858e', .8, .3, 0, 10, 0, Math.PI / 2); c(.35, .35, .08, on ? '#5fbf6a' : '#c9412e', 0, 1.0, .2, 12, Math.PI / 2); gl(box(.14, .1, .04), -.4, .7, .52); }
+    else if (k === 'generator') { b(1.5, .9, .9, '#6a7a5a', 0, .45, 0); c(.1, .1, .7, '#3e4348', .5, 1.1, 0, 6); b(.4, .3, .05, '#2e2a28', -.3, .6, .46); if (on) gl(box(.3, .18, .04), -.3, .6, .49); }
+    else if (k === 'speaker') { b(.12, 2.4, .12, '#5f666e', 0, 1.2, 0); Q.put(new THREE.ConeGeometry(.35, .5, 10, 1, true), on ? '#d9b233' : '#8a8f94', M4(cx, 2.3, cz, ry, Math.PI / 2)); }
+    else if (t.lost) { }
+    else if (k === 'crate' || k === 'files' || k === 'seed' || k === 'jar' || k === 'box') { const col = { files: '#c9b88a', seed: '#6a8a3a', jar: '#7fb0a0', box: '#8a6038' }[k] || '#a0743c'; if (t.delivered) { b(.6, .45, .5, col, 0, .23, 0); } else { b(.75, .55, .6, col, 0, .28, 0); b(.78, .08, .62, '#5a3b23', 0, .58, 0); gl(box(.2, .2, .2), 0, .9, 0); } }
+    else if (k === 'safe') { b(1.0, 1.0, .8, '#3e4348', 0, .5, -.3); c(.16, .16, .06, '#c9c9c9', 0, .55, .12, 10, Math.PI / 2); }
+    else if (k === 'cell') { for (let i = 0; i < 7; i++) b(.06, 1.4, .06, '#4a4d52', -1.1 + i * .37, .7, 0); b(2.4, .08, .08, '#4a4d52', 0, 1.4, 0); b(2.4, .08, .08, '#4a4d52', 0, .1, 0); }
+    else if (k === 'warm') { c(.32, .32, .8, '#6a4a2e', 0, .4, 0, 10); if (!t.out) { Q.put(new THREE.ConeGeometry(.28, .5, 7), '#ff9a3c', M4(cx, 1.0, cz)); gl(new THREE.ConeGeometry(.2, .4, 7), 0, 1.0, 0); } }
+    else if (k === 'desk') { b(1.6, .08, .8, '#8a6a44', 0, .75, 0); for (const [dx, dz] of [[-.7, -.3], [.7, -.3], [-.7, .3], [.7, .3]]) b(.08, .75, .08, '#6a4a2e', dx, .37, dz); b(.5, .35, .05, '#2e2a28', 0, 1.0, -.2); }
+    else if (k === 'shelf') { b(2.2, 1.8, .5, '#7a6248', 0, .9, 0); for (const y of [.5, 1.0, 1.5]) for (let i = 0; i < 5; i++) b(.3, .32, .35, ['#c9b88a', '#d9cba8', '#b5a47a'][i % 3], -.8 + i * .4, y + .17, .02); }
+    else if (k === 'tank') { c(1.0, 1.0, 3.0, t.look || '#c9c9c9', 0, 1.5, 0, 16); c(1.02, 1.02, .12, '#7c858e', 0, 2.2, 0, 16); c(1.02, 1.02, .12, '#7c858e', 0, .8, 0, 16); if (on) b(.6, .3, .05, '#5fbf6a', 0, 1.5, 1.0); }
+    else if (k === 'vat') { c(.9, .8, 1.4, '#9aa0a2', 0, .7, 0, 14); c(.7, .7, .05, t.look || '#c9a644', 0, 1.42, 0, 14); }
+    else if (k === 'belt') { b(T * (t.w || 1), .35, .9, '#3e4348', T * ((t.w || 1) - 1) / 2, .4, 0); for (let i = 0; i < (t.w || 1) * 2; i++) b(.3, .22, .3, '#b0892e', -T / 2 + .4 + i * T / 2, .7, 0); for (let i = 0; i < (t.w || 1); i++) b(.1, .4, .9, '#5f666e', i * T, .2, 0); }
+    else if (k === 'ram') { b(2.6, .5, .5, '#6a4a2e', 0, .6, 0); c(.3, .3, .5, '#4a4f55', 1.4, .6, 0, 10, 0, Math.PI / 2); for (const dx of [-.9, .9]) for (const dz of [-.4, .4]) c(.25, .25, .1, '#2e2c2a', dx, .25, dz, 10, Math.PI / 2); }
+    else if (k === 'mast') { for (const [dx, dz] of [[-.5, -.5], [.5, -.5], [-.5, .5], [.5, .5]]) b(.1, 7, .1, '#8a3a3a', dx * (1 - .0), 3.5, dz); for (let i = 1; i < 7; i++) b(1.1, .06, .06, '#8a3a3a', 0, i, -.5); gl(box(.3, .3, .3), 0, 7.1, 0); }
+    else if (k === 'hold') { Q.put(new THREE.TorusGeometry(T * (t.r || 2), .06, 6, 40).rotateX(Math.PI / 2), H.hold && H.hold.on ? '#ffd56b' : '#9fd8ff', M4(cx, .05, cz)); b(.9, .9, .6, '#5f5a56', 0, .45, -.2); b(.6, .4, .05, '#2e2a28', 0, .7, .1); gl(box(.4, .2, .04), 0, .7, .13); }
+    else if (k === 'stall') { b(2.0, .9, .9, t.look || '#c94a3a', 0, .45, 0); for (let i = 0; i < 5; i++) b(.42, .08, 1.3, i % 2 ? '#f0ece0' : (t.look || '#c94a3a'), -.8 + i * .4, 2.0, 0, 0, .3); for (const dx of [-.95, .95]) b(.08, 2.0, .08, '#6a4a2e', dx, 1.0, .5); }
+    else if (k === 'stage') { b(T * 3, .5, T * 1.6, '#8a5a32', T, .25, 0); b(T * 3, 2.2, .1, '#c94a3a', T, 1.6, -T * .8); b(T * 1.2, .6, .05, '#e8c45a', T, 2.5, -T * .78); }
+    else if (k === 'ride') { c(1.6, 1.6, .2, '#6a4a2e', 0, .1, 0, 14); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; b(.1, 1.6, .1, '#c9c0a8', Math.cos(a) * 1.2, .9, Math.sin(a) * 1.2); } Q.put(new THREE.ConeGeometry(1.9, .9, 12), '#c94a3a', M4(cx, 2.1, cz)); }
+    else if (k === 'van') { b(2.6, 1.3, 1.3, on ? '#e4e0cc' : '#d9d4c4', 0, .85, 0); b(.9, .9, 1.25, '#9aa3a8', 1.3, .7, 0); b(.5, .4, 1.27, '#3e4f5a', 1.4, 1.0, 0); for (const [dx, dz] of [[-.8, -.6], [.9, -.6], [-.8, .6], [.9, .6]]) c(.28, .28, .16, '#2e2c2a', dx, .28, dz, 10, Math.PI / 2); b(2.0, .25, 1.32, '#3a4a6a', -.2, 1.0, 0); }
+    else if (k === 'sandbags') { for (let r = 0; r < 3; r++) for (let i = 0; i < 5 - r; i++) b(.4, .2, .52, (i + r) % 2 ? '#b5a47a' : '#a89870', -.84 + r * .21 + i * .42, .1 + r * .2, 0); }
+    else if (k === 'listener') { }
+    else if (k === 'hay') { c(.42, .42, .75, '#d2b04e', -.42, .42, 0, 10, Math.PI / 2); c(.42, .42, .75, '#c9a644', .42, .42, 0, 10, Math.PI / 2); }
+    else if (k === 'ice') { b(.9, .9, .9, '#cfe8ff', 0, .45, 0, .3); b(.6, 1.2, .6, '#b8dcf5', .5, .6, .3, .7); }
+    else if (k === 'sign') { b(.08, 1.6, .08, '#5a3b23', 0, .8, 0); b(1.4, .6, .05, t.look || '#d9c08a', 0, 1.5, 0); }
+    else if (k === 'cage') { b(1.6, .08, 1.6, '#4a4f55', 0, .04, 0); b(1.6, .08, 1.6, '#4a4f55', 0, 1.2, 0); if (!on) for (let i = -3; i <= 3; i++) { b(.05, 1.15, .05, '#6f7780', i * .25, .62, -.76); b(.05, 1.15, .05, '#6f7780', i * .25, .62, .76); } }
+    else { b(.7, .7, .7, '#8a7d62', 0, .35, 0); }
+    if (t.prog > 0) gl(box(.9 * t.prog, .06, .06), 0, 2.0, 0); }
+  Q.build(g, .03); if (glow.length) g.add(new THREE.Mesh(mergeGeometries(glow), emberMat));
+  for (const z of H.zones || []) { if (z.on === false) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(z.w * T, z.h * T).rotateX(-Math.PI / 2), shZoneM(z.k)); m.position.set((AX + z.x + z.w / 2) * T, z.k === 'water' ? .12 : .07, (AY + z.y + z.h / 2) * T); m.userData.noInk = true; g.add(m); }
+  if (!H.lit) for (const r of Object.keys(PL.dark || {})) { const q = PL.rooms[r]; if (!q || !(H.rev || {})[r]) continue; const [x0, y0, w, h] = q, m = new THREE.Mesh(new THREE.PlaneGeometry(w * T, h * T).rotateX(-Math.PI / 2), shDarkMat); m.position.set((AX + x0 + w / 2) * T, .09, (AY + y0 + h / 2) * T); m.userData.noInk = true; g.add(m); }
+  return g; }
+/* 3D.114 the stronghold arena v2: rooms, door gaps with real doors, barricades and snares, built off the town map */
+let arena = null;
+function buildArena() {
+  const H = G.S.sh, key = H ? H.akey || H.dest : '';
+  if (arena && arena.key === key && H && H.camp) { let ch = false; (H.lights || []).forEach((l, i) => { const m = arena.cones[i]; if (m) { m.visible = l.on; m.rotation.y = -l.a; } }); if (campZoneSync(H)) ch = true; { const fk = campFenceKey(H); if (fk !== arena.fkey) { arena.fkey = fk; arena.g.remove(arena.fg); freeTree(arena.fg); arena.fg = campFence(H); arena.g.add(arena.fg); ch = true; } } for (const b of H.blds) { const e = arena.bm[b.i]; if (!e) continue; if (e.dead !== b.dead) { arena.g.remove(e.m); freeTree(e.m); e.m = campB(b); arena.g.add(e.m); e.dead = b.dead; ch = true; } const px = (ZH.SH_AX + b.x + b.bw / 2) * T, pz = (ZH.SH_AY + b.y + b.bh / 2) * T; e.m.position.set(px + (b.hitT > 0 ? Math.sin(b.hitT * 2.3) * .05 : 0), 0, pz); } return ch; }
+  if (arena && arena.key === key) { if (H) { shWallFade(H); arena.doors.forEach((m, i) => { const d = H.doors[i]; m.visible = !!d && !d.open && !d.broken; }); let ch = false; for (const k in arena.fog) { const v = !(H.rev || {})[k]; if (arena.fog[k].visible !== v) { arena.fog[k].visible = v; ch = true; } } syncArenaBits(H); return ch; } return false; }
+  if (arena) { scene.remove(arena.g); freeTree(arena.g); arena = null; }
+  if (!H || !window.ZH || !ZH.SH_ROOMS) return false;
+  if (H.camp) {   /* 3D.116 a faction camp: their own town, built from the same buildings as ours */
+    const P = ZH.CAMP_PLAN[H.raid] || ZH.CAMP_PLAN.toll, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), bm = {};
+    const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+    /* 3D.119 owner: "copy the same map as our town": the same painted ground material, the same grass tufts, bushes, pebbles,
+       yard clutter, pines and leafy trees, rocks, and the town's own fence pieces */
+    const GR = SEASON_PAL[season()].grass, SP = SEASON_PAL[season()], DIRT = P.dirt || ['#b08a52', '#ad874f', '#b38d55', '#a9854d'], X0 = -22, Y0 = -16, NX = H.gw + 44, NY = H.gh + 40, tcs = new Float32Array(NX * NY * 3), cc = new THREE.Color();
+    const BX = H.box || [3, 3, 24, 24], CG = H.cg || { gx: 13, sq: 15, y1: 24 }, BV = (x) => x >= CG.gx - 1 && x <= CG.gx + 2, ed = (x, y) => Math.max(0, BX[0] - x, x - BX[2], BX[1] - y, y - BX[3]), isPath = (x, y) => (BV(x) && y > BX[3]) || (CG.east && x > BX[2] && (y === CG.east[1] || y === CG.east[1] + 1)), cell = (x, y) => (H.grid[y] && H.grid[y][x]) || '';   /* 3D.279 the camp's own size: the boulevard, the square and the road out follow it */
+    const GND = H.gnd || [], gk = (x, y) => { for (let i = GND.length - 1; i >= 0; i--) { const q = GND[i]; if (x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h) return q.k; } return null; };   /* 3D.339 hard ground the camp lays by tile: a highway, a car park, hard standing, fields */
+    const street = (x, y) => BV(x) || (y >= CG.sq && y <= CG.sq + 1) || x === BX[0] + 1 || x === BX[2] - 1 || y === BX[1] + 1 || y === BX[3] - 1;
+    const grow = (x, y) => { return false; const d = Math.min(x - 4, 23 - x, y - 4, 23 - y), c = hash(Math.floor(x / 3) * 7 + 1, Math.floor(y / 3) * 5 + 3); return (d === 0 && hash(x * 5, y * 3) < .6) || (d === 1 && hash(x * 3, y * 7) < .3) || (c < .22 && hash(x, y * 11) < .55); };
+    for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) { const r = hash(x + 911, y + 377), e = ed(x, y), inB = e === 0 && cell(x, y) !== 'W';
+      cc.set(gk(x, y) && cell(x, y) !== 'W' ? CAMP_SURF[gk(x, y)][(r * 4) | 0] : P.path && ((inB && street(x, y)) || (isPath(x, y) && y <= BX[3] + 5 && r < .85)) ? P.path : inB && grow(x, y) && cell(x, y)[0] !== 'K' ? (r < .5 ? '#90a046' : '#97a44a') : inB || isPath(x, y) || (e === 1 && r < .55) ? DIRT[(r * 4) | 0] : e <= 4 && r < .4 ? '#a39150' : GR[(r * 6) | 0]);
+      const i = ((y - Y0) * NX + (x - X0)) * 3; tcs[i] = cc.r; tcs[i + 1] = cc.g; tcs[i + 2] = cc.b; }
+    const corner = (x, y) => { let r = 0, gg = 0, bb = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const xx = x + dx - X0, yy = y + dy - Y0; if (xx < 0 || yy < 0 || xx >= NX || yy >= NY) continue; const i = (yy * NX + xx) * 3; r += tcs[i]; gg += tcs[i + 1]; bb += tcs[i + 2]; n++; } return [r / n, gg / n, bb / n]; };
+    const pos = [], col = [], nrm = []; for (let y = Y0; y < Y0 + NY; y++) for (let x = X0; x < X0 + NX; x++) for (const [dx, dz] of [[0, 0], [1, 1], [1, 0], [0, 0], [0, 1], [1, 1]]) { pos.push((AX + x + dx) * T, 0, (AY + y + dz) * T); col.push(...corner(x + dx, y + dz)); nrm.push(0, 1, 0); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); gg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    const gm = new THREE.Mesh(gg, groundMat()); gm.receiveShadow = true; g.add(gm);
+    /* scatter, the same rules as the town (buildForest) */
+    const at = (x, y, a, b) => [(AX + x + a) * T, (AY + y + b) * T];
+    const tufts = [], bushes = [], pebbles = [], planks = [], junk = [], barrels = [], tyres = [], lone = [], pines = [], rounds = [], rocks = [];
+    for (let y = Y0 + 1; y < Y0 + NY - 1; y++) for (let x = X0 + 1; x < X0 + NX - 1; x++) { const v = cell(x, y); if (v === 'W' || v === 'G' || v[0] === 'K' || v === 'P' || gk(x, y)) continue;
+      const e = ed(x, y), inB = e === 0, h1 = hash(x * 13 + 5, y * 7 + 2), h2 = hash(x * 3 + 11, y * 17 + 4), h3 = hash(x * 29 + 1, y * 11 + 9), rg = inB && grow(x, y);
+      if (e >= 2 && !(Math.abs(x - CG.gx - .5) < 3.5 && y > BX[3]) && !isPath(x, y)) { const r = hash(x * 7 + 3, y * 5 + 1); if (r < Math.min(.55, .02 + (e - 1) * .07)) { const q = hash(x, y * 3); (q < .55 ? pines : rounds).push([...at(x, y, hash(x, y + 9), hash(x + 9, y)), (.75 + q * .6) * 1.35, q]); continue; } if (r > .985) { rocks.push([...at(x, y, .5, .5), 1.2 + h1 * .5, h2]); continue; } }
+      const nt = inB ? (rg ? (h1 < .7 ? 2 : 1) : h1 < .1 ? 1 : 0) : isPath(x, y) ? 0 : (h1 < .55 ? 2 : h1 < .85 ? 1 : 0);
+      if (inB && !rg && !H.props) { const h4 = hash(x * 41 + 7, y * 23 + 5); if (h4 < .09) planks.push([...at(x, y, .2 + .6 * h2, .2 + .6 * h3), 1.45, h1]); else if (h4 < .14) junk.push([...at(x, y, .25 + .5 * h3, .25 + .5 * h1), 1.45, h2]); else if (h4 < .175) barrels.push([...at(x, y, .3 + .4 * h1, .3 + .4 * h2), (1 + h3 * .15) * 1.45, h3]); else if (h4 < .205) tyres.push([...at(x, y, .3 + .4 * h2, .3 + .4 * h1), 1.45, h1]); else if (h4 < .26) lone.push([...at(x, y, .2 + .6 * h1, .2 + .6 * h3), 1.45, h2]); }
+      for (let k = 0; k < nt; k++) { const a = hash(x + k * 31, y - k * 7), b = hash(x - k * 5, y + k * 19); tufts.push([...at(x, y, .1 + .8 * a, .1 + .8 * b), 1.1 + a * .9, b]); }
+      if (!inB && h2 < .10) bushes.push([...at(x, y, .2 + .6 * h3, .2 + .6 * h1), 1 + h2 * 6, h3]);
+      if (h3 < (inB ? (H.props ? .05 : .3) : .12)) pebbles.push([...at(x, y, .15 + .7 * h2, .15 + .7 * h1), 1.5 + h1 * 1.4, h2]); }
+    const put = (m) => { g.add(m); return m; };
+    put(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true)); put(instD(plankG, lone, (r) => ['#8a6a44', '#9a7a52', '#7a6248'][(r * 3) | 0]));
+    put(instD(smallCrateG, junk, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true)); put(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true)); put(instD(tyreG, tyres, () => '#2e2c2a', true));
+    put(instD(tuftG, tufts, (r) => SP.tuft[(r * 4) | 0])).userData.noInk = true; put(instD(bushG, bushes, (r) => SP.bush[(r * 5) | 0], true)); put(instD(pebbleG, pebbles, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0])).userData.noInk = true;
+    const dead = rounds.filter((t) => hash(t[0] * 3.1, t[1] * 7.7) < .2), leafy = rounds.filter((t) => !dead.includes(t)), PINE = ['#3d7048', '#386a44', '#447a4e', '#33613f', '#4a7f50'], CROWN = SP.crown, dk = (c) => '#' + new THREE.Color(c).multiplyScalar(.7).getHexString();
+    put(instSway(pineTrunkG, pines, () => '#5a3b23', .03, 0, .8)); put(instSway(pineCoreG, pines, (r) => dk(PINE[(r * 5) | 0]), .03, .3, 2.7)); put(instSway(pineCardsG, pines, (r) => PINE[(r * 5) | 0], 0, .3, 2.7, NEEDLE_TEX));
+    put(instSway(trunkG, leafy, () => '#5a3b23', .03, 0, 1.4)); put(instSway(crownCoreG, leafy, (r) => dk(CROWN[(r * 6) | 0]), .03, 1.0, 2.5)); put(instSway(crownCardsG, leafy, (r) => CROWN[(r * 6) | 0], 0, 1.0, 2.6, LEAF_TEX)); put(instSway(deadG, dead, (r) => ['#5e4a3a', '#6a5544', '#54443a'][(r * 3) | 0], .03, 0, 2.0));
+    put(instD(rockG, rocks, (r) => ['#8c8478', '#9a9080', '#7c7468'][(r * 3) | 0], true)); put(instD(rockG2, rocks, (r) => ['#a39b8e', '#8f887c'][(r * 2) | 0], true));
+    /* the fence: the town's own wall pieces (Toll Kings a palisade, Greenwater a wooden fence), an open gateway with posts */
+    const fg = campFence(H); g.add(fg);
+    for (const b of H.blds) { const m = campB(b); g.add(m); bm[b.i] = { m, dead: b.dead }; }
+    if (H.props && H.props.length) g.add(campProps(H, P));
+    if (H.deco && H.deco.length) g.add(shLookGroup({ camp: true, plan: { deco: H.deco, look: { mess: 0 } } }));   /* 3D.339 the camp's set pieces, from the strongholds' kit */
+    const cones = (H.lights || []).map((l) => { const m = new THREE.Mesh(new THREE.CircleGeometry(7 * T, 16, -.3, .6).rotateX(-Math.PI / 2), coneMat); m.position.set((AX + l.x) * T, .1, (AY + l.y) * T); m.userData.noInk = true; g.add(m); return m; });   /* 3D.279 the lookouts' sight on the ground */
+    scene.add(g); arena = { key, g, doors: [], bits: new THREE.Group(), fog: {}, bm, bitKey: '', fg, fkey: campFenceKey(H), cones, zg: null, zkey: '' }; campZoneSync(H); return true; }
+  const D = ZH.SH_DEFS[H.dest], R = ZH.SH_ROOMS, DR = ZH.SH_DOORS, AX = ZH.SH_AX, AY = ZH.SH_AY, g = new THREE.Group(), doors = [];
+  const box = (w, h, d, col, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), toon(col)); m.position.set(x * T, y, z * T); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  const PL = H.plan || {}, PW = PL.W || 46, PH = PL.H || 19, TH = PL.theme || D.props;   /* 3D.276 each stronghold's own plan: its size, its floors, its theme */
+  g.add(shGroundGroup(H));   /* 3D.314 the town's painted ground, tufts, bushes and trees round every stronghold (was one flat green sheet) */
+  const sbox = (w, h, d, col, x, y, z, wall) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * T, h, d * T), surfMat(col, wall)); m.position.set(x * T, y, z * T); m.castShadow = !!wall; m.receiveShadow = true; g.add(m); return m; };
+  const grid = ZH.shGridOf(), isFloor = (x, y) => !!(grid[y] && grid[y][x]);
+  const fl0 = { R0: D.floor[0], S: D.floor[0], R1: D.floor[1], A: D.floor[1], C: D.floor[1], B: D.floor[2], L1: D.floor[1], L2: D.floor[0], L3: D.floor[1], L4: D.floor[2] }, fl = new Proxy({}, { get: (o, k) => (PL.floor && PL.floor[k]) || fl0[k] || D.floor[1] });
+  for (const [k, [x0, y0, w, h]] of Object.entries(R)) { sbox(w + 1, .06, h + 1, fl[k], AX + x0 + w / 2, 0, AY + y0 + h / 2).userData.noInk = true;   /* 3D.314 the floor runs under the thin walls to the middle of the wall line */ if (!(PL.look || {}).plain) for (let i = 2; i < w; i += 2) box(.04, .065, h, TH === 'clinic' || TH === 'lab' || TH === 'office' ? '#bcc4c0' : '#8f8a7e', AX + x0 + i, 0, AY + y0 + h / 2); }
+  DR.forEach(([a, b, x0, y0, w, h], i) => { sbox(w, .066, h, fl[a], AX + x0 + w / 2, 0, AY + y0 + h / 2).userData.noInk = true; doors.push(sbox(w > 1 ? w : .2, Math.min(2.1, ((PL.look || {}).wallH || 2.6) - .3), h > 1 ? h : .2, DR[i][6] ? ((PL.look || {}).lockDoor || '#7a3b2a') : (PL.look || {}).door || (TH === 'prison' || TH === 'camp' || TH === 'plant' || TH === 'lab' ? '#5d6066' : '#8a6a48'), AX + x0 + w / 2, Math.min(2.1, ((PL.look || {}).wallH || 2.6) - .3) / 2, AY + y0 + h / 2, true)); });
+  /* walls: every non-floor tile next to a floor tile; low on the south side so the camera sees in */
+  /* 3D.314 (owner: "the wall should be thinner"): a wall is a thin slab down the middle of its line of tiles (a post in each wall tile and an arm to each neighbour that is wall or door), not a block a whole tile thick */
+  { const WT = (PL.look || {}).wallT || .1,   /* 3D.321 a tile is about 3.5 m: a tenth of a tile is a 35 cm wall (was .26, nearly a metre) */ LKW = PL.look || {}, wallAt = {}, doorAt = {}, QW = new Parts(), QD = new Parts(), wcol = PL.wall || D.wall;
+    DR.forEach(([a, b, x0, y0, w, h]) => { for (let yy = y0; yy < y0 + h; yy++) for (let xx = x0; xx < x0 + w; xx++) doorAt[xx + ',' + yy] = 1; });
+    for (let y = -1; y <= PH; y++) for (let x = -1; x <= PW; x++) { if (isFloor(x, y)) continue; let n = false, south = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (isFloor(x + dx, y + dy)) { n = true; if (dy < 0) south = true; } if (n && !(LKW.noWall || []).some((q) => q[0] === x && q[1] === y)) wallAt[x + ',' + y] = LKW.wallH || 2.6; }   /* 3D.337 a wall is 2.6 high, well over twice a survivor (was 1.7): owner, "wall still needs to be higher, it doesn't look like a wall" */   /* 3D.315 tall on every side: the wall fades where someone stands behind it */
+    const piece = (w, d, hgt, cx, cz) => { QW.put(new THREE.BoxGeometry(w * T, hgt, d * T), wcol, M4(cx * T, hgt / 2, cz * T)); QW.put(new THREE.BoxGeometry((w + .04) * T, .05, (d + .04) * T), LKW.cap || wcol, M4(cx * T, hgt + .025, cz * T)); if (LKW.dado) { const dh = Math.min(hgt - .02, LKW.dadoH || .2); QD.put(new THREE.BoxGeometry(w * T + .03, dh, d * T + .03), LKW.dado, M4(cx * T, dh / 2, cz * T)); } };
+    for (const key of Object.keys(wallAt)) { const [x, y] = key.split(',').map(Number), hgt = wallAt[key], cx = AX + x + .5, cz = AY + y + .5, arm = (1 - WT) / 2; QW.put(new THREE.BoxGeometry(T, .04, T), wcol, M4(cx * T, 0, cz * T));   /* a footing under the wall line, so no grass shows where two walls run side by side */ piece(WT, WT, hgt, cx, cz);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nk = (x + dx) + ',' + (y + dy); if (!wallAt[nk] && !doorAt[nk]) continue; const hh = doorAt[nk] ? hgt : Math.min(hgt, wallAt[nk]) === hgt ? hgt : hgt; piece(dx ? arm : WT, dy ? arm : WT, hh, cx + dx * (WT / 2 + arm / 2), cz + dy * (WT / 2 + arm / 2)); } }
+    for (const [QQ, wall] of [[QW, true], [QD, true]]) for (const [c, list] of Object.entries(QQ.p)) { const gq = mergeGeometries(list); gq.computeVertexNormals(); const m = new THREE.Mesh(gq, surfMat(c, wall)); m.castShadow = m.receiveShadow = true; g.add(m); } }
+  /* props by theme, at room edges */
+  const prop = (k, x, y) => { const X = AX + x, Y = AY + y; if (PL.noEdgeProps) return; if (TH === 'clinic' || TH === 'lab' || TH === 'office') { if (k % 3 === 0) { box(1.4, .3, .65, '#f2f2ee', X, .3, Y); box(1.4, .05, .65, '#8fb6c9', X, .48, Y); } else if (k % 3 === 1) box(.5, .9, .4, '#c9d7de', X, .45, Y); else box(.7, .45, .45, '#b2493f', X, .23, Y); }
+    else if (TH === 'camp') { if (k % 3 === 0) { box(.9, .55, .9, '#8a7d62', X, .28, Y); box(.6, .4, .6, '#a0743c', X + .2, .75, Y); } else if (k % 3 === 1) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, .9, 10), toon('#5f6a5a')); t.position.set(X * T, .45, Y * T); g.add(t); } else box(1.2, .5, .5, '#6b4a2e', X, .25, Y); }
+    else { if (k % 2) box(.9, .5, .9, '#8a7d62', X, .25, Y); else box(.4, 1.6, .4, '#6b6f75', X, .8, Y); } };
+  let k = 0; for (const [rk, [x0, y0, w, h]] of Object.entries(R)) { prop(k++, x0 + 1, y0 + .6); prop(k++, x0 + w - 1.2, y0 + .6); if (rk === 'B' || rk === 'R1') prop(k++, x0 + w / 2, y0 + .6); if (rk === 'A' && D.raid) for (let i = 0; i < 4; i++) box(.7, .5, .6, '#c8a23a', AX + x0 + 2 + i * 1.6, .25, AY + y0 + h - 1);   /* the stockpile */
+    if (rk === 'C' && D.raid) for (let i = 0; i <= w * 2; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.2, 5), toon('#4a4d52')); b.position.set((AX + x0 + i / 2) * T, .6, (AY + y0 + 1.2) * T); g.add(b); } }
+  /* 3D.128 the town's own yard pieces along the walls of every room: crates, barrels, plank piles, tyres (review step 7: built from town pieces) */
+  { const crates = [], barrels = [], planks = [], tyres = [], doorNear = (x, y) => DR.some(([, , dx, dy, dw, dh]) => x >= dx - 1 && x <= dx + dw && y >= dy - 1 && y <= dy + dh);
+    for (const [rk, [x0, y0, w, h]] of Object.entries(R)) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const edge = x === x0 || x === x0 + w - 1 || y === y0 || y === y0 + h - 1; if (!edge || doorNear(x, y) || (rk === (PL.startRoom || 'R0') && Math.abs(x - (PL.start ? PL.start.x : 1)) < 3.5 && Math.abs(y - (PL.start ? PL.start.y + 1 : 9.5)) < 3.5) || (PL.things || []).some((t) => Math.abs(t.x - x) < 2 && Math.abs(t.y - y) < 1.5)) continue;
+      const r = hash(x * 17 + 3, y * 29 + 7), q = hash(x * 5 + 1, y * 13 + 9), P = [(AX + x + .3 + .4 * q) * T, (AY + y + .3 + .4 * r) * T, 1.35, q];
+      if ((PL.look || {}).noYard) continue; if (r < .07) crates.push(P); else if (r < .12) barrels.push(P); else if (r < .16) planks.push(P); else if (r < .185 && TH !== 'clinic' && TH !== 'lab' && TH !== 'office') tyres.push(P); }
+    g.add(instD(smallCrateG, crates, (r) => ['#9a6d3e', '#8a6038', '#a57a48'][(r * 3) | 0], true)); g.add(instD(barrelG, barrels, (r) => ['#5a6e7a', '#7a4a32', '#6a6e58'][(r * 3) | 0], true));
+    g.add(instD(planksG, planks, (r) => ['#8a6a44', '#7a6248', '#9a7a52', '#6e5a44'][(r * 4) | 0], true)); g.add(instD(tyreG, tyres, () => '#2e2c2a', true)); }
+  g.add(shLookGroup(H));   /* 3D.311 the place's own look */
+  const fog = {}; for (const [k, [x0, y0, w, h]] of Object.entries(R)) { if (k === (PL.startRoom || 'R0')) continue; const m = new THREE.Mesh(new THREE.BoxGeometry((w + .72) * T, ((PL.look || {}).wallH || 2.6) + .08, (h + .72) * T), toon('#2a2622')); m.position.set((AX + x0 + w / 2) * T, (((PL.look || {}).wallH || 2.6) + .08) / 2, (AY + y0 + h / 2) * T); g.add(m); fog[k] = m; }   /* 3D.115 rooms nobody has opened yet stay dark */
+  const bits = new THREE.Group(); g.add(bits); scene.add(g); arena = { key, g, doors, bits, fog, bitKey: '' }; syncArenaBits(H); for (const k in fog) fog[k].visible = !(H.rev || {})[k]; return true;
+}
+function campFenceKey(H) { return Object.values(H.fence || {}).map((f) => (f.dead ? 2 : f.hp < f.max * .6 ? 1 : 0)).join(''); }
+function campFence(H) {   /* 3D.121 the camp fence from the town's own wall pieces; a broken section is rubble you can walk through */
+  const g = new THREE.Group(), FP = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, F = H.fence || {}, has = (x, y) => { const f = F[(x - AX) + ',' + (y - AY)]; return !!f && !f.dead; };
+  for (const f of Object.values(F)) wallPiece(FP, { x: AX + f.x, y: AY + f.y, type: f.type, hp: f.hp, max: f.max, broken: f.dead }, has, (AX + f.x + .5) * T, (AY + f.y + .5) * T);
+  FP.build(g, .03); return g; }
+const coneMat = new THREE.MeshBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: .28, depthWrite: false });
+function campZoneSync(H) { const k = (H.zones || []).map((z) => (z.on === false ? 0 : 1) + z.x + ',' + z.y).join('|'); if (k === arena.zkey) return false; arena.zkey = k; if (arena.zg) { arena.g.remove(arena.zg); freeTree(arena.zg); } const g = new THREE.Group(), AX = ZH.SH_AX, AY = ZH.SH_AY;
+  for (const z of H.zones || []) { if (z.on === false) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(z.w * T, z.h * T).rotateX(-Math.PI / 2), shZoneM(z.k)); m.position.set((AX + z.x + z.w / 2) * T, .07, (AY + z.y + z.h / 2) * T); m.userData.noInk = true; g.add(m); } arena.zg = g; arena.g.add(g); return true; }
+/* 3D.139 camp set dressing: every prop of a camp merged into a few meshes (one per colour), with the ink outline, plus one glow mesh */
+const emberMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c });
+const CAMP_SURF = { asphalt: ['#5c5f63', '#585b5f', '#606367', '#55585c'], concrete: ['#a8a8a2', '#a2a29c', '#aeaea8', '#9e9e98'], gravel: ['#a59f8e', '#9d9786', '#aba594', '#a19b8a'], paving: ['#bdb9ad', '#b6b2a6', '#c2beb2', '#b9b5a8'], ash: ['#5f574e', '#59514a', '#655d54', '#544d46'], soil: ['#6a5238', '#644c34', '#70583c', '#5e4830'], dirt: ['#b08a52', '#ad874f', '#b38d55', '#a9854d'] };
+function campProps(H, P) {
+  const g = new THREE.Group(), Q = new Parts(), AX = ZH.SH_AX, AY = ZH.SH_AY, FLAG = P.flag || '#c9772e', glow = [];
+  const STEEL = ['#6f7780', '#7c858e', '#5f666e'], RUST = ['#8a4a2c', '#9a5a34', '#7a4226'], WOODC = ['#8a6a44', '#7a6248', '#9a7a52'];
+  for (const p of H.props || []) { const cx = (AX + p.x + .5) * T, cz = (AY + p.y + .5) * T, ry = p.r * Math.PI / 2 + (p.v - .5) * .5, v = p.v, pick = (L) => L[(v * L.length) | 0];
+    const b = (w, h, d, col, x, y, z, r = 0, rx = 0, rz = 0) => Q.put(box(w, h, d), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, r, rx, rz)));
+    const c = (r0, r1, h, col, x, y, z, seg = 8, rx = 0, rz = 0) => Q.put(cyl(r0, r1, h, seg), col, M4(cx, 0, cz, ry).multiply(M4(x, y, z, 0, rx, rz)));
+    const gl = (geo, x, y, z) => { const q = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(q.attributes)) if (k !== 'position' && k !== 'normal') q.deleteAttribute(k); q.applyMatrix4(M4(cx, 0, cz, ry).multiply(M4(x, y, z))); glow.push(q); };
+    if (p.k === 'tower') { for (const [dx, dz] of [[-.7, -.7], [.7, -.7], [-.7, .7], [.7, .7]]) b(.14, 2.6, .14, '#6a4a2e', dx, 1.3, dz); b(1.75, .12, 1.75, '#8a6a44', 0, 2.0, 0); for (const [dx, dz, w, d] of [[0, -.82, 1.75, .08], [0, .82, 1.75, .08], [-.82, 0, .08, 1.75], [.82, 0, .08, 1.75]]) b(w, .5, d, '#7a5a38', dx, 2.35, dz);
+      Q.put(new THREE.ConeGeometry(1.45, .7, 4), pick(RUST), M4(cx, 3.25, cz, Math.PI / 4)); b(.1, 2.0, .1, '#5a3b23', .95, 1.0, 0, 0, 0, .12); b(.1, 2.0, .1, '#5a3b23', .95, 1.0, .4, 0, 0, .12); for (let i = 0; i < 4; i++) b(.08, .06, .44, '#5a3b23', .88 + i * .045, .35 + i * .45, .2); }
+    else if (p.k === 'banner') { b(.1, 3.0, .1, '#4a3a2e', 0, 1.5, 0); b(.9, 1.1, .05, FLAG, .5, 2.35, 0); b(.9, .14, .06, '#2e2a28', .5, 2.35, 0); }
+    else if (p.k === 'chimney') { c(.42, .55, 3.4, '#7a4a3a', 0, 1.7, 0, 10); c(.5, .5, .22, '#5a3a30', 0, 3.3, 0, 10); c(.6, .65, .3, '#5f5a56', 0, .15, 0, 10); gl(cyl(.34, .34, .06, 10), 0, 3.43, 0); }
+    else if (p.k === 'furnace') { b(1.5, 1.3, 1.3, '#5f5a56', 0, .65, 0); b(1.6, .16, 1.4, '#4a4643', 0, 1.38, 0); c(.2, .26, .9, '#4a4643', .4, 1.85, -.3, 8); b(.7, .55, .08, '#2e2a28', 0, .5, .66); gl(box(.52, .36, .06), 0, .46, .7); b(.5, .1, .5, pick(STEEL), -.2, 1.5, .2); }
+    else if (p.k === 'anvil') { c(.3, .34, .5, '#6a4a2e', 0, .25, 0, 10); b(.3, .12, .26, '#3e4348', 0, .56, 0); b(.7, .16, .3, '#4a5056', 0, .7, 0); b(.22, .1, .2, '#4a5056', .45, .7, 0); b(.08, .5, .08, '#6a4a2e', -.5, .25, .4, 0, 0, .5); b(.2, .12, .12, '#5f666e', -.32, .52, .4); }
+    else if (p.k === 'slag') { Q.put(new THREE.ConeGeometry(.85, .8, 7), '#4a4643', M4(cx, .4, cz, ry)); Q.put(new THREE.ConeGeometry(.5, .5, 6), '#5a5552', M4(cx + .5, .25, cz + .35, ry + 1)); Q.put(new THREE.ConeGeometry(.4, .4, 6), '#3e3a38', M4(cx - .55, .2, cz + .25, ry + 2));
+      if (v < .6) gl(new THREE.ConeGeometry(.18, .16, 6), 0, .78, 0); }
+    else if (p.k === 'beams') { for (let i = 0; i < 5; i++) b(1.9, .14, .2, STEEL[i % 3], 0, .08 + (i > 2 ? .16 : 0), (i > 2 ? (i - 3.5) * .3 : (i - 1) * .28)); b(.2, .1, 1.0, '#6a4a2e', -.6, .02, 0); b(.2, .1, 1.0, '#6a4a2e', .6, .02, 0); if (v > .5) b(1.6, .14, .2, RUST[1], .1, .38, 0, .5); }
+    else if (p.k === 'coal') { Q.put(new THREE.ConeGeometry(.8, .6, 6), '#2e2c2a', M4(cx, .3, cz, ry)); Q.put(new THREE.ConeGeometry(.5, .4, 5), '#3a3836', M4(cx + .45, .2, cz - .3, ry + .7)); b(.9, .5, .08, '#6a4a2e', -.1, .25, .75); b(.08, .6, .08, '#5a3b23', -.55, .3, .75); b(.08, .6, .08, '#5a3b23', .35, .3, .75); }
+    else if (p.k === 'drums') { const C = ['#5a6e7a', '#8a4a2c', '#6a6e58', '#b0892e']; for (const [i, [dx, dz]] of [[-.35, -.3], [.35, -.25], [0, .35], [-.5, .45]].entries()) if (i < 2 + ((v * 3) | 0)) { c(.3, .3, .82, C[(i + ((v * 4) | 0)) % 4], dx, .41, dz, 10); c(.31, .31, .06, '#3e3a38', dx, .6, dz, 10); c(.31, .31, .06, '#3e3a38', dx, .22, dz, 10); } if (v > .66) c(.3, .3, .82, C[1], .55, .3, .3, 10, Math.PI / 2); }
+    else if (p.k === 'cart') { b(1.9, .06, .1, '#5f666e', 0, .03, -.35); b(1.9, .06, .1, '#5f666e', 0, .03, .35); for (let i = -2; i <= 2; i++) b(.14, .05, .95, '#6a4a2e', i * .42, .02, 0); b(1.0, .5, .8, pick(RUST), 0, .52, 0); b(.9, .1, .7, '#2e2c2a', 0, .76, 0); for (const [dx, dz] of [[-.32, -.38], [.32, -.38], [-.32, .38], [.32, .38]]) c(.16, .16, .08, '#3e4348', dx, .18, dz, 8, Math.PI / 2); }
+    else if (p.k === 'stack') { b(.8, .7, .8, WOODC[0], -.15, .35, -.1); b(.7, .6, .7, WOODC[1], .1, 1.0, -.05, .3); b(.55, .5, .55, WOODC[2], .55, .25, .5, .6); if (v > .5) b(.5, .45, .5, STEEL[0], -.5, .22, .6, .2); }
+    else if (p.k === 'tyres') { for (const [dx, dz, n] of [[-.45, -.2, 4], [.4, -.25, 3], [0, .45, 2]]) for (let i = 0; i < n; i++) c(.4, .4, .2, i % 2 ? '#2e2c2a' : '#3a3836', dx, .1 + i * .21, dz, 10); }
+    else if (p.k === 'spikes') { for (const dx of [-.5, .5]) { b(1.5, .12, .12, '#5f666e', dx, .5, 0, 0, 0, .75); b(1.5, .12, .12, '#6f7780', dx, .5, 0, 0, 0, -.75); b(.12, .12, 1.5, '#5f666e', dx, .5, 0, 0, .75, 0); } }
+    else if (p.k === 'sign') { b(.08, 1.9, .08, '#6a6e72', -.4, .95, 0); b(.75, .75, .05, '#d9b233', -.4, 1.8, 0, 0, 0, Math.PI / 4); b(.08, 1.5, .08, '#6a6e72', .45, .75, .2); c(.36, .36, .05, '#b83a2e', .45, 1.45, .2, 8, Math.PI / 2); b(.5, .1, .06, '#f0ece0', .45, 1.45, .23); }
+    else if (p.k === 'hay') { c(.42, .42, .75, '#d2b04e', -.42, .42, 0, 10, Math.PI / 2); c(.42, .42, .75, '#c9a644', .42, .42, 0, 10, Math.PI / 2); c(.42, .42, .75, '#d9b858', 0, 1.12, 0, 10, Math.PI / 2); }
+    else if (p.k === 'scarecrow') { b(.1, 1.7, .1, '#6a4a2e', 0, .85, 0); b(1.3, .1, .1, '#6a4a2e', 0, 1.25, 0); b(.5, .6, .22, '#a4553a', 0, 1.05, 0); b(.3, .3, .3, '#d9c08a', 0, 1.6, 0); Q.put(new THREE.ConeGeometry(.34, .3, 8), '#6a4a2e', M4(cx, 1.9, cz, ry)); b(.9, .2, .9, '#7a5a34', 0, .1, 0); }
+    else if (p.k === 'beds') { for (let i = -1; i <= 1; i++) { b(1.9, .2, .44, '#6a4a2e', 0, .1, i * .66); b(1.75, .06, .32, '#4a3524', 0, .22, i * .66); for (let k = -3; k <= 3; k++) b(.16, .26 + ((k + i + 9) % 3) * .08, .16, (k + i) % 2 ? '#5f9a3c' : '#6fae48', k * .25, .36, i * .66); } }
+    else if (p.k === 'fruit') { c(.1, .15, 1.0, '#6a4a2e', 0, .5, 0, 7); Q.put(new THREE.IcosahedronGeometry(.8, 0), '#5f9a3c', M4(cx, 1.55, cz, ry)); Q.put(new THREE.IcosahedronGeometry(.5, 0), '#6fae48', M4(cx + .45, 1.3, cz + .3, ry)); for (const [dx, dy, dz] of [[.5, 1.5, .5], [-.55, 1.35, .35], [.1, 1.1, .75], [-.2, 1.9, .55]]) b(.14, .14, .14, '#c9412e', dx, dy, dz); }
+    else if (p.k === 'line') { b(.1, 1.7, .1, '#6a4a2e', -.9, .85, 0); b(.1, 1.7, .1, '#6a4a2e', .9, .85, 0); b(1.8, .03, .03, '#e0d8c4', 0, 1.6, 0); for (const [i, col] of ['#c9c0a8', '#a4553a', '#5a7fa8', '#c9c0a8'].entries()) b(.34, .5 + (i % 2) * .15, .03, col, -.6 + i * .4, 1.32 - (i % 2) * .07, 0); }
+    else if (p.k === 'sandbags') { for (let r = 0; r < 3; r++) for (let i = 0; i < 5 - r; i++) b(.4, .2, .52, (i + r) % 2 ? '#b5a47a' : '#a89870', -.84 + r * .21 + i * .42, .1 + r * .2, 0); }
+    else if (p.k === 'ocrate') { b(.85, .6, .85, '#5f6b45', -.3, .3, -.15); b(.75, .5, .75, '#6a7650', -.25, .85, -.1, .2); b(.7, .5, .7, '#566240', .55, .25, .45, .4); b(.87, .1, .87, '#e4e0cc', -.3, .42, -.15); }
+    else if (p.k === 'mast') { b(.14, 3.4, .14, '#5f666e', 0, 1.7, 0); b(1.0, .1, .1, '#5f666e', 0, 3.3, 0); b(.36, .28, .3, '#3e4348', -.4, 3.12, .1); b(.36, .28, .3, '#3e4348', .4, 3.12, .1); gl(box(.3, .2, .05), -.4, 3.1, .27); gl(box(.3, .2, .05), .4, 3.1, .27); c(.26, .32, .25, '#4a4f55', 0, .12, 0, 8); }
+    else if (p.k === 'flagpole') { c(.05, .06, 3.6, '#c9c9c9', 0, 1.8, 0, 6); b(1.0, .6, .04, FLAG, .55, 3.25, 0); c(.32, .38, .22, '#8a8a84', 0, .11, 0, 8); }
+    else if (p.k === 'wire') { for (const dx of [-.85, 0, .85]) { b(.1, 1.1, .1, '#5a3b23', dx, .55, 0, 0, 0, .12); b(.1, 1.1, .1, '#5a3b23', dx, .55, 0, 0, 0, -.12); } for (const y of [.35, .65, .95]) b(1.9, .04, .04, '#8f969c', 0, y, 0); }
+    else if (p.k === 'container') { b(1.95, 1.15, 1.0, '#e4e8ea', 0, .6, 0); b(1.97, .2, 1.02, FLAG, 0, .85, 0); b(.05, .95, .03, '#9aa0a2', -.15, .58, .51); b(.05, .95, .03, '#9aa0a2', .15, .58, .51); b(1.97, .06, 1.02, '#c5cacc', 0, 1.2, 0); }
+    else if (p.k === 'hazard') { for (const [dx, dz] of [[-.36, -.25], [.36, -.25], [0, .38]]) { c(.3, .3, .82, '#d9b233', dx, .41, dz, 10); c(.31, .31, .12, '#2e2c2a', dx, .5, dz, 10); c(.26, .26, .04, '#3e3a38', dx, .84, dz, 10); } }
+    else if (p.k === 'cage') { b(1.6, .08, 1.6, '#4a4f55', 0, .04, 0); b(1.6, .08, 1.6, '#4a4f55', 0, 1.2, 0); for (let i = -3; i <= 3; i++) { b(.05, 1.15, .05, '#6f7780', i * .25, .62, -.76); b(.05, 1.15, .05, '#6f7780', i * .25, .62, .76); b(.05, 1.15, .05, '#6f7780', -.76, .62, i * .25); b(.05, 1.15, .05, '#6f7780', .76, .62, i * .25); } }
+    else if (p.k === 'dish') { b(.8, .5, .8, '#9aa0a2', 0, .25, 0); c(.06, .06, 1.0, '#5f666e', 0, 1.0, 0, 6); Q.put(new THREE.ConeGeometry(.75, .32, 12, 1, true), '#e4e8ea', M4(cx, 1.7, cz, ry, -.9)); b(.05, .6, .05, '#5f666e', 0, 1.85, .3, 0, -.9); }
+    else if (p.k === 'candles') { for (const [i, [dx, dz, h]] of [[0, 0, .5], [-.4, .2, .3], [.35, .3, .38], [.15, -.4, .26], [-.3, -.35, .42], [.55, -.1, .2]].entries()) { c(.09, .1, h, i % 2 ? '#e8dcc0' : '#d9cba8', dx, h / 2, dz, 7); gl(box(.07, .12, .07), dx, h + .07, dz); } b(1.3, .05, 1.3, '#4a3a2e', 0, .025, 0); }
+    else if (p.k === 'ragpole') { b(.12, 2.8, .12, '#4a3a2e', 0, 1.4, 0, 0, 0, .06); b(.9, .08, .08, '#4a3a2e', 0, 2.3, 0); for (const [i, col] of ['#7a5aa8', '#8a3a3a', '#c9c0a8'].entries()) b(.26, .6 + i * .12, .03, col, -.3 + i * .3, 1.95 - i * .06, 0); b(.26, .26, .26, '#e8dcc0', 0, 2.9, 0); }
+    else if (p.k === 'stakes') { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; Q.put(new THREE.ConeGeometry(.09, 1.3, 5), i % 2 ? '#5a3b23' : '#6a4a2e', M4(cx + Math.cos(a) * .7, .6, cz + Math.sin(a) * .7, 0, Math.sin(a) * .35, -Math.cos(a) * .35)); } }
+    else if (p.k === 'bones') { for (const [i, [dx, dz, r]] of [[-.4, -.2, .3], [.3, .1, 1.1], [0, .4, 2], [-.2, .2, .7], [.45, -.35, 1.6], [-.5, .45, 2.4], [.1, -.1, .2]].entries()) b(.6, .08, .1, i % 2 ? '#e0d8c4' : '#d2c8b0', dx, .06 + (i % 3) * .07, dz, r); b(.28, .26, .3, '#e8dcc0', 0, .4, 0); b(.3, .1, .2, '#d2c8b0', 0, .28, .08); }
+    else if (p.k === 'shelf') { b(.9 * T, 1.5, .55 * T, '#7a6248', 0, .75, 0); for (const y of [.35, .8, 1.25]) for (let i = 0; i < 4; i++) b(.38, .3, .42, ['#c9412e', '#d9b233', '#e8e0c8', '#5a7fa8'][(i + ((v * 4) | 0)) % 4], -.75 + i * .5, y + .15, 0); b(.95 * T, .08, .6 * T, '#5a4630', 0, 1.52, 0); }
+    else if (p.k === 'lamp') { b(.12, 2.3, .12, '#3e4348', 0, 1.15, 0); b(.5, .08, .1, '#3e4348', .2, 2.3, 0); b(.26, .2, .26, '#2e2a28', .42, 2.2, 0); gl(box(.2, .1, .2), .42, 2.08, 0); c(.2, .26, .2, '#5f5a56', 0, .1, 0, 8); }
+  }
+  Q.build(g, .03); if (glow.length) { const m = new THREE.Mesh(mergeGeometries(glow), emberMat); g.add(m); }
+  return g;
+}
+function campB(b) { return makeBuilding({ type: b.type, x: ZH.SH_AX + b.x, y: ZH.SH_AY + b.y, w: b.bw, h: b.bh, rot: b.rot, burnt: b.dead, wrecked: b.dead }); }
+function syncArenaBits(H) {   /* barricades and snares come and go; 3D.276 and the things in the rooms (switches, beds, crates), the floor hazards and the dark */
+  const bk = (H.blocks || []).filter((b) => b.hp > 0).map((b) => b.x + ',' + b.y).join('|') + '/' + (H.snares || []).filter((q) => !q.used).length + '/' + shThingsKey(H); if (bk === arena.bitKey) return; arena.bitKey = bk;
+  while (arena.bits.children.length) arena.bits.remove(arena.bits.children[0]);
+  for (const b of (H.blocks || []).filter((q) => q.hp > 0)) { const w = ZH.shWorldOf(b.x, b.y); for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(T * .9, .12, .14), toon(i % 2 ? '#8a5a32' : '#a0743c')); m.position.set(w.x * T, .2 + i * .22, w.y * T); m.rotation.z = (i - 1) * .12; arena.bits.add(m); } }
+  for (const n of (H.snares || []).filter((q) => !q.used)) { const m = new THREE.Mesh(new THREE.TorusGeometry(.22, .04, 6, 12).rotateX(Math.PI / 2), toon('#5a5f66')); m.position.set(n.w.x * T, .04, n.w.y * T); arena.bits.add(m); }
+  if (!H.camp) arena.bits.add(shThingsGroup(H));
+}
+const _shv = new THREE.Vector3();
+/* 3D.129 the building under a tap: a ray from the camera through the finger against the building models (was the outline of the old 2D picture) */
+const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2();
+function pickBuilding(px, py) { if (!cam) return null; _ndc.set(px / G.VW() * 2 - 1, 1 - py / G.VH() * 2); _ray.setFromCamera(_ndc, cam); let best = null, bd = Infinity;
+  for (const [b, v] of bGroups) { let h; try { h = _ray.intersectObject(v.g, true); } catch (e) { h = []; } if (h.length && h[0].distance < bd) { bd = h[0].distance; best = b; } } return best; }
+function shProject(x, y, h = 1.8) { if (!G.S.sh || !G.S.sh.view) return null; _shv.set(x * T, h, y * T).project(cam); const VW = G.VW(), VH = G.VH(); return { x: (_shv.x + 1) / 2 * VW, y: (1 - _shv.y) / 2 * VH }; }
+let dprNext = 0, fastT = 0;
+function frame() {
+  if (!ready) return;
+  if (dprNext) { dpr = dprNext; dprNext = 0; renderer.setPixelRatio(dpr); size = [0, 0]; }
+  const now = performance.now(), dt = lastT ? Math.min(.1, (now - lastT) / 1000) : 0; lastT = now;
+  SWAY.uTime.value = now / 1000;
+  placeCamera();
+  let dirty = buildGround(); dirty = buildWalls() || dirty; dirty = buildTraps() || dirty; dirty = buildPosts() || dirty; dirty = buildHighway() || dirty; dirty = syncBuildings() || dirty; dirty = buildForest() || dirty;
+  if (dirty) { renderer.shadowMap.needsUpdate = true; nrmSkipT = 0; }   /* 3D.58: rebuilt grass is left out of the ink pass at once (it flashed an outline for up to 20 frames) */
+  dirty = buildArena() || dirty; syncVehicles();
+  light(G.S.sh && G.S.sh.view ? (G.S.sh.night ? 22.5 : 12.5) : ((G.S.hour || 12) % 24) + (G.tick ? (G.tick() % 1000) / 1000 : 0));   // V3D.13: fractional hour, so dusk and dawn fade smoothly
+  _fr.setFromProjectionMatrix(_pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+  zCount = G.S.z.length;
+  const sp = G.simSpeed ? G.simSpeed() : 1, adt = G.paused && G.paused() ? 0 : dt * sp;
+  syncPeople(adt, true); syncZombies(adt, true); syncBags(dt); syncCrates(dt); syncSites(dt * (G.simSpeed ? G.simSpeed() : 1)); syncGhost(); syncEdgeGhost(); syncDefGhost(); syncShots(adt); fireT += dt; syncFires(dt, fireT); syncRain(dt); syncSnow(dt);
+  if (INK) renderInk(); else { showHulls(true); renderer.render(scene, cam); }
+  frames++; fpsT += dt;
+  if (fpsT > 1) { const fps = frames / fpsT, cap = G.fpsCap ? G.fpsCap() : 60; frames = 0; fpsT = 0; fastT = fps > cap * .95 ? fastT + 1 : 0; const nd = fps < cap * .75 ? Math.max(1, dpr - .25) : fastT >= 4 ? Math.min(DPR_MAX, dpr + .125) : dpr; if (nd !== dpr) { dprNext = nd; fastT = 0; } window.ZH3D.fps = fps; }   /* 3D.347: the bars are a share of the frame cap (were 57 and 45 of 60), so at 30 a second it does not drop the picture for nothing. 3D.133 owner: 'a black flash every now and then'. Changing the resolution right after drawing cleared the picture for one frame, and it stepped up and down about once a second. Now it changes before the next frame is drawn, and only steps up after four good seconds */
+}
+/* 3D.100 owner: arrows you can see fly (slow enough to read as an arrow, on a shallow arc) and a muzzle flash with a quick
+   tracer for guns. The game pushes each shot into G.shots at the moment it lands; this replays it as a projectile. */
+const shotSeen = new WeakSet(), flights = [];
+const arrowProto = (() => { const g = new THREE.Group(), wood = new THREE.MeshBasicMaterial({ color: 0x8a6238 }), tip = new THREE.MeshBasicMaterial({ color: 0x9aa2a8 }), fl = new THREE.MeshBasicMaterial({ color: 0xe8e0cc, side: THREE.DoubleSide });
+  const sh = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, .62, 5).rotateX(Math.PI / 2), wood); g.add(sh);
+  const hd = new THREE.Mesh(new THREE.ConeGeometry(.034, .09, 6).rotateX(Math.PI / 2), tip); hd.position.z = .35; g.add(hd);
+  for (const r of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(.07, .12), fl); f.rotation.set(Math.PI / 2, 0, r); f.position.z = -.26; g.add(f); }
+  return g; })();
+const flashMat = new THREE.SpriteMaterial({ map: glowT, color: 0xffd76a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const tracerMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }), tracerGeo = new THREE.CylinderGeometry(.012, .012, .9, 4).rotateX(Math.PI / 2);
+function shotPt(w, h) { const x = w.x * T, z = w.y * T; return new THREE.Vector3(x, groundH(x, z) + h, z); }
+function syncShots(dt) {
+  for (const sh of G.shots || []) {
+    if (shotSeen.has(sh)) continue; shotSeen.add(sh);
+    const a = shotPt(sh.a, .74), b = shotPt(sh.b, .62), dir = b.clone().sub(a); dir.y = 0; const len = dir.length(); if (len < .05) continue; dir.normalize();
+    a.addScaledVector(dir, .32);   // from the weapon, not the chest
+    if (sh.bow) { const o = arrowProto.clone(); o.scale.setScalar(1.5); o.position.copy(a); scene.add(o); flights.push({ o, a, b, t: 0, dur: Math.max(.22, a.distanceTo(b) / 13), arc: Math.min(.6, a.distanceTo(b) * .07), kind: 'arrow' }); }
+    else { const f = new THREE.Sprite(flashMat); f.position.copy(a).addScaledVector(dir, .12); f.scale.setScalar(.55); scene.add(f); flights.push({ o: f, t: 0, dur: .07, kind: 'flash' });
+      const tr = new THREE.Mesh(tracerGeo, tracerMat); tr.position.copy(a); tr.lookAt(b); scene.add(tr); flights.push({ o: tr, a, b, t: 0, dur: Math.max(.05, a.distanceTo(b) / 45), kind: 'tracer' }); }
+  }
+  for (let i = flights.length - 1; i >= 0; i--) { const f = flights[i]; f.t += dt; const u = Math.min(1, f.t / f.dur);
+    if (f.kind === 'arrow') { const p = f.a.clone().lerp(f.b, u); p.y += f.arc * 4 * u * (1 - u); const q = f.a.clone().lerp(f.b, Math.min(1, u + .02)); q.y += f.arc * 4 * (u + .02) * (1 - u - .02); f.o.position.copy(p); f.o.lookAt(q); }
+    else if (f.kind === 'tracer') f.o.position.copy(f.a.clone().lerp(f.b, u));
+    else f.o.scale.setScalar(.55 * (1 - u * .6));
+    if (u >= 1) { scene.remove(f.o); flights.splice(i, 1); } }
+}
+// ---------------------------------------------------------------- portraits (V3D.12): the People page's chest-up shots
+// rendered from the real 3D survivor in their outfit, weapon and armour (cached per look)
+const portraits = new Map(); let pRig = null;
+function inkEdge(d, W, H, r) {   // a dark outline r px wide just outside the opaque figure (comic look for card pictures)
+  const a = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) a[i] = d[i * 4 + 3] > 100 ? 1 : 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (a[i]) continue; let hit = false;
+    for (let dy = -r; dy <= r && !hit; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) continue; for (let dx = -r; dx <= r; dx++) { const xx = x + dx; if (xx < 0 || xx >= W || dx * dx + dy * dy > r * r) continue; if (a[yy * W + xx]) { hit = true; break; } } }
+    if (hit) { d[i * 4] = 0x22; d[i * 4 + 1] = 0x16; d[i * 4 + 2] = 0x0f; d[i * 4 + 3] = 255; } }
+}
+function snapActor(s, o) {   // o: { clip, t, half, dy, yaw, W, H, key }: a transparent PNG of the survivor in a pose
+  if (!ready || !MALE) return null;
+  const wid = s.eq && s.eq.weapon, model = o.noWeapon ? null : wid ? WMODEL[wid] || 'bat' : null, cls = model ? WCLASS[model] : null;
+  const arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]), lk = s.id ? look2(s) : { sk: 0, hr: 0, hs: 0 }, key = o.zt ? 'z|' + o.key : [o.key, s.job, model, arm ? 1 : 0, (s.eq && s.eq.head) || '', (s.eq && s.eq.armor) || '', (s.eq && s.eq.acc) || '', o.face || '', lk.sk, lk.hr, lk.hs, s.id && isFemale(s) ? 'f' : 'm'].join('|');
+  if (portraits.has(key)) return portraits.get(key);
+  const zStandIn = !!o.zt && !(ZVAR[o.zt] || [o.zt]).some((k) => ZSRC[k]);   /* 3D.179 bug A7: a picture taken with the stand-in model is not kept, so the real one replaces it once its file has loaded */
+  const W = o.W || 256, H = o.H || 256;
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl);
+    pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk], a = o.zt ? ((MALE.v2 && (zombieOwn(o.zt) || zombieV2(o.zt, false, 0))) || new Actor(LITE, zombieMaterial(o.zt, 0), true)) : (s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, o.face || 'neutral', s.id ? lookOf(s) : null), false, null)); if (!o.zt) { const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); } if (!o.zt && !o.plain) { setClothing(a, s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s); }   /* 3D.28: the equipped hat shows in the picture */ scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o);
+  a.setWeapon(o.zt ? null : model); a.setArmor(o.zt ? false : arm); a.play(o.clip ? o.clip(cls) : cls === 'gun' ? 'gun_hold_idle' : cls ? 'melee_hold_idle' : 'idle'); a.mixer.update(o.t ?? .35); a.hands(); a.o.rotation.y = o.yaw ?? -.5; if (o.bend) { const B = {}; a.o.traverse((n) => { if (n.isBone) B[n.name] = n; }); o.bend(B); } a.o.updateMatrixWorld(true);
+  let head = null; a.o.traverse((n) => { if (n.isBone && n.name === 'head') head = n; }); const hp = new THREE.Vector3(); head.getWorldPosition(hp);
+  const c = pRig.cam, hh = o.half, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy === undefined ? hp.y - .03 : o.dy, 0); if (o.dy === undefined) { tgt.x = hp.x; tgt.z = hp.z; }
+  c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, o.elev ?? .25, 5)); c.lookAt(tgt);
+  if (o.fit) {   // 3D.102 frame the whole figure (posed bounds) from this camera angle, with a small margin
+    const bb = new THREE.Box3().setFromObject(a.o, true), ctr = bb.getCenter(new THREE.Vector3()); c.position.copy(ctr).add(new THREE.Vector3(0, o.elev ?? .25, 5)); c.lookAt(ctr); c.updateMatrixWorld(true);
+    const inv = c.matrixWorldInverse; let mx = 0, my = 0; for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) { const v = new THREE.Vector3(x, y, z).applyMatrix4(inv); mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y)); }
+    const h2 = Math.max(my, mx * H / W) * o.fit, w2 = h2 * W / H; c.left = -w2; c.right = w2; c.top = h2; c.bottom = -h2; c.updateProjectionMatrix(); }
+  const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
+  const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+  if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96)));   // the hull is off on the #v2 models: draw a clean outline around the figure
+  g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); if (!zStandIn) portraits.set(key, url); return url;
+}
+function snapSeq(s, o) {   // 3D.94 gear board: like snapActor but builds the survivor once and renders a list of poses o.frames = [[clip, t], ...] -> data URLs
+  if (!ready || !MALE) return [];
+  const wid = s.eq && s.eq.weapon, model = wid ? WMODEL[wid] || 'bat' : null, arm = !!(s.eq && s.eq.armor && G.ITEMS[s.eq.armor] && (G.ITEMS[s.eq.armor].def || 0) >= 7 && !ARMOR3D[s.eq.armor]), W = o.W || 256, H = o.H || 256;
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk], a = s.id && MALE.v2 && FEMALE3D && isFemale(s) ? newPerson(s) : new Actor(MALE, jobMaterial(s.job, 'neutral', s.id ? lookOf(s) : null), false, null);
+  const hid = s.eq && s.eq.head, shape = hid && G.ITEMS[hid] && G.ITEMS[hid].shape; addHat(a, shape ? HAT_SHAPE[shape] : s.job, !!shape); setClothing(a, o.cloth ? { ...s, eq: { ...s.eq, armor: null } } : s); setAccessory(a, s.eq && s.eq.acc); setHair(a, s);
+  if (o.cloth) setOutfit(a, s.eq && s.eq.armor, o.cloth); scene.remove(a.o); scene.remove(a.sh); pRig.sc.add(a.o); a.setWeapon(model); a.setArmor(o.cloth || a.arm3d ? false : arm); a.o.rotation.y = o.yaw ?? -.5;
+  const c = pRig.cam, hh = o.half || .8, hw = hh * W / H, tgt = new THREE.Vector3(0, o.dy ?? .75, 0); c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix(); c.position.copy(tgt).add(new THREE.Vector3(0, .25, 5)); c.lookAt(tgt);
+  const out = [], prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha(), g2 = R.cv.getContext('2d'), row = W * 4;
+  for (const [clip, t] of o.frames) {
+    a.play(clip, false, true); if (a.cur) { a.cur.time = 0; } a.mixer.update(0); if (a.cur) a.cur.time = t; a.mixer.update(0); a.hands(); a.o.updateMatrixWorld(true);
+    renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+    const im = g2.createImageData(W, H); for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+    if (MALE.v2) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 96))); g2.putImageData(im, 0, 0); out.push(R.cv.toDataURL('image/png')); }
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(a.o);
+  return out;
+}
+/* Inventory (owner, 19 Nov; U42): a picture of one item on its own, from its 3D model, at any turn (yaw), for the inventory grid and the
+   Resident-Evil-style look at an item. The item is put on a stand-in survivor in the standing pose, then everything but the item is
+   hidden and the camera circles the item itself. null when the item has no model of its own (the caller shows its sticker icon). */
+let iRig = null; const iShots = new Map();
+function snapItem(id, o = {}) {
+  const it = G.ITEMS[id]; if (!ready || !MALE || !it) return null; const W = o.W || 256, H = o.H || 256, yaw = o.yaw ?? -.6, key = id + '|' + W + 'x' + H + '|' + yaw.toFixed(3) + '|' + (o.ink ? 1 : 0) + '|' + (o.roll ?? '');
+  if (iShots.has(key)) return iShots.get(key);
+  if (!iRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x55606a, 1.25)); const kl = new THREE.DirectionalLight(0xfff0d8, 2.0); kl.position.set(1.6, 2.6, 2.4); sc.add(kl); const rl = new THREE.DirectionalLight(0x9fc8ff, .9); rl.position.set(-2.2, 1.2, -2.0); sc.add(rl);
+    iRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!iRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; iRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = iRig.rts[rk], s = { job: 'Civilian', eq: { weapon: null, armor: null, head: null, acc: null, [it.slot]: id } };
+  const a = new Actor(MALE, jobMaterial('Civilian', 'neutral', null), false, null); scene.remove(a.o); scene.remove(a.sh); iRig.sc.add(a.o);
+  let keep = [];
+  try {
+    if (it.slot === 'weapon') { const m = WMODEL[id]; if (m) { a.setWeapon(m); if (a.w[m]) keep = [a.w[m]]; } }
+    else if (it.slot === 'head') { const sh = it.shape && HAT_SHAPE[it.shape]; if (sh) { addHat(a, sh, true); if (a.hat) keep = [a.hat]; } }
+    else if (it.slot === 'acc') { setAccessory(a, id); keep = (a.accParts || []).slice(); }
+    else if (it.slot === 'armor') { setClothing(a, s); if (a.arm3d) keep = [a.arm3d]; else if ((it.def || 0) >= 7) { a.setArmor(true); keep = a.arm.slice(); } }
+  } catch (e) { keep = []; }
+  if (!keep.length) { iRig.sc.remove(a.o); iShots.set(key, null); return null; }
+  a.play(it.slot === 'weapon' ? 'melee_hold_idle' : 'idle'); a.mixer.update(.35); a.o.updateMatrixWorld(true);
+  let piv = null;   /* a weapon is laid out on its own: its long side across the picture, tipped up a little (o.roll), turned about the upright (yaw) */
+  if (it.slot === 'weapon') { const src = keep[0], ws = new THREE.Vector3(); src.getWorldScale(ws); const g = src.clone(true); g.visible = true; g.traverse((n) => { if (n.isMesh) n.visible = !n.userData.hull; else n.visible = true; });
+    g.position.set(0, 0, 0); g.quaternion.identity(); g.scale.copy(ws); g.updateMatrixWorld(true); let b0 = new THREE.Box3().setFromObject(g, true); const sz = b0.getSize(new THREE.Vector3());
+    const ax = sz.x >= sz.y && sz.x >= sz.z ? new THREE.Vector3(1, 0, 0) : sz.y >= sz.z ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1); g.quaternion.setFromUnitVectors(ax, new THREE.Vector3(1, 0, 0)); g.updateMatrixWorld(true);
+    b0 = new THREE.Box3().setFromObject(g, true); { const s2 = b0.getSize(new THREE.Vector3()); if (s2.y < s2.z) { g.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)); g.updateMatrixWorld(true); b0 = new THREE.Box3().setFromObject(g, true); } }   /* the flat side faces the camera (a gun shows its side, not its top) */
+    g.position.sub(b0.getCenter(new THREE.Vector3())); piv = new THREE.Group(); piv.add(g);
+    piv.quaternion.setFromEuler(new THREE.Euler(0, 0, o.roll ?? .62)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(.25, yaw + .6, 0))); iRig.sc.remove(a.o); iRig.sc.add(piv); piv.updateMatrixWorld(true); keep = [piv]; }
+  const inKeep = (n) => { for (let q = n; q; q = q.parent) if (keep.includes(q)) return true; return false; };
+  a.o.traverse((n) => { if (n.isMesh || n.isSkinnedMesh) n.visible = inKeep(n) && !n.userData.hull; }); for (const k of keep) k.visible = true;
+  const bb = new THREE.Box3(); for (const k of keep) bb.expandByObject(k, true); const ctr = bb.getCenter(new THREE.Vector3());
+  const c = iRig.cam, el = piv ? 0 : o.elev ?? .45, cy = piv ? 0 : yaw; c.position.set(ctr.x + Math.sin(cy) * 5, ctr.y + el * 5, ctr.z + Math.cos(cy) * 5); c.up.set(0, 1, 0); c.lookAt(ctr); c.updateMatrixWorld(true);
+  const inv = c.matrixWorldInverse; let mx = 0, my = 0; for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) { const v = new THREE.Vector3(x, y, z).applyMatrix4(inv); mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y)); }
+  const fit = o.fit || 1.12, h2 = Math.max(my, mx * H / W) * fit, w2 = h2 * W / H; c.left = -w2; c.right = w2; c.top = h2; c.bottom = -h2; c.updateProjectionMatrix();
+  const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(iRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); iRig.sc.remove(a.o); if (piv) iRig.sc.remove(piv);
+  const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+  if (o.ink) inkEdge(im.data, W, H, Math.max(2, Math.round(W / 110))); g2.putImageData(im, 0, 0); const url = R.cv.toDataURL('image/png'); iShots.set(key, url); return url;
+}
+// V3D.24 building pictures for the Build menu and panels: the same coded model as on the map, three-quarter view, inked
+const bthumbs = new Map();
+function buildingThumb(type, W = 208, H = 156) {
+  const D = G.DEFS[type]; if (!ready || !D) return null; const key = type + '|' + W + 'x' + H; if (bthumbs.has(key)) return bthumbs.get(key);
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const g = makeBuilding({ type, x: 0, y: 0, w: D.w, h: D.h, rot: 0 }); g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+  const url = thumbOf(g, W, H); bthumbs.set(key, url); return url;
+}
+function thumbOf(g, W, H) {   // a transparent, inked three-quarter picture of any group (Build menu cards)
+  if (!pRig) { const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4dc, 0x6a5a44, 1.35)); const kl = new THREE.DirectionalLight(0xfff0d8, 1.7); kl.position.set(1.4, 2.2, 2.6); sc.add(kl); pRig = { sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 50), rts: {} }; }
+  const rk = W + 'x' + H; if (!pRig.rts[rk]) { const rt = new THREE.WebGLRenderTarget(W, H, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace; pRig.rts[rk] = { rt, buf: new Uint8Array(W * H * 4), cv: Object.assign(document.createElement('canvas'), { width: W, height: H }) }; }
+  const R = pRig.rts[rk]; g.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(g), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
+  const c = pRig.cam, dir = new THREE.Vector3(.75, .85, 1).normalize(); c.position.copy(ctr).addScaledVector(dir, 20); c.lookAt(ctr);
+  c.updateMatrixWorld(true); const inv = c.matrixWorldInverse; let mx = 0, my = 0;
+  for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) { const v = new THREE.Vector3(x, y, z).applyMatrix4(inv); mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y)); }
+  const hh = Math.max(my, mx * H / W) * 1.08 + .05, hw = hh * W / H; c.left = -hw; c.right = hw; c.top = hh; c.bottom = -hh; c.updateProjectionMatrix();
+  pRig.sc.add(g); const prevT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(R.rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(pRig.sc, c); renderer.readRenderTargetPixels(R.rt, 0, 0, W, H, R.buf);
+  renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); pRig.sc.remove(g);   // (geometry is not freed: the tent / house GLB clones share theirs with the map)
+  const g2 = R.cv.getContext('2d'), im = g2.createImageData(W, H), row = W * 4; for (let y = 0; y < H; y++) im.data.set(R.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+  inkEdge(im.data, W, H, Math.max(2, Math.round(W / 90))); g2.putImageData(im, 0, 0); return R.cv.toDataURL('image/png');
+}
+// 3D.103 Build menu pictures for the things that are not buildings: walls (a short run), the gate, roads, the guard post and traps
+function propThumb(k, W = 208, H = 156) {
+  if (!ready) return null; const key = 'prop|' + k + '|' + W + 'x' + H; if (bthumbs.has(key)) return bthumbs.get(key);
+  const P = new Parts(), g = new THREE.Group();
+  if (k.startsWith('wall:')) {
+    const t = k.slice(5), run = t === 'gate' ? [[0, 0, 'wood'], [1, 0, 'gate'], [2, 0, 'wood']] : [[0, 0, t], [1, 0, t], [2, 0, t]], at = new Map(run.map(([x, y, ty]) => [x + ',' + y, { x, y, type: ty, hp: 1, max: 1 }]));
+    for (const w of at.values()) wallPiece(P, w, (x, y) => at.has(x + ',' + y), (w.x + .5) * T, (w.y + .5) * T);
+  } else if (k === 'road') {
+    P.put(box(T * 1.6, .06, T), '#8a6a44', M4(0, .03, 0)); for (const z of [-.5, .5]) P.put(box(T * 1.6, .065, .16), '#6a4f30', M4(0, .035, z)); P.put(box(T * 1.6, .07, .12), '#6f8a3a', M4(0, .04, 0));
+    for (let i = 0; i < 7; i++) P.put(new THREE.DodecahedronGeometry(.06, 0), '#9a8a74', M4(-1.6 + i * .52, .07, (hash(i, 3) - .5) * 1.6));
+  } else if (k === 'post') postPiece(P, { sched: 'night' }, 0, 0, 0, new THREE.SphereGeometry(.5, 8, 5));
+  else if (k.startsWith('trap:')) trapPiece(P, { type: k.slice(5), x: 3, y: 5, ch: 1 }, 0, 0, 0);
+  else return null;
+  P.build(g, .03, false); const url = thumbOf(g, W, H); bthumbs.set(key, url); return url;
+}
+// People page: framed from the hair down to the chest, turned so the weapon hand is away from the face
+const portraitOf = (s) => snapActor(s, { key: 'bust', half: .46 });
+// event-card stage figures, full body: wave (arriving), cheer, ready (danger), down (mourning)
+const WAVE = (k) => (B) => {   // right arm up beside the head, forearm swinging (k: 0 / 1)
+  const ua = B.upperarmR, fa = B.forearmR; if (!ua) return;
+  ua.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), k ? WAVE_A.z1 : WAVE_A.z);   // the raised arm swings between two angles
+  if (fa) fa.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), WAVE_A.f0);
+};
+const WAVE_A = { z: -2.05, z1: -2.65, f0: .35 };
+const POSE = { wave1: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(0) }, wave2: { clip: () => 'idle', t: .3, face: 'happy', noWeapon: true, yaw: 0, bend: WAVE(1) }, wave: { clip: () => 'cheer', t: .25, face: 'happy', noWeapon: true, yaw: .35 }, cheer: { clip: () => 'cheer', t: .5, face: 'happy', noWeapon: true, yaw: -.35 },
+  walkA: { clip: (c) => (c === 'gun' ? 'gun_hold_walk' : c ? 'melee_hold_walk' : 'walk'), t: .12, face: 'neutral', yaw: Math.PI / 2 }, walkB: { clip: (c) => (c === 'gun' ? 'gun_hold_walk' : c ? 'melee_hold_walk' : 'walk'), t: .52, face: 'neutral', yaw: Math.PI / 2 },   // V3D.18 the exploration bar
+  ready: { clip: (c) => (c === 'gun' ? 'gun_hold_idle' : c ? 'melee_hold_idle' : 'idle'), t: .3, face: 'angry', yaw: -.4 }, down: { clip: () => 'idle', t: .3, face: 'ko', noWeapon: true, yaw: 0 } };
+window.__WAVE_A = WAVE_A;
+const figureOf = (s, pose = 'wave') => snapActor(s, { key: 'fig_' + pose, half: pose === 'wave' || pose === 'cheer' ? .78 : .66, dy: pose === 'wave' || pose === 'cheer' ? .74 : .62, W: 192, H: 256, ...POSE[pose] });
+// V3D.17 boss cards: the boss itself walking in (two frames of its walk cycle, swapped by CSS)
+const zombieFigure = (zt, k = 0, run = false) => snapActor({}, { zt, key: 'zfig_' + zt + (run ? 'r' : 'w') + k, clip: () => (run ? 'zombie_run' : zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : 'zombie_walk'), t: k ? .62 : .18, yaw: -1.05, half: .82, dy: .66, W: 192, H: 256 });
+// 3D.102 Field Note picture of a new zombie: the game's own iso angle (from above, three-quarter turn), standing in the middle of the card
+const zombieIso = (zt, boss) => snapActor({}, { zt, key: 'ziso_' + zt, clip: () => (zt === 'bloated' && ZSRC.bloated ? 'bloated_walk' : zt === 'crawler' ? 'crawl' : 'zombie_walk'), t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 });
+/* 3D.178 bug A5: the "New: Raiders" note showed a walker. A raider is a person: drawn in the Toll Kings' kit (red bandana, black vest; owner's pick, 16 Nov) with a bat, from the same angle as the zombie pictures. Until the kit model has loaded, the plain drifter the game draws for a raider with no faction. */
+const raiderIso = (wpn) => { wpn = WMODEL[wpn] ? wpn : 'bat';   /* 3D.187: the weapon of the raider that came (a bat when none is known) */ const kit = !!ARMOR3D.toll, o = { key: (kit ? 'riso_toll_' : 'riso_') + wpn, t: .18, yaw: -.62, elev: 2.9, half: 1, fit: .86, W: 256, H: 256 }; return kit ? snapActor({ job: 'Raider', eq: { weapon: wpn, armor: 'toll' } }, o) : snapActor({ job: 'Raider', eq: { weapon: wpn } }, { ...o, plain: 1 }); };
+window.ZH3D = { renderer, loadProgress: () => ({ ...LP }), zWaitingAny: (zs) => { let w = false; for (const z of zs) if (zWaiting(z)) w = true; return w; },   /* 3D.250 bug A13: the game waits for these before it starts */ failed: false, raiderIso, snapItem, isFem: (q) => isFemale(q), clipNames: () => MALE.animations.map((c) => c.name), dbgBones: () => [MALE, FEMALE3D].map((m) => m && m.body && m.body.skeleton.bones.map((b) => b.name).join(',')), armor3d: (id) => !!ARMOR3D[id], armorsReady: () => ARMOR3D_DONE || !CHAR_V2, wModel: (id) => WMODEL[id] || null, pickBuilding, zLoad: (k) => zLoad(k), zReady: (k) => !!ZSRC[k], zWorn: (z) => { const a = zeds.get(z); return a && a.src ? a.src.zkey || null : null; }, survivorClips: (fem) => ((fem && FEMALE3D) || MALE).animations.map((c) => ({ name: c.name, dur: c.duration })),   /* 3D.190 */ screenOf: (x, y, h = 0) => { _shv.set(x * T, h, y * T).project(cam); return { x: (_shv.x + 1) / 2, y: (1 - _shv.y) / 2 }; },   /* 3D.200 test hook: where a spot on the ground is on the screen, as shares of its width and height */ pClip: (q) => { const a = people.get(q); return a ? { clip: a.name, rate: a.cur ? a.cur.timeScale : 0, spd: a.spd, st: strideOf(a) || 0, fem: a.src === FEMALE3D } : null; },   /* 3D.189 test hook: the clip a survivor is playing, how fast, and the ground speed */ zClip: (z) => { const a = zeds.get(z); return a ? { clip: a.name, yaw: a.yaw, x: a.o.position.x, z: a.o.position.z, rate: a.cur ? a.cur.timeScale : 0, sc: a.o.scale.y } : null; },   /* 3D.183 test hook */   /* 3D.182 test hook: the model file a zombie is wearing */ zFail: (k) => !!ZFAIL[k], zKeysAll: () => Object.keys(ZMODEL), vehModel, vehShown: () => vehShown, shProject, zombieIso, pthumb: propThumb, track: TRACK, trackPanel, people: () => people, zeds: () => zeds, bthumb: buildingThumb, snap: (s, o) => snapActor(s, o), snapSeq: (s, o) => snapSeq(s, o), scene: () => scene, actors: () => [...people.values(), ...zeds.values()], snow: SNOW, portrait: portraitOf, figure: figureOf, zombieFigure, clearPics: () => portraits.clear(), frame, ready: false, fps: 0, setInk: (v) => { INK = !!v; }, inkMat };
+inkButton();
+(async () => {
+  const base = 'assets/characters/ai3d_male/realtime/';
+  const [m, l, t] = await Promise.all([load(CHAR_V2 ? 'assets/characters/ai3d_v2/survivor_m3.glb' : base + 'male_mid.glb'), load(base + 'male_lite.glb'), load('assets/buildings/ai3d/medic/medical_tent_realtime.glb').catch(() => null)]);
+  for (const src of [m, l]) { src.body = null; src.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') src.body = o; }); if (!src.body) src.scene.traverse((o) => { if (o.isSkinnedMesh && !src.body) src.body = o; }); }
+  m.bodyImage = m.body.material.map && m.body.material.map.image;
+  toonScene(m.scene, null, CHAR_V2); toonScene(l.scene);
+  MALE = m; LITE = l; MALE.body = m.body; MALE.bodyImage = m.bodyImage; MALE.v2 = CHAR_V2; MALE.m3 = CHAR_V2; if (CHAR_V2) MALE.stride = STRIDE.m3;
+  /* 3D.126 the old survivor bases (survivor_v2, survivor_v2_f) and their zombie skins are no longer loaded: every zombie type has its own model */
+  if (CHAR_V2) { try { const f = await load('assets/characters/ai3d_v2/survivor_f3.glb'); f.body = null; f.scene.traverse((o) => { if (o.isSkinnedMesh && o.name === 'body') f.body = o; }); if (!f.body) f.scene.traverse((o) => { if (o.isSkinnedMesh && !f.body) f.body = o; }); toonScene(f.scene, null, true); f.v2 = true; f.m3 = true; f.stride = STRIDE.f3; FEMALE3D = f; } catch (e) { console.warn('female model', e); FEMALE3D = ZFEMALE; } }   /* 3D.124 the owner's original female (rigged like the original male, with finger bones) */
+  if (CHAR_V2) { try { const gr = await load('assets/characters/ai3d_v2/gear_weapons.glb'); toonScene(gr.scene, null, true); fitGear(gr, [MALE, FEMALE3D]); } catch (e) { console.warn('gear models', e); } }   /* 3D.94 */
+  if (CHAR_V2) for (const id of ['riot', 'foundry', 'toll', 'quar', 'helix', 'green', 'hollow', 'beekeeper', 'lifejacket', 'cookware', 'footpads', 'hawaii', 'mattress', 'cardboard', 'phonebook', 'tyre', 'bubblewrap', 'pillow', 'barrel', 'goalie', 'skisuit', 'ducttape', 'chef', 'medic', 'mechanic', 'garden', 'hivis']) { try { const g = await load(`assets/characters/ai3d_v2/armor_${id}_m3.glb`); toonScene(g.scene, null, true); g.scene.updateMatrixWorld(true); g.scene.traverse((n) => { if (n.isSkinnedMesh) ARMOR3D[id] = n; }); } catch (e) { console.warn('armor model', id, e); } }   /* 3D.96 */ ARMOR3D_DONE = true;
+  const il = new THREE.ImageLoader();
+  await Promise.all(['angry', 'hurt', 'ko', 'happy'].map((e) => il.loadAsync(base + 'male_mid_face_' + e + '.png').then((img) => { FACE_OVL[e] = imgTex(img); }).catch(() => {})));
+  if (CHAR_V2) await Promise.all(ZFIRST.map((k) => zLoad(k)));   /* 3D.126 the rest load on first sight */
+  LITE.zTex = (await Promise.all([0, 1, 2, 3].map((i) => il.loadAsync(base + 'male_lite_zombie_' + i + '.webp').then(imgTex).catch(() => null)))).filter(Boolean);
+  if (t) { toonScene(t.scene); t.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); tentScene = t.scene; }
+  await Promise.all(Object.entries(BGLB).map(async ([k, url]) => { try { const r = await load(url); toonScene(r.scene); r.scene.traverse((o) => { if (o.isMesh) o.castShadow = true; }); const sz = new THREE.Box3().setFromObject(r.scene).getSize(new THREE.Vector3()); glbB[k] = { scene: r.scene, sx: sz.x, sz: sz.z }; } catch (e) { console.warn('building model', k, e); } }));
+  bGroups.forEach((v) => scene.remove(v.g)); bGroups.clear();
+  syncDoors(); ready = true; window.ZH3D.ready = true;
+})().catch((e) => { console.error('3D load failed', e); window.ZH3D.failed = true; const b = document.getElementById('crash'); if (b) { b.style.display = 'block'; b.textContent = '3D: ' + e.message; } });

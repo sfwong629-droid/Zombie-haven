@@ -1,0 +1,23 @@
+{
+ "cell": [
+  39,
+  35
+ ],
+ "frames": 8,
+ "ms": 140,
+ "names": [
+  "happy",
+  "sad",
+  "angry",
+  "scared",
+  "love",
+  "hungry",
+  "thirsty",
+  "tired",
+  "hurt",
+  "sick",
+  "alert",
+  "idea",
+  "question"
+ ]
+}

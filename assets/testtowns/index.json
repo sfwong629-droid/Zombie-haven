@@ -1,0 +1,62 @@
+{
+ "build": "3D.379",
+ "made": "2026-11-25",
+ "towns": [
+  {
+   "lvl": 3,
+   "file": "L3.json",
+   "day": 4,
+   "pop": 7,
+   "bld": 11,
+   "seed": 7
+  },
+  {
+   "lvl": 5,
+   "file": "L5.json",
+   "day": 5,
+   "pop": 9,
+   "bld": 19,
+   "seed": 13
+  },
+  {
+   "lvl": 9,
+   "file": "L9.json",
+   "day": 70,
+   "pop": 18,
+   "bld": 24,
+   "seed": 5
+  },
+  {
+   "lvl": 12,
+   "file": "L12.json",
+   "day": 147,
+   "pop": 25,
+   "bld": 32,
+   "seed": 5
+  },
+  {
+   "lvl": 15,
+   "file": "L15.json",
+   "day": 203,
+   "pop": 28,
+   "bld": 40,
+   "seed": 5
+  },
+  {
+   "lvl": 17,
+   "file": "L17.json",
+   "day": 229,
+   "pop": 27,
+   "bld": 48,
+   "seed": 5
+  },
+  {
+   "lvl": 20,
+   "file": "L20.json",
+   "day": 233,
+   "pop": 33,
+   "bld": 56,
+   "seed": 5
+  }
+ ]
+}

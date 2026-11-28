@@ -1,0 +1,279 @@
+/* Zombie Haven — world model (no DOM). Tile-unit coordinates, grid-first buildings with south-corner anchors. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./iso.js'));
+  else root.ZHWorld = factory(root.ZHIso);
+})(typeof self !== 'undefined' ? self : this, function (Iso) {
+  // V2.13: the map grew east and south (16x20 -> 28x30) so old saves keep their coordinates.
+  // The town's TERRITORY starts as the old build zone and grows in tiers bought with Renown + parts.
+  // 3D.101 owner: at least 8 tiles of open land round the biggest town on every side. The map grew 28x30 -> 40x42 and everything
+  // moved OFF tiles east and south (old saves are shifted on load, S.mapOff), so the largest territory (24x26) sits 8 tiles from each edge.
+  const OFF = 6, COLS = 40, ROWS = 42;
+  const TERRITORY = [
+    { x0: 2, y0: 6, x1: 13, y1: 17, ren: 0, mat: 0 },
+    { x0: 2, y0: 4, x1: 17, y1: 21, ren: 60, mat: 8, wood: 20 },
+    { x0: 2, y0: 3, x1: 21, y1: 25, ren: 160, mat: 15, wood: 35 },
+    { x0: 2, y0: 2, x1: 25, y1: 27, ren: 320, mat: 25, wood: 50 },
+    { x0: 1, y0: 1, x1: 28, y1: 30, ren: 520, mat: 40, wood: 70 },   // 3D.113 City Limits (level 16)
+  ].map((t) => Object.assign(t, { x0: t.x0 + OFF, y0: t.y0 + OFF, x1: t.x1 + OFF, y1: t.y1 + OFF }));
+  const BUILD = { x0: 2 + OFF, y0: 6 + OFF, x1: 13 + OFF, y1: 17 + OFF };
+  /* 3D.101 the broken-down highway along the north-east edge (rows HWY_Y, HWY_Y + 1, the whole width) and its ramp towards the town.
+     It's a working route: the Trader, convoys and faction visits come and go along it. Each tile is 'ok', 'crack' or 'hole' (asphalt
+     gone, still walkable). Wrecks on it are salvage nodes (game.js). */
+  const HWY_Y = 3, HWY_RAMP_X = 19;
+  const hh = (x, y) => { let n = (x * 374761393 + y * 668265263) | 0; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const HWY = new Map();
+  for (let x = 0; x < COLS; x++) for (const y of [HWY_Y, HWY_Y + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .42 ? 'crack' : 'ok'); }   /* 3D.133 owner: the asphalt is continuous (no holes); cracks, weeds and litter stay */
+  for (let y = HWY_Y + 2; y <= HWY_Y + 4; y++) for (const x of [HWY_RAMP_X, HWY_RAMP_X + 1]) { const r = hh(x, y); HWY.set(x + ',' + y, r < .55 ? 'crack' : 'ok'); }
+
+  // sprite: 'grid' = grid-first asset whose anchor/scale come from its own JSON; otherwise legacy silhouette-anchored art.
+  // V2.6 economy: no money. mat = PARTS to build (cumulative for upgraded tiers); up = parts to upgrade from the previous tier.
+  // fam/tier/next = building family ladder (footprint fixed per family, so upgrades happen in place). slot = one staff slot (auto-staffed).
+  const D = (o) => Object.assign({ w: 1, h: 1, q: 10, a: 8, rank: 1, cap: 1, door: null, wood: 0, mat: 0, stone: 0, cloth: 0, meds: 0, fuel: 0 }, o);   // V2.25: DV2-style small footprints; door defaults to the middle of the south side
+  /* V3D.23 building tiers: Camp (tents, scrap) -> Timber (logs, planks) -> Stone. tier = material tier, unlocked by the HQ tier.
+     A family (fam) upgrades in place along next; its footprint is fixed. wood / mat (= scrap) / stone = the price of THIS step
+     (building it new for a tier-1 type, upgrading into it otherwise). up = only reachable by upgrading.
+     like = behaves like that older type everywhere the game asks for a type (beds, meals, storage, research...). hidden = not in the Build menu. */
+  /* 3D.41 owner: tier-1 buildings are 1x1 (only the Camp is bigger). A family can grow when it upgrades: the player places the bigger
+     footprint (and turns it) before the upgrade starts. */
+  const DEFS = {
+    hq:       D({ name: 'Camp',  role: 'hq', fam: 'hq', tier: 1, next: 'hq2', w: 2, h: 2, a: 10, hidden: true, icon: 'inn' }),
+    hq2:      D({ name: 'Lodge', role: 'hq', fam: 'hq', tier: 2, next: 'hq3', w: 2, h: 2, a: 12, q: 12, wood: 20, mat: 8, rank: 2, up: true, icon: 'inn' }),
+    hq3:      D({ name: 'Fort',  role: 'hq', fam: 'hq', tier: 3, w: 2, h: 2, a: 16, q: 16, stone: 30, wood: 20, mat: 12, fuel: 2, rank: 3, up: true, icon: 'barracks' }),
+    tent:     D({ name: 'Tent',        like: 'inn', role: 'inn', fam: 'housing', tier: 1, next: 'cabin', cap: 2, a: 6, wood: 3, mat: 3, icon: 'inn' }),
+    cabin:    D({ name: 'Cabin',       like: 'inn', role: 'inn', fam: 'housing', tier: 2, next: 'stonehouse', cap: 3, a: 9, wood: 10, mat: 3, up: true, icon: 'house' }),
+    stonehouse: D({ name: 'Stone House', like: 'inn', role: 'inn', fam: 'housing', tier: 3, cap: 4, a: 12, q: 12, stone: 12, wood: 6, mat: 4, cloth: 2, up: true, icon: 'house' }),
+    barrel:   D({ name: 'Rain Barrel',    like: 'water', role: 'water', fam: 'water', tier: 1, next: 'water', slot: true, out: 3, a: 3, wood: 3, mat: 2, icon: 'water' }),
+    water:    D({ name: 'Rain Collector', role: 'water', fam: 'water', tier: 2, next: 'well', sprite: 'grid', slot: true, out: 6, a: 4, wood: 8, mat: 2, up: true }),
+    well:     D({ name: 'Stone Well',     role: 'water', fam: 'water', tier: 3, slot: true, out: 10, a: 6, q: 12, stone: 10, wood: 4, mat: 4, up: true }),
+    farm:     D({ name: 'Garden Plot',    role: 'food', fam: 'farm', tier: 1, next: 'field', w: 1, sprite: 'grid', slot: true, out: 4, waterUse: 2, a: 5, wood: 4 }),
+    field:    D({ name: 'Fenced Farm',    role: 'food', fam: 'farm', tier: 2, next: 'irrig', w: 1, slot: true, out: 7, waterUse: 3, a: 7, q: 12, wood: 10, mat: 3, up: true }),
+    irrig:    D({ name: 'Irrigated Farm', like: 'field', role: 'food', fam: 'farm', tier: 3, w: 1, slot: true, out: 11, waterUse: 4, a: 9, q: 13, stone: 8, wood: 6, mat: 6, up: true, icon: 'field' }),
+    canteen:  D({ name: 'Canteen',   role: 'food', fam: 'kitchen', tier: 1, next: 'mess', cap: 2, slot: true, a: 10, wood: 6, mat: 2 }),   // V2.12: a Cook on shift makes meals 50% more filling
+    mess:     D({ name: 'Mess Hall', like: 'canteen', role: 'food', fam: 'kitchen', tier: 3, w: 2, cap: 4, slot: true, a: 14, q: 13, stone: 14, wood: 8, mat: 4, up: true, icon: 'canteen' }),
+    medic:    D({ name: 'Medical Tent', role: 'medical', fam: 'medical', tier: 1, next: 'clinic', sprite: 'grid', slot: true, cap: 2, a: 10, wood: 3, mat: 3, cloth: 2 }),
+    clinic:   D({ name: 'Clinic',       role: 'medical', fam: 'medical', tier: 2, next: 'hospital', w: 2, slot: true, cap: 3, a: 13, q: 13, wood: 12, mat: 4, cloth: 3, meds: 2, up: true }),
+    hospital: D({ name: 'Hospital',     role: 'medical', fam: 'medical', tier: 3, w: 2, sprite: 'grid', slot: true, cap: 4, a: 16, q: 16, stone: 16, wood: 10, mat: 8, meds: 6, fuel: 2, up: true, power: 1, powerOpt: true }),   // 3D.77: surgery with power
+    crates:   D({ name: 'Supply Crates', like: 'storage', role: 'storage', fam: 'storage', tier: 1, next: 'storage', a: 3, q: 8, wood: 4, icon: 'storage' }),
+    storage:  D({ name: 'Storehouse',    role: 'storage', fam: 'storage', tier: 2, next: 'warehouse', a: 4, q: 8, wood: 12, mat: 4, up: true }),
+    warehouse: D({ name: 'Warehouse',    like: 'storage', role: 'storage', fam: 'storage', tier: 3, a: 5, q: 9, stone: 16, wood: 8, mat: 6, up: true, icon: 'storage' }),
+    bench:    D({ name: 'Workbench', like: 'workshop', role: 'engineering', fam: 'research', tier: 1, next: 'workshop', slot: true, out: 7, wood: 4, mat: 4, icon: 'workshop' }),
+    workshop: D({ name: 'Workshop',  role: 'engineering', fam: 'research', tier: 2, w: 2, slot: true, out: 12, q: 12, wood: 12, mat: 8, up: true }),   // V2.16: staffed → research points; crafting
+    scrapyard: D({ name: 'Scrapyard',   role: 'parts', fam: 'scrap', tier: 1, slot: true, out: 3, a: 4, q: 8, wood: 6, mat: 4 }),   // V2.15: staffed salvage → scrap
+    lumber:   D({ name: 'Lumber Camp', role: 'parts', fam: 'lumber', tier: 2, w: 2, slot: true, out: 8, a: 4, q: 8, wood: 10, mat: 4, icon: 'scrapyard' }),   // V3D.23: staffed → wood
+    pallet:   D({ name: 'Pallet Yard', role: 'parts', fam: 'pallet', tier: 2, slot: true, out: 4, a: 3, q: 8, wood: 6, mat: 6, icon: 'scrapyard' }),   // 3D.169 owner: scrap → wood (6 scrap → 4 wood a day staffed)
+    quarry:   D({ name: 'Quarry',      role: 'parts', fam: 'quarry', tier: 2, w: 2, slot: true, out: 5, a: 3, q: 8, wood: 12, mat: 6, icon: 'scrapyard' }),   // V3D.23: staffed → stone
+    bonfire:  D({ name: 'Campfire',  role: 'light', tier: 1, a: 9, wood: 2 }),   // V3D.13: lights the camp at night (big radius)
+    armory:   D({ name: 'Armory',    role: 'gear', tier: 2, w: 2, a: 12, wood: 10, mat: 6 }),
+    barracks: D({ name: 'Barracks',  role: 'security', tier: 3, w: 2, h: 2, q: 12, stone: 18, wood: 12, mat: 8, cloth: 3 }),
+    generator: D({ name: 'Generator',   role: 'power', fam: 'power', tier: 3, slot: true, a: 4, q: 10, stone: 10, mat: 10, fuel: 4 }),   // 3D.77: a Mechanic on shift saves fuel   // V3D.26: burns fuel; lights the camp and boosts nearby buildings
+    radio:    D({ name: 'Radio Tower', role: 'radio', tier: 3, a: 6, q: 12, stone: 20, mat: 16, wood: 10, fuel: 6, power: 1 }),   // V3D.26: needs power; sends the rescue signal (the ending)
+    // 3D.77 power for growth (each draws power units from the Generators) and the ammo / fuel chain (run by Mechanics)
+    pump:      D({ name: 'Electric Pump', role: 'water', fam: 'pump', tier: 3, slot: true, out: 16, a: 4, q: 10, stone: 6, mat: 10, fuel: 1, power: 1 }),
+    greenhouse: D({ name: 'Greenhouse',   role: 'food', fam: 'greenhouse', tier: 3, w: 2, slot: true, out: 12, waterUse: 3, a: 8, q: 12, stone: 6, wood: 10, mat: 8, cloth: 2, power: 1, powerOpt: true }),
+    coldstore: D({ name: 'Cold Store',    role: 'storage', fam: 'coldstore', tier: 3, a: 3, q: 9, stone: 10, mat: 10, power: 1 }),
+    fuelstill: D({ name: 'Fuel Still',    role: 'fuel', fam: 'fuel', tier: 2, slot: true, out: 3, a: 4, q: 9, wood: 10, mat: 6 }),
+    ammobench: D({ name: 'Ammo Bench',    role: 'ammo', fam: 'ammo', tier: 2, slot: true, out: 16, a: 4, q: 9, wood: 8, mat: 8 }),
+    ammofactory: D({ name: 'Ammo Factory', role: 'ammo', fam: 'ammo2', tier: 3, w: 2, slot: true, out: 64, a: 6, q: 12, stone: 12, mat: 16, fuel: 2, power: 2 }),
+    // 3D.104 the building study (approved): civic, dogs, school and the power / defence extras
+    tradepost: D({ name: 'Trading Post', role: 'trade', tier: 1, w: 2, a: 8, q: 10, wood: 14, mat: 8, cloth: 2 }),   // traders come twice as often and pay better; a civic project (Banner)
+    townhall: D({ name: 'Town Hall',     role: 'civic', tier: 3, w: 2, h: 2, a: 14, q: 14, stone: 30, wood: 20, mat: 20, cloth: 4, lvl: 16 }),   // 3D.113 the City
+    market:   D({ name: 'Market Square', role: 'trade', tier: 3, w: 2, h: 2, a: 12, q: 12, stone: 16, wood: 24, mat: 12, lvl: 17 }),
+    watertower: D({ name: 'Water Tower', role: 'water', fam: 'pump', tier: 3, slot: true, out: 30, a: 5, q: 12, stone: 14, mat: 14, power: 1, lvl: 16 }),
+    garage:   D({ name: 'Garage',       role: 'vehicles', tier: 2, w: 2, a: 6, q: 10, wood: 12, mat: 10 }),   // 3D.109 one vehicle each; restores found wrecks
+    kennel:   D({ name: 'Kennel',       role: 'dogs', tier: 1, a: 6, q: 8, wood: 8, mat: 2 }),   // keeps two dogs; strays come to it
+    school:   D({ name: 'School',       role: 'train', tier: 2, w: 2, cap: 3, train: 'int', a: 10, q: 10, wood: 12, mat: 4, cloth: 2 }),   // trains intelligence; children grow up faster
+    floodlight: D({ name: 'Floodlight', role: 'light', tier: 3, a: 3, q: 8, stone: 2, mat: 6, power: 1 }),   // at night zombies near it slow down
+    turbine:  D({ name: 'Wind Turbine', role: 'power', fam: 'turbine', tier: 3, a: 3, q: 9, stone: 4, mat: 12, cloth: 2 }),   // +2 power, no fuel
+    solar:    D({ name: 'Solar Array',  role: 'power', fam: 'solar', tier: 3, w: 2, a: 3, q: 9, stone: 2, mat: 14, meds: 0 }),   // +3 power in daylight, no fuel
+    pole:     D({ name: 'Power Pole',   role: 'power', fam: 'pole', tier: 3, a: 2, q: 6, wood: 2, mat: 2 }),   // carries a generator's boost 5 more tiles
+    // V2.14 training buildings: each raises one survivor stat when visited
+    gym:      D({ name: 'Gym',             role: 'train', tier: 1, cap: 2, train: 'str', a: 9, wood: 6, mat: 2 }),
+    library:  D({ name: 'Library',         role: 'train', tier: 2, cap: 2, train: 'int', a: 9, wood: 9, mat: 3 }),
+    lounge:   D({ name: 'Lounge',          role: 'train', tier: 2, cap: 3, train: 'cha', a: 10, wood: 8, mat: 2 }),
+    range:    D({ name: 'Archery Range',   role: 'train', tier: 2, w: 2, cap: 2, train: 'per', a: 8, wood: 9, mat: 3, cloth: 2 }),
+    track:    D({ name: 'Obstacle Course', role: 'train', tier: 2, w: 2, cap: 2, train: 'agi', a: 8, wood: 8, mat: 3 }),
+    sparring: D({ name: 'Sparring Ring',   role: 'train', tier: 2, w: 2, cap: 2, train: 'end', a: 8, wood: 8, mat: 3 }),
+    // older types the code still knows; not built any more (Housing replaced them)
+    house:    D({ name: 'House',   role: 'home', tier: 2, a: 8, wood: 5, mat: 2, hidden: true }),
+    inn:      D({ name: 'Shelter', role: 'inn', tier: 2, w: 2, cap: 4, a: 10, wood: 8, mat: 4, hidden: true }),
+  };
+  /* V3D.26 rebalance: scrap was the choke point, so Camp and Timber buildings lean on wood (scrap -40%); the Stone tier keeps its scrap */
+  for (const d of Object.values(DEFS)) if ((d.tier || 1) < 3 && d.mat > 1) d.mat = Math.max(1, Math.round(d.mat * .6));
+  for (const [k, d] of Object.entries(DEFS)) { d.key = k; d.cost = 0; }
+  const famOf = (t) => (DEFS[t] && DEFS[t].fam) || t;
+  // matching professions per family (one staff slot each): matching gives the boost, anyone else adds nothing
+  const STAFF_JOBS = { water: ['Farmer'], farm: ['Farmer'], medical: ['Medic'], kitchen: ['Cook'], scrap: ['Scavenger'], research: ['Engineer'], lumber: ['Scavenger'], pallet: ['Scavenger'], quarry: ['Engineer'], power: ['Mechanic'], fuel: ['Mechanic'], ammo: ['Mechanic'], ammo2: ['Mechanic'], pump: ['Mechanic'], greenhouse: ['Farmer'] };   /* 3D.77: the Mechanic runs power, fuel and ammo */   /* 3D.67 profession balance: one profession per kind of building (Farmer: food and water; Scavenger: scrap and wood; Engineer: research and stone) */
+  const ROAD_COST = 1;  // scrap per road tile
+  // V2.7 walls: single-tile segments on the grid with hit points; the gate is the one wall tile survivors can walk through (zombies must break it).
+  const WALL_DEFS = {
+    wood:  { name: 'Wood Fence',     mat: 0, wood: 1, hp: 80,  rank: 1, tier: 1, lvl: 1 },   // 3D.103 owner: the starting fence is about a person high (planks on two rails)
+    palisade: { name: 'Log Palisade', mat: 1, wood: 3, hp: 160, rank: 1, tier: 2, lvl: 2 },   // 3D.103 the old tall stake wall, now the Lodge-tier upgrade
+    metal: { name: 'Stone Wall',     mat: 0, wood: 1, stone: 4, hp: 240, rank: 1, tier: 3, lvl: 3 },   // V3D.23: the old Metal Wall, now stone (key kept)
+    efence: { name: 'Electric Fence', mat: 3, wood: 1, stone: 2, hp: 200, rank: 1, tier: 3, lvl: 4, power: true },   // 3D.104 zaps zombies that hit it while the power is on
+    gate:  { name: 'Gate',           mat: 2, wood: 3, hp: 140, rank: 1, tier: 1 },
+  };
+  const WALLZONE = { x0: 1 + OFF, y0: 5 + OFF, x1: 14 + OFF, y1: 18 + OFF };   // build zone grown by one tile so a ring can enclose it
+  function setTerritory(tier) {   // mutates BUILD and WALLZONE in place (everything reads them live)
+    const t = TERRITORY[Math.max(0, Math.min(TERRITORY.length - 1, tier | 0))];
+    Object.assign(BUILD, { x0: t.x0, y0: t.y0, x1: t.x1, y1: t.y1 });
+    Object.assign(WALLZONE, { x0: Math.max(1, t.x0 - 1), y0: Math.max(1, t.y0 - 1), x1: Math.min(COLS - 2, t.x1 + 1), y1: Math.min(ROWS - 2, t.y1 + 1) });
+  }
+  const ROAD_COORDS = [
+    [2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10],
+    [7,6],[7,7],[7,8],[7,9],[7,11],[7,12],[7,13],[7,14],[7,15],[7,16],[7,17],
+    [3,14],[4,14],[5,14],[6,14],[8,14],[9,14],[10,14],[11,14],[12,14],
+    [4,8],[5,8],[6,8],[8,8],[9,8],[10,8],[11,8],
+    [4,11],[4,12],[4,13],[10,11],[10,12],[10,13],
+  ];
+
+  const key = (x, y) => x + ',' + y;
+  function createWorld() { return { roads: new Set(), buildings: [], walls: new Map(), edges: new Map(), ver: 0 }; }   /* 3D.39 owner: a new game starts with just the camp, no roads (ROAD_COORDS kept for reference) */
+  const bump = (w) => { w.ver++; BAE++; };
+  const isRoad = (w, x, y) => w.roads.has(key(x, y));
+  const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
+  const inTown = (x, y) => x >= BUILD.x0 && x <= BUILD.x1 && y >= BUILD.y0 && y <= BUILD.y1;
+  /* 3D.131 buildingAt is asked millions of times a day by the path finder; it used to walk the whole building list each time (a third of
+     all simulation time in a 30-building town, and the cause of the slow siege days). Now a tile -> building table, rebuilt when the
+     building or site count changes, when the world is bumped, once a tick (touch), and at least every 50 ms. Buildings win over sites, as before. */
+  let BA = null, BAE = 0, BAC = 0; const touch = () => { BAE++; };
+  function buildingAt(w, x, y) { const nb = w.buildings.length, ns = (w.sites || []).length;
+    if (!BA || BA.w !== w || BA.e !== BAE || BA.nb !== nb || BA.ns !== ns || ((++BAC & 255) === 0 && performance.now() - BA.t > 50)) { const m = new Map(), put = (b) => { for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) m.set((xx + 512) * 4096 + yy + 512, b); };
+      for (const b of w.sites || []) put(b); for (let i = nb - 1; i >= 0; i--) put(w.buildings[i]); BA = { w, e: BAE, nb, ns, m, t: performance.now() }; }
+    return BA.m.get((Math.floor(x) + 512) * 4096 + Math.floor(y) + 512) || null; }   // V3D.12: construction sites block too
+  const inWallZone = (x, y) => x >= WALLZONE.x0 && x <= WALLZONE.x1 && y >= WALLZONE.y0 && y <= WALLZONE.y1;
+  const wallAt = (w, x, y) => (w.walls && w.walls.get(key(x, y))) || null;
+  /* 3D.351 W269 (owner, 24 Nov: "do B"): town walls stand on the LINES between tiles and take no land. A piece is one tile long:
+     s 'v' is the line x = x between tiles (x-1, y) and (x, y); s 'h' is the line y = y between tiles (x, y-1) and (x, y). Kept in
+     w.edges (w.walls keeps the old wall tiles, empty in a town on lines). A step from a tile to its neighbour is shut by a standing
+     piece on the line between them (a gate only for zombies); a diagonal step must be open both ways round the corner, so nobody
+     cuts past a wall's end. */
+  const ekey = (s, x, y) => s + x + ',' + y;
+  const edgeOf = (ax, ay, bx, by) => (ay === by && Math.abs(ax - bx) === 1 ? { s: 'v', x: Math.max(ax, bx), y: ay } : ax === bx && Math.abs(ay - by) === 1 ? { s: 'h', x: ax, y: Math.max(ay, by) } : null);
+  const edgeAt = (w, s, x, y) => (w.edges && w.edges.get(ekey(s, x, y))) || null;
+  const edgeBetween = (w, ax, ay, bx, by) => { if (!w.edges || !w.edges.size) return null; const e = edgeOf(ax, ay, bx, by); return e ? edgeAt(w, e.s, e.x, e.y) : null; };
+  const edgeShuts = (e, z) => !!e && !e.broken && (z || e.type !== 'gate');
+  const edgeTiles = (e) => (e.s === 'v' ? [{ x: e.x - 1, y: e.y }, { x: e.x, y: e.y }] : [{ x: e.x, y: e.y - 1 }, { x: e.x, y: e.y }]);
+  const edgeMid = (e) => (e.s === 'v' ? { x: e.x, y: e.y + .5 } : { x: e.x + .5, y: e.y });
+  function stepOk(w, ax, ay, bx, by, z = false) {
+    if (!w.edges || !w.edges.size) return true;
+    const dx = bx - ax, dy = by - ay, adx = Math.abs(dx), ady = Math.abs(dy);
+    if (adx + ady === 1) return !edgeShuts(edgeBetween(w, ax, ay, bx, by), z);
+    if (adx === 1 && ady === 1) return stepOk(w, ax, ay, bx, ay, z) && stepOk(w, bx, ay, bx, by, z) && stepOk(w, ax, ay, ax, by, z) && stepOk(w, ax, by, bx, by, z);
+    return true;   // no move, or a jump of more than a tile (carried, loaded, placed): not a step
+  }
+  // z = true for zombies: every wall (the gate too) is solid. Survivors can pass the gate.
+  const walkable = (w, x, y, z = false) => { if (!inMap(x, y) || buildingAt(w, x, y)) return false; const wl = wallAt(w, x, y); return !wl || wl.broken || (!z && wl.type === 'gate'); };   // V2.18: a broken segment is rubble anyone can cross until it is repaired
+
+  // door: world point just INSIDE the entrance (front-left wall), so the door tile is part of the footprint.
+  // approach: the tile just outside that wall, which survivors walk to before stepping in.
+  // V2.47 rotation: rot = 1 mirrors a building on screen, which swaps its world x/y. The footprint is transposed (w and h swap) and the
+  // entrance moves from the front-left wall (y + h side) to the front-right wall (x + w side).
+  // V3D.15: four entrance directions. rot 0 = door on the +y side (front-left), 1 = +x (front-right), 2 = -y (back-right), 3 = -x (back-left).
+  // Odd rot transposes the footprint (w and h swap). w, h here are the footprint as placed.
+  const doorD = (d, w, h, rot) => { const r = (rot | 0) & 3; if (r === 1) return d ? [d[1], d[0]] : [w - .35, h / 2]; if (r === 2) return d ? [w - d[0], h - d[1]] : [w / 2, .35]; if (r === 3) return d ? [w - d[1], h - d[0]] : [.35, h / 2]; return d || [w / 2, h - .35]; };
+  const doorOf = (type, w, h, rot) => doorD(DEFS[type] && DEFS[type].door, w, h, rot);
+  const apTile = (x, y, w, h, r, d) => (r === 1 ? { x: x + w, y: Math.floor(y + d[1]) } : r === 2 ? { x: Math.floor(x + d[0]), y: y - 1 } : r === 3 ? { x: x - 1, y: Math.floor(y + d[1]) } : { x: Math.floor(x + d[0]), y: y + h });
+  function doorPoint(b) { const d = doorOf(b.type, b.w, b.h, b.rot); return { x: b.x + d[0], y: b.y + d[1] }; }
+  function doorTile(b) { const p = doorPoint(b); return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
+  function approachTile(b) { const r = (b.rot | 0) & 3; return apTile(b.x, b.y, b.w, b.h, r, doorOf(b.type, b.w, b.h, r)); }
+  function approachPoint(b) { const r = (b.rot | 0) & 3, d = doorOf(b.type, b.w, b.h, r); return r === 1 ? { x: b.x + b.w + .35, y: b.y + d[1] } : r === 2 ? { x: b.x + d[0], y: b.y - .35 } : r === 3 ? { x: b.x - .35, y: b.y + d[1] } : { x: b.x + d[0], y: b.y + b.h + .35 }; }
+  const rotDef = (def, rot) => { const r = (rot | 0) & 3; return r ? Object.assign({}, def, { w: r & 1 ? def.h : def.w, h: r & 1 ? def.w : def.h, rot: r, door0: def.door }) : def; };   // def as placed (transposed for odd rot)
+  const defApproach = (x, y, def) => { const r = (def.rot | 0) & 3; return apTile(x, y, def.w, def.h, r, doorD(r ? def.door0 : def.door, def.w, def.h, r)); };
+
+  function footprintCheck(w, x, y, def, ignore = null) {
+    if (x < BUILD.x0 || y < BUILD.y0 || x + def.w - 1 > BUILD.x1 || y + def.h - 1 > BUILD.y1) return { ok: false, why: 'Outside the build zone' };
+    for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (isRoad(w, x + xx, y + yy)) return { ok: false, why: 'Blocked by road' };
+    for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) if (wallAt(w, x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' };   /* 3D.133 owner: buildings could be placed on top of walls */
+    const cand = { x, y, w: def.w, h: def.h };
+    if (w.buildings.some(b => b !== ignore && Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Tile occupied' };
+    if ((w.sites || []).some(b => Iso.rectsOverlap(b, cand))) return { ok: false, why: 'Under construction' };
+    const dt = defApproach(x, y, def);   // the approach tile in front of the door must stay free
+    if (!inMap(dt.x, dt.y) || (buildingAt(w, dt.x, dt.y) && buildingAt(w, dt.x, dt.y) !== ignore)) return { ok: false, why: 'Entrance is blocked' };
+    { const wl = wallAt(w, dt.x, dt.y); if (wl && wl.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }
+    if (w.edges && w.edges.size) {   /* 3D.351 walls on lines: nothing is built over a line with a wall on it, and a door never opens onto one */
+      for (let yy = 0; yy < def.h; yy++) for (let xx = 0; xx < def.w; xx++) { if (xx && edgeAt(w, 'v', x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' }; if (yy && edgeAt(w, 'h', x + xx, y + yy)) return { ok: false, why: 'A wall or fence is in the way' }; }
+      const r = (def.rot | 0) & 3, inT = r === 1 ? { x: dt.x - 1, y: dt.y } : r === 2 ? { x: dt.x, y: dt.y + 1 } : r === 3 ? { x: dt.x + 1, y: dt.y } : { x: dt.x, y: dt.y - 1 }, de = edgeBetween(w, inT.x, inT.y, dt.x, dt.y);
+      if (de && de.type !== 'gate') return { ok: false, why: 'The door would face a fence: turn it or move it (a gate there is fine)' }; }   /* 3D.163 play-test: a Canteen built with its door onto the fence trapped whoever went in; rescuers stood inside for 12+ hours while people bled out */
+    // V2.34: nor may it sit on ANOTHER building's entrance tile (people then walked through that building)
+    for (const b of w.buildings) { if (b === ignore) continue; const at = approachTile(b); if (at.x >= x && at.x < x + def.w && at.y >= y && at.y < y + def.h) return { ok: false, why: `Blocks the ${(DEFS[b.type] && DEFS[b.type].name) || b.type} entrance` }; }
+    return { ok: true, why: '' };
+  }
+  function entranceReachable(w, x, y, def) {
+    const dt = defApproach(x, y, def);
+    const tmp = { type: '_probe', x, y, w: def.w, h: def.h };
+    w.buildings.push(tmp);
+    let ok = !!findPath(w, { x: 7, y: 10 }, dt);
+    // V2.34: every other entrance must stay reachable too (a new building must not wall another one in)
+    if (ok) for (const b of w.buildings) { if (b === tmp) continue; const at = approachTile(b); if (inMap(at.x, at.y) && !buildingAt(w, at.x, at.y) && !findPath(w, { x: 7, y: 10 }, at)) {
+      /* 3D.161 play-test find: an entrance that was ALREADY cut off (a mended fence closed the pocket in front of a Rain Barrel) made every
+         later placement fail with "Entrance unreachable", so nothing could be built for the rest of the game. Only count an entrance
+         that this new building is the one to cut off. */
+      w.buildings.pop(); const before = !!findPath(w, { x: 7, y: 10 }, at); w.buildings.push(tmp); if (before) { ok = false; break; } } }
+    w.buildings.pop();
+    return ok;
+  }
+  function placementCheck(w, x, y, def, ignore = null) {
+    const f = footprintCheck(w, x, y, def, ignore); if (!f.ok) return f;
+    if (!entranceReachable(w, x, y, def)) return { ok: false, why: 'Entrance unreachable' };
+    return f;
+  }
+
+  class Heap {
+    constructor() { this.a = []; }
+    push(n) { const a = this.a; a.push(n); let i = a.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (a[p].f <= a[i].f) break; [a[p], a[i]] = [a[i], a[p]]; i = p; } }
+    pop() { const a = this.a, t = a[0], l = a.pop(); if (a.length) { a[0] = l; let i = 0; for (;;) { let m = i, L = 2 * i + 1, R = L + 1; if (L < a.length && a[L].f < a[m].f) m = L; if (R < a.length && a[R].f < a[m].f) m = R; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return t; }
+    get size() { return this.a.length; }
+  }
+  const stepCost = (w, x, y) => isRoad(w, x, y) || HWY.has(x + ',' + y) ? 1 : (inTown(x, y) ? 2.2 : 2.8);   // 3D.101: the highway is quick to travel
+  function nearestWalkable(w, gx, gy, z = false) {
+    if (walkable(w, gx, gy, z)) return { x: gx, y: gy };
+    for (let r = 1; r < 5; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walkable(w, gx + dx, gy + dy, z)) return { x: gx + dx, y: gy + dy };
+    return null;
+  }
+  // tiles AFTER start up to the goal (inclusive); [] if already there; null if unreachable
+  // wallCost (zombies only): unbroken wall tiles count as passable at that extra cost, so a sealed town still yields a
+  // route whose first wall tile is the one to break; any real opening is always preferred when it exists.
+  function findPath(w, from, to, z = false, wallCost = 0, avoid = null) {   /* avoid: tiles that cost more (3D.264: people standing in the way), never blocked */
+    const tb = buildingAt(w, to.x, to.y), gt = tb && !z ? approachTile(tb) : to;   // a goal inside a building = its approach tile
+    const fb = buildingAt(w, from.x, from.y), ft = fb && !z ? approachTile(fb) : from;   // leaving a building = start from its approach tile
+    const g = nearestWalkable(w, gt.x, gt.y, z), s = nearestWalkable(w, ft.x, ft.y, z); if (!g || !s) return null;
+    if (s.x === g.x && s.y === g.y) return [];
+    const best = new Map([[key(s.x, s.y), 0]]), prev = new Map(), heap = new Heap(), eOn = !!(w.edges && w.edges.size);
+    heap.push({ x: s.x, y: s.y, g: 0, f: Math.abs(s.x - g.x) + Math.abs(s.y - g.y) });
+    let guard = 0;
+    while (heap.size && guard++ < 9000) {
+      const c = heap.pop(); if (c.g > (best.get(key(c.x, c.y)) ?? 1e9)) continue;
+      if (c.x === g.x && c.y === g.y) { const out = []; let k = key(c.x, c.y); while (prev.has(k)) { const [px, py] = k.split(',').map(Number); out.push({ x: px, y: py }); k = prev.get(k); } return out.reverse(); }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = c.x + dx, ny = c.y + dy; let extra = 0;
+        if (eOn) { const eg = edgeBetween(w, c.x, c.y, nx, ny); if (edgeShuts(eg, z)) { if (!wallCost) continue; extra = wallCost; } }   /* 3D.351 a wall on the line: zombies may count it as a way through, at a cost (the piece to break) */
+        if (!walkable(w, nx, ny, z)) { const wl = wallCost && inMap(nx, ny) && !buildingAt(w, nx, ny) ? wallAt(w, nx, ny) : null; if (!wl) continue; extra += wallCost; }
+        const k = key(nx, ny), ng = c.g + stepCost(w, nx, ny) + extra + (avoid && avoid.has(k) ? 6 : 0);
+        if (ng < (best.get(k) ?? 1e9)) { best.set(k, ng); prev.set(k, key(c.x, c.y)); heap.push({ x: nx, y: ny, g: ng, f: ng + Math.abs(nx - g.x) + Math.abs(ny - g.y) }); }
+      }
+    }
+    return null;
+  }
+
+  // Perimeter check: flood-fill from the town centre treating walls (gate included) and buildings as solid, the way zombies see them.
+  function perimeter(w) {
+    let weakest = null, n = 0, gates = 0; for (const wl of [...w.walls.values(), ...(w.edges ? w.edges.values() : [])]) { n++; if (wl.type === 'gate') gates++; if (!weakest || wl.hp / wl.max < weakest.hp / weakest.max) weakest = wl; }
+    /* 3D.172: flood from the map edge inward (3D.171 flooded out from the town centre, so a closed little camp fence round the HQ trapped the
+       flood and the outer wall never counted: the Defender's 105-tile wall never sealed). Anything the outside cannot walk to is inside. */
+    const out = new Set(), q = [], push = (x, y, c) => { const k = key(x, y); if (!out.has(k) && walkable(w, x, y, true) && (!c || stepOk(w, c.x, c.y, x, y, true))) { out.add(k); q.push({ x, y }); } };
+    for (let x = 0; x < COLS; x++) { push(x, 0); push(x, ROWS - 1); } for (let y = 0; y < ROWS; y++) { push(0, y); push(COLS - 1, y); }
+    while (q.length) { const c = q.pop(); push(c.x + 1, c.y, c); push(c.x - 1, c.y, c); push(c.x, c.y + 1, c); push(c.x, c.y - 1, c); }
+    const seed = nearestWalkable(w, 7 + OFF, 10 + OFF, true), ring = !!seed && !out.has(key(seed.x, seed.y));
+    /* 3D.171 owner: sealed means most of the town is inside: the HQ and at least 3 in 4 buildings. A building is outside when its door, or a
+       tile next to it, can be reached from the map edge */
+    let inside = 0, total = 0, hqIn = false; const outsideB = [];
+    for (const b of w.buildings) { if (!DEFS[b.type]) continue; total++; const t = approachTile(b); let reach = out.has(key(t.x, t.y));
+      for (let x = b.x - 1; !reach && x <= b.x + b.w; x++) for (let y = b.y - 1; !reach && y <= b.y + b.h; y++) if ((x < b.x || x >= b.x + b.w || y < b.y || y >= b.y + b.h) && out.has(key(x, y)) && stepOk(w, x, y, Math.max(b.x, Math.min(b.x + b.w - 1, x)), Math.max(b.y, Math.min(b.y + b.h - 1, y)), true)) reach = true;   /* 3D.351 not across a wall on the line */
+      if (!reach) { inside++; if (DEFS[b.type].fam === 'hq') hqIn = true; } else outsideB.push(b); }
+    const sealed = hqIn && inside >= Math.ceil(total * SEAL_SHARE);
+    return { sealed, ring, inside, total, outsideB, walls: n, gates, weakest, area: COLS * ROWS - out.size };
+  }
+  const SEAL_SHARE = .75;
+  const hwyAt = (x, y) => HWY.get(x + ',' + y) || null;
+  return { OFF, HWY, HWY_Y, HWY_RAMP_X, hwyAt, famOf, TERRITORY, setTerritory, WALL_DEFS, WALLZONE, inWallZone, wallAt, perimeter, ekey, edgeOf, edgeAt, edgeBetween, edgeShuts, edgeTiles, edgeMid, stepOk, COLS, ROWS, BUILD, DEFS, STAFF_JOBS, ROAD_COST, ROAD_COORDS, key, createWorld, bump, touch, isRoad, inMap, inTown, buildingAt, walkable, doorPoint, doorTile, approachTile, approachPoint, rotDef, footprintCheck, placementCheck, entranceReachable, findPath, nearestWalkable };
+});
