@@ -651,6 +651,21 @@ function stripUpdate() {
   dl.classList.toggle('night', night); dl.style.setProperty('--dlf', left.toFixed(2));
   dl.title = night ? `Dawn in ${(30 - h) % 24} h` : `Dark in ${20 - h} h`;
 }
+/* 3D.393 (owner, 28 Nov: "C is ok but the number and the outline is no good. These should be the exact same size and look as the iphone"):
+   badges on the dock like the phone's own (red, white number, no outline, the phone's size for a 50 px icon), red when it is urgent and amber when it
+   can wait. People: anyone down (red) or badly hurt (amber); Explore: leads waiting; Town: the level-up ready; Build: buildings burnt (red) or badly
+   damaged (amber); More: workplaces with no worker. */
+function dockBadges() {
+  const set = (id, n, red) => { const b = $(id) && $(id).querySelector('.dkI'); if (!b) return; let e = b.querySelector('.dkB'); if (!n) { if (e) e.remove(); return; }
+    if (!e) e = b.appendChild(Object.assign(document.createElement('span'), { className: 'dkB' })); const t = n > 99 ? '99+' : String(n); if (e.textContent !== t) e.textContent = t; e.classList.toggle('am', !red); };
+  const down = S.sv.filter((q) => q.hp <= 0 || q.bleed != null).length, hurt = S.sv.filter((q) => q.hp > 0 && q.bleed == null && q.hp < q.max * .5).length;
+  set('mSurv', down + hurt, !!down);
+  leadsTidy(); set('mExp', S.trip ? 0 : (S.leads || []).length, false);
+  set('mTown', S.rankReady && !S.lvUp ? 1 : 0, false);
+  const burnt = world.buildings.filter((b) => b.burnt).length, dmg = world.buildings.filter((b) => !b.burnt && b.max && b.hp < b.max * .5).length;
+  set('mBuild', burnt || dmg, !!burnt);
+  let empty = 0; try { empty = slotBs().filter((b) => !b.staff).length; } catch (e) { /* no workplaces yet */ } set('mGuide', empty, false);
+}
 function ui() {
   if (performance.now() - (ui.adv || 0) > 1500) { ui.adv = performance.now(); try { advisorUpdate(); } catch (e) { /* never block the HUD */ } }
   { const n = rankRules[S.rank], pv = rankRules[S.rank - 1] || { ren: 0 }, bar = $('renBar'); if (bar) { const rc = rankConds(); bar.style.width = (rc && rc.length ? Math.round(100 * rc.reduce((a, r) => a + (r.ok ? 1 : Math.min(1, (+r.have || 0) / Math.max(1, +r.need || 1))), 0) / rc.length) : 100) + '%'; }   /* audit: the bar fills toward the next rank's conditions (people + buildings), not old Renown thresholds */ if (bar) $('gauge').style.setProperty('--p', parseFloat(bar.style.width) || 0); } $('food').textContent = Math.floor(S.food); $('water').textContent = Math.floor(S.water); $('mat').textContent = Math.floor(S.mat); { const rr = $('rare'); if (rr) supplyChip(rr); } { const w = $('wood'); if (w) w.textContent = Math.floor(S.wood || 0); const sn = $('stone'); if (sn) { sn.textContent = Math.floor(S.stone || 0); sn.parentNode.style.display = (S.stone || 0) > 0 || hqTier() >= 2 ? '' : 'none'; } } $('ren').textContent = S.ren; $('rank').textContent = 'Lv ' + (S.lvl || 1); $('gauge').classList.toggle('ready', !!S.rankReady); $('threat').textContent = S.threat;
@@ -659,7 +674,7 @@ function ui() {
   {   /* 3D.159 the UX study: a visible countdown to night. From 17:00 "Night in 3h", amber at dusk (19:00), blue through the night */
     const ck = $('clock'), h = S.hour, sub = h >= 17 && h < 20 ? `🌙 Night in ${20 - h}h` : isNight() ? `☀ Dawn in ${(30 - h) % 24}h` : '', ph = h === 19 ? 'dusk' : isNight() ? 'night' : '';
     if (ck.dataset.sub !== sub || ck.dataset.ph !== ph) { const re = !ck.dataset.sub !== !sub; ck.dataset.sub = sub; ck.dataset.ph = ph; if (re) requestAnimationFrame(layoutTop); } }
-  if (phoneOn()) stripUpdate();   /* 3D.383 */
+  if (phoneOn()) { stripUpdate(); dockBadges(); }   /* 3D.383; 3D.393 badges */
   $('qt').textContent = S.stage === 0 ? 'Build a Rain Barrel' : S.stage === 1 ? `Defeat 3 Walkers (${Math.min(S.kills, 3)}/3)` : guideActive() ? `▶ ${GUIDE[S.guide].desc}` : (S.mission ? `${S.mission.name}: ${Math.floor(S.mission.progress)}/${S.mission.goal}` : 'Grow the Haven!');
 }
 

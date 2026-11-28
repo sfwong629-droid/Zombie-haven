@@ -458,3 +458,11 @@ html.phone .mmS_cover .mmT { font-size: 44px; }
 html.phone .mmRows { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 22px; } html.phone .mmRows b { display: block; font: 800 30px Manrope, system-ui, sans-serif; } html.phone .mmRows small { font-size: 13px; color: rgba(255, 255, 255, .7); }
 html.phone .mmJoke { margin-top: 22px; font: 500 14px/1.35 Manrope, system-ui, sans-serif; font-style: italic; color: rgba(255, 255, 255, .6); }
 html.phone .mmRow .phFace { width: 40px; height: 40px; flex: none; }
+/* 3D.393: badges like the phone's own: red, a white number, no outline; for a 50 px icon 20 px high, 14 px type, overlapping the corner by 7 px */
+.dkB { display: none; } html.glass.phone #lmenu .lm .dkI { overflow: visible; } html.phone #lmenu .lm .dkB { display: block; }
+html.phone .dkB, html.phone .moTile .moBdg { position: absolute; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; background: #ff3b30; color: #fff;
+  font: 500 14px/20px -apple-system, "SF Pro Text", system-ui, sans-serif; font-style: normal; letter-spacing: -.01em; text-align: center; box-shadow: none; border: 0; z-index: 3; pointer-events: none; }
+html.phone .dkB { top: -7px; right: -7px; }
+html.phone .dkB.am, html.phone .moTile .moBdg.am { background: #ff9500; }
+html.phone .moTile .moBdg { top: -8px; right: -8px; min-width: 24px; height: 24px; border-radius: 12px; font-size: 16px; line-height: 24px; padding: 0 7px; }
+html.phone .lm[data-badge]::after { display: none !important; content: none !important; }   /* 3D.393: the dock badge replaces the old leads count */

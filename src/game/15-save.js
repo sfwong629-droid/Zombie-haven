@@ -37,7 +37,7 @@ const MO_APPS = [['moMsg', 'msg', '#5fae6e', '#3f8a4f', 'Messages'], ['moFm', 'r
 function showMorePhone() {
   endBuildMode(true); closeP(); const e = slotBs().filter((b) => !b.staff).length;
   const app = ([id, ic, c1, c2, t]) => { const n = id === 'moJobs' ? e : 0;
-    return `<button class="moApp" id="${id}"><span class="moTile">${appTile(id, 40)}${n ? `<i class="moBdg">${n}</i>` : ''}</span><span class="moLbl">${t}</span></button>`; };
+    return `<button class="moApp" id="${id}"><span class="moTile">${appTile(id, 40)}${n ? `<i class="moBdg am">${n}</i>` : ''}</span><span class="moLbl">${t}</span></button>`; };
   $('ib').innerHTML = `<div class="moGrid">${MO_APPS.map(app).join('')}</div>`;
   $('moGuide').onclick = () => { showGuide(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moFm').onclick = () => showFM(null, showMore); $('moSet').onclick = () => showSettings(showMore); $('moJobs').onclick = () => showJobs(showMore);
   $('moLog').onclick = () => { showLog(); panelBack = showMore; $('pBack').style.display = 'block'; }; $('moMsg').onclick = () => showMessages(showMore); $('moMem').onclick = () => showMemories(showMore);
